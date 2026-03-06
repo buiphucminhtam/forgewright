@@ -41,15 +41,59 @@ Build a complete SaaS from scratch, design UI/UX systems, develop cross-platform
 
 ## Quick Start
 
-```bash
-# Clone the plugin
-git clone https://github.com/antigravity-code/antigravity-code-production-grade-plugin.git
+### Option A: One-liner Setup (Recommended)
 
-# Skills are loaded automatically from the skills/ directory
-# No additional setup required
+```bash
+# macOS/Linux — download & install as git submodule
+curl -sO https://raw.githubusercontent.com/antigravity-code/antigravity-code-production-grade-plugin/main/setup.sh
+chmod +x setup.sh && ./setup.sh install
+
+# Windows (PowerShell)
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/antigravity-code/antigravity-code-production-grade-plugin/main/setup.ps1" -OutFile "setup.ps1"
+.\setup.ps1 install
+```
+
+### Option B: Manual Git Submodule
+
+```bash
+git submodule add -b main https://github.com/antigravity-code/antigravity-code-production-grade-plugin.git .antigravity/plugins/production-grade
+git add .gitmodules .antigravity/ && git commit -m "feat: add production-grade plugin v5.1"
+```
+
+### Option C: Standalone Clone
+
+```bash
+git clone https://github.com/antigravity-code/antigravity-code-production-grade-plugin.git
 ```
 
 Then say: *"Build a production-grade SaaS for [your idea]"* — or *"Help me think about [your idea]"* if you want the Polymath co-pilot first.
+
+### Updating
+
+```bash
+# With setup script
+./setup.sh update          # macOS/Linux
+.\setup.ps1 update         # Windows
+
+# Manual submodule update
+git submodule update --remote .antigravity/plugins/production-grade
+git add .antigravity/ && git commit -m "chore: update production-grade plugin"
+
+# Standalone clone
+git pull
+```
+
+### Team Collaboration
+
+When your project uses the submodule, teammates just run:
+
+```bash
+# First time cloning your project
+git clone --recurse-submodules <your-project-url>
+
+# Or if already cloned
+git submodule update --init --recursive
+```
 
 ---
 
@@ -162,14 +206,12 @@ T13: Compound Learning
 
 ## Integration Guide
 
-### Installation
+### Setup Scripts
 
-```bash
-# Clone and use directly
-git clone https://github.com/antigravity-code/antigravity-code-production-grade-plugin.git
-
-# Skills are loaded automatically from the skills/ directory
-```
+| Platform | Install | Update | Status | Uninstall |
+|----------|---------|--------|--------|-----------|
+| **macOS/Linux** | `./setup.sh install` | `./setup.sh update` | `./setup.sh status` | `./setup.sh uninstall` |
+| **Windows** | `.\setup.ps1 install` | `.\setup.ps1 update` | `.\setup.ps1 status` | `.\setup.ps1 uninstall` |
 
 **Requirements:** Antigravity, Docker & Docker Compose, Git.
 
