@@ -521,6 +521,19 @@ Each phase loads its dispatcher file for task management.
 
 **Read the phase file BEFORE starting that phase. Never load all phase files at once.**
 
+**Internal skill architecture** — each skill's internal phase structure (executed sequentially in Antigravity):
+
+| Skill | Internal Phases |
+|-------|----------------|
+| software-engineer | Shared foundations first (Phase 2a), then per-service implementation (Phase 2b). Foundations ensure consistency. |
+| frontend-engineer | UI Primitives first (Phase 3a), then Layout + Features (Phase 3b), then Pages (Phase 4). Primitives are foundational atoms. |
+| qa-engineer | Unit, integration, e2e, performance tests — sequential by test type |
+| security-engineer | Code audit, auth review, data security, supply chain — sequential by domain |
+| code-reviewer | Architecture conformance, code quality, performance review — sequential by focus |
+| devops | IaC, CI/CD, container orchestration — sequential by layer |
+| sre | Chaos engineering, incident management, capacity planning — sequential |
+| technical-writer | API reference, developer guides — sequential |
+
 ### Skill Dispatch Method
 
 Read the skill's SKILL.md file and follow its instructions directly:
@@ -670,4 +683,5 @@ Every skill execution follows:
 | One-size-fits-all architecture | Architecture is derived from constraints (scale, team, budget, compliance). A 100-user internal tool does NOT need microservices + K8s. |
 | Writing stubs | No `// TODO: implement` in production code |
 | Hardcoded paths | Read `.production-grade.yaml` for path overrides |
+| Not leveraging skill architecture | Even though execution is sequential, each skill's internal phase structure ensures quality. Foundations before dependent work. |
 | Duplicating security review | code-reviewer references security-engineer findings |
