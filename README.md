@@ -40,6 +40,22 @@ Forge17 orchestrates 17 specialized AI skills to build production-ready software
 
 ---
 
+## For Antigravity Users
+
+**Forge17 is self-discovering.** Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 17-skill pipeline. No manual configuration needed.
+
+**Available workflows (slash commands):**
+
+| Command | Description |
+|---------|-------------|
+| `/setup` | First-time install as git submodule |
+| `/update` | Check for and install updates |
+| `/pipeline` | Show full pipeline reference, modes, and skill list |
+
+Just open a new chat and describe what you want. The orchestrator handles the rest.
+
+---
+
 ## Quick Start
 
 ### Option A: One-liner Setup (Recommended)

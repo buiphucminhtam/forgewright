@@ -1,10 +1,31 @@
 {
-  "name": "production-grade",
-  "description": "Adaptive orchestrator for all software engineering work: 14 bundled skills, smart routing, 10 execution modes. From full greenfield builds to adding features, code review, testing, hardening, and deployment.",
-  "version": "5.0.0",
+  "name": "forge17",
+  "description": "Adaptive orchestrator for all software engineering work: 17 bundled skills, smart routing, 12 execution modes. From full greenfield builds to adding features, code review, testing, hardening, deployment, UI design, and mobile development.",
+  "version": "5.1.0",
   "author": {
-    "name": "antigravity-code"
+    "name": "buiphucminhtam"
   },
   "license": "MIT",
-  "keywords": ["production-grade", "saas", "orchestrator", "full-stack", "meta-skill", "pipeline", "devops", "architecture", "testing", "security", "sre", "ai", "ml", "llm"]
+  "homepage": "https://github.com/buiphucminhtam/forge17",
+  "keywords": [
+    "forge17",
+    "production-grade",
+    "saas",
+    "orchestrator",
+    "full-stack",
+    "meta-skill",
+    "pipeline",
+    "devops",
+    "architecture",
+    "testing",
+    "security",
+    "sre",
+    "ai",
+    "ml",
+    "llm",
+    "ui-design",
+    "mobile",
+    "playwright",
+    "prompt-engineering"
+  ]
 }
