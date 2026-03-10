@@ -28,7 +28,7 @@ BOLD='\033[1m'
 print_header() {
     echo ""
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}  ${BOLD}Production Grade Plugin${NC} — 17 Skills for Antigravity     ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}Production Grade Plugin${NC} — 18 Skills for Antigravity     ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -95,11 +95,12 @@ cmd_install() {
     print_success "Installed successfully! Version: ${BOLD}v$version${NC}"
     echo ""
     echo -e "  ${BOLD}Skills location:${NC}  $SUBMODULE_PATH/skills/"
-    echo -e "  ${BOLD}Skill count:${NC}      17 skills"
+    echo -e "  ${BOLD}Skill count:${NC}      18 skills (17 domain + parallel dispatch)"
     echo -e "  ${BOLD}Pipeline:${NC}         DEFINE → BUILD → HARDEN → SHIP → SUSTAIN"
+    echo -e "  ${BOLD}Parallel:${NC}         Git worktree-based parallel execution"
     echo ""
     echo -e "  ${BOLD}Next steps:${NC}"
-    echo -e "  1. Commit the submodule: ${CYAN}git add .gitmodules $SUBMODULE_PATH && git commit -m 'feat: add production-grade plugin'${NC}"
+    echo -e "  1. Commit the submodule: ${CYAN}git add .gitmodules $SUBMODULE_PATH && git commit -m 'feat: add production-grade plugin v$version'${NC}"
     echo -e "  2. Start building: ${CYAN}\"Build a production-grade SaaS for [your idea]\"${NC}"
     echo -e "  3. Check for updates: ${CYAN}./setup.sh status${NC}"
     echo ""
@@ -206,20 +207,62 @@ cmd_uninstall() {
 # Main
 # ============================================================================
 
+cmd_init_parallel() {
+    print_header
+
+    if [ ! -d "$SUBMODULE_PATH" ]; then
+        print_error "Plugin not installed. Run '${BOLD}./setup.sh install${NC}' first."
+        exit 1
+    fi
+
+    if [ ! -f "$SUBMODULE_PATH/scripts/worktree-manager.sh" ]; then
+        print_error "worktree-manager.sh not found. Plugin may need updating."
+        exit 1
+    fi
+
+    # Symlink worktree-manager to project root for convenience
+    if [ ! -L "worktree-manager.sh" ] && [ ! -f "worktree-manager.sh" ]; then
+        ln -s "$SUBMODULE_PATH/scripts/worktree-manager.sh" "worktree-manager.sh"
+        print_success "Linked worktree-manager.sh to project root"
+    else
+        print_warn "worktree-manager.sh already exists in project root"
+    fi
+
+    # Add .worktrees/ to .gitignore if not already there
+    if [ -f ".gitignore" ]; then
+        if ! grep -q "^.worktrees/" ".gitignore" 2>/dev/null; then
+            echo ".worktrees/" >> ".gitignore"
+            print_success "Added .worktrees/ to .gitignore"
+        fi
+    else
+        echo ".worktrees/" > ".gitignore"
+        print_success "Created .gitignore with .worktrees/"
+    fi
+
+    echo ""
+    print_success "Parallel dispatch ready!"
+    echo -e "  ${BOLD}Worktree manager:${NC}  ./worktree-manager.sh"
+    echo -e "  ${BOLD}Max workers:${NC}       4 (set MAX_WORKERS env to change)"
+    echo -e "  ${BOLD}Usage:${NC}             ./worktree-manager.sh help"
+    echo ""
+}
+
 case "${1:-help}" in
-    install)    cmd_install ;;
-    update)     cmd_update ;;
-    status)     cmd_status ;;
-    uninstall)  cmd_uninstall ;;
+    install)        cmd_install ;;
+    update)         cmd_update ;;
+    status)         cmd_status ;;
+    uninstall)      cmd_uninstall ;;
+    init-parallel)  cmd_init_parallel ;;
     *)
         print_header
         echo "  Usage: ./setup.sh <command>"
         echo ""
         echo "  Commands:"
-        echo "    install     First-time install as git submodule"
-        echo "    update      Pull latest version from remote"
-        echo "    status      Check current version & installation"
-        echo "    uninstall   Remove the submodule completely"
+        echo "    install         First-time install as git submodule"
+        echo "    update          Pull latest version from remote"
+        echo "    status          Check current version & installation"
+        echo "    init-parallel   Set up parallel dispatch (worktree manager + gitignore)"
+        echo "    uninstall       Remove the submodule completely"
         echo ""
         ;;
 esac

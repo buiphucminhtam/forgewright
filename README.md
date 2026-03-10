@@ -1,20 +1,23 @@
 # 🔨 Forge17
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-5.1.0-blue.svg)]()
-[![Skills](https://img.shields.io/badge/skills-17-green.svg)]()
+[![Version](https://img.shields.io/badge/version-5.2.0-blue.svg)]()
+[![Skills](https://img.shields.io/badge/skills-18-green.svg)]()
 [![Modes](https://img.shields.io/badge/modes-12-purple.svg)]()
+[![Parallel](https://img.shields.io/badge/parallel-worktrees-orange.svg)]()
 [![Vibe Coded](https://img.shields.io/badge/vibe-coded_%F0%9F%8E%B5-ff69b4.svg)]()
 
-**17 AI Skills. One Pipeline. Production Grade.**
+**18 AI Skills. Parallel Execution. Production Grade.**
 
-Forge17 orchestrates 17 specialized AI skills to build production-ready software from scratch. Design UI/UX, develop web + mobile, test, secure, deploy — one prompt, full dev team.
+Forge17 orchestrates 18 specialized AI skills to build production-ready software from scratch. Design UI/UX, develop web + mobile, test, secure, deploy — one prompt, full dev team. **Now with parallel task dispatch via git worktrees.**
 
 > Built from [claude-code-production-grade-plugin](https://github.com/nagisanzenin/claude-code-production-grade-plugin) and [awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills). Entirely vibe coded — the skills evaluated and upgraded themselves. 🎵
 
 ### Release Timeline
 
 ```
+2026-03-10  v5.2  ●━━━ Parallel dispatch (git worktrees), scope analysis, anti-hallucination
+                  │
 2026-03-06  v5.1  ●━━━ +3 new skills, +5 upgrades, 14→17 skills, 12 execution modes
                   │
 2026-03-06  v5.0  ●━━━ Migrated to Antigravity, sequential execution, updated tool APIs
@@ -42,7 +45,7 @@ Forge17 orchestrates 17 specialized AI skills to build production-ready software
 
 ## For Antigravity Users
 
-**Forge17 is self-discovering.** Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 17-skill pipeline. No manual configuration needed.
+Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 18-skill pipeline. No manual configuration needed.
 
 **Available workflows (slash commands):**
 
@@ -74,7 +77,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/buiphucminhtam/forge17
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forge17.git .antigravity/plugins/production-grade
-git add .gitmodules .antigravity/ && git commit -m "feat: add production-grade plugin v5.1"
+git add .gitmodules .antigravity/ && git commit -m "feat: add production-grade plugin v5.2"
 ```
 
 ### Option C: Standalone Clone
@@ -84,6 +87,14 @@ git clone https://github.com/buiphucminhtam/forge17.git
 ```
 
 Then say: *"Build a production-grade SaaS for [your idea]"* — or *"Help me think about [your idea]"* if you want the Polymath co-pilot first.
+
+### Enable Parallel Dispatch (Optional)
+
+After installing, set up parallel execution support:
+
+```bash
+./setup.sh init-parallel   # symlinks worktree-manager, adds .worktrees/ to .gitignore
+```
 
 ### Updating
 
@@ -128,10 +139,12 @@ The result: you describe what you want in plain language. 17 specialized skills 
 
 | Metric | Detail |
 |--------|--------|
-| **17 specialized skills** | Each with sole authority over its domain — no overlap, no contradiction |
+| **18 specialized skills** | Each with sole authority over its domain — no overlap, no contradiction |
 | **12 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Optimize, Design, Mobile |
+| **Parallel dispatch** | Git worktree-based parallel execution with Task Contracts and anti-hallucination |
+| **Scope analysis** | Complexity scoring, time estimation, and risk assessment before execution |
 | **3 approval gates** | Everything between gates is fully autonomous |
-| **4 shared protocols** | UX, input validation, tool efficiency, conflict resolution |
+| **7 shared protocols** | UX, input validation, tool efficiency, conflict resolution, task contract, task validator, merge arbiter |
 | **6 Polymath modes** | Onboard, research, ideate (with structured brainstorming), advise, translate, synthesize |
 | **4 engagement modes** | Express, Standard, Thorough, Meticulous — choose your interaction depth |
 | **0 open-ended questions** | Every user interaction is structured with numbered options |
@@ -199,13 +212,13 @@ T1.5: UI Designer (design tokens, wireframes) ← NEW conditional
 T2:   Solution Architect ────────────────── GATE 2: approve architecture
     ↓
 T3a: Backend Engineer ──── implements services      ┐
-T3b: Frontend Engineer ─── implements pages         ├ parallel
-T3c: Mobile Engineer ───── mobile app (conditional) ┘ ← NEW
+T3b: Frontend Engineer ─── implements pages         ├ parallel (worktrees)
+T3c: Mobile Engineer ───── mobile app (conditional) ┘
 T4:  DevOps ────────────── Dockerfiles + CI skeleton
-    ↓ (code written)
-T5:  QA Engineer ─────────── tests (unit/e2e/perf/Playwright)
-T6a: Security Engineer ──── STRIDE + code audit
-T6b: Code Reviewer ──────── arch conformance review
+    ↓ (code written — validated & merged)
+T5:  QA Engineer ─────────── tests (unit/e2e/perf)  ┐
+T6a: Security Engineer ──── STRIDE + code audit     ├ parallel (worktrees)
+T6b: Code Reviewer ──────── arch conformance review ┘
     ↓
 T7:  DevOps (IaC + CI/CD + branch strategy)
 T8:  Remediation
@@ -217,7 +230,26 @@ T12: Skill Maker
 T13: Compound Learning
 ```
 
-**3 approval gates. Sequential execution. Maximum quality.**
+**3 approval gates. Parallel or sequential execution. Scope analysis with risk prediction.**
+
+### Parallel Dispatch (v5.2)
+
+When enabled, independent tasks run simultaneously in isolated git worktrees:
+
+```
+CEO Agent (Orchestrator)
+    │
+    ├── Scope Analysis → Complexity Score, Time Estimate, Risk Level
+    │
+    ├── Task Contract ──→ Worktree 1: Backend  (services/)
+    ├── Task Contract ──→ Worktree 2: Frontend (frontend/)
+    ├── Task Contract ──→ Worktree 3: Mobile   (mobile/)
+    │
+    ├── Validate each worker (7-step anti-hallucination)
+    └── Merge Arbiter → Clean merge into main
+```
+
+**Anti-hallucination pipeline:** Contract boundaries → Forbidden pattern grep → Build check → Test check → Import verification → API/Schema conformance → Integration test
 
 ---
 
@@ -225,12 +257,12 @@ T13: Compound Learning
 
 ### Setup Scripts
 
-| Platform | Install | Update | Status | Uninstall |
-|----------|---------|--------|--------|-----------|
-| **macOS/Linux** | `./setup.sh install` | `./setup.sh update` | `./setup.sh status` | `./setup.sh uninstall` |
-| **Windows** | `.\setup.ps1 install` | `.\setup.ps1 update` | `.\setup.ps1 status` | `.\setup.ps1 uninstall` |
+| Platform | Install | Update | Status | Init Parallel | Uninstall |
+|----------|---------|--------|--------|--------------|----------|
+| **macOS/Linux** | `./setup.sh install` | `./setup.sh update` | `./setup.sh status` | `./setup.sh init-parallel` | `./setup.sh uninstall` |
+| **Windows** | `.\setup.ps1 install` | `.\setup.ps1 update` | `.\setup.ps1 status` | — | `.\setup.ps1 uninstall` |
 
-**Requirements:** Antigravity, Docker & Docker Compose, Git.
+**Requirements:** Antigravity or Gemini CLI, Docker & Docker Compose, Git.
 
 ### Zero Config
 
@@ -241,7 +273,7 @@ Works out of the box. The orchestrator auto-detects your project structure and m
 For existing projects or specific preferences:
 
 ```yaml
-version: "5.1"
+version: "5.2"
 
 project:
   name: "my-project"
@@ -412,7 +444,13 @@ TypeScript/Node.js, Go, Python, Rust, Java/Kotlin. Mobile: React Native (Expo) o
 No. Deliverables go to defined directories. Workspace artifacts stay in `Antigravity-Production-Grade-Suite/`.
 
 **Do I need all 17 skills?**
-No. The orchestrator only activates the skills you need. A backend API project may use only 8-10 skills. A full-stack mobile app might use all 17.
+No. The orchestrator only activates the skills you need. A backend API project may use only 8-10 skills. A full-stack mobile app might use all 18.
+
+**How does parallel dispatch work?**
+When the pipeline has 2+ independent tasks, the orchestrator creates git worktrees (one per task), assigns each a Task Contract (exact input/output spec), and dispatches separate Gemini CLI instances. After execution, a 7-step validator checks for boundary violations, stubs, and hallucinated imports before merging.
+
+**Is parallel mode safe?**
+Yes. Each worker runs in an isolated git worktree with explicit read/write boundaries. The Merge Arbiter handles conflicts, and a full integration test runs after merge. If anything fails, per-branch rollback kicks in.
 
 **How does the UI Designer work without Figma?**
 It produces detailed text-based design specs: color palettes with exact hex/HSL values, typography scales, spacing systems, component inventories with state matrices, and wireframe descriptions with responsive breakpoints. The frontend/mobile engineer consumes these specs directly.
@@ -443,5 +481,5 @@ MIT
 ---
 
 <p align="center">
-  <strong>Forge17 — 17 AI skills forging production code. One prompt. Full pipeline. Your co-pilot included. ⭐</strong>
+  <strong>Forge17 — 18 AI skills forging production code. Parallel execution. One prompt. Full pipeline. ⭐</strong>
 </p>

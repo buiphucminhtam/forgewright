@@ -2,6 +2,27 @@
 
 All notable changes to the Production Grade Plugin.
 
+## [5.2.0] — 2026-03-10
+
+### Added
+- **Parallel dispatch** — Git worktree-based parallel task execution. Independent tasks (BUILD: T3a/T3b/T3c, HARDEN: T5/T6a/T6b) run in isolated worktrees simultaneously.
+- **Task Contract protocol** — JSON-based contract defining exact input/output/constraints for each parallel worker. Workers can only read listed files and write to allowed directories.
+- **Task Validator protocol** — 7-step post-execution validation: contract compliance, boundary violations, forbidden patterns, build check, test check, import verification, API/schema conformance.
+- **Merge Arbiter protocol** — Ordered merge strategy with auto-resolution for configs (package.json, docker-compose.yml), integration testing, and per-branch rollback.
+- **Worktree Manager script** — Shell script managing git worktree lifecycle: create, status, validate, merge, cleanup, resume.
+- **Scope Analysis Engine** — Analyzes project complexity (5-factor weighted score), estimates execution time for both modes, assesses 6 risk categories, and generates data-driven recommendation.
+- **Anti-hallucination pipeline** — 6-layer defense: contract boundaries → forbidden pattern grep → build verification → test execution → import path resolution → API/schema conformance.
+- **`init-parallel` setup command** — Convenience command that symlinks worktree-manager and updates .gitignore.
+- **Checkpoint & resume** — Failed parallel workers preserve state in worktree for retry from checkpoint.
+
+### Changed
+- **Skill count** — 17 → 18 (added `parallel-dispatch` orchestrator skill).
+- **Protocol count** — 4 → 7 (added task-contract, task-validator, merge-arbiter).
+- **Execution strategy** — Orchestrator now presents scope analysis with complexity scoring, time estimates, and risk predictions before asking user to choose parallel or sequential.
+- **BUILD phase** — Supports parallel mode via parallel-dispatch skill dispatch.
+- **HARDEN phase** — Supports parallel mode with strict authority boundary enforcement in contracts.
+- **AGENTS.md** — Updated with parallel-dispatch skill and new protocol references.
+
 ## [5.0.0] — 2026-03-06
 
 ### Changed
