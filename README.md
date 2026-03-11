@@ -16,6 +16,15 @@ Forge17 is an AI pipeline that orchestrates **18 specialized skills** to build p
 
 > Built from [claude-code-production-grade-plugin](https://github.com/nagisanzenin/claude-code-production-grade-plugin) and [awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills). Entirely vibe coded — the skills evaluated and upgraded themselves. 🎵
 
+
+---
+
+## Give me a coffee
+
+If Forge17 helps you ship faster, you can support the project here:
+
+![Give me a coffee](assets/donate/give-me-a-coffee.png)
+
 ### Release Timeline
 
 ```
