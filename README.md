@@ -25,9 +25,7 @@ Forge17 is an AI pipeline that orchestrates **20 specialized skills** across **6
 
 If Forge17 helps you ship faster, you can support the project here:
 
-| Vietnam (Bank QR) | International |
-|---|---|
-| <img src="assets/donate/give-me-a-coffee.png" width="240" /> | <img src="assets/donate/give-me-a-coffee-international.png" width="240" /> |
+<img src="assets/donate/give-me-a-coffee-international.png" width="240" />
 
 
 ### Release Timeline
