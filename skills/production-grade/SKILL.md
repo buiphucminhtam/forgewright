@@ -47,7 +47,7 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 
 | Mode | Trigger Signals | Skills Involved |
 |------|----------------|-----------------|
-| **Full Build** | "build a SaaS", "production grade", "from scratch", "full stack", greenfield intent | All skills, full DEFINE→BUILD→HARDEN→SHIP→SUSTAIN pipeline |
+| **Full Build** | "build a SaaS", "production grade", "from scratch", "full stack", greenfield intent | All skills, full DEFINE→BUILD→HARDEN→SHIP→SUSTAIN→GROW pipeline |
 | **Feature** | "add [feature]", "implement [feature]", "new endpoint", "new page", "integrate [service]" | PM (scoped) → Architect (scoped) → BE/FE → QA |
 | **Harden** | "review", "audit", "secure", "harden", "before launch", "production ready" (on EXISTING code) | Security + QA + Code Review (sequential) → Remediation |
 | **Ship** | "deploy", "CI/CD", "containerize", "infrastructure", "terraform", "docker" | DevOps → SRE |
@@ -63,6 +63,8 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 | **Optimize** | "performance", "slow", "optimize", "scale", "reliability" | SRE + Code Reviewer |
 | **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow" | UI Designer |
 | **Mobile** | "mobile app", "React Native", "Flutter", "iOS", "Android" | Mobile Engineer (+ PM scoped, Architect scoped if needed) |
+| **Marketing** | "marketing", "SEO", "launch strategy", "copywriting", "content strategy", "go-to-market" | Growth Marketer (+ Conversion Optimizer if CRO mentioned) |
+| **Grow** | "growth", "CRO", "conversion", "funnel", "A/B test", "churn", "retention", "referral" | Conversion Optimizer (+ Growth Marketer if strategy needed) |
 | **Custom** | Doesn't fit above patterns | Present skill menu, let user pick |
 
 **Step 2 — Present or skip the plan:**
@@ -212,6 +214,27 @@ Performance + reliability analysis. Two skills.
 4. **Remediation** — fix top issues
 
 **1 gate:** After analysis, before fixes.
+
+### Marketing Mode
+
+Go-to-market strategy, content, and SEO. Primarily Growth Marketer.
+
+1. **Growth Marketer** — market analysis, positioning, content strategy, SEO audit, copywriting, launch campaign, analytics setup
+2. **Conversion Optimizer** (if CRO explicitly mentioned) — funnel audit, CRO recommendations alongside marketing strategy
+3. **Frontend Engineer** (if SEO code changes needed) — implement meta tags, schema markup, page speed fixes
+
+**1 gate:** After strategy, before content creation.
+
+### Grow Mode
+
+Conversion optimization, experimentation, and growth engineering. Primarily Conversion Optimizer.
+
+1. **Conversion Optimizer** — funnel audit, CRO implementation, A/B test design, growth loops, churn prevention
+2. **Growth Marketer** (if strategy context needed) — provide positioning, messaging, and traffic analysis
+3. **Frontend Engineer** (if code changes needed) — implement CRO changes, experiment infrastructure
+4. **QA Engineer** (if A/B test infrastructure) — verify experiment implementation
+
+**1 gate:** After audit, before implementation.
 
 ### Custom Mode
 

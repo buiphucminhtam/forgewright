@@ -457,6 +457,146 @@ tests/e2e/ui/
 
 ---
 
+### Phase 5c — Midscene Vision Testing (NEW)
+
+**Goal:** Add vision-based, natural-language UI testing that eliminates brittle selectors and extends E2E coverage to mobile platforms (Android/iOS) — powered by [Midscene.js](https://midscenejs.com) (12k+ ⭐, MIT).
+
+**Prerequisite:** Midscene environment variables must be configured (see Setup). If not configured, skip this phase with: `[DEGRADED: Midscene not configured — skipping vision tests]`
+
+**Why Midscene alongside Playwright:**
+- Playwright = deterministic, fast, selector-based → great for CI regression
+- Midscene = vision-based, natural language, cross-platform → great for visual QA, mobile, and canvas UIs
+- Together = comprehensive coverage with complementary strengths
+
+**Setup:**
+```bash
+# Install Midscene for Playwright integration
+npm install @midscene/web --save-dev
+
+# Configure model (in .env or environment)
+MIDSCENE_MODEL_API_KEY="your-api-key"
+MIDSCENE_MODEL_NAME="gemini-3-flash"            # Recommended: fast + cheap
+MIDSCENE_MODEL_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"
+MIDSCENE_MODEL_FAMILY="gemini"
+```
+
+**For cross-platform testing (mobile/desktop), install skills:**
+```bash
+npx skills add web-infra-dev/midscene-skills
+```
+
+**Rules:**
+
+1. **Vision-based E2E tests** — write natural language test flows using Midscene + Playwright:
+   ```typescript
+   import { PlaywrightAiFixture } from '@midscene/web/playwright';
+   import { test as base } from '@playwright/test';
+
+   const test = base.extend<PlaywrightAiFixture>(PlaywrightAiFixture());
+
+   test('user can complete checkout', async ({ page, ai, aiAssert }) => {
+     await page.goto('/products');
+
+     // Vision-based interactions — no selectors needed
+     await ai('click on the first product card');
+     await ai('click "Add to Cart" button');
+     await ai('click the shopping cart icon in the header');
+     await aiAssert('the cart shows 1 item');
+     await ai('click "Proceed to Checkout"');
+     await ai('fill in shipping address with test data');
+     await ai('click "Place Order"');
+     await aiAssert('order confirmation page is displayed with order number');
+   });
+   ```
+
+2. **Natural language assertions** — use `aiAssert()` for visual state validation:
+   ```typescript
+   // Assert UI state without knowing DOM structure
+   await aiAssert('the navigation menu has 5 items');
+   await aiAssert('the user avatar shows initials "JD"');
+   await aiAssert('the price is displayed in red with a strikethrough');
+   await aiAssert('the loading spinner is not visible');
+   await aiAssert('dark mode is active — background is dark');
+   ```
+
+3. **Data extraction** — use `aiQuery()` to extract structured data from UI:
+   ```typescript
+   const products = await aiQuery(
+     { productNames: 'string[]', totalPrice: 'string' },
+     'extract all product names and total price from the cart'
+   );
+   expect(products.productNames).toHaveLength(3);
+   ```
+
+4. **Canvas and complex UI testing** — Midscene works on `<canvas>`, WebGL, SVG, and other non-DOM UIs:
+   ```typescript
+   test('chart renders correctly', async ({ page, ai, aiAssert }) => {
+     await page.goto('/analytics');
+     await aiAssert('a bar chart is displayed with monthly revenue data');
+     await aiAssert('the Y-axis shows dollar amounts');
+     await ai('hover over the tallest bar');
+     await aiAssert('a tooltip shows the revenue value');
+   });
+   ```
+
+5. **Mobile testing with Midscene Skills** (when midscene-skills installed):
+   ```typescript
+   // Android testing via ADB
+   // Invoke: "Use Midscene android skill to test the login flow"
+
+   // iOS testing via WebDriverAgent
+   // Invoke: "Use Midscene ios skill to open the app and verify home screen"
+   ```
+   - Android: requires ADB connection to device/emulator
+   - iOS: requires WebDriverAgent running on device/simulator
+
+6. **Test caching** — enable caching for faster reruns (Midscene caches vision model responses):
+   ```typescript
+   await ai('click the submit button', { cacheable: true });
+   ```
+   - First run: model analyzes screenshot (~2-3s per action)
+   - Cached run: instant replay from cache
+   - Cache invalidates when UI changes significantly
+
+7. **Visual replay reports** — Midscene generates interactive HTML reports showing every step:
+   ```typescript
+   // After test suite completes, reports are at:
+   // ./midscene_run/report/
+   // Each step shows: screenshot → action → result
+   ```
+
+8. **Deep Think mode** — for complex multi-step interactions:
+   ```typescript
+   await ai('find the settings gear icon, open it, navigate to "API Keys" tab, and copy the first key', {
+     deepThink: true,  // Model reasons step-by-step before acting
+   });
+   ```
+
+9. **Guard Rails:**
+   - Model API costs: ~$0.001-0.01 per vision call (Gemini Flash)
+   - Latency: ~2-5s per `ai()` call (model inference + action)
+   - Use Playwright selectors for speed-critical CI tests
+   - Use Midscene for visual QA, exploratory testing, and mobile
+   - Always have a `.env` or environment config — never hardcode API keys
+   - ⚠️ Midscene can control EVERYTHING on screen — scope tests carefully
+
+**Output:**
+```
+tests/e2e/vision/
+├── midscene.config.ts              # Midscene model + report settings
+├── flows/
+│   ├── <user-flow>.vision.ts       # Vision-based E2E test specs
+│   └── canvas-ui.vision.ts         # Canvas/complex UI tests
+├── mobile/                          # Mobile test specs (when applicable)
+│   ├── android/
+│   │   └── <flow>.android.ts
+│   └── ios/
+│       └── <flow>.ios.ts
+└── reports/                         # Auto-generated visual replay reports
+```
+
+---
+
 ### Phase 6 — Performance Tests
 
 **Goal:** Establish performance baselines and create load/stress test scripts for performance-sensitive endpoints.
@@ -566,3 +706,9 @@ Before marking the skill as complete, verify:
 - [ ] **(Playwright)** Every page passes `@axe-core/playwright` WCAG 2.1 AA scan
 - [ ] **(Playwright)** Auth fixture reuses session state across tests
 - [ ] **(Playwright)** `Antigravity-Production-Grade-Suite/qa-engineer/a11y-report.md` is generated
+- [ ] **(Midscene)** `@midscene/web` installed and model configured in `.env`
+- [ ] **(Midscene)** Vision-based E2E tests written for critical user flows at `tests/e2e/vision/`
+- [ ] **(Midscene)** Natural language assertions validate visual UI state
+- [ ] **(Midscene)** Canvas/complex UI tests cover non-DOM elements (if applicable)
+- [ ] **(Midscene)** Mobile tests written for Android/iOS (if mobile app exists)
+- [ ] **(Midscene)** Visual replay reports generated at `midscene_run/report/`

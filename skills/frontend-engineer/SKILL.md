@@ -163,6 +163,7 @@ Triggered -> Phase 1: UI/UX Analysis -> Phase 2: Design System
 | Skipping form validation | Validate on both client (instant feedback) and server (security) — use Zod schemas shared with API layer |
 | No dark mode from the start | Implement light/dark via CSS custom properties and theme provider from Phase 2 — retrofitting dark mode into an existing component library is extremely painful |
 | Testing implementation details | Test behavior, not implementation — assert what the user sees and does, not internal component state or DOM structure |
+| Only testing with DOM selectors | DOM selectors break on refactors. Complement Playwright selector-based tests with [Midscene.js](https://midscenejs.com) vision-based tests — `aiAssert('dark mode is active')`, `aiAct('click the submit button')`. Midscene uses screenshots, not DOM, so tests survive UI refactors. Also tests `<canvas>`, WebGL, and SVG that DOM selectors can't reach |
 
 ## React Server Components (RSC) Reference
 

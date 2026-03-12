@@ -1,18 +1,20 @@
 # 🔨 Forge17
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-5.3.0-blue.svg)]()
-[![Skills](https://img.shields.io/badge/skills-18-green.svg)]()
-[![Modes](https://img.shields.io/badge/modes-13-purple.svg)]()
+[![Version](https://img.shields.io/badge/version-5.5.0-blue.svg)]()
+[![Skills](https://img.shields.io/badge/skills-20-green.svg)]()
+[![Modes](https://img.shields.io/badge/modes-15-purple.svg)]()
 [![Research](https://img.shields.io/badge/research-NotebookLM_MCP-00A67E.svg)]()
+[![Testing](https://img.shields.io/badge/testing-Midscene_Vision-FF6B35.svg)]()
+[![Growth](https://img.shields.io/badge/growth-Marketing_CRO-E91E63.svg)]()
 [![Parallel](https://img.shields.io/badge/parallel-worktrees-orange.svg)]()
 [![Vibe Coded](https://img.shields.io/badge/vibe-coded_%F0%9F%8E%B5-ff69b4.svg)]()
 
-**18 AI Skills. Deep Research. Parallel Execution. Production Grade.**
+**20 AI Skills. Full Lifecycle. Research → Build → Test → Market → Grow.**
 
-> *"One prompt to research, design, build, test, secure, and deploy — with zero hallucinations."*
+> *"One prompt to research, design, build, test, secure, deploy, market, and grow — the complete business lifecycle."*
 
-Forge17 is an AI pipeline that orchestrates **18 specialized skills** to build production-ready software from scratch. Design UI/UX, develop web + mobile, test, secure, deploy — one prompt, full dev team. **Now with grounded research powered by NotebookLM MCP and parallel dispatch via git worktrees.**
+Forge17 is an AI pipeline that orchestrates **20 specialized skills** across **6 phases** to take a product from idea to market. The only AI pipeline that covers the **complete lifecycle**: DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → **GROW**.
 
 > Built from [claude-code-production-grade-plugin](https://github.com/nagisanzenin/claude-code-production-grade-plugin) and [awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills). Entirely vibe coded — the skills evaluated and upgraded themselves. 🎵
 
@@ -31,6 +33,10 @@ If Forge17 helps you ship faster, you can support the project here:
 ### Release Timeline
 
 ```
+2026-03-12  v5.5  ●━━━ GROW Phase — Growth Marketer + Conversion Optimizer, 6-phase lifecycle
+                  │
+2026-03-12  v5.4  ●━━━ Vision Testing — Midscene.js AI testing, cross-platform (web+mobile+desktop)
+                  │
 2026-03-11  v5.3  ●━━━ Research Intelligence — NotebookLM MCP, deep research workflow, 13 modes
                   │
 2026-03-10  v5.2  ●━━━ Parallel dispatch (git worktrees), scope analysis, anti-hallucination
@@ -62,7 +68,7 @@ If Forge17 helps you ship faster, you can support the project here:
 
 ## For Antigravity Users
 
-Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 18-skill pipeline. No manual configuration needed.
+Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 20-skill pipeline. No manual configuration needed.
 
 **Available workflows (slash commands):**
 
@@ -94,7 +100,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/buiphucminhtam/forge17
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forge17.git .antigravity/plugins/production-grade
-git add .gitmodules .antigravity/ && git commit -m "feat: add production-grade plugin v5.3"
+git add .gitmodules .antigravity/ && git commit -m "feat: add production-grade plugin v5.5"
 ```
 
 ### Option C: Standalone Clone
@@ -149,17 +155,22 @@ Software development with AI today is broken in a specific way: **AI is fast at 
 **Forge17 solves both sides:**
 1. A **Research Intelligence layer** that grounds decisions in real data — NotebookLM MCP provides zero-hallucination, citation-backed research before any code is written
 2. A **Polymath co-pilot** that thinks with you — researches your domain, detects your knowledge gaps, helps you crystallize the idea before committing to code
-3. A **17-agent autonomous pipeline** that executes the full software development lifecycle — from requirements to deployment — without you managing the process
+3. A **20-agent autonomous pipeline** that executes the full software development lifecycle — from requirements to deployment to go-to-market — without you managing the process
+4. A **Vision Testing engine** (Midscene.js) that tests UIs with natural language across web, Android, and iOS — no brittle selectors
+5. A **Go-to-Market layer** that handles SEO, copywriting, launch campaigns, CRO, A/B testing, and retention — the complete GROW phase
 
-The result: you describe what you want in plain language. 18 specialized skills research, design, build, test, secure, deploy, and document a complete production system. You approve 3 times. That's it.
+The result: you describe what you want in plain language. 20 specialized skills research, design, build, test, secure, deploy, market, and grow a complete production system. You approve 3 times. That's it.
 
 ### By the Numbers
 
 | Metric | Detail |
 |--------|--------|
-| **18 specialized skills** | Each with sole authority over its domain — no overlap, no contradiction |
-| **13 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, **Research**, Optimize, Design, Mobile |
+| **20 specialized skills** | Each with sole authority over its domain — no overlap, no contradiction |
+| **15 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, **Research**, Optimize, Design, Mobile, **Marketing**, **Grow** |
+| **6-phase pipeline** | DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → **GROW** — the complete business lifecycle |
 | **Research Intelligence** | NotebookLM MCP integration — zero-hallucination, citation-backed, Gemini-grounded research |
+| **Vision Testing** | Midscene.js — AI-powered, natural language, cross-platform (web + Android + iOS + canvas) |
+| **Go-to-Market** | SEO audit, AI search optimization (AEO/GEO), copywriting, launch campaigns, funnel CRO, A/B testing |
 | **Parallel dispatch** | Git worktree-based parallel execution with Task Contracts and anti-hallucination |
 | **Scope analysis** | Complexity scoring, time estimation, and risk assessment before execution |
 | **3 approval gates** | Everything between gates is fully autonomous |
@@ -174,12 +185,12 @@ The result: you describe what you want in plain language. 18 specialized skills 
 %%{init: {'theme': 'dark', 'themeVariables': { 'fontSize': '14px'}}}%%
 xychart-beta
     title "Forge17 Skill Effectiveness by Category"
-    x-axis ["Research", "Design", "Backend", "Frontend", "Mobile", "QA", "Security", "DevOps", "SRE", "AI/ML"]
+    x-axis ["Research", "Design", "Backend", "Frontend", "Mobile", "QA", "Security", "DevOps", "SRE", "AI/ML", "Marketing", "CRO"]
     y-axis "Effectiveness Score" 0 --> 10
-    bar [9.5, 8.5, 9.0, 8.5, 8.0, 9.0, 9.0, 8.5, 8.0, 8.5]
+    bar [9.5, 8.5, 9.0, 8.5, 8.0, 9.5, 9.0, 8.5, 8.0, 8.5, 9.0, 8.5]
 ```
 
-> **Research: 9.5/10** — Powered by NotebookLM MCP. Gemini-grounded, zero hallucination, 40+ auto-discovered sources, citation-backed answers. The strongest research capability in any AI development pipeline.
+> **Research: 9.5/10** — NotebookLM MCP grounded research. **QA: 9.5/10** — Playwright + Midscene vision testing. **Marketing: 9.0/10** — Full go-to-market stack absorbed from 32 proven skills (12.9k⭐ coreyhaines31/marketingskills).
 
 ### Research Intelligence (v5.3 ⭐ NEW)
 
@@ -221,17 +232,17 @@ Forge17 now integrates **NotebookLM MCP** as an optional research enhancement la
 
 ## Skill Strengths & Capabilities
 
-### 17 Bundled Skills
+### 20 Bundled Skills
 
 | # | Skill | Strengths | Key Capabilities |
 |---|-------|-----------|-----------------|
 | 0 | **polymath** | Creative partner + grounded researcher | Research (+ NotebookLM MCP), ideate (SCAMPER, Six Hats, HMW, Crazy 8s), advise, onboard, translate, synthesize |
-| 1 | **production-grade** | Smart routing, minimal overhead | **13 execution modes** (incl. Research), auto-classifies request, dependency-based task graph |
+| 1 | **production-grade** | Smart routing, minimal overhead | **15 execution modes**, auto-classifies request, dependency-based task graph |
 | 2 | **product-manager** | Deep requirement discovery | CEO interview, domain research via web search, BRD with user stories |
 | 3 | **solution-architect** | Scale-driven decisions | ADRs, API contracts (OpenAPI 3.1), data models, fitness interview, scaffold generation |
 | 4 | **software-engineer** | TDD-first, clean architecture | Handlers → services → repositories, strict TDD cycle, cross-cutting concerns |
 | 5 | **frontend-engineer** | Design system + a11y | Component library, pages, API integration, WCAG compliance, responsive design |
-| 6 | **qa-engineer** | Full testing pyramid + browser automation | Unit, integration, E2E, **Playwright** (visual regression, multi-viewport, a11y scanning), performance (k6) |
+| 6 | **qa-engineer** | Full testing pyramid + browser automation + vision AI | Unit, integration, E2E, **Playwright** (visual regression, multi-viewport, a11y scanning), **Midscene.js** (vision-based, natural language, cross-platform), performance (k6) |
 | 7 | **security-engineer** | Sole OWASP/STRIDE authority | Threat modeling, code audit, auth/authz, PII detection, dependency scanning |
 | 8 | **code-reviewer** | Architecture conformance | Quality analysis, performance review, read-only (no code changes) |
 | 9 | **devops** | End-to-end infrastructure | Docker, Terraform, CI/CD, monitoring, **branch strategy** (trunk-based/gitflow), Conventional Commits |
@@ -240,9 +251,11 @@ Forge17 now integrates **NotebookLM MCP** as an optional research enhancement la
 | 12 | **technical-writer** | Automated doc generation | API reference, developer guides, Docusaurus scaffold, **changelog generation** (Conventional Commits) |
 | 13 | **skill-maker** | Self-extending system | Generates 3-5 project-specific custom skills based on domain needs |
 | 14 | **ui-designer** | Design-first approach | Design brief, color palettes, typography scale, wireframes, component inventory, interaction patterns, a11y guidelines |
-| 15 | **mobile-engineer** | Cross-platform native feel | React Native (Expo) / Flutter, navigation, native integrations (push, biometric, camera), app store prep |
+| 15 | **mobile-engineer** | Cross-platform native feel | React Native (Expo) / Flutter, navigation, native integrations (push, biometric, camera), app store prep, **Midscene cross-platform testing** (Android ADB + iOS WDA) |
+| 16 | **growth-marketer** | Go-to-market & content | Market analysis, positioning, SEO audit, AI search optimization (AEO/GEO), copywriting, email sequences, launch campaigns, analytics setup |
+| 17 | **conversion-optimizer** | CRO & growth engineering | Funnel audit, 6-type CRO (signup/onboarding/form/popup/paywall/page), A/B testing, growth loops, churn prevention, dunning |
 
-> **⭐ v5.3 Highlights:** Polymath now integrates **NotebookLM MCP** for grounded, citation-backed research. New **Research mode** in orchestrator. Deep research workflow with graceful fallback.
+> **⭐ v5.5 Highlights:** Complete **6-phase lifecycle** with new GROW phase. **Growth Marketer** covers SEO, content, launch, analytics. **Conversion Optimizer** covers CRO, A/B testing, retention, growth loops. Patterns absorbed from **32 proven marketing skills** (12.9k⭐ coreyhaines31/marketingskills).
 
 ### Token-Efficient Architecture
 
@@ -259,16 +272,18 @@ Large skills use a router + on-demand phase pattern. Only the relevant phase loa
 | `technical-writer` | 5 phases: audit, API reference, dev guides, Docusaurus, **changelog** |
 | `ui-designer` | 4 phases: UX research, design tokens, wireframes, component inventory |
 | `mobile-engineer` | 5 phases: platform analysis, navigation, screens (parallel), native integration, build/store prep |
+| `growth-marketer` | 4 phases: market analysis, content & SEO, launch campaigns, analytics |
+| `conversion-optimizer` | 4 phases: funnel audit, CRO strategy, A/B testing, growth loops |
 
 ---
 
 ## How It Works
 
 ```
-DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
+DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW
 ```
 
-You give a high-level vision. 17 specialized skills handle everything else.
+You give a high-level vision. 20 specialized skills handle everything else.
 
 ### The Pipeline
 
@@ -295,7 +310,9 @@ T10: Data Scientist (conditional — LLM/ML/AI projects)
     ↓ ─────────────────────────── GATE 3: approve production readiness
 T11: Technical Writer (+ changelog generation)
 T12: Skill Maker
-T13: Compound Learning
+T13: Growth Marketer ──────── go-to-market strategy, SEO, content, launch
+T14: Conversion Optimizer ── funnel CRO, A/B testing, growth loops
+T15: Compound Learning
 ```
 
 **3 approval gates. Parallel or sequential execution. Scope analysis with risk prediction.**
@@ -391,6 +408,8 @@ Don't need the full pipeline? Run what you need:
 | `"Onboard me on this repo"` | Polymath onboard mode |
 | `"Design UI for..."` | UI Designer only |
 | `"Build mobile app for..."` | Mobile Engineer (+ PM, Architect if needed) |
+| `"Marketing strategy for..."` ⭐ | Growth Marketer — SEO, content, launch, analytics |
+| `"Optimize conversions"` ⭐ | Conversion Optimizer — funnel CRO, A/B testing |
 | `"Skip frontend"` | Full pipeline minus frontend |
 | `"Skip mobile"` | Full pipeline minus mobile |
 
@@ -416,7 +435,7 @@ Don't need the full pipeline? Run what you need:
 | **Changelog** | Requires Conventional Commits format in git history | Retrofit with `git rebase -i` or start fresh with commit-lint enforcement |
 | **App stores** | Plugin generates submission docs, not actual submissions | Manual App Store Connect / Play Console submission required |
 | **Flutter support** | Mobile engineer covers both RN and Flutter, but examples lean React Native | Explicitly set `mobile_framework: "flutter"` in config for Flutter-first output |
-| **Token budget** | Full 17-skill pipeline on large projects may hit context limits | Use engagement mode "Express" for autonomous execution; phases load on demand |
+| **Token budget** | Full 20-skill pipeline on large projects may hit context limits | Use engagement mode "Express" for autonomous execution; phases load on demand |
 | **No database migration runner** | Schema designs are generated but migrations aren't executed | Run generated SQL/migration files manually or integrate with your ORM's migration tool |
 
 ### 📋 Important Notes
@@ -459,7 +478,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## Examples
 
 ```
-# Greenfield SaaS (all 17 skills)
+# Greenfield SaaS (all 20 skills, 6 phases)
 "Build a production-grade SaaS for multi-vendor e-commerce
  with seller dashboards, buyer marketplace, and payment processing."
 
@@ -495,6 +514,13 @@ Each domain has one authority. No overlap, no contradictions.
 "Write a changelog from my git history."
 "Generate Playwright tests for my login flow."
 "Set up a branch strategy for my team of 5."
+
+# Marketing & Growth (⭐ NEW)
+"Create a go-to-market strategy for my SaaS launch.
+ Include SEO audit, email sequences, and launch plan."
+
+"Optimize the signup funnel — audit conversions,
+ design A/B tests, and build growth loops."
 ```
 
 ---
@@ -510,6 +536,12 @@ Yes. The Polymath co-pilot translates everything into plain language. Every inte
 **What is Research Intelligence?** ⭐ NEW
 Forge17 integrates NotebookLM MCP for grounded research. When available, the Polymath can create research notebooks, auto-discover 40+ sources, query them with zero hallucinations, and generate citation-backed reports. If unavailable, it gracefully falls back to web search — still effective, just without the grounding layer.
 
+**What is Midscene Vision Testing?** ⭐ NEW
+Forge17 integrates Midscene.js (12k+ stars) for AI-powered UI testing. Instead of brittle CSS selectors, tests describe actions in natural language: `aiAct('click the login button')`, `aiAssert('dark mode is active')`. Works on web, Android, iOS, desktop, and even `<canvas>` UIs that traditional selectors can't reach.
+
+**Is Midscene required?**
+No. Playwright selector-based tests remain the primary CI testing tool. Midscene is an optional enhancement for visual QA, cross-platform mobile testing, and complex UIs. If not configured, it's skipped gracefully.
+
 **Is NotebookLM MCP required?**
 No. It's an optional enhancement. All workflows work without it. When available, research quality jumps from ⭐⭐⭐ to ⭐⭐⭐⭐⭐ (zero hallucinations + citations).
 
@@ -522,8 +554,11 @@ TypeScript/Node.js, Go, Python, Rust, Java/Kotlin. Mobile: React Native (Expo) o
 **Will it overwrite my existing code?**
 No. Deliverables go to defined directories. Workspace artifacts stay in `Antigravity-Production-Grade-Suite/`.
 
-**Do I need all 17 skills?**
-No. The orchestrator only activates the skills you need. A backend API project may use only 8-10 skills. A full-stack mobile app might use all 18.
+**Do I need all 20 skills?**
+No. The orchestrator only activates the skills you need. A backend API project may use only 8-10 skills. A full-stack mobile app with marketing might use all 20.
+
+**What is the GROW phase?** ⭐ NEW
+After shipping your product, Forge17 can generate complete marketing assets: SEO audit, content strategy, copywriting, launch campaigns, email sequences, analytics tracking (Growth Marketer). It also optimizes your funnels: CRO audits, A/B test design, growth loops, churn prevention (Conversion Optimizer). Patterns absorbed from 32 proven skills with 12.9k⭐ community validation.
 
 **How does parallel dispatch work?**
 When the pipeline has 2+ independent tasks, the orchestrator creates git worktrees (one per task), assigns each a Task Contract (exact input/output spec), and dispatches separate Gemini CLI instances. After execution, a 7-step validator checks for boundary violations, stubs, and hallucinated imports before merging.
@@ -560,8 +595,8 @@ MIT
 ---
 
 <p align="center">
-  <strong>Forge17 — 18 AI skills. Deep research. Parallel execution. One prompt. Full pipeline. ⭐</strong>
+  <strong>Forge17 — 20 AI skills. 6 phases. Full lifecycle. One prompt. Idea to market. ⭐</strong>
 </p>
 <p align="center">
-  <em>Research with zero hallucinations. Build with full confidence.</em>
+  <em>Research with zero hallucinations. Test with AI vision. Market with proven patterns. Grow with data.</em>
 </p>

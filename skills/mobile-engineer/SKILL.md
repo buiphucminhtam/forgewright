@@ -338,7 +338,23 @@ Execute sequentially: Build feature screens (detail, settings, modals). Write to
    - Deep link handling tests
    - Platform-specific behavior tests
 
-3. **App Store Preparation:**
+3. **Midscene Vision Testing (Optional — Enhanced):**
+   - Install: `npx skills add web-infra-dev/midscene-skills`
+   - Configure model: `MIDSCENE_MODEL_NAME=gemini-3-flash` in `.env`
+   - **Android via ADB:** Natural language test flows on real device/emulator
+     ```
+     "Use Midscene android skill to open the app, tap login, enter credentials, and verify home screen"
+     ```
+   - **iOS via WebDriverAgent:** Natural language test flows on simulator/device
+     ```
+     "Use Midscene ios skill to verify the onboarding flow completes successfully"
+     ```
+   - Vision-based assertions: `aiAssert('the bottom tab bar shows 4 tabs')`
+   - Cross-platform consistency: run same natural language tests on both platforms
+   - Visual replay reports for debugging test failures
+   - ⚠️ Requires model API key (Gemini Flash: ~$0.001/call)
+
+4. **App Store Preparation:**
 
 | Asset | iOS (App Store) | Android (Play Store) |
 |-------|-----------------|---------------------|
@@ -374,7 +390,7 @@ Execute sequentially: Build feature screens (detail, settings, modals). Write to
 | 3 | Ignoring platform-specific UX | iOS users expect swipe-back, Android users expect system back | Use Platform.select for UX differences |
 | 4 | Giant FlatList without optimization | Janky scrolling, high memory usage | Use FlashList, implement getItemLayout, key extractor |
 | 5 | Storing tokens in AsyncStorage | Insecure — accessible to other apps on rooted devices | Use SecureStore (Keychain/Keystore) |
-| 6 | Not testing on real devices | Simulators hide performance issues and native API quirks | Test on at least 2 real devices (1 iOS, 1 Android) |
+| 6 | Not testing on real devices | Simulators hide performance issues and native API quirks | Test on at least 2 real devices (1 iOS, 1 Android). Use [Midscene](https://midscenejs.com) with ADB/WDA for automated real-device testing with natural language |
 | 7 | Hardcoded dimensions | Breaks on different screen sizes, accessibility font scaling | Use responsive units, test with large text enabled |
 | 8 | Missing splash screen config | White flash before app loads | Configure native splash screen with brand colors |
 | 9 | No OTA update strategy | Bug fixes require full app store review cycle | Configure expo-updates or CodePush for JS-side fixes |
@@ -407,3 +423,5 @@ Execute sequentially: Build feature screens (detail, settings, modals). Write to
 - [ ] App store assets documented (icons, screenshots, descriptions)
 - [ ] Cold start time < 2 seconds on mid-range device
 - [ ] App bundle size within limits (30MB iOS, 20MB Android)
+- [ ] **(Midscene)** Cross-platform vision tests cover critical flows on Android + iOS
+- [ ] **(Midscene)** Visual replay reports generated for mobile test runs
