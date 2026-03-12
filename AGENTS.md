@@ -4,7 +4,7 @@
 
 ## What is Forge17?
 
-Forge17 is an adaptive orchestrator with **19 AI skills** (17 domain skills + 1 parallel dispatcher + 1 memory manager) that covers the entire software development lifecycle. From a single code review to a full greenfield build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
+Forge17 is an adaptive orchestrator with **20 AI skills** (18 domain skills + 1 parallel dispatcher + 1 memory manager) that covers the entire software development lifecycle. From a single code review to a full greenfield build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
 
 **Pipeline:** `DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
@@ -12,8 +12,8 @@ Forge17 is an adaptive orchestrator with **19 AI skills** (17 domain skills + 1 
 
 **IMPORTANT:** When the user gives any software development request, you MUST:
 
-1. **Read `skills/production-grade/SKILL.md`** — this is the orchestrator that routes to all 20 skills
-2. **Classify the request** into one of 15 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Marketing, Grow)
+1. **Read `skills/production-grade/SKILL.md`** — this is the orchestrator that routes to all 21 skills
+2. **Classify the request** into one of 16 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow)
 3. **Follow the pipeline** as defined in the orchestrator
 
 Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the production-grade skill classify and route.
@@ -33,6 +33,7 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 | "Deep research on..." | Research | Polymath + NotebookLM MCP (grounded) |
 | "Marketing strategy for..." | Marketing | Growth Marketer → Conversion Optimizer |
 | "Optimize conversions" | Grow | Conversion Optimizer → Growth Marketer |
+| "Test on Android/iOS" | Mobile Test | Mobile Tester (AI vision on real devices) |
 
 ## Available Workflows
 
@@ -40,6 +41,7 @@ Users can invoke these workflows directly:
 - `/setup` — First-time setup as git submodule
 - `/update` — Check for and install updates
 - `/pipeline` — Show full pipeline reference and available modes
+- `/setup-mobile-test` — Set up plug-and-play mobile testing (Android/iOS)
 
 ## Auto-Update Check
 
@@ -54,7 +56,7 @@ If a newer version exists, mention it briefly: *"Forge17 update available (vX.X.
 
 ## Skills Directory
 
-All 17 skills are in the `skills/` directory:
+All 18 skills are in the `skills/` directory:
 
 | Skill | Location |
 |-------|----------|
@@ -76,6 +78,7 @@ All 17 skills are in the `skills/` directory:
 | Skill Maker | `skills/skill-maker/SKILL.md` |
 | UI Designer | `skills/ui-designer/SKILL.md` |
 | Mobile Engineer | `skills/mobile-engineer/SKILL.md` |
+| Mobile Tester | `skills/mobile-tester/SKILL.md` |
 | Shared Protocols | `skills/_shared/protocols/` |
 | Parallel Dispatch | `skills/parallel-dispatch/SKILL.md` |
 | Memory Manager | `skills/memory-manager/SKILL.md` |
@@ -84,6 +87,7 @@ All 17 skills are in the `skills/` directory:
 | Merge Arbiter Protocol | `skills/_shared/protocols/merge-arbiter.md` |
 | Worktree Manager | `scripts/worktree-manager.sh` |
 | Memory CLI | `scripts/mem0-cli.py` |
+| Mobile Test Setup | `scripts/mobile-test-setup.sh` |
 
 ## Configuration
 

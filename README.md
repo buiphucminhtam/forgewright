@@ -1,20 +1,20 @@
 # 🔨 Forge17
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-5.5.0-blue.svg)]()
-[![Skills](https://img.shields.io/badge/skills-20-green.svg)]()
-[![Modes](https://img.shields.io/badge/modes-15-purple.svg)]()
+[![Version](https://img.shields.io/badge/version-5.6.0-blue.svg)]()
+[![Skills](https://img.shields.io/badge/skills-21-green.svg)]()
+[![Modes](https://img.shields.io/badge/modes-16-purple.svg)]()
 [![Research](https://img.shields.io/badge/research-NotebookLM_MCP-00A67E.svg)]()
 [![Testing](https://img.shields.io/badge/testing-Midscene_Vision-FF6B35.svg)]()
 [![Growth](https://img.shields.io/badge/growth-Marketing_CRO-E91E63.svg)]()
 [![Parallel](https://img.shields.io/badge/parallel-worktrees-orange.svg)]()
 [![Vibe Coded](https://img.shields.io/badge/vibe-coded_%F0%9F%8E%B5-ff69b4.svg)]()
 
-**20 AI Skills. Full Lifecycle. Research → Build → Test → Market → Grow.**
+**21 AI Skills. Full Lifecycle. Research → Build → Test → Market → Grow.**
 
 > *"One prompt to research, design, build, test, secure, deploy, market, and grow — the complete business lifecycle."*
 
-Forge17 is an AI pipeline that orchestrates **20 specialized skills** across **6 phases** to take a product from idea to market. The only AI pipeline that covers the **complete lifecycle**: DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → **GROW**.
+Forge17 is an AI pipeline that orchestrates **21 specialized skills** across **6 phases** to take a product from idea to market. The only AI pipeline that covers the **complete lifecycle**: DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → **GROW**.
 
 > Built from [claude-code-production-grade-plugin](https://github.com/nagisanzenin/claude-code-production-grade-plugin) and [awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills). Entirely vibe coded — the skills evaluated and upgraded themselves. 🎵
 
@@ -31,6 +31,8 @@ If Forge17 helps you ship faster, you can support the project here:
 ### Release Timeline
 
 ```
+2026-03-12  v5.6  ●━━━ Mobile Tester — plug-and-play AI testing on Android/iOS real devices
+                  │
 2026-03-12  v5.5  ●━━━ GROW Phase — Growth Marketer + Conversion Optimizer, 6-phase lifecycle
                   │
 2026-03-12  v5.4  ●━━━ Vision Testing — Midscene.js AI testing, cross-platform (web+mobile+desktop)
@@ -66,7 +68,7 @@ If Forge17 helps you ship faster, you can support the project here:
 
 ## For Antigravity Users
 
-Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 20-skill pipeline. No manual configuration needed.
+Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 21-skill pipeline. No manual configuration needed.
 
 **Available workflows (slash commands):**
 
@@ -75,6 +77,7 @@ Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on ev
 | `/setup` | First-time install as git submodule |
 | `/update` | Check for and install updates |
 | `/pipeline` | Show full pipeline reference, modes, and skill list |
+| `/setup-mobile-test` | Set up plug-and-play mobile testing (Android/iOS) |
 
 Just open a new chat and describe what you want. The orchestrator handles the rest.
 
@@ -98,7 +101,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/buiphucminhtam/forge17
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forge17.git .antigravity/plugins/production-grade
-git add .gitmodules .antigravity/ && git commit -m "feat: add production-grade plugin v5.5"
+git add .gitmodules .antigravity/ && git commit -m "feat: add production-grade plugin v5.6"
 ```
 
 ### Option C: Standalone Clone
@@ -153,18 +156,18 @@ Software development with AI today is broken in a specific way: **AI is fast at 
 **Forge17 solves both sides:**
 1. A **Research Intelligence layer** that grounds decisions in real data — NotebookLM MCP provides zero-hallucination, citation-backed research before any code is written
 2. A **Polymath co-pilot** that thinks with you — researches your domain, detects your knowledge gaps, helps you crystallize the idea before committing to code
-3. A **20-agent autonomous pipeline** that executes the full software development lifecycle — from requirements to deployment to go-to-market — without you managing the process
+3. A **21-agent autonomous pipeline** that executes the full software development lifecycle — from requirements to deployment to go-to-market — without you managing the process
 4. A **Vision Testing engine** (Midscene.js) that tests UIs with natural language across web, Android, and iOS — no brittle selectors
 5. A **Go-to-Market layer** that handles SEO, copywriting, launch campaigns, CRO, A/B testing, and retention — the complete GROW phase
 
-The result: you describe what you want in plain language. 20 specialized skills research, design, build, test, secure, deploy, market, and grow a complete production system. You approve 3 times. That's it.
+The result: you describe what you want in plain language. 21 specialized skills research, design, build, test, secure, deploy, market, and grow a complete production system. You approve 3 times. That's it.
 
 ### By the Numbers
 
 | Metric | Detail |
 |--------|--------|
-| **20 specialized skills** | Each with sole authority over its domain — no overlap, no contradiction |
-| **15 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, **Research**, Optimize, Design, Mobile, **Marketing**, **Grow** |
+| **21 specialized skills** | Each with sole authority over its domain — no overlap, no contradiction |
+| **16 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, **Research**, Optimize, Design, Mobile, **Mobile Test**, **Marketing**, **Grow** |
 | **6-phase pipeline** | DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → **GROW** — the complete business lifecycle |
 | **Research Intelligence** | NotebookLM MCP integration — zero-hallucination, citation-backed, Gemini-grounded research |
 | **Vision Testing** | Midscene.js — AI-powered, natural language, cross-platform (web + Android + iOS + canvas) |
@@ -230,7 +233,7 @@ Forge17 now integrates **NotebookLM MCP** as an optional research enhancement la
 
 ## Skill Strengths & Capabilities
 
-### 20 Bundled Skills
+### 21 Bundled Skills
 
 | # | Skill | Strengths | Key Capabilities |
 |---|-------|-----------|-----------------|
@@ -252,6 +255,7 @@ Forge17 now integrates **NotebookLM MCP** as an optional research enhancement la
 | 15 | **mobile-engineer** | Cross-platform native feel | React Native (Expo) / Flutter, navigation, native integrations (push, biometric, camera), app store prep, **Midscene cross-platform testing** (Android ADB + iOS WDA) |
 | 16 | **growth-marketer** | Go-to-market & content | Market analysis, positioning, SEO audit, AI search optimization (AEO/GEO), copywriting, email sequences, launch campaigns, analytics setup |
 | 17 | **conversion-optimizer** | CRO & growth engineering | Funnel audit, 6-type CRO (signup/onboarding/form/popup/paywall/page), A/B testing, growth loops, churn prevention, dunning |
+| 18 | **mobile-tester** ⭐ | AI device testing | Plug-and-play Android/iOS testing via Midscene.js, auto-setup (`/setup-mobile-test`), vision-based test generation + execution on real devices, visual replay reports |
 
 > **⭐ v5.5 Highlights:** Complete **6-phase lifecycle** with new GROW phase. **Growth Marketer** covers SEO, content, launch, analytics. **Conversion Optimizer** covers CRO, A/B testing, retention, growth loops. Patterns absorbed from **32 proven marketing skills** (12.9k⭐ coreyhaines31/marketingskills).
 
@@ -281,7 +285,7 @@ Large skills use a router + on-demand phase pattern. Only the relevant phase loa
 DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW
 ```
 
-You give a high-level vision. 20 specialized skills handle everything else.
+You give a high-level vision. 21 specialized skills handle everything else.
 
 ### The Pipeline
 
@@ -408,6 +412,7 @@ Don't need the full pipeline? Run what you need:
 | `"Build mobile app for..."` | Mobile Engineer (+ PM, Architect if needed) |
 | `"Marketing strategy for..."` ⭐ | Growth Marketer — SEO, content, launch, analytics |
 | `"Optimize conversions"` ⭐ | Conversion Optimizer — funnel CRO, A/B testing |
+| `"Test on Android/iOS"` ⭐ | Mobile Tester — plug-and-play AI device testing |
 | `"Skip frontend"` | Full pipeline minus frontend |
 | `"Skip mobile"` | Full pipeline minus mobile |
 
@@ -426,7 +431,7 @@ Don't need the full pipeline? Run what you need:
 
 | Area | Limitation | Workaround |
 |------|-----------|------------|
-| **Mobile testing** | No automated mobile device testing (physical/emulator) in CI | Manual testing on real devices required; CI covers unit/integration only |
+| **Mobile testing** | Midscene mobile testing requires API key and device connection | Run `/setup-mobile-test` for automated setup; CI covers unit/integration, device testing runs locally |
 | **Visual design** | UI Designer produces text-based specs, not Figma/Sketch files | Use specs to build in your preferred design tool, or feed directly to frontend-engineer |
 | **Playwright** | Playwright tests require browsers installed in CI environment | Use Playwright's Docker image or CI browser caching (documented in qa-engineer Phase 5b) |
 | **Prompt engineering** | LLM-as-judge eval requires additional API calls and cost | Budget for eval API calls; use exact-match/schema-valid metrics where possible |
@@ -476,7 +481,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## Examples
 
 ```
-# Greenfield SaaS (all 20 skills, 6 phases)
+# Greenfield SaaS (all 21 skills, 6 phases)
 "Build a production-grade SaaS for multi-vendor e-commerce
  with seller dashboards, buyer marketplace, and payment processing."
 
@@ -552,8 +557,11 @@ TypeScript/Node.js, Go, Python, Rust, Java/Kotlin. Mobile: React Native (Expo) o
 **Will it overwrite my existing code?**
 No. Deliverables go to defined directories. Workspace artifacts stay in `Antigravity-Production-Grade-Suite/`.
 
-**Do I need all 20 skills?**
-No. The orchestrator only activates the skills you need. A backend API project may use only 8-10 skills. A full-stack mobile app with marketing might use all 20.
+**Do I need all 21 skills?**
+No. The orchestrator only activates the skills you need. A backend API project may use only 8-10 skills. A full-stack mobile app with marketing might use all 21.
+
+**What is Mobile Tester?** ⭐ NEW
+The `mobile-tester` skill enables plug-and-play testing on real Android/iOS devices. Run `/setup-mobile-test` to auto-install ADB, Midscene.js, and scaffold demo tests. Then plug in your phone and AI writes + runs test cases using vision — no selectors, no brittle locators. Uses `@midscene/android` (ADB) and `@midscene/ios` (WebDriverAgent). Cost: ~$0.01 per test suite.
 
 **What is the GROW phase?** ⭐ NEW
 After shipping your product, Forge17 can generate complete marketing assets: SEO audit, content strategy, copywriting, launch campaigns, email sequences, analytics tracking (Growth Marketer). It also optimizes your funnels: CRO audits, A/B test design, growth loops, churn prevention (Conversion Optimizer). Patterns absorbed from 32 proven skills with 12.9k⭐ community validation.
@@ -593,7 +601,7 @@ MIT
 ---
 
 <p align="center">
-  <strong>Forge17 — 20 AI skills. 6 phases. Full lifecycle. One prompt. Idea to market. ⭐</strong>
+  <strong>Forge17 — 21 AI skills. 6 phases. Full lifecycle. One prompt. Idea to market. ⭐</strong>
 </p>
 <p align="center">
   <em>Research with zero hallucinations. Test with AI vision. Market with proven patterns. Grow with data.</em>
