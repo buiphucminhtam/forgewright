@@ -230,3 +230,31 @@ For large-scale applications with multiple teams:
 | **Import Maps** | Runtime module loading from CDN | Simple, browser-native, less type safety |
 | **Web Components** | Framework-agnostic shared UI elements | Verbose, limited SSR support |
 | **Route-based splitting** | Different teams own different routes | Simple, requires shared shell app |
+
+## Accessibility Auditing Standards
+
+Frontend Engineer MUST enforce these a11y standards throughout all phases (not just Phase 5):
+
+### Component-Level Requirements
+- Every `<img>` has meaningful `alt` or `alt=""` if decorative
+- Every form input has an associated `<label>` (using `htmlFor` or wrapping)
+- Every interactive element is reachable via keyboard (`Tab`, `Enter`, `Space`, `Escape`)
+- Focus indicator is always visible (never `outline: none` without replacement)
+- Color contrast ≥ 4.5:1 for normal text, ≥ 3:1 for large text (18px+ or 14px+ bold)
+- Touch targets ≥ 44x44px on mobile
+
+### Page-Level Requirements
+- Single `<h1>` per page, heading hierarchy never skips levels (h1 → h2 → h3)
+- Landmark regions: `<main>`, `<nav>`, `<header>`, `<footer>` on every page
+- Skip-to-main-content link as first focusable element
+- Page title updates on navigation (announces to screen readers)
+- `lang` attribute on `<html>` element
+
+### CI/CD Integration
+- `eslint-plugin-jsx-a11y` in lint pipeline (fail on error)
+- `@axe-core/playwright` in E2E pipeline (fail on violations)
+- Lighthouse a11y score ≥ 90 in CI budget checks
+
+### Delegation to Accessibility Engineer
+When the `accessibility-engineer` skill is available, delegate deep auditing (screen reader testing, manual keyboard walkthrough, ARIA pattern review) to it. Frontend Engineer handles the implementation; Accessibility Engineer handles the audit.
+

@@ -684,6 +684,32 @@ tests/e2e/vision/
 
 ---
 
+## Quick-Invoke Modes
+
+These modes allow targeted invocation of specific testing capabilities without running the full pipeline.
+
+### API Contract Testing Mode
+
+Invoked when the orchestrator routes with focus on API validation only.
+
+1. Read all OpenAPI/AsyncAPI specs from `api/` or `docs/`
+2. Generate schema validation tests (every endpoint response vs spec)
+3. Generate consumer-driven contract tests (Pact) for each API consumer
+4. Generate backward compatibility tests for versioned APIs
+5. Report findings: missing endpoints, schema mismatches, undocumented fields
+
+### Performance Benchmarking Mode
+
+Invoked for dedicated performance analysis without full QA pipeline.
+
+1. Identify performance-critical endpoints (high traffic, data-heavy, user-facing)
+2. Write k6 scripts: load, stress, spike, soak scenarios
+3. Establish baselines: p50/p95/p99 latency, throughput, error rate
+4. Identify breaking point (error rate > 1% or p99 > SLO)
+5. Generate performance report with bottleneck analysis and optimization recommendations
+
+---
+
 ## Execution Checklist
 
 Before marking the skill as complete, verify:

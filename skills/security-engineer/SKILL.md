@@ -177,6 +177,27 @@ Triggered -> Phase 0: Reconnaissance -> Phase 1: Threat Modeling
 | **Low** | Minor information disclosure, missing hardening headers, verbose server banners. Low exploitability. | Fix within 1 quarter |
 | **Informational** | Best-practice deviation with no direct exploitability. Defense-in-depth recommendations. | Track and address opportunistically |
 
+## Runtime Threat Detection
+
+In addition to static audit, recommend runtime security patterns for production monitoring:
+
+### Application-Level Detection Rules
+| Pattern | Detection | Response |
+|---------|-----------|----------|
+| **Credential stuffing** | > 5 failed logins from same IP in 1 min | Temporary IP block + CAPTCHA |
+| **API abuse** | > 100 requests/min from single user/key | Rate limit + alert |
+| **SQL injection attempt** | SQLi patterns in request parameters | Block + log + alert |
+| **Path traversal** | `../` patterns in file parameters | Block + log + alert |
+| **Privilege escalation** | User accessing resources outside their scope | Block + immediate alert |
+| **Data exfiltration** | Unusual volume of data access (> 10x normal) | Throttle + alert |
+
+### Recommendations for Runtime Security
+1. **Structured security logging** — Log auth events, permission checks, data access with correlation IDs
+2. **Anomaly detection baseline** — Establish normal patterns (request rate, data volume, access patterns) and alert on deviations
+3. **Real-time alerting** — Critical security events → PagerDuty/Slack within 1 minute
+4. **Audit trail** — Immutable log of all sensitive operations (data deletion, role changes, config changes)
+5. **Honeypot endpoints** — Create fake admin/debug endpoints that trigger immediate alerts when accessed
+
 ## Common Mistakes
 
 | Mistake | Fix |

@@ -375,3 +375,34 @@ Define elevation system (sm, md, lg, xl) and corner radius scale.
 - [ ] Accessibility guidelines cover focus management, screen reader, contrast, touch targets
 - [ ] `design-tokens.json` is machine-readable for frontend-engineer consumption
 - [ ] Handoff notes prioritize components (P0 → P2) and recommend libraries
+
+## Brand System Design (Optional Phase)
+
+When the project needs a full brand system (not just a design system), produce these additional deliverables:
+
+### Brand Identity Deliverables
+| Deliverable | Description | Output |
+|-------------|-------------|--------|
+| **Brand Guide** | Logo usage rules, clear space, minimum sizes, do's & don'ts | `brand-guide.md` |
+| **Color System** | Primary, secondary, accent palettes with HEX/HSL/RGB + usage rules | In `design-tokens.json` |
+| **Typography System** | Font families, weights, scales for headings/body/UI/code with platform fallbacks | In `design-tokens.json` |
+| **Voice & Tone** | Writing style guide — formal/casual, active/passive, vocabulary, examples | `voice-and-tone.md` |
+| **Iconography** | Icon style (outlined/filled/duotone), size grid, naming convention | `iconography.md` |
+| **Photography** | Photo style direction — filters, composition, subjects, stock photo guidelines | `photography.md` |
+
+### Brand Consistency Rules
+1. All brand assets reference the same design tokens — no hardcoded colors/fonts outside the system
+2. Logo must have variants: full, icon-only, monochrome, reverse (for dark backgrounds)
+3. Voice & Tone document must include 3-5 "we are / we are not" statements
+4. Every brand deliverable includes examples of correct and incorrect usage
+
+### Output
+```
+Antigravity-Production-Grade-Suite/ui-designer/
+├── ... (existing outputs)
+├── brand-guide.md                     # Logo rules, visual identity
+├── voice-and-tone.md                  # Writing style guidelines
+├── iconography.md                     # Icon design standards
+└── photography.md                     # Photo direction guide
+```
+

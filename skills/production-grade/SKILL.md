@@ -52,7 +52,7 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 | **Harden** | "review", "audit", "secure", "harden", "before launch", "production ready" (on EXISTING code) | Security + QA + Code Review (sequential) → Remediation |
 | **Ship** | "deploy", "CI/CD", "containerize", "infrastructure", "terraform", "docker" | DevOps → SRE |
 | **Debug** | "debug", "fix bug", "broken", "investigate", "not working", "error", "trace", "crashes" | Debugger (→ Software/Frontend Engineer for fix) |
-| **AI Build** | "AI feature", "chatbot", "RAG", "embeddings", "LLM", "agent", "prompt", "AI-powered" | Prompt Engineer + Data Scientist + Architect (scoped) → BE/FE |
+| **AI Build** | "AI feature", "chatbot", "RAG", "embeddings", "LLM", "agent", "prompt", "AI-powered" | AI Engineer + Prompt Engineer + Data Scientist + Architect (scoped) → BE/FE |
 | **Migrate** | "migrate", "upgrade", "migration", "database change", "schema change", "refactor DB", "move to" | Database Engineer + Software Engineer → QA |
 | **Test** | "write tests", "test coverage", "test this", "add tests" | QA |
 | **Review** | "review my code", "code review", "code quality", "check my code" | Code Reviewer |
@@ -60,9 +60,11 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 | **Document** | "document", "write docs", "API docs", "README" | Technical Writer |
 | **Explore** | "explain", "understand", "help me think", "what should I", "I'm not sure" | Polymath |
 | **Research** | "research", "deep research", "find sources", "analyze topic", "investigate [domain]" | Polymath (research mode) + NotebookLM MCP (optional) |
-| **Optimize** | "performance", "slow", "optimize", "scale", "reliability" | SRE + Code Reviewer |
-| **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow" | UI Designer |
+| **Optimize** | "performance", "slow", "optimize", "scale", "reliability" | Performance Engineer + SRE + Code Reviewer |
+| **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow" | UX Researcher → UI Designer |
 | **Mobile** | "mobile app", "React Native", "Flutter", "iOS", "Android" | Mobile Engineer (+ PM scoped, Architect scoped if needed) |
+| **Game Build** | "game", "Unity", "Unreal", "Godot", "Roblox", "gameplay", "game design", "build a game" | Game Designer → Engine Engineer (Unity/Unreal/Godot/Roblox) → Level/Narrative/TechArt/Audio |
+| **XR Build** | "VR", "AR", "MR", "XR", "spatial", "Quest", "Vision Pro", "WebXR" | XR Engineer (+ Game Build pipeline if game-like XR) |
 | **Marketing** | "marketing", "SEO", "launch strategy", "copywriting", "content strategy", "go-to-market" | Growth Marketer (+ Conversion Optimizer if CRO mentioned) |
 | **Grow** | "growth", "CRO", "conversion", "funnel", "A/B test", "churn", "retention", "referral" | Conversion Optimizer (+ Growth Marketer if strategy needed) |
 | **Custom** | Doesn't fit above patterns | Present skill menu, let user pick |
@@ -243,13 +245,14 @@ User picks skills from a menu. Present via notify_user:
 ```
 Which skills do you need? (list the numbers separated by commas)
 
+--- Core Engineering ---
 1. **Product Manager** — Requirements, user stories, BRD
 2. **Solution Architect** — System design, API contracts, tech stack
 3. **Software Engineer** — Backend implementation
 4. **Frontend Engineer** — UI components, pages, design system
 5. **QA Engineer** — Tests — unit, integration, e2e, performance
-6. **Security Engineer** — OWASP audit, STRIDE, AI security, vulnerability scan
-7. **Code Reviewer** — Architecture conformance, code quality
+6. **Security Engineer** — OWASP audit, STRIDE, AI security, runtime detection
+7. **Code Reviewer** — Architecture conformance, code quality, git workflow
 8. **DevOps** — Docker, CI/CD, Terraform, monitoring
 9. **SRE** — SLOs, chaos engineering, runbooks
 10. **Technical Writer** — API docs, dev guides, architecture docs
@@ -258,7 +261,35 @@ Which skills do you need? (list the numbers separated by commas)
 13. **Prompt Engineer** — Prompt design, evaluation, optimization
 14. **API Designer** — REST/GraphQL design, endpoints, error taxonomy
 15. **Database Engineer** — Schema design, migrations, query optimization
-16. **Chat about this** — Free-form input
+16. **AI Engineer** — MLOps, model serving, fine-tuning, evaluation
+17. **Accessibility Engineer** — WCAG compliance, a11y audit, screen reader
+18. **Performance Engineer** — Load testing, profiling, Core Web Vitals
+19. **UX Researcher** — User research, usability testing, personas
+20. **Data Engineer** — ETL pipelines, data warehouse, dbt, data quality
+21. **Project Manager** — Sprint planning, velocity, risk management
+
+--- Game Development ---
+22. **Game Designer** — GDD, gameplay loops, economy, mechanic specs
+23. **Unity Engineer** — C# game architecture, ScriptableObjects, Editor tools
+24. **Unreal Engineer** — C++/Blueprint, GAS, Nanite/Lumen
+25. **Godot Engineer** — GDScript, scene tree, signals, cross-platform
+26. **Godot Multiplayer** — MultiplayerSpawner, ENet, prediction, dedicated server
+27. **Roblox Engineer** — Luau, DataStore, Roblox Studio, experience design
+28. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
+29. **Narrative Designer** — Branching dialogue, character voice, lore
+30. **Technical Artist** — Shaders, VFX, LOD, performance budgets
+31. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
+32. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
+33. **Unity Multiplayer** — Netcode for GameObjects, relay, prediction
+34. **Unreal Technical Artist** — Niagara, Material Editor, Lumen/Nanite
+35. **Unreal Multiplayer** — Replication, dedicated server, GAS networking
+36. **XR Engineer** — AR/VR/MR, spatial UI, hand tracking, comfort
+
+--- Growth ---
+37. **Growth Marketer** — Launch strategy, content, channels, SEO
+38. **Conversion Optimizer** — CRO, funnel analysis, A/B testing, retention
+
+39. **Chat about this** — Free-form input
 ```
 
 Execute selected skills in dependency order. If user picks conflicting skills, resolve via the authority hierarchy.
@@ -301,6 +332,46 @@ Database migration, framework upgrade, or large-scale code migration.
 5. **Optional: Rollback plan** — reversible migrations, feature flags for gradual rollout
 
 **2 gates:** After migration plan (step 2), and after migration scripts generated (before execution).
+
+### Game Build Mode
+
+Build a game from concept to playable build. Full game development pipeline.
+
+1. **Concept analysis** — extract game concept, genre, platform, engine from user's message
+2. **Engine detection** — read `.production-grade.yaml` for `game.engine` override, or ask:
+   ```
+   Which engine for this game?
+   1. **Unity** (Recommended for indie-AA, mobile, 2D/3D)
+   2. **Unreal Engine** (AAA quality, heavy 3D, C++/Blueprint)
+   3. **Godot** (Open-source, lightweight, rapid iteration)
+   ```
+3. **Game Designer** — `skills/game-designer/SKILL.md` — design pillars, core loop, economy, mechanic specs, player flows
+4. **Engine Engineer** — based on chosen engine:
+   - Unity: `skills/unity-engineer/SKILL.md` — SO architecture, gameplay systems, UI, Editor tools
+   - Unreal: `skills/unreal-engineer/SKILL.md` — C++ architecture, GAS, AI, Blueprint layer
+   - Godot: `skills/godot-engineer/SKILL.md` — scene tree, signals, Resources, export
+5. **Level Designer** — `skills/level-designer/SKILL.md` — level structure, encounters, pacing, blockouts
+6. **Narrative Designer** (if story-driven) — `skills/narrative-designer/SKILL.md` — dialogue, characters, lore
+7. **Technical Artist** — `skills/technical-artist/SKILL.md` — shaders, VFX, LOD, performance budgets
+8. **Game Audio Engineer** — `skills/game-audio-engineer/SKILL.md` — SFX, adaptive music, mix
+9. **Engine-specific depth** (optional, based on game needs):
+   - Multiplayer: `skills/unity-multiplayer/SKILL.md` or `skills/unreal-multiplayer/SKILL.md`
+   - Shader/VFX: `skills/unity-shader-artist/SKILL.md` or `skills/unreal-technical-artist/SKILL.md`
+10. **QA** — test gameplay systems, balance verification, edge cases
+
+**3 gates:** After Game Designer GDD (step 3), after engine architecture (step 4), and after first playable (step 9).
+
+### XR Build Mode
+
+Build AR/VR/MR applications. XR Engineer + optional game development pipeline.
+
+1. **Concept analysis** — determine XR type (VR game, AR tool, MR experience), platform (Quest, Vision Pro, PCVR, WebXR)
+2. **XR Engineer** — `skills/xr-engineer/SKILL.md` — XR setup, spatial interaction, comfort, spatial UI
+3. **If game-like XR** (VR game, interactive experience) — run Game Build pipeline steps 3-8 within XR context
+4. **If tool/productivity XR** — route to standard Feature/Full Build pipeline with XR Engineer leading spatial design
+5. **QA** — comfort testing, frame rate validation, input model coverage
+
+**2 gates:** After XR architecture (step 2), and after spatial interaction playable (step 3-4).
 
 ## Auto-Update Check
 

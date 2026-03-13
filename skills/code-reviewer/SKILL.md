@@ -326,6 +326,22 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 
 ---
 
+### Phase 6 — Git Workflow Review
+
+**Goal:** Evaluate git workflow practices — branching strategy, commit quality, PR hygiene, and CI/CD integration.
+
+**Review checklist:**
+1. **Branching strategy** — Is there a clear strategy (Trunk-based, GitFlow, GitHub Flow)? Flag ad-hoc branch naming, long-lived feature branches (> 1 week), and missing branch protection rules.
+2. **Commit hygiene** — Are commits atomic (one logical change per commit)? Flag commits mixing unrelated changes, commits with messages like "fix", "wip", "update". Check for conventional commit format (`feat:`, `fix:`, `chore:`, `docs:`).
+3. **PR quality** — Do PRs have descriptions? Are they appropriately sized (< 400 lines changed)? Flag PRs > 1000 lines. Check for PR templates.
+4. **Code review process** — Is there a minimum reviewer count? Are reviews resolved before merge? Flag force-push-to-main or direct commits to protected branches.
+5. **Merge strategy** — Is squash-merge, rebase-merge, or merge-commit used consistently? Flag mixed strategies. Check for clean git history (no merge commit spaghetti).
+6. **CI integration** — Do CI checks run on PRs? Are they required to pass before merge? Flag missing status checks.
+
+**Output:** Include git workflow findings in `review-report.md` under a dedicated "Git Workflow" category.
+
+---
+
 ## Execution Checklist
 
 Before marking the skill as complete, verify:
