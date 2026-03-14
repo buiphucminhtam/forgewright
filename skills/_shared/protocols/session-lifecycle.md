@@ -47,9 +47,11 @@ ELSE:
 
 ```
 IF memory-manager is configured (MEM0_DISABLED != true):
-  Search memory for project context (top-5)
-  Search memory for recent decisions/blockers
-  Inject into prompt context (max 800 tokens)
+  Run: python3 scripts/mem0-cli.py search "<project-name> <user-request-keywords>" --limit 5 --format compact
+  IF no results returned:
+    Run: python3 scripts/mem0-cli.py refresh
+    Run search again with same query
+  Inject results into prompt context (max 800 tokens)
   Log: "✓ Memory loaded: [N] relevant items"
 ELSE:
   Read .forge17/code-conventions.md if exists
@@ -94,8 +96,8 @@ Called after each pipeline phase completes (DEFINE, BUILD, HARDEN, SHIP, SUSTAIN
      }
    }
 
-2. Save phase summary to memory (if memory-manager available):
-   mem0-cli.py add "Phase [phase_name] completed: [summary]"
+2. Save phase summary to memory:
+   Run: python3 scripts/mem0-cli.py add "Phase [phase_name] completed: [summary]" --category tasks
 
 3. Update quality metrics (see quality-dashboard.md)
 ```
@@ -115,7 +117,8 @@ Called after each strategic gate.
 
 ```
 1. Update session-log.json → gates.[gate_number] = { decision, feedback, decided_at }
-2. Save to memory: "Gate [N] [decision]: [feedback summary]"
+2. Save to memory:
+   Run: python3 scripts/mem0-cli.py add "Gate [N] [decision]: [feedback summary]" --category decisions
 ```
 
 ### Hook: ERROR(task_id, error_type, details)
@@ -149,9 +152,12 @@ Called when pipeline completes OR when session is explicitly ended.
    }
 
 3. Save to memory:
-   mem0-cli.py add "Session completed: [summary]. Next: [next_steps]"
+   Run: python3 scripts/mem0-cli.py add "Session completed: [summary]. Next: [next_steps]" --category session
 
-4. Update project profile:
+4. Refresh project identity:
+   Run: python3 scripts/mem0-cli.py refresh
+
+5. Update project profile:
    .forge17/project-profile.json → forge17.last_session = session_id, total_sessions++
 ```
 

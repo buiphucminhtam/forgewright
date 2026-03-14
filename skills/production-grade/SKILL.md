@@ -760,7 +760,9 @@ Write analysis report to `Antigravity-Production-Grade-Suite/.orchestrator/scope
 
 When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-dispatch skill (`skills/parallel-dispatch/SKILL.md`) to spawn git worktrees, distribute Task Contracts, and merge results. When **Sequential** is selected, the pipeline behaves as before.
 
-6. **Detect existing workspace** — if `Antigravity-Production-Grade-Suite/.orchestrator/` has prior state, use session-lifecycle resume protocol. If `.forge17/session-log.json` has interrupted state, offer resume. Otherwise offer clean start via notify_user.
+6. **Detect existing workspace & load memory** — if `Antigravity-Production-Grade-Suite/.orchestrator/` has prior state, use session-lifecycle resume protocol. If `.forge17/session-log.json` has interrupted state, offer resume. Otherwise offer clean start via notify_user.
+   - **Memory load:** Run `python3 scripts/mem0-cli.py search "<project-name> <user-request-keywords>" --limit 5 --format compact` to retrieve relevant project context. Inject results into your context for this session.
+   - If no results or memory is empty, run `python3 scripts/mem0-cli.py refresh` once to bootstrap memory from project files.
 
 7. **Polymath pre-flight check:**
    - If `Antigravity-Production-Grade-Suite/polymath/handoff/context-package.md` exists → read it, pass to PM as pre-loaded context. Log: `✓ Polymath context loaded — skipping redundant discovery`
@@ -789,6 +791,7 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
 Create a `task.md` file in `Antigravity-Production-Grade-Suite/.orchestrator/` with all 13 tasks and their statuses. Track dependencies and completion.
 
 10. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
+   - **Memory save (session start):** Run `python3 scripts/mem0-cli.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
 
 **Key principle:** The user already told you what to build. Research, plan, start building. Pause at the 3 approval gates. In Thorough/Meticulous mode, also show phase summaries between major phases — but never block on them (inform, don't gate).
 

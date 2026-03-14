@@ -116,6 +116,7 @@ After all HARDEN tasks complete:
 5. Medium/Low → documented but do not block pipeline
 6. **Run aggregate quality scoring** — compute HARDEN phase quality score
 7. **Call session lifecycle hook** — `PHASE_COMPLETE("HARDEN", summary)`
+   - **Memory save:** `python3 scripts/mem0-cli.py add "HARDEN complete: [N] tests, [M] security findings ([X] auto-fixed). Quality: [score]/100" --category tasks`
 8. **Update quality metrics** — write to `.forge17/quality-metrics.json`
 9. Print HARDEN summary:
 ```

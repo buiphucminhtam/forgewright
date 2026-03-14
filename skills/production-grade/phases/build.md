@@ -152,6 +152,7 @@ When all BUILD tasks complete:
 3. If T3c ran, verify mobile project builds for both platforms
 4. **Run aggregate quality check** — display BUILD phase quality summary
 5. **Call session lifecycle hook** — `PHASE_COMPLETE("BUILD", summary)`
+   - **Memory save:** `python3 scripts/mem0-cli.py add "BUILD complete: [tasks done]. Services: [list]. Tests: [count] pass" --category tasks`
 6. **Brownfield: full regression suite** — verify ALL existing tests still pass
 7. Log BUILD completion to workspace
 8. Read `phases/harden.md` and begin HARDEN phase

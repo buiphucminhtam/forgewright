@@ -1,55 +1,60 @@
 ---
 name: memory-manager
 description: >
-  Mem0-powered persistent memory layer for project context. Stores durable
-  knowledge (goals, architecture, decisions, blockers, task status) and retrieves
-  it to reduce token usage. Supports ingestion from git, README, notes, and
-  conversation summaries.
+  Persistent project memory using JSONL (git-committed). TF-IDF search,
+  markdown-aware chunking, value-weighted GC. Stores decisions, architecture,
+  blockers, and task status for cross-session continuity.
 ---
 
 # Memory Manager Skill
 
 > **Purpose:** Give the AI agent persistent, searchable project memory so it
-> doesn't re-discover the same context every session. Token-efficient: retrieve
-> only what's relevant, compress the rest.
+> doesn't re-discover the same context every session. Retrieve only what's
+> relevant, compress the rest.
 
 ## When to Use
 
 - **Session start** — auto-retrieve project context instead of re-reading entire codebase
 - **Before answering** — query memory with task keywords for relevant decisions/blockers
 - **After completing work** — store what was done, decisions made, blockers found
-- **Periodic** — summarize long conversations into compact structured memory
+- **Periodic** — refresh project identity when major changes happen
 
 ## Memory Model
 
-| Category | Examples | Auto-ingested From |
-|----------|----------|-------------------|
-| **Project goals** | "Building a SaaS for X" | README, VISION.md |
-| **Architecture** | "Using Next.js + Prisma + PostgreSQL" | README, code structure |
-| **Task status** | TODO/DOING/DONE items | Git history, task files |
-| **Blockers** | "Waiting on API key from vendor" | Conversation summaries |
-| **Decisions** | "Chose PostgreSQL over MongoDB because..." | Conversation summaries |
-| **Key commands** | "Deploy: `railway up`" | README, scripts |
-| **Environment** | "Node 22, macOS, Railway hosting" | package.json, setup files |
+| Category | Examples | Weight (GC) |
+|----------|----------|-------------|
+| **decisions** | "Chose PostgreSQL because..." | 10 |
+| **architecture** | "Using Next.js + Prisma + PostgreSQL" | 8 |
+| **project** | "Forge17 v7.1 — 47 skills, 19 modes" | 8 |
+| **blockers** | "Waiting on API key from vendor" | 7 |
+| **session** | "Session completed: built auth module" | 6 |
+| **tasks** | "BUILD complete: 3 services, 142 tests pass" | 5 |
+| **conversation** | Extracted facts from summarized files | 4 |
+| **general** | User-added notes | 4 |
+| **git-activity** | Recent commit summaries | 3 |
+| **ingested** | Chunked README/docs sections | 2 |
 
 ## CLI Commands
 
 All commands use `scripts/mem0-cli.py`:
 
 ```bash
-# Search memory (most common — use before answering)
-python3 scripts/mem0-cli.py search "authentication flow"
+# Search memory — TF-IDF with cosine similarity
+python3 scripts/mem0-cli.py search "authentication flow" --limit 5
 
 # Add a memory manually
-python3 scripts/mem0-cli.py add "Decided to use JWT + refresh tokens for auth"
+python3 scripts/mem0-cli.py add "Decided to use JWT + refresh tokens for auth" --category decisions
 
-# Ingest from files (README, VISION, notes)
+# Refresh project state — replaces old ingested data with current reality
+python3 scripts/mem0-cli.py refresh
+
+# Ingest files — markdown-aware chunking with section context
 python3 scripts/mem0-cli.py ingest README.md VISION.md
 
 # Ingest from recent git history
 python3 scripts/mem0-cli.py ingest-git --days 7
 
-# Summarize and compress a conversation log
+# Summarize file — extracts structured facts (key-value, decisions, blockers)
 python3 scripts/mem0-cli.py summarize path/to/conversation.md
 
 # List all memories (with optional category filter)
@@ -61,25 +66,37 @@ python3 scripts/mem0-cli.py delete <memory_id>
 # Export all memories to markdown
 python3 scripts/mem0-cli.py export > project-memory.md
 
-# Stats: token usage, memory count, categories
+# Stats: memory count, file size, token estimate, categories
 python3 scripts/mem0-cli.py stats
+
+# Garbage collection — value-weighted (category × recency)
+python3 scripts/mem0-cli.py gc --max-memories 200
 ```
+
+## Search — How It Works
+
+Search uses **TF-IDF (Term Frequency × Inverse Document Frequency)** with **cosine similarity** — all Python stdlib, zero external dependencies.
+
+```
+Query: "authentication JWT"
+→ Tokenize → Compute TF-IDF vectors → Cosine similarity against all memories
+→ Return top-N ranked results
+```
+
+**Advantages over keyword search:**
+- Matches semantic relevance, not just keyword overlap
+- Rare terms (e.g., "JWT") get higher weight than common terms
+- Better results for paraphrased or related concepts
 
 ## Token Optimization Strategy
 
 ### When to Retrieve
-1. **Always** at session start — fetch top-5 project context memories
+1. **Always** at session start — search with project name + request keywords, limit to top-5
 2. **Before complex tasks** — search with task keywords, limit to top-3
 3. **At gate decisions** — fetch relevant decisions/blockers
 
-### When to Summarize
-1. After every **completed pipeline phase** (DEFINE, BUILD, etc.)
-2. When conversation exceeds **~4000 tokens** of accumulated context
-3. On explicit `/summarize` command
-
 ### Token Budget
 - Retrieval output: max **500 tokens** (configurable via `MEM0_MAX_TOKENS`)
-- Summarization input: chunks of **2000 tokens** max
 - Total memory injection per prompt: **800 tokens** ceiling
 
 ## Safety
@@ -91,62 +108,39 @@ The CLI automatically redacts patterns matching:
 - Database connection strings with credentials
 
 ### .memignore
-Create `.memignore` at project root to exclude files/folders from ingestion:
-```
-# Exclude sensitive files
-.env
-.env.*
-secrets/
-credentials/
-**/node_modules/**
-```
+Create `.memignore` at project root to exclude files/folders from ingestion.
 
 ### Opt-out
 - Set `MEM0_DISABLED=true` to skip all memory operations
-- Individual files can be excluded via `.memignore`
 
 ## Configuration
 
-Environment variables (in `.env` or shell):
-
 ```bash
-# Required: LLM for memory extraction/summarization
-MEM0_LLM_PROVIDER=openai          # openai, ollama, anthropic
-MEM0_LLM_MODEL=gpt-4.1-nano      # or ollama model name
-MEM0_LLM_API_KEY=sk-...           # not needed for ollama
-
-# Optional: Ollama local (recommended for privacy)
-MEM0_LLM_PROVIDER=ollama
-MEM0_LLM_MODEL=llama3.2
-MEM0_LLM_BASE_URL=http://localhost:11434
-
-# Storage (default: local SQLite)
-MEM0_STORE=sqlite                 # sqlite, chroma, pgvector
-MEM0_DB_PATH=.forge17/memory.db   # for sqlite
+# Storage (JSONL, git-committed)
+MEM0_PROJECT_ID=my-project        # namespace for multi-project
 
 # Limits
 MEM0_MAX_TOKENS=500               # max tokens per retrieval
-MEM0_MAX_MEMORIES=100             # max stored memories per project
-MEM0_PROJECT_ID=my-project        # namespace for multi-project
+MEM0_MAX_MEMORIES=200             # max stored memories before GC
 
 # Safety
 MEM0_REDACT_SECRETS=true          # auto-redact API keys, passwords
+MEM0_DISABLED=false               # set true to skip all ops
 ```
 
-## Integration with Forge17 Pipeline (v7.0)
+## Integration with Forge17 Pipeline
 
 ### Active Lifecycle Hooks
 
-The orchestrator now calls memory-manager at specific lifecycle points via `skills/_shared/protocols/session-lifecycle.md`:
+The orchestrator calls memory-manager at specific lifecycle points. All hooks are wired with exact CLI commands in `skills/_shared/protocols/session-lifecycle.md`:
 
-| Hook | Trigger | Memory Action |
+| Hook | Trigger | Memory Command |
 |------|---------|---------------|
-| `SESSION_START` | Pipeline begins | `search <project>` → retrieve top-5 context (max 800 tokens) |
-| `PHASE_COMPLETE` | After DEFINE/BUILD/HARDEN/SHIP/SUSTAIN | `add "Phase [name] completed: [summary]"` |
-| `TASK_COMPLETE` | After each T1-T11 task | `add "Task [id]: [summary]"` (decisions, blockers only) |
-| `GATE_DECISION` | After Gate 1/2/3 | `add "Gate [N] [decision]: [feedback]"` |
-| `SESSION_END` | Pipeline completes or interrupts | `add "Session [id]: [full summary]. Next: [steps]"` |
-| `ERROR` | Task failure/escalation | `add "BLOCKER: [task] failed: [details]"` |
+| `SESSION_START` | Pipeline begins | `search "<project> <keywords>" --limit 5` |
+| `PHASE_COMPLETE` | After DEFINE/BUILD/HARDEN/SHIP | `add "Phase [name]: [summary]" --category tasks` |
+| `GATE_DECISION` | After Gate 1/2/3 | `add "Gate [N] [decision]: [feedback]" --category decisions` |
+| `SESSION_END` | Pipeline completes | `add "Session completed: [summary]" --category session` + `refresh` |
+| `ERROR` | Task failure/escalation | `add "BLOCKER: [task] failed: [details]" --category blockers` |
 
 ### Context Integration with Project Profile
 
@@ -155,24 +149,42 @@ Memory works alongside `.forge17/project-profile.json`:
 - **Memory** = temporal facts (decisions, blockers, progress) — searched contextually
 - Together they provide full project context without re-scanning
 
-### Manual usage
+### BA Integration
+
+When the Business Analyst skill completes:
+- BA outputs (`ba-package.md`, requirements register) are referenced by memory
+- PM reads BA package directly — memory stores the decision "BA validated requirements"
+- Gate 1 stores BRD approval decision for future sessions
+
+### Manual Usage
+
 Any skill can invoke memory commands directly:
 ```bash
 # Before starting work
-CONTEXT=$(python3 scripts/mem0-cli.py search "current task" --format compact)
-# ... use $CONTEXT in prompt ...
+python3 scripts/mem0-cli.py search "current task" --limit 3 --format compact
 
 # After completing work
-python3 scripts/mem0-cli.py add "Completed: auth module with JWT + refresh tokens"
+python3 scripts/mem0-cli.py add "Completed: auth module with JWT + refresh tokens" --category decisions
 ```
 
-## Storage Backends
+## Garbage Collection — Value-Weighted
 
-| Backend | Setup | Best For |
-|---------|-------|----------|
-| **SQLite** (default) | Zero config | Single dev, local-first |
-| **ChromaDB** | `pip install chromadb` | Better semantic search |
-| **pgvector** | Requires PostgreSQL | Team/production use |
+GC scores each entry: `category_weight × recency_factor`, then prunes lowest-scored:
+
+| Category | Weight | Rationale |
+|----------|--------|-----------|
+| decisions | 10 | Most valuable — architecture choices persist |
+| architecture | 8 | Stack identity rarely changes |
+| project | 8 | Core project facts |
+| blockers | 7 | Active impediments need attention |
+| session | 6 | Recent work history |
+| tasks | 5 | Phase completion status |
+| conversation | 4 | Summarized context |
+| general | 4 | User notes |
+| git-activity | 3 | Easily re-ingested |
+| ingested | 2 | Easily re-ingested from source files |
+
+Recency factor: today=1.0, 30 days ago=0.7, 90+ days ago=0.1.
 
 ## File Layout
 
@@ -181,14 +193,12 @@ forge17/
 ├── skills/memory-manager/
 │   └── SKILL.md              ← this file
 ├── scripts/
-│   └── mem0-cli.py           ← CLI tool
+│   └── mem0-cli.py           ← CLI tool (TF-IDF, JSONL, zero deps)
 ├── .memignore                ← exclusion patterns
 └── .forge17/
+    ├── memory.jsonl          ← source of truth (committed to git)
     ├── project-profile.json  ← project fingerprint (committed)
     ├── code-conventions.md   ← detected patterns (committed)
     ├── session-log.json      ← session history (gitignored)
-    ├── quality-history.json  ← quality trending (gitignored)
-    ├── quality-metrics.json  ← current session metrics (gitignored)
-    ├── memory.db             ← SQLite store (gitignored)
     └── .gitignore            ← auto-generated
 ```
