@@ -76,21 +76,31 @@ digraph pm_flow {
 }
 ```
 
-## Pre-Loaded Context (Polymath Integration)
+## Pre-Loaded Context (Polymath & BA Integration)
 
-Before starting the CEO interview, check for polymath context:
+Before starting the CEO interview, check for existing context:
 
 ```bash
 cat Antigravity-Production-Grade-Suite/polymath/handoff/context-package.md 2>/dev/null
+cat Antigravity-Production-Grade-Suite/business-analyst/handoff/ba-package.md 2>/dev/null
 ```
 
-If a context package exists, read it first. It contains:
+**Polymath context** — If a context package exists, read it first. It contains:
 - Domain research the polymath already conducted
 - Decisions the user already made during exploration
 - Constraints identified (scale, budget, team, compliance)
 - User preferences expressed
 
-**Reduce the CEO interview to cover ONLY gaps not addressed in the context package.** Do not re-ask what the polymath already established. If the context package is comprehensive (covers problem, users, constraints, and scope), you may need only 1-2 clarifying questions instead of 5.
+**BA package** — If a BA package exists, read it first. It contains:
+- Validated requirements with 6W1H completeness scores
+- Stakeholder analysis (who decides, who uses, who's affected)
+- Feasibility assessment (technical, financial, time, resource)
+- AS-IS / TO-BE process maps (if applicable)
+- Critical findings (contradictions resolved, assumptions documented)
+- Recommended priority (MoSCoW classification)
+- Traceability matrix (who requested what, when)
+
+**Reduce the CEO interview to cover ONLY gaps not addressed in the context packages.** Do not re-ask what the polymath or BA already established. If both packages are comprehensive, you may need only 1-2 clarifying questions to finalize the BRD.
 
 ## Phase 1: CEO Interview (Adaptive Depth)
 

@@ -11,6 +11,33 @@ Read `.production-grade.yaml` for path overrides:
 - `paths.architecture_docs` → Architecture docs (default: `docs/architecture/`)
 - `features.ui_design` → if false, skip T1.5 (default: true for full builds)
 
+## T0.5: Business Analyst — Requirements Validation (Conditional)
+
+**Activation:** Runs if the orchestrator's BA pre-flight check (Step 7.5) detected information gaps (6W1H score < 6/7). Skip if requirements are already complete or user explicitly skipped BA.
+
+```
+Update task.md: T0.5 status → in_progress
+
+Read skills/business-analyst/SKILL.md and follow its instructions.
+Context:
+- Read polymath context from: Antigravity-Production-Grade-Suite/polymath/handoff/context-package.md
+- Read codebase context from: Antigravity-Production-Grade-Suite/.orchestrator/codebase-context.md
+- Write BA outputs to: Antigravity-Production-Grade-Suite/business-analyst/
+- Key output: handoff/ba-package.md (feeds into PM)
+```
+
+The business-analyst skill will:
+1. Discover stakeholders (Phase 1)
+2. Structured elicitation using 6W1H framework (Phase 2)
+3. Critical evaluation — challenge assumptions, detect contradictions, assess feasibility (Phase 3)
+4. Information Gate — completeness check before handoff (Phase 4)
+5. Outputs: `stakeholder-analysis.md`, `requirements-register.md`, `feasibility-assessment.md`, `ba-package.md`
+
+**On completion:**
+```
+Update task.md: T0.5 status → completed
+```
+
 ## T1: Product Manager — BRD
 
 Mark task in progress and execute the product-manager skill (needs user interaction for CEO interview):
@@ -21,10 +48,11 @@ Read skills/product-manager/SKILL.md and follow its instructions.
 ```
 
 The product-manager skill will:
-1. Research domain via search_web
-2. Conduct CEO interview (3-5 questions via notify_user with options)
-3. Write BRD to `Antigravity-Production-Grade-Suite/product-manager/BRD/`
-4. Outputs: `brd.md`, `research-notes.md`, `constraints.md`
+1. **Check for BA package** — if `Antigravity-Production-Grade-Suite/business-analyst/handoff/ba-package.md` exists, use it to reduce CEO interview
+2. Research domain via search_web (skip if BA or Polymath already researched)
+3. Conduct CEO interview (depth reduced if BA package covers gaps)
+4. Write BRD to `Antigravity-Production-Grade-Suite/product-manager/BRD/`
+5. Outputs: `brd.md`, `research-notes.md`, `constraints.md`
 
 **On completion:**
 ```

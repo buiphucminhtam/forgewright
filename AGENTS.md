@@ -1,10 +1,10 @@
 # Forge17 — Production Grade AI Pipeline
 
-> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forge17's 46 specialized skills.
+> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forge17's 47 specialized skills.
 
 ## What is Forge17?
 
-Forge17 is an adaptive orchestrator with **46 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Roblox game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
+Forge17 is an adaptive orchestrator with **47 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Roblox game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
 
 **Pipeline:** `DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
@@ -13,7 +13,7 @@ Forge17 is an adaptive orchestrator with **46 AI skills** that covers the entire
 **IMPORTANT:** When the user gives any software development request, you MUST:
 
 1. **Read `skills/production-grade/SKILL.md`** — this is the orchestrator that routes to all skills
-2. **Classify the request** into one of 18 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**)
+2. **Classify the request** into one of 19 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze**)
 3. **Follow the pipeline** as defined in the orchestrator
 
 Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the production-grade skill classify and route.
@@ -39,6 +39,7 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 | "Build a Roblox experience" | Game Build | Game Designer → Roblox Engineer |
 | "Build a VR app..." | XR Build | XR Engineer (+ Game Build pipeline if game-like) |
 | "Build AI feature / RAG..." | AI Build | AI Engineer + Prompt Engineer + Data Scientist |
+| "Analyze requirements..." | Analyze | Business Analyst (elicit, evaluate, validate) |
 
 ## Available Workflows
 
@@ -62,7 +63,7 @@ If a newer version exists, mention it briefly: *"Forge17 update available (vX.X.
 
 ## Skills Directory
 
-All 46 skills are in the `skills/` directory:
+All 47 skills are in the `skills/` directory:
 
 | Skill | Location |
 |-------|----------|
@@ -73,6 +74,7 @@ All 46 skills are in the `skills/` directory:
 | Memory Manager | `skills/memory-manager/SKILL.md` |
 | Skill Maker | `skills/skill-maker/SKILL.md` |
 | **Engineering** | |
+| Business Analyst | `skills/business-analyst/SKILL.md` |
 | Product Manager | `skills/product-manager/SKILL.md` |
 | Solution Architect | `skills/solution-architect/SKILL.md` |
 | Software Engineer | `skills/software-engineer/SKILL.md` |

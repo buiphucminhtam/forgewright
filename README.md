@@ -4,9 +4,9 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-7.0.0-blue.svg" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-46-brightgreen.svg" alt="Skills" />
-  <img src="https://img.shields.io/badge/modes-18-blueviolet.svg" alt="Modes" />
+  <img src="https://img.shields.io/badge/version-7.1.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/skills-47-brightgreen.svg" alt="Skills" />
+  <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/vibe-coded_%F0%9F%8E%B5-ff69b4.svg" alt="Vibe Coded" />
 </p>
 
@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/⚡_Parallel-Git_Worktrees-orange.svg" alt="Parallel" />
 </p>
 
-<h3 align="center">46 AI Skills · 18 Modes · Full Lifecycle Pipeline</h3>
+<h3 align="center">47 AI Skills · 19 Modes · Full Lifecycle Pipeline</h3>
 
 <p align="center">
   <strong>Research → Design → Build → Test → Secure → Deploy → Market → Grow</strong><br />
@@ -42,6 +42,10 @@ If Forge17 helps you ship faster, you can support the project here:
 ## Release Timeline
 
 ```
+2026-03-14  v7.1  ●━━━ Business Analyst — Requirements gatekeeper with 6W1H elicitation,
+                  │     Zero Assumption Doctrine, critical evaluation (Red Team),
+                  │     strict Information Gate. New Analyze mode. 47 total skills.
+                  │
 2026-03-14  v7.0  ●━━━ Project Onboarding, Quality Gates & Brownfield Safety —
                   │     5 new protocols, session lifecycle, quality scoring 0-100,
                   │     brownfield safety net with git branching & regression checks.
@@ -118,7 +122,7 @@ Then say: *"Build a production-grade SaaS for [your idea]"* — or *"Build a gam
 
 ## For Antigravity Users
 
-Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 46-skill pipeline.
+Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 47-skill pipeline.
 
 **Available workflows:**
 
@@ -132,19 +136,19 @@ Forge17 is self-discovering. Once installed, Antigravity reads `AGENTS.md` on ev
 
 ---
 
-## 18 Execution Modes
+## 19 Execution Modes
 
 The orchestrator auto-classifies your request and routes to the right skills:
 
 | User Says | Mode | Skills Activated |
 |-----------|------|-----------------|
 | "Build a SaaS for..." | **Full Build** | All skills, 6 phases, 3 gates |
-| "Add [feature]..." | **Feature** | PM → Architect → BE/FE → QA |
+| "Add [feature]..." | **Feature** | BA (if gaps) → PM → Architect → BE/FE → QA |
 | "Review my code" | **Review** | Code Reviewer only |
 | "Write tests" | **Test** | QA Engineer only |
 | "Deploy / CI/CD" | **Ship** | DevOps → SRE |
 | "Design UI for..." | **Design** | UX Researcher → UI Designer |
-| "Build mobile app" | **Mobile** | Mobile Engineer (+ PM, Architect) |
+| "Build mobile app" | **Mobile** | BA (if gaps) → Mobile Engineer (+ PM, Architect) |
 | "Help me think about..." | **Explore** | Polymath co-pilot |
 | "Deep research on..." | **Research** | Polymath + NotebookLM MCP |
 | "Optimize performance" | **Optimize** | Performance Engineer + SRE |
@@ -156,25 +160,27 @@ The orchestrator auto-classifies your request and routes to the right skills:
 | "Build a VR app..." | **XR Build** | XR Engineer (+ Game Build if game-like) |
 | "Build AI feature / RAG..." | **AI Build** | AI Engineer + Prompt Engineer + Data Scientist |
 | "Debug this / fix bug" | **Debug** | Debugger → Software/Frontend Engineer |
+| "Analyze requirements..." | **Analyze** | Business Analyst (standalone) |
 
 ---
 
-## 46 Skills — Organized by Division
+## 47 Skills — Organized by Division
 
 ### 🧠 Orchestrator & Meta (5)
 
 | Skill | What It Does |
 |-------|-------------|
-| **production-grade** | Smart routing orchestrator — 18 modes, auto-classifies, dependency-based task graph |
+| **production-grade** | Smart routing orchestrator — 19 modes, auto-classifies, dependency-based task graph |
 | **polymath** | Creative partner + grounded researcher — 6 modes: research (+ NotebookLM MCP), ideate, advise, onboard, translate, synthesize |
 | **parallel-dispatch** | Git worktree-based parallel execution with Task Contracts and anti-hallucination |
 | **memory-manager** | Cross-session context persistence via mem0 |
 | **skill-maker** | Self-extending system — generates 3-5 project-specific custom skills |
 
-### ⚙️ Core Engineering (19)
+### ⚙️ Core Engineering (20)
 
 | Skill | What It Does |
 |-------|-------------|
+| **business-analyst** | 6W1H structured elicitation, Zero Assumption Doctrine, feasibility analysis, Information Gate |
 | **product-manager** | CEO interview, domain research, BRD with user stories |
 | **solution-architect** | ADRs, API contracts (OpenAPI 3.1), data models, architecture decisions |
 | **software-engineer** | TDD-first, clean architecture — handlers → services → repositories |
@@ -245,12 +251,14 @@ The orchestrator auto-classifies your request and routes to the right skills:
 DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW
 ```
 
-You give a high-level vision. 46 specialized skills handle everything else.
+You give a high-level vision. 47 specialized skills handle everything else.
 
 ### The Pipeline
 
 ```
 Polymath (pre-flight: research, gap detection, context building)
+    ↓
+T0.5: Business Analyst (6W1H elicitation, feasibility, Information Gate) — conditional
     ↓
 T1:   Product Manager (BRD) ─────────────── GATE 1: approve requirements
 T1.5: UI Designer (design tokens, wireframes)
@@ -363,8 +371,8 @@ CEO Agent (Orchestrator)
 
 | Metric | Detail |
 |--------|--------|
-| **46 specialized skills** | Each with sole authority over its domain |
-| **18 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build** |
+| **47 specialized skills** | Each with sole authority over its domain |
+| **19 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze** |
 | **6-phase pipeline** | DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW |
 | **4 game engines** | Unity, Unreal Engine, Godot, Roblox |
 | **XR platforms** | Quest, Vision Pro, WebXR, PCVR |
@@ -431,12 +439,13 @@ brownfield:
 
 | Command | What Runs |
 |---------|-----------|
-| `"Just define"` | PM + UI Designer + Architect |
+| `"Just define"` | BA (if gaps) → PM + UI Designer + Architect |
 | `"Just build"` | Backend + Frontend + Mobile |
 | `"Just harden"` | QA + Security + Code Review |
 | `"Just ship"` | IaC + CI/CD + SRE |
 | `"Deep research on..."` | Polymath + NotebookLM MCP |
 | `"Design UI for..."` | UX Researcher → UI Designer |
+| `"Analyze requirements"` | Business Analyst (standalone) |
 | `"Build a game with Godot"` | Game Designer → Godot Engineer → Level/Audio |
 | `"Marketing strategy"` | Growth Marketer → Conversion Optimizer |
 | `"Test on Android/iOS"` | Mobile Tester (AI vision) |
@@ -463,7 +472,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## Examples
 
 ```bash
-# Greenfield SaaS (full pipeline, 46 skills)
+# Greenfield SaaS (full pipeline, 47 skills)
 "Build a production-grade SaaS for multi-vendor e-commerce
  with seller dashboards, buyer marketplace, and payment processing."
 
@@ -497,6 +506,10 @@ Each domain has one authority. No overlap, no contradictions.
 # Marketing & Growth
 "Create a go-to-market strategy for my SaaS launch.
  Include SEO audit, email sequences, and launch plan."
+
+# Requirements Analysis (Analyze mode)
+"Analyze requirements — the client wants a booking system
+ with online payments and calendar integration."
 ```
 
 ---
@@ -504,7 +517,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## FAQ
 
 **How many skills does Forge17 have?**
-46 specialized skills covering software engineering, game development (Unity, Unreal, Godot, Roblox), XR (AR/VR/MR), AI/ML, data engineering, accessibility, UX research, and go-to-market.
+47 specialized skills covering requirements analysis, software engineering, game development (Unity, Unreal, Godot, Roblox), XR (AR/VR/MR), AI/ML, data engineering, accessibility, UX research, and go-to-market.
 
 **Can it build complete games?**
 Yes. The Game Build mode orchestrates game-specific skills: Game Designer → Engine Engineer → Level Designer → Narrative → Technical Art → Audio → QA. Supports Unity, Unreal Engine, Godot, and Roblox.
@@ -524,8 +537,8 @@ No. Playwright is the primary CI testing tool. Midscene is optional for visual Q
 **What languages are supported?**
 TypeScript, Go, Python, Rust, Java, C++ (Unreal), C# (Unity), GDScript (Godot), Luau (Roblox).
 
-**Do I need all 46 skills?**
-No. The orchestrator only activates what you need. A backend API may use 8 skills. A full game may use 20+.
+**Do I need all 47 skills?**
+No. The orchestrator only activates what you need. A backend API may use 8 skills. A full game may use 20+. The BA skill only activates when information gaps are detected.
 
 **How does parallel dispatch work?**
 Independent tasks run in git worktrees. A 7-step anti-hallucination validator checks each worker before merging.
@@ -550,8 +563,8 @@ MIT
 ---
 
 <p align="center">
-  <strong>Forge17 — 46 AI skills. 18 modes. 12 protocols. SaaS to AAA games. One prompt. Idea to market. ⭐</strong>
+  <strong>Forge17 — 47 AI skills. 19 modes. 12 protocols. SaaS to AAA games. One prompt. Idea to market. ⭐</strong>
 </p>
 <p align="center">
-  <em>Research with zero hallucinations. Build games with Unity/Unreal/Godot/Roblox. Ship with quality scoring. Grow with data.</em>
+  <em>Validate with zero assumptions. Research with zero hallucinations. Build games with Unity/Unreal/Godot/Roblox. Ship with quality scoring. Grow with data.</em>
 </p>

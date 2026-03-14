@@ -48,7 +48,7 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 | Mode | Trigger Signals | Skills Involved |
 |------|----------------|-----------------|
 | **Full Build** | "build a SaaS", "production grade", "from scratch", "full stack", greenfield intent | All skills, full DEFINE→BUILD→HARDEN→SHIP→SUSTAIN→GROW pipeline |
-| **Feature** | "add [feature]", "implement [feature]", "new endpoint", "new page", "integrate [service]" | PM (scoped) → Architect (scoped) → BE/FE → QA |
+| **Feature** | "add [feature]", "implement [feature]", "new endpoint", "new page", "integrate [service]" | BA (if gaps detected) → PM (scoped) → Architect (scoped) → BE/FE → QA |
 | **Harden** | "review", "audit", "secure", "harden", "before launch", "production ready" (on EXISTING code) | Security + QA + Code Review (sequential) → Remediation |
 | **Ship** | "deploy", "CI/CD", "containerize", "infrastructure", "terraform", "docker" | DevOps → SRE |
 | **Debug** | "debug", "fix bug", "broken", "investigate", "not working", "error", "trace", "crashes" | Debugger (→ Software/Frontend Engineer for fix) |
@@ -62,16 +62,17 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 | **Research** | "research", "deep research", "find sources", "analyze topic", "investigate [domain]" | Polymath (research mode) + NotebookLM MCP (optional) |
 | **Optimize** | "performance", "slow", "optimize", "scale", "reliability" | Performance Engineer + SRE + Code Reviewer |
 | **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow" | UX Researcher → UI Designer |
-| **Mobile** | "mobile app", "React Native", "Flutter", "iOS", "Android" | Mobile Engineer (+ PM scoped, Architect scoped if needed) |
+| **Mobile** | "mobile app", "React Native", "Flutter", "iOS", "Android" | BA (if gaps detected) → Mobile Engineer (+ PM scoped, Architect scoped if needed) |
 | **Game Build** | "game", "Unity", "Unreal", "Godot", "Roblox", "gameplay", "game design", "build a game" | Game Designer → Engine Engineer (Unity/Unreal/Godot/Roblox) → Level/Narrative/TechArt/Audio |
 | **XR Build** | "VR", "AR", "MR", "XR", "spatial", "Quest", "Vision Pro", "WebXR" | XR Engineer (+ Game Build pipeline if game-like XR) |
 | **Marketing** | "marketing", "SEO", "launch strategy", "copywriting", "content strategy", "go-to-market" | Growth Marketer (+ Conversion Optimizer if CRO mentioned) |
 | **Grow** | "growth", "CRO", "conversion", "funnel", "A/B test", "churn", "retention", "referral" | Conversion Optimizer (+ Growth Marketer if strategy needed) |
+| **Analyze** | "analyze requirements", "evaluate this", "is this feasible", "validate requirements", "check completeness", "client says" | Business Analyst (standalone requirements analysis) |
 | **Custom** | Doesn't fit above patterns | Present skill menu, let user pick |
 
 **Step 2 — Present or skip the plan:**
 
-**Single-skill modes** (Test, Review, Architect, Document, Explore, Design, Debug): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
+**Single-skill modes** (Test, Review, Architect, Document, Explore, Design, Debug, Analyze): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
 
 **Multi-skill modes** (Feature, Harden, Ship, Optimize, AI Build, Migrate, Custom): Present the plan for confirmation via notify_user:
 
@@ -110,13 +111,14 @@ All modes share these behaviors:
 Add a feature to an existing codebase. Lightweight DEFINE → BUILD → TEST.
 
 1. **Codebase scan** — read existing code structure, framework, patterns
-2. **PM (Express depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only)
-3. **Architect (scoped)** — design how this feature fits the existing architecture. New endpoints, schema changes, component additions. NOT a full system redesign.
-4. **Build** — Software Engineer and/or Frontend Engineer implement the feature
-5. **Test** — QA writes and runs tests for the new feature
-6. **Optional: Review** — Code Reviewer checks the new code against existing patterns
+2. **BA pre-flight (conditional)** — Assess the user's feature description for information gaps using 6W1H. If requirements score < 6/7 completeness → run BA (Express depth) to elicit missing info. If clear → skip. Log: `✓ Requirements complete — skipping BA` or `⧖ Information gaps detected — running BA elicitation`
+3. **PM (Express depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only). If BA ran, use `ba-package.md` to reduce questions.
+4. **Architect (scoped)** — design how this feature fits the existing architecture. New endpoints, schema changes, component additions. NOT a full system redesign.
+5. **Build** — Software Engineer and/or Frontend Engineer implement the feature
+6. **Test** — QA writes and runs tests for the new feature
+7. **Optional: Review** — Code Reviewer checks the new code against existing patterns
 
-**1 gate:** After PM scoping (step 2), confirm scope before building.
+**1 gate:** After PM scoping (step 3), confirm scope before building.
 
 ### Harden Mode
 
@@ -238,6 +240,28 @@ Conversion optimization, experimentation, and growth engineering. Primarily Conv
 
 **1 gate:** After audit, before implementation.
 
+### Analyze Mode
+
+Standalone requirements analysis and validation. Single skill.
+
+1. Read `skills/business-analyst/SKILL.md` and follow its instructions
+2. BA receives client information, applies 6W1H framework, evaluates completeness
+3. BA challenges assumptions, checks feasibility, detects contradictions
+4. BA generates `ba-package.md` with validated requirements
+5. When complete, offer handoff options:
+
+```
+Analysis complete. What next?
+
+1. **Hand off to PM — write BRD from this analysis (Recommended)**
+2. **Start Feature mode — build what was analyzed**
+3. **Start Full Build — full pipeline from this analysis**
+4. **Done — I just needed the analysis**
+5. **Chat about this** — Free-form input
+```
+
+**0 gates.** BA operates autonomously. Handoff is optional.
+
 ### Custom Mode
 
 User picks skills from a menu. Present via notify_user:
@@ -246,50 +270,51 @@ User picks skills from a menu. Present via notify_user:
 Which skills do you need? (list the numbers separated by commas)
 
 --- Core Engineering ---
-1. **Product Manager** — Requirements, user stories, BRD
-2. **Solution Architect** — System design, API contracts, tech stack
-3. **Software Engineer** — Backend implementation
-4. **Frontend Engineer** — UI components, pages, design system
-5. **QA Engineer** — Tests — unit, integration, e2e, performance
-6. **Security Engineer** — OWASP audit, STRIDE, AI security, runtime detection
-7. **Code Reviewer** — Architecture conformance, code quality, git workflow
-8. **DevOps** — Docker, CI/CD, Terraform, monitoring
-9. **SRE** — SLOs, chaos engineering, runbooks
-10. **Technical Writer** — API docs, dev guides, architecture docs
-11. **Data Scientist** — AI/ML systems, RAG pipelines, agent orchestration
-12. **Debugger** — Bug investigation, root cause analysis, regression testing
-13. **Prompt Engineer** — Prompt design, evaluation, optimization
-14. **API Designer** — REST/GraphQL design, endpoints, error taxonomy
-15. **Database Engineer** — Schema design, migrations, query optimization
-16. **AI Engineer** — MLOps, model serving, fine-tuning, evaluation
-17. **Accessibility Engineer** — WCAG compliance, a11y audit, screen reader
-18. **Performance Engineer** — Load testing, profiling, Core Web Vitals
-19. **UX Researcher** — User research, usability testing, personas
-20. **Data Engineer** — ETL pipelines, data warehouse, dbt, data quality
-21. **Project Manager** — Sprint planning, velocity, risk management
+1. **Business Analyst** — Requirements elicitation, feasibility analysis, critical evaluation, information gatekeeping
+2. **Product Manager** — Requirements, user stories, BRD
+3. **Solution Architect** — System design, API contracts, tech stack
+4. **Software Engineer** — Backend implementation
+5. **Frontend Engineer** — UI components, pages, design system
+6. **QA Engineer** — Tests — unit, integration, e2e, performance
+7. **Security Engineer** — OWASP audit, STRIDE, AI security, runtime detection
+8. **Code Reviewer** — Architecture conformance, code quality, git workflow
+9. **DevOps** — Docker, CI/CD, Terraform, monitoring
+10. **SRE** — SLOs, chaos engineering, runbooks
+11. **Technical Writer** — API docs, dev guides, architecture docs
+12. **Data Scientist** — AI/ML systems, RAG pipelines, agent orchestration
+13. **Debugger** — Bug investigation, root cause analysis, regression testing
+14. **Prompt Engineer** — Prompt design, evaluation, optimization
+15. **API Designer** — REST/GraphQL design, endpoints, error taxonomy
+16. **Database Engineer** — Schema design, migrations, query optimization
+17. **AI Engineer** — MLOps, model serving, fine-tuning, evaluation
+18. **Accessibility Engineer** — WCAG compliance, a11y audit, screen reader
+19. **Performance Engineer** — Load testing, profiling, Core Web Vitals
+20. **UX Researcher** — User research, usability testing, personas
+21. **Data Engineer** — ETL pipelines, data warehouse, dbt, data quality
+22. **Project Manager** — Sprint planning, velocity, risk management
 
 --- Game Development ---
-22. **Game Designer** — GDD, gameplay loops, economy, mechanic specs
-23. **Unity Engineer** — C# game architecture, ScriptableObjects, Editor tools
-24. **Unreal Engineer** — C++/Blueprint, GAS, Nanite/Lumen
-25. **Godot Engineer** — GDScript, scene tree, signals, cross-platform
-26. **Godot Multiplayer** — MultiplayerSpawner, ENet, prediction, dedicated server
-27. **Roblox Engineer** — Luau, DataStore, Roblox Studio, experience design
-28. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
-29. **Narrative Designer** — Branching dialogue, character voice, lore
-30. **Technical Artist** — Shaders, VFX, LOD, performance budgets
-31. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
-32. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
-33. **Unity Multiplayer** — Netcode for GameObjects, relay, prediction
-34. **Unreal Technical Artist** — Niagara, Material Editor, Lumen/Nanite
-35. **Unreal Multiplayer** — Replication, dedicated server, GAS networking
-36. **XR Engineer** — AR/VR/MR, spatial UI, hand tracking, comfort
+23. **Game Designer** — GDD, gameplay loops, economy, mechanic specs
+24. **Unity Engineer** — C# game architecture, ScriptableObjects, Editor tools
+25. **Unreal Engineer** — C++/Blueprint, GAS, Nanite/Lumen
+26. **Godot Engineer** — GDScript, scene tree, signals, cross-platform
+27. **Godot Multiplayer** — MultiplayerSpawner, ENet, prediction, dedicated server
+28. **Roblox Engineer** — Luau, DataStore, Roblox Studio, experience design
+29. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
+30. **Narrative Designer** — Branching dialogue, character voice, lore
+31. **Technical Artist** — Shaders, VFX, LOD, performance budgets
+32. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
+33. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
+34. **Unity Multiplayer** — Netcode for GameObjects, relay, prediction
+35. **Unreal Technical Artist** — Niagara, Material Editor, Lumen/Nanite
+36. **Unreal Multiplayer** — Replication, dedicated server, GAS networking
+37. **XR Engineer** — AR/VR/MR, spatial UI, hand tracking, comfort
 
 --- Growth ---
-37. **Growth Marketer** — Launch strategy, content, channels, SEO
-38. **Conversion Optimizer** — CRO, funnel analysis, A/B testing, retention
+38. **Growth Marketer** — Launch strategy, content, channels, SEO
+39. **Conversion Optimizer** — CRO, funnel analysis, A/B testing, retention
 
-39. **Chat about this** — Free-form input
+40. **Chat about this** — Free-form input
 ```
 
 Execute selected skills in dependency order. If user picks conflicting skills, resolve via the authority hierarchy.
@@ -742,8 +767,16 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
    - If no polymath context, assess the user's request for knowledge gaps:
      - **Vague scope** (no specific problem domain), **no constraints** (scale, budget, team), **complex domain with no domain language**, **contradictory signals**
      - If gaps detected → read `skills/polymath/SKILL.md` and follow its instructions for pre-flight consultation before proceeding. The polymath will research, clarify with the user, and write a context package when ready.
-     - If no gaps → proceed directly. Log: `✓ Request is clear — proceeding to PM`
+     - If no gaps → proceed directly. Log: `✓ Request is clear — proceeding to BA/PM`
    - If user explicitly requests to skip polymath ("just build it", clear detailed spec) → proceed immediately.
+
+7.5. **BA pre-flight check (after Polymath, before PM):**
+   - If `Antigravity-Production-Grade-Suite/business-analyst/handoff/ba-package.md` exists → read it, pass to PM as pre-loaded context. Log: `✓ BA package loaded — requirements pre-validated`
+   - If no BA package, assess the user's request for information completeness using 6W1H:
+     - Score each requirement against: Who, What, Why, Where, When, Which, How
+     - If average score < 6/7 → read `skills/business-analyst/SKILL.md` and follow its instructions. BA will elicit, evaluate, validate, and produce `ba-package.md`.
+     - If score ≥ 6/7 → skip BA. Log: `✓ Requirements sufficiently complete — proceeding to PM`
+   - If user explicitly requests to skip BA ("just build it", detailed spec provided) → proceed immediately.
    - **Context-aware routing (v7.0):** If project-profile shows health issues, suggest addressing them:
      - `health.tests_pass == false` → suggest Harden mode first
      - `risk.known_cves > 0` (Critical/High) → warn and suggest Security audit
