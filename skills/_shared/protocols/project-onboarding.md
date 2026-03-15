@@ -47,12 +47,14 @@ find_by_name(".editorconfig"), find_by_name("biome.json")
 
 Build a knowledge graph of the codebase for deep structural analysis. Powered by [GitNexus](https://github.com/abhigyanpatwari/GitNexus).
 
-**Skip if:** `gitnexus` CLI is not installed, OR project has <10 source files, OR `.gitnexus/` exists and is <24h old.
+**Auto-skip if:** project has <10 source files, OR `.gitnexus/` exists and is <24h old.
 
 ```
 1. Check CLI:
    command -v gitnexus || npx gitnexus --version
-   → If not found: SKIP, set code_intelligence.indexed = false, log warning
+
+   → If NOT found: PAUSE and notify user (see below)
+   → If found: proceed to step 2
 
 2. Index codebase:
    gitnexus analyze              # Build knowledge graph (AST → relationships → clusters)
@@ -76,6 +78,53 @@ Build a knowledge graph of the codebase for deep structural analysis. Powered by
      skills_generated: ["community-a", "community-b", ...]
    }
 ```
+
+### When GitNexus is NOT installed — User Notification
+
+Do NOT silently skip. Pause and present a clear explanation using notify_user:
+
+```
+notify_user:
+  "💡 Code Intelligence chưa được cài đặt
+
+   Forgewright tích hợp sẵn tính năng Code Intelligence — giúp AI
+   hiểu được mối quan hệ giữa các file, function, class trong dự án.
+
+   Lợi ích:
+   • AI biết chính xác sửa 1 hàm thì ảnh hưởng bao nhiêu file khác
+   • Review code chất lượng hơn — phát hiện rủi ro trước khi commit
+   • Debug nhanh hơn — trace ngược chuỗi gọi để tìm root cause
+
+   Cài đặt rất đơn giản (yêu cầu Node.js):
+   npm install -g gitnexus
+
+   Bạn muốn làm gì?"
+  Options:
+  > "Tôi sẽ cài ngay — chờ tôi chạy lệnh trên (Recommended)"
+  > "Bỏ qua — tiếp tục onboarding không cần Code Intelligence"
+  > "Tôi chưa có Node.js — hướng dẫn tôi cài từ đầu"
+  > "Chat about this"
+```
+
+**If user selects "Tôi sẽ cài ngay":**
+- Wait for user to run `npm install -g gitnexus`
+- Verify: `command -v gitnexus` → if found, proceed to step 2
+- If still not found, guide troubleshooting (PATH issues, permissions)
+
+**If user selects "Bỏ qua":**
+- Set `code_intelligence.indexed = false`
+- Continue onboarding normally
+- Log: "Code Intelligence skipped by user choice"
+
+**If user selects "Tôi chưa có Node.js":**
+- Provide platform-specific install instructions:
+  ```
+  macOS:   brew install node
+  Windows: Download from https://nodejs.org (LTS version)
+  Linux:   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt install -y nodejs
+  ```
+- After Node.js installed, guide: `npm install -g gitnexus`
+- Then proceed to step 2
 
 **Error handling:** If `gitnexus analyze` fails (timeout, parse error, etc.), mark as `code_intelligence.indexed = false` — never fail onboarding because of Code Intelligence. Log the error for debugging.
 
