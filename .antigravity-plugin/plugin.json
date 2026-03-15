@@ -1,7 +1,7 @@
 {
   "name": "forge17",
   "description": "Adaptive AI pipeline orchestrator with 47 specialized skills and 19 execution modes. Covers the full software lifecycle — from greenfield builds, features, code review, testing, hardening, deployment, UI/UX design, mobile, to game development (Unity/Unreal/Godot/Roblox), XR, data engineering, MLOps, marketing, and business analysis. Smart routing with parallel execution via git worktrees.",
-  "version": "7.2.0",
+  "version": "7.3.0",
   "author": {
     "name": "buiphucminhtam"
   },

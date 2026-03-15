@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-7.2.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/version-7.3.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-47-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-14-00CED1.svg" alt="Protocols" />
@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/🧪_Testing-Midscene_·_Page_Agent-FF6B35.svg" alt="Testing" />
   <img src="https://img.shields.io/badge/📈_Growth-Marketing_·_CRO-E91E63.svg" alt="Growth" />
   <img src="https://img.shields.io/badge/⚡_Parallel-Git_Worktrees-orange.svg" alt="Parallel" />
+  <img src="https://img.shields.io/badge/🧠_Code_Intelligence-GitNexus-4B0082.svg" alt="Code Intelligence" />
 </p>
 
 <h3 align="center">47 AI Skills · 19 Modes · 14 Protocols · Full Lifecycle Pipeline</h3>
@@ -43,6 +44,13 @@ If Forgewright helps you ship faster, you can support the project here:
 ## Release Timeline
 
 ```
+2026-03-15  v7.3  ●━━━ Code Intelligence & Skill Quality —
+                  │     GitNexus integration: AST → knowledge graph → MCP tools
+                  │     (impact analysis, call chains, community clustering).
+                  │     Skill Maker v2: eval loop, WHY-first philosophy, quality audit.
+                  │     Full quality sweep: 27 fixes across 12 skills.
+                  │     User-friendly install prompt for non-technical users.
+                  │
 2026-03-15  v7.2  ●━━━ Page Agent Patterns & Test Intelligence —
                   │     Graceful Failure protocol (retry limits, stuck detection),
                   │     ReAct structured reasoning for Debugger,
@@ -111,7 +119,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/buiphucminhtam/forgewr
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .antigravity/plugins/production-grade
-git add .gitmodules .antigravity/ && git commit -m "feat: add forgewright v7.2"
+git add .gitmodules .antigravity/ && git commit -m "feat: add forgewright v7.3"
 ```
 
 ### Option C: Standalone Clone
@@ -189,7 +197,7 @@ The orchestrator auto-classifies your request and routes to the right skills:
 | **polymath** | Creative partner + grounded researcher — 6 modes: research (+ NotebookLM MCP), ideate, advise, onboard, translate, synthesize |
 | **parallel-dispatch** | Git worktree-based parallel execution with Task Contracts and anti-hallucination |
 | **memory-manager** | Cross-session memory — TF-IDF search, value-weighted GC, lifecycle hooks |
-| **skill-maker** | Self-extending system — generates 3-5 project-specific custom skills |
+| **skill-maker** | Self-extending system — generates custom skills with eval loop, WHY-first philosophy, quality audit (12-point checklist, A-F grades) |
 
 ### ⚙️ Core Engineering (20)
 
@@ -359,25 +367,29 @@ CEO Agent (Orchestrator)
 └─────────────────────────────────────────────────────┘
 ```
 
-### Project Onboarding & Quality Gates (v7.0)
+### Project Onboarding & Quality Gates (v7.0+)
 
 ```
-┌─────────────────────────────────────────────────────┐
-│              Project Onboarding (v7.0)                │
-│                                                       │
-│  Phase 1: Fingerprint ── tech stack, framework, CI    │
-│  Phase 2: Health Check ── build, tests, lint, CVEs    │
-│  Phase 3: Pattern Analysis ── naming, style, arch     │
-│  Phase 4: Risk Assessment ── tech debt, protected     │
-│  Phase 5: Profile → .forge17/project-profile.json     │
-│                                                       │
-│  📊 Quality Gate: runs after EVERY skill output       │
-│  Level 1: Build     │ Level 2: Regression (brownfield)│
-│  Level 3: Standards │ Level 4: Traceability           │
-│  Score: 0-100 │ Grade: A-F │ Threshold: configurable  │
-│                                                       │
-│  🛡️ Brownfield Safety: git branch + baseline + rollback│
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│               Project Onboarding (v7.3)                    │
+│                                                            │
+│  Phase 1:   Fingerprint ── tech stack, framework, CI       │
+│  Phase 1.5: Code Intelligence ── GitNexus knowledge graph  │
+│             🧠 255 symbols · 383 relationships · 7 clusters│
+│             → impact(), context(), query() for all skills  │
+│             → User-friendly install prompt if not found     │
+│  Phase 2:   Health Check ── build, tests, lint, CVEs       │
+│  Phase 3:   Pattern Analysis ── naming, style, arch        │
+│  Phase 4:   Risk Assessment ── tech debt, protected        │
+│  Phase 5:   Profile → .forge17/project-profile.json        │
+│                                                            │
+│  📊 Quality Gate: runs after EVERY skill output            │
+│  Level 1: Build     │ Level 2: Regression (brownfield)     │
+│  Level 3: Standards │ Level 4: Traceability                │
+│  Score: 0-100 │ Grade: A-F │ Threshold: configurable       │
+│                                                            │
+│  🛡️ Brownfield Safety: git branch + baseline + rollback    │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -559,7 +571,7 @@ TypeScript, Go, Python, Rust, Java, C++ (Unreal), C# (Unity), GDScript (Godot), 
 No. The orchestrator only activates what you need. A backend API may use 8 skills. A full game may use 20+. The BA skill only activates when information gaps are detected.
 
 **What is Code Intelligence?**
-Built-in knowledge graph engine (powered by GitNexus) that indexes your codebase's AST, maps call chains, clusters functional areas, and provides impact analysis. Installed via `npm install -g gitnexus`, auto-indexed during `/onboard`. Gives skills 360° awareness of code relationships.
+Built-in knowledge graph engine (powered by [GitNexus](https://github.com/abhigyanpatwari/GitNexus)) that indexes your codebase's AST, maps call chains, clusters functional areas, and provides impact analysis. Install via `npm install -g gitnexus` — during `/onboard`, if GitNexus isn't found, Forgewright pauses and guides you through installation step by step (including Node.js setup for non-technical users). Once indexed, all skills gain 360° awareness: know exactly which files break when you change a function, trace call chains for debugging, and detect pre-commit risk.
 
 **What is Page Agent DOM testing?**
 A lightweight technique from Alibaba that converts DOM to text instead of screenshots. Works with text-only LLMs (like MiniMax), costs ~$0.001/step. QA Phase 0 auto-recommends it when appropriate.
@@ -590,8 +602,8 @@ MIT
 ---
 
 <p align="center">
-  <strong>Forgewright — 47 AI skills. 19 modes. 14 protocols. SaaS to AAA games. One prompt. Idea to market. ⭐</strong>
+  <strong>Forgewright — 47 AI skills. 19 modes. 14 protocols. Code Intelligence. SaaS to AAA games. One prompt. ⭐</strong>
 </p>
 <p align="center">
-  <em>Validate with zero assumptions. Research with zero hallucinations. Test with smart technique selection. Build games with Unity/Unreal/Godot/Roblox. Ship with quality scoring. Grow with data.</em>
+  <em>Understand relationships, not just files. Validate with zero assumptions. Research with zero hallucinations. Build games across 4 engines. Ship with quality scoring. Grow with data.</em>
 </p>
