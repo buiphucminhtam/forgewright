@@ -244,7 +244,7 @@ git bisect good <last-known-good-commit>
 
 ### Structured Investigation Output (ReAct Pattern)
 
-**At each investigation step**, the debugger MUST produce a structured reasoning record. This prevents circular investigation and enables progress tracking across complex multi-step debugging sessions.
+**At each investigation step**, produce a structured reasoning record — this prevents circular investigation (re-testing the same hypothesis) and enables progress tracking across complex multi-step debugging sessions.
 
 **Format (emit after each investigation action):**
 

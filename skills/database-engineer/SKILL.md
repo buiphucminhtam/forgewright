@@ -336,7 +336,7 @@ Antigravity-Production-Grade-Suite/database-engineer/
 
 | Mistake | Fix |
 |---------|-----|
-| No indexes on foreign keys | ALWAYS index foreign key columns — joins and cascade deletes need them |
+| No indexes on foreign keys | Index foreign key columns — joins and cascade deletes use them, and without indexes these operations trigger full table scans |
 | Using `VARCHAR(255)` everywhere | Use appropriate lengths. Or use `TEXT` if no real limit (PostgreSQL treats them identically) |
 | Auto-increment IDs as public identifiers | Use UUIDs for public-facing IDs. Auto-increment leaks data volume and is guessable |
 | Hard deletes | Soft delete with `deleted_at`. Customer data deletion is a compliance operation, not a SQL DELETE |

@@ -23,7 +23,7 @@ description: >
 If codebase context indicates `brownfield` mode:
 - **READ existing docs first** — don't duplicate what's already documented
 - **Match existing doc style** — if they use JSDoc, use JSDoc. If they have a docs/ site, add to it
-- **NEVER overwrite** existing README, CONTRIBUTING, or API docs
+- **Don't overwrite** existing README, CONTRIBUTING, or API docs — these often contain project-specific customizations (badges, contributor guidelines, deployment notes) that are tedious to reconstruct
 
 ## Engagement Mode
 

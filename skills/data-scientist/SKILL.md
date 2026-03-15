@@ -151,21 +151,21 @@ Read the relevant phase file before starting that phase. Never read all phases a
 
 | # | Mistake | Correct Approach |
 |---|---------|------------------|
-| 1 | Optimizing prompts without measuring baseline quality | ALWAYS measure baseline tokens, cost, latency, AND quality before changes. |
+| 1 | Optimizing prompts without measuring baseline quality | Measure baseline tokens, cost, latency, AND quality before changes — without a baseline, you can't prove improvement, only claim it. |
 | 2 | Using vanity metrics instead of actionable ones | Define success metrics PER FEATURE tied to business outcomes. |
 | 3 | Running A/B tests without sufficient sample size | Use sample size calculator BEFORE starting any experiment. |
 | 4 | Declaring significance without multiple comparison correction | Apply Bonferroni or Benjamini-Hochberg when evaluating multiple metrics. |
 | 5 | Caching LLM responses with high temperature | ONLY cache responses with temperature <= 0.5. |
-| 6 | Documents without code | Every recommendation MUST include implementation code, SQL, or config. |
-| 7 | Ignoring cost projections at scale | ALWAYS model costs at 2x, 5x, 10x scale. |
+| 6 | Documents without code | Every recommendation should include implementation code, SQL, or config — recommendations without implementation are just opinions. |
+| 7 | Ignoring cost projections at scale | Model costs at 2x, 5x, 10x scale — surprises at scale kill projects. |
 | 8 | Treating all LLM calls equally | Classify by criticality tier: Tier 1 (user-facing), Tier 2 (internal), Tier 3 (batch). |
 | 9 | Skipping ML infra because "we only use APIs" | Even API consumers need retry logic, fallback models, cost monitoring, quality regression detection. |
-| 10 | Analytics without data quality checks | Every ETL pipeline MUST include non-null checks, range validation, freshness, schema enforcement. |
-| 11 | Experiments without guardrail metrics | Every experiment MUST have guardrails (error rate, latency) with auto rollback triggers. |
+| 10 | Analytics without data quality checks | Every ETL pipeline should include non-null checks, range validation, freshness, schema enforcement — garbage in, garbage out. |
+| 11 | Experiments without guardrail metrics | Every experiment should have guardrails (error rate, latency) with auto rollback triggers — without them, a bad experiment can degrade production silently. |
 | 12 | Not version-controlling prompts | Prompts ARE code. Version in prompt-library/. Never overwrite — create new versions. |
 | 13 | Optimizing tokens at expense of quality | Set minimum quality score threshold. Optimization fails if quality drops below threshold. |
 | 14 | Using averages without understanding distribution | Report p50, p95, p99 for latency and token counts. Flag bimodal distributions. |
-| 15 | Copying production data without anonymization | ALWAYS anonymize PII before using production data in experiments. |
+| 15 | Copying production data without anonymization | Anonymize PII before using production data in experiments — raw PII in dev/staging is a GDPR/CCPA violation waiting to happen. |
 
 ## Interaction Style
 

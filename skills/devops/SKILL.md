@@ -34,7 +34,7 @@ description: >
 If `Antigravity-Production-Grade-Suite/.orchestrator/codebase-context.md` exists and mode is `brownfield`:
 - **READ existing infrastructure first** — check for Dockerfiles, CI configs, Terraform, K8s manifests
 - **EXTEND, don't replace** — add new services to existing docker-compose, add jobs to existing CI
-- **NEVER overwrite** — existing Dockerfile, workflows, or Terraform state
+- **Don't overwrite** existing Dockerfile, workflows, or Terraform state — these contain production-critical configuration that, if lost, can cause deployment failures or infrastructure drift
 - **Match existing patterns** — if they use GitHub Actions, don't create GitLab CI. If they use Pulumi, don't create Terraform
 
 ## Overview

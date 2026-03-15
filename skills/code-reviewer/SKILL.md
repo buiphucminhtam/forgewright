@@ -81,7 +81,7 @@ Antigravity-Production-Grade-Suite/code-reviewer/
 
 ## Severity Levels
 
-Every finding MUST be assigned exactly one severity level. Use these definitions consistently.
+Every finding should be assigned exactly one severity level — consistent severity grading lets the developer prioritize fixes efficiently and prevents "alert fatigue" from mis-categorized issues. Use these definitions:
 
 | Severity | Definition | Action Required | Examples |
 |----------|-----------|----------------|---------|

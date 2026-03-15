@@ -202,7 +202,7 @@ In addition to static audit, recommend runtime security patterns for production 
 
 **Applies when auditing AI features (Phase 6) or any code that sends user data through an LLM.**
 
-Inspired by [Page Agent](https://github.com/alibaba/page-agent)'s data masking architecture — any pipeline sending user content through an LLM MUST have a masking layer.
+Inspired by [Page Agent](https://github.com/alibaba/page-agent)'s data masking architecture — any pipeline sending user content through an LLM should have a masking layer, because raw PII in prompts creates data exfiltration risk and compliance violations (GDPR Article 25).
 
 ### Audit Checklist
 

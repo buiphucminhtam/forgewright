@@ -560,7 +560,7 @@ Read these from the plugin's `skills/_shared/protocols/` directory and copy them
    Project profile: .forge17/project-profile.json
 
    ## Rules for all agents
-   - NEVER overwrite existing files without explicit user approval
+   - Don't overwrite existing files without explicit user approval — blindly replacing files can destroy production-critical configuration or break existing consumers that depend on current signatures
    - READ .forge17/code-conventions.md and MATCH existing code style
    - ADD to existing directories, don't replace them
    - If a file exists at the target path, create alongside it or extend it
@@ -603,7 +603,7 @@ All skills read this file at startup to adapt their depth. The engagement mode c
 
 5b. **Execution strategy — Scope Analysis & Recommendation:**
 
-Before asking the user, the orchestrator MUST analyze the project scope and generate a data-driven recommendation. This runs AFTER Gate 2 (architecture approved), when the full scope is known.
+Before asking the user, the orchestrator should analyze the project scope and generate a data-driven recommendation — this avoids wasting the user's time with uninformed "how would you like to proceed?" questions. This runs AFTER Gate 2 (architecture approved), when the full scope is known.
 
 **Step 5b-1: Scope Metrics Collection**
 
@@ -826,7 +826,7 @@ Call these hooks at the appropriate lifecycle points:
 ## User Experience Protocol
 
 Follow the shared UX Protocol at `Antigravity-Production-Grade-Suite/.protocols/ux-protocol.md`. Key rules:
-1. **NEVER** ask open-ended questions — always use notify_user with predefined numbered options
+1. **Don't** ask open-ended questions — always use notify_user with predefined numbered options (open-ended questions stall the pipeline because the model can't proceed without parsing free-text responses)
 2. **"Chat about this"** always last option
 3. **Recommended option first** with `(Recommended)` suffix
 4. **Continuous execution** — work until next gate or completion

@@ -162,8 +162,8 @@ for task in T3a T3b T3c; do
   Read CONTRACT.json in this directory. It defines:
   - What files you CAN read (inputs)
   - What directories you CAN write to (outputs)
-  - What you MUST NOT do (constraints)
-  - What you MUST deliver (acceptance criteria)
+  - What you cannot do (constraints)
+  - What you need to deliver (acceptance criteria)
 
   ## Your Skill
   Read the skill file specified in the contract. Follow its instructions exactly.

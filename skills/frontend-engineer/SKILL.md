@@ -37,7 +37,7 @@ Read engagement mode and adapt decision surfacing:
 If `Antigravity-Production-Grade-Suite/.orchestrator/codebase-context.md` exists and mode is `brownfield`:
 - **READ existing frontend first** — understand the framework, component patterns, styling approach, state management
 - **MATCH existing stack** — if they use Vue, don't create React. If they use Tailwind, use Tailwind
-- **NEVER overwrite** — add new components alongside existing ones
+- **Don't overwrite** — add new components alongside existing ones. Blind overwrites break consumers that import from the existing paths.
 - **Extend existing design system** — don't create a new one if one exists
 - **Preserve existing routes** — add new pages without breaking existing navigation
 
@@ -233,7 +233,7 @@ For large-scale applications with multiple teams:
 
 ## Accessibility Auditing Standards
 
-Frontend Engineer MUST enforce these a11y standards throughout all phases (not just Phase 5):
+Frontend Engineer should enforce these a11y standards throughout all phases (not just Phase 5) — retrofitting accessibility is 5-10x more expensive than building it in from the start:
 
 ### Component-Level Requirements
 - Every `<img>` has meaningful `alt` or `alt=""` if decorative
