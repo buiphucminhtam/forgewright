@@ -488,6 +488,7 @@ mkdir -p Antigravity-Production-Grade-Suite/.orchestrator/
 | `quality-gate.md` | Universal per-skill validation: 4 levels (build, regression, standards, traceability), quality scoring 0-100, configurable thresholds |
 | `brownfield-safety.md` | Safety net for existing projects: git branching, baseline snapshots, protected paths, change manifest, regression checks, rollback |
 | `quality-dashboard.md` | Quality scoring & reporting: real-time tracking, final dashboard, machine-readable JSON reports, cross-session trending, early warning |
+| `graceful-failure.md` | Retry limits, stuck detection, graceful exit format, failure categories — prevents skills from looping on impossible tasks |
 
 Read these from the plugin's `skills/_shared/protocols/` directory and copy them. If plugin path is unavailable, write from the summaries above.
 

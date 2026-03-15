@@ -198,6 +198,53 @@ In addition to static audit, recommend runtime security patterns for production 
 4. **Audit trail** — Immutable log of all sensitive operations (data deletion, role changes, config changes)
 5. **Honeypot endpoints** — Create fake admin/debug endpoints that trigger immediate alerts when accessed
 
+## LLM Data Pipeline Safety
+
+**Applies when auditing AI features (Phase 6) or any code that sends user data through an LLM.**
+
+Inspired by [Page Agent](https://github.com/alibaba/page-agent)'s data masking architecture — any pipeline sending user content through an LLM MUST have a masking layer.
+
+### Audit Checklist
+
+| Check | What to Look For | Severity if Missing |
+|-------|-----------------|---------------------|
+| **PII in prompts** | User names, emails, phone numbers flowing into LLM prompts | Critical |
+| **API keys in context** | Tokens, secrets, credentials passed as prompt context | Critical |
+| **Session data leakage** | Auth tokens, session IDs included in LLM requests | High |
+| **Financial data** | Credit card numbers, bank accounts in training/prompt data | Critical |
+| **Health data** | Medical records, health info flowing to third-party LLM APIs | Critical (HIPAA) |
+| **Logging exposure** | LLM request/response pairs logged with unmasked PII | High |
+
+### Required Pattern: Mask → Process → Unmask
+
+```
+User Input → [PII Masking Layer] → LLM API → [Response Unmask] → User Output
+                  ↓                                    ↑
+           Masked tokens stored          Reverse lookup to restore
+           in session memory             original values
+```
+
+**Implementation requirements:**
+1. **Input sanitizer** — Strip or tokenize PII before constructing LLM prompts
+2. **Allowlist/blocklist** — Configurable list of fields that must never reach the LLM
+3. **Audit logging** — Log what was masked and when (without logging the actual PII)
+4. **Response validation** — Ensure LLM responses don't hallucinate sensitive data patterns
+5. **Third-party LLM awareness** — If using external APIs (OpenAI, Anthropic, etc.), warn if PII flows to third-party servers without consent
+
+### Red Flags in Code Review
+
+```
+❌ fetch(llmEndpoint, { body: JSON.stringify({ prompt: userProfile }) })
+❌ const response = await openai.chat({ messages: [{ content: rawUserData }] })
+❌ logger.info("LLM request:", { prompt, response })  // logging full prompts
+
+✅ const maskedInput = piiMasker.mask(userInput)
+✅ const response = await llm.chat(maskedInput)
+✅ logger.info("LLM request completed", { requestId, tokenCount })  // safe logging
+```
+
+---
+
 ## Common Mistakes
 
 | Mistake | Fix |

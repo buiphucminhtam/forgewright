@@ -15,6 +15,7 @@ description: >
 !`cat Antigravity-Production-Grade-Suite/.protocols/ux-protocol.md 2>/dev/null || true`
 !`cat Antigravity-Production-Grade-Suite/.protocols/input-validation.md 2>/dev/null || true`
 !`cat Antigravity-Production-Grade-Suite/.protocols/tool-efficiency.md 2>/dev/null || true`
+!`cat Antigravity-Production-Grade-Suite/.protocols/graceful-failure.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 !`cat Antigravity-Production-Grade-Suite/.orchestrator/codebase-context.md 2>/dev/null || true`
 
@@ -239,6 +240,32 @@ git bisect good <last-known-good-commit>
 - [specific code, log line, data state]
 **Conclusion:** [why this is/isn't the root cause]
 ```
+
+### Structured Investigation Output (ReAct Pattern)
+
+**At each investigation step**, the debugger MUST produce a structured reasoning record. This prevents circular investigation and enables progress tracking across complex multi-step debugging sessions.
+
+**Format (emit after each investigation action):**
+
+```json
+{
+  "evaluation_previous_step": "Checked auth service logs for the error pattern — found 3 matching entries with timeout errors. Verdict: H1 partially confirmed.",
+  "memory": "H1 (DB timeout) confirmed in logs. Found pool exhaustion at peak hours (14:00-16:00). H2 (race condition) still open. Checked files: auth-service/handler.ts, auth-service/db.ts.",
+  "next_goal": "Read the connection pool configuration in auth-service/config.ts to verify pool size limits.",
+  "action": { "read_file": { "path": "services/auth/config.ts", "lines": "1-30" } }
+}
+```
+
+**Rules:**
+1. `evaluation_previous_step` — Always state verdict: **Success**, **Failed**, **Inconclusive**. Never assume an action succeeded without evidence.
+2. `memory` — Track what has been checked, what remains, counters (files read, hypotheses tested). This prevents re-checking the same evidence.
+3. `next_goal` — One clear sentence describing the immediate next action.
+4. `action` — The tool call to execute.
+
+**Stuck detection (per graceful-failure protocol):**
+- If `memory` shows same items checked 2+ times → STUCK → escalate to user
+- If 3 consecutive steps show no new evidence → STOP investigation → report partial findings
+- If `evaluation_previous_step` shows "Inconclusive" 3+ times → try completely different approach or ask user for more context
 
 ---
 
