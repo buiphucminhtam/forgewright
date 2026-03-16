@@ -610,6 +610,18 @@ MIT
 
 ---
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=buiphucminhtam%2Fforgewright&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=buiphucminhtam/forgewright&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=buiphucminhtam/forgewright&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=buiphucminhtam/forgewright&type=date&legend=top-left" />
+ </picture>
+</a>
+
+---
+
 <p align="center">
   <strong>Forgewright — 47 AI skills. 19 modes. 14 protocols. Code Intelligence. SaaS to AAA games. One prompt. ⭐</strong>
 </p>
