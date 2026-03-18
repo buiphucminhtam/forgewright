@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/version-7.5.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-48-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
-  <img src="https://img.shields.io/badge/protocols-14-00CED1.svg" alt="Protocols" />
+  <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
   <img src="https://img.shields.io/badge/vibe-coded_%F0%9F%8E%B5-ff69b4.svg" alt="Vibe Coded" />
 </p>
 
@@ -21,7 +21,7 @@
   <img src="https://img.shields.io/badge/🧠_Code_Intelligence-GitNexus-4B0082.svg" alt="Code Intelligence" />
 </p>
 
-<h3 align="center">48 AI Skills · 19 Modes · 14 Protocols · Full Lifecycle Pipeline</h3>
+<h3 align="center">48 AI Skills · 19 Modes · 15 Protocols · Full Lifecycle Pipeline</h3>
 
 <p align="center">
   <strong>Research → Design → Build → Test → Secure → Deploy → Market → Grow</strong><br />
@@ -428,7 +428,7 @@ CEO Agent (Orchestrator)
 | **Go-to-Market** | SEO, AEO/GEO, copywriting, campaigns, funnel CRO, A/B testing |
 | **Parallel dispatch** | Git worktree-based with anti-hallucination pipeline |
 | **3 approval gates** | Everything between gates is fully autonomous |
-| **14 shared protocols** | UX, input validation, tool efficiency, conflict resolution, task contracts, project onboarding, session lifecycle, quality gate, brownfield safety, quality dashboard, graceful failure, code intelligence |
+| **15 shared protocols** | UX, input validation, tool efficiency, conflict resolution, task contracts, project onboarding, session lifecycle, quality gate, brownfield safety, quality dashboard, graceful failure, code intelligence, paperclip integration |
 | **Quality scoring** | 0-100 per-skill scoring with A-F grades, cross-session trending |
 | **Persistent memory** | TF-IDF search, auto-refresh, lifecycle hooks — survives session resets |
 | **4 engagement modes** | Express, Standard, Thorough, Meticulous |
@@ -497,6 +497,7 @@ brownfield:
 | `"Build a game with Godot"` | Game Designer → Godot Engineer → Level/Audio |
 | `"Marketing strategy"` | Growth Marketer → Conversion Optimizer |
 | `"Test on Android/iOS"` | Mobile Tester (AI vision) |
+| `"Set up Paperclip"` | Multi-agent orchestration (optional) |
 
 ---
 
@@ -632,7 +633,7 @@ MIT
 ---
 
 <p align="center">
-  <strong>Forgewright — 48 AI skills. 19 modes. 14 protocols. Code Intelligence. SaaS to AAA games. One prompt. ⭐</strong>
+  <strong>Forgewright — 48 AI skills. 19 modes. 15 protocols. Code Intelligence. SaaS to AAA games. One prompt. ⭐</strong>
 </p>
 <p align="center">
   <em>Understand relationships, not just files. Validate with zero assumptions. Research with zero hallucinations. Build games across 4 engines. Ship with quality scoring. Grow with data.</em>

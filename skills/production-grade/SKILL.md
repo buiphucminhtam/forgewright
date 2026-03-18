@@ -41,6 +41,24 @@ Adaptive meta-skill orchestrator for all software engineering work. Analyzes the
 
 Before any execution, classify the user's request into a mode. This determines which skills run and how.
 
+### Paperclip Detection (Optional)
+
+Before classifying, check if this session is managed by [Paperclip](https://github.com/paperclipai/paperclip):
+
+```
+Paperclip indicators: ticket reference (#42, CLIP-, [paperclip]),
+heartbeat context, budget mention, agent identity
+```
+
+If detected:
+1. Read `skills/_shared/protocols/paperclip-integration.md`
+2. Switch to **Express** engagement mode (fully autonomous)
+3. Apply ticket scope discipline (stay within assigned task)
+4. Use structured output format for Paperclip consumption
+5. Apply cost-awareness rules
+
+If not detected → proceed normally (no changes).
+
 **Step 1 — Analyze the request:**
 
 Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
@@ -318,7 +336,10 @@ Which skills do you need? (list the numbers separated by commas)
 --- Data Acquisition ---
 40. **Web Scraper** — Secure web crawling (crawl4ai), URL validation, output sanitization, CSS/LLM extraction
 
-41. **Chat about this** — Free-form input
+--- Integration ---
+41. **Paperclip** (optional) — Multi-agent orchestration, ticket management, budget control, heartbeat scheduling
+
+42. **Chat about this** — Free-form input
 ```
 
 Execute selected skills in dependency order. If user picks conflicting skills, resolve via the authority hierarchy.

@@ -41,6 +41,7 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 | "Build AI feature / RAG..." | AI Build | AI Engineer + Prompt Engineer + Data Scientist |
 | "Scrape/crawl website" | AI Build | Web Scraper + AI Engineer (if RAG) |
 | "Analyze requirements..." | Analyze | Business Analyst (elicit, evaluate, validate) |
+| "Set up Paperclip" | — | Setup multi-agent orchestration (optional) |
 
 ## Available Workflows
 
@@ -49,6 +50,7 @@ Users can invoke these workflows directly:
 - `/update` — Check for and install updates
 - `/pipeline` — Show full pipeline reference and available modes
 - `/setup-mobile-test` — Set up plug-and-play mobile testing (Android/iOS)
+- `/setup-paperclip` — Set up Paperclip multi-agent orchestration (optional)
 - `/onboard` — Run deep project analysis (creates `.forgewright/project-profile.json`)
 
 ## Auto-Update Check
@@ -106,6 +108,8 @@ All 48 skills are in the `skills/` directory:
 | Conversion Optimizer | `skills/conversion-optimizer/SKILL.md` |
 | **Data Acquisition** | |
 | Web Scraper | `skills/web-scraper/SKILL.md` |
+| **Integration** | |
+| Paperclip Protocol | `skills/_shared/protocols/paperclip-integration.md` |
 | **Game Development** | |
 | Game Designer | `skills/game-designer/SKILL.md` |
 | Unity Engineer | `skills/unity-engineer/SKILL.md` |
@@ -134,6 +138,7 @@ All 48 skills are in the `skills/` directory:
 | Quality Dashboard Protocol | `skills/_shared/protocols/quality-dashboard.md` |
 | Graceful Failure Protocol | `skills/_shared/protocols/graceful-failure.md` |
 | Code Intelligence Protocol | `skills/_shared/protocols/code-intelligence.md` |
+| Paperclip Integration Protocol | `skills/_shared/protocols/paperclip-integration.md` |
 | Worktree Manager | `scripts/worktree-manager.sh` |
 | Memory CLI | `scripts/mem0-cli.py` |
 | Mobile Test Setup | `scripts/mobile-test-setup.sh` |
