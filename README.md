@@ -435,16 +435,172 @@ CEO Agent (Orchestrator)
 
 ---
 
-## Integration Guide
+## Full Power Setup
 
-### Setup Scripts
+Forgewright works out of the box with just **Step 1**. Each additional step unlocks more capabilities — install as many as you want.
+
+### Power Levels
+
+| Level | What You Get | Steps Needed |
+|-------|-------------|-------------|
+| ⚡ **Basic** (48 skills) | Full pipeline: DEFINE → BUILD → HARDEN → SHIP | Step 1 only |
+| ⚡⚡ **Smart** (+code understanding) | Blast radius analysis, safe refactoring, call chain tracing | + Step 2 |
+| ⚡⚡⚡ **Persistent** (+cross-session memory) | Remembers decisions, blockers, progress across sessions | + Step 3 |
+| ⚡⚡⚡⚡ **Research** (+grounded research) | NotebookLM podcasts, source analysis, deep research | + Step 4 |
+| ⚡⚡⚡⚡⚡ **Full Power** (+scraping +testing +multi-agent) | Web crawling, AI vision testing, autonomous agent teams | + Steps 5-7 |
+
+---
+
+### Step 1 — Install Forgewright (Required)
+
+> **Prerequisites:** Git, [Antigravity](https://antigravity.google) or Gemini CLI
+
+```bash
+# macOS/Linux — one-liner
+curl -sO https://raw.githubusercontent.com/buiphucminhtam/forgewright/main/setup.sh
+chmod +x setup.sh && ./setup.sh install
+
+# Windows (PowerShell)
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/buiphucminhtam/forgewright/main/setup.ps1" -OutFile "setup.ps1"
+.\setup.ps1 install
+
+# Or: manual git submodule
+git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .antigravity/plugins/production-grade
+```
+
+✅ **Verify:** Open Antigravity, type anything — Forgewright auto-routes through the orchestrator.
+
+🔓 **Unlocks:** 48 skills, 19 modes, 15 protocols, full lifecycle pipeline.
+
+---
+
+### Step 2 — Code Intelligence via GitNexus (Recommended)
+
+> **Prerequisites:** Node.js 18+
+
+[GitNexus](https://github.com/abhigyanpatwari/GitNexus) builds a knowledge graph of your codebase — symbols, call chains, execution flows. Forgewright auto-reindexes at session start and end.
+
+```bash
+# Install and index your project
+npm install -g gitnexus
+npx gitnexus analyze
+
+# Optional: Add MCP server to Antigravity settings
+# "gitnexus": { "command": "npx", "args": ["gitnexus", "mcp"] }
+```
+
+✅ **Verify:** `npx gitnexus status` — shows symbol count and index freshness.
+
+🔓 **Unlocks:** `impact()` blast radius, `context()` 360° symbol view, `detect_changes()` pre-commit risk, `rename()` safe multi-file rename.
+
+> Auto-refresh: Forgewright reindexes automatically — no manual `analyze` needed after first setup.
+
+---
+
+### Step 3 — Persistent Memory via mem0 (Recommended)
+
+> **Prerequisites:** Python 3.8+ (stdlib only, zero pip dependencies)
+
+Cross-session memory so Forgewright remembers decisions, blockers, and progress.
+
+```bash
+# Initialize (run from Forgewright directory)
+python3 scripts/mem0-cli.py setup
+
+# Ingest current project state
+python3 scripts/mem0-cli.py refresh
+```
+
+✅ **Verify:** `python3 scripts/mem0-cli.py stats` — shows memory count and categories.
+
+🔓 **Unlocks:** Decision recall across sessions, blocker tracking, auto-resume interrupted pipelines, TF-IDF semantic search, value-weighted garbage collection.
+
+---
+
+### Step 4 — Research Intelligence via NotebookLM MCP (Optional)
+
+> **Prerequisites:** Google account, Python 3.10+
+
+Gives Polymath skill deep research capabilities — grounded analysis with real sources.
+
+```bash
+pip install notebooklm-mcp
+nlm login
+
+# Add to MCP config:
+# "notebooklm": { "command": "nlm", "args": ["mcp"] }
+```
+
+✅ **Verify:** Say *"Deep research on [topic]"* — creates notebook, adds sources, synthesizes findings.
+
+🔓 **Unlocks:** Grounded research, podcast generation, study guides, mind maps, flashcards, slide decks, source querying.
+
+---
+
+### Step 5 — Web Scraping via crawl4ai (Optional)
+
+> **Prerequisites:** Python 3.10+
+
+Secure web crawling for JS-rendered sites that `read_url_content` can't handle.
+
+```bash
+pip install "crawl4ai>=0.8.0"
+```
+
+✅ **Verify:** Auto-detected. Say *"Scrape [URL]"* or *"Crawl [website]"*.
+
+🔓 **Unlocks:** JS-rendered page crawling, CSS/LLM extraction, deep crawling (50 pages, 3 levels), SSRF protection.
+
+---
+
+### Step 6 — AI Vision Testing via Midscene.js (Optional)
+
+> **Prerequisites:** Node.js 18+, Android device/emulator or iOS simulator
+
+AI-powered visual testing on real devices — tap, swipe, and verify screens with natural language.
+
+```bash
+npm install -g @anthropic-ai/midscene
+
+# Android: verify device
+adb devices
+
+# iOS (macOS only): verify simulator
+xcrun simctl list
+```
+
+✅ **Verify:** Say *"Test on Android"* or *"Test on iOS"* — launches Mobile Tester skill.
+
+🔓 **Unlocks:** AI vision testing on real devices, natural language test steps, cross-platform screenshot comparison.
+
+---
+
+### Step 7 — Multi-Agent via Paperclip (Optional)
+
+> **Prerequisites:** Node.js 20+, pnpm 9.15+
+
+Multiple AI agents working as a company — goals, tickets, budgets, heartbeat scheduling.
+
+```bash
+npx paperclipai onboard --yes
+cd paperclip && pnpm dev
+# Dashboard: http://localhost:3100
+```
+
+✅ **Verify:** Open `http://localhost:3100` — Paperclip dashboard appears.
+
+🔓 **Unlocks:** Multi-agent coordination, automated ticket assignment, agents work while you sleep, budget tracking.
+
+> Forgewright auto-detects Paperclip context and switches to Express mode (fully autonomous).
+
+---
+
+### Quick Reference
 
 | Platform | Install | Update | Status | Uninstall |
 |----------|---------|--------|--------|-----------|
 | **macOS/Linux** | `./setup.sh install` | `./setup.sh update` | `./setup.sh status` | `./setup.sh uninstall` |
 | **Windows** | `.\setup.ps1 install` | `.\setup.ps1 update` | `.\setup.ps1 status` | `.\setup.ps1 uninstall` |
-
-**Requirements:** Antigravity or Gemini CLI, Docker & Docker Compose, Git.
 
 ### Custom Config (`.production-grade.yaml`)
 
