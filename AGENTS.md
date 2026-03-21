@@ -1,10 +1,10 @@
 # Forgewright — Production Grade AI Pipeline
 
-> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 48 specialized skills.
+> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 49 specialized skills.
 
 ## What is Forgewright?
 
-Forgewright is an adaptive orchestrator with **48 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Roblox game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
+Forgewright is an adaptive orchestrator with **49 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Roblox game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
 
 **Pipeline:** `DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
@@ -102,6 +102,7 @@ All 48 skills are in the `skills/` directory:
 | Performance Engineer | `skills/performance-engineer/SKILL.md` |
 | UX Researcher | `skills/ux-researcher/SKILL.md` |
 | Data Engineer | `skills/data-engineer/SKILL.md` |
+| XLSX Engineer | `skills/xlsx-engineer/SKILL.md` |
 | Project Manager | `skills/project-manager/SKILL.md` |
 | **Growth** | |
 | Growth Marketer | `skills/growth-marketer/SKILL.md` |

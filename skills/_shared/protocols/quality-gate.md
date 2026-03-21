@@ -13,6 +13,27 @@
 
 Execute levels in order. Each level has a severity that determines whether to STOP or WARN.
 
+### Level 0 — Plan Quality (Critical — blocks implementation)
+
+**Runs BEFORE implementation, not after.** See `plan-quality-loop.md` for full protocol.
+
+```
+1. Every planning step scores the plan against 8 criteria (completeness, specificity,
+   feasibility, risk awareness, scope control, dependency ordering, testability, impact)
+
+2. Score < threshold (default 8.0/10.0) → LEARN + RESEARCH + IMPROVE loop
+   - Identify weak criteria
+   - Research best practices and codebase patterns for weak areas
+   - Log lessons to .forgewright/plan-lessons.md
+   - Re-plan with lessons + research context (max 3 iterations)
+
+3. Score ≥ threshold → proceed to implementation
+```
+
+**On failure (3 iterations, still below threshold):** Escalate to user with best plan + quality report.
+
+**Applies to:** ALL skill invocations. Every skill must plan before acting, score the plan, and improve until ≥ threshold. Plan depth scales by skill type (see protocol for details).
+
 ### Level 1 — Syntax & Build (Critical — blocks pipeline)
 
 ```

@@ -115,6 +115,38 @@ If the user selects "full pipeline" from any mode, switch to Full Build.
 
 For non-Full-Build modes, use the lightweight execution flows below. For Full Build, use the Full Build Pipeline.
 
+## Coding-Level Adaptation
+
+Read `codingLevel` from `.production-grade.yaml` (default: 8). Adapt ALL skill output accordingly:
+
+```yaml
+# .production-grade.yaml
+codingLevel: 8  # 1-10 scale (default: 8 = senior/terse)
+```
+
+| Level | Style | Output Behavior |
+|-------|-------|-----------------|
+| **1-3** (Junior) | **Guided** | Detailed explanations for every decision. Inline comments on complex logic. Link to relevant docs/tutorials. Explain WHY, not just WHAT. Step-by-step instructions for manual steps. |
+| **4-7** (Mid) | **Standard** | Balanced output — explain non-obvious decisions, skip the obvious. Standard inline comments. Focus on trade-offs and alternatives. |
+| **8-10** (Senior) | **Terse** | Code-focused, minimal commentary. Only flag unexpected decisions or gotchas. Diff-style output preferred. No tutorials, no hand-holding. Assume deep familiarity with tools and patterns. |
+
+**Rules:**
+- If `codingLevel` is not set, default to **Standard (5)**
+- Coding level affects **output verbosity**, NOT **code quality** — all levels produce production-grade code
+- Engagement Mode (Express/Standard/Thorough/Meticulous) controls **interaction depth** — coding level controls **explanation depth**. They are independent dimensions.
+
+## Sensitive File Protection
+
+All skills MUST follow the sensitive file protection protocol:
+
+!`cat skills/_shared/protocols/sensitive-file-protection.md 2>/dev/null || echo "Protocol not found — apply defaults: never read .env without user approval, redact secrets in output, check .gitignore before commit"`
+
+## Plan Quality Loop
+
+**ALL skills** MUST run the plan quality loop before doing any work. No exceptions — every skill plans first, scores, improves until ≥ 8.0:
+
+!`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 8 criteria, threshold 8.0/10, improve loop with research + skill self-improvement"`
+
 ## Mode Execution (Non-Full-Build)
 
 All modes share these behaviors:
@@ -122,6 +154,9 @@ All modes share these behaviors:
 - Write shared protocols (same as Full Build step 3)
 - Read `.production-grade.yaml` for path overrides
 - Read existing workspace state if present
+- Apply coding-level adaptation from `.production-grade.yaml` (see above)
+- Apply sensitive file protection protocol for all file operations
+- **Run plan quality loop** on EVERY skill invocation — plan first, score ≥ 8.0 before any work begins
 - Engagement mode: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution.
 
 ### Feature Mode
@@ -311,35 +346,36 @@ Which skills do you need? (list the numbers separated by commas)
 20. **UX Researcher** — User research, usability testing, personas
 21. **Data Engineer** — ETL pipelines, data warehouse, dbt, data quality
 22. **Project Manager** — Sprint planning, velocity, risk management
+23. **XLSX Engineer** — Excel spreadsheet creation, financial models, formula-driven reports, data formatting
 
 --- Game Development ---
-23. **Game Designer** — GDD, gameplay loops, economy, mechanic specs
-24. **Unity Engineer** — C# game architecture, ScriptableObjects, Editor tools
-25. **Unreal Engineer** — C++/Blueprint, GAS, Nanite/Lumen
-26. **Godot Engineer** — GDScript, scene tree, signals, cross-platform
-27. **Godot Multiplayer** — MultiplayerSpawner, ENet, prediction, dedicated server
-28. **Roblox Engineer** — Luau, DataStore, Roblox Studio, experience design
-29. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
-30. **Narrative Designer** — Branching dialogue, character voice, lore
-31. **Technical Artist** — Shaders, VFX, LOD, performance budgets
-32. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
-33. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
-34. **Unity Multiplayer** — Netcode for GameObjects, relay, prediction
-35. **Unreal Technical Artist** — Niagara, Material Editor, Lumen/Nanite
-36. **Unreal Multiplayer** — Replication, dedicated server, GAS networking
-37. **XR Engineer** — AR/VR/MR, spatial UI, hand tracking, comfort
+24. **Game Designer** — GDD, gameplay loops, economy, mechanic specs
+25. **Unity Engineer** — C# game architecture, ScriptableObjects, Editor tools
+26. **Unreal Engineer** — C++/Blueprint, GAS, Nanite/Lumen
+27. **Godot Engineer** — GDScript, scene tree, signals, cross-platform
+28. **Godot Multiplayer** — MultiplayerSpawner, ENet, prediction, dedicated server
+29. **Roblox Engineer** — Luau, DataStore, Roblox Studio, experience design
+30. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
+31. **Narrative Designer** — Branching dialogue, character voice, lore
+32. **Technical Artist** — Shaders, VFX, LOD, performance budgets
+33. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
+34. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
+35. **Unity Multiplayer** — Netcode for GameObjects, relay, prediction
+36. **Unreal Technical Artist** — Niagara, Material Editor, Lumen/Nanite
+37. **Unreal Multiplayer** — Replication, dedicated server, GAS networking
+38. **XR Engineer** — AR/VR/MR, spatial UI, hand tracking, comfort
 
 --- Growth ---
-38. **Growth Marketer** — Launch strategy, content, channels, SEO
-39. **Conversion Optimizer** — CRO, funnel analysis, A/B testing, retention
+39. **Growth Marketer** — Launch strategy, content, channels, SEO
+40. **Conversion Optimizer** — CRO, funnel analysis, A/B testing, retention
 
 --- Data Acquisition ---
-40. **Web Scraper** — Secure web crawling (crawl4ai), URL validation, output sanitization, CSS/LLM extraction
+41. **Web Scraper** — Secure web crawling (crawl4ai), URL validation, output sanitization, CSS/LLM extraction
 
 --- Integration ---
-41. **Paperclip** (optional) — Multi-agent orchestration, ticket management, budget control, heartbeat scheduling
+42. **Paperclip** (optional) — Multi-agent orchestration, ticket management, budget control, heartbeat scheduling
 
-42. **Chat about this** — Free-form input
+43. **Chat about this** — Free-form input
 ```
 
 Execute selected skills in dependency order. If user picks conflicting skills, resolve via the authority hierarchy.
