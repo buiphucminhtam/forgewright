@@ -130,6 +130,49 @@ notify_user:
 
 **Output:** Populate `code_intelligence` section of project profile. See `code-intelligence.md` protocol for usage by downstream skills.
 
+## Phase 1.6 — MCP Server Generation (Auto after Code Intelligence)
+
+Generates a project-specific MCP server that exposes codebase intelligence to any MCP-compatible client. Powered by `mcp-generator` skill.
+
+**Auto-skip if:** `code_intelligence.indexed == false`, OR `.forgewright/mcp-server/` exists and is <24h old.
+
+```
+1. Check prerequisites:
+   - code_intelligence.indexed == true (from Phase 1.5)
+   - Node.js available (command -v node)
+   → If Code Intelligence not indexed: SKIP — MCP requires GitNexus data
+   → If Node.js missing: SKIP with note to user
+
+2. Generate MCP server:
+   - Read project-profile.json for project name, language, framework
+   - Detect available commands (test, lint, build) from profile
+   - Render templates from skills/mcp-generator/templates/ into .forgewright/mcp-server/
+   - Replace Handlebars variables: {{projectName}}, {{testCommand}}, etc.
+
+3. Install dependencies:
+   cd .forgewright/mcp-server/ && npm install --silent
+
+4. Populate profile:
+   mcp_server: {
+     generated: true,
+     path: ".forgewright/mcp-server/",
+     tools_count: N,       // count of enabled tools
+     resources_count: N,    // count of enabled resources
+     prompts_count: 3,
+     transport: "stdio",
+     generated_at: "ISO-8601"
+   }
+
+5. Output client config snippets:
+   - Claude Desktop / Antigravity config
+   - Cursor config
+   - VS Code config
+```
+
+**Error handling:** If MCP generation fails, mark as `mcp_server.generated = false` — never fail onboarding because of MCP. Log the error for debugging.
+
+**Output:** Generate `.forgewright/mcp-server/` directory and populate `mcp_server` section of project profile. See `skills/mcp-generator/SKILL.md` for full details.
+
 ## Phase 2 — Health Check
 
 Run project health checks based on detected stack:

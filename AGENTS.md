@@ -58,6 +58,7 @@ Users can invoke these workflows directly:
 - `/setup-mobile-test` — Set up plug-and-play mobile testing (Android/iOS)
 - `/setup-paperclip` — Set up Paperclip multi-agent orchestration (optional)
 - `/onboard` — Run deep project analysis (creates `.forgewright/project-profile.json`)
+- `/mcp` — Start auto-generated project-specific MCP server
 
 ## Auto-Update Check
 
@@ -72,7 +73,7 @@ If a newer version exists, mention it briefly: *"Forgewright update available (v
 
 ## Skills Directory
 
-All 48 skills are in the `skills/` directory:
+All 49 skills are in the `skills/` directory:
 
 | Skill | Location |
 |-------|----------|
@@ -82,6 +83,7 @@ All 48 skills are in the `skills/` directory:
 | Parallel Dispatch | `skills/parallel-dispatch/SKILL.md` |
 | Memory Manager | `skills/memory-manager/SKILL.md` |
 | Skill Maker | `skills/skill-maker/SKILL.md` |
+| MCP Generator | `skills/mcp-generator/SKILL.md` |
 | **Engineering** | |
 | Business Analyst | `skills/business-analyst/SKILL.md` |
 | Product Manager | `skills/product-manager/SKILL.md` |
