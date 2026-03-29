@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-7.5.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/version-7.7.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-48-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
@@ -45,6 +45,11 @@ If Forgewright helps you ship faster, you can support the project here:
 ## Release Timeline
 
 ```
+2026-03-29  v7.7  ●━━━ Unity Engineer 100% Vibe Coding Upgrade —
+                  │     A-to-Z Game generation. Direct REST API injection for GameObjects/UI.
+                  │     Multimodal Vision QA loop for automated blockout/HUD self-correction.
+                  │     NotebookLM Anti-Hallucination protocol safeguards C# API generation.
+                  │
 2026-03-26  v7.6  ●━━━ Global Dry Run & Auto-Evolution —
                   │     Zero-risk refactoring sandbox. Agent formulates .diff patch,
                   │     self-scores logic (Threshold >= 9.0). If < 9.0, enters Dark Loop

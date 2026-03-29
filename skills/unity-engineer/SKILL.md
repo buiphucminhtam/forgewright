@@ -21,6 +21,10 @@ tags: [unity, c-sharp, scriptable-objects, dots, game-development, editor-tools,
 
 **Fallback & Context Engineering (2026 Standard):** Before you start, **ask the user any clarifying questions you need so they can give you more context.** Be extremely comprehensive to prevent assumption-filling. Validate inputs before starting — classify missing info as Critical (stop/ask), Degraded (warn/continue partial), or Optional (skip silently). Leverage Self-Consistency checks for complex architectural routing (e.g., DOTS vs. GameObject).
 
+**NotebookLM Anti-Hallucination Protocol (On-Demand & Upgrades):** Do NOT run NotebookLM on every routine task (it slows down execution and wastes tokens). Rely on your internal knowledge for standard C#, GameObjects, and typical physics. **ONLY** use the `nlm-skill` integration (`nlm` CLI) in two cases:
+1. **Bleeding-edge APIs:** The task involves highly specific, frequently changing Unity 6+ features (e.g., Netcode for Entities, Render Graph API, complex UI Toolkit Runtime Bindings) where your internal knowledge might be hallucinated.
+2. **Periodic Skill Upgrades:** You are tasked with researching new architectural patterns to bake into this `SKILL.md` or the project's `.forgewright/code-conventions.md`.
+
 #### Engagement Mode
 !cat .forgewright/settings.md 2>/dev/null || echo "No settings — using Standard"
 
@@ -152,14 +156,30 @@ Read `.production-grade.yaml` at startup. Use these overrides if defined:
 
 ---
 
-#### Integration with Unity Skills MCP (2026 Standards)
-If the `unity-skills` MCP server is available, leverage it as an Agentic AI extension for:
-*   **Automated scene setup** — create GameObjects, set components, and configure Addressables via REST/MCP API.
-*   **AST-aware code chunking** — reliably inject new methods into large existing C# scripts without breaking compilation.
-*   **Verified Package pulling** — automatically fetch signed, verified packages from the Unity Asset Store or internal registries.
-*   **UI Toolkit generation** — instantly generate `.uxml` and `.uss` layouts from text descriptions or design specs.
+#### 100% Vibe Coding Integration via Unity REST API
 
-Check availability: `list_resources(ServerName="unity-skills")`
+For 100% Vibe Coding of 3D mid-core games, you must take physical action in the open Unity Editor rather than asking the user to click randomly. There is a Python REST API helper script at `~/.gemini/antigravity/skills/unity-skills/scripts/unity_skills.py` that you must invoke. **Do NOT hallucinate MCP tool definitions (e.g., `list_resources`); use the `run_command` tool to execute Python.**
+
+**To invoke Unity Editor commands:**
+1. Execute a command with Python. Example template:
+   ```bash
+   python -c "import sys; sys.path.insert(0, '/Users/buiphucminhtam/.gemini/antigravity/skills/unity-skills/scripts'); from unity_skills import call_skill, is_unity_running, wait_for_unity; print(call_skill('gameobject_create', name='Hero', primitiveType='Cube', x=0, y=1, z=0))"
+   ```
+2. Validate Unity is running (`is_unity_running()`).
+3. Chain commands into a `.py` script if building complex scenes, then execute.
+
+**Vibe Coding Directives (Art & Tech Director Role):**
+*   **Kitbashing (Asset Injection):** Ask the user to import their downloaded 3D assets (FBX/Prefabs). Once imported, YOU take over. Find assets (`asset_find`), instantiate them (`prefab_instantiate`), and physically attach your compiled C# components (`component_add`).
+*   **Automated Scene Blockouts:** Build greybox environments yourself using `gameobject_create_batch` for floors, walls, and lighting. Do not wait for the user to block it out.
+*   **Lighting & Atmosphere (The 'Vibe'):** Read the user's emotional prompt. Modify the scene atmosphere dynamically with `light_set_properties` (Directional intensity, color, shadows) to nail the requested vibe (e.g., moody, bright, celestial).
+*   **Domain Reload Pauses:** When writing a C# script to disk (`script_create` or file edit), the Unity Editor will recompile. You MUST call `wait_for_unity(timeout=10)` right after creating the file and BEFORE trying to attach that component.
+*   **Deep Scene Perception:** ALWAYS run `call_skill('scene_summarize')` before editing unfamiliar scenes to understand the AST-level hierarchy without guessing.
+*   **A-to-Z UI/HUD Automation (uGUI):** Do not ask the user to manually create Canvases or setup UI Toolkit if creating rapid builds. Use `call_skill('ui_create_batch', ...)` to programmatically build the entire Canvas, Panels, Text, and HUD. Use `ui_set_anchor` and `ui_set_rect` to perfectly align health bars, minimaps, and buttons so the user never has to drag elements.
+*   **Visual QA & Self-Correction (The Feedback Loop):** Once you have generated the UI, lighting, or blocked out the level, you MUST verify it visually.
+    1. Call `call_skill('camera_screenshot', savePath='/tmp/vibe_check.png', width=1920, height=1080)` or `scene_screenshot`.
+    2. Read `/tmp/vibe_check.png` to visually inspect the scene.
+    3. Multimodal Analysis: Check if the UI overlaps gameplay elements, if the lighting is too dark/bright, or if objects are floating.
+    4. Self-Correct: If issues are found, issue corrective REST queries (e.g., `gameobject_set_transform`, `light_set_properties`, `ui_set_rect`). Do not ask the user to fix it!
 
 ---
 
@@ -207,3 +227,8 @@ Check availability: `list_resources(ServerName="unity-skills")`
 *  [ ] Object pooling (`UnityEngine.Pool`) implemented for frequent instantiations.
 *  [ ] Assembly definitions (`asmdef`) created for optimal CoreCLR compilation speed.
 *  [ ] Platform-specific build settings (GPU Resident Drawer, Render Graph) configured.
+*  [ ] Vibe Coding Validation: Automated scene blockouts/kitbashing implemented via Python REST API instead of asking user to click.
+*  [ ] Vibe Coding Validation: C# script compilation (Domain Reload) handled successfully via `wait_for_unity` before component attachment.
+*  [ ] Vibe Coding Validation: UI & HUD completely set up via `ui_create_*` APIs without manual intervention.
+*  [ ] Vibe Coding Validation: Visual QA performed via `scene_screenshot`, analyzed multimodally, and self-corrected.
+*  [ ] Anti-Hallucination Protocol: Verified complex C# APIs or Architectural Patterns using NotebookLM prior to implementation.
