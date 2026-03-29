@@ -7,6 +7,7 @@
 !cat skills/_shared/protocols/input-validation.md 2>/dev/null || true
 !cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true
 !cat skills/_shared/protocols/code-intelligence.md 2>/dev/null || true
+!cat skills/_shared/protocols/runtime-healing.md 2>/dev/null || true
 !cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"
 !cat .forgewright/codebase-context.md 2>/dev/null || true
 
@@ -43,6 +44,9 @@ Write code before the test? **Delete it. Start over.**
 *   Don't "adapt" it while writing tests.
 *   Delete means delete.
 Implement fresh from tests. Period.
+
+**Pre-Commit Verification Mandate:** You MUST use terminal commands (`npm run test`, `dotnet test`, `pytest`, etc.) and receive a "PASSED" console output before pushing code up the pipeline.
+**Log Stream Watchdog:** Running tests compiling is not enough. You MUST comply with `runtime-healing.md` to tail execution logs and ensure Zero Exceptions.
 
 *Crucial 2026 Context:* Approximately 40% of AI-generated code suggestions contain security vulnerabilities [4]. Tests MUST serve as your security perimeter. 
 

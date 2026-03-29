@@ -13,6 +13,7 @@ description: >
 !cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true 
 !cat skills/_shared/protocols/input-validation.md 2>/dev/null || true 
 !cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true 
+!cat skills/_shared/protocols/runtime-healing.md 2>/dev/null || true 
 !cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults" 
 !cat .forgewright/codebase-context.md 2>/dev/null || true
 
@@ -53,6 +54,7 @@ This skill produces output in two locations: test deliverables (code, configs, f
 1. Write unit tests focusing on business logic coverage, catching edge cases that "happy path" tests miss [16].
 2. Write integration tests using testcontainers or docker-compose to validate interactions with real dependencies [17].
 3. For AI features, implement prompt evaluations and scenario-based testing to measure reasoning quality and failure modes [18].
+4. **Chaos Engineering & Negative Data Injection:** You MUST deliberately craft test inputs designed to break the system (e.g., `null`, negative currency, mismatched enums, rapid multi-clicks). At least 40% of the test suite MUST be negative edge-case validation.
 
 ##### Phase 3 — Playwright AI Ecosystem (Web E2E)
 **Goal:** Implement resilient browser automation using the 2026 Playwright AI ecosystem [19].
@@ -88,6 +90,8 @@ This skill produces output in two locations: test deliverables (code, configs, f
 Before marking the skill as complete, verify:
 * [ ] `.forgewright/qa-engineer/test-plan.md` utilizes spec-driven verification, reading the spec rather than the diff [4].
 * [ ] Deterministic unit and integration tests are written to `tests/unit/` and `tests/integration/` [3].
+* [ ] At least 40% of test assertions validate Negative Edge-Cases (Chaos Engineering). Gate 3 will auto-reject if missing.
+* [ ] You have verified the runtime logs according to `runtime-healing.md` and confirm 0 unexpected exceptions.
 * [ ] Playwright MCP is configured utilizing the accessibility tree instead of brittle screenshots [20].
 * [ ] AI self-healing is active for Playwright tests, with the Healer agent configured [22].
 * [ ] Mobile tests are authored in Maestro (YAML) for rapid iteration and readability [26].
