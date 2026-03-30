@@ -16,6 +16,7 @@ tags: [game-design, gdd, gameplay-loop, economy, mechanics, balancing, progressi
 !cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true
 !cat skills/_shared/protocols/input-validation.md 2>/dev/null || true
 !cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true
+!cat skills/_shared/protocols/ai-2d-asset-pipeline.md 2>/dev/null || true
 !cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"
 !cat .forgewright/codebase-context.md 2>/dev/null || true
 
@@ -67,9 +68,11 @@ This skill is the very first step in the Game Build mode AFTER Concept extractio
 | **Skill Ceiling** | Low (casual) / Medium (mid-core) / High (competitive/esports) |
 | **Monetization** | Premium / F2P (Cosmetic IAP) / Hybrid / Subscription |
 | **AI Integration** | None / AI-Driven NPCs / Agentic Generation / Dynamic Ecosystems |
+| **Art Pipeline** | Hand-crafted (BYOA) / AI Generated (Grid-based / Nano Banana) |
 
 5. **Anchor the format:** Write `game-design-document.md` header starting strictly with: Elevator pitch, Design Pillars, Target Player, Platform, and Technical Scope.
-**Output:** `.forgewright/game-designer/game-design-document.md`
+6. **MCP Profile Injection:** Update `.forgewright/project-profile.json` with the core identity (Genre, Platform, Networking, Art Pipeline) so the Forgewright MCP Server retains the DNA permanently across sessions.
+**Output:** `.forgewright/game-designer/game-design-document.md`, `.forgewright/project-profile.json`
 
 ---
 
@@ -89,7 +92,7 @@ This skill is the very first step in the Game Build mode AFTER Concept extractio
    - **Progression:** How completion advances the player.
 3. Design **Procedural & Scalable Progression:**
    - **XP / Leveling Curve:** Explicit mathematical formulas (e.g., `xp = base * (level ^ 1.5)`).
-   - **PCG Rules:** Define how procedural content generation scales with player progression (e.g., biome generation, dynamic difficulty).
+   - **PCG Rules:** Define how procedural content generation scales with player progression (e.g., biome generation, dynamic difficulty). You MUST output exact pseudocode or logic rulesets (e.g., Cellular Automata constants, BSP tree properties) for the Level Designer / Engineers.
 4. Design **Engagement & LiveOps Hooks:**
    - Open Cloud config update strategies for live events.
    - Social hooks, asynchronous multiplayer, or user-generated content (UGC) integrations.
@@ -184,9 +187,11 @@ Include a **Visual Feedback Table** mapping player actions to responses:
 
 #### Execution Checklist
 * [ ] Clarifying questions asked and answered (Context Engineering complete).
+* [ ] MCP Profile (`project-profile.json`) updated with Game DNA (Genre, Platform, Pipeline).
 * [ ] Design pillars defined (3-5 principles).
 * [ ] Target player profile documented (platform, session, networking, monetization).
 * [ ] Core loop hierarchy designed (micro → encounter → macro).
+* [ ] PCG Rules defined algorithmically via pseudocode (if applicable).
 * [ ] Progression system with mathematical XP curve formulas and unlock schedules.
 * [ ] Engagement hooks (daily, weekly, social, LiveOps events).
 * [ ] Economy with balanced sinks/sources and FinOps-aware currency flow.
