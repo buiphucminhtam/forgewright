@@ -479,7 +479,7 @@ Build a game from concept to live operations. Full production-grade AA/AAA game 
    1. **Bring Your Own Assets (BYOA)** (Provide a folder with existing assets)
    2. **AI Automated Generation / Procedural Kitbashing** (Nano Banana / Procedural tools)
    ```
-   If option [2], enforce `skills/_shared/protocols/ai-2d-asset-pipeline.md` or `ai-3d-procedural-pipeline.md` for generation.
+   If option [2], enforce `skills/_shared/protocols/ai-2d-asset-pipeline.md` or `ai-3d-procedural-pipeline.md` for generation. **CRITICAL:** Do NOT attempt to generate raw 3D meshes (FBX/OBJ) via code. Always prioritize Kitbashing externally downloaded assets.
 4. **Growth & Monetization** — `skills/growth-marketer/SKILL.md` & `skills/conversion-optimizer/SKILL.md` — establish target audience, business model (F2P/Premium), and core monetization loops BEFORE design begins.
 5. **Game Designer** — `skills/game-designer/SKILL.md` — design pillars, core loop, economy maps, mechanic specs, integrating monetization seamlessly into gameplay.
 6. **Engine Engineer (Architecture & Vertical Slice)** — based on chosen engine:
@@ -487,6 +487,8 @@ Build a game from concept to live operations. Full production-grade AA/AAA game 
    - Unreal: `skills/unreal-engineer/SKILL.md` — C++ architecture, GAS, AI, Blueprint layer
    - Godot: `skills/godot-engineer/SKILL.md` — scene tree, signals, Resources, core export
    *Goal: Build core systems AND a functional Vertical Slice to prove the "Fun" factor.*
+   
+7. **Game Feel Parameter Tuning (Human-in-the-Loop):** Generate a `GameFeelSettings` asset (e.g., ScriptableObject) exposing Screen Shake, Hit-stop delays, and movement speeds. The Engineer MUST halt the pipeline here and require the User to physically playtest and tune these sliders. Unit tests cannot verify "Juice" or "Fun".
 
 **Phase 2: Production (Parallel Content Creation)**
 
