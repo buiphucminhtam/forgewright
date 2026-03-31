@@ -173,6 +173,29 @@ Generates a project-specific MCP server that exposes codebase intelligence to an
 
 **Output:** Generate `.forgewright/mcp-server/` directory and populate `mcp_server` section of project profile. See `skills/mcp-generator/SKILL.md` for full details.
 
+## Phase 1.7 — BMAD Organism-Context Setup
+
+Establish a "Company Handbook" to enforce uniform coding standards across all agents. This prevents "vibe coding" and maintains strict architectural alignment.
+
+```
+1. Create directory:
+   mkdir -p .forgewright/knowledge_base/
+
+2. Initialize handbook:
+   IF .forgewright/knowledge_base/HANDBOOK.md does NOT exist:
+     - Create it.
+     - Provide a template structure for developers to add custom business rules or extracted patterns.
+
+3. Populate profile:
+   organism_context: {
+     initialized: true,
+     handbook_path: ".forgewright/knowledge_base/HANDBOOK.md",
+     initialized_at: "ISO-8601"
+   }
+```
+
+**Output:** Generate `.forgewright/knowledge_base/HANDBOOK.md` template and populate `organism_context` in project profile.
+
 ## Phase 2 — Health Check
 
 Run project health checks based on detected stack:

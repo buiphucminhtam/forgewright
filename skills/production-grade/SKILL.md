@@ -177,6 +177,7 @@ All modes share these behaviors:
 - Write shared protocols (same as Full Build step 3)
 - Read `.production-grade.yaml` for path overrides
 - Read existing workspace state if present
+- **Load Organism-Context Memory:** Read `.forgewright/knowledge_base/HANDBOOK.md` if exists. Conflict Arbiter: Local Rules OVERRIDE Default Rules.
 - Apply coding-level adaptation from `.production-grade.yaml` (see above)
 - **Apply Contextual Tool Denials:** Ensure the skill running knows the current Mode. If Mode is `Review`, `Explore`, or `Analyze`, the Guardrail protocol strictly denies ALL file writes and mutating commands.
 - Apply sensitive file protection protocol for all file operations
@@ -583,9 +584,10 @@ Run AFTER update check, BEFORE mode classification. Follows `skills/_shared/prot
    - If last session completed → log summary, continue to new request
    - If first session → continue normally
 
-3. **Load memory context:**
+3. **Load memory context & Organism-Context:**
    - If memory-manager configured → retrieve top-5 project context (max 800 tokens)
-   - If not configured → read `.forgewright/code-conventions.md` if exists
+   - Read `.forgewright/knowledge_base/HANDBOOK.md` if exists (Conflict Arbiter: Local Handbook rules OVERRIDE Skill rules)
+   - Read `.forgewright/code-conventions.md` if exists
 
 4. **Detect manual changes:**
    - If git available → check commits since last session
@@ -695,10 +697,12 @@ Read these from the plugin's `skills/_shared/protocols/` directory and copy them
    Framework: [detected]
    Existing paths: [mapping]
    Code conventions: .forgewright/code-conventions.md
+   Company handbook: .forgewright/knowledge_base/HANDBOOK.md
    Project profile: .forgewright/project-profile.json
 
    ## Rules for all agents
    - Don't overwrite existing files without explicit user approval — blindly replacing files can destroy production-critical configuration or break existing consumers that depend on current signatures
+   - READ .forgewright/knowledge_base/HANDBOOK.md and strictly follow its rules. If it conflicts with your SKILL.md rules, the HANDBOOK overrides your default instructions.
    - READ .forgewright/code-conventions.md and MATCH existing code style
    - ADD to existing directories, don't replace them
    - If a file exists at the target path, create alongside it or extend it
