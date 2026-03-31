@@ -34,6 +34,58 @@
 
 ---
 
+## 🏗️ Architecture Flow (v8.0)
+
+Forgewright implements a robust **DeerFlow Middleware Pattern** intertwined with **Organism-Context Memory** to guarantee zero "vibe coding".
+
+```mermaid
+flowchart TD
+    User([User Request]) --> Orch[Orchestrator<br>production-grade/SKILL.md]
+    
+    subgraph Context Engine
+        KB[(knowledge_base/HANDBOOK.md)]
+        Neo4j[(GitNexus Intelligence)]
+        Profile[(project-profile.json)]
+    end
+    
+    Orch --> BMAD{Organism-Context<br>Injection Phase}
+    KB -.-> BMAD
+    Neo4j -.-> BMAD
+    Profile -.-> BMAD
+    
+    BMAD --> GR[Guardrail Middleware<br>Contextual Tool Denials]
+    
+    subgraph Execution Swarm
+        direction LR
+        FE[Frontend Agent<br>React/Vue]
+        BE[Backend Agent<br>Node/Go]
+        SRE[Security/DevOps<br>Audit & Deploy]
+        Game[Game Engine<br>Unity/Unreal]
+    end
+    
+    GR -- Mutating Allowed --> Execution Swarm
+    GR -- Read-only Modes --> Reject((Action Blocked))
+    
+    Execution Swarm --> QA{Quality Gate<br>Architecture Parity Audit}
+    QA -- Pass --> Arbiter[Merge Arbiter<br>Conflict Resolution]
+    QA -- Fail/Drift Detected --> Execution Swarm
+    
+    Arbiter --> Out([Production Quality Code])
+    
+    %% Styling
+    classDef core fill:#2d1b4e,stroke:#9d72ff,stroke-width:2px,color:#fff;
+    classDef agent fill:#0a4b3c,stroke:#20b2aa,stroke-width:2px,color:#fff;
+    classDef memory fill:#522d14,stroke:#e67e22,stroke-width:2px,color:#fff;
+    classDef shield fill:#660000,stroke:#ff3333,stroke-width:2px,color:#fff;
+    
+    class Orch,QA,Arbiter core;
+    class FE,BE,SRE,Game agent;
+    class KB,Neo4j,Profile,BMAD memory;
+    class GR,Reject shield;
+```
+
+---
+
 ## ☕ Support
 
 If Forgewright helps you ship faster, you can support the project here:
