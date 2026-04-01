@@ -329,87 +329,86 @@ You give a high-level vision. 52 specialized skills handle everything else.
 ### The Pipeline
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '13px'}}}%%
 flowchart TD
-    %% Pre-flight
-    U["👤 User Input"] --> CI["Step -1: chat-interpreter<br/>9-dimension extraction<br/>mode detection<br/><b>Cursor subagent · fast</b>"]
+    U["User Input"] --> CI["Step -1: chat-interpreter<br/>9-dimension extraction<br/>mode detection<br/>Cursor subagent · fast"]
     CI --> MCP["Step 0.1: MCP & GitNexus Check"]
     MCP --> SS["Step 0.5: Session Start<br/>Load project-profile.json"]
     SS --> SC["Step 0.6: Subagent Context<br/>PIPELINE_SUMMARY + REVIEWER_CONTRACT<br/>SECURITY_STANDARDS (HARDEN)"]
-    
+
     SC --> DEFINE
-    
-    %% DEFINE Phase
+
     subgraph DEFINE["DEFINE Phase"]
         T0["Business Analyst<br/>6W1H elicitation<br/>Information Gate"] --> G1{"GATE 1<br/>Approve BRD?"}
-        G1 -->|Approve| PM
-        PM["Product Manager<br/>BRD + User Stories"] --> G1
-        G1 -->|Approve| T2
-        T2["Solution Architect<br/>ADRs + API Contracts<br/>Data Models"] --> G2{"GATE 2<br/>Approve Architecture?"}
+        G1 -->|Approve| PM["Product Manager<br/>BRD + User Stories"]
+        PM --> G1
+        G1 -->|Approve| T2["Solution Architect<br/>ADRs + API Contracts<br/>Data Models"]
+        T2 --> G2{"GATE 2<br/>Approve Architecture?"}
         G2 -->|Approve| BUILD
     end
-    
-    %% BUILD Phase - Parallel Group A
-    subgraph BUILD["BUILD Phase — Parallel Group A (git worktrees)"]
-        direction LR
-        T3a["Software Engineer<br/>Backend Services<br/><b>Worktree: .worktrees/T3a</b>"] -.-> |"after delivery"| S1A["<b>spec-reviewer</b><br/>PASS / FAIL<br/><i>fast model</i>"]
-        S1A -.-> |"if PASS"| S2A["<b>quality-reviewer</b><br/>Score 0-10<br/><i>inherit model</i>"]
-        S2A -.-> |"HARDEN only"| S6A["<b>security-auditor</b><br/>OWASP Top 10<br/>MITRE CWE · readonly<br/><i>inherit model</i>"]
-        
-        T3b["Frontend Engineer<br/>Pages<br/><b>Worktree: .worktrees/T3b</b>"] -.-> |"after delivery"| S1B["<b>spec-reviewer</b><br/>PASS / FAIL"]
-        S1B -.-> |"if PASS"| S2B["<b>quality-reviewer</b><br/>Score 0-10"]
-        
-        T3c["Mobile Engineer<br/>Mobile App [cond.]<br/><b>Worktree: .worktrees/T3c</b>"] -.-> |"after delivery"| S1C["<b>spec-reviewer</b><br/>PASS / FAIL"]
-        S1C -.-> |"if PASS"| S2C["<b>quality-reviewer</b><br/>Score 0-10"]
-        
-        S1A & S2A --> M1["CEO Merge Arbiter<br/>Clean merge<br/>Integration test"]
-        S1B & S2B --> M1
-        S1C & S2C --> M1
-    end
-    
+
     G2 -->|Approve| BUILD
-    BUILD --> T4["DevOps<br/>Dockerfiles + CI skeleton"]
-    T4 --> CW["✅ Code Written & Validated"]
-    
-    CW --> HARDEN
-    
-    %% HARDEN Phase - Parallel Group B
-    subgraph HARDEN["HARDEN Phase — Parallel Group B (git worktrees)"]
+
+    subgraph BUILD["BUILD Phase - Parallel Group A (git worktrees)"]
         direction LR
-        T5["QA Engineer<br/>Tests: unit/integration/e2e<br/>Playwright + Midscene"] -.-> |"after delivery"| S1D["<b>spec-reviewer</b><br/>PASS / FAIL"]
-        S1D -.-> |"if PASS"| S2D["<b>quality-reviewer</b><br/>Score 0-10"]
-        
-        T6a["Security Engineer<br/>STRIDE + OWASP<br/>PII + Supply Chain"] -.-> |"always"| S6B["<b>security-auditor</b><br/>OWASP Top 10<br/>MITRE CWE · readonly"]
-        
-        T6b["Code Reviewer<br/>Arch conformance<br/>Quality review"] -.-> |"after delivery"| S1E["<b>spec-reviewer</b><br/>PASS / FAIL"]
-        S1E -.-> |"if PASS"| S2E["<b>quality-reviewer</b><br/>Score 0-10"]
-        
-        S1D & S2D --> M2["CEO Merge Arbiter<br/>Prioritize fixes"]
-        S6B --> M2
-        S1E & S2E --> M2
+        T3a["Software Engineer<br/>Backend Services<br/>Worktree: .worktrees/T3a"] -.->|"after delivery"| S1A["spec-reviewer<br/>PASS / FAIL<br/>fast model"]
+        S1A -.->|"if PASS"| S2A["quality-reviewer<br/>Score 0-10<br/>inherit model"]
+
+        T3b["Frontend Engineer<br/>Pages<br/>Worktree: .worktrees/T3b"] -.->|"after delivery"| S1B["spec-reviewer<br/>PASS / FAIL"]
+        S1B -.->|"if PASS"| S2B["quality-reviewer<br/>Score 0-10"]
+
+        T3c["Mobile Engineer<br/>Mobile App (cond.)<br/>Worktree: .worktrees/T3c"] -.->|"after delivery"| S1C["spec-reviewer<br/>PASS / FAIL"]
+        S1C -.->|"if PASS"| S2C["quality-reviewer<br/>Score 0-10"]
+
+        S1A --> M1["CEO Merge Arbiter<br/>Clean merge<br/>Integration test"]
+        S2A --> M1
+        S1B --> M1
+        S2B --> M1
+        S1C --> M1
+        S2C --> M1
     end
-    
+
+    BUILD --> T4["DevOps<br/>Dockerfiles + CI skeleton"]
+    T4 --> CW["Code Written & Validated"]
+
+    CW --> HARDEN
+
+    subgraph HARDEN["HARDEN Phase - Parallel Group B (git worktrees)"]
+        direction LR
+        T5["QA Engineer<br/>Tests: unit/integration/e2e<br/>Playwright + Midscene"] -.->|"after delivery"| S1D["spec-reviewer<br/>PASS / FAIL"]
+        S1D -.->|"if PASS"| S2D["quality-reviewer<br/>Score 0-10"]
+
+        T6a["Security Engineer<br/>STRIDE + OWASP<br/>PII + Supply Chain"] -.->|"always"| S6B["security-auditor<br/>OWASP Top 10<br/>MITRE CWE · readonly"]
+
+        T6b["Code Reviewer<br/>Arch conformance<br/>Quality review"] -.->|"after delivery"| S1E["spec-reviewer<br/>PASS / FAIL"]
+        S1E -.->|"if PASS"| S2E["quality-reviewer<br/>Score 0-10"]
+
+        S1D --> M2["CEO Merge Arbiter<br/>Prioritize fixes"]
+        S2D --> M2
+        S6B --> M2
+        S1E --> M2
+        S2E --> M2
+    end
+
     M2 --> T7["DevOps IaC<br/>CI/CD + Branch Strategy"]
     T7 --> T8["Remediation<br/>Fix HARDEN findings"]
     T8 --> T9["SRE<br/>SLOs + Error Budgets<br/>Chaos Engineering"]
-    
-    T9 --> G3{"GATE 3<br/>⚡ <b>verifier</b> subagent<br/>CONFIRM all complete<br/><b>Before user sees Gate 3</b>"}
+
+    T9 --> G3{"GATE 3<br/>verifier subagent<br/>CONFIRM all complete<br/>Before user sees Gate 3"}
     G3 -->|"verifier: PASS"| SHIP
-    
+
     subgraph SHIP["SHIP Phase"]
-        T10["Data Scientist [cond.]<br/>AI/ML projects only"]
+        T10["Data Scientist (cond.)<br/>AI/ML projects only"]
     end
-    
+
     subgraph SUSTAIN["SUSTAIN + GROW Phase"]
         T11["Technical Writer<br/>API docs + Dev guides"]
         T12["Skill Maker"]
         T13["Growth Marketer<br/>SEO + Go-to-market"]
         T14["Conversion Optimizer<br/>CRO + A/B Testing"]
     end
-    
+
     SHIP --> SUSTAIN
-    G3 -->|"user: Ship it?"|
-    USER["🚀 Ship it?<br/>Production Ready"]
+    G3 -->|"user: Ship it?"| USER["Ship it?<br/>Production Ready"]
 ```
 
 **3 approval gates. Parallel execution in git worktrees. Two-stage review per task via Cursor subagents.**
@@ -419,51 +418,56 @@ flowchart TD
 ### Cursor Subagent Review Workflow
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '12px'}}}%%
 flowchart LR
     subgraph PREP["Subagent Context Preparation (Step 0.6)"]
-        P1["PIPELINE_SUMMARY.md<br/>≤ 2,000 tokens<br/>phase + architecture"] --> P2["REVIEWER_CONTRACT.md<br/>per-task<br/>scope + acceptance criteria"]
+        P1["PIPELINE_SUMMARY.md<br/>max 2000 tokens<br/>phase + architecture"] --> P2["REVIEWER_CONTRACT.md<br/>per-task<br/>scope + acceptance criteria"]
         P2 --> P3["SECURITY_STANDARDS.md<br/>OWASP checklist<br/>severity guide<br/>(HARDEN only)"]
     end
-    
+
     PREP --> WAVE1
-    
-    subgraph WAVE1["Wave 1: BUILD — Parallel Workers"]
-        W1a["T3a: Software Engineer<br/>DELIVERY.json"] --> R1A["spec-reviewer<br/><b>fast</b><br/>PASS / FAIL<br/>vs CONTRACT.json"]
-        R1A -->|"PASS"| R2A["quality-reviewer<br/><b>inherit</b><br/>Score 0-10<br/>Arch + Naming<br/>+ Anti-hallucination"]
-        
-        W1b["T3b: Frontend Engineer<br/>DELIVERY.json"] --> R1B["spec-reviewer<br/><b>fast</b><br/>PASS / FAIL"]
-        R1B -->|"PASS"| R2B["quality-reviewer<br/><b>inherit</b><br/>Score 0-10"]
-        
-        W1c["T3c: Mobile Engineer<br/>DELIVERY.json"] --> R1C["spec-reviewer<br/><b>fast</b><br/>PASS / FAIL"]
-        R1C -->|"PASS"| R2C["quality-reviewer<br/><b>inherit</b><br/>Score 0-10"]
-        
-        R2A & R2B & R2C --> MA["CEO Merge Arbiter<br/>Clean merge<br/>Integration test"]
+
+    subgraph WAVE1["Wave 1: BUILD - Parallel Workers"]
+        W1a["T3a: Software Engineer<br/>DELIVERY.json"] --> R1A["spec-reviewer<br/>fast<br/>PASS / FAIL<br/>vs CONTRACT.json"]
+        R1A -->|"PASS"| R2A["quality-reviewer<br/>inherit<br/>Score 0-10<br/>Arch + Naming<br/>Anti-hallucination"]
+
+        W1b["T3b: Frontend Engineer<br/>DELIVERY.json"] --> R1B["spec-reviewer<br/>fast<br/>PASS / FAIL"]
+        R1B -->|"PASS"| R2B["quality-reviewer<br/>inherit<br/>Score 0-10"]
+
+        W1c["T3c: Mobile Engineer<br/>DELIVERY.json"] --> R1C["spec-reviewer<br/>fast<br/>PASS / FAIL"]
+        R1C -->|"PASS"| R2C["quality-reviewer<br/>inherit<br/>Score 0-10"]
+
+        R2A --> MA["CEO Merge Arbiter<br/>Clean merge<br/>Integration test"]
+        R2B --> MA
+        R2C --> MA
     end
-    
+
     MA --> WAVE2
-    
-    subgraph WAVE2["Wave 2: HARDEN — Parallel Workers"]
-        W5["T5: QA Engineer<br/>DELIVERY.json"] --> R1D["spec-reviewer<br/><b>fast</b><br/>PASS / FAIL"]
-        R1D -->|"PASS"| R2D["quality-reviewer<br/><b>inherit</b><br/>Score 0-10"]
-        
-        W6a["T6a: Security Engineer<br/>DELIVERY.json"] --> SA["security-auditor<br/><b>inherit</b><br/>OWASP Top 10<br/>MITRE CWE Top 25<br/><i>readonly</i>"]
-        
-        W6b["T6b: Code Reviewer<br/>DELIVERY.json"] --> R1E["spec-reviewer<br/><b>fast</b><br/>PASS / FAIL"]
-        R1E -->|"PASS"| R2E["quality-reviewer<br/><b>inherit</b><br/>Score 0-10"]
-        
-        R1D & R2D & SA & R1E & R2E --> MB["CEO Merge Arbiter<br/>VALIDATION.json<br/>Escalate if CRITICAL"]
+
+    subgraph WAVE2["Wave 2: HARDEN - Parallel Workers"]
+        W5["T5: QA Engineer<br/>DELIVERY.json"] --> R1D["spec-reviewer<br/>fast<br/>PASS / FAIL"]
+        R1D -->|"PASS"| R2D["quality-reviewer<br/>inherit<br/>Score 0-10"]
+
+        W6a["T6a: Security Engineer<br/>DELIVERY.json"] --> SA["security-auditor<br/>inherit<br/>OWASP Top 10<br/>MITRE CWE Top 25<br/>readonly"]
+
+        W6b["T6b: Code Reviewer<br/>DELIVERY.json"] --> R1E["spec-reviewer<br/>fast<br/>PASS / FAIL"]
+        R1E -->|"PASS"| R2E["quality-reviewer<br/>inherit<br/>Score 0-10"]
+
+        R1D --> MB["CEO Merge Arbiter<br/>VALIDATION.json<br/>Escalate if CRITICAL"]
+        R2D --> MB
+        SA --> MB
+        R1E --> MB
+        R2E --> MB
     end
-    
+
     MB --> GATE3
-    
-    GATE3{"⚡ verifier subagent<br/><b>fast</b><br/>Confirms all complete<br/>Scans TODOs/secrets<br/>Runs tests"}
-    
-    R1A --> |FAIL| FIX1["Worker fixes → Re-submit → Re-invoke (max 3x)"]
-    R1B --> |FAIL| FIX1
-    R1D --> |FAIL| FIX2["Worker fixes → Re-submit → Re-invoke (max 3x)"]
-    R1E --> |FAIL| FIX2
-    SA --> |CRITICAL| ESC["Escalate to CEO agent immediately"]
+
+    GATE3{"verifier subagent<br/>fast<br/>Confirms all complete<br/>Scans TODOs/secrets<br/>Runs tests"}
+
+    R1A -->|"FAIL"| FIX1["Worker fixes<br/>Re-submit<br/>Max 3x"]
+    R1B -->|"FAIL"| FIX1
+    R1D -->|"FAIL"| FIX2["Worker fixes<br/>Re-submit<br/>Max 3x"]
+    R1E -->|"FAIL"| FIX2
+    SA -->|"CRITICAL"| ESC["Escalate to<br/>CEO agent immediately"]
 ```
 
 | Subagent | Model | Role |
@@ -487,13 +491,16 @@ flowchart TD
     PAR -->|Yes| MP["Engine Multiplayer<br/>Netcode + Replication"]
     PAR -->|No| LEVEL
     MP --> LEVEL
-    LEVEL --> |"Parallel"| LD["Level Designer<br/>Encounters + Pacing<br/>Environmental storytelling"]
-    LEVEL --> |"Parallel"| NAR["Narrative Designer<br/>Dialogue + Lore<br/>Character voice"]
-    LEVEL --> |"Parallel"| TA["Technical Artist<br/>Shaders + VFX<br/>LOD + Performance"]
-    LEVEL --> |"Parallel"| GA["Game Audio Engineer<br/>Spatial audio<br/>Adaptive music + SFX"]
-    LD & NAR & TA & GA --> QA["QA Engineer<br/>Game testing"]
+    LEVEL -->|"Parallel"| LD["Level Designer<br/>Encounters + Pacing<br/>Environmental storytelling"]
+    LEVEL -->|"Parallel"| NAR["Narrative Designer<br/>Dialogue + Lore<br/>Character voice"]
+    LEVEL -->|"Parallel"| TA["Technical Artist<br/>Shaders + VFX<br/>LOD + Performance"]
+    LEVEL -->|"Parallel"| GA["Game Audio Engineer<br/>Spatial audio<br/>Adaptive music + SFX"]
+    LD --> QA["QA Engineer<br/>Game testing"]
+    NAR --> QA
+    TA --> QA
+    GA --> QA
     QA --> G3{"Gate 2<br/>Production Ready?"}
-    G3 -->|Approve| SHIP["🚀 Ship"]
+    G3 -->|Approve| SHIP["Ship"]
 ```
 
 ### XR Build Pipeline
@@ -501,13 +508,13 @@ flowchart TD
 ```mermaid
 flowchart TD
     X1["XR Engineer<br/>Platform selection<br/>Quest / Vision Pro / WebXR"] --> X2{"Game-like XR?"}
-    X2 -->|Yes| GBP
+    X2 -->|Yes| GBP["Game Build Pipeline<br/>Game Designer -> Engine -> QA"]
     X2 -->|No| SW["Frontend / Software Engineer<br/>Utility XR app"]
-    GBP["Game Build Pipeline<br/>(Game Designer → Engine → QA)"] --> SHIP["🚀 Ship"]
-    SW --> SHIP
     X1 --> X3["XR Comfort & Safety<br/>Comfort mode<br/>Hand tracking"]
     X3 --> GBP
     X3 --> SW
+    GBP --> SHIP2["Ship"]
+    SW --> SHIP2
 ```
 
 ### Parallel Dispatch (v5.2+)
@@ -516,18 +523,17 @@ flowchart TD
 flowchart TD
     CEO["CEO Agent (Orchestrator)"] --> SA["Scope Analysis<br/>Complexity Score<br/>Time Estimate<br/>Risk Level"]
     SA --> TC["Task Contract<br/>Per worker"]
-    TC --> |"Wave 1: BUILD"| WT1["Worktree 1<br/>T3a: Backend<br/>services/"]
-    TC --> |"Wave 1: BUILD"| WT2["Worktree 2<br/>T3b: Frontend<br/>frontend/"]
-    TC --> |"Wave 1: BUILD"| WT3["Worktree 3<br/>T3c: Mobile<br/>mobile/"]
+    TC -->|"Wave 1: BUILD"| WT1["Worktree 1<br/>T3a: Backend<br/>services/"]
+    TC -->|"Wave 1: BUILD"| WT2["Worktree 2<br/>T3b: Frontend<br/>frontend/"]
+    TC -->|"Wave 1: BUILD"| WT3["Worktree 3<br/>T3c: Mobile<br/>mobile/"]
     WT1 --> VAL["7-Step Anti-Hallucination<br/>Validation per worker"]
     WT2 --> VAL
     WT3 --> VAL
-    VAL --> SR["spec-reviewer<br/><b>fast</b><br/>PASS / FAIL<br/>vs CONTRACT.json"]
-    SR --> |"PASS"| QR["quality-reviewer<br/><b>inherit</b><br/>Score 0-10"]
+    VAL --> SR["spec-reviewer<br/>fast<br/>PASS / FAIL<br/>vs CONTRACT.json"]
+    SR -->|"PASS"| QR["quality-reviewer<br/>inherit<br/>Score 0-10"]
     QR --> MA["Merge Arbiter<br/>Clean merge into main"]
-    SR --> |FAIL| FIX["Worker fixes<br/>Re-submit<br/>Max 3×"]
-    FIX --> SR
-    MA --> VER["⚡ verifier<br/>Confirm all complete<br/><b>fast</b>"]
+    SR -->|"FAIL"| FIX["Worker fixes<br/>Re-submit<br/>Max 3x"]
+    MA --> VER["verifier<br/>Confirm all complete<br/>fast"]
     VER --> G3{"Gate 3<br/>Approve production?"}
 ```
 
@@ -535,10 +541,10 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    P1["Phase 1<br/>Web Search<br/><b>Always ON</b>"] --> P2
-    P2["Phase 2<br/>NotebookLM MCP<br/><b>Optional — Grounded AI</b>"] --> P3["Phase 3<br/>Synthesize<br/>Citations + Recommendations"]
-    P1 --> P3
-    P2 -.-> |"Fails? Phase 1 still works ⚡"| P3
+    P1["Phase 1<br/>Web Search<br/>Always ON"] --> P3["Phase 3<br/>Synthesize<br/>Citations + Recommendations"]
+    P2["Phase 2<br/>NotebookLM MCP<br/>Optional - Grounded AI"] --> P3
+    P1 --> P2
+    P2 -.->|"Fails? Phase 1 still works"| P3
 ```
 
 ### Project Onboarding & Quality Gates (v7.0+)
@@ -546,20 +552,20 @@ flowchart LR
 ```mermaid
 flowchart TD
     subgraph Onboard["Project Onboarding"]
-        O1["Phase 1: Fingerprint<br/>Tech stack, framework, CI"] --> O1_5["Phase 1.5: Code Intelligence<br/>GitNexus knowledge graph<br/>impact() · context() · detect_changes()"]
-        O1_5 --> O2["Phase 2: Health Check<br/>Build + tests + lint + CVEs"]
+        O1["Phase 1: Fingerprint<br/>Tech stack, framework, CI"] --> O15["Phase 1.5: Code Intelligence<br/>GitNexus knowledge graph<br/>impact() + context() + detect_changes()"]
+        O15 --> O2["Phase 2: Health Check<br/>Build + tests + lint + CVEs"]
         O2 --> O3["Phase 3: Pattern Analysis<br/>Naming + style + arch"]
         O3 --> O4["Phase 4: Risk Assessment<br/>Tech debt + protected paths"]
         O4 --> O5["Phase 5: Profile<br/>.forgewright/project-profile.json"]
     end
-    
-    subgraph QG["Quality Gate — After EVERY Skill Output"]
+
+    subgraph QG["Quality Gate - After EVERY Skill Output"]
         Q1["Level 1: Build<br/>Compiles + no runtime errors"] --> Q2["Level 2: Regression<br/>Brownfield: existing tests pass"]
         Q2 --> Q3["Level 3: Standards<br/>Conventions + patterns"]
-        Q3 --> Q4["Level 4: Traceability<br/>Spec → impl mapping"]
-        Q1 --> |"Score 0-100"| SCORE["Grade A-F<br/>Threshold: configurable"]
+        Q3 --> Q4["Level 4: Traceability<br/>Spec -> impl mapping"]
+        Q1 -->|"Score 0-100"| SCORE["Grade A-F<br/>Threshold: configurable"]
     end
-    
+
     subgraph BF["Brownfield Safety"]
         B1["Git Branch"] --> B2["Baseline Tests"] --> B3["Change Manifest"] --> B4["Rollback on failure"]
     end
