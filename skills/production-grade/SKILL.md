@@ -19,7 +19,7 @@ description: >
 
 Adaptive meta-skill orchestrator for all software engineering work. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 17-skill greenfield build.
 
-**53 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
+**52 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
 
 **All skills are bundled in this plugin. Single install, everything included.**
 
@@ -38,7 +38,7 @@ Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → �
 Skills are loaded on-demand based on classified mode. Read `.forgewright/skills-config.json` for the mode→skill mapping.
 
 ```
-Instead of loading all 53 skill descriptions (~66KB), only load skills relevant to the mode:
+Instead of loading all 52 skill descriptions (~66KB), only load skills relevant to the mode:
   Review mode  → loads 1 skill  (~3KB)
   Feature mode → loads 5 skills (~15KB)
   Full Build   → loads 10 skills (~30KB)
@@ -124,7 +124,7 @@ Here's my plan:
 Scope: [light / moderate / heavy]
 
 1. **Looks good — start (Recommended)** — Execute this plan
-2. **I want the full production-grade pipeline** — Run all 53 skills, 6 phases, 3 gates
+2. **I want the full production-grade pipeline** — Run all 52 skills, 6 phases, 3 gates
 3. **Adjust the plan** — Add or remove skills from the plan
 4. **Chat about this** — Free-form input
 ```
