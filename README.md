@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-7.5.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/version-7.7.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-52-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
@@ -63,6 +63,15 @@ If Forgewright helps you ship faster, you can support the project here:
 ## Release Timeline
 
 ```
+2026-04-01  v7.7  ●━━━ Cursor Subagent Workflow + MCP Server + Mermaid Docs —
+                  │     5 Cursor subagents: chat-interpreter, spec-reviewer,
+                  │     quality-reviewer, security-auditor, verifier.
+                  │     Two-stage review protocol with cost-efficiency guidance.
+                  │     Forgewright MCP Server: Node.js, 85 tests, TypeScript.
+                  │     CI/CD: GitHub Actions (ESLint, Prettier, TS, Vitest).
+                  │     7 Mermaid flowcharts in README replacing ASCII diagrams.
+                  │     52 skills confirmed.
+                  │
 2026-03-26  v7.6  ●━━━ Global Dry Run & Auto-Evolution —
                   │     Zero-risk refactoring sandbox. Agent formulates .diff patch,
                   │     self-scores logic (Threshold >= 9.0). If < 9.0, enters Dark Loop
@@ -159,7 +168,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/buiphucminhtam/forgewr
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .antigravity/plugins/production-grade
-git add .gitmodules .antigravity/ && git commit -m "feat: add forgewright v7.5"
+git add .gitmodules .antigravity/ && git commit -m "feat: add forgewright v7.7"
 ```
 
 ### Option C: Standalone Clone
