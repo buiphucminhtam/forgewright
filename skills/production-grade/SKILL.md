@@ -38,7 +38,7 @@ Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → �
 Skills are loaded on-demand based on classified mode. Read `.forgewright/skills-config.json` for the mode→skill mapping.
 
 ```
-Instead of loading all 50 skill descriptions (~66KB), only load skills relevant to the mode:
+Instead of loading all 52 skill descriptions (~66KB), only load skills relevant to the mode:
   Review mode  → loads 1 skill  (~3KB)
   Feature mode → loads 5 skills (~15KB)
   Full Build   → loads 10 skills (~30KB)

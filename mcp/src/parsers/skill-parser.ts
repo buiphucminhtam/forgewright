@@ -1,125 +1,184 @@
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+import fs from 'fs'
+import { dirname, join, basename, resolve } from 'path'
+import { fileURLToPath } from 'url'
+import * as jsyaml from 'js-yaml'
+import { z } from 'zod'
+import { getErrorMessage } from '../errors.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// DEV: __dirname = FORGEWRIGHT/mcp/build/parsers
+// PROD: __dirname = FORGEWRIGHT/mcp/build/parsers
+// Either way, we navigate up 3 levels from the parsers dir
+const MCP_BUILD_DIR = dirname(__dirname) // FORGEWRIGHT/mcp/build
+const MCP_ROOT_DIR = dirname(MCP_BUILD_DIR) // FORGEWRIGHT/mcp
+const FORGEWRIGHT_ROOT = dirname(MCP_ROOT_DIR) // FORGEWRIGHT
+
+let resolvedRoot: string | null = null
+
+function getResolvedRoot(): string {
+  if (resolvedRoot !== null) return resolvedRoot
+
+  // Env var takes priority (useful for testing / custom deployments)
+  const envRoot = process.env.FORGEWRIGHT_ROOT
+  if (envRoot) {
+    resolvedRoot = resolve(envRoot)
+    return resolvedRoot
+  }
+
+  try {
+    resolvedRoot = fs.realpathSync(FORGEWRIGHT_ROOT)
+  } catch {
+    resolvedRoot = FORGEWRIGHT_ROOT
+  }
+  return resolvedRoot
+}
+
+/**
+ * Override the resolved root path (useful for testing).
+ * Resets the cached value so getAllSkills/getSharedProtocols
+ * pick up the new path on next call.
+ */
+export function _setRootOverride(root: string): void {
+  resolvedRoot = resolve(root)
+}
+
+function getSkillsDir(): string {
+  return join(getResolvedRoot(), 'skills')
+}
+
+// ─── Zod Schemas ─────────────────────────────────────────────────────
+
+export const FrontmatterSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  version: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+})
+
+export type FrontmatterData = z.infer<typeof FrontmatterSchema>
 
 export interface Skill {
-  name: string;
-  description: string;
-  version?: string;
-  tags?: string[];
-  filePath: string;
-  content: string;
+  name: string
+  description: string
+  version?: string
+  tags?: string[]
+  filePath: string
+  content: string
 }
 
 export interface SharedProtocol {
-  name: string;
-  description: string;
-  uri: string;
-  content: string;
+  name: string
+  description: string
+  uri: string
+  content: string
 }
 
-// Ensure predictable resolution by working relative to the mcp/ directory context.
-const FORGEWRIGHT_ROOT = path.resolve(process.cwd(), '..');
-const SKILLS_DIR = path.join(FORGEWRIGHT_ROOT, 'skills');
+// ─── YAML Frontmatter Parser ─────────────────────────────────────────
 
-/**
- * Basic YAML Frontmatter parser.
- * We rely on manual string extraction so we don't strictly crash on bad YAML format if possible,
- * but for simplicity, we parse standard YAML blocks marked by ---.
- */
-function parseFrontmatter(content: string): { data: Partial<Skill>, body: string } {
-  const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
-  const match = content.match(frontmatterRegex);
+function parseFrontmatter(content: string): { data: FrontmatterData; body: string } {
+  const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/
+  const match = content.match(frontmatterRegex)
 
   if (!match) {
-    return { data: {}, body: content };
+    return { data: {}, body: content }
   }
 
-  const [, yamlString, body] = match;
-  
-  // A naive YAML parser for exactly what Forgewright uses: name, description, version, tags
-  // Using js-yaml since it's installed
-  const jsyaml = require('js-yaml');
+  const [, yamlString, body] = match
   try {
-    const data = jsyaml.load(yamlString) as Partial<Skill>;
-    return { data, body };
-  } catch (e) {
-    console.error("Failed to parse YAML frontmatter:", e);
-    return { data: {}, body: content };
+    const raw = jsyaml.load(yamlString)
+    const data = FrontmatterSchema.parse(raw)
+    return { data, body }
+  } catch {
+    // YAML malformed — fall back to empty data
+    console.error('[Forgewright Global MCP] Failed to parse YAML frontmatter, ignoring frontmatter')
+    return { data: {}, body: content }
   }
 }
 
-/**
- * Recursively find all SKILL.md files.
- */
+// ─── Skill Discovery ─────────────────────────────────────────────────
+
 function findAllSkillFiles(dir: string, fileList: string[] = []): string[] {
-  if (!fs.existsSync(dir)) return fileList;
-  
-  const files = fs.readdirSync(dir);
+  if (!fs.existsSync(dir)) return fileList
+
+  const files = fs.readdirSync(dir)
   for (const file of files) {
-    const filePath = path.join(dir, file);
+    const filePath = join(dir, file)
     if (fs.statSync(filePath).isDirectory()) {
-      findAllSkillFiles(filePath, fileList);
+      findAllSkillFiles(filePath, fileList)
     } else if (file === 'SKILL.md') {
-      fileList.push(filePath);
+      fileList.push(filePath)
     }
   }
-  return fileList;
+  return fileList
 }
 
 export function getAllSkills(): Skill[] {
-  const skillFiles = findAllSkillFiles(SKILLS_DIR);
-  const skills: Skill[] = [];
+  if (!fs.existsSync(getSkillsDir())) {
+    console.error(`[Forgewright Global MCP] Skills directory not found: ${getSkillsDir()}`)
+    return []
+  }
+
+  const skillFiles = findAllSkillFiles(getSkillsDir())
+  const skills: Skill[] = []
 
   for (const filePath of skillFiles) {
-    // Ignore internal protocols folder for regular skills
-    if (filePath.includes('_shared/protocols')) continue;
+    if (filePath.includes('_shared/protocols')) continue
 
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const { data } = parseFrontmatter(content);
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8')
+      const { data } = parseFrontmatter(content)
 
-    // Default name to folder name if not heavily defined
-    const folderName = path.basename(path.dirname(filePath));
-    const name = data.name || folderName;
-    const description = data.description || `Forgewright Skill: ${name}`;
+      const folderName = basename(dirname(filePath))
+      const name = data.name || folderName
+      const description = data.description || `Forgewright Skill: ${name}`
 
-    skills.push({
-      name,
-      description,
-      version: data.version,
-      tags: data.tags,
-      filePath,
-      content,
-    });
+      skills.push({
+        name,
+        description,
+        version: data.version,
+        tags: data.tags,
+        filePath,
+        content,
+      })
+    } catch (e: unknown) {
+      console.error(
+        `[Forgewright Global MCP] Failed to read skill: ${filePath}`,
+        getErrorMessage(e),
+      )
+    }
   }
 
-  return skills;
+  return skills
 }
 
-/**
- * Returns shared protocols as Resources
- */
 export function getSharedProtocols(): SharedProtocol[] {
-  const protocolsDir = path.join(SKILLS_DIR, '_shared/protocols');
-  if (!fs.existsSync(protocolsDir)) return [];
+  const protocolsDir = join(getSkillsDir(), '_shared', 'protocols')
+  if (!fs.existsSync(protocolsDir)) return []
 
-  const files = fs.readdirSync(protocolsDir).filter(f => f.endsWith('.md'));
-  const protocols: SharedProtocol[] = [];
+  const files = fs.readdirSync(protocolsDir).filter((f) => f.endsWith('.md'))
+  const protocols: SharedProtocol[] = []
 
   for (const file of files) {
-    const filePath = path.join(protocolsDir, file);
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    // We assume file name without .md is the name
-    const protocolId = file.replace('.md', '');
-    
-    protocols.push({
-      name: `protocol-${protocolId}`,
-      description: `Forgewright Shared Protocol: ${protocolId}`,
-      uri: `fw://protocols/${protocolId}`,
-      content
-    });
+    const filePath = join(protocolsDir, file)
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8')
+      const protocolId = file.replace('.md', '')
+
+      protocols.push({
+        name: `protocol-${protocolId}`,
+        description: `Forgewright Shared Protocol: ${protocolId}`,
+        uri: `fw://protocols/${protocolId}`,
+        content,
+      })
+    } catch (e: unknown) {
+      console.error(
+        `[Forgewright Global MCP] Failed to read protocol: ${filePath}`,
+        getErrorMessage(e),
+      )
+    }
   }
 
-  return protocols;
+  return protocols
 }

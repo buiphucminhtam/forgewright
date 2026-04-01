@@ -4,10 +4,10 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-8.0.0-blue.svg" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-53-brightgreen.svg" alt="Skills" />
+  <img src="https://img.shields.io/badge/version-7.5.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/skills-48-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
-  <img src="https://img.shields.io/badge/protocols-25-00CED1.svg" alt="Protocols" />
+  <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
   <a href="https://github.com/buiphucminhtam/forgewright/stargazers"><img src="https://img.shields.io/github/stars/buiphucminhtam/forgewright?style=social" alt="Stars" /></a>
 </p>
 
@@ -21,7 +21,7 @@
   <img src="https://img.shields.io/badge/🧠_Code_Intelligence-GitNexus-4B0082.svg" alt="Code Intelligence" />
 </p>
 
-<h3 align="center">53 AI Skills · 19 Modes · 25 Protocols · Full Lifecycle Pipeline</h3>
+<h3 align="center">48 AI Skills · 19 Modes · 15 Protocols · Full Lifecycle Pipeline</h3>
 
 <p align="center">
   <strong>Research → Design → Build → Test → Secure → Deploy → Market → Grow</strong><br />
@@ -31,58 +31,6 @@
 <p align="center">
   <sub>Built on <a href="https://github.com/nagisanzenin/claude-code-production-grade-plugin">claude-code-production-grade-plugin</a>, <a href="https://github.com/ComposioHQ/awesome-claude-skills">awesome-claude-skills</a>, and <a href="https://github.com/msitarzewski/agency-agents">agency-agents</a>. Iteratively tested and improved across real projects.</sub>
 </p>
-
----
-
-## 🏗️ Architecture Flow (v8.0)
-
-Forgewright implements a robust **DeerFlow Middleware Pattern** intertwined with **Organism-Context Memory** to guarantee zero "vibe coding".
-
-```mermaid
-flowchart TD
-    User([User Request]) --> Orch[Orchestrator<br>production-grade/SKILL.md]
-    
-    subgraph ContextEngine [Context Engine]
-        KB[(knowledge_base/HANDBOOK.md)]
-        Neo4j[(GitNexus Intelligence)]
-        Profile[(project-profile.json)]
-    end
-    
-    Orch --> BMAD{Organism-Context<br>Injection Phase}
-    KB -.-> BMAD
-    Neo4j -.-> BMAD
-    Profile -.-> BMAD
-    
-    BMAD --> GR[Guardrail Middleware<br>Contextual Tool Denials]
-    
-    subgraph ExecutionSwarm [Execution Swarm]
-        direction LR
-        FE[Frontend Agent<br>React/Vue]
-        BE[Backend Agent<br>Node/Go]
-        SRE[Security/DevOps<br>Audit & Deploy]
-        Game[Game Engine<br>Unity/Unreal]
-    end
-    
-    GR -- Mutating Allowed --> ExecutionSwarm
-    GR -- Read-only Modes --> Reject((Action Blocked))
-    
-    ExecutionSwarm --> QA{Quality Gate<br>Architecture Parity Audit}
-    QA -- Pass --> Arbiter[Merge Arbiter<br>Conflict Resolution]
-    QA -- Fail/Drift Detected --> ExecutionSwarm
-    
-    Arbiter --> Out([Production Quality Code])
-    
-    %% Styling
-    classDef core fill:#2d1b4e,stroke:#9d72ff,stroke-width:2px,color:#fff;
-    classDef agent fill:#0a4b3c,stroke:#20b2aa,stroke-width:2px,color:#fff;
-    classDef memory fill:#522d14,stroke:#e67e22,stroke-width:2px,color:#fff;
-    classDef shield fill:#660000,stroke:#ff3333,stroke-width:2px,color:#fff;
-    
-    class Orch,QA,Arbiter core;
-    class FE,BE,SRE,Game agent;
-    class KB,Neo4j,Profile,BMAD memory;
-    class GR,Reject shield;
-```
 
 ---
 
@@ -97,26 +45,6 @@ If Forgewright helps you ship faster, you can support the project here:
 ## Release Timeline
 
 ```
-2026-04-01  v8.0  ●━━━ The Enterprise OS Upgrade (Phase 3) —
-                  │     Organism-Context Memory: Auto-loads BMAD Company Handbook.
-                  │     Strict Conflict Arbiter forcing AI to obey local design/code rules.
-                  │     Eradicates Vibe Coding.
-                  │
-2026-04-01  v7.9  ●━━━ Claw Code Architecture Upgrades —
-                  │     Max-Turns Circuit Breaker (15 turns max) to prevent hallucination loops.
-                  │     Contextual Tool Denials for zero-risk read-only modes (Explore/Review/Analyze).
-                  │     Architecture Parity Audit & Structured Session Checkpointing.
-                  │
-2026-03-30  v7.8  ●━━━ The Sentinel Upgrade & Native MCP Server —
-                  │     Runtime Healing, Chaos Testing, TDD mandates.
-                  │     Native Forgewright MCP Server with state manager.
-                  │     2D AI Art & 3D Procedural Kitbashing integration.
-                  │
-2026-03-29  v7.7  ●━━━ Unity Engineer 100% Vibe Coding Upgrade —
-                  │     A-to-Z Game generation. Direct REST API injection for GameObjects/UI.
-                  │     Multimodal Vision QA loop for automated blockout/HUD self-correction.
-                  │     NotebookLM Anti-Hallucination protocol safeguards C# API generation.
-                  │
 2026-03-26  v7.6  ●━━━ Global Dry Run & Auto-Evolution —
                   │     Zero-risk refactoring sandbox. Agent formulates .diff patch,
                   │     self-scores logic (Threshold >= 9.0). If < 9.0, enters Dark Loop
@@ -239,7 +167,7 @@ Then say: *"Build a production-grade SaaS for [your idea]"* — or *"Build a gam
 
 ## For Antigravity Users
 
-Forgewright is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 53-skill pipeline.
+Forgewright is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 48-skill pipeline.
 
 **Available workflows:**
 
@@ -281,7 +209,7 @@ The orchestrator auto-classifies your request and routes to the right skills:
 
 ---
 
-## 53 Skills — Organized by Division
+## 52 Skills — Organized by Division
 
 ### 🧠 Orchestrator & Meta (5)
 
@@ -369,7 +297,7 @@ The orchestrator auto-classifies your request and routes to the right skills:
 DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW
 ```
 
-You give a high-level vision. 53 specialized skills handle everything else.
+You give a high-level vision. 48 specialized skills handle everything else.
 
 ### The Pipeline
 
@@ -493,7 +421,7 @@ CEO Agent (Orchestrator)
 
 | Metric | Detail |
 |--------|--------|
-| **53 specialized skills** | Each with sole authority over its domain |
+| **48 specialized skills** | Each with sole authority over its domain |
 | **19 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze** |
 | **6-phase pipeline** | DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW |
 | **4 game engines** | Unity, Unreal Engine, Godot, Roblox |
@@ -506,7 +434,7 @@ CEO Agent (Orchestrator)
 | **Go-to-Market** | SEO, AEO/GEO, copywriting, campaigns, funnel CRO, A/B testing |
 | **Parallel dispatch** | Git worktree-based with anti-hallucination pipeline |
 | **3 approval gates** | Everything between gates is fully autonomous |
-| **25 shared protocols** | UX, input validation, tool efficiency, conflict resolution, task contracts, project onboarding, session lifecycle, quality gate, brownfield safety, quality dashboard, graceful failure, code intelligence, paperclip integration, AI 3D/2D procedural art |
+| **15 shared protocols** | UX, input validation, tool efficiency, conflict resolution, task contracts, project onboarding, session lifecycle, quality gate, brownfield safety, quality dashboard, graceful failure, code intelligence, paperclip integration |
 | **Quality scoring** | 0-100 per-skill scoring with A-F grades, cross-session trending |
 | **Persistent memory** | TF-IDF search, auto-refresh, lifecycle hooks — survives session resets |
 | **4 engagement modes** | Express, Standard, Thorough, Meticulous |
@@ -521,7 +449,7 @@ Forgewright works out of the box with just **Step 1**. Each additional step unlo
 
 | Level | What You Get | Steps Needed |
 |-------|-------------|-------------|
-| ⚡ **Basic** (53 skills) | Full pipeline: DEFINE → BUILD → HARDEN → SHIP | Step 1 only |
+| ⚡ **Basic** (52 skills) | Full pipeline: DEFINE → BUILD → HARDEN → SHIP | Step 1 only |
 | ⚡⚡ **Smart** (+code understanding) | Blast radius analysis, safe refactoring, call chain tracing | + Step 2 |
 | ⚡⚡⚡ **Persistent** (+cross-session memory) | Remembers decisions, blockers, progress across sessions | + Step 3 |
 | ⚡⚡⚡⚡ **Research** (+grounded research) | NotebookLM podcasts, source analysis, deep research | + Step 4 |
@@ -548,7 +476,7 @@ git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .ant
 
 ✅ **Verify:** Open Antigravity, type anything — Forgewright auto-routes through the orchestrator.
 
-🔓 **Unlocks:** 53 skills, 19 modes, 25 protocols, full lifecycle pipeline.
+🔓 **Unlocks:** 52 skills, 19 modes, 15 protocols, full lifecycle pipeline.
 
 ---
 
@@ -762,7 +690,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## Examples
 
 ```bash
-# Greenfield SaaS (full pipeline, 53 skills)
+# Greenfield SaaS (full pipeline, 52 skills)
 "Build a production-grade SaaS for multi-vendor e-commerce
  with seller dashboards, buyer marketplace, and payment processing."
 
@@ -807,7 +735,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## FAQ
 
 **How many skills does Forgewright have?**
-53 specialized skills covering requirements analysis, software engineering, game development (Unity, Unreal, Godot, Roblox), XR (AR/VR/MR), AI/ML, data engineering, web scraping, accessibility, UX research, and go-to-market.
+48 specialized skills covering requirements analysis, software engineering, game development (Unity, Unreal, Godot, Roblox), XR (AR/VR/MR), AI/ML, data engineering, web scraping, accessibility, UX research, and go-to-market.
 
 **Can it build complete games?**
 Yes. The Game Build mode orchestrates game-specific skills: Game Designer → Engine Engineer → Level Designer → Narrative → Technical Art → Audio → QA. Supports Unity, Unreal Engine, Godot, and Roblox.
@@ -827,7 +755,7 @@ No. Playwright is the primary CI testing tool. Midscene is optional for visual Q
 **What languages are supported?**
 TypeScript, Go, Python, Rust, Java, C++ (Unreal), C# (Unity), GDScript (Godot), Luau (Roblox).
 
-**Do I need all 53 skills?**
+**Do I need all 52 skills?**
 No. The orchestrator only activates what you need. A backend API may use 8 skills. A full game may use 20+. The BA skill only activates when information gaps are detected.
 
 **What is Code Intelligence?**
@@ -874,7 +802,7 @@ MIT
 ---
 
 <p align="center">
-  <strong>Forgewright — 53 AI skills. 19 modes. 25 protocols. Code Intelligence. SaaS to AAA games. One prompt. ⭐</strong>
+  <strong>Forgewright — 48 AI skills. 19 modes. 15 protocols. Code Intelligence. SaaS to AAA games. One prompt. ⭐</strong>
 </p>
 <p align="center">
   <em>Understand relationships, not just files. Validate with zero assumptions. Research with zero hallucinations. Build games across 4 engines. Ship with quality scoring. Grow with data.</em>

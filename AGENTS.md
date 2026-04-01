@@ -86,7 +86,7 @@ If a newer version exists, mention it briefly: *"Forgewright update available (v
 
 ## Skills Directory
 
-All 50 skills are in the `skills/` directory:
+All 52 skills are in the `skills/` directory:
 
 | Skill | Location |
 |-------|----------|
