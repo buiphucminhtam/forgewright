@@ -209,7 +209,7 @@ The orchestrator auto-classifies your request and routes to the right skills:
 
 ---
 
-## 48 Skills — Organized by Division
+## 52 Skills — Organized by Division
 
 ### 🧠 Orchestrator & Meta (5)
 
@@ -449,7 +449,7 @@ Forgewright works out of the box with just **Step 1**. Each additional step unlo
 
 | Level | What You Get | Steps Needed |
 |-------|-------------|-------------|
-| ⚡ **Basic** (48 skills) | Full pipeline: DEFINE → BUILD → HARDEN → SHIP | Step 1 only |
+| ⚡ **Basic** (52 skills) | Full pipeline: DEFINE → BUILD → HARDEN → SHIP | Step 1 only |
 | ⚡⚡ **Smart** (+code understanding) | Blast radius analysis, safe refactoring, call chain tracing | + Step 2 |
 | ⚡⚡⚡ **Persistent** (+cross-session memory) | Remembers decisions, blockers, progress across sessions | + Step 3 |
 | ⚡⚡⚡⚡ **Research** (+grounded research) | NotebookLM podcasts, source analysis, deep research | + Step 4 |
@@ -476,7 +476,7 @@ git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .ant
 
 ✅ **Verify:** Open Antigravity, type anything — Forgewright auto-routes through the orchestrator.
 
-🔓 **Unlocks:** 48 skills, 19 modes, 15 protocols, full lifecycle pipeline.
+🔓 **Unlocks:** 52 skills, 19 modes, 15 protocols, full lifecycle pipeline.
 
 ---
 
@@ -690,7 +690,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## Examples
 
 ```bash
-# Greenfield SaaS (full pipeline, 48 skills)
+# Greenfield SaaS (full pipeline, 52 skills)
 "Build a production-grade SaaS for multi-vendor e-commerce
  with seller dashboards, buyer marketplace, and payment processing."
 
@@ -755,7 +755,7 @@ No. Playwright is the primary CI testing tool. Midscene is optional for visual Q
 **What languages are supported?**
 TypeScript, Go, Python, Rust, Java, C++ (Unreal), C# (Unity), GDScript (Godot), Luau (Roblox).
 
-**Do I need all 48 skills?**
+**Do I need all 52 skills?**
 No. The orchestrator only activates what you need. A backend API may use 8 skills. A full game may use 20+. The BA skill only activates when information gaps are detected.
 
 **What is Code Intelligence?**

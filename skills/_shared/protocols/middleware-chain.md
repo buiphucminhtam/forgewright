@@ -202,7 +202,7 @@ After each middleware chain execution, log summary:
 ━━━ Middleware Chain Summary ━━━━━━━━━━━━━━━━━━━━
   ① SessionData:      ✓ 12ms   (profile loaded)
   ② ContextLoader:    ✓ 45ms   (3 memories retrieved)
-  ③ SkillRegistry:    ✓ 8ms    (loaded 5/50 skills)
+  ③ SkillRegistry:    ✓ 8ms    (loaded 5/52 skills)
   ④ Guardrail:        ✓ 2ms    (0 blocked, 0 warned)
   ⑤ Summarization:    ⊘ skip   (context within budget)
   ═══ Skill: qa-engineer (42.3s) ═══

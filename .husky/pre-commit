@@ -1,0 +1,51 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Running pre-commit checks..."
+
+# Check TypeScript files
+cd mcp
+
+# Run lint
+echo "Running ESLint..."
+npx eslint src/ --ext .ts --max-warnings=0
+lint_result=$?
+
+# Run prettier check
+echo "Running Prettier check..."
+npx prettier --check "src/**/*.ts"
+format_result=$?
+
+# Run type check
+echo "Running TypeScript check..."
+npx tsc --noEmit
+type_result=$?
+
+# Run tests
+echo "Running tests..."
+npx vitest run --reporter=basic
+test_result=$?
+
+# Exit with error if any check failed
+if [ $lint_result -ne 0 ]; then
+  echo "ESLint failed!"
+  exit 1
+fi
+
+if [ $format_result -ne 0 ]; then
+  echo "Prettier check failed!"
+  exit 1
+fi
+
+if [ $type_result -ne 0 ]; then
+  echo "TypeScript check failed!"
+  exit 1
+fi
+
+if [ $test_result -ne 0 ]; then
+  echo "Tests failed!"
+  exit 1
+fi
+
+echo "All pre-commit checks passed!"
+exit 0
