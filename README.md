@@ -4,8 +4,8 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-7.5.0-blue.svg" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-48-brightgreen.svg" alt="Skills" />
+  <img src="https://img.shields.io/badge/version-7.7.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/skills-52-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
   <a href="https://github.com/buiphucminhtam/forgewright/stargazers"><img src="https://img.shields.io/github/stars/buiphucminhtam/forgewright?style=social" alt="Stars" /></a>
@@ -21,7 +21,25 @@
   <img src="https://img.shields.io/badge/🧠_Code_Intelligence-GitNexus-4B0082.svg" alt="Code Intelligence" />
 </p>
 
-<h3 align="center">48 AI Skills · 19 Modes · 15 Protocols · Full Lifecycle Pipeline</h3>
+---
+
+## What is Forgewright?
+
+Forgewright is an **adaptive AI orchestrator** — not just a tool, but a full-stack engineering team powered by 52 specialized skills that collaborate through a structured lifecycle pipeline.
+
+**Core differentiators:**
+
+- **End-to-end lifecycle** — from initial research and requirements analysis all the way through to SEO, A/B testing, and growth optimization. No handoff gaps.
+- **Multi-engine game development** — Unity, Unreal Engine, Godot, and Roblox under one pipeline. Not just "code generation" — full GDD, shaders, multiplayer, spatial audio.
+- **AI-powered quality gates** — every skill output is scored 0–100. Build fails before merge if quality drops below threshold. No cowboy coding.
+- **Code Intelligence** — knowledge graph engine (GitNexus) maps your entire codebase. Ask *"what breaks if I change this function?"* and get blast-radius analysis instantly.
+- **Parallel execution** — independent tasks run simultaneously in git worktrees. Anti-hallucination validator checks each worker before merge.
+- **Research-grounded AI** — NotebookLM MCP integration eliminates hallucinations. Every claim backed by real sources with citations.
+- **Brownfield safety** — for existing projects: auto git branch, baseline tests, change manifest, rollback. Safe to experiment.
+
+> **You say what you want.** Forgewright figures out which skills to activate, in what order, with what guardrails, and delivers a production-ready result.
+
+<h3 align="center">52 AI Skills · 19 Modes · 15 Protocols · Full Lifecycle Pipeline</h3>
 
 <p align="center">
   <strong>Research → Design → Build → Test → Secure → Deploy → Market → Grow</strong><br />
@@ -45,6 +63,15 @@ If Forgewright helps you ship faster, you can support the project here:
 ## Release Timeline
 
 ```
+2026-04-01  v7.7  ●━━━ Cursor Subagent Workflow + MCP Server + Mermaid Docs —
+                  │     5 Cursor subagents: chat-interpreter, spec-reviewer,
+                  │     quality-reviewer, security-auditor, verifier.
+                  │     Two-stage review protocol with cost-efficiency guidance.
+                  │     Forgewright MCP Server: Node.js, 85 tests, TypeScript.
+                  │     CI/CD: GitHub Actions (ESLint, Prettier, TS, Vitest).
+                  │     7 Mermaid flowcharts in README replacing ASCII diagrams.
+                  │     52 skills confirmed.
+                  │
 2026-03-26  v7.6  ●━━━ Global Dry Run & Auto-Evolution —
                   │     Zero-risk refactoring sandbox. Agent formulates .diff patch,
                   │     self-scores logic (Threshold >= 9.0). If < 9.0, enters Dark Loop
@@ -56,7 +83,7 @@ If Forgewright helps you ship faster, you can support the project here:
                   │     URL validation (SSRF/LFI defense), output sanitization
                   │     (prompt injection defense), CSS-first extraction strategy.
                   │     Library-only mode (no Docker API). Integrated into
-                  │     Polymath Research + AI Build pipeline. 48 total skills.
+                  │     Polymath Research + AI Build pipeline. 52 total skills.
                   │
 2026-03-16  v7.4  ●━━━ UI Design Database & Reasoning Engine —
                   │     85 visual styles, 161 WCAG-validated color palettes,
@@ -141,7 +168,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/buiphucminhtam/forgewr
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .antigravity/plugins/production-grade
-git add .gitmodules .antigravity/ && git commit -m "feat: add forgewright v7.5"
+git add .gitmodules .antigravity/ && git commit -m "feat: add forgewright v7.7"
 ```
 
 ### Option C: Standalone Clone
@@ -167,7 +194,7 @@ Then say: *"Build a production-grade SaaS for [your idea]"* — or *"Build a gam
 
 ## For Antigravity Users
 
-Forgewright is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 48-skill pipeline.
+Forgewright is self-discovering. Once installed, Antigravity reads `AGENTS.md` on every new chat and automatically routes your requests through the 52-skill pipeline.
 
 **Available workflows:**
 
@@ -209,7 +236,7 @@ The orchestrator auto-classifies your request and routes to the right skills:
 
 ---
 
-## 48 Skills — Organized by Division
+## 52 Skills — Organized by Division
 
 ### 🧠 Orchestrator & Meta (5)
 
@@ -297,122 +324,251 @@ The orchestrator auto-classifies your request and routes to the right skills:
 DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW
 ```
 
-You give a high-level vision. 48 specialized skills handle everything else.
+You give a high-level vision. 52 specialized skills handle everything else.
 
 ### The Pipeline
 
-```
-Polymath (pre-flight: research, gap detection, context building)
-    ↓
-T0.5: Business Analyst (6W1H elicitation, feasibility, Information Gate) — conditional
-    ↓
-T1:   Product Manager (BRD) ─────────────── GATE 1: approve requirements
-T1.5: UI Designer (design tokens, wireframes)
-T2:   Solution Architect ────────────────── GATE 2: approve architecture
-    ↓
-T3a: Backend Engineer ──── implements services      ┐
-T3b: Frontend Engineer ─── implements pages         ├ parallel (worktrees)
-T3c: Mobile Engineer ───── mobile app (conditional) ┘
-T4:  DevOps ────────────── Dockerfiles + CI skeleton
-    ↓ (code written — validated & merged)
-T5:  QA Engineer ─────────── tests (unit/e2e/perf)  ┐
-T6a: Security Engineer ──── STRIDE + code audit     ├ parallel (worktrees)
-T6b: Code Reviewer ──────── arch conformance review ┘
-    ↓
-T7:  DevOps (IaC + CI/CD + branch strategy)
-T8:  Remediation
-T9:  SRE (SLOs + chaos)
-T10: Data Scientist (conditional — LLM/ML/AI projects)
-    ↓ ─────────────────────────── GATE 3: approve production readiness
-T11: Technical Writer (+ changelog generation)
-T12: Skill Maker
-T13: Growth Marketer ──────── go-to-market strategy, SEO, content
-T14: Conversion Optimizer ── funnel CRO, A/B testing, growth loops
+```mermaid
+flowchart TD
+    U["User Input"] --> CI["Step -1: chat-interpreter<br/>9-dimension extraction<br/>mode detection<br/>Cursor subagent · fast"]
+    CI --> MCP["Step 0.1: MCP & GitNexus Check"]
+    MCP --> SS["Step 0.5: Session Start<br/>Load project-profile.json"]
+    SS --> SC["Step 0.6: Subagent Context<br/>PIPELINE_SUMMARY + REVIEWER_CONTRACT<br/>SECURITY_STANDARDS (HARDEN)"]
+
+    SC --> DEFINE
+
+    subgraph DEFINE["DEFINE Phase"]
+        T0["Business Analyst<br/>6W1H elicitation<br/>Information Gate"] --> G1{"GATE 1<br/>Approve BRD?"}
+        G1 -->|Approve| PM["Product Manager<br/>BRD + User Stories"]
+        PM --> G1
+        G1 -->|Approve| T2["Solution Architect<br/>ADRs + API Contracts<br/>Data Models"]
+        T2 --> G2{"GATE 2<br/>Approve Architecture?"}
+        G2 -->|Approve| BUILD
+    end
+
+    G2 -->|Approve| BUILD
+
+    subgraph BUILD["BUILD Phase - Parallel Group A (git worktrees)"]
+        direction LR
+        T3a["Software Engineer<br/>Backend Services<br/>Worktree: .worktrees/T3a"] -.->|"after delivery"| S1A["spec-reviewer<br/>PASS / FAIL<br/>fast model"]
+        S1A -.->|"if PASS"| S2A["quality-reviewer<br/>Score 0-10<br/>inherit model"]
+
+        T3b["Frontend Engineer<br/>Pages<br/>Worktree: .worktrees/T3b"] -.->|"after delivery"| S1B["spec-reviewer<br/>PASS / FAIL"]
+        S1B -.->|"if PASS"| S2B["quality-reviewer<br/>Score 0-10"]
+
+        T3c["Mobile Engineer<br/>Mobile App (cond.)<br/>Worktree: .worktrees/T3c"] -.->|"after delivery"| S1C["spec-reviewer<br/>PASS / FAIL"]
+        S1C -.->|"if PASS"| S2C["quality-reviewer<br/>Score 0-10"]
+
+        S1A --> M1["CEO Merge Arbiter<br/>Clean merge<br/>Integration test"]
+        S2A --> M1
+        S1B --> M1
+        S2B --> M1
+        S1C --> M1
+        S2C --> M1
+    end
+
+    BUILD --> T4["DevOps<br/>Dockerfiles + CI skeleton"]
+    T4 --> CW["Code Written & Validated"]
+
+    CW --> HARDEN
+
+    subgraph HARDEN["HARDEN Phase - Parallel Group B (git worktrees)"]
+        direction LR
+        T5["QA Engineer<br/>Tests: unit/integration/e2e<br/>Playwright + Midscene"] -.->|"after delivery"| S1D["spec-reviewer<br/>PASS / FAIL"]
+        S1D -.->|"if PASS"| S2D["quality-reviewer<br/>Score 0-10"]
+
+        T6a["Security Engineer<br/>STRIDE + OWASP<br/>PII + Supply Chain"] -.->|"always"| S6B["security-auditor<br/>OWASP Top 10<br/>MITRE CWE · readonly"]
+
+        T6b["Code Reviewer<br/>Arch conformance<br/>Quality review"] -.->|"after delivery"| S1E["spec-reviewer<br/>PASS / FAIL"]
+        S1E -.->|"if PASS"| S2E["quality-reviewer<br/>Score 0-10"]
+
+        S1D --> M2["CEO Merge Arbiter<br/>Prioritize fixes"]
+        S2D --> M2
+        S6B --> M2
+        S1E --> M2
+        S2E --> M2
+    end
+
+    M2 --> T7["DevOps IaC<br/>CI/CD + Branch Strategy"]
+    T7 --> T8["Remediation<br/>Fix HARDEN findings"]
+    T8 --> T9["SRE<br/>SLOs + Error Budgets<br/>Chaos Engineering"]
+
+    T9 --> G3{"GATE 3<br/>verifier subagent<br/>CONFIRM all complete<br/>Before user sees Gate 3"}
+    G3 -->|"verifier: PASS"| SHIP
+
+    subgraph SHIP["SHIP Phase"]
+        T10["Data Scientist (cond.)<br/>AI/ML projects only"]
+    end
+
+    subgraph SUSTAIN["SUSTAIN + GROW Phase"]
+        T11["Technical Writer<br/>API docs + Dev guides"]
+        T12["Skill Maker"]
+        T13["Growth Marketer<br/>SEO + Go-to-market"]
+        T14["Conversion Optimizer<br/>CRO + A/B Testing"]
+    end
+
+    SHIP --> SUSTAIN
+    G3 -->|"user: Ship it?"| USER["Ship it?<br/>Production Ready"]
 ```
 
-**3 approval gates. Parallel or sequential execution. Scope analysis with risk prediction.**
+**3 approval gates. Parallel execution in git worktrees. Two-stage review per task via Cursor subagents.**
+
+---
+
+### Cursor Subagent Review Workflow
+
+```mermaid
+flowchart LR
+    subgraph PREP["Subagent Context Preparation (Step 0.6)"]
+        P1["PIPELINE_SUMMARY.md<br/>max 2000 tokens<br/>phase + architecture"] --> P2["REVIEWER_CONTRACT.md<br/>per-task<br/>scope + acceptance criteria"]
+        P2 --> P3["SECURITY_STANDARDS.md<br/>OWASP checklist<br/>severity guide<br/>(HARDEN only)"]
+    end
+
+    PREP --> WAVE1
+
+    subgraph WAVE1["Wave 1: BUILD - Parallel Workers"]
+        W1a["T3a: Software Engineer<br/>DELIVERY.json"] --> R1A["spec-reviewer<br/>fast<br/>PASS / FAIL<br/>vs CONTRACT.json"]
+        R1A -->|"PASS"| R2A["quality-reviewer<br/>inherit<br/>Score 0-10<br/>Arch + Naming<br/>Anti-hallucination"]
+
+        W1b["T3b: Frontend Engineer<br/>DELIVERY.json"] --> R1B["spec-reviewer<br/>fast<br/>PASS / FAIL"]
+        R1B -->|"PASS"| R2B["quality-reviewer<br/>inherit<br/>Score 0-10"]
+
+        W1c["T3c: Mobile Engineer<br/>DELIVERY.json"] --> R1C["spec-reviewer<br/>fast<br/>PASS / FAIL"]
+        R1C -->|"PASS"| R2C["quality-reviewer<br/>inherit<br/>Score 0-10"]
+
+        R2A --> MA["CEO Merge Arbiter<br/>Clean merge<br/>Integration test"]
+        R2B --> MA
+        R2C --> MA
+    end
+
+    MA --> WAVE2
+
+    subgraph WAVE2["Wave 2: HARDEN - Parallel Workers"]
+        W5["T5: QA Engineer<br/>DELIVERY.json"] --> R1D["spec-reviewer<br/>fast<br/>PASS / FAIL"]
+        R1D -->|"PASS"| R2D["quality-reviewer<br/>inherit<br/>Score 0-10"]
+
+        W6a["T6a: Security Engineer<br/>DELIVERY.json"] --> SA["security-auditor<br/>inherit<br/>OWASP Top 10<br/>MITRE CWE Top 25<br/>readonly"]
+
+        W6b["T6b: Code Reviewer<br/>DELIVERY.json"] --> R1E["spec-reviewer<br/>fast<br/>PASS / FAIL"]
+        R1E -->|"PASS"| R2E["quality-reviewer<br/>inherit<br/>Score 0-10"]
+
+        R1D --> MB["CEO Merge Arbiter<br/>VALIDATION.json<br/>Escalate if CRITICAL"]
+        R2D --> MB
+        SA --> MB
+        R1E --> MB
+        R2E --> MB
+    end
+
+    MB --> GATE3
+
+    GATE3{"verifier subagent<br/>fast<br/>Confirms all complete<br/>Scans TODOs/secrets<br/>Runs tests"}
+
+    R1A -->|"FAIL"| FIX1["Worker fixes<br/>Re-submit<br/>Max 3x"]
+    R1B -->|"FAIL"| FIX1
+    R1D -->|"FAIL"| FIX2["Worker fixes<br/>Re-submit<br/>Max 3x"]
+    R1E -->|"FAIL"| FIX2
+    SA -->|"CRITICAL"| ESC["Escalate to<br/>CEO agent immediately"]
+```
+
+| Subagent | Model | Role |
+|---|---|---|
+| `chat-interpreter` | fast | Translates chat → structured request |
+| `explore` | fast (built-in) | 10 parallel codebase searches |
+| `verifier` | fast | Confirm deliverables actually work |
+| `spec-reviewer` | **fast** | PASS/FAIL against CONTRACT.json |
+| `quality-reviewer` | **inherit** | Deep quality + architecture review |
+| `security-auditor` | **inherit** | Read-only OWASP + MITRE CWE audit |
+
+> Use `fast` for mechanical checklist tasks (2K tokens, <$0.01). Use `inherit` only for deep reasoning (15K tokens, ~$0.05).
 
 ### Game Build Pipeline
 
-```
-Game Designer (GDD, mechanics, economy)
-    ↓
-Engine Engineer ──── Unity / Unreal / Godot / Roblox
-    ↓
-Level Designer ────── environments, encounters, pacing    ┐
-Narrative Designer ── dialogue, lore, character voice     ├ parallel
-Technical Artist ──── shaders, VFX, LOD, performance     │
-Game Audio Engineer ─ spatial audio, adaptive music       ┘
-    ↓
-Engine Multiplayer ── networking (if multiplayer)
-    ↓
-QA Engineer ─────────── game testing
-    ↓
-Ship
+```mermaid
+flowchart TD
+    G1["Game Designer<br/>GDD + Gameplay loops<br/>Economy + Mechanics"] --> G2{"Gate 1<br/>Approve GDD?"}
+    G2 -->|Approve| ENG["Engine Engineer<br/>Unity / Unreal / Godot / Roblox"]
+    ENG --> PAR{"Multiplayer?"}
+    PAR -->|Yes| MP["Engine Multiplayer<br/>Netcode + Replication"]
+    PAR -->|No| LEVEL
+    MP --> LEVEL
+    LEVEL -->|"Parallel"| LD["Level Designer<br/>Encounters + Pacing<br/>Environmental storytelling"]
+    LEVEL -->|"Parallel"| NAR["Narrative Designer<br/>Dialogue + Lore<br/>Character voice"]
+    LEVEL -->|"Parallel"| TA["Technical Artist<br/>Shaders + VFX<br/>LOD + Performance"]
+    LEVEL -->|"Parallel"| GA["Game Audio Engineer<br/>Spatial audio<br/>Adaptive music + SFX"]
+    LD --> QA["QA Engineer<br/>Game testing"]
+    NAR --> QA
+    TA --> QA
+    GA --> QA
+    QA --> G3{"Gate 2<br/>Production Ready?"}
+    G3 -->|Approve| SHIP["Ship"]
 ```
 
 ### XR Build Pipeline
 
-```
-XR Engineer (spatial UI/UX, comfort, platform selection)
-    ↓
-Game Build pipeline (if game-like XR experience)
-    ↓ or
-Frontend/Software Engineer (if utility XR app)
-```
-
-### Parallel Dispatch (v5.2)
-
-```
-CEO Agent (Orchestrator)
-    │
-    ├── Scope Analysis → Complexity Score, Time Estimate, Risk Level
-    │
-    ├── Task Contract ──→ Worktree 1: Backend  (services/)
-    ├── Task Contract ──→ Worktree 2: Frontend (frontend/)
-    ├── Task Contract ──→ Worktree 3: Mobile   (mobile/)
-    │
-    ├── Validate each worker (7-step anti-hallucination)
-    └── Merge Arbiter → Clean merge into main
+```mermaid
+flowchart TD
+    X1["XR Engineer<br/>Platform selection<br/>Quest / Vision Pro / WebXR"] --> X2{"Game-like XR?"}
+    X2 -->|Yes| GBP["Game Build Pipeline<br/>Game Designer -> Engine -> QA"]
+    X2 -->|No| SW["Frontend / Software Engineer<br/>Utility XR app"]
+    X1 --> X3["XR Comfort & Safety<br/>Comfort mode<br/>Hand tracking"]
+    X3 --> GBP
+    X3 --> SW
+    GBP --> SHIP2["Ship"]
+    SW --> SHIP2
 ```
 
-### Research Intelligence (v5.3)
+### Parallel Dispatch (v5.2+)
 
+```mermaid
+flowchart TD
+    CEO["CEO Agent (Orchestrator)"] --> SA["Scope Analysis<br/>Complexity Score<br/>Time Estimate<br/>Risk Level"]
+    SA --> TC["Task Contract<br/>Per worker"]
+    TC -->|"Wave 1: BUILD"| WT1["Worktree 1<br/>T3a: Backend<br/>services/"]
+    TC -->|"Wave 1: BUILD"| WT2["Worktree 2<br/>T3b: Frontend<br/>frontend/"]
+    TC -->|"Wave 1: BUILD"| WT3["Worktree 3<br/>T3c: Mobile<br/>mobile/"]
+    WT1 --> VAL["7-Step Anti-Hallucination<br/>Validation per worker"]
+    WT2 --> VAL
+    WT3 --> VAL
+    VAL --> SR["spec-reviewer<br/>fast<br/>PASS / FAIL<br/>vs CONTRACT.json"]
+    SR -->|"PASS"| QR["quality-reviewer<br/>inherit<br/>Score 0-10"]
+    QR --> MA["Merge Arbiter<br/>Clean merge into main"]
+    SR -->|"FAIL"| FIX["Worker fixes<br/>Re-submit<br/>Max 3x"]
+    MA --> VER["verifier<br/>Confirm all complete<br/>fast"]
+    VER --> G3{"Gate 3<br/>Approve production?"}
 ```
-┌─────────────────────────────────────────────────────┐
-│                 Research Pipeline                     │
-│                                                       │
-│  Phase 1: Web Search (search_web)       ← ALWAYS ON  │
-│  Phase 2: NotebookLM MCP (optional)  ← GROUNDED AI   │
-│  Phase 3: Synthesize → Citations + Recommendations    │
-│                                                       │
-│  ⚡ Fallback: Phase 2 fails? Phase 1 still works.     │
-└─────────────────────────────────────────────────────┘
+
+### Research Intelligence (v5.3+)
+
+```mermaid
+flowchart LR
+    P1["Phase 1<br/>Web Search<br/>Always ON"] --> P3["Phase 3<br/>Synthesize<br/>Citations + Recommendations"]
+    P2["Phase 2<br/>NotebookLM MCP<br/>Optional - Grounded AI"] --> P3
+    P1 --> P2
+    P2 -.->|"Fails? Phase 1 still works"| P3
 ```
 
 ### Project Onboarding & Quality Gates (v7.0+)
 
-```
-┌──────────────────────────────────────────────────────────┐
-│               Project Onboarding (v7.3)                    │
-│                                                            │
-│  Phase 1:   Fingerprint ── tech stack, framework, CI       │
-│  Phase 1.5: Code Intelligence ── GitNexus knowledge graph  │
-│             🧠 255 symbols · 383 relationships · 7 clusters│
-│             → impact(), context(), query() for all skills  │
-│             → User-friendly install prompt if not found     │
-│  Phase 2:   Health Check ── build, tests, lint, CVEs       │
-│  Phase 3:   Pattern Analysis ── naming, style, arch        │
-│  Phase 4:   Risk Assessment ── tech debt, protected        │
-│  Phase 5:   Profile → .forgewright/project-profile.json        │
-│                                                            │
-│  📊 Quality Gate: runs after EVERY skill output            │
-│  Level 1: Build     │ Level 2: Regression (brownfield)     │
-│  Level 3: Standards │ Level 4: Traceability                │
-│  Score: 0-100 │ Grade: A-F │ Threshold: configurable       │
-│                                                            │
-│  🛡️ Brownfield Safety: git branch + baseline + rollback    │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Onboard["Project Onboarding"]
+        O1["Phase 1: Fingerprint<br/>Tech stack, framework, CI"] --> O15["Phase 1.5: Code Intelligence<br/>GitNexus knowledge graph<br/>impact() + context() + detect_changes()"]
+        O15 --> O2["Phase 2: Health Check<br/>Build + tests + lint + CVEs"]
+        O2 --> O3["Phase 3: Pattern Analysis<br/>Naming + style + arch"]
+        O3 --> O4["Phase 4: Risk Assessment<br/>Tech debt + protected paths"]
+        O4 --> O5["Phase 5: Profile<br/>.forgewright/project-profile.json"]
+    end
+
+    subgraph QG["Quality Gate - After EVERY Skill Output"]
+        Q1["Level 1: Build<br/>Compiles + no runtime errors"] --> Q2["Level 2: Regression<br/>Brownfield: existing tests pass"]
+        Q2 --> Q3["Level 3: Standards<br/>Conventions + patterns"]
+        Q3 --> Q4["Level 4: Traceability<br/>Spec -> impl mapping"]
+        Q1 -->|"Score 0-100"| SCORE["Grade A-F<br/>Threshold: configurable"]
+    end
+
+    subgraph BF["Brownfield Safety"]
+        B1["Git Branch"] --> B2["Baseline Tests"] --> B3["Change Manifest"] --> B4["Rollback on failure"]
+    end
 ```
 
 ---
@@ -421,7 +577,7 @@ CEO Agent (Orchestrator)
 
 | Metric | Detail |
 |--------|--------|
-| **48 specialized skills** | Each with sole authority over its domain |
+| **52 specialized skills** | Each with sole authority over its domain |
 | **19 execution modes** | Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze** |
 | **6-phase pipeline** | DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW |
 | **4 game engines** | Unity, Unreal Engine, Godot, Roblox |
@@ -449,7 +605,7 @@ Forgewright works out of the box with just **Step 1**. Each additional step unlo
 
 | Level | What You Get | Steps Needed |
 |-------|-------------|-------------|
-| ⚡ **Basic** (48 skills) | Full pipeline: DEFINE → BUILD → HARDEN → SHIP | Step 1 only |
+| ⚡ **Basic** (52 skills) | Full pipeline: DEFINE → BUILD → HARDEN → SHIP | Step 1 only |
 | ⚡⚡ **Smart** (+code understanding) | Blast radius analysis, safe refactoring, call chain tracing | + Step 2 |
 | ⚡⚡⚡ **Persistent** (+cross-session memory) | Remembers decisions, blockers, progress across sessions | + Step 3 |
 | ⚡⚡⚡⚡ **Research** (+grounded research) | NotebookLM podcasts, source analysis, deep research | + Step 4 |
@@ -476,7 +632,7 @@ git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .ant
 
 ✅ **Verify:** Open Antigravity, type anything — Forgewright auto-routes through the orchestrator.
 
-🔓 **Unlocks:** 48 skills, 19 modes, 15 protocols, full lifecycle pipeline.
+🔓 **Unlocks:** 52 skills, 19 modes, 15 protocols, full lifecycle pipeline.
 
 ---
 
@@ -690,7 +846,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## Examples
 
 ```bash
-# Greenfield SaaS (full pipeline, 48 skills)
+# Greenfield SaaS (full pipeline, 52 skills)
 "Build a production-grade SaaS for multi-vendor e-commerce
  with seller dashboards, buyer marketplace, and payment processing."
 
@@ -735,7 +891,7 @@ Each domain has one authority. No overlap, no contradictions.
 ## FAQ
 
 **How many skills does Forgewright have?**
-48 specialized skills covering requirements analysis, software engineering, game development (Unity, Unreal, Godot, Roblox), XR (AR/VR/MR), AI/ML, data engineering, web scraping, accessibility, UX research, and go-to-market.
+52 specialized skills covering requirements analysis, software engineering, game development (Unity, Unreal, Godot, Roblox), XR (AR/VR/MR), AI/ML, data engineering, web scraping, accessibility, UX research, and go-to-market.
 
 **Can it build complete games?**
 Yes. The Game Build mode orchestrates game-specific skills: Game Designer → Engine Engineer → Level Designer → Narrative → Technical Art → Audio → QA. Supports Unity, Unreal Engine, Godot, and Roblox.
@@ -755,7 +911,7 @@ No. Playwright is the primary CI testing tool. Midscene is optional for visual Q
 **What languages are supported?**
 TypeScript, Go, Python, Rust, Java, C++ (Unreal), C# (Unity), GDScript (Godot), Luau (Roblox).
 
-**Do I need all 48 skills?**
+**Do I need all 52 skills?**
 No. The orchestrator only activates what you need. A backend API may use 8 skills. A full game may use 20+. The BA skill only activates when information gaps are detected.
 
 **What is Code Intelligence?**
@@ -802,7 +958,7 @@ MIT
 ---
 
 <p align="center">
-  <strong>Forgewright — 48 AI skills. 19 modes. 15 protocols. Code Intelligence. SaaS to AAA games. One prompt. ⭐</strong>
+  <strong>Forgewright — 52 AI skills. 19 modes. 15 protocols. Code Intelligence. SaaS to AAA games. One prompt. ⭐</strong>
 </p>
 <p align="center">
   <em>Understand relationships, not just files. Validate with zero assumptions. Research with zero hallucinations. Build games across 4 engines. Ship with quality scoring. Grow with data.</em>

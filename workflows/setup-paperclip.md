@@ -70,7 +70,7 @@ Paperclip Server (localhost:3100)     ← Business layer (goals, tickets, budget
     ↓ assigns tickets
 AI Agents (OpenClaw, Antigravity)     ← Execution layer
     ↓ reads AGENTS.md
-Forgewright (git submodule)           ← Engineering layer (48 skills)
+Forgewright (git submodule)           ← Engineering layer (53 skills)
     ↓ writes code
 Your Project (git repo)              ← Your codebase
 ```

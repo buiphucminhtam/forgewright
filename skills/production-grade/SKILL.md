@@ -19,7 +19,7 @@ description: >
 
 Adaptive meta-skill orchestrator for all software engineering work. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 17-skill greenfield build.
 
-**17 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
+**52 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
 
 **All skills are bundled in this plugin. Single install, everything included.**
 
@@ -38,7 +38,7 @@ Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → �
 Skills are loaded on-demand based on classified mode. Read `.forgewright/skills-config.json` for the mode→skill mapping.
 
 ```
-Instead of loading all 50 skill descriptions (~66KB), only load skills relevant to the mode:
+Instead of loading all 52 skill descriptions (~66KB), only load skills relevant to the mode:
   Review mode  → loads 1 skill  (~3KB)
   Feature mode → loads 5 skills (~15KB)
   Full Build   → loads 10 skills (~30KB)
@@ -83,7 +83,13 @@ If not detected → proceed normally (no changes).
 
 **Step 1 — Analyze the request:**
 
-Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
+Read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` (from chat-interpreter Step -1) for the authoritative request analysis. The chat-interpreter has already performed 9-dimension extraction and mode detection.
+
+If `confidence: HIGH` → use the detected mode directly, skip the classification table.
+If `confidence: MEDIUM` → present 2 most likely modes to the user.
+If `confidence: LOW` → present 3 most likely modes to the user.
+
+Override the detected mode only if the user's intent clearly differs from what was interpreted. Otherwise, trust the chat-interpreter's analysis.
 
 | Mode | Trigger Signals | Skills Involved |
 |------|----------------|-----------------|
@@ -124,7 +130,7 @@ Here's my plan:
 Scope: [light / moderate / heavy]
 
 1. **Looks good — start (Recommended)** — Execute this plan
-2. **I want the full production-grade pipeline** — Run all 17 skills, 5 phases, 3 gates
+2. **I want the full production-grade pipeline** — Run all 52 skills, 6 phases, 3 gates
 3. **Adjust the plan** — Add or remove skills from the plan
 4. **Chat about this** — Free-form input
 ```
@@ -482,6 +488,84 @@ Build AR/VR/MR applications. XR Engineer + optional game development pipeline.
 
 **2 gates:** After XR architecture (step 2), and after spatial interaction playable (step 3-4).
 
+## Chat Interpretation (Pre-Processing — BEFORE everything else)
+
+> **Powered by prompt-master methodology.** Run BEFORE Step 0.1 on every user message.
+
+Every user message is first interpreted through the `chat-interpreter` Cursor subagent. This converts vague natural language into a structured, unambiguous pipeline request — eliminating the need for users to speak "prompt engineer."
+
+**Step -1 — Chat Interpretation:**
+
+```
+Invoke: /chat-interpreter [user's message]
+```
+
+**The chat-interpreter subagent performs:**
+
+1. **9-Dimension Extraction** — silently extracts: Task, Target tool, Output format, Constraints, Input, Context, Audience, Success criteria, Examples
+
+2. **Mode Detection** — maps the request to Forgewright's 19 modes with confidence level (HIGH/MEDIUM/LOW)
+
+3. **Gap Detection** — identifies missing information (max 3 clarifying questions if needed)
+
+4. **Default Application** — fills in reasonable defaults for unstated requirements
+
+5. **Structured Output** — produces `INTERPRETED_REQUEST.md` with:
+   - Detected mode + confidence
+   - Intent (original quoted)
+   - Key decisions made
+   - Scope (included/excluded)
+   - Constraints
+   - Missing items
+   - Success criteria
+
+**If confidence is HIGH:**
+```
+✓ Request interpreted — [mode] mode detected
+[Structured request summary — 3 lines max]
+→ Proceeding to Step 0.1
+```
+
+**If confidence is MEDIUM:**
+```
+Request understood. Detected [mode] but [alternative] is also possible.
+
+1. **[mode] (Recommended)** — [reason]
+2. **[alternative]** — [reason why user might want this]
+3. **Chat about this** — Tell me more
+```
+
+**If confidence is LOW:**
+```
+I'm not sure what you want. A few quick questions:
+
+1. [most critical unknown — max 3 questions]
+2. [second most critical]
+3. [third most critical — last one]
+
+After your answers, I'll route to the right pipeline.
+```
+
+**Paperclip Detection (auto-handled):**
+- If `#42`, `CLIP-`, or `[paperclip]` detected → route to **Express** engagement mode
+- chat-interpreter appends `engagement_override: express` to `INTERPRETED_REQUEST.md`
+
+**Chat Interpretation Output:**
+```
+.forgewright/subagent-context/INTERPRETED_REQUEST.md
+  ├── mode: [detected mode]
+  ├── confidence: [HIGH/MEDIUM/LOW]
+  ├── intent_summary: [1 sentence]
+  ├── scope: {included: [...], excluded: [...]}
+  ├── constraints: [...]
+  ├── missing: [...]
+  ├── success_criteria: [...]
+  └── engagement_override: [express/standard/thorough/meticulous if set]
+```
+
+**Reading the interpreted request before proceeding:**
+All subsequent pipeline steps read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` as the authoritative source of user intent — not the raw chat message.
+
 ## Auto-Initialization Check
 
 Run silently BEFORE any execution (all modes) to ensure project intelligence is fully configured.
@@ -555,6 +639,73 @@ Run AFTER update check, BEFORE mode classification. Follows `skills/_shared/prot
 
 Log: `✓ Session context loaded — [project name], last session: [summary or "first session"]`
 
+**Step 0.6 — Cursor Subagent Context Preparation:**
+
+Run AFTER session context is loaded, AFTER chat-interpreter (Step -1), BEFORE any skill or phase execution. This ensures subagents have clean, bounded context.
+
+1. **Ensure subagent context directory exists:**
+   ```
+   mkdir -p .forgewright/subagent-context/
+   ```
+
+2. **Read chat-interpreter output:**
+   ```
+   Read .forgewright/subagent-context/INTERPRETED_REQUEST.md
+   → This is the authoritative source of user intent
+   → All skills use this instead of the raw chat message
+   ```
+
+3. **Write PIPELINE_SUMMARY.md** (refresh for each new phase): (refresh for each new phase):
+   - Read `.forgewright/project-profile.json` if exists
+   - Read current phase status from `.forgewright/task.md`
+   - Read approved architecture from `docs/architecture/` (if exists)
+   - Read BRD summary from `product-manager/BRD/` (if exists)
+   - Compress to ≤ 2,000 tokens
+   - Write to `.forgewright/subagent-context/PIPELINE_SUMMARY.md`
+
+3. **Write REVIEWER_CONTRACT.md** (per-review, generated dynamically):
+   ```
+   For each review task, write:
+   - REVIEWER_CONTRACT.md with scope, acceptance criteria, forbidden paths
+   - Reference: .forgewright/subagent-context/REVIEWER_CONTRACT_TEMPLATE.md
+   ```
+
+4. **Update SECURITY_STANDARDS.md** (refresh for HARDEN phase):
+   - Run security-engineer skill output through SECURITY_STANDARDS template
+   - Write to `.forgewright/subagent-context/SECURITY_STANDARDS.md`
+
+5. **Log:**
+   ```
+   ✓ Subagent context prepared — [N] files in .forgewright/subagent-context/
+   ```
+
+**Cursor Subagent Invocation Convention:**
+
+When invoking a Cursor subagent, use the exact pattern below:
+
+```
+Invoke: /[subagent-name] [task context]
+Example: /verifier Review the T3a backend services delivery
+Example: /spec-reviewer Check T3b frontend against CONTRACT.json
+Example: /quality-reviewer Assess T3a services code quality
+Example: /security-auditor Perform read-only OWASP audit on T3a auth code
+```
+
+**Built-in Cursor EXPLORE subagent** (automatic, no explicit invocation needed):
+
+The Cursor built-in `explore` subagent runs 10 parallel searches simultaneously using a fast model. This is automatically used by Cursor's Agent for context-heavy exploration. In the DEFINE phase (Step 4: Codebase Discovery), use natural language and the explore subagent handles parallel search automatically — you do NOT need to manually invoke it.
+
+**Available Cursor Subagents:**
+
+| Subagent | Model | Best For | Invocation |
+|----------|-------|---------|-----------|
+| `chat-interpreter` | fast | Translates chat to structured request | `/chat-interpreter [message]` |
+| `explore` | fast (built-in) | 10 parallel codebase searches | Automatic (Cursor Agent) |
+| `verifier` | fast | Confirm deliverables actually work | `/verifier [task]` |
+| `spec-reviewer` | fast | Verify spec compliance | `/spec-reviewer [task]` |
+| `quality-reviewer` | inherit | Deep quality/architecture review | `/quality-reviewer [task]` |
+| `security-auditor` | inherit | OWASP read-only audit | `/security-auditor [task]` |
+
 ## Full Build Pipeline
 
 When mode is **Full Build**, follow this EXACT sequence:
@@ -601,6 +752,20 @@ Read these from the plugin's `skills/_shared/protocols/` directory and copy them
    find_by_name("Dockerfile*"), find_by_name("*", ".github/workflows/"), find_by_name("*", "infrastructure/"), find_by_name("*", "terraform/")
    find_by_name(".production-grade.yaml")
    ```
+
+   **Cursor EXPLORE Enhancement (automatic):**
+
+   Cursor's built-in `explore` subagent can be triggered naturally. When the Agent sees you need to understand the codebase structure, it automatically runs up to 10 parallel searches using the `explore` subagent — each with a fast model, consuming no context in the main conversation. The explore subagent returns only the synthesized findings.
+
+   To leverage this explicitly in the DEFINE phase, frame your discovery queries naturally:
+   ```
+   Agent (you): "Explore the backend structure — find services, APIs, and database models"
+   → Cursor Agent spawns explore subagent with 10 parallel searches
+   → explore subagent returns: [list of services], [API endpoints], [DB schemas], [key patterns]
+   → You inject results into project profile
+   ```
+
+   This replaces manual `find_by_name` calls for complex discovery with a more intelligent, semantically-driven approach. Use both — `find_by_name` for exact file discovery, explore for architectural pattern analysis.
 
    **Classify the project:**
 
@@ -971,14 +1136,47 @@ Architecture complete: [tech stack summary]. Approve to start building?
 
 **Gate 3 — Production Readiness** (after T9):
 
-Notify user via notify_user:
-```
-All phases complete. [summary]. Ship it?
+**Step G3.1 — Run VERIFIER subagent (before showing Gate 3 to user):**
 
-1. **Ship it — production ready (Recommended)** — Finalize assembly and deploy
-2. **Show full report** — Display complete pipeline summary
+Before presenting Gate 3 options to the user, run the Cursor `verifier` subagent to confirm all work is actually complete:
+
+```
+Invoke: /verifier Confirm all pipeline deliverables are complete and functional for [project-name]
+```
+
+The verifier subagent:
+1. Reads `.forgewright/subagent-context/PIPELINE_SUMMARY.md` for scope
+2. Reads all DELIVERY.json from completed tasks
+3. Runs compilation and tests for each deliverable
+4. Scans for TODOs, secrets, and obvious bugs
+5. Writes report to `.forgewright/subagent-context/VERIFIER_REPORT.md`
+
+**Step G3.2 — Present Gate 3 options (using verifier report):**
+
+Notify user via notify_user (with verifier report summary):
+```
+All phases complete. Ship it?
+
+## Verifier Report Summary
+[VERIFIER_REPORT.md summary — PASS/FAIL count]
+
+1. **Ship it — production ready (Recommended)** — Verifier confirmed ✓
+2. **Show full report** — Display complete pipeline summary + verifier details
 3. **Fix issues first** — Address remaining findings before shipping
 4. **Chat about this** — Free-form input about production readiness
+```
+
+If verifier returned **FAIL** or **PARTIAL**:
+```
+⚠️ Verifier found issues. Review before shipping.
+
+## Verifier Report
+[FAIL/PARTIAL findings from VERIFIER_REPORT.md]
+
+1. **Fix and retry verifier** — Address issues, re-run /verifier
+2. **Show full report** — See all findings in detail
+3. **Override — ship anyway** — Proceed with known issues (not recommended)
+4. **Chat about this** — Discuss the findings
 ```
 
 ## Task Dependency Graph
@@ -1238,7 +1436,7 @@ The dashboard includes:
 Also display the legacy summary for backward compatibility:
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║          FORGE17 v{local_version} — COMPLETE                    ║
+║          Forgewright v{local_version} — COMPLETE                    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Project: <name>                                             ║
 ║  Quality Score: [XX]/100 (Grade [A-F])                       ║

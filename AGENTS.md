@@ -1,10 +1,10 @@
 # Forgewright — Production Grade AI Pipeline
 
-> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 50 specialized skills.
+> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 52 specialized skills.
 
 ## What is Forgewright?
 
-Forgewright is an adaptive orchestrator with **50 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Roblox game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
+Forgewright is an adaptive orchestrator with **52 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Roblox game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
 
 **Pipeline:** `DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
@@ -28,7 +28,7 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 
 | User Says | Mode | What Happens |
 |-----------|------|-------------|
-| "Build a SaaS for..." | Full Build | All skills, 5 phases, 3 gates |
+| "Build a SaaS for..." | Full Build | All skills, 6 phases, 3 gates |
 | "Add [feature]..." | Feature | PM → Architect → BE/FE → QA |
 | "Review my code" | Review | Code Reviewer only |
 | "Write tests" | Test | QA Engineer only |
@@ -86,7 +86,7 @@ If a newer version exists, mention it briefly: *"Forgewright update available (v
 
 ## Skills Directory
 
-All 50 skills are in the `skills/` directory:
+All 52 skills are in the `skills/` directory:
 
 | Skill | Location |
 |-------|----------|
@@ -194,7 +194,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (256 symbols, 383 relationships, 20 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (256 symbols, 384 relationships, 21 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

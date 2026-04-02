@@ -170,9 +170,17 @@ Context Isolation Rules:
 
   LEAD AGENT (CEO) RECEIVES after merge:
     ✅ All workers' DELIVERY.json (synthesized)
-    ✅ All VALIDATION.json reports
+    ✅ All subagent review reports from .forgewright/subagent-context/ (SPEC_REVIEW_*.md, QUALITY_REVIEW_*.md, SECURITY_AUDIT_*.md)
+    ✅ VERIFIER_REPORT.md — overall delivery confirmation
     ✅ Merge conflict log (if any)
     ✅ Full pipeline context (not compressed)
+
+  CURSOR SUBAGENT CONTEXT (for reviewers — .forgewright/subagent-context/):
+    ✅ PIPELINE_SUMMARY.md     — project + phase + architecture context
+    ✅ WORKER_INSTRUCTIONS_TEMPLATE.md — worker boundary rules
+    ✅ REVIEWER_CONTRACT_TEMPLATE.md  — reviewer contract template  
+    ✅ SECURITY_STANDARDS.md    — OWASP checklist + severity guide
+    ✅ VERIFIER_REPORT.md       — verifier findings (read before quality review)
 
   Context Size Budget per Worker:
     CONTRACT.json:          ~2K tokens
@@ -258,39 +266,102 @@ The CEO agent can also dispatch by reading each skill sequentially in separate A
 
 After all workers complete, perform a **two-stage review** for each task:
 
-**Stage 1: Spec Compliance Review (MUST pass before Stage 2)**
+**Stage 1: Spec Compliance Review — Cursor Subagent (MUST pass before Stage 2)**
+
+After all workers in the wave complete, run the Cursor `spec-reviewer` subagent for each task:
 
 ```
-For each task in the wave:
-  1. Read DELIVERY.json from worktree
-  2. If missing → mark as FAILED
-  3. Dispatch spec compliance reviewer subagent:
-     - Read CONTRACT.json acceptance criteria
-     - Compare every criterion against the actual delivery
-     - For each criterion: PASS / FAIL / PARTIAL
-     - Check for over-building (features not in spec → flag for removal)
-     - Check for under-building (missing requirements)
-  4. If spec compliance FAILS:
-     - Feed issues back to worker
-     - Worker fixes → re-submit DELIVERY.json
-     - Re-review (max 3 iterations)
-     - After 3 failures → escalate to CEO agent
-  5. If spec compliance PASSES → proceed to Stage 2
+Invoke: /spec-reviewer Review [task-id] worktree against CONTRACT.json
+Example: /spec-reviewer Review T3a backend services against CONTRACT.json
+Example: /spec-reviewer Review T3b frontend pages against CONTRACT.json
 ```
 
-**Stage 2: Code Quality Review (ONLY after spec compliance passes)**
+**Before invoking — generate REVIEWER_CONTRACT.md:**
+
+```bash
+# For each task, generate reviewer contract from CONTRACT.json
+for task in T3a T3b T3c; do
+  # Extract acceptance criteria from worktree CONTRACT.json
+  # Write to .forgewright/subagent-context/REVIEWER_CONTRACT_$task.md
+done
+```
+
+**The spec-reviewer subagent performs:**
+1. Reads `PIPELINE_SUMMARY.md` for phase context
+2. Reads `REVIEWER_CONTRACT.md` for scope and acceptance criteria
+3. Reads worktree output files
+4. Checks every acceptance criterion: PASS / FAIL / PARTIAL
+5. Detects over-building (out of scope features)
+6. Detects under-building (missing requirements)
+7. Writes report to `.forgewright/subagent-context/SPEC_REVIEW_[task-id].md`
+8. Appends one-line status to `.forgewright/subagent-context/REVIEW_STATUS.md`
+
+**Retry protocol:**
+- If spec compliance FAILS: feed issues back to worker → worker fixes → re-submit → re-invoke spec-reviewer (max 3 iterations)
+- After 3 failures → escalate to CEO agent with SPEC_REPORT attached
+
+**Escalation triggers:**
+- Worker claims DONE but DELIVERY.json missing
+- Worker touched forbidden paths
+- Acceptance criteria cannot be verified (required file missing)
+
+If ALL spec reviews PASS → proceed to Stage 2.
+
+**Stage 2: Code Quality Review — Cursor Subagent (ONLY after spec compliance passes)**
+
+For each task that passed Stage 1, run Cursor `quality-reviewer` and `security-auditor` subagents:
 
 ```
-For each task that passed Stage 1:
-  1. Run: scripts/worktree-manager.sh validate <task_id>
-  2. Read skills/_shared/protocols/task-validator.md and execute full validation
-  3. Dispatch code quality reviewer subagent:
-     - Check code structure, naming, error handling
-     - Check test coverage and test quality
-     - Check anti-hallucination checklist
-  4. If quality review has issues:
-     - Worker fixes → re-review (max 3 iterations)
-  5. Write VALIDATION.json in the worktree
+Invoke: /quality-reviewer Assess code quality for [task-id]
+Example: /quality-reviewer Assess T3a services code quality
+Example: /quality-reviewer Assess T3b frontend code quality
+```
+
+**The quality-reviewer subagent performs:**
+1. Reads `PIPELINE_SUMMARY.md` for architecture context
+2. Reads `QUALITY_STANDARDS.md` if exists
+3. Reads SPEC_REVIEW_[task-id].md (confirms spec passed)
+4. Reads REVIEWER_CONTRACT.md for scope
+5. Assesses: naming, error handling, architecture conformance, test quality
+6. Scores per file: Correctness, Readability, Maintainability, Testability, Performance
+7. Runs anti-hallucination checks: imports resolve, API calls match spec, no invented endpoints
+8. Writes report to `.forgewright/subagent-context/QUALITY_REVIEW_[task-id].md`
+
+**For HARDEN phase — run security-auditor additionally:**
+
+```
+Invoke: /security-auditor Perform read-only OWASP audit on [task-id] [scope]
+Example: /security-auditor Perform OWASP audit on T3a auth and payment code
+```
+
+**The security-auditor subagent performs:**
+1. Reads `PIPELINE_SUMMARY.md` and `SECURITY_STANDARDS.md`
+2. Checks all 10 OWASP Top 10 categories
+3. Checks MITRE CWE Top 25
+4. Writes report to `.forgewright/subagent-context/SECURITY_AUDIT_[task-id].md`
+5. **readonly: true** — never modifies any file
+
+**Retry protocol:**
+- If quality review FAIL (score < 6/10): worker fixes → re-review (max 3 iterations)
+- If security-auditor finds CRITICAL/HIGH: escalate to CEO agent immediately
+- After 3 failures → escalate to CEO agent
+
+**Write consolidated VALIDATION.json:**
+
+```json
+{
+  "task_id": "[task-id]",
+  "stage1_spec_review": "PASS/FAIL",
+  "stage2_quality_review": "PASS/FAIL",
+  "stage2_security_audit": "PASS/FAIL (if run)",
+  "overall": "PASS/FAIL/PARTIAL",
+  "reports": {
+    "spec": ".forgewright/subagent-context/SPEC_REVIEW_[task-id].md",
+    "quality": ".forgewright/subagent-context/QUALITY_REVIEW_[task-id].md",
+    "security": ".forgewright/subagent-context/SECURITY_AUDIT_[task-id].md"
+  },
+  "validated_at": "[ISO timestamp]"
+}
 ```
 
 **Why this order matters:**
@@ -298,12 +369,18 @@ For each task that passed Stage 1:
 - Spec compliance catches over/under-building early (cheaper to fix)
 - Code quality review is more valuable after scope is confirmed correct
 
-**Status summary:**
+**Status summary (updated with Cursor subagent workflow):**
 ```
   ━━━ Parallel Dispatch: Wave 1 Results ━━━━━━━━━━
-  T3a (Backend):   ✓ PASS  — Spec ✓ Quality ✓ — 5 services, 42 tests
+  T3a (Backend):   ✓ PASS  — Spec ✓ Quality ✓ Security ✓ — 5 services, 42 tests
   T3b (Frontend):  ✓ PASS  — Spec ✓ Quality ✓ — 8 pages, 28 tests
   T3c (Mobile):    ⊘ SKIP  — not required
+
+  Cursor Subagent Reports:
+  • SPEC_REVIEW_T3a.md      — spec-reviewer (fast model): PASS
+  • QUALITY_REVIEW_T3a.md   — quality-reviewer (inherit): Score 8.5/10
+  • SECURITY_AUDIT_T3a.md   — security-auditor (inherit): SECURE
+  • VERIFIER_REPORT.md       — verifier (fast model): PASS
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -324,10 +401,26 @@ Use the least powerful model that can handle each role to conserve cost and incr
 - Touches multiple files with integration concerns → standard model
 - Requires design judgment or broad codebase understanding → most capable model
 
-**Apply to subagent roles:**
-- Implementer subagents on mechanical tasks → cheap model
-- Spec compliance reviewer → standard model (needs judgment)
-- Code quality reviewer → most capable model (needs broad understanding)
+**Apply to Cursor subagent roles (model field in .cursor/agents/):**
+
+| Subagent | model | Why |
+|----------|-------|-----|
+| `explore` | built-in (fast) | 10 parallel searches, automatic |
+| `verifier` | `fast` | Mechanical compliance checks, no judgment needed |
+| `spec-reviewer` | `fast` | Binary PASS/FAIL against spec, no deep reasoning needed |
+| `quality-reviewer` | `inherit` | Needs deep reasoning for architecture quality assessment |
+| `security-auditor` | `inherit` | Needs deep reasoning for OWASP vulnerability assessment |
+
+**Cost-efficiency tips:**
+- Use `fast` for any task with a clear checklist (verifier, spec-reviewer)
+- Use `inherit` only for tasks requiring design judgment or broad understanding
+- The `fast` model is ~10x cheaper and ~3-5x faster than standard models
+- For HIGH risk projects, consider using `inherit` for spec-reviewer too (worth the cost)
+
+**For implementer workers (git worktree):**
+- Implementer workers use `inherit` (full reasoning required for implementation)
+- spec-reviewer using `fast` on a mechanical task: ~2K tokens, <$0.01
+- quality-reviewer using `inherit` on a complex service: ~15K tokens, ~$0.05
 
 ### Implementer Status Protocol
 
