@@ -15,6 +15,7 @@ CLAUDE.md
 
 # Build output
 build/
+!mcp/build/
 dist/
 *.js.map
 
