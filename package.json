@@ -1,0 +1,12 @@
+{
+  "name": "forgewright",
+  "version": "7.7.0",
+  "description": "Production-Grade AI Pipeline Orchestrator — 48 skills, 19 modes",
+  "private": true,
+  "devDependencies": {
+    "husky": "^9.0.0"
+  },
+  "scripts": {
+    "prepare": "husky install"
+  }
+}
