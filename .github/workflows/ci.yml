@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - 'mcp/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - 'mcp/**'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-format:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mcp
+
+      - name: Check ESLint
+        run: npm run lint
+        working-directory: mcp
+
+      - name: Check Prettier
+        run: npm run format:check
+        working-directory: mcp
+
+  typecheck:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mcp
+
+      - name: Type check
+        run: npm run build
+        working-directory: mcp
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mcp
+
+      - name: Run tests
+        run: npm run test
+        working-directory: mcp
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: mcp/coverage/
+          retention-days: 14
+
+  test-coverage:
+    name: Coverage Gate
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mcp
+
+      - name: Check coverage thresholds
+        run: npm run test:coverage
+        working-directory: mcp
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-coverage-report
+          path: mcp/coverage/
+          retention-days: 14
+
+  commitlint:
+    name: Commit Message Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mcp
+
+      - name: Validate commit messages
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+        working-directory: mcp

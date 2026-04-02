@@ -1,0 +1,65 @@
+# API Platform Preset — Backend-focused API services
+# Copy this to your project root as .production-grade.yaml
+
+engagement_mode: standard
+parallel_dispatch:
+  enabled: true
+  strategy: worktree
+
+paths:
+  services: services/
+  api: api/
+  schemas: schemas/
+  tests: tests/
+
+overrides:
+  # API design is central
+  api_designer:
+    style: rest           # Or graphql, grpc
+    pagination: cursor
+    versioning: url_path  # /api/v1/
+    openapi: "3.1"
+
+  # Backend with clean architecture
+  backend:
+    runtime: node
+    framework: fastify
+    orm: prisma
+    architecture: clean   # handlers → services → repositories
+    idempotency: true
+    circuit_breaker: true
+
+  # Database with full optimization
+  database:
+    engine: postgresql
+    connection_pool: true
+    soft_deletes: true
+    uuid_primary_keys: true
+    indexing_strategy: true
+    migration_style: zero_downtime
+
+  # Comprehensive testing for APIs
+  qa:
+    depth: comprehensive
+    unit: true
+    integration: true
+    contract: true        # Contract testing for API consumers
+    load: k6              # Performance testing
+    e2e: false            # No UI to test
+
+  # Full security for data-handling APIs
+  security:
+    depth: comprehensive
+    compliance: [gdpr]
+    rate_limiting: true
+    input_validation: true
+
+  # DevOps with horizontal scaling
+  devops:
+    containerization: docker
+    orchestration: kubernetes
+    ci_cd: github_actions
+    monitoring: prometheus + grafana
+
+  # Skip frontend-focused skills
+  skip_skills: [frontend-engineer, ui-designer, mobile-engineer]

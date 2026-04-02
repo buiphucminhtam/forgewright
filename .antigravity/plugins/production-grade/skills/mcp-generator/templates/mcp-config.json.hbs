@@ -1,0 +1,110 @@
+{
+  "$schema": "https://forgewright.dev/schemas/mcp-config.json",
+  "project": "{{projectName}}",
+  "generated_at": "{{generatedAt}}",
+  "generated_by": "forgewright/mcp-generator",
+  "forgewright_version": "{{forgwrightVersion}}",
+  "transport": "stdio",
+  "tools": {
+    "project_query": {
+      "enabled": true,
+      "source": "gitnexus",
+      "description": "Search codebase by concept"
+    },
+    "project_context": {
+      "enabled": true,
+      "source": "gitnexus",
+      "description": "360° view of a symbol"
+    },
+    "project_impact": {
+      "enabled": true,
+      "source": "gitnexus",
+      "description": "Blast radius analysis"
+    },
+    "project_detect_changes": {
+      "enabled": true,
+      "source": "gitnexus",
+      "description": "Pre-commit risk assessment"
+    },
+    "project_navigate": {
+      "enabled": true,
+      "source": "filesystem",
+      "description": "File/function navigation"
+    },
+    "project_search": {
+      "enabled": true,
+      "source": "ripgrep",
+      "description": "Fast text search"
+    },
+    "project_run_script": {
+      "enabled": true,
+      "source": "package.json",
+      "description": "Run npm scripts (validated against package.json allowlist)"
+    },
+    "project_git_status": {
+      "enabled": true,
+      "source": "git",
+      "description": "Get current git status"
+    },
+    "project_write_file": {
+      "enabled": true,
+      "source": "filesystem",
+      "description": "Write or overwrite workspace files (max 512KB, path-validated)"
+    }
+  },
+  "resources": {
+    "project://profile": {
+      "enabled": true,
+      "source": ".forgewright/project-profile.json",
+      "description": "Full project fingerprint"
+    },
+    "project://architecture": {
+      "enabled": true,
+      "source": "gitnexus:clusters",
+      "description": "Architecture overview"
+    },
+    "project://conventions": {
+      "enabled": {{hasConventions}},
+      "source": ".forgewright/code-conventions.md",
+      "description": "Coding conventions"
+    }
+  },
+  "prompts": {
+    "debug-issue": {
+      "enabled": true,
+      "description": "Structured debugging template"
+    },
+    "review-changes": {
+      "enabled": true,
+      "description": "Code review with conventions"
+    },
+    "plan-feature": {
+      "enabled": true,
+      "description": "Feature planning with architecture"
+    }
+  },
+  "client_configs": {
+    "claude_desktop": {
+      "config_path": "~/Library/Application Support/Claude/claude_desktop_config.json",
+      "snippet": {
+        "mcpServers": {
+          "{{projectSlug}}": {
+            "command": "npx",
+            "args": ["tsx", "{{mcpServerPath}}/server.ts"]
+          }
+        }
+      }
+    },
+    "cursor": {
+      "config_path": ".cursor/mcp.json",
+      "snippet": {
+        "mcpServers": {
+          "{{projectSlug}}": {
+            "command": "npx",
+            "args": ["tsx", "{{mcpServerPath}}/server.ts"]
+          }
+        }
+      }
+    }
+  }
+}

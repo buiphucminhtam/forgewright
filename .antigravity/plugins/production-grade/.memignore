@@ -1,0 +1,10 @@
+# Files/folders to exclude from memory ingestion
+.env
+.env.*
+secrets/
+credentials/
+**/node_modules/**
+**/.git/**
+*.log
+*.db
+*.sqlite

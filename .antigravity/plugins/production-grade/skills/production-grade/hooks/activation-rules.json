@@ -1,0 +1,112 @@
+{
+  "description": "Skill activation rules for UserPromptSubmit hook. Pattern-match user prompts to recommend production-grade skill activation.",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "skill": "production-grade",
+      "keywords": [
+        "production grade",
+        "production ready",
+        "build a saas",
+        "build me a",
+        "build a platform",
+        "build a service",
+        "full stack project",
+        "end to end",
+        "from scratch",
+        "production pipeline"
+      ],
+      "intent_patterns": [
+        "build.*(?:saas|platform|service|app|system|product)",
+        "(?:production|prod).*(?:grade|ready|quality)",
+        "(?:full|complete).*(?:stack|pipeline|system)",
+        "(?:from scratch|greenfield|new project).*(?:build|create|develop)",
+        "(?:define|build|harden|ship|sustain).*pipeline"
+      ],
+      "priority": "high",
+      "recommendation": "This looks like a production-grade project. Use /production-grade to run the full autonomous pipeline (DEFINE > BUILD > HARDEN > SHIP > SUSTAIN)."
+    },
+    {
+      "skill": "product-manager",
+      "keywords": ["brd", "business requirements", "user stories", "product spec", "feature request"],
+      "intent_patterns": [
+        "(?:write|create|draft).*(?:brd|requirements|spec)",
+        "(?:define|describe).*(?:product|feature|requirement)"
+      ],
+      "priority": "medium"
+    },
+    {
+      "skill": "solution-architect",
+      "keywords": ["architecture", "system design", "tech stack", "api design", "erd"],
+      "intent_patterns": [
+        "(?:design|architect).*(?:system|api|service)",
+        "(?:choose|select).*(?:tech stack|framework|database)"
+      ],
+      "priority": "medium"
+    },
+    {
+      "skill": "software-engineer",
+      "keywords": ["implement", "build backend", "write services", "code the api"],
+      "intent_patterns": [
+        "(?:implement|build|write|code).*(?:service|backend|api|handler)"
+      ],
+      "priority": "medium"
+    },
+    {
+      "skill": "frontend-engineer",
+      "keywords": ["frontend", "ui", "dashboard", "react", "next.js", "web app"],
+      "intent_patterns": [
+        "(?:build|create|implement).*(?:frontend|ui|dashboard|web app)"
+      ],
+      "priority": "medium"
+    },
+    {
+      "skill": "qa-engineer",
+      "keywords": ["test", "testing", "qa", "coverage", "e2e"],
+      "intent_patterns": [
+        "(?:write|run|create).*(?:test|spec|e2e|integration)"
+      ],
+      "priority": "medium"
+    },
+    {
+      "skill": "security-engineer",
+      "keywords": ["security audit", "owasp", "threat model", "vulnerability"],
+      "intent_patterns": [
+        "(?:audit|review|check).*(?:security|vulnerability|owasp)"
+      ],
+      "priority": "medium"
+    },
+    {
+      "skill": "devops",
+      "keywords": ["devops", "ci/cd", "terraform", "docker", "kubernetes", "deploy"],
+      "intent_patterns": [
+        "(?:setup|configure|create).*(?:ci|cd|pipeline|docker|terraform|k8s)"
+      ],
+      "priority": "medium"
+    },
+    {
+      "skill": "sre",
+      "keywords": ["sre", "production readiness", "slo", "runbook", "incident"],
+      "intent_patterns": [
+        "(?:production|readiness|operational).*(?:review|check|readiness)"
+      ],
+      "priority": "medium"
+    },
+    {
+      "skill": "data-scientist",
+      "keywords": ["ml", "llm optimization", "a/b test", "data pipeline", "prompt engineering"],
+      "intent_patterns": [
+        "(?:optimize|tune|analyze).*(?:llm|ml|model|prompt|token)"
+      ],
+      "priority": "medium"
+    }
+  ],
+  "hook_config": {
+    "event": "UserPromptSubmit",
+    "matching_strategy": "keyword_then_intent",
+    "max_recommendations_per_prompt": 2,
+    "session_tracking": true,
+    "session_tracking_file": ".orchestrator/activation-log.json",
+    "deduplicate_window_minutes": 30
+  }
+}

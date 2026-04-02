@@ -1,0 +1,10 @@
+
+# Memory embeddings cache (derived from memory.jsonl)
+.forge17/embeddings.db
+
+# GitNexus auto-generates Claude Code files — not needed for Antigravity
+# (Antigravity uses AGENTS.md + code-intelligence.md protocol instead)
+.claude/
+CLAUDE.md
+.gitnexus
+.forgewright/

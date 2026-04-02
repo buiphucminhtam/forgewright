@@ -1,0 +1,72 @@
+# Production Grade Plugin Configuration
+# Copy this file to .production-grade.yaml at project root and customize.
+# The orchestrator reads this file to adapt paths and behavior to your project.
+
+version: "3.0"
+
+project:
+  name: ""                          # Project name (auto-detected from git if empty)
+  language: "typescript"             # typescript | go | python | rust | java
+  framework: ""                     # nestjs | express | fastapi | gin | actix | spring
+  cloud: "aws"                      # aws | gcp | azure
+  architecture: "microservices"     # monolith | modular-monolith | microservices
+
+# Path mappings — customize to match your existing project structure.
+# All paths are relative to the project root.
+paths:
+  api_contracts: "api/openapi/*.yaml"
+  grpc_contracts: "api/grpc/*.proto"
+  async_contracts: "api/asyncapi/*.yaml"
+  architecture_docs: "docs/architecture/"
+  adrs: "docs/architecture/architecture-decision-records/"
+  tech_stack: "docs/architecture/tech-stack.md"
+  system_diagrams: "docs/architecture/system-diagrams/"
+  erd: "schemas/erd.md"
+  migrations: "schemas/migrations/*.sql"
+  services: "services/"
+  shared_libs: "libs/shared/"
+  frontend: "frontend/"
+  tests: "tests/"
+  terraform: "infrastructure/terraform/"
+  kubernetes: "infrastructure/kubernetes/"
+  monitoring: "infrastructure/monitoring/"
+  ci_cd: ".github/workflows/"
+  docs: "docs/"
+  runbooks: "docs/runbooks/"
+  workspace: "Claude-Production-Grade-Suite/"
+  brd: "Claude-Production-Grade-Suite/product-manager/BRD/"
+
+# Preferences — override defaults for tools and frameworks.
+preferences:
+  test_framework: "jest"             # jest | vitest | pytest | go-test | junit
+  orm: "prisma"                      # prisma | drizzle | typeorm | sqlalchemy | gorm
+  ci_provider: "github-actions"      # github-actions | gitlab-ci | circleci
+  package_manager: "npm"             # npm | pnpm | yarn | bun
+  linter: "eslint"                   # eslint | biome | ruff | golangci-lint
+  formatter: "prettier"              # prettier | biome | black | gofmt
+  frontend_framework: "nextjs"       # nextjs | nuxt | sveltekit | remix
+  state_management: "react-query"    # react-query | redux | pinia | svelte-stores
+  styling: "tailwind"                # tailwind | css-modules | styled-components | vanilla-extract
+
+# Feature toggles — enable/disable pipeline phases and features.
+features:
+  frontend: true                     # Set false for API-only projects
+  ai_ml: false                       # Auto-detected from imports if false
+  multi_tenancy: true                # Enable tenant isolation patterns
+  documentation_site: true           # Generate Docusaurus scaffold
+  payment_integration: false         # Include Stripe/payment service
+  real_time: false                   # WebSocket/SSE support
+  graphql: false                     # GraphQL API alongside REST
+  grpc: false                        # gRPC inter-service communication
+  event_driven: true                 # Async messaging (Kafka/RabbitMQ/SQS)
+
+# Phase control — skip or customize pipeline phases.
+phases:
+  define: true
+  build: true
+  harden: true
+  ship: true
+  sustain: true
+  # Set false to skip individual skills within phases:
+  # data_scientist: false
+  # skill_maker: false

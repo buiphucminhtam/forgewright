@@ -1,0 +1,54 @@
+# Web Wizard Preset — Full-stack web app with modern frontend
+# Copy this to your project root as .production-grade.yaml
+
+engagement_mode: standard
+parallel_dispatch:
+  enabled: true
+  strategy: worktree
+
+paths:
+  services: services/
+  frontend: frontend/
+  tests: tests/
+
+overrides:
+  # Frontend-heavy with Server Components
+  frontend:
+    framework: nextjs
+    rendering: rsc        # React Server Components by default
+    styling: tailwind
+    state: zustand
+    forms: react-hook-form + zod
+    animations: framer-motion
+    pwa: false
+
+  # Backend optimized for API-first
+  backend:
+    runtime: node
+    framework: fastify    # Or express, hono
+    orm: prisma
+    auth: next-auth       # Or clerk, supabase
+
+  # Database with sensible defaults
+  database:
+    engine: postgresql
+    connection_pool: true
+    soft_deletes: true
+    uuid_primary_keys: true
+
+  # Testing focused on user flows
+  qa:
+    depth: essential
+    unit: true
+    integration: true
+    e2e: playwright
+    visual_regression: false   # Skip for speed
+    performance: lighthouse
+
+  # Security essentials only
+  security:
+    depth: essential
+    compliance: []
+
+  # Skip heavy skills for web projects
+  skip_skills: [mobile-engineer, data-scientist]

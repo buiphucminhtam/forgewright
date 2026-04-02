@@ -1,0 +1,60 @@
+# AI First Preset — For AI-heavy applications (RAG, agents, chatbots)
+# Copy this to your project root as .production-grade.yaml
+
+engagement_mode: standard
+parallel_dispatch:
+  enabled: true
+  strategy: worktree
+
+paths:
+  services: services/
+  frontend: frontend/
+  tests: tests/
+  prompts: prompts/
+  evaluation: evaluation/
+
+overrides:
+  # AI/ML configuration
+  data_scientist:
+    system_classification: ai_first
+    phases: [1, 2, 7, 8, 9, 10, 3, 6]  # Full AI pipeline
+
+  # Prompt engineering required
+  prompt_engineer:
+    eval_min_cases: 50
+    quality_bar: 4.0      # Minimum LLM-as-judge score
+    cost_modeling: true    # Project costs at 10x, 100x
+
+  # Database with vector support
+  database:
+    engine: postgresql
+    extensions: [pgvector]
+    connection_pool: true
+    uuid_primary_keys: true
+
+  # Backend with AI service layer
+  backend:
+    runtime: node
+    framework: fastify
+    orm: prisma
+    streaming: true       # SSE/WebSocket for LLM streaming responses
+
+  # Frontend with chat UI
+  frontend:
+    framework: nextjs
+    rendering: rsc
+    streaming_ui: true    # Streaming response display
+    markdown_render: true # LLM outputs are usually markdown
+
+  # Security includes AI-specific checks
+  security:
+    depth: comprehensive
+    ai_security: true     # Prompt injection, output filtering, PII checks
+
+  # Testing includes AI evaluation
+  qa:
+    depth: essential
+    ai_evaluation: true   # Eval suite for AI quality
+
+  # Skip mobile for AI-first web apps
+  skip_skills: [mobile-engineer]
