@@ -1,5 +1,5 @@
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { startPipeline, getState, advancePhase, requestGateApproval, approveGate, PIPELINE_PHASES } from '../state/pipeline-manager.js';
+import { startPipeline, getState, advancePhase, requestGateApproval, approveGate, PIPELINE_PHASES, } from '../state/pipeline-manager.js';
 export function registerTools(server) {
     server.setRequestHandler(ListToolsRequestSchema, async () => {
         return {
@@ -10,26 +10,29 @@ export function registerTools(server) {
                     inputSchema: {
                         type: 'object',
                         properties: {
-                            mode: { type: 'string', description: 'The run mode, e.g. "Full Build", "Feature", "Harden", "Mobile", "Game Build".' }
+                            mode: {
+                                type: 'string',
+                                description: 'The run mode, e.g. "Full Build", "Feature", "Harden", "Mobile", "Game Build".',
+                            },
                         },
-                        required: ['mode']
-                    }
+                        required: ['mode'],
+                    },
                 },
                 {
                     name: 'fw_get_current_phase',
                     description: 'Get the current phase of the Forgewright pipeline and its locked status. Use this to determine which skill to load.',
                     inputSchema: {
                         type: 'object',
-                        properties: {}
-                    }
+                        properties: {},
+                    },
                 },
                 {
                     name: 'fw_advance_to_next_phase',
                     description: 'Transition to the next phase in the pipeline (e.g. from Research -> Execution). Blocks if waiting for a HITL gate.',
                     inputSchema: {
                         type: 'object',
-                        properties: {}
-                    }
+                        properties: {},
+                    },
                 },
                 {
                     name: 'fw_request_gate_approval',
@@ -37,20 +40,23 @@ export function registerTools(server) {
                     inputSchema: {
                         type: 'object',
                         properties: {
-                            message: { type: 'string', description: 'A clear explanation of what you just finished (e.g. "GDD is ready") and what the user needs to approve.' }
+                            message: {
+                                type: 'string',
+                                description: 'A clear explanation of what you just finished (e.g. "GDD is ready") and what the user needs to approve.',
+                            },
                         },
-                        required: ['message']
-                    }
+                        required: ['message'],
+                    },
                 },
                 {
                     name: 'fw_approve_gate',
                     description: 'Call this ONLY when the user says "I approve" or "Looks good". Unlocks the pipeline.',
                     inputSchema: {
                         type: 'object',
-                        properties: {}
-                    }
-                }
-            ]
+                        properties: {},
+                    },
+                },
+            ],
         };
     });
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -80,9 +86,10 @@ export function registerTools(server) {
             throw new Error(`Tool not found: ${request.params.name}`);
         }
         catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
             return {
                 isError: true,
-                content: [{ type: 'text', text: `Failed to execute: ${e.message}` }]
+                content: [{ type: 'text', text: `Failed to execute: ${msg}` }],
             };
         }
     });

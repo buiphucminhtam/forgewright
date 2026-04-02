@@ -67,11 +67,11 @@ export function getWorkspaceRoot() {
     return _workspaceRoot;
 }
 export const PIPELINE_PHASES = [
-    "Phase 0: Project Initiation & Mode Selection",
-    "Phase 1: Research & Discovery (PM/BA/Architect)",
-    "Phase 2: Execution (BE/FE/Engine Engineers)",
-    "Phase 3: QA & Hardening",
-    "Phase 4: Release & Deployment"
+    'Phase 0: Project Initiation & Mode Selection',
+    'Phase 1: Research & Discovery (PM/BA/Architect)',
+    'Phase 2: Execution (BE/FE/Engine Engineers)',
+    'Phase 3: QA & Hardening',
+    'Phase 4: Release & Deployment',
 ];
 export function resetWorkspaceRoot() {
     _workspaceRoot = null;
@@ -81,7 +81,7 @@ const DEFAULT_STATE = {
     currentPhase: 0,
     currentMode: null,
     history: [],
-    status: 'IDLE'
+    status: 'IDLE',
 };
 function ensureDirSync(dirPath) {
     if (!fs.existsSync(dirPath)) {
@@ -106,13 +106,13 @@ export function getState() {
         if (typeof parsed.currentPhase !== 'number' ||
             !Array.isArray(parsed.history) ||
             !['IDLE', 'IN_PROGRESS', 'WAITING_FOR_GATE', 'COMPLETED'].includes(parsed.status)) {
-            console.error("State has invalid shape, returning default");
+            console.error('State has invalid shape, returning default');
             return DEFAULT_STATE;
         }
         return parsed;
     }
     catch (e) {
-        console.error("Failed to read state, returning default", e);
+        console.error('Failed to read state, returning default', e);
         return DEFAULT_STATE;
     }
 }

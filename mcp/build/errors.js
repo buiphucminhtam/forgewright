@@ -45,9 +45,7 @@ export class ForgewrightError extends Error {
         };
     }
     toString() {
-        const ctx = Object.keys(this.context).length > 0
-            ? ` (${JSON.stringify(this.context)})`
-            : '';
+        const ctx = Object.keys(this.context).length > 0 ? ` (${JSON.stringify(this.context)})` : '';
         return `[${this.code}] ${this.message}${ctx}`;
     }
 }

@@ -40,7 +40,7 @@ function parseFrontmatter(content) {
         return { data, body };
     }
     catch (e) {
-        console.error("Failed to parse YAML frontmatter:", e);
+        console.error('Failed to parse YAML frontmatter:', e);
         return { data: {}, body: content };
     }
 }
@@ -94,7 +94,7 @@ export function getSharedProtocols() {
     const protocolsDir = join(SKILLS_DIR, '_shared', 'protocols');
     if (!fs.existsSync(protocolsDir))
         return [];
-    const files = fs.readdirSync(protocolsDir).filter(f => f.endsWith('.md'));
+    const files = fs.readdirSync(protocolsDir).filter((f) => f.endsWith('.md'));
     const protocols = [];
     for (const file of files) {
         const filePath = join(protocolsDir, file);
@@ -105,7 +105,7 @@ export function getSharedProtocols() {
                 name: `protocol-${protocolId}`,
                 description: `Forgewright Shared Protocol: ${protocolId}`,
                 uri: `fw://protocols/${protocolId}`,
-                content
+                content,
             });
         }
         catch (e) {
