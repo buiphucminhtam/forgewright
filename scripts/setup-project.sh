@@ -24,8 +24,8 @@
 set -euo pipefail
 
 # ─── Configuration ──────────────────────────────────────────────────────
-# EDIT THIS PATH when you move the Forgewright repo
-FORGEWRIGHT_PATH="/Users/buiphucminhtam/Documents/GitHub/forgewright"
+# Auto-detect Forgewright root from script location (supports any clone path)
+FORGEWRIGHT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # ─────────────────────────────────────────────────────────────────────────
 
 # Colors
