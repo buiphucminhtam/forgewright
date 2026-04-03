@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "forgewright": {
-      "command": "node",
-      "args": ["mcp/build/index.js"]
-    },
     "forgenexus": {
       "command": "node",
       "args": ["forgenexus/dist/cli/index.js", "mcp", "."],

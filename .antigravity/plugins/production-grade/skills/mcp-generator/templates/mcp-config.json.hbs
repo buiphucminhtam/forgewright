@@ -6,105 +6,91 @@
   "forgewright_version": "{{forgwrightVersion}}",
   "transport": "stdio",
   "tools": {
-    "project_query": {
+    "query": {
       "enabled": true,
       "source": "forgenexus",
-      "description": "Search codebase by concept"
+      "description": "Query the code knowledge graph by concept — returns ranked symbols with execution flows"
     },
-    "project_context": {
+    "context": {
       "enabled": true,
       "source": "forgenexus",
-      "description": "360° view of a symbol"
+      "description": "360° view of a symbol — callers, callees, refs, process participation"
     },
-    "project_impact": {
+    "impact": {
       "enabled": true,
       "source": "forgenexus",
-      "description": "Blast radius analysis"
+      "description": "Blast radius analysis — d=1 WILL BREAK, d=2 LIKELY AFFECTED, d=3 MAY NEED TESTING"
     },
-    "project_detect_changes": {
+    "detect_changes": {
       "enabled": true,
       "source": "forgenexus",
-      "description": "Pre-commit risk assessment"
+      "description": "Pre-commit risk assessment — maps git diff to affected symbols and execution flows"
     },
-    "project_navigate": {
+    "rename": {
       "enabled": true,
-      "source": "filesystem",
-      "description": "File/function navigation"
+      "source": "forgenexus",
+      "description": "Safe multi-file rename using call-graph analysis"
     },
-    "project_search": {
+    "cypher": {
       "enabled": true,
-      "source": "ripgrep",
-      "description": "Fast text search"
+      "source": "forgenexus",
+      "description": "Custom Cypher-style graph queries for complex structural searches"
     },
-    "project_run_script": {
+    "route_map": {
       "enabled": true,
-      "source": "package.json",
-      "description": "Run npm scripts (validated against package.json allowlist)"
+      "source": "forgenexus",
+      "description": "API route → handler mappings with middleware chains"
     },
-    "project_git_status": {
+    "tool_map": {
       "enabled": true,
-      "source": "git",
-      "description": "Get current git status"
+      "source": "forgenexus",
+      "description": "MCP/RPC tool definitions and their implementations"
     },
-    "project_write_file": {
+    "shape_check": {
       "enabled": true,
-      "source": "filesystem",
-      "description": "Write or overwrite workspace files (max 512KB, path-validated)"
+      "source": "forgenexus",
+      "description": "Check API response shapes against consumer property accesses"
+    },
+    "api_impact": {
+      "enabled": true,
+      "source": "forgenexus",
+      "description": "Pre-change impact for API route handlers — consumers, middleware, risk"
+    },
+    "pr_review": {
+      "enabled": true,
+      "source": "forgenexus",
+      "description": "PR blast-radius analysis — breaking changes, affected modules, reviewer recommendations"
+    },
+    "list_repos": {
+      "enabled": true,
+      "source": "forgenexus",
+      "description": "List all indexed repositories with symbol/edge stats"
     }
   },
   "resources": {
     "project://profile": {
       "enabled": true,
       "source": ".forgewright/project-profile.json",
-      "description": "Full project fingerprint"
-    },
-    "project://architecture": {
-      "enabled": true,
-      "source": "forgenexus:clusters",
-      "description": "Architecture overview"
+      "description": "Full project fingerprint — language, framework, health, patterns, risk"
     },
     "project://conventions": {
       "enabled": {{hasConventions}},
       "source": ".forgewright/code-conventions.md",
-      "description": "Coding conventions"
+      "description": "Coding conventions and patterns detected in this project"
     }
   },
   "prompts": {
     "debug-issue": {
       "enabled": true,
-      "description": "Structured debugging template"
+      "description": "Structured debugging template using code intelligence"
     },
     "review-changes": {
       "enabled": true,
-      "description": "Code review with conventions"
+      "description": "Code review template with project conventions awareness"
     },
     "plan-feature": {
       "enabled": true,
-      "description": "Feature planning with architecture"
-    }
-  },
-  "client_configs": {
-    "claude_desktop": {
-      "config_path": "~/Library/Application Support/Claude/claude_desktop_config.json",
-      "snippet": {
-        "mcpServers": {
-          "{{projectSlug}}": {
-            "command": "npx",
-            "args": ["tsx", "{{mcpServerPath}}/server.ts"]
-          }
-        }
-      }
-    },
-    "cursor": {
-      "config_path": ".cursor/mcp.json",
-      "snippet": {
-        "mcpServers": {
-          "{{projectSlug}}": {
-            "command": "npx",
-            "args": ["tsx", "{{mcpServerPath}}/server.ts"]
-          }
-        }
-      }
+      "description": "Feature planning template with architecture awareness"
     }
   }
 }

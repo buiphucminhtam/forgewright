@@ -63,7 +63,7 @@ check_prerequisites() {
   fi
 
   # ForgeNexus (optional but recommended)
-  if [ ! -d "${PROJECT_ROOT}/.gitnexus" ]; then
+  if [ ! -d "${PROJECT_ROOT}/.forgewright" ]; then
     log_warn "ForgeNexus not indexed. Graph tools will be limited."
     log_info "Run: npx forgenexus analyze ${PROJECT_ROOT}"
   fi
