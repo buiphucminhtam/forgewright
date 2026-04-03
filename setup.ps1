@@ -24,7 +24,7 @@ $Branch = "main"
 function Write-Header {
     Write-Host ""
     Write-Host "  ╔══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "  ║  Production Grade Plugin — 17 Skills for Antigravity    ║" -ForegroundColor Cyan
+    Write-Host "  ║  Forgewright — 52 Skills for Antigravity              ║" -ForegroundColor Cyan
     Write-Host "  ╚══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
 }
@@ -83,7 +83,7 @@ function Invoke-Install {
     Write-Success "Installed successfully! Version: v$version"
     Write-Host ""
     Write-Host "    Skills location:  $SubmodulePath/skills/" -ForegroundColor White
-    Write-Host "    Skill count:      17 skills" -ForegroundColor White
+    Write-Host "    Skill count:      52 skills" -ForegroundColor White
     Write-Host "    Pipeline:         DEFINE → BUILD → HARDEN → SHIP → SUSTAIN" -ForegroundColor White
     Write-Host ""
     Write-Host "    Next steps:" -ForegroundColor White
@@ -146,7 +146,7 @@ function Invoke-Status {
     $skillsDir = Join-Path $SubmodulePath "skills"
     if (Test-Path $skillsDir) {
         $skillCount = (Get-ChildItem -Path $skillsDir -Directory).Count
-        Write-Host "    Skills available:   $skillCount" -ForegroundColor White
+        Write-Host "    Skill count:   $skillCount" -ForegroundColor White
     }
 
     # Check submodule status

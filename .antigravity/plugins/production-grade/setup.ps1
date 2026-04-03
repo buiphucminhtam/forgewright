@@ -24,7 +24,7 @@ $Branch = "main"
 function Write-Header {
     Write-Host ""
     Write-Host "  ╔══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "  ║  Production Grade Plugin — 17 Skills for Antigravity    ║" -ForegroundColor Cyan
+    Write-Host "  ║  Forgewright — 52 Skills for Antigravity              ║" -ForegroundColor Cyan
     Write-Host "  ╚══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
 }
