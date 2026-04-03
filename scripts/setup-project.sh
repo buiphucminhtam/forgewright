@@ -12,13 +12,13 @@
 # What it does:
 #   1. Creates .forgewright/ directory in the target project
 #   2. Detects tech stack and generates project-profile.json
-#   3. Runs GitNexus analyze to index the project
+#   3. Runs ForgeNexus analyze to index the project
 #   4. Prints the Cursor MCP config snippet (add to ~/.cursor/mcp.json)
 #
 # Requirements:
 #   - Global Forgewright repo must exist at FORGEWRIGHT_PATH (see below)
-#   - Node.js >= 18 (for GitNexus)
-#   - Git repository (for GitNexus)
+#   - Node.js >= 18 (for ForgeNexus)
+#   - Git repository (for ForgeNexus)
 # ============================================================================
 
 set -euo pipefail
@@ -85,7 +85,7 @@ check_prerequisites() {
 
     # Check git repo
     if ! git -C "$TARGET_PROJECT" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        log_warn "Not a git repository. GitNexus indexing will be limited."
+        log_warn "Not a git repository. ForgeNexus indexing will be limited."
         log_info "Run 'git init' first if you want full code intelligence."
     else
         log_ok "Git repository detected"
@@ -95,7 +95,7 @@ check_prerequisites() {
     if command -v node &> /dev/null; then
         log_ok "Node.js: $(node --version)"
     else
-        log_warn "Node.js not found. GitNexus will not work."
+        log_warn "Node.js not found. ForgeNexus will not work."
         log_info "Install Node.js >= 18 for code intelligence."
     fi
 
@@ -196,24 +196,24 @@ EOF
     log_ok "Generated .forgewright/project-profile.json"
 }
 
-# ─── Index with GitNexus ─────────────────────────────────────────────────
+# ─── Index with ForgeNexus ─────────────────────────────────────────────────
 
-run_gitnexus_analyze() {
+run_forgenexus_analyze() {
     if ! command -v node &> /dev/null; then
-        log_warn "Node.js not found — skipping GitNexus analysis."
+        log_warn "Node.js not found — skipping ForgeNexus analysis."
         return
     fi
 
     if ! git -C "$TARGET_PROJECT" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        log_warn "Not a git repo — skipping GitNexus."
+        log_warn "Not a git repo — skipping ForgeNexus."
         return
     fi
 
-    log_info "Running GitNexus analysis..."
-    if npx --yes gitnexus analyze "$TARGET_PROJECT" > /dev/null 2>&1; then
-        log_ok "GitNexus analysis complete"
+    log_info "Running ForgeNexus analysis..."
+    if npx --yes forgenexus analyze "$TARGET_PROJECT" > /dev/null 2>&1; then
+        log_ok "ForgeNexus analysis complete"
     else
-        log_warn "GitNexus analysis failed. Install with: npm install -g gitnexus"
+        log_warn "ForgeNexus analysis failed. Install with: npm install -g forgenexus"
     fi
 }
 
@@ -238,7 +238,7 @@ print_cursor_config() {
 main() {
     check_prerequisites
     create_forgewright_dir
-    run_gitnexus_analyze
+    run_forgenexus_analyze
     print_cursor_config
 
     echo ""
@@ -249,8 +249,8 @@ main() {
     echo -e "  2. Type '${CYAN}/forgewright${NC}' in Cursor chat to activate the skill"
     echo -e "  3. Say '${CYAN}Build a production-grade SaaS for [your idea]${NC}'"
     echo ""
-    echo -e "  ${BOLD}For GitNexus code intelligence:${NC}"
-    echo -e "  Run ${CYAN}npx gitnexus analyze${NC} in this project anytime."
+    echo -e "  ${BOLD}For ForgeNexus code intelligence:${NC}"
+    echo -e "  Run ${CYAN}npx forgenexus analyze${NC} in this project anytime."
     echo ""
 }
 

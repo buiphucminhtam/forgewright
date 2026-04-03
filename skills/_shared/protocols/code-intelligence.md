@@ -1,19 +1,19 @@
 # Code Intelligence Protocol
 
-**Gives skills deep codebase awareness via knowledge graph analysis. Powered by [GitNexus](https://github.com/abhigyanpatwari/GitNexus) — indexes AST relationships, call chains, and functional communities.**
+**Gives skills deep codebase awareness via knowledge graph analysis. Powered by [ForgeNexus](https://github.com/abhigyanpatwari/ForgeNexus) — indexes AST relationships, call chains, and functional communities.**
 
 ## When Available
 
 Code Intelligence is available when ALL of these are true:
-- `gitnexus` CLI is installed (`command -v gitnexus`)
-- Project has been indexed (`.gitnexus/` directory exists)
+- `forgenexus` CLI is installed (`command -v forgenexus`)
+- Project has been indexed (`.forgenexus/` directory exists)
 - `project-profile.json` has `code_intelligence.indexed == true`
 
 **If NOT available:** All skills MUST fall back to traditional analysis (grep, find, view_file_outline). Code Intelligence is an **enhancement**, never a hard dependency.
 
 ## Available MCP Tools
 
-When Code Intelligence is active, 7 tools are available via the `gitnexus` MCP server:
+When Code Intelligence is active, 7 tools are available via the `forgenexus` MCP server:
 
 | Tool | Purpose | When to Use |
 |------|---------|-------------|
@@ -91,7 +91,7 @@ IF MCP tool call fails:
     4. Continue pipeline — NEVER block on CI failure
 
 IF index is stale (>24h old):
-    1. Suggest re-indexing: "gitnexus analyze"
+    1. Suggest re-indexing: "forgenexus analyze"
     2. Use existing index anyway (stale > nothing)
     3. Flag in output: "⚠ Code Intelligence index may be stale"
 ```
@@ -106,16 +106,16 @@ IF index is stale (>24h old):
 
 ## Auto-Reindex (Session Lifecycle Integration)
 
-GitNexus auto-reindexes at two lifecycle points — **no user action required:**
+ForgeNexus auto-reindexes at two lifecycle points — **no user action required:**
 
 ### At Session Start (Step 3.5)
 
 ```
-IF .gitnexus/ exists:
+IF .forgenexus/ exists:
   commits_since_last_index = git rev-list --count HEAD ^<last_indexed_commit>
   
   IF commits_since > 0 OR index_age > 1 hour:
-    Run: npx gitnexus analyze 2>/dev/null
+    Run: npx forgenexus analyze 2>/dev/null
     Log result (success or fallback to stale)
   ELSE:
     Use existing fresh index
@@ -124,8 +124,8 @@ IF .gitnexus/ exists:
 ### At Session End (Step 5)
 
 ```
-IF .gitnexus/ exists:
-  Run: npx gitnexus analyze 2>/dev/null
+IF .forgenexus/ exists:
+  Run: npx forgenexus analyze 2>/dev/null
   This ensures NEXT session starts with fresh index
 ```
 
@@ -138,7 +138,7 @@ IF .gitnexus/ exists:
 
 ### Fail-Safe
 
-If `npx gitnexus analyze` fails at any point:
+If `npx forgenexus analyze` fails at any point:
 1. Log warning — do NOT block pipeline
 2. Use stale index (stale > nothing)
 3. Add `⚠ stale` badge to any Code Intelligence output
@@ -149,20 +149,20 @@ If `npx gitnexus analyze` fails at any point:
 ## Manual Re-indexing
 
 In addition to auto-reindex, manual re-indexing may be needed:
-- **After major refactoring** — run `gitnexus analyze --force`
-- **After adding new files/services** — run `gitnexus analyze` (incremental)
-- **Stale index warning** — run `gitnexus analyze`
+- **After major refactoring** — run `forgenexus analyze --force`
+- **After adding new files/services** — run `forgenexus analyze` (incremental)
+- **Stale index warning** — run `forgenexus analyze`
 - **Auto-reindex (IDE)** — PostToolUse hooks reindex after commits
 
 ## LLM Configuration (Optional)
 
-GitNexus core features (analyze, impact, context, query, detect_changes) work **without any LLM**. LLM is only needed for:
-- `gitnexus analyze --skills` — auto-generate community SKILL.md files
-- `gitnexus wiki` — auto-generate documentation
+ForgeNexus core features (analyze, impact, context, query, detect_changes) work **without any LLM**. LLM is only needed for:
+- `forgenexus analyze --skills` — auto-generate community SKILL.md files
+- `forgenexus wiki` — auto-generate documentation
 
 ### Supported Providers
 
-GitNexus uses OpenAI-compatible API format. Configure via environment variables:
+ForgeNexus uses OpenAI-compatible API format. Configure via environment variables:
 
 **MiniMax (Recommended — cost-effective):**
 ```bash

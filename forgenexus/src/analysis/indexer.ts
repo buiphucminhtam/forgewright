@@ -300,7 +300,7 @@ export class Indexer {
     for (const fp of filePaths) {
       // Remove edges referencing this file
       this.db.db.prepare(`DELETE FROM edges WHERE from_uid LIKE ? OR to_uid LIKE ?`)
-        .run(`%:${fp}:%`);
+        .run(`%:${fp}:%`, `%:${fp}:%`);
       // Remove nodes from this file
       this.db.db.prepare(`DELETE FROM nodes WHERE file_path = ?`).run(fp);
     }
@@ -315,6 +315,7 @@ export class Indexer {
       if (!nameToUid.has(key)) {
         nameToUid.set(key, n.uid);
       }
+      if (!n.filePath) continue;
       const base = n.filePath.split("/").pop() ?? "";
       if (!fileBaseName.has(base)) {
         fileBaseName.set(base, n.uid);
@@ -324,6 +325,7 @@ export class Indexer {
     const resolved: any[] = [];
     for (const edge of edges) {
       const toUid = edge.toUid;
+      if (!toUid) { resolved.push(edge); continue; }
       if (toUid.startsWith("IMPORT:") || toUid.startsWith("QUERY:") || toUid.startsWith("Route:") || toUid.startsWith("Tool:")) {
         resolved.push(edge);
         continue;
@@ -332,6 +334,7 @@ export class Indexer {
         const parts = toUid.split(":");
         const type = parts[1];
         const calleeName = parts[2];
+        if (!type || !calleeName) { resolved.push(edge); continue; }
         const exactKey = `${type}:${calleeName}`;
         const resolvedUid = nameToUid.get(exactKey);
         if (resolvedUid) {
@@ -370,7 +373,7 @@ export class Indexer {
         if (symbol !== "module" && symbol !== "default") {
           resolvedUid = symbolToUid.get(symbol) ?? null;
         }
-        if (!resolvedUid && (source.startsWith(".") || source.startsWith("/"))) {
+        if (!resolvedUid && source && (source.startsWith(".") || source.startsWith("/"))) {
           for (const [filePath, symbols] of fileSymbolMap) {
             if (filePath.endsWith(source.replace(/^\.\//, "")) || filePath.endsWith(source + ".ts")
               || filePath.endsWith(source + ".js") || filePath.endsWith(source + "/index.ts")) {

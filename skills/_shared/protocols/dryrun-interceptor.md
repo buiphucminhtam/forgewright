@@ -47,7 +47,7 @@ The **DryRun Interceptor (Option B)** and **Guardrail (Option A)** work together
 If a skill completes a `.diff` under Dry Run Mode, it is subjected to the rigid **Plan Quality Loop** embedded in its system prompt with a 9.0 Threshold. 
 
 Dry Run execution explicitly tests:
-- **Impact Assess:** Does the diff cleanly avoid breaking dependents (verifiable via GitNexus)?
+- **Impact Assess:** Does the diff cleanly avoid breaking dependents (verifiable via ForgeNexus)?
 - **Feasibility:** Is the syntax valid for TS/Node compilation?
 - **Specificity:** Are the diff line removals/additions unambiguous?
 

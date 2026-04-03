@@ -61,14 +61,14 @@ ELSE:
 ### Step 3.5 — Check Code Intelligence Freshness
 
 ```
-IF .gitnexus/ directory exists AND gitnexus CLI available:
+IF .forgenexus/ directory exists AND forgenexus CLI available:
   Check index freshness:
-    last_indexed = .gitnexus/metadata.json → indexed_at
+    last_indexed = .forgenexus/metadata.json → indexed_at
     commits_since = git rev-list --count HEAD ^<last_indexed_commit>
   
   IF commits_since > 0 OR index_age > 1 hour:
     Log: "⧖ Code Intelligence index stale — auto-reindexing"
-    Run: npx gitnexus analyze 2>/dev/null
+    Run: npx forgenexus analyze 2>/dev/null
     IF success:
       Log: "✓ Code Intelligence refreshed ([N] symbols, [M] relationships)"
     ELSE:
@@ -78,7 +78,7 @@ IF .gitnexus/ directory exists AND gitnexus CLI available:
     Log: "✓ Code Intelligence index fresh"
 
 ELSE IF project-profile.json → code_intelligence.indexed == false:
-  Log: "ℹ Code Intelligence not set up — run 'npx gitnexus analyze' for deep code understanding"
+  Log: "ℹ Code Intelligence not set up — run 'npx forgenexus analyze' for deep code understanding"
   Continue without Code Intelligence (graceful degradation)
 ```
 
@@ -282,8 +282,8 @@ Called when pipeline completes OR when session is explicitly ended.
    Run: python3 scripts/mem0-cli.py refresh
 
 5. Auto-reindex Code Intelligence:
-   IF .gitnexus/ exists AND gitnexus CLI available:
-     Run: npx gitnexus analyze 2>/dev/null
+   IF .forgenexus/ exists AND forgenexus CLI available:
+     Run: npx forgenexus analyze 2>/dev/null
      IF success:
        Log: "✓ Code Intelligence reindexed for next session"
      ELSE:

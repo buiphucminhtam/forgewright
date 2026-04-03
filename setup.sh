@@ -28,7 +28,7 @@ BOLD='\033[1m'
 print_header() {
     echo ""
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}  ${BOLD}Forgewright${NC} — 47 Skills for Antigravity              ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}Forgewright${NC} — 52 Skills for Antigravity              ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -89,8 +89,8 @@ cmd_install() {
     git submodule update --init --recursive
 
     echo ""
-    print_info "Initializing Code Intelligence (GitNexus)..."
-    npx --yes gitnexus analyze || print_warn "GitNexus analysis failed, skipping."
+    print_info "Initializing Code Intelligence (ForgeNexus)..."
+    npx --yes forgenexus analyze || print_warn "ForgeNexus analysis failed, skipping."
     
     print_info "Generating project MCP server..."
     bash "$SUBMODULE_PATH/scripts/mcp-generate.sh" || print_warn "MCP generation failed, skipping."
@@ -104,7 +104,7 @@ cmd_install() {
     echo -e "  ${BOLD}Skills location:${NC}  $SUBMODULE_PATH/skills/"
     echo -e "  ${BOLD}Skill count:${NC}      18 skills (17 domain + parallel dispatch)"
     echo -e "  ${BOLD}Pipeline:${NC}         DEFINE → BUILD → HARDEN → SHIP → SUSTAIN"
-    echo -e "  ${BOLD}Intelligence:${NC}     GitNexus indexed + MCP server active"
+    echo -e "  ${BOLD}Intelligence:${NC}     ForgeNexus indexed + MCP server active"
     echo ""
     echo -e "  ${BOLD}Next steps:${NC}"
     echo -e "  1. Commit the setup: ${CYAN}git add . && git commit -m 'feat: add forgewright v$version'${NC}"
@@ -131,8 +131,8 @@ cmd_update() {
     git submodule update --remote "$SUBMODULE_PATH"
 
     echo ""
-    print_info "Re-initializing Code Intelligence (GitNexus)..."
-    npx --yes gitnexus analyze || print_warn "GitNexus analysis failed, skipping."
+    print_info "Re-initializing Code Intelligence (ForgeNexus)..."
+    npx --yes forgenexus analyze || print_warn "ForgeNexus analysis failed, skipping."
     
     print_info "Re-generating project MCP server..."
     bash "$SUBMODULE_PATH/scripts/mcp-generate.sh" || print_warn "MCP generation failed, skipping."

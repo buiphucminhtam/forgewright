@@ -11,7 +11,7 @@
 #
 # Prerequisites:
 #   - Node.js >= 18
-#   - GitNexus indexed (.gitnexus/ exists)
+#   - ForgeNexus indexed (.gitnexus/ exists)
 #   - project-profile.json exists (run /onboard first time)
 # ─────────────────────────────────────────────────────────
 
@@ -62,10 +62,10 @@ check_prerequisites() {
     exit 1
   fi
 
-  # GitNexus (optional but recommended)
+  # ForgeNexus (optional but recommended)
   if [ ! -d "${PROJECT_ROOT}/.gitnexus" ]; then
-    log_warn "GitNexus not indexed. Graph tools will be limited."
-    log_info "Run: npx gitnexus analyze ${PROJECT_ROOT}"
+    log_warn "ForgeNexus not indexed. Graph tools will be limited."
+    log_info "Run: npx forgenexus analyze ${PROJECT_ROOT}"
   fi
 
   log_ok "Prerequisites checked"

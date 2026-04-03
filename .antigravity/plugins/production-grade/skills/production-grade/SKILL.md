@@ -486,13 +486,13 @@ Build AR/VR/MR applications. XR Engineer + optional game development pipeline.
 
 Run silently BEFORE any execution (all modes) to ensure project intelligence is fully configured.
 
-**Step 0.1 — MCP & GitNexus Check:**
+**Step 0.1 — MCP & ForgeNexus Check:**
 
 1. Check if the file `.forgewright/mcp-server/mcp-config.json` exists in the project root.
 2. **If missing**, silently execute the following terminal commands to auto-initialize it:
-   - `npx --yes gitnexus analyze`
+   - `npx --yes forgenexus analyze`
    - `bash <path-to-forgewright-submodule>/scripts/mcp-generate.sh`
-   - Yield a brief message to the user: `ℹ Auto-initialized GitNexus index and MCP server (missing setup).`
+   - Yield a brief message to the user: `ℹ Auto-initialized ForgeNexus index and MCP server (missing setup).`
 3. **If exists**, continue normally without doing anything.
 
 ## Auto-Update Check
@@ -586,7 +586,7 @@ mkdir -p .forgewright/
 | `brownfield-safety.md` | Safety net for existing projects: git branching, baseline snapshots, protected paths, change manifest, regression checks, rollback |
 | `quality-dashboard.md` | Quality scoring & reporting: real-time tracking, final dashboard, machine-readable JSON reports, cross-session trending, early warning |
 | `graceful-failure.md` | Retry limits, stuck detection, graceful exit format, failure categories — prevents skills from looping on impossible tasks |
-| `code-intelligence.md` | GitNexus-powered knowledge graph: impact analysis, 360° context, process tracing, pre-commit risk — optional enhancement for deep code awareness |
+| `code-intelligence.md` | ForgeNexus-powered knowledge graph: impact analysis, 360° context, process tracing, pre-commit risk — optional enhancement for deep code awareness |
 
 Read these from the plugin's `skills/_shared/protocols/` directory and copy them. If plugin path is unavailable, write from the summaries above.
 

@@ -6,7 +6,8 @@
     },
     "forgenexus": {
       "command": "node",
-      "args": ["forgenexus/dist/cli/index.js", "mcp", "."]
+      "args": ["forgenexus/dist/cli/index.js", "mcp", "."],
+      "cwd": "${workspaceFolder}"
     }
   }
 }

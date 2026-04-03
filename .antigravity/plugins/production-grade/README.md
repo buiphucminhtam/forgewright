@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/🧪_Testing-Midscene_·_Page_Agent-FF6B35.svg" alt="Testing" />
   <img src="https://img.shields.io/badge/📈_Growth-Marketing_·_CRO-E91E63.svg" alt="Growth" />
   <img src="https://img.shields.io/badge/⚡_Parallel-Git_Worktrees-orange.svg" alt="Parallel" />
-  <img src="https://img.shields.io/badge/🧠_Code_Intelligence-GitNexus-4B0082.svg" alt="Code Intelligence" />
+  <img src="https://img.shields.io/badge/🧠_Code_Intelligence-ForgeNexus-4B0082.svg" alt="Code Intelligence" />
 </p>
 
 <h3 align="center">48 AI Skills · 19 Modes · 15 Protocols · Full Lifecycle Pipeline</h3>
@@ -61,7 +61,7 @@ If Forgewright helps you ship faster, you can support the project here:
                   │     53 curated reference sites for style comparison.
                   │
 2026-03-15  v7.3  ●━━━ Code Intelligence & Skill Quality —
-                  │     GitNexus integration: AST → knowledge graph → MCP tools
+                  │     ForgeNexus integration: AST → knowledge graph → MCP tools
                   │     (impact analysis, call chains, community clustering).
                   │     Skill Maker v2: eval loop, WHY-first philosophy, quality audit.
                   │     Full quality sweep: 27 fixes across 12 skills.
@@ -391,7 +391,7 @@ CEO Agent (Orchestrator)
 │               Project Onboarding (v7.3)                    │
 │                                                            │
 │  Phase 1:   Fingerprint ── tech stack, framework, CI       │
-│  Phase 1.5: Code Intelligence ── GitNexus knowledge graph  │
+│  Phase 1.5: Code Intelligence ── ForgeNexus knowledge graph  │
 │             🧠 255 symbols · 383 relationships · 7 clusters│
 │             → impact(), context(), query() for all skills  │
 │             → User-friendly install prompt if not found     │
@@ -421,7 +421,7 @@ CEO Agent (Orchestrator)
 | **4 game engines** | Unity, Unreal Engine, Godot, Roblox |
 | **XR platforms** | Quest, Vision Pro, WebXR, PCVR |
 | **Research Intelligence** | NotebookLM MCP — zero-hallucination, citation-backed |
-| **Code Intelligence** | GitNexus knowledge graph — impact analysis, call chains, community clustering, pre-commit risk |
+| **Code Intelligence** | ForgeNexus knowledge graph — impact analysis, call chains, community clustering, pre-commit risk |
 | **Design Database** | 85 styles, 161 WCAG palettes, 74 font pairings, 162 reasoning rules, 53 reference websites — data-driven style proposals |
 | **Smart Test Selection** | Phase 0: auto-assess target → recommend Playwright / Midscene / Page Agent |
 | **Vision Testing** | Midscene.js — AI-powered, cross-platform (web + Android + iOS) |
@@ -474,22 +474,22 @@ git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .ant
 
 ---
 
-### Step 2 — Code Intelligence via GitNexus (Recommended)
+### Step 2 — Code Intelligence via ForgeNexus (Recommended)
 
 > **Prerequisites:** Node.js 18+
 
-[GitNexus](https://github.com/abhigyanpatwari/GitNexus) builds a knowledge graph of your codebase — symbols, call chains, execution flows. Forgewright auto-reindexes at session start and end.
+[ForgeNexus](https://github.com/abhigyanpatwari/ForgeNexus) builds a knowledge graph of your codebase — symbols, call chains, execution flows. Forgewright auto-reindexes at session start and end.
 
 ```bash
 # Install and index your project
-npm install -g gitnexus
-npx gitnexus analyze
+npm install -g forgenexus
+npx forgenexus analyze
 
 # Optional: Add MCP server to Antigravity settings
-# "gitnexus": { "command": "npx", "args": ["gitnexus", "mcp"] }
+# "forgenexus": { "command": "npx", "args": ["forgenexus", "mcp"] }
 ```
 
-✅ **Verify:** `npx gitnexus status` — shows symbol count and index freshness.
+✅ **Verify:** `npx forgenexus status` — shows symbol count and index freshness.
 
 🔓 **Unlocks:** `impact()` blast radius, `context()` 360° symbol view, `detect_changes()` pre-commit risk, `rename()` safe multi-file rename.
 
@@ -746,7 +746,7 @@ TypeScript, Go, Python, Rust, Java, C++ (Unreal), C# (Unity), GDScript (Godot), 
 No. The orchestrator only activates what you need. A backend API may use 8 skills. A full game may use 20+. The BA skill only activates when information gaps are detected.
 
 **What is Code Intelligence?**
-Built-in knowledge graph engine (powered by [GitNexus](https://github.com/abhigyanpatwari/GitNexus)) that indexes your codebase's AST, maps call chains, clusters functional areas, and provides impact analysis. Install via `npm install -g gitnexus` — during `/onboard`, if GitNexus isn't found, Forgewright pauses and guides you through installation step by step (including Node.js setup for non-technical users). Once indexed, all skills gain 360° awareness: know exactly which files break when you change a function, trace call chains for debugging, and detect pre-commit risk.
+Built-in knowledge graph engine (powered by [ForgeNexus](https://github.com/abhigyanpatwari/ForgeNexus)) that indexes your codebase's AST, maps call chains, clusters functional areas, and provides impact analysis. Install via `npm install -g forgenexus` — during `/onboard`, if ForgeNexus isn't found, Forgewright pauses and guides you through installation step by step (including Node.js setup for non-technical users). Once indexed, all skills gain 360° awareness: know exactly which files break when you change a function, trace call chains for debugging, and detect pre-commit risk.
 
 **What is Page Agent DOM testing?**
 A lightweight technique from Alibaba that converts DOM to text instead of screenshots. Works with text-only LLMs (like MiniMax), costs ~$0.001/step. QA Phase 0 auto-recommends it when appropriate.

@@ -46,6 +46,31 @@ function rowToEdge(row: any): CodeEdge {
   };
 }
 
+/**
+ * Strip line number from a uid to normalize it for edge joins.
+ */
+function uidNorm(uid: string): string {
+  const parts = uid.split(':');
+  if (parts.length >= 4) return parts.slice(0, -1).join(':') + ':0';
+  return parts.slice(0, -1).join(':') + ':0';
+}
+
+/**
+ * Abbreviate uid to "type:name:line" (no path).
+ */
+function uidAbbr(uid: string): string {
+  const parts = uid.split(':');
+  return parts.slice(-3).join(':');
+}
+
+/**
+ * Extract type and name from abbreviated uid (type:name:line).
+ */
+function uidTypeName(abbrev: string): { type: string; name: string } {
+  const parts = abbrev.split(':');
+  return { type: parts[0], name: parts[1] };
+}
+
 export class ForgeDB {
   public db: Database.Database;
 
@@ -118,8 +143,20 @@ export class ForgeDB {
     return rows.map(rowToNode);
   }
 
-  getNodesByType(type: NodeType): CodeNode[] {
-    const rows = this.db.prepare('SELECT * FROM nodes WHERE type = ?').all(type) as any[];
+  /** Search nodes by name pattern (SQL LIKE). Use op="contains" for %name%, "starts" for name%, "ends" for %name. */
+  searchNodes(search: string, op: "contains" | "starts" | "ends" = "contains", type?: NodeType, limit = 200): CodeNode[] {
+    const like = op === "contains" ? `%${search}%` : op === "starts" ? `${search}%` : `%${search}`;
+    const params: any[] = [like];
+    let sql = `SELECT * FROM nodes WHERE name LIKE ?`;
+    if (type) { sql += ` AND type = ?`; params.push(type); }
+    sql += ` LIMIT ${Number(limit)}`;
+    const rows = this.db.prepare(sql).all(...params) as any[];
+    return rows.map(rowToNode);
+  }
+
+  getNodesByType(type: NodeType, limit?: number): CodeNode[] {
+    const sql = limit ? `SELECT * FROM nodes WHERE type = ? LIMIT ${Number(limit)}` : 'SELECT * FROM nodes WHERE type = ?';
+    const rows = this.db.prepare(sql).all(type) as any[];
     return rows.map(rowToNode);
   }
 
@@ -214,6 +251,10 @@ export class ForgeDB {
 
   // ─── Convenience ─────────────────────────────────────────────────────
 
+  /**
+   * Find nodes that call the given node via CALLS edges.
+   * Edge from_uid and to_uid = full node uid.
+   */
   getCallers(uid: string): CodeNode[] {
     const rows = this.db.prepare(`
       SELECT n.* FROM nodes n
@@ -223,6 +264,10 @@ export class ForgeDB {
     return rows.map(rowToNode);
   }
 
+  /**
+   * Find nodes called by the given node via CALLS edges.
+   * Edge from_uid and to_uid = full node uid.
+   */
   getCallees(uid: string): CodeNode[] {
     const rows = this.db.prepare(`
       SELECT n.* FROM nodes n
@@ -233,70 +278,134 @@ export class ForgeDB {
   }
 
   getImporters(uid: string): CodeNode[] {
+    // IMPORTS: edge to_uid = "IMPORT:source:symbol", node is a Variable/Module
+    const name = uidAbbr(uid).split(':')[1];
     const rows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON n.uid = e.from_uid
-      WHERE e.to_uid = ? AND e.type = 'IMPORTS'
-    `).all(uid) as any[];
+      WHERE e.to_uid LIKE ? AND e.type = 'IMPORTS'
+    `).all('%IMPORT%:%' + name) as any[];
     return rows.map(rowToNode);
   }
 
   getExtendees(uid: string): CodeNode[] {
-    const rows = this.db.prepare(`
+    // to_uid in EXTENDS edges uses line=0; normalize and use prefix LIKE
+    const normalized = uid.replace(/:[0-9]+$/, ':0');
+    let rows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON n.uid = e.from_uid
       WHERE e.to_uid = ? AND e.type = 'EXTENDS'
-    `).all(uid) as any[];
+    `).all(normalized) as any[];
+    if (rows.length > 0) return rows.map(rowToNode);
+    // Fall back: to_uid prefix stripped to line=0, match node by path+type+name
+    const prefix = normalized.replace(/:[^:]+$/, '');
+    rows = this.db.prepare(`
+      SELECT n.* FROM nodes n
+      JOIN edges e ON n.uid = e.from_uid
+      WHERE e.to_uid LIKE ? AND e.type = 'EXTENDS'
+    `).all(prefix + ':%') as any[];
     return rows.map(rowToNode);
   }
 
   getImplementers(uid: string): CodeNode[] {
-    const rows = this.db.prepare(`
+    const normalized = uid.replace(/:[0-9]+$/, ':0');
+    let rows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON n.uid = e.from_uid
       WHERE e.to_uid = ? AND e.type = 'IMPLEMENTS'
-    `).all(uid) as any[];
+    `).all(normalized) as any[];
+    if (rows.length > 0) return rows.map(rowToNode);
+    const prefix = normalized.replace(/:[^:]+$/, '');
+    rows = this.db.prepare(`
+      SELECT n.* FROM nodes n
+      JOIN edges e ON n.uid = e.from_uid
+      WHERE e.to_uid LIKE ? AND e.type = 'IMPLEMENTS'
+    `).all(prefix + ':%') as any[];
     return rows.map(rowToNode);
   }
 
   getMethods(ownerUid: string): CodeNode[] {
-    const rows = this.db.prepare(`
+    // from_uid uses line=0; normalize and try exact match, then LIKE fallback
+    const normalized = ownerUid.replace(/:[0-9]+$/, ':0');
+    let rows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON n.uid = e.to_uid
       WHERE e.from_uid = ? AND e.type = 'HAS_METHOD'
-    `).all(ownerUid) as any[];
+    `).all(normalized) as any[];
+    if (rows.length > 0) return rows.map(rowToNode);
+    const prefix = normalized.replace(/:[^:]+$/, '');
+    rows = this.db.prepare(`
+      SELECT n.* FROM nodes n
+      JOIN edges e ON n.uid = e.to_uid
+      WHERE e.from_uid LIKE ? AND e.type = 'HAS_METHOD'
+    `).all(prefix + ':%') as any[];
     return rows.map(rowToNode);
   }
 
   getProperties(ownerUid: string): CodeNode[] {
-    const rows = this.db.prepare(`
+    const normalized = ownerUid.replace(/:[0-9]+$/, ':0');
+    let rows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON n.uid = e.to_uid
       WHERE e.from_uid = ? AND e.type = 'HAS_PROPERTY'
-    `).all(ownerUid) as any[];
+    `).all(normalized) as any[];
+    if (rows.length > 0) return rows.map(rowToNode);
+    const prefix = normalized.replace(/:[^:]+$/, '');
+    rows = this.db.prepare(`
+      SELECT n.* FROM nodes n
+      JOIN edges e ON n.uid = e.to_uid
+      WHERE e.from_uid LIKE ? AND e.type = 'HAS_PROPERTY'
+    `).all(prefix + ':%') as any[];
     return rows.map(rowToNode);
   }
 
   getOverrides(methodUid: string): CodeNode[] {
-    const rows = this.db.prepare(`
+    const normalized = methodUid.replace(/:[0-9]+$/, ':0');
+    let rows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON n.uid = e.from_uid
       WHERE e.to_uid = ? AND e.type = 'OVERRIDES'
-    `).all(methodUid) as any[];
+    `).all(normalized) as any[];
+    if (rows.length > 0) return rows.map(rowToNode);
+    const prefix = normalized.replace(/:[^:]+$/, '');
+    rows = this.db.prepare(`
+      SELECT n.* FROM nodes n
+      JOIN edges e ON n.uid = e.from_uid
+      WHERE e.to_uid LIKE ? AND e.type = 'OVERRIDES'
+    `).all(prefix + ':%') as any[];
     return rows.map(rowToNode);
   }
 
   getMembersOf(classUid: string): CodeNode[] {
-    const methodRows = this.db.prepare(`
+    const normalized = classUid.replace(/:[0-9]+$/, ':0');
+    const uidPrefix = normalized.replace(/:[^:]+$/, '');
+
+    let methodRows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON n.uid = e.to_uid
       WHERE e.from_uid = ? AND e.type = 'HAS_METHOD'
-    `).all(classUid) as any[];
-    const propRows = this.db.prepare(`
+    `).all(normalized) as any[];
+    if (methodRows.length === 0) {
+      methodRows = this.db.prepare(`
+        SELECT n.* FROM nodes n
+        JOIN edges e ON n.uid = e.to_uid
+        WHERE e.from_uid LIKE ? AND e.type = 'HAS_METHOD'
+      `).all(uidPrefix + ':%') as any[];
+    }
+
+    let propRows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON n.uid = e.to_uid
       WHERE e.from_uid = ? AND e.type = 'HAS_PROPERTY'
-    `).all(classUid) as any[];
+    `).all(normalized) as any[];
+    if (propRows.length === 0) {
+      propRows = this.db.prepare(`
+        SELECT n.* FROM nodes n
+        JOIN edges e ON n.uid = e.to_uid
+        WHERE e.from_uid LIKE ? AND e.type = 'HAS_PROPERTY'
+      `).all(uidPrefix + ':%') as any[];
+    }
+
     return [...methodRows, ...propRows].map(rowToNode);
   }
 

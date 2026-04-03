@@ -1,11 +1,11 @@
 ---
 name: MCP Generator
-description: Auto-generates a project-specific MCP server that exposes codebase intelligence (GitNexus graph, project profile, conventions) as MCP Tools, Resources, and Prompts — enabling any MCP-compatible AI client to understand the project.
+description: Auto-generates a project-specific MCP server that exposes codebase intelligence (ForgeNexus graph, project profile, conventions) as MCP Tools, Resources, and Prompts — enabling any MCP-compatible AI client to understand the project.
 ---
 
 # MCP Generator Skill
 
-**Generates a project-specific MCP server powered by GitNexus code intelligence.**
+**Generates a project-specific MCP server powered by ForgeNexus code intelligence.**
 
 When Forgewright is installed as a submodule and the project is onboarded, this skill auto-generates an MCP (Model Context Protocol) server at `.forgewright/mcp-server/`. Any MCP-compatible client (Claude Desktop, Cursor, VS Code, Antigravity) can connect and gain deep project understanding.
 
@@ -17,7 +17,7 @@ When Forgewright is installed as a submodule and the project is onboarded, this 
 
 ## Prerequisites
 
-- GitNexus indexed (`.gitnexus/` exists with valid index)
+- ForgeNexus indexed (`.forgenexus/` exists with valid index)
 - `project-profile.json` exists (from onboarding Phase 1–5)
 - Node.js installed (for `@modelcontextprotocol/server` SDK)
 
@@ -26,7 +26,7 @@ When Forgewright is installed as a submodule and the project is onboarded, this 
 ### Step 1 — Validate Prerequisites
 
 ```
-1. Check .gitnexus/ exists and has valid index
+1. Check .forgenexus/ exists and has valid index
    → If missing: STOP — "Code Intelligence required. Run /onboard first."
 
 2. Check project-profile.json exists
@@ -49,7 +49,7 @@ Create `.forgewright/mcp-server/` directory with the following structure:
 ```
 .forgewright/mcp-server/
 ├── server.ts              # Single-file entry — all tools, resources, prompts
-├── package.json           # Dependencies: @modelcontextprotocol/sdk, gitnexus, zod
+├── package.json           # Dependencies: @modelcontextprotocol/sdk, forgenexus, zod
 ├── tsconfig.json          # TypeScript config
 └── mcp-config.json        # Tool/resource registry (which are enabled)
 ```
@@ -62,7 +62,7 @@ The generated server is **customized** per project:
 
 ```
 ALWAYS enabled:
-  → 4 GitNexus graph tools (query, context, impact, detect_changes)
+  → 4 ForgeNexus graph tools (query, context, impact, detect_changes)
   → 2 filesystem tools (navigate, search)
   → 3 action tools (write_file, git_status, run_script)
   → 3 resources (profile, architecture, conventions)
@@ -147,7 +147,7 @@ Add to `project-profile.json`:
 
 | Tool | Input Schema | Description |
 |------|-------------|-------------|
-| `project_query` | `{ query: string }` | Search codebase by concept via GitNexus |
+| `project_query` | `{ query: string }` | Search codebase by concept via ForgeNexus |
 | `project_context` | `{ name: string }` | 360° view: callers, callees, processes |
 | `project_impact` | `{ target: string, direction: "upstream"\|"downstream" }` | Blast radius analysis |
 | `project_detect_changes` | `{ scope?: string }` | Pre-commit risk assessment |
@@ -162,7 +162,7 @@ Add to `project-profile.json`:
 | URI | Description |
 |-----|-------------|
 | `project://profile` | Full project fingerprint (JSON) |
-| `project://architecture` | Architecture overview from GitNexus clusters |
+| `project://architecture` | Architecture overview from ForgeNexus clusters |
 | `project://conventions` | Coding conventions and patterns |
 
 ### Prompts
@@ -176,10 +176,10 @@ Add to `project-profile.json`:
 ## Graceful Degradation
 
 ```
-IF GitNexus tools fail:
+IF ForgeNexus tools fail:
   → Disable affected MCP tools
   → Keep resources and prompts working
-  → Log: "⚠ GitNexus unavailable — MCP tools limited"
+  → Log: "⚠ ForgeNexus unavailable — MCP tools limited"
 
 IF project-profile.json missing:
   → Return empty profile resource
@@ -204,4 +204,4 @@ When the project changes significantly (new onboarding, architecture changes):
 
 - **project-onboarding.md** — Phase 1.6 triggers this skill
 - **session-lifecycle.md** — MCP server can re-index at session start/end
-- **code-intelligence.md** — Shares GitNexus data source
+- **code-intelligence.md** — Shares ForgeNexus data source
