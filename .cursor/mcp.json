@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "gitnexus": {
+    "forgewright": {
       "command": "node",
-      "args": [
-        "node_modules/gitnexus/dist/cli/index.js",
-        "mcp"
-      ],
-      "cwd": "mcp"
+      "args": ["mcp/build/index.js"]
+    },
+    "forgenexus": {
+      "command": "node",
+      "args": ["forgenexus/dist/cli/index.js", "mcp"]
     }
   }
 }
