@@ -579,17 +579,189 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
    - Yield a brief message to the user: `ℹ Auto-initialized ForgeNexus index and MCP server (missing setup).`
 3. **If exists**, continue normally without doing anything.
 
-**Step 0.2 — Memory (mem0) Check (required):**
+**Step 0.2 — System Requirements + Power Level Check (required):**
 
-Forgewright **requires** local project memory via `scripts/mem0-cli.py` (Python 3, no pip deps). The store is **`.forgewright/memory.jsonl`** in the project root.
+Forgewright requires **Node.js 18+** (ForgeNexus) and **Python 3** (mem0). Power level determines which tools are needed.
 
-1. Check if **`.forgewright/memory.jsonl`** exists in the project root.
-2. **If missing**, silently run:
-   - `bash <path-to-forgewright>/scripts/ensure-mem0.sh`  
-     (from the **host** project: optional explicit root `bash .../ensure-mem0.sh "$(pwd)"`)
-   - Default: resolves host root like `mcp-generate.sh` (sibling of the Forgewright repo with `.git`, else Forgewright repo root).
-3. **If `ensure-mem0.sh` fails** (e.g. no `python3`), tell the user mem0 is mandatory: install Python 3 and re-run the script. Do not skip session memory. **Exception:** `FORGEWRIGHT_SKIP_MEM0=1` (CI/headless only).
-4. **If setup succeeded**, yield briefly: `ℹ Initialized Forgewright memory (mem0). Run mem0-cli refresh if the store is empty.`
+**Step 0.2.1 — System Requirements Check:**
+
+Run these in parallel:
+
+```
+node_check:  node --version 2>/dev/null | grep -oE '[0-9]+' | head -1
+python_check: python3 --version 2>/dev/null
+mem0_check:  [ -f .forgewright/memory.jsonl ] && echo "exists" || echo "missing"
+settings_check: [ -f .forgewright/settings.md ] && echo "exists" || echo "missing"
+```
+
+**Decision matrix:**
+
+| node | python | mem0 | Action |
+|------|--------|------|--------|
+| ≥18 | ≥3.8 | exists | ✅ Full Persistent — continue to Step 0.3 |
+| ≥18 | ≥3.8 | missing | ⧖ mem0 missing — run ensure-mem0.sh |
+| ≥18 | missing | — | ⚠️ Python missing — stop, tell user install Python 3 |
+| <18 | — | — | ⚠️ Node.js <18 — stop, tell user upgrade Node.js |
+| missing | — | — | ⚠️ Node.js missing — stop, tell user install Node.js 18+ |
+
+**If Node.js or Python missing (blocking):**
+```
+notify_user:
+  "⚠️ Missing required tools for Forgewright:
+
+   Node.js 18+ required for: ForgeNexus code intelligence, MCP server
+   Python 3.8+ required for: Cross-session memory (mem0)
+
+   How to install:
+   macOS:  brew install node python3
+   Linux:  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt install -y nodejs python3
+   Windows: Download from nodejs.org + python.org
+
+   After installing, re-run your request."
+  Options:
+  > "I'll install and try again (Recommended)"
+  > "Chat about this"
+```
+
+**If mem0 missing (non-blocking):**
+```
+# Run silently
+bash <path-to-forgewright>/scripts/ensure-mem0.sh "$(pwd)" 2>/dev/null
+
+# If failed (no python3)
+Log: "⚠️ mem0 init failed — install Python 3 first. Forcing: FORGEWRIGHT_SKIP_MEM0=1"
+# CI/headless exemption auto-applied
+```
+
+**If all requirements met:**
+```
+Log: "✓ System requirements verified:
+  - Node.js: [version] ✓
+  - Python 3: [version] ✓
+  - mem0: [ready/missing → initialized] ✓"
+```
+
+**Step 0.2.2 — Power Level Check:**
+
+```
+IF .forgewright/settings.md exists:
+  Read engagement + execution from settings
+  Log: "✓ Power level loaded: [level]"
+  Continue to Step 0.3
+ELSE:
+  # First-time setup — ask user
+  Log: "⧖ Power level not set — prompting user"
+```
+
+**Prompt for power level (only if settings missing):**
+```
+notify_user:
+  "Forgewright has 5 power levels. Choose based on how much capability you need:
+
+  ⚡ Basic       — 52 skills, full pipeline (Node.js only)
+  ⚡⚡ Smart     — + ForgeNexus blast-radius analysis (Node.js only)
+  ⚡⚡⚡ Persistent — + mem0 cross-session memory (Node.js + Python 3)
+  ⚡⚡⚡⚡ Research  — + NotebookLM grounded research (optional)
+  ⚡⚡⚡⚡⚡ Full Power — All of the above + crawl4ai, Midscene, Paperclip
+
+  Which level?"
+  Options:
+  > "⚡⚡⚡ Persistent (Recommended) — Standard for active projects"
+  > "⚡⚡⚡⚡⚡ Full Power — Maximum capability"
+  > "⚡⚡ Smart — Code intelligence without memory"
+  > "⚡ Basic — Just the pipeline"
+  > "Chat about this"
+```
+
+**After user selects:**
+
+```
+IF Full Power:
+  Log: "✓ Power level: Full Power"
+  # Prompt user about optional Full Power tools (required acknowledgment)
+  notify_user:
+    "⚡ Full Power selected! You have everything you need:
+
+     MANDATORY (auto-verified): Node.js 18+, Python 3.8+, mem0 ✓
+
+     OPTIONAL — install anytime to unlock more capability:
+
+     📚 Research Mode
+        pip install notebooklm-mcp
+        (Grounded AI with zero hallucinations, citations from your sources)
+
+     🌐 Web Intelligence
+        pip install crawl4ai>=0.8.0
+        (Scrape & crawl any website for RAG or research)
+
+     📱 Mobile Testing
+        npm install -g @anthropic-ai/midscene
+        (AI-powered UI testing on real Android/iOS devices)
+
+     Which optional tools would you like to install now?"
+    Options:
+    > "Install all optional tools now (Recommended)"
+    > "Install [specific tool] only — I'll do others later"
+    > "Skip — I'll install manually later"
+    > "Chat about this"
+
+  IF user selects "Install all":
+    Log: "Installing optional Full Power tools..."
+    # Try pip tools first (each tool independently — if one fails, continue others)
+    Run: pip install notebooklm-mcp 2>/dev/null && Log: "  ✓ notebooklm-mcp" || Log: "  ⚠ notebooklm-mcp skipped (pip error)"
+    Run: pip install crawl4ai>=0.8.0 2>/dev/null && Log: "  ✓ crawl4ai" || Log: "  ⚠ crawl4ai skipped (pip error)"
+    # npm tool last (requires node)
+    Run: npm install -g @anthropic-ai/midscene 2>/dev/null && Log: "  ✓ Midscene" || Log: "  ⚠ Midscene skipped (npm error)"
+    # Verify which tools are now importable / executable
+    Run: python3 -c "import notebooklm_mcp" 2>/dev/null && npb="✓" || npb="⚠"
+    Run: python3 -c "import crawl4ai" 2>/dev/null && crw="✓" || crw="⚠"
+    Run: which midscene >/dev/null 2>&1 && mids="✓" || mids="⚠"
+    Log: "✓ Optional tools status: notebooklm-mcp [$npb]  crawl4ai [$crw]  Midscene [$mids]"
+    Log: "  Full install commands (if any skipped):"
+    Log: "    pip install notebooklm-mcp crawl4ai>=0.8.0"
+    Log: "    npm install -g @anthropic-ai/midscene"
+  IF user selects specific tool:
+    Log: "Installing [selected tool]..."
+    Run: [corresponding install command]
+    Log: "✓ [tool] installed"
+  IF user selects skip:
+    Log: "⧖ Optional tools deferred — run install commands manually when ready"
+
+IF Research:
+  Log: "✓ Power level: Research"
+  Log: "Optional: pip install notebooklm-mcp"
+
+IF Persistent:
+  Log: "✓ Power level: Persistent — mem0 ready"
+
+IF Smart:
+  Log: "✓ Power level: Smart — ForgeNexus ready"
+
+IF Basic:
+  Log: "✓ Power level: Basic"
+```
+
+**Write settings file:**
+
+```bash
+mkdir -p .forgewright
+cat > .forgewright/settings.md << 'EOF'
+# Pipeline Settings
+Power_Level: [selected]
+Engagement: [express/standard/thorough/meticulous — default: standard]
+Execution: [parallel/sequential — default: parallel]
+EOF
+```
+
+**Log checkpoint:**
+```
+Log: "✓ System init complete:
+  - Node.js: [version] ✓
+  - Python 3: [version] ✓  
+  - mem0: [ready] ✓
+  - Power level: [level] ✓
+  - Settings: written to .forgewright/settings.md"
+```
 
 ## Auto-Update Check
 
@@ -1050,12 +1222,25 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
    - If user explicitly requests to skip polymath ("just build it", clear detailed spec) → proceed immediately.
 
 7.5. **BA pre-flight check (after Polymath, before PM):**
-   - If `.forgewright/business-analyst/handoff/ba-package.md` exists → read it, pass to PM as pre-loaded context. Log: `✓ BA package loaded — requirements pre-validated`
-   - If no BA package, assess the user's request for information completeness using 6W1H:
-     - Score each requirement against: Who, What, Why, Where, When, Which, How
-     - If average score < 6/7 → read `skills/business-analyst/SKILL.md` and follow its instructions. BA will elicit, evaluate, validate, and produce `ba-package.md`.
-     - If score ≥ 6/7 → skip BA. Log: `✓ Requirements sufficiently complete — proceeding to PM`
-   - If user explicitly requests to skip BA ("just build it", detailed spec provided) → proceed immediately.
+
+   **Detect greenfield Full Build** (any of: Step 4 logged **Greenfield**; empty/minimal codebase with net-new product intent; user said "from scratch" / "new SaaS" / equivalent):
+
+   - **Greenfield Full Build — BA is mandatory (no silent skip):**
+     - Do **not** skip BA because the model self-scored 6W1H ≥ 6/7. Self-scores are optimistic; greenfield needs **documented client answers**.
+     - **MUST** read `skills/business-analyst/SKILL.md` and run through at least **one full elicitation cycle** (stakeholder + structured questions per engagement depth: Express minimum **3** client-answered items, Standard **3–5**, Thorough **5+** with **2 rounds** if gaps remain) until:
+       - `.forgewright/business-analyst/handoff/ba-package.md` exists **and**
+       - Open gaps are either resolved or explicitly logged as **client-acknowledged assumptions** (not BA guesses).
+     - Log: `⧖ Greenfield Full Build — mandatory BA before PM`
+     - **Escape hatches (only these):** (1) `.production-grade.yaml` → `features.skip_define_ba: true`, or (2) `notify_user` with explicit option **"Skip BA — I accept incomplete requirements risk"** (user must choose; never auto-skip), or (3) `ba-package.md` already present from **this session** with completeness sign-off.
+
+   **Brownfield Full Build** (existing meaningful codebase):
+
+   - If `.forgewright/business-analyst/handoff/ba-package.md` exists → read it, pass to PM. Log: `✓ BA package loaded — requirements pre-validated`
+   - If no BA package: run 6W1H completeness. If average < 6/7 **or** the request describes a **net-new product/surface** (major scope) → run BA as above (same minimum elicitation as Standard depth).
+   - If score ≥ 6/7 **and** incremental change only **and** no net-new product → may skip BA. Log: `✓ Requirements sufficiently complete — proceeding to PM`
+
+   **Non–Full-Build modes** (Feature, etc.): keep conditional BA per the Feature Mode section (6W1H below 6/7 → BA).
+
    - **Context-aware routing (v7.0):** If project-profile shows health issues, suggest addressing them:
      - `health.tests_pass == false` → suggest Harden mode first
      - `risk.known_cves > 0` (Critical/High) → warn and suggest Security audit
@@ -1070,7 +1255,9 @@ Create a `task.md` file in `.forgewright/` with all 13 tasks and their statuses.
 10. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
    - **Memory save (session start):** Run `python3 scripts/mem0-cli.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
 
-**Key principle:** The user already told you what to build. Research, plan, start building. Pause at the 3 approval gates. In Thorough/Meticulous mode, also show phase summaries between major phases — but never block on them (inform, don't gate).
+**Key principle:** Research, plan, start building. Pause at the 3 approval gates. **Exception — greenfield Full Build:** BA elicitation is a **hard gate before PM**; do not jump to T1 until `ba-package.md` exists and minimum rounds above are satisfied (unless an explicit escape hatch in 7.5 was used). In Thorough/Meticulous mode, show phase summaries between major phases (inform; strategic gates still rule).
+
+**After every user request is satisfied** (end of assistant turn, before going idle): run **Turn-Close memory** (see `session-lifecycle.md` §Per-request memory).
 
 ## Quality Gate Integration
 
@@ -1095,8 +1282,10 @@ Call these hooks at the appropriate lifecycle points:
 | Phase completes | `PHASE_COMPLETE(name, summary)` | Update session-log, save to memory, update quality metrics |
 | Task completes | `TASK_COMPLETE(id, name, status, summary)` | Update session-log |
 | Gate decided | `GATE_DECISION(gate#, decision, feedback)` | Update session-log, save decision to memory |
+| Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Save architecture to mem0 — see Gate 2.5 |
 | Error occurs | `ERROR(task_id, type, details)` | Update session-log, save blocker to memory |
 | Pipeline ends | Session End | Summarize, save to memory, update project profile |
+| User request answered | `TURN_CLOSE` | Mandatory mem0 `add` — see session-lifecycle §Per-request memory |
 
 ## User Experience Protocol
 
@@ -1121,7 +1310,7 @@ then re-presents the original gate options when the user is ready.
 
 This ensures non-technical users can understand what they're approving without the orchestrator needing to be the translator.
 
-### Strategic Gates (3 total)
+### Strategic Gates (4 total — 3 user-facing + 1 automated)
 
 **Gate 1 — BRD Approval** (after T1):
 
@@ -1146,6 +1335,33 @@ Architecture complete: [tech stack summary]. Approve to start building?
 3. **I have concerns** — Flag issues with architecture decisions
 4. **Chat about this** — Free-form input about the architecture
 ```
+
+**Gate 2.5 — Architecture Memory Persistence** (auto, no user interaction):
+
+After Gate 2 is approved, automatically persist architecture decisions to memory:
+
+```
+1. Extract key architecture decisions:
+   - Tech stack (language, framework, key libraries)
+   - Service decomposition (services, modules)
+   - API style (REST, GraphQL, etc.)
+   - Database choices
+   - Key architectural patterns
+
+2. Run mem0 persistence commands:
+   # Main architecture
+   python3 scripts/mem0-cli.py add "ARCH: [tech stack] | SERVICES: [service list] | REASON: [key rationale]" --category architecture
+   
+   # Individual ADRs
+   python3 scripts/mem0-cli.py add "DECISION: [ADR title] | ALTERNATIVE: [rejected options] | REASON: [why chosen]" --category decisions
+   
+   # Project scope
+   python3 scripts/mem0-cli.py add "PROJECT: [project name] | SCOPE: [feature list] | STATUS: active" --category project
+
+3. Log: "✓ Architecture decisions persisted to memory — [N] decisions saved"
+```
+
+**Why this matters:** Future sessions can search `mem0-cli.py search "architecture"` to retrieve the approved stack without re-reading all architecture files.
 
 **Gate 3 — Production Readiness** (after T9):
 
