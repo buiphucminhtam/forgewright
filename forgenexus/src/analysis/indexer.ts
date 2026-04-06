@@ -1,24 +1,45 @@
 /**
- * Incremental re-indexing — only re-parse files that have changed since last index.
- * Tracks indexed files via `indexed_files` meta + last_commit.
+ * ForgeNexus Indexer — High-Performance Incremental Code Intelligence Pipeline.
+ *
+ * Architecture:
+ *   1. Scan      — discover source files via glob
+ *   2. Parse     — tree-sitter AST → nodes + edges (chunked + parallel)
+ *   3. Resolve    — bind UNKNOWN:* edges + module imports (suffix trie, O(1))
+ *   4. Propagate  — cross-file binding propagation via topological sort
+ *   5. Community  — Leiden algorithm (well-connected, timeout-protected)
+ *   6. Process    — BFS execution flow tracing from entry points
+ *   7. FTS        — incremental FTS5 update (only changed nodes)
+ *   8. Embeddings — cache-first embedding generation
+ *   9. Meta       — commit tracking + stats
+ *
+ * Performance optimizations (vs original):
+ *   - Suffix trie import resolution: O(1) vs O(n*m)
+ *   - Leiden community detection: well-connected, timeout, degree filtering
+ *   - Incremental FTS: only changed nodes vs full rebuild
+ *   - Embedding cache: skip re-embedding unchanged symbols
+ *   - Early exit on unchanged git commit
+ *   - Chunked byte-budget parsing
  */
 
-import { readFileSync, existsSync } from "fs";
-import { join, basename } from "path";
+import { readFileSync } from "fs";
+import { basename } from "path";
 import { execSync } from "child_process";
 import { FileScanner, type ScannedFile } from "./scanner.js";
 import { ParserEngine } from "./parser.js";
 import { ForgeDB } from "../data/db.js";
-import { detectCommunities, traceProcesses } from "../data/graph.js";
+import { detectLeidenCommunities } from "../data/leiden.js";
+import { traceProcesses } from "../data/graph.js";
 import { generateEmbeddings, detectProvider } from "../data/embeddings.js";
+import { incrementalFTSUpdate } from "../data/fts-incremental.js";
+import { buildSuffixIndex, resolveImportPath, buildNameUidMap, buildFileSymbolMap } from "./import-resolver.js";
+import { parseFilesParallel, estimateBytes } from "./parallel.js";
+import { propagateBindings, shouldSkipBindingPropagation } from "./binding-propagation.js";
+import { detectFrameworks } from "./framework-detection.js";
 import type { ForgeNexusConfig, RepoStats, CodeNode, CodeEdge } from "../types.js";
+import type { ParseTask } from "./parallel.js";
 import { defaultCodebaseDbPath } from "../paths.js";
 
-export type Phase = "scanning" | "parsing" | "edges" | "communities" | "processes" | "fts" | "embeddings" | "complete";
-
-const PIPELINE_PHASES: Phase[] = [
-  "scanning", "parsing", "edges", "communities", "processes", "fts", "embeddings", "complete"
-];
+export type Phase = "scanning" | "parsing" | "edges" | "binding" | "communities" | "processes" | "fts" | "embeddings" | "complete";
 
 export class Indexer {
   private scanner: FileScanner;
@@ -53,7 +74,16 @@ export class Indexer {
       if (onProgress) onProgress(phase, pct);
     };
 
-    // ── 1. Determine changed files (incremental vs full) ──────────────────────
+    // ── 0. Early exit on unchanged commit ─────────────────────────────────────
+    if (incremental) {
+      const earlyExit = this.checkEarlyExit();
+      if (earlyExit) {
+        progress("complete", 100);
+        return this.db.getStats();
+      }
+    }
+
+    // ── 1. Scan files ─────────────────────────────────────────────────────────
     progress("scanning", 0);
     const files = await this.scanner.scan();
     progress("scanning", 100);
@@ -64,7 +94,7 @@ export class Indexer {
       filesToParse = this.getChangedFilesSinceLastIndex(files);
     }
 
-    const pathsToParse = filesToParse.map(f => f.path);
+    const pathsToParse = new Set(filesToParse.map(f => f.path));
 
     if (filesToParse.length === 0) {
       progress("complete", 100);
@@ -73,72 +103,140 @@ export class Indexer {
       return stats;
     }
 
-    // ── 2. Parse only changed files ───────────────────────────────────────────
+    // ── 2. Parallel/chunked parsing ────────────────────────────────────────────
     progress("parsing", 0);
-    const newNodes: CodeNode[] = [];
-    const newEdges: CodeEdge[] = [];
 
-    for (let i = 0; i < filesToParse.length; i++) {
-      const scannedFile = filesToParse[i];
-      const file = scannedFile.path;
+    // Build parse tasks
+    const tasks: ParseTask[] = [];
+    for (const scannedFile of filesToParse) {
       try {
-        const content = readFileSync(file, "utf8");
-        const { nodes, edges } = await this.parser.parseFile(file, content, scannedFile.language);
-        newNodes.push(...nodes);
-        newEdges.push(...edges);
+        const content = readFileSync(scannedFile.path, "utf8");
+        tasks.push({
+          filePath: scannedFile.path,
+          content,
+          language: scannedFile.language,
+        });
       } catch {
-        // skip files that fail to parse
-      }
-      if (i % 100 === 0 || i === filesToParse.length - 1) {
-        progress("parsing", Math.round((i / filesToParse.length) * 100));
+        // skip unreadable files
       }
     }
 
-    // ── 3. Handle incremental updates ─────────────────────────────────────────
-    const changedFilePaths = new Set(pathsToParse);
-    const deletedFiles = this.getDeletedFiles();
+    const estimatedMB = Math.round(estimateBytes(tasks) / 1024 / 1024);
+    const isLargeRepo = tasks.length > 100 || estimatedMB > 5;
 
-    if (incremental && newNodes.length > 0) {
-      // Remove old nodes from changed files
-      this.removeNodesForFiles([...changedFilePaths]);
-      // Also remove nodes from deleted files
-      for (const df of deletedFiles) {
-        this.removeNodesForFiles([df]);
+    let newNodes: CodeNode[] = [];
+    let newEdges: CodeEdge[] = [];
+
+    if (isLargeRepo) {
+      // Use parallel parser for large repos
+      const os = await import("os");
+      const result = await parseFilesParallel(tasks, {
+        concurrency: Math.max(1, Math.floor(os.cpus().length * 0.75)),
+      });
+      newNodes = result.nodes;
+      newEdges = result.edges;
+    } else {
+      // Sequential for small repos (avoids worker spawn overhead)
+      const engine = new ParserEngine();
+      for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
+        try {
+          const { nodes, edges } = await engine.parseFile(task.filePath, task.content, task.language);
+          newNodes.push(...nodes);
+          newEdges.push(...edges);
+        } catch {
+          // skip
+        }
+        if (i % 100 === 0 || i === tasks.length - 1) {
+          progress("parsing", Math.round((i / tasks.length) * 100));
+        }
       }
     }
 
-    // Insert new nodes
-    this.db.insertNodesBatch(newNodes);
     progress("parsing", 100);
 
-    // ── 4. Resolve and insert edges ──────────────────────────────────────────
+    // ── 3. Incremental update: remove old nodes for changed files ──────────────
+    const changedFilePaths = new Set([...pathsToParse]);
+    const deletedFiles = this.getDeletedFiles();
+
+    if (incremental && (newNodes.length > 0 || deletedFiles.length > 0)) {
+      for (const fp of [...changedFilePaths, ...deletedFiles]) {
+        this.removeNodesForFile(fp);
+      }
+    }
+
+    // ── 4. Insert nodes ───────────────────────────────────────────────────────
+    this.db.insertNodesBatch(newNodes);
+    const changedUids = new Set(newNodes.map(n => n.uid));
+
+    // ── 5. Resolve edges (with suffix trie for O(1) import resolution) ─────────
     progress("edges", 0);
-    const allNodes = this.db.db.prepare('SELECT * FROM nodes').all() as any[];
-    const resolvedEdges = this.resolveEdges(allNodes, newEdges);
-    this.db.insertEdgesBatch(resolvedEdges);
+
+    // Build suffix index from ALL files (not just changed)
+    const allPaths = [...new Set([...files.map(f => f.path), ...[...this.db.getAllFilePaths()]])];
+    const suffixIndex = buildSuffixIndex(allPaths);
+
+    // Build fast name→uid map: O(n) single pass
+    const allNodes = this.db.getAllNodes();
+    const nameToUid = buildNameUidMap(allNodes);
+    const fileSymbolMap = buildFileSymbolMap(allNodes);
+
+    const resolvedEdges = this.resolveEdgesFast(allNodes, newEdges, nameToUid);
     progress("edges", 50);
 
-    const moduleEdges = this.resolveModuleImports(allNodes, newEdges);
+    const moduleEdges = this.resolveModuleImportsFast(
+      allNodes, newEdges, nameToUid, fileSymbolMap, suffixIndex
+    );
+    this.db.insertEdgesBatch(resolvedEdges);
     this.db.insertEdgesBatch(moduleEdges);
     progress("edges", 100);
 
-    // ── 5. Update communities (incremental: re-run on affected only) ───────────
-    progress("communities", 0);
-    const affectedByChangedFiles = new Set<string>();
-    for (const node of newNodes) {
-      affectedByChangedFiles.add(node.community ?? '');
+    // ── 6. Cross-file binding propagation ────────────────────────────────────
+    progress("binding", 0);
+    const allEdgesNow = this.db.getAllEdges();
+    if (!shouldSkipBindingPropagation(allNodes, allEdgesNow)) {
+      const propagated = propagateBindings(allNodes, allEdgesNow);
+      if (propagated.length > 0) {
+        this.db.insertEdgesBatch(propagated);
+      }
     }
-    if (incremental && affectedByChangedFiles.size > 0 && affectedByChangedFiles.size < 20) {
-      // Partial update: only affected communities
-      const placeholders = [...affectedByChangedFiles].map(() => '?').join(',');
-      this.db.db.prepare(`DELETE FROM communities WHERE id IN (${placeholders})`)
-        .run(...[...affectedByChangedFiles]);
+    progress("binding", 100);
+
+    // ── 7. Community detection (Leiden) ─────────────────────────────────────────
+    progress("communities", 0);
+
+    // Determine if full rebuild or partial
+    const nodeNames = new Map(allNodes.map(n => [n.uid, n.name]));
+    const allEdgesForComm = this.db.getAllEdges();
+    const commEdges = allEdgesForComm
+      .filter(e => ['CALLS', 'IMPORTS', 'HAS_METHOD', 'HAS_PROPERTY', 'EXTENDS', 'IMPLEMENTS', 'MEMBER_OF'].includes(e.type))
+      .map(e => ({ from: e.fromUid, to: e.toUid, weight: e.confidence }));
+
+    const allNodeIds = allNodes.map(n => n.uid);
+
+    // Check if incremental community update is viable
+    if (incremental && changedFilePaths.size > 0) {
+      // Partial: delete only affected communities, keep the rest
+      this.deleteAffectedCommunities(changedFilePaths);
     } else {
-      // Full rebuild: clear and rebuild
+      // Full rebuild
       this.db.db.exec('DELETE FROM communities');
       this.db.db.exec('UPDATE nodes SET community = NULL');
     }
-    const communities = detectCommunities(this.db);
+
+    // Run Leiden with timeout protection
+    const communities = detectLeidenCommunities(
+      allNodeIds,
+      commEdges,
+      nodeNames,
+      {
+        resolution: allNodes.length > 10000 ? 2.0 : 1.0,
+        maxIterations: allNodes.length > 10000 ? 3 : 10,
+      }
+    );
+
+    // Communities table was already cleared above (partial or full)
+    // Now insert the new communities
     for (const community of communities) {
       this.db.insertCommunity(community);
       for (const nodeUid of community.nodes) {
@@ -150,16 +248,11 @@ export class Indexer {
     }
     progress("communities", 100);
 
-    // ── 6. Update processes ──────────────────────────────────────────────────
+    // ── 8. Process tracing ───────────────────────────────────────────────────
     progress("processes", 0);
-    if (incremental && changedFilePaths.size > 0) {
-      // Partial: remove processes with nodes in changed files
-      this.db.db.exec('DELETE FROM processes');
-      this.db.db.exec('UPDATE nodes SET process_name = NULL');
-    } else {
-      this.db.db.exec('DELETE FROM processes');
-      this.db.db.exec('UPDATE nodes SET process_name = NULL');
-    }
+    this.db.db.exec('DELETE FROM processes');
+    this.db.db.exec('UPDATE nodes SET process_name = NULL');
+
     const processes = traceProcesses(this.db);
     for (const proc of processes) {
       this.db.insertProcess(proc);
@@ -172,37 +265,31 @@ export class Indexer {
     }
     progress("processes", 100);
 
-    // ── 7. Rebuild FTS ────────────────────────────────────────────────────────
+    // ── 9. Incremental FTS update ─────────────────────────────────────────────
     progress("fts", 0);
-    this.db.rebuildFTS();
+    if (incremental) {
+      incrementalFTSUpdate(this.db, changedUids, allNodes.length);
+    } else {
+      this.db.rebuildFTS();
+    }
     progress("fts", 100);
 
-    // ── 8. Update embeddings for changed symbols ──────────────────────────────
-    let embeddingCount = 0;
+    // ── 10. Embeddings (cache-first via generateEmbeddings internal logic) ──────
     if (this.config.includeEmbeddings) {
       progress("embeddings", 0);
       try {
         const provider = (process.env.EMBEDDING_PROVIDER as any) ?? detectProvider();
-        const changedUids = newNodes.map(n => n.uid);
-
-        // Generate embeddings for newly added/changed symbols
-        const symbols = this.db.db.prepare(
-          "SELECT uid, name, type, file_path, signature FROM nodes WHERE uid IN (" +
-          changedUids.map(() => '?').join(',') + ") AND embedding IS NULL"
-        ).all(...changedUids) as any[];
-
-        if (symbols.length > 0) {
-          const result = await generateEmbeddings(this.db, { provider });
-          embeddingCount = result.count;
-          console.error(`[ForgeNexus] Incremental embeddings: ${result.count} generated (${result.elapsedMs}ms)`);
-        }
+        // generateEmbeddings auto-selects nodes WHERE embedding IS NULL,
+        // so changed/new nodes get embedded; unchanged nodes are skipped.
+        const result = await generateEmbeddings(this.db, { provider });
+        console.error(`[ForgeNexus] Embeddings: ${result.count} generated (${result.elapsedMs}ms) via ${result.provider}`);
       } catch (e) {
-        console.warn(`[ForgeNexus] Incremental embeddings skipped: ${e}`);
+        console.warn(`[ForgeNexus] Embeddings skipped: ${e}`);
       }
       progress("embeddings", 100);
     }
 
-    // ── 9. Update meta ────────────────────────────────────────────────────────
+    // ── 11. Update meta ──────────────────────────────────────────────────────
     const stats = this.db.getStats();
     this.db.setMeta("indexed_at", new Date().toISOString());
     try {
@@ -213,11 +300,41 @@ export class Indexer {
     this.db.setMeta("repo_path", this.config.repoPath);
 
     // Track indexed files
-    const allPaths = files.map(f => f).join('\n');
-    this.db.setMeta("indexed_files", allPaths);
+    const allPathsStr = files.map(f => f.path).join('\n');
+    this.db.setMeta("indexed_files", allPathsStr);
+
+    // Detect frameworks for metadata
+    try {
+      const allContents = new Map<string, string>();
+      for (const f of files.slice(0, 50)) {
+        try {
+          allContents.set(f.path, readFileSync(f.path, 'utf8'));
+        } catch { /* skip */ }
+      }
+      const frameworks = detectFrameworks(files.map(f => f.path), allContents);
+      if (frameworks.length > 0) {
+        this.db.setMeta("detected_frameworks", frameworks.map(f => f.framework).join(','));
+      }
+    } catch { /* framework detection is best-effort */ }
 
     progress("complete", 100);
     return stats;
+  }
+
+  /**
+   * Check if the repo is already up-to-date (early exit).
+   */
+  private checkEarlyExit(): boolean {
+    try {
+      const lastCommit = this.db.getMeta("last_commit");
+      const lastIndexedAt = this.db.getMeta("indexed_at");
+      if (!lastCommit || !lastIndexedAt) return false;
+
+      const currentCommit = execSync("git rev-parse HEAD 2>/dev/null", { encoding: "utf8" }).trim();
+      return currentCommit === lastCommit;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -228,21 +345,18 @@ export class Indexer {
     const lastIndexedAt = this.db.getMeta("indexed_at");
 
     if (!lastCommit || !lastIndexedAt) {
-      // Never indexed — parse everything
       return allFiles;
     }
 
     try {
-      // Get files changed since last commit
       const output = execSync(
         `git diff --name-only ${lastCommit} HEAD`,
         { encoding: "utf8" }
       ).trim();
 
       const changedInCommit = new Set(output.split("\n").map(l => l.trim()).filter(Boolean));
-      const repoPath = this.config.repoPath;
 
-      // Also check for any uncommitted changes
+      // Also check uncommitted changes
       let uncommitted: string[] = [];
       try {
         const uncommittedOutput = execSync("git diff --name-only", { encoding: "utf8" }).trim();
@@ -255,14 +369,13 @@ export class Indexer {
       } catch { /* no staged changes */ }
 
       const allChanged = new Set([...changedInCommit, ...uncommitted]);
+      const repoPath = this.config.repoPath;
 
-      // Filter to only files that are in allFiles
       const changedFiles = allFiles.filter(f => {
         const relPath = f.path.replace(repoPath + '/', '').replace(repoPath, '');
         return allChanged.has(relPath) || allChanged.has('./' + relPath);
       });
 
-      // If too many files changed (> 50%), do full re-index
       if (changedFiles.length > allFiles.length * 0.5) {
         return allFiles;
       }
@@ -294,75 +407,121 @@ export class Indexer {
   }
 
   /**
-   * Remove nodes belonging to specific files from the database.
+   * Remove nodes and edges for a specific file.
+   * Uses indexed file_path column (not LIKE patterns).
    */
-  private removeNodesForFiles(filePaths: string[]): void {
-    if (filePaths.length === 0) return;
-    for (const fp of filePaths) {
-      // Remove edges referencing this file
-      this.db.db.prepare(`DELETE FROM edges WHERE from_uid LIKE ? OR to_uid LIKE ?`)
-        .run(`%:${fp}:%`, `%:${fp}:%`);
-      // Remove nodes from this file
-      this.db.db.prepare(`DELETE FROM nodes WHERE file_path = ?`).run(fp);
+  private removeNodesForFile(filePath: string): void {
+    // Use indexed file_path column for fast lookup
+    const nodesToDelete = (this.db as any).db.prepare(
+      'SELECT uid FROM nodes WHERE file_path = ?'
+    ).all(filePath) as any[];
+
+    const uidsToDelete = new Set(nodesToDelete.map((r: any) => r.uid));
+
+    if (uidsToDelete.size > 0) {
+      // Delete edges referencing these nodes
+      const placeholders = [...uidsToDelete].map(() => '?').join(', ');
+      (this.db as any).db.prepare(
+        `DELETE FROM edges WHERE from_uid IN (${placeholders}) OR to_uid IN (${placeholders})`
+      ).run(...[...uidsToDelete], ...[...uidsToDelete]);
+
+      // Delete nodes
+      (this.db as any).db.prepare('DELETE FROM nodes WHERE file_path = ?').run(filePath);
     }
   }
 
-  private resolveEdges(nodes: any[], edges: any[]): any[] {
-    const nameToUid = new Map<string, string>();
-    const fileBaseName = new Map<string, string>();
-
-    for (const n of nodes) {
-      const key = `${n.type}:${n.name}`;
-      if (!nameToUid.has(key)) {
-        nameToUid.set(key, n.uid);
-      }
-      if (!n.filePath) continue;
-      const base = n.filePath.split("/").pop() ?? "";
-      if (!fileBaseName.has(base)) {
-        fileBaseName.set(base, n.uid);
+  /**
+   * Delete only communities that contain nodes in changed files.
+   */
+  private deleteAffectedCommunities(changedFilePaths: Set<string>): void {
+    // Find communities that have nodes in changed files
+    const affectedComms = new Set<string>();
+    for (const fp of changedFilePaths) {
+      const nodes = (this.db as any).db.prepare(
+        'SELECT DISTINCT community FROM nodes WHERE file_path = ? AND community IS NOT NULL'
+      ).all(fp) as any[];
+      for (const row of nodes) {
+        if (row.community) affectedComms.add(row.community);
       }
     }
 
-    const resolved: any[] = [];
+    if (affectedComms.size > 0 && affectedComms.size < 20) {
+      const placeholders = [...affectedComms].map(() => '?').join(', ');
+      (this.db as any).db.prepare(`DELETE FROM communities WHERE id IN (${placeholders})`)
+        .run(...[...affectedComms]);
+
+      // Clear community assignment for affected nodes
+      const nodePlaceholders = [...changedFilePaths].map(() => '?').join(', ');
+      (this.db as any).db.prepare(
+        `UPDATE nodes SET community = NULL WHERE file_path IN (${nodePlaceholders})`
+      ).run(...[...changedFilePaths]);
+    } else {
+      // Too many affected communities — full rebuild
+      (this.db as any).db.exec('DELETE FROM communities');
+      (this.db as any).db.exec('UPDATE nodes SET community = NULL');
+    }
+  }
+
+  /**
+   * Fast edge resolution using pre-built name→uid map.
+   * O(n) instead of O(n²) table scan.
+   */
+  private resolveEdgesFast(
+    nodes: CodeNode[],
+    edges: CodeEdge[],
+    nameToUid: Map<string, string>
+  ): CodeEdge[] {
+    const resolved: CodeEdge[] = [];
+
     for (const edge of edges) {
       const toUid = edge.toUid;
-      if (!toUid) { resolved.push(edge); continue; }
-      if (toUid.startsWith("IMPORT:") || toUid.startsWith("QUERY:") || toUid.startsWith("Route:") || toUid.startsWith("Tool:")) {
+
+      // Skip non-UNKNOWN edges
+      if (toUid.startsWith("IMPORT:") || toUid.startsWith("QUERY:") ||
+          toUid.startsWith("Route:") || toUid.startsWith("Tool:") ||
+          toUid.startsWith("MEMBER_OF:") || toUid.startsWith("ORM:")) {
         resolved.push(edge);
         continue;
       }
+
       if (toUid.startsWith("UNKNOWN:")) {
         const parts = toUid.split(":");
         const type = parts[1];
         const calleeName = parts[2];
-        if (!type || !calleeName) { resolved.push(edge); continue; }
-        const exactKey = `${type}:${calleeName}`;
-        const resolvedUid = nameToUid.get(exactKey);
+
+        if (!type || !calleeName) {
+          resolved.push(edge);
+          continue;
+        }
+
+        const key = `${type}:${calleeName}`;
+        const resolvedUid = nameToUid.get(key);
+
         if (resolvedUid) {
           resolved.push({ ...edge, toUid: resolvedUid });
+        } else {
+          resolved.push(edge);
         }
       } else {
         resolved.push(edge);
       }
     }
+
     return resolved;
   }
 
-  private resolveModuleImports(nodes: any[], edges: any[]): any[] {
-    const moduleEdges: any[] = [];
-    const fileSymbolMap = new Map<string, Set<string>>();
-    for (const n of nodes) {
-      if (!fileSymbolMap.has(n.filePath)) {
-        fileSymbolMap.set(n.filePath, new Set());
-      }
-      fileSymbolMap.get(n.filePath)!.add(n.name);
-    }
-    const symbolToUid = new Map<string, string>();
-    for (const n of nodes) {
-      if (!symbolToUid.has(n.name)) {
-        symbolToUid.set(n.name, n.uid);
-      }
-    }
+  /**
+   * Fast module import resolution using suffix trie.
+   * O(1) path lookup instead of O(n*m) suffix matching.
+   */
+  private resolveModuleImportsFast(
+    nodes: CodeNode[],
+    edges: CodeEdge[],
+    nameToUid: Map<string, string>,
+    fileSymbolMap: Map<string, Set<string>>,
+    suffixIndex: ReturnType<typeof buildSuffixIndex>
+  ): CodeEdge[] {
+    const moduleEdges: CodeEdge[] = [];
 
     for (const edge of edges) {
       if (edge.type === "IMPORTS" && edge.toUid.startsWith("IMPORT:")) {
@@ -371,31 +530,50 @@ export class Indexer {
         const symbol = parts[2] ?? "default";
 
         let resolvedUid: string | null = null;
-        if (symbol !== "module" && symbol !== "default") {
-          resolvedUid = symbolToUid.get(symbol) ?? null;
+
+        // Try exact symbol name first (fast path)
+        if (symbol !== "module" && symbol !== "default" && symbol !== "file" && symbol !== "wildcard") {
+          resolvedUid = nameToUid.get(`${symbol}:${symbol}`) ?? null;
         }
+
+        // Try suffix trie resolution for path-based imports
         if (!resolvedUid && source && (source.startsWith(".") || source.startsWith("/"))) {
-          for (const [filePath, symbols] of fileSymbolMap) {
-            if (filePath.endsWith(source.replace(/^\.\//, "")) || filePath.endsWith(source + ".ts")
-              || filePath.endsWith(source + ".js") || filePath.endsWith(source + "/index.ts")) {
-              if (symbols.has(symbol) || symbol === "default") {
-                resolvedUid = symbolToUid.get([...symbols][0]) ?? null;
+          const fromFile = edge.fromUid.split(':')[0];
+          const resolvedPath = resolveImportPath(source, fromFile, suffixIndex);
+
+          if (resolvedPath) {
+            // Find symbol in resolved file
+            const symbols = fileSymbolMap.get(resolvedPath);
+            if (symbols) {
+              if (symbol !== "default" && symbols.has(symbol)) {
+                resolvedUid = nameToUid.get(`${symbol}:${symbol}`) ?? null;
+              }
+              if (!resolvedUid) {
+                // Take any symbol from the file (default export)
+                const anySymbol = [...symbols][0];
+                if (anySymbol) {
+                  resolvedUid = nameToUid.get(`${anySymbol}:${anySymbol}`) ?? null;
+                }
               }
             }
           }
         }
+
         if (resolvedUid) {
           moduleEdges.push({
             ...edge,
             toUid: resolvedUid,
             confidence: Math.min(edge.confidence + 0.1, 1.0),
-            reason: 'resolved-import',
+            reason: 'suffix-trie-resolved',
           });
         } else {
           moduleEdges.push(edge);
         }
+      } else {
+        moduleEdges.push(edge);
       }
     }
+
     return moduleEdges;
   }
 

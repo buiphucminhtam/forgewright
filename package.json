@@ -1,12 +1,15 @@
 {
   "name": "forgewright",
   "version": "7.7.0",
-  "description": "Production-Grade AI Pipeline Orchestrator — 48 skills, 19 modes",
+  "description": "Production-Grade AI Pipeline Orchestrator — 52 skills, 19 modes",
   "private": true,
+  "scripts": {
+    "prepare": "husky install",
+    "build:cli": "cd src/cli && npm install && npm run build",
+    "dev:cli": "cd src/cli && npm run dev",
+    "typecheck:cli": "cd src/cli && npx tsc --noEmit"
+  },
   "devDependencies": {
     "husky": "^9.0.0"
-  },
-  "scripts": {
-    "prepare": "husky install"
   }
 }

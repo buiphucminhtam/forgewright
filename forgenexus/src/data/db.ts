@@ -179,6 +179,16 @@ export class ForgeDB {
     return rows.map(rowToNode);
   }
 
+  getAllNodes(): CodeNode[] {
+    const rows = this.db.prepare('SELECT * FROM nodes').all() as any[];
+    return rows.map(rowToNode);
+  }
+
+  getAllFilePaths(): string[] {
+    const rows = this.db.prepare('SELECT DISTINCT file_path FROM nodes').all() as any[];
+    return rows.map((r: any) => r.file_path);
+  }
+
   // ─── Edges ────────────────────────────────────────────────────────────────
 
   insertEdge(edge: CodeEdge): void {
