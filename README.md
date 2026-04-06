@@ -1,6 +1,8 @@
 # Forgewright — Adaptive AI Orchestrator
 
-> **Version 7.8** · 52 Skills · 19 Modes · 15 Protocols · ForgeNexus Code Intelligence
+<p align="center">
+  <img src="assets/forgewright-banner.png" alt="Forgewright Banner" width="100%" />
+</p>
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
@@ -720,6 +722,14 @@ bash scripts/forge-validate.sh --json
 ## License
 
 MIT
+
+---
+
+## Give me a coffee
+
+If Forgewright helps you ship faster, you can support the project here:
+
+<img src="assets/donate/give-me-a-coffee-international.png" width="240" />
 
 ---
 
