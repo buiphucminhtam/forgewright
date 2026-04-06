@@ -1,34 +1,32 @@
 /**
  * Global repository registry — tracks all indexed repos.
- * Stored in {forgewright_root}/.forgenexus/registry.db
+ * Stored in {forgewright_root}/.forgenexus/registry.kuzu
+ *
+ * Migration from SQLite: uses KuzuDB with RepoRegistry node table.
  */
 
-import Database from 'better-sqlite3'
+import { Database, Connection } from 'kuzu'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
+import { KUZU_SCHEMA } from './schema.js'
 import type { RepoMeta } from '../types.js'
 import { ensureNexusDataDirMigrated, nexusDataDir } from '../paths.js'
 
-const REGISTRY_SCHEMA = `
-CREATE TABLE IF NOT EXISTS registry (
-  name TEXT PRIMARY KEY,
-  path TEXT NOT NULL,
-  db_path TEXT NOT NULL,
-  indexed_at TEXT NOT NULL,
-  last_commit TEXT,
-  stats TEXT NOT NULL,
-  language TEXT DEFAULT 'unknown'
-);
-`.trim()
+function esc(s: string): string {
+  return String(s ?? '').replace(/"/g, '\\"')
+}
+
+/** Unwrap querySync result (single or multiple) to a single QueryResult */
+function unwrapResult(result: any): any {
+  return Array.isArray(result) ? result[0] : result
+}
 
 // Find the forgewright root (parent of forgenexus/)
 function findForgewrightRoot(): string {
-  // Try environment variable first
   const envRoot = process.env.FORGEWRIGHT_ROOT
   if (envRoot && existsSync(envRoot)) return envRoot
 
-  // Walk up from this file
   let dir = dirname(fileURLToPath(import.meta.url))
   for (let i = 0; i < 10; i++) {
     if (existsSync(join(dir, 'skills')) && existsSync(join(dir, 'forgenexus'))) {
@@ -37,12 +35,24 @@ function findForgewrightRoot(): string {
     dir = join(dir, '..')
   }
 
-  // Fall back to cwd
   return process.cwd()
 }
 
+function initSchema(c: InstanceType<typeof Connection>): void {
+  const stmts = KUZU_SCHEMA.split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.startsWith('LOAD EXTENSION'))
+  for (const stmt of stmts) {
+    try {
+      c.querySync(stmt)
+    } catch {
+      /* exists */
+    }
+  }
+}
+
 export class Registry {
-  private db: Database.Database
+  private conn: InstanceType<typeof Connection>
   readonly root: string
   readonly dbPath: string
 
@@ -53,91 +63,124 @@ export class Registry {
     if (!existsSync(nexusDir)) {
       mkdirSync(nexusDir, { recursive: true })
     }
-    this.dbPath = join(nexusDir, 'registry.db')
-    this.db = new Database(this.dbPath)
-    this.db.pragma('journal_mode = WAL')
-    this.db.exec(REGISTRY_SCHEMA)
+    this.dbPath = join(nexusDir, 'registry.kuzu')
+    const db = new Database(this.dbPath)
+    this.conn = new Connection(db)
+    initSchema(this.conn)
     this.migrateLegacyDbPathsInRegistry()
   }
 
   /** Normalize rows that still point at pre-rename `.gitnexus/` paths. */
   private migrateLegacyDbPathsInRegistry(): void {
     try {
-      this.db
-        .prepare(
-          `UPDATE registry SET db_path = REPLACE(db_path, '/.gitnexus/', '/.forgenexus/')
-           WHERE db_path LIKE '%/.gitnexus/%'`,
-        )
-        .run()
+      this.conn.querySync(
+        `MATCH (r:RepoRegistry) WHERE r.dbPath CONTAINS '/.gitnexus/'
+         SET r.dbPath = replace(r.dbPath, '/.gitnexus/', '/.forgenexus/')`,
+      )
     } catch {
       /* empty */
     }
   }
 
   register(repo: RepoMeta, dbPath: string): void {
-    this.db
-      .prepare(
-        `
-      INSERT OR REPLACE INTO registry
-        (name, path, db_path, indexed_at, last_commit, stats, language)
-      VALUES (@name, @path, @dbPath, @indexedAt, @lastCommit, @stats, @language)
-    `,
+    try {
+      this.conn.querySync(
+        `MERGE (r:RepoRegistry {name: "${esc(repo.name)}"})
+         SET r.path = "${esc(repo.path)}", r.dbPath = "${esc(dbPath)}",
+             r.indexedAt = "${esc(repo.indexedAt)}", r.lastCommit = "${esc(repo.lastCommit ?? '')}",
+             r.stats = "${esc(JSON.stringify(repo.stats))}", r.language = "${esc(repo.language ?? 'unknown')}"`,
       )
-      .run({
-        name: repo.name,
-        path: repo.path,
-        dbPath,
-        indexedAt: repo.indexedAt,
-        lastCommit: repo.lastCommit,
-        stats: JSON.stringify(repo.stats),
-        language: repo.language ?? 'unknown',
-      })
+    } catch {
+      /* */
+    }
   }
 
   unregister(name: string): void {
-    this.db.prepare('DELETE FROM registry WHERE name = ?').run(name)
+    try {
+      this.conn.querySync(`MATCH (r:RepoRegistry {name: "${esc(name)}"}) DETACH DELETE r`)
+    } catch {
+      /* */
+    }
   }
 
   list(): RepoMeta[] {
-    const rows = this.db.prepare('SELECT * FROM registry ORDER BY indexed_at DESC').all() as any[]
-    return rows.map((r) => ({
-      name: r.name,
-      path: r.path,
-      indexedAt: r.indexed_at,
-      lastCommit: r.last_commit ?? '',
-      stats: JSON.parse(r.stats),
-      language: r.language,
-    }))
+    try {
+      const result = this.conn.querySync(
+        `MATCH (r:RepoRegistry) RETURN r.name AS name, r.path AS path, r.dbPath AS dbPath,
+                r.indexedAt AS indexedAt, r.lastCommit AS lastCommit, r.stats AS stats, r.language AS language`,
+      )
+      return unwrapResult(result)
+        .getAllSync()
+        .map((row: any) => ({
+          name: row.name,
+          path: row.path,
+          indexedAt: row.indexedAt ?? '',
+          lastCommit: row.lastCommit ?? '',
+          stats: row.stats
+            ? JSON.parse(row.stats)
+            : { files: 0, nodes: 0, edges: 0, communities: 0, processes: 0, hasEmbeddings: false },
+          language: row.language ?? 'unknown',
+        }))
+    } catch {
+      return []
+    }
   }
 
   get(name: string): RepoMeta | null {
-    const row = this.db.prepare('SELECT * FROM registry WHERE name = ?').get(name) as any
-    if (!row) return null
-    return {
-      name: row.name,
-      path: row.path,
-      indexedAt: row.indexed_at,
-      lastCommit: row.last_commit ?? '',
-      stats: JSON.parse(row.stats),
-      language: row.language,
+    try {
+      const result = this.conn.querySync(
+        `MATCH (r:RepoRegistry {name: "${esc(name)}"}) RETURN r.name AS name, r.path AS path,
+                r.indexedAt AS indexedAt, r.lastCommit AS lastCommit, r.stats AS stats, r.language AS language LIMIT 1`,
+      )
+      const rows = unwrapResult(result).getAllSync()
+      if (rows.length === 0) return null
+      const row = rows[0]
+      return {
+        name: row.name,
+        path: row.path,
+        indexedAt: row.indexedAt ?? '',
+        lastCommit: row.lastCommit ?? '',
+        stats: row.stats
+          ? JSON.parse(row.stats)
+          : { files: 0, nodes: 0, edges: 0, communities: 0, processes: 0, hasEmbeddings: false },
+        language: row.language ?? 'unknown',
+      }
+    } catch {
+      return null
     }
   }
 
   getByPath(repoPath: string): RepoMeta | null {
-    const row = this.db.prepare('SELECT * FROM registry WHERE path = ?').get(repoPath) as any
-    if (!row) return null
-    return {
-      name: row.name,
-      path: row.path,
-      indexedAt: row.indexed_at,
-      lastCommit: row.last_commit ?? '',
-      stats: JSON.parse(row.stats),
-      language: row.language,
+    try {
+      const result = this.conn.querySync(
+        `MATCH (r:RepoRegistry {path: "${esc(repoPath)}"}) RETURN r.name AS name, r.path AS path,
+                r.indexedAt AS indexedAt, r.lastCommit AS lastCommit, r.stats AS stats, r.language AS language LIMIT 1`,
+      )
+      const rows = unwrapResult(result).getAllSync()
+      if (rows.length === 0) return null
+      const row = rows[0]
+      return {
+        name: row.name,
+        path: row.path,
+        indexedAt: row.indexedAt ?? '',
+        lastCommit: row.lastCommit ?? '',
+        stats: row.stats
+          ? JSON.parse(row.stats)
+          : { files: 0, nodes: 0, edges: 0, communities: 0, processes: 0, hasEmbeddings: false },
+        language: row.language ?? 'unknown',
+      }
+    } catch {
+      return null
     }
   }
 
   close(): void {
-    this.db.close()
+    try {
+      this.conn.close()
+      ;(this.conn as any)._db?.close?.()
+    } catch {
+      /* */
+    }
   }
 }
 
@@ -146,15 +189,10 @@ export class Registry {
 /**
  * Unified graph that combines nodes from multiple indexed repositories.
  * Enables cross-repo queries and dependency analysis.
- *
- * Usage:
- *   const unified = new UnifiedGraph();
- *   unified.addRepo('my-app', '/path/to/my-app/.forgenexus/codebase.db');
- *   unified.addRepo('shared-lib', '/path/to/shared-lib/.forgenexus/codebase.db');
- *   unified.query('auth middleware'); // searches across both repos
  */
 export class UnifiedGraph {
-  private connections: Map<string, Database.Database> = new Map()
+  private connections: Map<string, InstanceType<typeof Connection>> = new Map()
+  private dbs: Map<string, InstanceType<typeof Database>> = new Map()
   private maxConnections = 5
 
   addRepo(name: string, dbPath: string): void {
@@ -162,23 +200,52 @@ export class UnifiedGraph {
       throw new Error(`Database not found: ${dbPath}`)
     }
     if (this.connections.size >= this.maxConnections) {
-      // Evict oldest connection
       const firstKey = this.connections.keys().next().value
       if (firstKey) {
-        this.connections.get(firstKey)?.close()
+        const c = this.connections.get(firstKey)
+        if (c) {
+          try {
+            c.close()
+          } catch {
+            /* */
+          }
+          const d = this.dbs.get(firstKey)
+          if (d) {
+            try {
+              d.close()
+            } catch {
+              /* */
+            }
+            this.dbs.delete(firstKey)
+          }
+        }
         this.connections.delete(firstKey)
       }
     }
     const db = new Database(dbPath)
-    db.pragma('journal_mode = WAL')
-    this.connections.set(name, db)
+    const c = new Connection(db)
+    this.dbs.set(name, db)
+    this.connections.set(name, c)
   }
 
   removeRepo(name: string): void {
-    const db = this.connections.get(name)
-    if (db) {
-      db.close()
+    const c = this.connections.get(name)
+    if (c) {
+      try {
+        c.close()
+      } catch {
+        /* */
+      }
       this.connections.delete(name)
+    }
+    const d = this.dbs.get(name)
+    if (d) {
+      try {
+        d.close()
+      } catch {
+        /* */
+      }
+      this.dbs.delete(name)
     }
   }
 
@@ -186,9 +253,6 @@ export class UnifiedGraph {
     return [...this.connections.keys()]
   }
 
-  /**
-   * Search across all indexed repos using hybrid search (BM25 + semantic).
-   */
   search(
     query: string,
     limit = 20,
@@ -203,26 +267,26 @@ export class UnifiedGraph {
     }[] = []
     let globalRank = 0
 
-    for (const [repoName, db] of this.connections) {
-      const ftsRows = db
-        .prepare(
-          `
-        SELECT uid, name, file_path, type FROM fts_symbols
-        WHERE fts_symbols MATCH ?
-        LIMIT ?
-      `,
-        )
-        .all(query, limit) as any[]
+    for (const [repoName, conn] of this.connections) {
+      try {
+        const rows = unwrapResult(
+          conn.querySync(
+            `MATCH (n:CodeNode) WHERE n.name CONTAINS "${esc(query)}" RETURN n.uid AS uid, n.name AS name, n.filePath AS filePath, n.type AS type LIMIT ${limit}`,
+          ),
+        ).getAllSync()
 
-      for (const row of ftsRows) {
-        results.push({
-          repo: repoName,
-          uid: row.uid,
-          name: row.name,
-          filePath: row.file_path,
-          type: row.type,
-          rank: globalRank++,
-        })
+        for (const row of rows as any[]) {
+          results.push({
+            repo: repoName,
+            uid: row.uid,
+            name: row.name,
+            filePath: row.filePath,
+            type: row.type,
+            rank: globalRank++,
+          })
+        }
+      } catch {
+        /* skip */
       }
     }
 
@@ -232,76 +296,22 @@ export class UnifiedGraph {
       .map(({ repo, uid, name, filePath, type }) => ({ repo, uid, name, filePath, type }))
   }
 
-  /**
-   * Get cross-repo IMPORTS edges between different repos.
-   */
-  getCrossRepoImports(): { fromRepo: string; fromUid: string; toRepo: string; toUid: string }[] {
-    const results: { fromRepo: string; fromUid: string; toRepo: string; toUid: string }[] = []
-
-    for (const [fromRepo, fromDb] of this.connections) {
-      const importEdges = fromDb
-        .prepare(
-          "SELECT from_uid, to_uid FROM edges WHERE type = 'IMPORTS' AND to_uid LIKE 'IMPORT:%'",
-        )
-        .all() as any[]
-
-      for (const edge of importEdges) {
-        // Try to resolve external imports to other indexed repos
-        const importTarget = edge.to_uid.replace('IMPORT:', '').split(':')[0]
-        for (const [toRepo, toDb] of this.connections) {
-          if (fromRepo === toRepo) continue
-          const resolved = toDb
-            .prepare('SELECT uid FROM nodes WHERE file_path LIKE ? LIMIT 1')
-            .get(`%${importTarget}%`) as any
-          if (resolved) {
-            results.push({
-              fromRepo,
-              fromUid: edge.from_uid,
-              toRepo,
-              toUid: resolved.uid,
-            })
-          }
-        }
+  close(): void {
+    for (const c of this.connections.values()) {
+      try {
+        c.close()
+      } catch {
+        /* */
       }
     }
-
-    return results
-  }
-
-  /**
-   * Get all communities across all indexed repos.
-   */
-  getAllCommunities(): {
-    repo: string
-    communities: { id: string; name: string; cohesion: number; count: number }[]
-  }[] {
-    const results: {
-      repo: string
-      communities: { id: string; name: string; cohesion: number; count: number }[]
-    }[] = []
-
-    for (const [repoName, db] of this.connections) {
-      const rows = db
-        .prepare('SELECT id, name, cohesion FROM communities ORDER BY cohesion DESC')
-        .all() as any[]
-      results.push({
-        repo: repoName,
-        communities: rows.map((r) => ({
-          id: r.id,
-          name: r.name,
-          cohesion: r.cohesion,
-          count: 0,
-        })),
-      })
-    }
-
-    return results
-  }
-
-  close(): void {
-    for (const db of this.connections.values()) {
-      db.close()
-    }
     this.connections.clear()
+    for (const d of this.dbs.values()) {
+      try {
+        d.close()
+      } catch {
+        /* */
+      }
+    }
+    this.dbs.clear()
   }
 }

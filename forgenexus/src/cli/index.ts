@@ -18,6 +18,13 @@ import { status } from './status.js'
 import { wiki } from './wiki.js'
 import { startMCPServer } from '../mcp/server.js'
 import { applyLegacyGitnexusEnv } from '../env-legacy.js'
+import {
+  listGroups,
+  createGroup,
+  addRepoToGroup,
+  removeRepoFromGroup,
+  syncGroupContracts,
+} from '../data/groups.js'
 
 function extractFlag(args: string[], flag: string): string | null {
   const idx = args.indexOf(flag)
@@ -39,6 +46,9 @@ Commands:
   wiki [path]      Generate architecture documentation (requires LLM API key)
   mcp [path]       Start MCP server for AI tool access
   setup            Setup ForgeNexus in current project
+  group <cmd>       Multi-repo group management:
+                     list, create <name> [desc],
+                     add <group> <repo>, remove <group> <repo>, sync <group>
 
 Analyze Options:
   --embeddings                 Generate vector embeddings for semantic search
@@ -115,6 +125,82 @@ async function main() {
     }
     case 'setup': {
       await setup()
+      break
+    }
+    case 'group': {
+      const groupCmd = args[1]
+      const groupArgs = args.slice(2)
+      if (groupCmd === 'list') {
+        const groups = listGroups()
+        if (groups.length === 0) {
+          console.log('No groups. Create one: forgenexus group create <name>')
+          break
+        }
+        for (const g of groups) {
+          console.log(`## ${g.name}${g.description ? ` — ${g.description}` : ''}`)
+          console.log(`  Repos: ${g.repos.join(', ') || '(none)'}`)
+        }
+        break
+      }
+      if (groupCmd === 'create') {
+        const name = groupArgs[0]
+        if (!name) {
+          console.error('Usage: forgenexus group create <name> [description]')
+          break
+        }
+        const desc = groupArgs.slice(1).join(' ')
+        const result = createGroup(name, desc || undefined)
+        console.log(result.success ? `Group "${name}" created.` : `Error: ${result.error}`)
+        break
+      }
+      if (groupCmd === 'add') {
+        const groupName = groupArgs[0]
+        const repoName = groupArgs[1]
+        if (!groupName || !repoName) {
+          console.error('Usage: forgenexus group add <group> <repo>')
+          break
+        }
+        const result = addRepoToGroup(groupName, repoName)
+        console.log(
+          result.success ? `Added "${repoName}" to "${groupName}".` : `Error: ${result.error}`,
+        )
+        break
+      }
+      if (groupCmd === 'remove') {
+        const groupName = groupArgs[0]
+        const repoName = groupArgs[1]
+        if (!groupName || !repoName) {
+          console.error('Usage: forgenexus group remove <group> <repo>')
+          break
+        }
+        const result = removeRepoFromGroup(groupName, repoName)
+        console.log(
+          result.success ? `Removed "${repoName}" from "${groupName}".` : `Error: ${result.error}`,
+        )
+        break
+      }
+      if (groupCmd === 'sync') {
+        const groupName = groupArgs[0]
+        if (!groupName) {
+          console.error('Usage: forgenexus group sync <group>')
+          break
+        }
+        const result = syncGroupContracts(groupName)
+        if (!result.success) {
+          console.error(`Sync failed: ${result.error}`)
+          break
+        }
+        console.log(
+          `Synced ${result.contracts.length} contracts and ${result.links.length} cross-repo links.`,
+        )
+        break
+      }
+      console.error('Usage: forgenexus group <list|create|add|remove|sync> ...')
+      console.error('       forgenexus group list')
+      console.error('       forgenexus group create <name> [description]')
+      console.error('       forgenexus group add <group> <repo>')
+      console.error('       forgenexus group remove <group> <repo>')
+      console.error('       forgenexus group sync <group>')
       break
     }
     case 'help':

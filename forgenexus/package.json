@@ -22,9 +22,9 @@
   "dependencies": {
     "@huggingface/transformers": "^4.0.1",
     "@modelcontextprotocol/sdk": "^1.0.1",
-    "better-sqlite3": "^11.8.1",
     "glob": "^10.3.10",
     "js-yaml": "^4.1.0",
+    "kuzu": "^0.11.3",
     "tree-sitter": "0.22.4",
     "tree-sitter-c": "^0.24.1",
     "tree-sitter-cpp": "^0.23.4",
@@ -40,7 +40,6 @@
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "latest",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.11.16",
     "@typescript-eslint/eslint-plugin": "^6.19.0",

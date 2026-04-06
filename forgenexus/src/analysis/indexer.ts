@@ -263,8 +263,8 @@ export class Indexer {
       this.deleteAffectedCommunities(changedFilePaths)
     } else {
       // Full rebuild
-      this.db.db.exec('DELETE FROM communities')
-      this.db.db.exec('UPDATE nodes SET community = NULL')
+      this.db.exec('DELETE FROM communities')
+      this.db.exec('UPDATE nodes SET community = NULL')
     }
 
     // Run Leiden with timeout protection
@@ -288,8 +288,8 @@ export class Indexer {
 
     // ── 8. Process tracing ───────────────────────────────────────────────────
     progress('processes', 0)
-    this.db.db.exec('DELETE FROM processes')
-    this.db.db.exec('UPDATE nodes SET process_name = NULL')
+    this.db.exec('DELETE FROM processes')
+    this.db.exec('UPDATE nodes SET process_name = NULL')
 
     const processes = traceProcesses(this.db)
     for (const proc of processes) {

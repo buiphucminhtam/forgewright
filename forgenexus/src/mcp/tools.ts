@@ -971,6 +971,287 @@ Risk levels: CRITICAL (10+ d=1 callers), HIGH (>5 d=1), MEDIUM (>0 d=1), LOW (ad
       return md
     },
   },
+
+  // ── Group Management Tools ────────────────────────────────────────────────────
+
+  // ── 11. group_list ─────────────────────────────────────────────────────────
+  {
+    name: 'group_list',
+    description: `List all configured repository groups.
+
+WHEN TO USE: First step when managing multi-repo projects. Shows all groups, their descriptions, and which repos belong to each group.
+
+Returns: list of groups with member repos and metadata.`,
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+    handler: async () => {
+      const { listGroups } = await import('../data/groups.js')
+      const groups = listGroups()
+      if (groups.length === 0) {
+        return 'No repository groups configured. Run `forgenexus group create <name>` first.'
+      }
+      let md = `## Repository Groups\n\n`
+      for (const g of groups) {
+        md += `### ${g.name}\n`
+        if (g.description) md += `${g.description}\n\n`
+        md += `Repos: ${g.repos.length > 0 ? g.repos.map((r) => `- **${r}**`).join('\n') : '_none_'}\n`
+        md += `Created: ${g.createdAt}\n\n`
+      }
+      return md
+    },
+  },
+
+  // ── 12. group_create ─────────────────────────────────────────────────────────
+  {
+    name: 'group_create',
+    description: `Create a new repository group for multi-repo contract tracking.
+
+WHEN TO USE: Setting up a monorepo or microservice group. Each group tracks contracts and cross-repo dependencies.
+
+After creating a group, use group_add to add repos to it, then group_sync to extract contracts.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Group name (e.g. "backend-services", "frontend-libs")',
+        },
+        description: { type: 'string', description: 'Optional group description' },
+      },
+      required: ['name'],
+    },
+    handler: async (_db, args) => {
+      const { createGroup } = await import('../data/groups.js')
+      const result = createGroup(args.name, args.description)
+      if (result.success) {
+        return `Group "${args.name}" created. Add repos with group_add, then run group_sync to extract contracts.`
+      }
+      return `Error: ${result.error}`
+    },
+  },
+
+  // ── 13. group_add ────────────────────────────────────────────────────────────
+  {
+    name: 'group_add',
+    description: `Add an indexed repository to a group.
+
+WHEN TO USE: After group_create, add repos to track cross-repo contracts. The repo must already be indexed via 'forgenexus analyze'.
+
+Run group_sync after adding repos to extract contracts from all group members.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'Group name to add the repo to' },
+        repo: { type: 'string', description: 'Repo name or path to add' },
+      },
+      required: ['group', 'repo'],
+    },
+    handler: async (_db, args) => {
+      const { addRepoToGroup } = await import('../data/groups.js')
+      const result = addRepoToGroup(args.group, args.repo)
+      if (result.success) {
+        return `Added "${args.repo}" to group "${args.group}". Run group_sync to extract contracts.`
+      }
+      return `Error: ${result.error}`
+    },
+  },
+
+  // ── 14. group_sync ──────────────────────────────────────────────────────────
+  {
+    name: 'group_sync',
+    description: `Extract contracts and match cross-repo dependencies for a group.
+
+WHEN TO USE: After adding repos to a group. Scans each repo's graph for exported functions, API routes, and tool handlers, then finds cross-repo links by function name matching.
+
+This populates the contract registry so group_query and group_contracts can work. Run periodically (e.g. after indexing each repo) to keep contracts fresh.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'Group name to sync' },
+      },
+      required: ['group'],
+    },
+    handler: async (_db, args) => {
+      const { syncGroupContracts } = await import('../data/groups.js')
+      const result = syncGroupContracts(args.group)
+      if (!result.success) {
+        return `Sync failed: ${result.error}`
+      }
+      const byType: Record<string, number> = {}
+      for (const c of result.contracts) {
+        byType[c.type] = (byType[c.type] ?? 0) + 1
+      }
+      let md = `## Group Sync: ${args.group}\n\n`
+      md += `Contracts extracted: ${result.contracts.length}\n\n`
+      md += `**By type:** ${Object.entries(byType)
+        .map(([t, c]) => `${t}: ${c}`)
+        .join(', ')}\n\n`
+      md += `**Cross-repo links:** ${result.links.length}\n\n`
+      if (result.links.length > 0) {
+        md += `### Cross-repo Dependencies\n`
+        for (const link of result.links.slice(0, 20)) {
+          md += `- \`${link.fromRepo}\` → \`${link.toRepo}\` (via ${link.fromContract} → ${link.toContract})\n`
+        }
+      }
+      return md
+    },
+  },
+
+  // ── 15. group_contracts ─────────────────────────────────────────────────────
+  {
+    name: 'group_contracts',
+    description: `Inspect extracted contracts and cross-links for a group.
+
+WHEN TO USE: After group_sync, view all extracted contracts organized by repo, and see which contracts link to other repos.
+
+Returns contracts grouped by repository with their function signatures, and cross-repo dependency links.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'Group name' },
+      },
+      required: ['group'],
+    },
+    handler: async (_db, args) => {
+      const { getGroupContracts, getGroupLinks } = await import('../data/groups.js')
+      const { contracts, byRepo } = getGroupContracts(args.group)
+      const links = getGroupLinks(args.group)
+      if (contracts.length === 0) {
+        return `No contracts found for group "${args.group}". Run group_sync first.`
+      }
+      let md = `## Contracts: ${args.group}\n\n`
+      for (const [repo, cs] of Object.entries(byRepo)) {
+        md += `### ${repo} (${cs.length} contracts)\n`
+        for (const c of cs.slice(0, 30)) {
+          md += `- \`${c.name}\` ${c.signature ? `\`${c.signature}\`` : ''}\n`
+        }
+        if (cs.length > 30) md += `  _...and ${cs.length - 30} more_\n`
+        md += '\n'
+      }
+      if (links.length > 0) {
+        md += `## Cross-repo Links (${links.length})\n\n`
+        for (const link of links.slice(0, 20)) {
+          md += `- \`${link.fromRepo}\` → \`${link.toRepo}\`: ${link.fromContract} → ${link.toContract}\n`
+        }
+      }
+      return md
+    },
+  },
+
+  // ── 16. group_query ─────────────────────────────────────────────────────────
+  {
+    name: 'group_query',
+    description: `Search execution flows and contracts across all repos in a group.
+
+WHEN TO USE: Finding which repos in a group handle a feature, or which repos call a shared utility. Searches function names, signatures, and file paths across all group members.
+
+Returns matching contracts from each repo with their source locations.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'Group name to search in' },
+        query: { type: 'string', description: 'Search query (function name, keyword, pattern)' },
+        limit: { type: 'number', description: 'Max results per repo (default: 10)' },
+      },
+      required: ['group', 'query'],
+    },
+    handler: async (_db, args) => {
+      const { getGroupContracts } = await import('../data/groups.js')
+      const { contracts, byRepo } = getGroupContracts(args.group)
+      if (contracts.length === 0) {
+        return `No contracts in group "${args.group}". Run group_sync first.`
+      }
+      const q = args.query.toLowerCase()
+      const limit = args.limit ?? 10
+      let md = `## Group Query: "${args.query}" in ${args.group}\n\n`
+      let total = 0
+      for (const [repo, cs] of Object.entries(byRepo)) {
+        const matches = cs.filter(
+          (c) =>
+            c.name.toLowerCase().includes(q) ||
+            c.signature?.toLowerCase().includes(q) ||
+            c.filePath.toLowerCase().includes(q),
+        )
+        if (matches.length > 0) {
+          md += `### ${repo} (${matches.length} matches)\n`
+          for (const c of matches.slice(0, limit)) {
+            md += `- \`${c.name}\` ${c.signature ? `\`${c.signature}\`` : ''} — ${c.filePath}:${c.line}\n`
+          }
+          if (matches.length > limit) md += `  _...and ${matches.length - limit} more_\n`
+          md += '\n'
+          total += matches.length
+        }
+      }
+      if (total === 0) {
+        return `No results for "${args.query}" in group "${args.group}".`
+      }
+      md += `**Total: ${total} matches across ${Object.entries(byRepo).filter(([, cs]) => cs.some((c) => c.name.toLowerCase().includes(q))).length} repos**`
+      return md
+    },
+  },
+
+  // ── 17. group_status ─────────────────────────────────────────────────────────
+  {
+    name: 'group_status',
+    description: `Check staleness of all repos in a group.
+
+WHEN TO USE: Before a release or deployment, verify all repos in a group are indexed and up-to-date. Shows last commit hash, index timestamp, and staleness hint for each repo.
+
+A repo is stale if its git HEAD is ahead of the last indexed commit.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'Group name' },
+      },
+      required: ['group'],
+    },
+    handler: async (_db, args) => {
+      const { groupStatus } = await import('../data/groups.js')
+      const result = groupStatus(args.group)
+      if (result.repos.length === 0) {
+        return `Group "${args.group}" not found or has no repos.`
+      }
+      let md = `## Group Status: ${args.group}\n\n`
+      md += `| Repo | Last Commit | Stale? |\n`
+      md += `|------|-------------|--------|\n`
+      for (const repo of result.repos) {
+        const stale = repo.stale ? '⚠️ STALE' : '✅ OK'
+        md += `| **${repo.name}** | \`${repo.lastCommit?.slice(0, 7) ?? '?'}\` | ${stale} |\n`
+      }
+      md += `\n**Stale repos:** ${result.staleCount}\n`
+      if (result.staleCount > 0) {
+        md += `Run 'forgenexus analyze' on stale repos to re-index.`
+      }
+      return md
+    },
+  },
+
+  // ── 18. group_remove ─────────────────────────────────────────────────────────
+  {
+    name: 'group_remove',
+    description: `Remove a repository from a group.
+
+WHEN TO USE: Cleaning up a group when a repo is archived or moved. Does not delete the repo's index.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'Group name' },
+        repo: { type: 'string', description: 'Repo name to remove' },
+      },
+      required: ['group', 'repo'],
+    },
+    handler: async (_db, args) => {
+      const { removeRepoFromGroup } = await import('../data/groups.js')
+      const result = removeRepoFromGroup(args.group, args.repo)
+      if (result.success) {
+        return `Removed "${args.repo}" from group "${args.group}".`
+      }
+      return `Error: ${result.error}`
+    },
+  },
 ]
 
 interface ToolDef {

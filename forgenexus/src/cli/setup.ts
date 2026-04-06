@@ -35,18 +35,18 @@ export async function setup(): Promise<void> {
   console.error(`[ForgeNexus] Updated ${mcpPath}`)
 
   // ── Git Hooks Directory ─────────────────────────────────────────────────────
-  const hooksDir = join(cwd, '.git', 'hooks')
+  const gitHooksDir = join(cwd, '.git', 'hooks')
   const gitDir = join(cwd, '.git')
 
   if (!existsSync(gitDir)) {
     console.error('[ForgeNexus] Not a git repository — skipping hooks.')
-  } else if (!existsSync(hooksDir)) {
+  } else if (!existsSync(gitHooksDir)) {
     console.error('[ForgeNexus] Git hooks directory not found — skipping hooks.')
   } else {
     // ── Post-Commit Hook ───────────────────────────────────────────────────
-    installHook(join(hooksDir, 'post-commit'), buildPostCommitHook(cwd))
-    installHook(join(hooksDir, 'post-merge'), buildPostMergeHook(cwd))
-    installHook(join(hooksDir, 'post-checkout'), buildPostCheckoutHook(cwd))
+    installHook(join(gitHooksDir, 'post-commit'), buildPostCommitHook(cwd))
+    installHook(join(gitHooksDir, 'post-merge'), buildPostMergeHook(cwd))
+    installHook(join(gitHooksDir, 'post-checkout'), buildPostCheckoutHook(cwd))
   }
 
   // ── .forgeignore template ─────────────────────────────────────────────────
@@ -66,6 +66,39 @@ export async function setup(): Promise<void> {
 `,
     )
     console.error(`[ForgeNexus] Created .forgeignore`)
+  }
+
+  // ── Claude Code Hooks ─────────────────────────────────────────────────────────
+  const claudeSettingsPath = join(process.env.HOME ?? '', '.claude', 'settings.json')
+  const claudeHooksDir = join(process.env.HOME ?? '', '.claude', 'hooks')
+  try {
+    mkdirSync(dirname(claudeSettingsPath), { recursive: true })
+    mkdirSync(claudeHooksDir, { recursive: true })
+    writeFileSync(
+      join(claudeHooksDir, 'pre-tool-use.ts'),
+      readFileSync(join(__dirname, '../../.claude/hooks/pre-tool-use.ts'), 'utf8'),
+    )
+    writeFileSync(
+      join(claudeHooksDir, 'post-tool-use.ts'),
+      readFileSync(join(__dirname, '../../.claude/hooks/post-tool-use.ts'), 'utf8'),
+    )
+    // Update Claude Code settings to enable hooks
+    let claudeSettings: Record<string, any> = {}
+    if (existsSync(claudeSettingsPath)) {
+      try {
+        claudeSettings = JSON.parse(readFileSync(claudeSettingsPath, 'utf8'))
+      } catch {
+        /* fresh */
+      }
+    }
+    if (!claudeSettings['hooks-enabled']) claudeSettings['hooks-enabled'] = true
+    writeFileSync(claudeSettingsPath, JSON.stringify(claudeSettings, null, 2))
+    console.error('[ForgeNexus] Installed Claude Code hooks (pre-tool-use, post-tool-use)')
+  } catch (e) {
+    console.error(
+      '[ForgeNexus] Could not install Claude Code hooks (requires ~/.claude/):',
+      e instanceof Error ? e.message : String(e),
+    )
   }
 
   console.error('[ForgeNexus] Setup complete.')
