@@ -3,65 +3,58 @@
  * Installs: MCP config, git hooks, .forgeignore.
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from "fs";
-import { join, dirname } from "path";
-import { ensureNexusDataDirMigrated, nexusDataDir } from "../paths.js";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { join, dirname } from 'path'
+import { ensureNexusDataDirMigrated, nexusDataDir } from '../paths.js'
 
 export async function setup(): Promise<void> {
-  const cwd = process.cwd();
-  ensureNexusDataDirMigrated(cwd);
-  const nexusDir = nexusDataDir(cwd);
-  mkdirSync(nexusDir, { recursive: true });
+  const cwd = process.cwd()
+  ensureNexusDataDirMigrated(cwd)
+  const nexusDir = nexusDataDir(cwd)
+  mkdirSync(nexusDir, { recursive: true })
 
   // ── MCP Config ──────────────────────────────────────────────────────────────
-  const mcpPath = join(cwd, ".cursor", "mcp.json");
-  let mcpConfig: Record<string, any> = {};
+  const mcpPath = join(cwd, '.cursor', 'mcp.json')
+  let mcpConfig: Record<string, any> = {}
   if (existsSync(mcpPath)) {
     try {
-      mcpConfig = JSON.parse(readFileSync(mcpPath, "utf8"));
+      mcpConfig = JSON.parse(readFileSync(mcpPath, 'utf8'))
     } catch {
       // start fresh
     }
   }
 
-  if (!mcpConfig.mcpServers) mcpConfig.mcpServers = {};
-  mcpConfig.mcpServers["forgenexus"] = {
-    command: "node",
-    args: ["node_modules/forgenexus/dist/cli/index.js", "mcp"],
-  };
+  if (!mcpConfig.mcpServers) mcpConfig.mcpServers = {}
+  mcpConfig.mcpServers['forgenexus'] = {
+    command: 'node',
+    args: ['node_modules/forgenexus/dist/cli/index.js', 'mcp'],
+  }
 
-  mkdirSync(dirname(mcpPath), { recursive: true });
-  writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2));
-  console.error(`[ForgeNexus] Updated ${mcpPath}`);
+  mkdirSync(dirname(mcpPath), { recursive: true })
+  writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2))
+  console.error(`[ForgeNexus] Updated ${mcpPath}`)
 
   // ── Git Hooks Directory ─────────────────────────────────────────────────────
-  const hooksDir = join(cwd, ".git", "hooks");
-  const gitDir = join(cwd, ".git");
+  const hooksDir = join(cwd, '.git', 'hooks')
+  const gitDir = join(cwd, '.git')
 
   if (!existsSync(gitDir)) {
-    console.error("[ForgeNexus] Not a git repository — skipping hooks.");
+    console.error('[ForgeNexus] Not a git repository — skipping hooks.')
   } else if (!existsSync(hooksDir)) {
-    console.error("[ForgeNexus] Git hooks directory not found — skipping hooks.");
+    console.error('[ForgeNexus] Git hooks directory not found — skipping hooks.')
   } else {
     // ── Post-Commit Hook ───────────────────────────────────────────────────
-    installHook(
-      join(hooksDir, "post-commit"),
-      buildPostCommitHook(cwd)
-    );
-    installHook(
-      join(hooksDir, "post-merge"),
-      buildPostMergeHook(cwd)
-    );
-    installHook(
-      join(hooksDir, "post-checkout"),
-      buildPostCheckoutHook(cwd)
-    );
+    installHook(join(hooksDir, 'post-commit'), buildPostCommitHook(cwd))
+    installHook(join(hooksDir, 'post-merge'), buildPostMergeHook(cwd))
+    installHook(join(hooksDir, 'post-checkout'), buildPostCheckoutHook(cwd))
   }
 
   // ── .forgeignore template ─────────────────────────────────────────────────
-  const forgeIgnorePath = join(cwd, ".forgeignore");
+  const forgeIgnorePath = join(cwd, '.forgeignore')
   if (!existsSync(forgeIgnorePath)) {
-    writeFileSync(forgeIgnorePath, `# ForgeNexus Configuration
+    writeFileSync(
+      forgeIgnorePath,
+      `# ForgeNexus Configuration
 # Skip auto-reindex on specific events:
 # auto-reindex
 
@@ -70,13 +63,16 @@ export async function setup(): Promise<void> {
 # *.generated.ts
 # dist/
 # build/
-`);
-    console.error(`[ForgeNexus] Created .forgeignore`);
+`,
+    )
+    console.error(`[ForgeNexus] Created .forgeignore`)
   }
 
-  console.error("[ForgeNexus] Setup complete.");
-  console.error("[ForgeNexus] Run 'forgenexus analyze' to index your codebase.");
-  console.error("[ForgeNexus] ForgeNexus will auto-incrementally reindex after every git commit/merge.");
+  console.error('[ForgeNexus] Setup complete.')
+  console.error("[ForgeNexus] Run 'forgenexus analyze' to index your codebase.")
+  console.error(
+    '[ForgeNexus] ForgeNexus will auto-incrementally reindex after every git commit/merge.',
+  )
 }
 
 /**
@@ -84,21 +80,22 @@ export async function setup(): Promise<void> {
  * already contain our marker. Replaces if it exists and contains our marker.
  */
 function installHook(hookPath: string, content: string): void {
-  const marker = "### FORGENEXUS HOOK ###";
-  const existingContent = existsSync(hookPath) ? readFileSync(hookPath, "utf8") : "";
+  const marker = '### FORGENEXUS HOOK ###'
+  const existingContent = existsSync(hookPath) ? readFileSync(hookPath, 'utf8') : ''
 
   if (existingContent.includes(marker)) {
     // Already installed — skip
-    console.error(`[ForgeNexus] Hook already installed: ${hookPath}`);
-    return;
+    console.error(`[ForgeNexus] Hook already installed: ${hookPath}`)
+    return
   }
 
-  const newContent = existingContent.trim().length > 0
-    ? `${existingContent}\n\n${content}\n`
-    : `#!/bin/sh\n${content}\n`;
+  const newContent =
+    existingContent.trim().length > 0
+      ? `${existingContent}\n\n${content}\n`
+      : `#!/bin/sh\n${content}\n`
 
-  writeFileSync(hookPath, newContent, { mode: 0o755 });
-  console.error(`[ForgeNexus] Installed hook: ${hookPath}`);
+  writeFileSync(hookPath, newContent, { mode: 0o755 })
+  console.error(`[ForgeNexus] Installed hook: ${hookPath}`)
 }
 
 function buildPostCommitHook(cwd: string): string {
@@ -134,8 +131,7 @@ fi
   disown
 ) &
 
-exit 0`;
-
+exit 0`
 }
 
 function buildPostMergeHook(cwd: string): string {
@@ -169,7 +165,7 @@ fi
   disown
 ) &
 
-exit 0`;
+exit 0`
 }
 
 function buildPostCheckoutHook(cwd: string): string {
@@ -193,5 +189,5 @@ if [ "$3" = "1" ]; then
   fi
 fi
 
-exit 0`;
+exit 0`
 }

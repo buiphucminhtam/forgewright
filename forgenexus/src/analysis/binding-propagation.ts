@@ -11,44 +11,41 @@
  * This dramatically improves call edge accuracy by resolving module exports.
  */
 
-import type { CodeNode, CodeEdge } from '../types.js';
-import { topologicalSort } from './import-resolver.js';
+import type { CodeNode, CodeEdge } from '../types.js'
+import { topologicalSort } from './import-resolver.js'
 
 interface BindingContext {
   // file → set of exported symbol names
-  exportedByFile: Map<string, Set<string>>;
+  exportedByFile: Map<string, Set<string>>
   // file → uid of exported symbols
-  exportedUidByFile: Map<string, Map<string, string>>;
+  exportedUidByFile: Map<string, Map<string, string>>
   // "symbolName" → uid (global, unique symbols only)
-  globalSymbolMap: Map<string, string>;
+  globalSymbolMap: Map<string, string>
   // topological levels for ordered processing
-  levels: string[][];
+  levels: string[][]
   // all edges passed in (for finding UNKNOWN targets)
-  allEdges: CodeEdge[];
+  allEdges: CodeEdge[]
   // node uid → CodeNode
-  nodeMap: Map<string, CodeNode>;
+  nodeMap: Map<string, CodeNode>
 }
 
 /**
  * Propagate type bindings across files using topological sort.
  * Returns additional resolved edges to add to the graph.
  */
-export function propagateBindings(
-  nodes: CodeNode[],
-  edges: CodeEdge[]
-): CodeEdge[] {
+export function propagateBindings(nodes: CodeNode[], edges: CodeEdge[]): CodeEdge[] {
   if (nodes.length < 10) {
     // Skip for tiny codebases
-    return [];
+    return []
   }
 
   // Phase 1: Build context
-  const ctx = buildBindingContext(nodes, edges);
-  if (ctx.levels.length === 0) return [];
+  const ctx = buildBindingContext(nodes, edges)
+  if (ctx.levels.length === 0) return []
 
   // Phase 2: Propagate through dependency levels
-  const resolvedEdges: CodeEdge[] = [];
-  const resolvedCallIds = new Set<string>(); // avoid duplicates
+  const resolvedEdges: CodeEdge[] = []
+  const resolvedCallIds = new Set<string>() // avoid duplicates
 
   // Forward propagation: process files in topological order
   // Files at level N can rely on bindings from levels 0..N-1
@@ -56,18 +53,18 @@ export function propagateBindings(
     for (const file of level) {
       const fileNodes = ctx.nodeMap.get(file)
         ? [ctx.nodeMap.get(file)!]
-        : nodes.filter(n => n.filePath === file);
+        : nodes.filter((n) => n.filePath === file)
 
       for (const node of fileNodes) {
-        const resolved = resolveUnknownsForNode(node, ctx, resolvedCallIds);
+        const resolved = resolveUnknownsForNode(node, ctx, resolvedCallIds)
         for (const edge of resolved) {
-          resolvedEdges.push(edge);
+          resolvedEdges.push(edge)
         }
       }
     }
   }
 
-  return resolvedEdges;
+  return resolvedEdges
 }
 
 /**
@@ -75,56 +72,56 @@ export function propagateBindings(
  */
 function buildBindingContext(nodes: CodeNode[], edges: CodeEdge[]): BindingContext {
   // Build file-level exports
-  const exportedByFile = new Map<string, Set<string>>();
-  const exportedUidByFile = new Map<string, Map<string, string>>();
-  const globalSymbolMap = new Map<string, string>();
-  const filePaths = new Set<string>();
-  const nodeMap = new Map<string, CodeNode>();
+  const exportedByFile = new Map<string, Set<string>>()
+  const exportedUidByFile = new Map<string, Map<string, string>>()
+  const globalSymbolMap = new Map<string, string>()
+  const filePaths = new Set<string>()
+  const nodeMap = new Map<string, CodeNode>()
 
   for (const node of nodes) {
-    const fp = node.filePath;
-    filePaths.add(fp);
-    nodeMap.set(fp, node);
+    const fp = node.filePath
+    filePaths.add(fp)
+    nodeMap.set(fp, node)
 
     if (!exportedByFile.has(fp)) {
-      exportedByFile.set(fp, new Set());
-      exportedUidByFile.set(fp, new Map());
+      exportedByFile.set(fp, new Set())
+      exportedUidByFile.set(fp, new Map())
     }
 
-    const name = node.name;
+    const name = node.name
     if (name && name !== 'anonymous') {
-      exportedByFile.get(fp)!.add(name);
+      exportedByFile.get(fp)!.add(name)
       if (!exportedUidByFile.get(fp)!.has(name)) {
-        exportedUidByFile.get(fp)!.set(name, node.uid);
+        exportedUidByFile.get(fp)!.set(name, node.uid)
       }
 
       // Global symbol map (only if unique name)
       if (!globalSymbolMap.has(name)) {
-        globalSymbolMap.set(name, node.uid);
+        globalSymbolMap.set(name, node.uid)
       }
     }
   }
 
   // Build import graph for topological sort
-  const exportEdges: Array<{ from: string; to: string }> = [];
+  const exportEdges: Array<{ from: string; to: string }> = []
 
   for (const edge of edges) {
     if (edge.type === 'IMPORTS' && edge.toUid.startsWith('IMPORT:')) {
-      const parts = edge.toUid.split(':');
-      const source = parts[1];
+      const parts = edge.toUid.split(':')
+      const source = parts[1]
       if (source) {
-        const importedFile = resolveImportToFile(source, edge.fromUid.split(':')[0], [...filePaths]);
+        const importedFile = resolveImportToFile(source, edge.fromUid.split(':')[0], [...filePaths])
         if (importedFile) {
           exportEdges.push({
             from: importedFile,
             to: edge.fromUid.split(':')[0],
-          });
+          })
         }
       }
     }
   }
 
-  const levels = topologicalSort([...filePaths], exportEdges);
+  const levels = topologicalSort([...filePaths], exportEdges)
 
   return {
     exportedByFile,
@@ -133,7 +130,7 @@ function buildBindingContext(nodes: CodeNode[], edges: CodeEdge[]): BindingConte
     levels,
     allEdges: edges,
     nodeMap,
-  };
+  }
 }
 
 /**
@@ -143,30 +140,27 @@ function buildBindingContext(nodes: CodeNode[], edges: CodeEdge[]): BindingConte
 function resolveUnknownsForNode(
   node: CodeNode,
   ctx: BindingContext,
-  alreadyResolved: Set<string>
+  alreadyResolved: Set<string>,
 ): CodeEdge[] {
-  const resolved: CodeEdge[] = [];
+  const resolved: CodeEdge[] = []
 
   // Find all CALLS edges from this node that have UNKNOWN targets
-  const unknownCalls = ctx.allEdges.filter(e =>
-    e.fromUid === node.uid &&
-    e.type === 'CALLS' &&
-    e.toUid.startsWith('UNKNOWN:')
-  );
+  const unknownCalls = ctx.allEdges.filter(
+    (e) => e.fromUid === node.uid && e.type === 'CALLS' && e.toUid.startsWith('UNKNOWN:'),
+  )
 
   for (const edge of unknownCalls) {
-    if (alreadyResolved.has(edge.id)) continue;
+    if (alreadyResolved.has(edge.id)) continue
 
-    const parts = edge.toUid.split(':');
-    if (parts.length < 3) continue;
+    const parts = edge.toUid.split(':')
+    if (parts.length < 3) continue
 
-    const targetType = parts[1]; // e.g., "Function", "Method", "Property"
-    const targetName = parts[2]; // e.g., "parseInput", "User"
+    const targetType = parts[1] // e.g., "Function", "Method", "Property"
+    const targetName = parts[2] // e.g., "parseInput", "User"
 
     // Strategy 1: Global symbol map (unique names)
-    const globalKey = `${targetType}:${targetName}`;
-    const globalUid = ctx.globalSymbolMap.get(globalKey)
-      ?? ctx.globalSymbolMap.get(targetName);
+    const globalKey = `${targetType}:${targetName}`
+    const globalUid = ctx.globalSymbolMap.get(globalKey) ?? ctx.globalSymbolMap.get(targetName)
 
     if (globalUid) {
       resolved.push({
@@ -174,65 +168,71 @@ function resolveUnknownsForNode(
         toUid: globalUid,
         confidence: Math.min(edge.confidence + 0.1, 1.0),
         reason: 'binding-propagation:global',
-      });
-      alreadyResolved.add(edge.id);
-      continue;
+      })
+      alreadyResolved.add(edge.id)
+      continue
     }
 
     // Strategy 2: Find exported symbol in imported files
     // Parse the caller's file to find its imports
-    const callerFile = edge.fromUid.split(':')[0];
-    const imports = ctx.allEdges.filter(e =>
-      e.fromUid.startsWith(callerFile) && e.type === 'IMPORTS' && e.toUid.startsWith('IMPORT:')
-    );
+    const callerFile = edge.fromUid.split(':')[0]
+    const imports = ctx.allEdges.filter(
+      (e) =>
+        e.fromUid.startsWith(callerFile) && e.type === 'IMPORTS' && e.toUid.startsWith('IMPORT:'),
+    )
 
     for (const imp of imports) {
-      const impParts = imp.toUid.split(':');
-      if (impParts.length < 2) continue;
+      const impParts = imp.toUid.split(':')
+      if (impParts.length < 2) continue
 
-      const importedSource = impParts[1]; // e.g., "./utils", "@org/pkg"
-      const importedSymbol = (impParts[2] ?? 'default') as string;
+      const importedSource = impParts[1] // e.g., "./utils", "@org/pkg"
+      const importedSymbol = (impParts[2] ?? 'default') as string
 
       // Find which file this import resolves to
-      const importedFile = resolveImportToFile(importedSource, callerFile, [...ctx.exportedByFile.keys()]);
-      if (!importedFile) continue;
+      const importedFile = resolveImportToFile(importedSource, callerFile, [
+        ...ctx.exportedByFile.keys(),
+      ])
+      if (!importedFile) continue
 
       // Check if the imported file exports the symbol we're looking for
-      const fileExports = ctx.exportedUidByFile.get(importedFile);
-      if (!fileExports) continue;
+      const fileExports = ctx.exportedUidByFile.get(importedFile)
+      if (!fileExports) continue
 
-        if (importedSymbol === 'default' || importedSymbol === 'module' || importedSymbol === 'file') {
-          const exactMatch = fileExports.get(targetName);
-          if (exactMatch) {
-            resolved.push({
-              ...edge,
-              toUid: exactMatch,
-              confidence: Math.min(edge.confidence + 0.05, 1.0),
-              reason: 'binding-propagation:imported-file',
-            });
-            alreadyResolved.add(edge.id);
-            break;
-          }
+      if (
+        importedSymbol === 'default' ||
+        importedSymbol === 'module' ||
+        importedSymbol === 'file'
+      ) {
+        const exactMatch = fileExports.get(targetName)
+        if (exactMatch) {
+          resolved.push({
+            ...edge,
+            toUid: exactMatch,
+            confidence: Math.min(edge.confidence + 0.05, 1.0),
+            reason: 'binding-propagation:imported-file',
+          })
+          alreadyResolved.add(edge.id)
+          break
         }
-        // Wildcard import: try any exported symbol matching the target name
-        if (importedSymbol === 'wildcard') {
-          const anyMatch = fileExports.get(targetName);
-          if (anyMatch) {
-            resolved.push({
-              ...edge,
-              toUid: anyMatch,
-              confidence: Math.min(edge.confidence + 0.05, 1.0),
-              reason: 'binding-propagation:wildcard-resolved',
-            });
-            alreadyResolved.add(edge.id);
-            break;
-          }
+      }
+      // Wildcard import: try any exported symbol matching the target name
+      if (importedSymbol === 'wildcard') {
+        const anyMatch = fileExports.get(targetName)
+        if (anyMatch) {
+          resolved.push({
+            ...edge,
+            toUid: anyMatch,
+            confidence: Math.min(edge.confidence + 0.05, 1.0),
+            reason: 'binding-propagation:wildcard-resolved',
+          })
+          alreadyResolved.add(edge.id)
+          break
         }
-
+      }
     }
   }
 
-  return resolved;
+  return resolved
 }
 
 /**
@@ -241,10 +241,10 @@ function resolveUnknownsForNode(
 function resolveImportToFile(
   importSource: string,
   fromFile: string,
-  allFiles: string[]
+  allFiles: string[],
 ): string | null {
-  const normalized = importSource.replace(/\\/g, '/').replace(/^['"`]|['"`]$/g, '');
-  const fromDir = fromFile.split('/').slice(0, -1).join('/');
+  const normalized = importSource.replace(/\\/g, '/').replace(/^['"`]|['"`]$/g, '')
+  const fromDir = fromFile.split('/').slice(0, -1).join('/')
 
   // Try direct suffix matches
   const candidates = [
@@ -258,38 +258,37 @@ function resolveImportToFile(
     fromDir + '/' + normalized,
     fromDir + '/' + normalized + '.ts',
     fromDir + '/' + normalized + '/index.ts',
-  ];
+  ]
 
   for (const candidate of candidates) {
-    const normalizedCandidate = candidate.replace(/\\/g, '/');
+    const normalizedCandidate = candidate.replace(/\\/g, '/')
     if (allFiles.includes(normalizedCandidate)) {
-      return normalizedCandidate;
+      return normalizedCandidate
     }
   }
 
   // Try suffix match
   for (const file of allFiles) {
-    const normalizedFile = file.replace(/\\/g, '/');
-    if (normalizedFile.endsWith(normalized) ||
-        normalizedFile.endsWith(normalized + '.ts') ||
-        normalizedFile.endsWith(normalized + '.js')) {
-      return file;
+    const normalizedFile = file.replace(/\\/g, '/')
+    if (
+      normalizedFile.endsWith(normalized) ||
+      normalizedFile.endsWith(normalized + '.ts') ||
+      normalizedFile.endsWith(normalized + '.js')
+    ) {
+      return file
     }
   }
 
-  return null;
+  return null
 }
 
 /**
  * Check if binding propagation should be skipped based on coverage.
  * If <3% of symbols have imports, skip the expensive propagation.
  */
-export function shouldSkipBindingPropagation(
-  nodes: CodeNode[],
-  edges: CodeEdge[]
-): boolean {
-  const importEdgeCount = edges.filter(e => e.type === 'IMPORTS').length;
-  const totalNodes = nodes.length;
-  const ratio = totalNodes > 0 ? importEdgeCount / totalNodes : 0;
-  return ratio < 0.03 && totalNodes > 100;
+export function shouldSkipBindingPropagation(nodes: CodeNode[], edges: CodeEdge[]): boolean {
+  const importEdgeCount = edges.filter((e) => e.type === 'IMPORTS').length
+  const totalNodes = nodes.length
+  const ratio = totalNodes > 0 ? importEdgeCount / totalNodes : 0
+  return ratio < 0.03 && totalNodes > 100
 }

@@ -97,4 +97,4 @@ CREATE TABLE IF NOT EXISTS registry (
   stats TEXT NOT NULL,
   language TEXT DEFAULT 'unknown'
 );
-`.trim();
+`.trim()

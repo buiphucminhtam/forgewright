@@ -5,7 +5,7 @@
  * we insert/update/delete only the affected nodes.
  */
 
-import type { ForgeDB } from './db.js';
+import type { ForgeDB } from './db.js'
 
 /**
  * Incrementally update FTS index for changed nodes.
@@ -19,51 +19,55 @@ import type { ForgeDB } from './db.js';
 export function incrementalFTSUpdate(
   db: ForgeDB,
   changedNodeUids: Set<string>,
-  totalNodes: number
+  totalNodes: number,
 ): void {
-  if (totalNodes === 0) return;
+  if (totalNodes === 0) return
 
   // If too many changed, fall back to full rebuild
   if (changedNodeUids.size > totalNodes * 0.5) {
-    db.rebuildFTS();
-    return;
+    db.rebuildFTS()
+    return
   }
 
   // Step 1: Delete old entries for changed nodes
   if (changedNodeUids.size > 0) {
-    const placeholders = [...changedNodeUids].map(() => '?').join(', ');
+    const placeholders = [...changedNodeUids].map(() => '?').join(', ')
     try {
-      (db as any).db.prepare(`DELETE FROM fts_symbols WHERE uid IN (${placeholders})`)
-        .run(...[...changedNodeUids]);
+      const sqlite = (db as any).db
+      sqlite
+        .prepare(`DELETE FROM fts_symbols WHERE uid IN (${placeholders})`)
+        .run(...[...changedNodeUids])
     } catch {
       // Table might not exist yet
     }
   }
 
   // Step 2: Insert new entries for changed nodes
-  const changedNodes = (db as any).db.prepare(
-    `SELECT uid, name, file_path, type FROM nodes WHERE uid IN (${[...changedNodeUids].map(() => '?').join(',')})`
-  ).all(...[...changedNodeUids]) as any[];
+  const changedNodes = (db as any).db
+    .prepare(
+      `SELECT uid, name, file_path, type FROM nodes WHERE uid IN (${[...changedNodeUids].map(() => '?').join(',')})`,
+    )
+    .all(...[...changedNodeUids]) as any[]
 
   if (changedNodes.length > 0) {
     // Ensure FTS table exists
-    ensureFTSSchema(db);
+    ensureFTSSchema(db)
 
     const insertFTS = (db as any).db.prepare(
-      'INSERT INTO fts_symbols(uid, name, file_path, type) VALUES (?, ?, ?, ?)'
-    );
+      'INSERT INTO fts_symbols(uid, name, file_path, type) VALUES (?, ?, ?, ?)',
+    )
 
     const insert = (db as any).db.transaction((rows: any[]) => {
       for (const n of rows) {
-        insertFTS.run(n.uid, n.name, n.file_path, n.type);
+        insertFTS.run(n.uid, n.name, n.file_path, n.type)
       }
-    });
+    })
 
     try {
-      insert(changedNodes);
+      insert(changedNodes)
     } catch (err) {
       // If incremental insert fails (e.g., schema mismatch), fall back to full rebuild
-      db.rebuildFTS();
+      db.rebuildFTS()
     }
   }
 }
@@ -73,18 +77,19 @@ export function incrementalFTSUpdate(
  */
 function ensureFTSSchema(db: ForgeDB): void {
   try {
-    (db as any).db.exec(`
+    const sqlite = (db as any).db
+    sqlite.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS fts_symbols USING fts5(
         uid UNINDEXED, name, file_path, type,
         tokenize='porter unicode61'
       )
-    `);
-    (db as any).db.exec(`
+    `)
+    sqlite.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS fts_files USING fts5(
         file_path,
         tokenize='porter unicode61'
       )
-    `);
+    `)
   } catch {
     // Tables may already exist
   }
@@ -97,35 +102,39 @@ function ensureFTSSchema(db: ForgeDB): void {
 export function ftsAddMissing(db: ForgeDB): void {
   try {
     // Find nodes missing from FTS index
-    const missing = (db as any).db.prepare(`
+    const missing = (db as any).db
+      .prepare(
+        `
       SELECT n.uid, n.name, n.file_path, n.type
       FROM nodes n
       LEFT JOIN fts_symbols f ON n.uid = f.uid
       WHERE f.uid IS NULL
       LIMIT 10000
-    `).all() as any[];
+    `,
+      )
+      .all() as any[]
 
-    if (missing.length === 0) return;
+    if (missing.length === 0) return
 
-    ensureFTSSchema(db);
+    ensureFTSSchema(db)
 
     const insertFTS = (db as any).db.prepare(
-      'INSERT INTO fts_symbols(uid, name, file_path, type) VALUES (?, ?, ?, ?)'
-    );
+      'INSERT INTO fts_symbols(uid, name, file_path, type) VALUES (?, ?, ?, ?)',
+    )
 
     const insert = (db as any).db.transaction((rows: any[]) => {
       for (const n of rows) {
         try {
-          insertFTS.run(n.uid, n.name, n.file_path, n.type);
+          insertFTS.run(n.uid, n.name, n.file_path, n.type)
         } catch {
           // Skip duplicates
         }
       }
-    });
+    })
 
-    insert(missing);
+    insert(missing)
   } catch {
     // FTS table doesn't exist — full rebuild needed
-    db.rebuildFTS();
+    db.rebuildFTS()
   }
 }

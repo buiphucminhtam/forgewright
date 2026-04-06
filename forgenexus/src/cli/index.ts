@@ -11,20 +11,18 @@
  *   forgenexus setup            Setup ForgeNexus in current project
  */
 
-import { analyze } from "./analyze.js";
-import { clean } from "./clean.js";
-import { setup } from "./setup.js";
-import { status } from "./status.js";
-import { wiki } from "./wiki.js";
-import { startMCPServer } from "../mcp/server.js";
-import { applyLegacyGitnexusEnv } from "../env-legacy.js";
-
-const COMMANDS = ["analyze", "clean", "status", "wiki", "mcp", "setup", "help"] as const;
+import { analyze } from './analyze.js'
+import { clean } from './clean.js'
+import { setup } from './setup.js'
+import { status } from './status.js'
+import { wiki } from './wiki.js'
+import { startMCPServer } from '../mcp/server.js'
+import { applyLegacyGitnexusEnv } from '../env-legacy.js'
 
 function extractFlag(args: string[], flag: string): string | null {
-  const idx = args.indexOf(flag);
-  if (idx === -1) return null;
-  return args[idx + 1] ?? null;
+  const idx = args.indexOf(flag)
+  if (idx === -1) return null
+  return args[idx + 1] ?? null
 }
 
 function printHelp() {
@@ -78,54 +76,54 @@ MCP configuration (.cursor/mcp.json):
       }
     }
   }
-`);
+`)
 }
 
 async function main() {
-  applyLegacyGitnexusEnv();
-  const args = process.argv.slice(2);
-  const cmd = args[0] ?? "help";
+  applyLegacyGitnexusEnv()
+  const args = process.argv.slice(2)
+  const cmd = args[0] ?? 'help'
 
   switch (cmd) {
-    case "analyze": {
-      const path = args[1] ?? process.cwd();
-      const includeEmbeddings = args.includes("--embeddings");
-      const embeddingProvider = extractFlag(args, "--embedding-provider") ?? undefined;
-      const incremental = !args.includes("--no-incremental");
-      const force = args.includes("--force") || args.includes("--full");
-      await analyze({ repoPath: path, includeEmbeddings, embeddingProvider, incremental, force });
-      break;
+    case 'analyze': {
+      const path = args[1] ?? process.cwd()
+      const includeEmbeddings = args.includes('--embeddings')
+      const embeddingProvider = extractFlag(args, '--embedding-provider') ?? undefined
+      const incremental = !args.includes('--no-incremental')
+      const force = args.includes('--force') || args.includes('--full')
+      await analyze({ repoPath: path, includeEmbeddings, embeddingProvider, incremental, force })
+      break
     }
-    case "clean": {
-      const path = args[1] ?? process.cwd();
-      clean({ repoPath: path });
-      break;
+    case 'clean': {
+      const path = args[1] ?? process.cwd()
+      clean({ repoPath: path })
+      break
     }
-    case "status": {
-      const path = args[1] ?? process.cwd();
-      status({ repoPath: path });
-      break;
+    case 'status': {
+      const path = args[1] ?? process.cwd()
+      status({ repoPath: path })
+      break
     }
-    case "wiki": {
-      const path = args[1] ?? process.cwd();
-      await wiki({ repoPath: path, args: args.slice(2) });
-      break;
+    case 'wiki': {
+      const path = args[1] ?? process.cwd()
+      await wiki({ repoPath: path, args: args.slice(2) })
+      break
     }
-    case "mcp": {
-      await startMCPServer(args[1]);
-      break;
+    case 'mcp': {
+      await startMCPServer(args[1])
+      break
     }
-    case "setup": {
-      await setup();
-      break;
+    case 'setup': {
+      await setup()
+      break
     }
-    case "help":
+    case 'help':
     default:
-      printHelp();
+      printHelp()
   }
 }
 
 main().catch((err) => {
-  console.error(`Fatal: ${err.message}`);
-  process.exit(1);
-});
+  console.error(`Fatal: ${err.message}`)
+  process.exit(1)
+})

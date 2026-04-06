@@ -53,5 +53,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0",
+    "minimatch": "^9.0.5"
   }
 }

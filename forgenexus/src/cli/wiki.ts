@@ -4,135 +4,140 @@
  * Supports publishing to GitHub Gist.
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { join, basename } from "path";
-import { ensureNexusDataDirMigrated, defaultCodebaseDbPath } from "../paths.js";
+import { existsSync, writeFileSync } from 'fs'
+import { join, basename } from 'path'
+import { ensureNexusDataDirMigrated, defaultCodebaseDbPath } from '../paths.js'
 
 interface WikiOptions {
-  repoPath: string;
-  args: string[];
+  repoPath: string
+  args: string[]
 }
 
 export async function wiki(opts: WikiOptions): Promise<void> {
-  const { repoPath, args } = opts;
-  const log = (msg: string) => console.error(`[ForgeNexus] ${msg}`);
+  const { repoPath, args } = opts
+  const log = (msg: string) => console.error(`[ForgeNexus] ${msg}`)
 
-  ensureNexusDataDirMigrated(repoPath);
-  const dbPath = defaultCodebaseDbPath(repoPath);
+  ensureNexusDataDirMigrated(repoPath)
+  const dbPath = defaultCodebaseDbPath(repoPath)
   if (!existsSync(dbPath)) {
-    log(`No index found. Run 'forgenexus analyze' first.`);
-    return;
+    log(`No index found. Run 'forgenexus analyze' first.`)
+    return
   }
 
-  const force = args.includes("--force");
-  const publish = args.includes("--publish") ? extractArg(args, "--publish") ?? "file" : "file";
-  const gistDescription = extractArg(args, "--gist-desc")
-    ?? `ForgeNexus Architecture Wiki — ${basename(repoPath)} (${new Date().toLocaleDateString()})`;
-  const model = extractArg(args, "--model") ?? "gemini-2.0-flash";
-  const baseUrl = extractArg(args, "--base-url") ?? "https://generativelanguage.googleapis.com/v1beta";
-  const apiKey = extractArg(args, "--api-key")
-    ?? process.env.OPENAI_API_KEY
-    ?? process.env.GEMINI_API_KEY
-    ?? process.env.MINIMAX_API_KEY
-    ?? "";
-  const concurrency = parseInt(extractArg(args, "--concurrency") ?? "3") || 3;
-
+  const publish = args.includes('--publish') ? (extractArg(args, '--publish') ?? 'file') : 'file'
+  const gistDescription =
+    extractArg(args, '--gist-desc') ??
+    `ForgeNexus Architecture Wiki — ${basename(repoPath)} (${new Date().toLocaleDateString()})`
+  const model = extractArg(args, '--model') ?? 'gemini-2.0-flash'
+  const baseUrl =
+    extractArg(args, '--base-url') ?? 'https://generativelanguage.googleapis.com/v1beta'
+  const apiKey =
+    extractArg(args, '--api-key') ??
+    process.env.OPENAI_API_KEY ??
+    process.env.GEMINI_API_KEY ??
+    process.env.MINIMAX_API_KEY ??
+    ''
   if (!apiKey) {
-    log("No API key found. Set GEMINI_API_KEY, OPENAI_API_KEY, or MINIMAX_API_KEY environment variable.");
-    log("Or pass: --api-key <key> --base-url <url>");
-    log("Example: forgenexus wiki --model gemini-2.0-flash --api-key <key>");
-    log("         forgenexus wiki --model minimax/minimax-sonar --base-url https://api.minimaxi.chat/v1 --api-key <key>");
-    return;
+    log(
+      'No API key found. Set GEMINI_API_KEY, OPENAI_API_KEY, or MINIMAX_API_KEY environment variable.',
+    )
+    log('Or pass: --api-key <key> --base-url <url>')
+    log('Example: forgenexus wiki --model gemini-2.0-flash --api-key <key>')
+    log(
+      '         forgenexus wiki --model minimax/minimax-sonar --base-url https://api.minimaxi.chat/v1 --api-key <key>',
+    )
+    return
   }
 
-  log(`Generating wiki using ${model}...`);
+  log(`Generating wiki using ${model}...`)
 
   try {
     // Dynamic import to read the DB
-    const { ForgeDB } = await import("../data/db.js");
-    const db = new ForgeDB(dbPath);
+    const { ForgeDB } = await import('../data/db.js')
+    const db = new ForgeDB(dbPath)
 
-    const stats = db.getDetailedStats();
-    const communities = db.getAllCommunities();
-    const processes = db.getAllProcesses();
+    const stats = db.getDetailedStats()
+    const communities = db.getAllCommunities()
+    const processes = db.getAllProcesses()
 
     // Get top symbols per community for context
-    const communitySummary = communities.slice(0, 10).map(c => {
-      const members = (db as any).db.prepare(
-        "SELECT name, type FROM nodes WHERE community = ? ORDER BY line LIMIT 20"
-      ).all(c.id) as any[];
+    const communitySummary = communities.slice(0, 10).map((c) => {
+      const members = (db as any).db
+        .prepare('SELECT name, type FROM nodes WHERE community = ? ORDER BY line LIMIT 20')
+        .all(c.id) as any[]
       return {
         name: c.name,
         cohesion: c.cohesion,
         symbolCount: c.symbolCount,
         keywords: c.keywords,
-        members: members.map(m => `  - [${m.type}] ${m.name}`).join("\n"),
-      };
-    });
+        members: members.map((m) => `  - [${m.type}] ${m.name}`).join('\n'),
+      }
+    })
 
-    const processSummary = processes.slice(0, 20).map(p => {
-      const steps = (db as any).db.prepare(
-        "SELECT n.name, n.file_path, n.line FROM nodes n WHERE n.process_name = ? ORDER BY n.line"
-      ).all(p.id) as any[];
+    const processSummary = processes.slice(0, 20).map((p) => {
+      const steps = (db as any).db
+        .prepare(
+          'SELECT n.name, n.file_path, n.line FROM nodes n WHERE n.process_name = ? ORDER BY n.line',
+        )
+        .all(p.id) as any[]
       return {
         id: p.id,
         name: p.name,
         type: p.type,
         stepCount: p.steps.length ?? steps.length,
-        steps: steps.map((s: any) => `  - ${s.name} (${s.file_path}:${s.line})`).join("\n"),
-      };
-    });
+        steps: steps.map((s: any) => `  - ${s.name} (${s.file_path}:${s.line})`).join('\n'),
+      }
+    })
 
-    db.close();
+    db.close()
 
     // Build prompt
-    const prompt = buildWikiPrompt(repoPath, stats, communitySummary, processSummary);
+    const prompt = buildWikiPrompt(repoPath, stats, communitySummary, processSummary)
 
     // Call LLM
-    const wikiContent = await callLLM(prompt, model, baseUrl, apiKey);
+    const wikiContent = await callLLM(prompt, model, baseUrl, apiKey)
 
     // Write output
-    const outputPath = join(repoPath, "ARCHITECTURE.md");
-    writeFileSync(outputPath, wikiContent, "utf8");
-    log(`Generated: ${outputPath}`);
+    const outputPath = join(repoPath, 'ARCHITECTURE.md')
+    writeFileSync(outputPath, wikiContent, 'utf8')
+    log(`Generated: ${outputPath}`)
 
     // Publish to GitHub Gist if requested
-    if (publish === "gist") {
+    if (publish === 'gist') {
       try {
-        const gistUrl = await publishToGist(wikiContent, gistDescription ?? `ForgeNexus Wiki — ${basename(repoPath)}`);
-        log(`Published to Gist: ${gistUrl}`);
-        console.log(gistUrl); // stdout for programmatic use
+        const gistUrl = await publishToGist(
+          wikiContent,
+          gistDescription ?? `ForgeNexus Wiki — ${basename(repoPath)}`,
+        )
+        log(`Published to Gist: ${gistUrl}`)
+        console.log(gistUrl) // stdout for programmatic use
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        log(`Gist publishing failed: ${msg}`);
-        log("Make sure GITHUB_TOKEN is set in your environment.");
+        const msg = e instanceof Error ? e.message : String(e)
+        log(`Gist publishing failed: ${msg}`)
+        log('Make sure GITHUB_TOKEN is set in your environment.')
       }
     }
-
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    log(`Wiki generation failed: ${msg}`);
+    const msg = e instanceof Error ? e.message : String(e)
+    log(`Wiki generation failed: ${msg}`)
   }
 }
 
 function extractArg(args: string[], name: string): string | null {
-  const idx = args.indexOf(name);
-  if (idx >= 0 && idx + 1 < args.length && !args[idx + 1].startsWith("--")) {
-    return args[idx + 1];
+  const idx = args.indexOf(name)
+  if (idx >= 0 && idx + 1 < args.length && !args[idx + 1].startsWith('--')) {
+    return args[idx + 1]
   }
-  return null;
+  return null
 }
 
 function buildWikiPrompt(
   repoPath: string,
   stats: any,
   communities: any[],
-  processes: any[]
+  processes: any[],
 ): string {
-  const repoName = basename(repoPath);
-  const edgeTypeList = Object.entries(stats.byEdgeType ?? {})
-    .map(([t, c]) => `${t}: ${c}`)
-    .join(", ");
+  const repoName = basename(repoPath)
 
   return `# Architecture Documentation: ${repoName}
 
@@ -153,32 +158,44 @@ Repository: **${repoName}** (${stats.files} files, ${stats.nodes} nodes, ${stats
 | Execution Flows | ${stats.processes} |
 
 ### Symbol Types
-${Object.entries(stats.byType ?? {}).map(([t, c]) => `- ${t}: ${c}`).join("\n")}
+${Object.entries(stats.byType ?? {})
+  .map(([t, c]) => `- ${t}: ${c}`)
+  .join('\n')}
 
 ### Relationship Types
-${Object.entries(stats.byEdgeType ?? {}).map(([t, c]) => `- ${t}: ${c}`).join("\n")}
+${Object.entries(stats.byEdgeType ?? {})
+  .map(([t, c]) => `- ${t}: ${c}`)
+  .join('\n')}
 
 ## Functional Areas (Communities)
 
-${communities.map(c => `### ${c.name} (cohesion: ${c.cohesion})
+${communities
+  .map(
+    (c) => `### ${c.name} (cohesion: ${c.cohesion})
 
-${c.symbolCount} symbols. Keywords: ${c.keywords.join(", ")}
+${c.symbolCount} symbols. Keywords: ${c.keywords.join(', ')}
 
 ${c.members}
 
-`).join("\n---\n\n")}
+`,
+  )
+  .join('\n---\n\n')}
 
 ## Execution Flows
 
-${processes.length === 0 ? "_No execution flows detected. Run analysis on API/CLI code._" : ""}
+${processes.length === 0 ? '_No execution flows detected. Run analysis on API/CLI code._' : ''}
 
-${processes.map(p => `### ${p.name} [${p.type}]
+${processes
+  .map(
+    (p) => `### ${p.name} [${p.type}]
 
 Steps (${p.stepCount}):
 
 ${p.steps}
 
-`).join("\n---\n\n")}
+`,
+  )
+  .join('\n---\n\n')}
 
 ## Recommendations
 
@@ -192,100 +209,98 @@ Based on the code structure above, this document should be expanded with:
 
 ---
 *Generated by ForgeNexus on ${new Date().toISOString()}*
-`;
+`
 }
 
 async function callLLM(
   prompt: string,
   model: string,
   baseUrl: string,
-  apiKey: string
+  apiKey: string,
 ): Promise<string> {
-  const isGemini = baseUrl.includes('generativelanguage.googleapis.com');
+  const isGemini = baseUrl.includes('generativelanguage.googleapis.com')
 
   if (isGemini) {
     // Gemini API format
-    const url = `${baseUrl}/models/${model}:generateContent?key=${apiKey}`;
+    const url = `${baseUrl}/models/${model}:generateContent?key=${apiKey}`
     const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { maxOutputTokens: 4096, temperature: 0.3 },
       }),
-    });
+    })
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Gemini API error: ${response.status} — ${text}`);
+      const text = await response.text()
+      throw new Error(`Gemini API error: ${response.status} — ${text}`)
     }
-    const data = await response.json() as any;
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!content) throw new Error("No content returned from Gemini");
-    return content;
+    const data = (await response.json()) as any
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!content) throw new Error('No content returned from Gemini')
+    return content
   }
 
   // OpenAI-compatible format (OpenAI, Minimax, Groq, etc.)
   const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,
       messages: [
         {
-          role: "system",
-          content: "You are an expert software architect. Generate comprehensive architecture documentation for the provided codebase. Focus on patterns, relationships, and insights visible in the code structure.",
+          role: 'system',
+          content:
+            'You are an expert software architect. Generate comprehensive architecture documentation for the provided codebase. Focus on patterns, relationships, and insights visible in the code structure.',
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt,
         },
       ],
       max_tokens: 4096,
       temperature: 0.3,
     }),
-  });
+  })
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`LLM API error: ${response.status} — ${text}`);
+    const text = await response.text()
+    throw new Error(`LLM API error: ${response.status} — ${text}`)
   }
 
-  const data = await response.json() as any;
-  const content = data.choices?.[0]?.message?.content;
+  const data = (await response.json()) as any
+  const content = data.choices?.[0]?.message?.content
   if (!content) {
-    throw new Error("No content returned from LLM");
+    throw new Error('No content returned from LLM')
   }
 
-  return content;
+  return content
 }
 
 /**
  * Publish architecture documentation to GitHub Gist.
  * Requires GITHUB_TOKEN environment variable (classic personal access token).
  */
-async function publishToGist(
-  content: string,
-  description: string
-): Promise<string> {
-  const token = process.env.GITHUB_TOKEN;
+async function publishToGist(content: string, description: string): Promise<string> {
+  const token = process.env.GITHUB_TOKEN
   if (!token) {
-    throw new Error("GITHUB_TOKEN environment variable not set");
+    throw new Error('GITHUB_TOKEN environment variable not set')
   }
 
-  const repoName = basename(process.cwd());
-  const filename = `ARCHITECTURE-${repoName}.md`;
+  const repoName = basename(process.cwd())
+  const filename = `ARCHITECTURE-${repoName}.md`
 
-  const response = await fetch("https://api.github.com/gists", {
-    method: "POST",
+  const response = await fetch('https://api.github.com/gists', {
+    method: 'POST',
     headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "Accept": "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "ForgeNexus",
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'ForgeNexus',
     },
     body: JSON.stringify({
       description,
@@ -296,13 +311,13 @@ async function publishToGist(
         },
       },
     }),
-  });
+  })
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`GitHub Gist API error: ${response.status} — ${text}`);
+    const text = await response.text()
+    throw new Error(`GitHub Gist API error: ${response.status} — ${text}`)
   }
 
-  const data = await response.json() as any;
-  return data.html_url as string;
+  const data = (await response.json()) as any
+  return data.html_url as string
 }

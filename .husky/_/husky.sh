@@ -1,12 +1,9 @@
-#!/bin/sh
-# husky.sh — Husky Git hooks helper
-# Sourced by all hook scripts to ensure consistent shell environment
+echo "husky - DEPRECATED
 
-# Resolve to the .husky root directory
-husky_dir="$(dirname "$(dirname "$0")")"
-hook_dir="$husky_dir/_"
+Please remove the following two lines from $0:
 
-# Load .huskyrc if it exists
-if [ -f "$hook_dir/.huskyrc" ]; then
-    . "$hook_dir/.huskyrc"
-fi
+#!/usr/bin/env sh
+. \"\$(dirname -- \"\$0\")/_/husky.sh\"
+
+They WILL FAIL in v10.0.0
+"

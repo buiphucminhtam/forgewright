@@ -2,64 +2,68 @@
  * analyze subcommand — run the full indexing pipeline.
  */
 
-import { existsSync, mkdirSync } from "fs";
-import { join, basename } from "path";
-import { execSync } from "child_process";
-import { Indexer } from "../analysis/indexer.js";
-import { ForgeDB } from "../data/db.js";
-import {
-  ensureNexusDataDirMigrated,
-  nexusDataDir,
-  defaultCodebaseDbPath,
-} from "../paths.js";
+import { existsSync, mkdirSync } from 'fs'
+import { join, basename } from 'path'
+import { execSync } from 'child_process'
+import { Indexer } from '../analysis/indexer.js'
+import { ForgeDB } from '../data/db.js'
+import { ensureNexusDataDirMigrated, nexusDataDir, defaultCodebaseDbPath } from '../paths.js'
 
 export async function analyze(opts: {
-  repoPath: string;
-  silent?: boolean;
-  repoName?: string;
-  includeEmbeddings?: boolean;
-  embeddingProvider?: string;
-  incremental?: boolean;
-  force?: boolean;
+  repoPath: string
+  silent?: boolean
+  repoName?: string
+  includeEmbeddings?: boolean
+  embeddingProvider?: string
+  incremental?: boolean
+  force?: boolean
 }): Promise<void> {
-  const { repoPath, silent = false, repoName, includeEmbeddings = false, embeddingProvider, incremental = true, force = false } = opts;
-  const log = silent ? () => {} : console.error.bind(console);
+  const {
+    repoPath,
+    silent = false,
+    repoName,
+    includeEmbeddings = false,
+    embeddingProvider,
+    incremental = true,
+    force = false,
+  } = opts
+  const log = silent ? () => {} : console.error.bind(console)
 
-  log(`[ForgeNexus] Indexing ${repoPath}...`);
+  log(`[ForgeNexus] Indexing ${repoPath}...`)
   if (incremental && !force) {
-    log(`[ForgeNexus] Mode: incremental (only changed files since last index)`);
+    log(`[ForgeNexus] Mode: incremental (only changed files since last index)`)
   } else {
-    log(`[ForgeNexus] Mode: full re-index`);
+    log(`[ForgeNexus] Mode: full re-index`)
   }
 
-  const isGit = existsSync(join(repoPath, ".git"));
-  ensureNexusDataDirMigrated(repoPath);
-  const nexusDir = nexusDataDir(repoPath);
-  mkdirSync(nexusDir, { recursive: true });
-  const dbPath = defaultCodebaseDbPath(repoPath);
+  const isGit = existsSync(join(repoPath, '.git'))
+  ensureNexusDataDirMigrated(repoPath)
+  const nexusDir = nexusDataDir(repoPath)
+  mkdirSync(nexusDir, { recursive: true })
+  const dbPath = defaultCodebaseDbPath(repoPath)
 
   const indexer = new Indexer(repoPath, {
     repoPath,
     repoName: repoName ?? basename(repoPath),
     dbPath,
     includeEmbeddings,
-  });
+  })
 
   if (embeddingProvider) {
-    process.env.EMBEDDING_PROVIDER = embeddingProvider;
+    process.env.EMBEDDING_PROVIDER = embeddingProvider
   }
 
   const stats = await indexer.analyze((phase, pct) => {
-    log(`[${phase}] ${pct}%`);
-  }, incremental && !force);
+    log(`[${phase}] ${pct}%`)
+  }, incremental && !force)
 
-  indexer.close();
+  indexer.close()
 
   // Register in local registry
-  const db = new ForgeDB(dbPath);
+  const db = new ForgeDB(dbPath)
   const lastCommit = isGit
-    ? execSync("git rev-parse HEAD 2>/dev/null", { encoding: "utf8" }).trim()
-    : "";
+    ? execSync('git rev-parse HEAD 2>/dev/null', { encoding: 'utf8' }).trim()
+    : ''
   db.registerRepo({
     name: basename(repoPath),
     path: repoPath,
@@ -67,12 +71,12 @@ export async function analyze(opts: {
     indexedAt: new Date().toISOString(),
     lastCommit,
     stats,
-    language: "typescript",
-  });
-  db.close();
+    language: 'typescript',
+  })
+  db.close()
 
-  log(`[ForgeNexus] Done: ${stats.files} files, ${stats.nodes} nodes, ${stats.edges} edges`);
-  log(`[ForgeNexus] Communities: ${stats.communities}, Processes: ${stats.processes}`);
-  if (stats.hasEmbeddings) log(`[ForgeNexus] Embeddings: enabled`);
-  if (stats.files > 0) log(`[ForgeNexus] Re-run with --force for full re-index`);
+  log(`[ForgeNexus] Done: ${stats.files} files, ${stats.nodes} nodes, ${stats.edges} edges`)
+  log(`[ForgeNexus] Communities: ${stats.communities}, Processes: ${stats.processes}`)
+  if (stats.hasEmbeddings) log(`[ForgeNexus] Embeddings: enabled`)
+  if (stats.files > 0) log(`[ForgeNexus] Re-run with --force for full re-index`)
 }
