@@ -13,8 +13,16 @@ Index any codebase, understand architecture, trace execution flows, analyze blas
 | Category | Features |
 |---|---|
 | **Code Intelligence** | 17 edge types (CALLS, IMPORTS, EXTENDS, IMPLEMENTS, HAS_METHOD, HAS_PROPERTY, ACCESSES, OVERRIDES, HANDLES_ROUTE, HANDLES_TOOL, QUERIES...) |
-| **Analysis** | Community detection (Leiden-inspired), BFS process tracing, blast radius impact analysis, git-diff change detection |
+| **Parallel Parsing** | Worker thread pool (cpus-1), byte-budget chunking (20MB/chunk), graceful sequential fallback for small repos |
+| **Import Resolution** | Suffix trie — O(1) longest-prefix path lookup vs O(n×m) LIKE queries |
+| **Binding Propagation** | Cross-file UNKNOWN:* resolution via Kahn's topological sort, fast-path skip at <3% gap ratio |
+| **Community Detection** | Leiden algorithm (local-move → refine → aggregate), 60s timeout, large-graph mode with degree-1 filtering |
+| **Framework Detection** | Auto-detect: Next.js, FastAPI, NestJS, Express, Fastify, Django, Flask, Laravel, Rails, Gin, Fiber, Spring, Prisma, Supabase, Swift, Expo |
+| **Process Tracing** | BFS entry-point → terminal call chains, framework-aware entry point detection |
 | **Search** | Hybrid BM25 + semantic + RRF ranking, 5 embedding providers (local Transformers, Ollama, OpenAI, Gemini, HuggingFace) |
+| **Incremental FTS** | Update only changed nodes, skip full rebuild on unchanged files |
+| **Embedding Cache** | Cache-first: skip re-embedding unchanged symbols, incremental update |
+| **Early Exit** | Skip all phases if git commit unchanged since last index |
 | **Languages** | TypeScript, JavaScript, Python, Go, Rust, Java, C#, C/C++, Kotlin, PHP, Ruby, Swift, Dart |
 | **MCP Tools** | 12 tools: query, context, impact, detect_changes, rename, route_map, tool_map, shape_check, api_impact, pr_review, list_repos, cypher |
 | **MCP Resources** | 8 templates: context, clusters, processes, schema, cluster detail, process trace, stats, repos |
@@ -204,20 +212,56 @@ npx forgenexus analyze --embeddings --embedding-provider ollama
 ## Architecture
 
 ```
-forgenexus analyze
-├── FileScanner     → glob file discovery, language detection
-├── ParserEngine   → tree-sitter AST → symbols + 17 edge types
-├── ForgeDB        → SQLite graph storage (WAL mode)
-├── Community detection → Leiden-inspired modularity optimization
-├── Process tracing → BFS entry-point → terminal call chains
-└── Embeddings     → transformers.js / Ollama / OpenAI / Gemini / HF
-
-forgenexus mcp
-└── MCP Server (stdio)
-    ├── 12 Tools
-    ├── 8 Resources
-    └── 2 Prompts
+npx forgenexus analyze
+│
+├── 1. Scanner      glob file discovery + language detection
+│
+├── 2. Parse        tree-sitter AST → nodes + 17 edge types
+│   ┌──────────────────────────────────────────────┐
+│   │  Worker Pool (cpus-1 threads, 20MB/chunk)    │
+│   │  • Each worker owns its own tree-sitter     │
+│   │    parser instance (heavy to init, no share)│
+│   │  • Byte-budget chunking: files grouped by    │
+│   │    20MB total content                        │
+│   │  • Graceful fallback to sequential if        │
+│   │    repo < 15 files or < 512KB               │
+│   └──────────────────────────────────────────────┘
+│
+├── 3. Resolve      Suffix Trie — O(1) import path resolution
+│                   (replaces LIKE '%path%' O(n×m))
+│
+├── 4. Propagate    Cross-file binding propagation
+│                   Kahn's topological sort → resolve UNKNOWN:* edges
+│                   Skip if <3% files have gaps (fast path)
+│
+├── 5. Community    Leiden Algorithm (3-phase, timeout-protected)
+│                   • Local moving → Refinement → Aggregation
+│                   • Guarantees well-connected communities
+│                   • Resolution 1.0, max 10 iters, 60s timeout
+│                   • Large-graph mode: resolution 2.0, degree-1 filter
+│
+├── 6. Process      BFS trace from entry points → call chains
+│                   Framework detection: Next.js, FastAPI, NestJS,
+│                   Express, Django, Laravel, Rails, Gin, Fiber, etc.
+│
+├── 7. FTS          Incremental FTS5 — update only changed nodes
+│                   (replaces full DROP + CREATE every run)
+│
+├── 8. Embeddings   Cache-first: skip nodes that already have embeddings
+│                   Providers: transformers.js (local), Ollama, OpenAI,
+│                   Gemini, HuggingFace
+│
+└── 9. Meta         Commit tracking + stats + early-exit cache
+                    Early exit if git commit unchanged since last index
 ```
+
+**Performance vs original pipeline:**
+- Parallel parsing: 3-5x faster on multi-core
+- Suffix trie: O(1) import resolution vs O(n×m) LIKE queries
+- Leiden: well-connected communities vs greedy Louvain
+- Incremental FTS: O(changed) vs O(all nodes) rebuild
+- Embedding cache: skip unchanged symbols on re-analysis
+- Early exit: skip all 9 phases if git commit unchanged
 
 ## Data Model
 

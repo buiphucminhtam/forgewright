@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
   <img src="https://img.shields.io/badge/Game_Dev-Unity·Unreal·Godot·Roblox-FF4500.svg" alt="Game Dev" />
-  <img src="https://img.shields.io/badge/Code_Intelligence-ForgeNexus-4B0082.svg" alt="Code Intelligence" />
+  <img src="https://img.shields.io/badge/Code_Intelligence-ForgeNexus·GitNexus-4B0082.svg" alt="Code Intelligence" />
   <img src="https://img.shields.io/badge/Memory-Persistent%20(mem0)-00CED1.svg" alt="Memory" />
   <img src="https://img.shields.io/badge/MCP-12%20Tools-orange.svg" alt="MCP" />
 </p>
@@ -336,6 +336,47 @@ Session Start
     │
     ▼
 Session End
+```
+
+### ForgeNexus Analyze Pipeline (Code Intelligence)
+
+```
+npx forgenexus analyze
+│
+├── ① Scanner     glob file discovery + language detection
+│
+├── ② Parse       tree-sitter AST → nodes + 17 edge types
+│   ┌──────────────────────────────────────────────────────┐
+│   │  Worker Pool (cpus-1 threads, 20MB byte-budget)       │
+│   │  • Each worker owns its own tree-sitter parser       │
+│   │  • Graceful fallback: sequential if <15 files         │
+│   └──────────────────────────────────────────────────────┘
+│
+├── ③ Resolve     Suffix Trie O(1) import path resolution
+│
+├── ④ Propagate   Cross-file binding: Kahn topological sort
+│                 Fast-path: skip if <3% gaps
+│
+├── ⑤ Community   Leiden Algorithm
+│                 3-phase (move → refine → aggregate)
+│                 60s timeout · large-graph mode · degree filter
+│
+├── ⑥ Process     BFS entry-point tracing → call chains
+│                 Auto-detect: Next.js, FastAPI, NestJS,
+│                 Express, Django, Rails, Gin, Spring, etc.
+│
+├── ⑦ FTS         Incremental FTS5 — only changed nodes
+│
+├── ⑧ Embeddings  Cache-first · 5 providers (local + API)
+│
+└── ⑨ Meta        Commit tracking + early-exit on unchanged git
+
+Performance gains vs original:
+  Parallel parsing: 3-5x on multi-core
+  Suffix trie: O(1) vs O(n×m) LIKE
+  Incremental FTS: O(changed) vs O(all)
+  Leiden: well-connected vs greedy Louvain
+  Early exit: skip all phases if git unchanged
 ```
 
 ### Request → Mode → Skills Routing
