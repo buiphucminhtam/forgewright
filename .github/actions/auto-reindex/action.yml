@@ -1,0 +1,169 @@
+name: 'ForgeNexus Auto Reindex'
+description: 'Automatically reindex code changes using ForgeNexus'
+branding:
+  icon: 'refresh-cw'
+  color: 'green'
+
+inputs:
+  repo_path:
+    description: 'Path to the repository'
+    required: false
+    default: '.'
+  mode:
+    description: 'Reindex mode (incremental, full)'
+    required: false
+    default: 'incremental'
+  dry_run:
+    description: 'Dry run mode'
+    required: false
+    default: 'false'
+  commit_index:
+    description: 'Commit updated index to repo'
+    required: false
+    default: 'true'
+  embedding_provider:
+    description: 'Embedding provider for semantic search (transformers, ollama, openai, gemini)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install ForgeNexus
+      shell: bash
+      run: npm install -g forgenexus
+
+    - name: Detect changed files
+      id: detect
+      shell: bash
+      run: |
+        echo "Detecting changed files..."
+        
+        CHANGED_FILES=$(git diff --name-only HEAD~1 | grep -E '\.(ts|tsx|js|jsx|py|go|rs|java|cs)$' | grep -v -E '\.(test|spec)\.(ts|js)$' || echo "")
+        FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' || echo 0)
+        
+        echo "files_changed=$FILE_COUNT" >> $GITHUB_OUTPUT
+        echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+        
+        echo "Changed files: $FILE_COUNT"
+        echo "$CHANGED_FILES" | head -10
+
+    - name: Run Incremental Reindex
+      id: reindex
+      if: inputs.mode == 'incremental' && inputs.dry_run != 'true'
+      shell: bash
+      run: |
+        echo "Running incremental reindex..."
+        ARGS="--incremental"
+        if [ -n "${{ inputs.embedding_provider }}" ]; then
+          ARGS="$ARGS --embedding-provider ${{ inputs.embedding_provider }}"
+        fi
+        OUTPUT=$(forgenexus analyze $ARGS ${{ inputs.repo_path }} 2>&1)
+        echo "$OUTPUT"
+        
+        # Parse output for stats
+        NODES=$(echo "$OUTPUT" | grep -oP 'nodes:\s*\K\d+' | head -1 || echo "0")
+        EDGES=$(echo "$OUTPUT" | grep -oP 'edges:\s*\K\d+' | head -1 || echo "0")
+        
+        echo "nodes_added=$NODES" >> $GITHUB_OUTPUT
+        echo "edges_added=$EDGES" >> $GITHUB_OUTPUT
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Run Full Reindex
+      id: full_reindex
+      if: inputs.mode == 'full' && inputs.dry_run != 'true'
+      shell: bash
+      run: |
+        echo "Running full reindex..."
+        echo "This will take a few minutes for large codebases..."
+        
+        ARGS="--force"
+        if [ -n "${{ inputs.embedding_provider }}" ]; then
+          ARGS="$ARGS --embedding-provider ${{ inputs.embedding_provider }}"
+        fi
+        OUTPUT=$(forgenexus analyze $ARGS ${{ inputs.repo_path }} 2>&1)
+        echo "$OUTPUT"
+        
+        # Parse output for stats
+        FILES=$(echo "$OUTPUT" | grep -oP 'files:\s*\K\d+' | head -1 || echo "0")
+        NODES=$(echo "$OUTPUT" | grep -oP 'nodes:\s*\K\d+' | head -1 || echo "0")
+        EDGES=$(echo "$OUTPUT" | grep -oP 'edges:\s*\K\d+' | head -1 || echo "0")
+        COMMUNITIES=$(echo "$OUTPUT" | grep -oP 'communities:\s*\K\d+' | head -1 || echo "0")
+        
+        echo "files_indexed=$FILES" >> $GITHUB_OUTPUT
+        echo "nodes_total=$NODES" >> $GITHUB_OUTPUT
+        echo "edges_total=$EDGES" >> $GITHUB_OUTPUT
+        echo "communities=$COMMUNITIES" >> $GITHUB_OUTPUT
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Commit Updated Index
+      if: inputs.commit_index == 'true' && inputs.dry_run != 'true'
+      shell: bash
+      run: |
+        echo "Committing updated index..."
+        
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        # Add index files
+        git add .forgenexus/
+        
+        # Check if there are changes to commit
+        if git diff --cached --quiet; then
+          echo "No index changes to commit"
+        else
+          COMMIT_MSG=$(printf '%s\n\n%s\n%s\n%s\n' \
+            "chore: update ForgeNexus index [skip ci]" \
+            "Updated code index" \
+            "- Triggered by: ${{ github.sha }}" \
+            "- Mode: ${{ inputs.mode }}")
+          
+          git commit -m "$COMMIT_MSG" || echo "No changes to commit"
+          
+          echo "Pushing index updates..."
+          git push origin ${{ github.ref }} || echo "Push skipped (no remote)"
+        fi
+
+    - name: Upload Index Artifact
+      if: inputs.commit_index != 'true' && inputs.dry_run != 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: forgenexus-index-${{ github.sha }}
+        path: .forgenexus/
+        retention-days: 7
+
+    - name: Dry Run Summary
+      if: inputs.dry_run == 'true'
+      shell: bash
+      run: |
+        echo "🔍 DRY RUN — ForgeNexus Reindex"
+        echo ""
+        echo "| Metric | Value |"
+        echo "|--------|-------|"
+        echo "| Mode | ${{ inputs.mode }} |"
+        echo "| Files Changed | ${{ steps.detect.outputs.files_changed }} |"
+        echo "| Repo Path | ${{ inputs.repo_path }} |"
+        echo ""
+        echo "Would run: forgenexus analyze --${{ inputs.mode }}"
+        echo ""
+        echo "✅ Dry run complete — no changes made"
+
+outputs:
+  files_changed:
+    description: 'Number of files changed'
+    value: ${{ steps.detect.outputs.files_changed || '0' }}
+  nodes_added:
+    description: 'Number of nodes added'
+    value: ${{ steps.reindex.outputs.nodes_added || '0' }}
+  edges_added:
+    description: 'Number of edges added'
+    value: ${{ steps.reindex.outputs.edges_added || '0' }}
+  status:
+    description: 'Reindex status'
+    value: ${{ steps.reindex.outputs.status || 'skipped' }}

@@ -1,0 +1,79 @@
+name: 'ForgeNexus CI'
+description: 'ForgeNexus reusable workflow for code intelligence'
+branding:
+  icon: 'git-branch'
+  color: 'blue'
+
+inputs:
+  mode:
+    description: 'Reindex mode (incremental, full)'
+    required: false
+    default: 'incremental'
+  include_wiki:
+    description: 'Generate architecture wiki'
+    required: false
+    default: 'false'
+  wiki_model:
+    description: 'LLM model for wiki generation'
+    required: false
+    default: 'minimax-sonar'
+  wiki_provider:
+    description: 'LLM provider (minimax, openai, gemini)'
+    required: false
+    default: 'minimax'
+  llm_api_key:
+    description: 'LLM API key'
+    required: false
+    default: ''
+  commit_index:
+    description: 'Commit updated index'
+    required: false
+    default: 'true'
+  embedding_provider:
+    description: 'Embedding provider (transformers, ollama, openai, gemini)'
+    required: false
+    default: ''
+  repo_path:
+    description: 'Path to the repository'
+    required: false
+    default: '.'
+  dry_run:
+    description: 'Dry run mode'
+    required: false
+    default: 'false'
+
+outputs:
+  nodes_added:
+    description: 'Number of nodes added'
+    value: ${{ steps.reindex.outputs.nodes_added || '0' }}
+  edges_added:
+    description: 'Number of edges added'
+    value: ${{ steps.reindex.outputs.edges_added || '0' }}
+  wiki_generated:
+    description: 'Whether wiki was generated'
+    value: ${{ steps.wiki.outputs.wiki_generated || 'false' }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Reindex
+      id: reindex
+      uses: ./.github/actions/auto-reindex
+      with:
+        repo_path: ${{ inputs.repo_path }}
+        mode: ${{ inputs.mode }}
+        dry_run: ${{ inputs.dry_run }}
+        commit_index: ${{ inputs.commit_index }}
+        embedding_provider: ${{ inputs.embedding_provider }}
+
+    - name: Generate Wiki
+      id: wiki
+      if: inputs.include_wiki == 'true'
+      uses: ./.github/actions/auto-wiki
+      with:
+        repo_path: ${{ inputs.repo_path }}
+        dry_run: ${{ inputs.dry_run }}
+        model: ${{ inputs.wiki_model }}
+        llm_provider: ${{ inputs.wiki_provider }}
+        api_key: ${{ inputs.llm_api_key }}
+        publish_to: 'file'

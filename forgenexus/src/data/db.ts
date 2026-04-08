@@ -494,6 +494,21 @@ export class ForgeDB {
     ).map(rowToNode)
   }
 
+  /** Count total nodes in the index. Returns 0 if not indexed. */
+  getNodeCount(): number {
+    try {
+      const rows = this.query('MATCH (n:CodeNode) RETURN count(*) AS count')
+      return rows[0]?.count ?? 0
+    } catch {
+      return 0
+    }
+  }
+
+  /** Check if the database has been indexed (has nodes). */
+  isIndexed(): boolean {
+    return this.getNodeCount() > 0
+  }
+
   searchNodes(
     search: string,
     op: 'contains' | 'starts' | 'ends' = 'contains',

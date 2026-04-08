@@ -82,6 +82,12 @@ CREATE NODE TABLE Contract(
   repo        STRING,
   updatedAt   STRING
 );
+
+CREATE REL TABLE HAS_REPO(FROM RepoGroup TO RepoRegistry);
+
+CREATE REL TABLE REPO_IMPORTS(FROM RepoRegistry TO RepoRegistry, fromContract STRING, toContract STRING);
+
+CREATE REL TABLE DEFINES_CONTRACT(FROM RepoRegistry TO Contract);
 `.trim()
 
 export async function initKuzuSchema(conn: {

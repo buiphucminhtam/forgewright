@@ -1,0 +1,84 @@
+name: ForgeNexus Auto Reindex
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**.ts'
+      - '**.tsx'
+      - '**.js'
+      - '**.jsx'
+      - 'src/**'
+      - 'lib/**'
+      - '!**.test.ts'
+      - '!**.spec.ts'
+      - '!node_modules/**'
+      - '!dist/**'
+      - '!build/**'
+  pull_request:
+    types: [closed]
+    paths:
+      - '**.ts'
+      - '**.tsx'
+      - '**.js'
+      - '**.jsx'
+      - 'src/**'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Reindex mode (incremental, full)'
+        required: false
+        default: 'incremental'
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        default: 'false'
+      repo:
+        description: 'Repository path (for multi-repo)'
+        required: false
+        default: ''
+
+concurrency:
+  group: forge-reindex-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reindex:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto Reindex
+        id: reindex
+        uses: ./.github/actions/auto-reindex
+        with:
+          repo_path: ${{ github.event.inputs.repo || '.' }}
+          mode: ${{ github.event.inputs.mode || 'incremental' }}
+          dry_run: ${{ github.event.inputs.dry_run || 'false' }}
+          commit_index: 'true'
+
+  summary:
+    needs: [reindex]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## 🔄 ForgeNexus Reindex Summary"
+          echo ""
+          echo "| Metric | Value |"
+          echo "|--------|-------|"
+          echo "| Mode | ${{ github.event.inputs.mode || 'incremental' }} |"
+          echo "| Files Changed | ${{ needs.reindex.outputs.files_changed }} |"
+          echo "| Nodes Added | ${{ needs.reindex.outputs.nodes_added }} |"
+          echo "| Edges Added | ${{ needs.reindex.outputs.edges_added }} |"
+          echo ""
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "🔍 **Dry Run Mode** — No changes were made"
+          else
+            echo "✅ **Complete** — Index updated successfully"
+          fi
