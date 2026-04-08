@@ -308,11 +308,14 @@ export class Indexer {
     // Now insert the new communities
     for (const community of communities) {
       this.db.insertCommunity(community)
+      // Update each node's community field in-place via raw query.
+      // KuzuDB v0.11.x has no simple UPDATE, so use raw querySync.
       for (const nodeUid of community.nodes) {
-        const node = this.db.getNode(nodeUid)
-        if (node) {
-          this.db.insertNode({ ...node, community: community.id })
-        }
+        try {
+          this.db.connection.querySync(
+            `MATCH (n:CodeNode {uid: "${esc(nodeUid)}"}) SET n.community = "${esc(community.id)}"`,
+          )
+        } catch { /* node may not exist */ }
       }
     }
     progress('communities', 100)
@@ -542,12 +545,14 @@ export class Indexer {
    * Delete only communities that contain nodes in changed files.
    */
   private deleteAffectedCommunities(changedFilePaths: Set<string>): void {
-    // Find communities that have nodes in changed files
+    // Find communities that have nodes in changed files.
+    // Edges are stored as CodeNode entries with rel_type IS NOT NULL,
+    // while true nodes have rel_type IS NULL and a community STRING property.
     const affectedComms = new Set<string>()
     for (const fp of changedFilePaths) {
       try {
         const result = this.db.connection.querySync(
-          `MATCH (n:CodeNode {filePath: "${esc(fp)}"})-[:IN_COMMUNITY]->(c:Community) RETURN DISTINCT c.id AS community`,
+          `MATCH (n:CodeNode) WHERE n.filePath = "${esc(fp)}" AND n.rel_type IS NULL AND n.community IS NOT NULL RETURN DISTINCT n.community AS community`,
         )
         const results = Array.isArray(result) ? result[0] : result
         const rows = (results as any).getAllSync() as { community: string }[]
@@ -558,16 +563,16 @@ export class Indexer {
     }
 
     if (affectedComms.size > 0 && affectedComms.size < 20) {
-      // Partial: delete specific communities via KuzuDB MATCH DELETE
+      // Partial: clear community field from affected nodes, then delete communities.
       const commIds = [...affectedComms].map((c) => `"${esc(c)}"`).join(', ')
       try {
-        this.db.connection.querySync(`MATCH (c:Community) WHERE c.id IN [${commIds}] DELETE c`)
         this.db.connection.querySync(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.community IN [${commIds}] SET n.community = NULL`)
+        this.db.connection.querySync(`MATCH (c:Community) WHERE c.id IN [${commIds}] DELETE c`)
       } catch (e: any) {
         console.warn(`[ForgeNexus] deleteAffectedCommunities partial failed: ${e.message}`)
       }
     } else {
-      // Too many affected communities — full rebuild
+      // Too many affected communities — full rebuild.
       try {
         this.db.connection.querySync(`MATCH (c:Community) DELETE c`)
         this.db.connection.querySync(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL SET n.community = NULL`)

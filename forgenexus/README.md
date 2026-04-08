@@ -6,7 +6,55 @@ Index any codebase, understand architecture, trace execution flows, analyze blas
 
 > **Index data** is stored under **`.forgenexus/`** at the repo root (older installs may auto-migrate from `.gitnexus/` on first run).
 
+> **For AI agents:** See [AI_AUTO_SETUP.md](./AI_AUTO_SETUP.md) for the prompt to give any AI agent the ability to auto-install, update, and migrate ForgeNexus. Includes **Known Bugs** with fixes for: KuzuDB file-lock in `status`, wrong node/edge counts, duplicate nodes in incremental index.
+
+## ⚠️ Migration Guide (v7.8.0)
+
+> **Breaking Change:** ForgeNexus has migrated from `better-sqlite3` to **KuzuDB** (graph database). Existing SQLite indexes must be migrated.
+
+If you have an existing ForgeNexus index:
+
+```bash
+# Preview migration changes (recommended first step)
+node forgenexus/scripts/migrate-sqlite-to-kuzu.js --dry-run
+
+# Run actual migration
+node forgenexus/scripts/migrate-sqlite-to-kuzu.js
+
+# Re-index after migration
+npx forgenexus analyze --force
+```
+
+**What changed:**
+- Database backend: `better-sqlite3` → `kuzu ^0.11.3`
+- Schema: single `nodes`/`edges` tables → per-type node tables (CodeNode, Community, Process) and per-edge-type rel tables
+- Native FTS and vector extensions built into KuzuDB
+
 **Migrating from `gitnexus`:** Use the **`forgenexus`** CLI only. The `gitnexus` bin, if present, **exits with an error** until you update scripts—temporary bridge: `FORGENEXUS_COMPAT_GITNEXUS_CLI=1`. Replace npm dependency `gitnexus` with `forgenexus`. Env vars `GITNEXUS_LLM_*` are mapped to `FORGENEXUS_LLM_*` with a deprecation warning.
+
+## What's New (v7.8.0)
+
+### ✨ New Features
+
+| Feature | Description |
+|---------|-------------|
+| **ForgeNexus Groups** | Multi-repo contract tracking. Create named groups, add repos, sync contracts, query cross-repo execution flows. 8 new MCP tools: `group_list`, `group_create`, `group_add`, `group_sync`, `group_contracts`, `group_query`, `group_status`, `group_remove` |
+| **Claude Code Hooks** | Auto-install on `forgenexus setup`: `pre-tool-use.ts` enriches grep/search context with graph data; `post-tool-use.ts` auto-reindexes after git commits |
+| **Husky v10** | Git hooks upgraded from v9 to v10 with improved bootstrap logic |
+
+### 🔧 Dependencies Updates
+
+| Action | Package |
+|--------|---------|
+| **Removed** | `better-sqlite3`, `@types/better-sqlite3` |
+| **Added** | `kuzu ^0.11.3` |
+| **Security Patches** | `esbuild ^0.25.0`, `minimatch ^9.0.5` |
+
+### 📚 Documentation
+
+- 7 Mermaid diagrams added replacing ASCII art: Architecture Overview, Middleware Chain, Session Lifecycle, Analyze Pipeline, Multi-Repo Group Management, Claude Code Hooks Flow, Request → Mode → Skills Routing
+
+---
 
 ## Features
 
@@ -48,6 +96,8 @@ npx forgenexus analyze
 
 # 3. Done. ForgeNexus auto-reindexes after every git commit/merge.
 ```
+
+> **For AI agents:** Use the prompt in [AI_AUTO_SETUP.md](./AI_AUTO_SETUP.md) to give any AI agent the ability to auto-detect, install, update, and migrate ForgeNexus without manual intervention.
 
 ## Auto-Setup for AI Agents (Vibe Coding)
 
@@ -322,15 +372,46 @@ auto-reindex
 
 ## Troubleshooting
 
-**"Index is stale"**: Run `npx forgenexus analyze --force` in the terminal
+### Migration Issues (v7.8.0)
 
-**Slow embedding generation**: Use `--embedding-provider ollama` for GPU-accelerated local inference, or skip embeddings entirely with `npx forgenexus analyze` (no `--embeddings` flag)
+| Issue | Solution |
+|-------|----------|
+| Migration fails | Backup `.forgenexus/` first, then retry |
+| KuzuDB not starting | Ensure Node.js >= 18 |
+| Data inconsistency after migration | Run `npx forgenexus analyze --force` to re-index |
 
-**Embeddings fail**: The system falls back to BM25 keyword search automatically
+### General Issues
 
-**No API key available**: Skip wiki generation or use local embedding providers
+| Issue | Solution |
+|-------|----------|
+| **"Index is stale"** | Run `npx forgenexus analyze --force` |
+| **Slow embedding generation** | Use `--embedding-provider ollama` for GPU-accelerated local inference, or skip embeddings entirely with `npx forgenexus analyze` (no `--embeddings` flag) |
+| **Embeddings fail** | The system falls back to BM25 keyword search automatically |
+| **No API key available** | Skip wiki generation or use local embedding providers |
+| **MCP not connecting** | Restart Cursor after running `npx forgenexus setup`, or manually add to `.cursor/mcp.json` |
+| **Husky hooks not working** | Run `npm run prepare` or `npx husky install` |
 
-**MCP not connecting**: Restart Cursor after running `npx forgenexus setup`, or manually add to `.cursor/mcp.json`
+## Upgrading
+
+```bash
+# 1. Pull latest code
+git pull origin main
+
+# 2. Update dependencies
+npm install
+
+# 3. Migrate database (if upgrading from < 7.8.0)
+node forgenexus/scripts/migrate-sqlite-to-kuzu.js
+
+# 4. Re-index
+npx forgenexus analyze --force
+
+# 5. Re-setup hooks (if needed)
+npx forgenexus setup
+
+# 6. Verify installation
+npx forgenexus status
+```
 
 ## Uninstall
 

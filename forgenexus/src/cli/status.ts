@@ -1,11 +1,15 @@
 /**
  * status subcommand — check index freshness and stats.
+ *
+ * Uses ForgeDB (KuzuDB) directly so it works even while the MCP
+ * server is running (no SQLite file-lock issues).
  */
 
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { execSync } from 'child_process'
 import { ensureNexusDataDirMigrated, nexusDataDir, defaultCodebaseDbPath } from '../paths.js'
+import { ForgeDB } from '../data/db.js'
 
 export function status(opts: { repoPath: string }): void {
   const { repoPath } = opts
@@ -18,16 +22,104 @@ export function status(opts: { repoPath: string }): void {
     return
   }
 
-  // Dynamic import to avoid circular deps
-  import(join(repoPath, 'node_modules', 'better-sqlite3') || 'better-sqlite3').catch(() => {
-    // Fallback: use exec to read SQLite
-    runStatusFallback(repoPath, dbPath)
-  })
+  // Detect format before opening
+  try {
+    const header = require('fs').readFileSync(dbPath)
+    if (header.length >= 16 && !header.slice(0, 16).toString('utf8').startsWith('SQLite')) {
+      // KuzuDB — proceed
+    } else {
+      // SQLite — show legacy message
+      runLegacyStatus(repoPath, dbPath)
+      return
+    }
+  } catch {
+    // Assume KuzuDB
+  }
+
+  let db: ForgeDB | null = null
+  try {
+    db = new ForgeDB(dbPath)
+
+    const isGit = existsSync(join(repoPath, '.git'))
+    const lastCommit = db.getMeta('last_commit') ?? ''
+    const indexedAt = db.getMeta('indexed_at') ?? ''
+
+    let stale = false
+    let lastCommitTime = ''
+    if (isGit && lastCommit) {
+      try {
+        const currentCommit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
+        stale = currentCommit !== lastCommit
+        try {
+          lastCommitTime = execSync(`git log -1 --format='%ci' ${lastCommit}`, {
+            encoding: 'utf8',
+          }).trim()
+        } catch {
+          /* ok */
+        }
+      } catch {
+        stale = false
+      }
+    }
+
+    const stats = db.getStats()
+    const detailed = db.getDetailedStats()
+
+    console.log(`# ForgeNexus Status — ${repoPath}`)
+    console.log('')
+    console.log(`  Indexed:  ${indexedAt || 'unknown'}`)
+    console.log(
+      `  Commit:   ${lastCommit || 'none'} ${lastCommitTime ? `(${lastCommitTime})` : ''}`,
+    )
+    if (isGit) {
+      console.log(`  Stale:    ${stale ? '⚠ YES — re-index recommended' : '✅ up to date'}`)
+    }
+    console.log('')
+    console.log('## Stats')
+    console.log(`  Files:       ${stats.files.toLocaleString()}`)
+    console.log(`  Nodes:       ${stats.nodes.toLocaleString()}`)
+    console.log(`  Edges:       ${stats.edges.toLocaleString()}`)
+    console.log(`  Communities: ${stats.communities.toLocaleString()}`)
+    console.log(`  Processes:   ${stats.processes.toLocaleString()}`)
+    console.log('')
+
+    // Node type breakdown
+    const nodeTypes = Object.entries(detailed.byType).filter(([t]) => {
+      // Only show true node types (not edge rel_type values)
+      return !['CALLS', 'IMPORTS', 'EXTENDS', 'IMPLEMENTS', 'HAS_METHOD', 'HAS_PROPERTY',
+        'ACCESSES', 'OVERRIDES', 'MEMBER_OF', 'STEP_IN_PROCESS', 'HANDLES_ROUTE',
+        'HANDLES_TOOL', 'QUERIES', 'FETCHES', 'CONTAINS', 'DEFINES', 'META',
+      ].includes(t)
+    })
+    if (nodeTypes.length > 0) {
+      console.log('## Node Types')
+      for (const [type, count] of nodeTypes.sort((a, b) => b[1] - a[1])) {
+        const bar = '█'.repeat(Math.min(50, Math.ceil((count / stats.nodes) * 50)))
+        console.log(`  ${type.padEnd(18)} ${count.toLocaleString().padStart(8)} ${bar}`)
+      }
+      console.log('')
+    }
+
+    // Edge type breakdown
+    if (Object.keys(detailed.byEdgeType).length > 0) {
+      console.log('## Edge Types')
+      for (const [type, count] of Object.entries(detailed.byEdgeType).sort((a, b) => b[1] - a[1])) {
+        const bar = '█'.repeat(Math.min(50, Math.ceil((count / stats.edges) * 50)))
+        console.log(`  ${type.padEnd(18)} ${count.toLocaleString().padStart(8)} ${bar}`)
+      }
+      console.log('')
+    }
+
+    console.log(`Index location: ${dbPath}`)
+  } catch (e: any) {
+    console.error(`[ForgeNexus] Could not read status: ${e.message}`)
+  } finally {
+    db?.close()
+  }
 }
 
-function runStatusFallback(repoPath: string, dbPath: string): void {
+function runLegacyStatus(repoPath: string, dbPath: string): void {
   try {
-    // Read meta table using sqlite3 CLI
     const isGit = existsSync(join(repoPath, '.git'))
 
     let stale = false
@@ -58,11 +150,11 @@ function runStatusFallback(repoPath: string, dbPath: string): void {
         }
       }
     } catch (e) {
-      console.error(`[ForgeNexus] Could not read index: ${e}`)
+      console.error(`[ForgeNexus] Legacy index detected but sqlite3 CLI not available.`)
+      console.error(`[ForgeNexus] Run 'forgenexus analyze --force' to rebuild the index.`)
       return
     }
 
-    // Get counts
     let files = 0,
       nodes = 0,
       edges = 0,
@@ -116,31 +208,7 @@ function runStatusFallback(repoPath: string, dbPath: string): void {
     console.log(`  Communities: ${communities.toLocaleString()}`)
     console.log(`  Processes:   ${processes.toLocaleString()}`)
     console.log('')
-
-    // Edge type breakdown
-    const edgeTypes: Record<string, number> = {}
-    try {
-      const raw = execSync(
-        `sqlite3 "${dbPath}" "SELECT type, COUNT(*) FROM edges GROUP BY type ORDER BY COUNT(*) DESC"`,
-        { encoding: 'utf8' },
-      ).trim()
-      for (const line of raw.split('\n')) {
-        const [type, count] = line.split('|')
-        if (type && count) edgeTypes[type.trim()] = parseInt(count.trim())
-      }
-    } catch {
-      /* ok */
-    }
-
-    if (Object.keys(edgeTypes).length > 0) {
-      console.log('## Edge Types')
-      for (const [type, count] of Object.entries(edgeTypes)) {
-        const bar = '█'.repeat(Math.min(50, Math.ceil((count / edges) * 50)))
-        console.log(`  ${type.padEnd(18)} ${count.toLocaleString().padStart(8)} ${bar}`)
-      }
-      console.log('')
-    }
-
+    console.log(`  ⚠ Legacy SQLite index — run 'forgenexus analyze --force' to migrate to KuzuDB`)
     console.log(`Index location: ${dbPath}`)
   } catch (e) {
     console.error(`[ForgeNexus] Could not read status: ${e}`)

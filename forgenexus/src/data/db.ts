@@ -699,13 +699,16 @@ export class ForgeDB {
     byEdgeType: Record<string, number>
   } {
     const stats = this.getStats()
+    // Only count TRUE nodes (rel_type IS NULL), not edge-records stored in the same table.
+    // Edge records have rel_type = "CALLS"/"IMPORTS"/etc and must be excluded.
     const byType: Record<string, number> = {}
-    for (const r of this.query(`MATCH (n:CodeNode) RETURN n.type AS type, count(n) AS cnt`)) {
-      byType[r.type as string] = Number(r.cnt)
+    for (const r of this.query(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN n.type AS type, count(n) AS cnt`)) {
+      if (r.type) byType[r.type as string] = Number(r.cnt)
     }
+    // byEdgeType already filters correctly (n.rel_type IS NOT NULL).
     const byEdgeType: Record<string, number> = {}
     for (const r of this.query(`MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL RETURN n.rel_type AS type, count(n) AS cnt`)) {
-      byEdgeType[r.type as string] = Number(r.cnt)
+      if (r.type) byEdgeType[r.type as string] = Number(r.cnt)
     }
     return { ...stats, byType, byEdgeType }
   }
