@@ -145,22 +145,35 @@ Restart the IDE after changing MCP config.
 
 > These bugs exist in `forgenexus@2.2.0` and earlier. If you see these symptoms, apply the fixes below. After fixing, rebuild: `cd node_modules/forgenexus && npm run build`.
 
-### Bug 1: `status` shows "database is locked" or "file is not a database"
+### Bug 1: `status` shows "database is locked" or "file is not a database" (✅ FIXED)
 
-**Root cause:** `status` CLI tried to use SQLite (`better-sqlite3` or `sqlite3` CLI) on a KuzuDB file. KuzuDB files are locked by the MCP server, so `status` always fails while MCP is running. When it falls back to `sqlite3` CLI, it reports "file is not a database" because the file is KuzuDB.
+**Root cause:** `status` CLI tried to use SQLite (`better-sqlite3` or `sqlite3` CLI) on a KuzuDB file. When it fell back to `sqlite3` CLI, it reported "file is not a database" because the file is KuzuDB. Additionally, `ForgeDB` constructor and `query()` called `conn.querySync()` which threw lock errors when the MCP server held a lock, causing all stats to return 0.
 
-**Symptom:**
+**Fix (source-level, already applied in db.ts + status.ts):**
+- `query()`: detects lock errors, sets `hasLockError = true`, prints `console.error` with clear message, returns `[]`
+- `exec()`: same lock error handling
+- `ForgeDB` constructor: lock errors during schema init print `console.error` (not `console.warn`)
+- `status.ts`: after getting stats, checks `db.hasLockError` and prints: `"⚠️ Stats are all 0 — MCP server is likely holding the lock."`
+- New helper `isLockError(e)` checks for all lock-related error messages
+
+**Symptom (before fix):**
 ```
-Error: database is locked
-# or
-Error: file is not a database
+Schema init warning: IO exception: Could not set lock on file
+DB query failed (returning []): Could not set lock on file
+Files: 0, Nodes: 0, Edges: 0   ← WRONG
 ```
 
-**Fix (source-level, requires rebuild):** Rewrite `src/cli/status.ts` to use `ForgeDB` (the KuzuDB wrapper) instead of SQLite. The `ForgeDB` class is available at `../data/db.js`. See the current `status.ts` in this repo for the correct implementation.
+**Symptom (after fix):**
+```
+[ForgeNexus] ⚠️  KuzuDB lock conflict: MCP server is likely running.
+         Stop the MCP server and retry, or use --force to rebuild.
+Files: 0, Nodes: 0, Edges: 0
+[ForgeNexus] ⚠️  Stats are all 0 — MCP server is likely holding the lock.
+         Stop the MCP server, then re-run: forgenexus status
+```
 
 **Workaround (no rebuild):** Stop the MCP server first:
 ```bash
-# Kill any running MCP server, then run status
 pkill -f "forgenexus.*mcp" || true
 node node_modules/forgenexus/dist/cli/index.js status
 ```
@@ -213,7 +226,7 @@ Processes:   0    ← should be non-zero if analyze ran
 |---------|-----|
 | `404 Not Found` on `npm install forgenexus` | Use Step 3a (GitHub subdirectory) + Step 3b (build). |
 | `Cannot find module .../dist/cli/index.js` | Run Step 3b in `node_modules/forgenexus`. |
-| `database is locked` / `file is not a database` | Stop MCP server, or rebuild status.ts (Bug 1 fix). |
+| `database is locked` / `file is not a database` | Stop MCP server; or rebuild (db.ts now has `isLockError` helper + `hasLockError` flag). |
 | Stats show 0 nodes, N edges | Rebuild db.ts + indexer.ts with fixes (Bug 2 fix). |
 | Communities/Processes always 0 in stats | Rebuild db.ts (Bug 3 fix). |
 | Duplicate nodes after incremental index | Rebuild indexer.ts (Bug 4 fix). |

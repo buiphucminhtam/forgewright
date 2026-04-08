@@ -110,6 +110,18 @@ export function status(opts: { repoPath: string }): void {
       console.log('')
     }
 
+    // Warn if stats are all zero — likely a lock conflict
+    if (stats.files === 0 && stats.nodes === 0 && stats.edges === 0) {
+      if (db.hasLockError) {
+        console.error(
+          `[ForgeNexus] ⚠️  Stats are all 0 — MCP server is likely holding the lock.\n` +
+          `         Stop the MCP server, then re-run: forgenexus status`,
+        )
+      } else {
+        console.warn(`[ForgeNexus] Stats are all 0 — index may be empty or corrupted.`)
+      }
+    }
+
     console.log(`Index location: ${dbPath}`)
   } catch (e: any) {
     console.error(`[ForgeNexus] Could not read status: ${e.message}`)

@@ -58,6 +58,16 @@ import type {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function isLockError(e: any): boolean {
+  const msg = e?.message ?? ''
+  return (
+    msg.includes('Could not set lock') ||
+    msg.includes('lock') ||
+    msg.includes('Lock') ||
+    msg.includes('Resource temporarily unavailable')
+  )
+}
+
 function rowToNode(r: Record<string, any>): CodeNode {
   return {
     uid: r.uid,
@@ -188,6 +198,8 @@ export class ForgeDB {
   private queue: QueuedOp[] = []
   private flushTimer: ReturnType<typeof setTimeout> | null = null
   private edgeUidCounter = 0
+  /** Set when a lock error is encountered — status.ts checks this for a clear message */
+  public hasLockError = false
 
   /** Expose raw db for low-level operations (indexer needs DELETE/UPDATE) */
   get rawDb(): InstanceType<typeof Database> {
@@ -226,8 +238,13 @@ export class ForgeDB {
       try {
         this.conn.querySync(stmt)
       } catch (e: any) {
-        // "already exists" errors are safe to ignore
-        if (!e.message?.includes('already exists') && !e.message?.includes('Duplicate')) {
+        if (isLockError(e)) {
+          console.error(
+            `[ForgeNexus] ⚠️  KuzuDB lock conflict: MCP server is likely running.\n` +
+            `         Stop the MCP server and retry, or use --force to rebuild.`,
+          )
+          this.hasLockError = true
+        } else if (!e.message?.includes('already exists') && !e.message?.includes('Duplicate')) {
           console.warn(`[ForgeNexus] Schema init warning: ${e.message}`)
         }
       }
@@ -375,7 +392,12 @@ export class ForgeDB {
     try {
       this.conn.querySync(sql)
     } catch (e: any) {
-      if (e.message) {
+      if (isLockError(e)) {
+        this.hasLockError = true
+        console.error(
+          `[ForgeNexus] ⚠️  KuzuDB lock conflict in exec(): ${e.message?.substring(0, 120)}`,
+        )
+      } else if (e.message) {
         console.warn(`[ForgeNexus] DB exec failed: ${e.message}`)
       }
     }
@@ -386,6 +408,7 @@ export class ForgeDB {
   /**
    * Low-level query: runs a KuzuDB Cypher query and returns rows.
    * Flushes pending writes first. Returns [] on error.
+   * On lock conflict: immediately marks hasLockError and returns [].
    */
   query(sql: string): Record<string, any>[] {
     this.flushWrites()
@@ -394,7 +417,14 @@ export class ForgeDB {
       const r = Array.isArray(result) ? result[0] : result
       return (r as any).getAllSync() as Record<string, any>[]
     } catch (e: any) {
-      if (e.message) {
+      if (isLockError(e)) {
+        this.hasLockError = true
+        // Only show the error once per ForgeDB instance
+        console.error(
+          `[ForgeNexus] ⚠️  KuzuDB lock conflict — MCP server may be running.\n` +
+          `         Stop the MCP server and retry. Current query: ${sql.substring(0, 80)}`,
+        )
+      } else if (e.message) {
         console.warn(`[ForgeNexus] DB query failed (returning []): ${e.message}`)
       }
       return []
