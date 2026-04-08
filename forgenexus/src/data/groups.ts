@@ -24,6 +24,9 @@
  *   status    — check staleness of all repos in a group
  */
 
+import { existsSync } from 'fs'
+import { execSync } from 'child_process'
+import { join } from 'path'
 import { Database, Connection } from 'kuzu'
 import { KUZU_SCHEMA } from './schema.js'
 
@@ -156,14 +159,33 @@ export function listGroups(): RepoGroup[] {
 export function addRepoToGroup(
   groupName: string,
   repoName: string,
+  repoPath?: string,
 ): { success: boolean; error?: string } {
   const c = openRegistry()
   try {
-    c.querySync(
-      `MERGE (g:RepoGroup {name: "${esc(groupName)}"})
-       MERGE (r:RepoRegistry {name: "${esc(repoName)}"})
-       MERGE (g)-[:HAS_REPO]->(r)`,
+    // Check if repo already exists
+    const existing = unwrapResult(
+      c.querySync(
+        `MATCH (r:RepoRegistry {name: "${esc(repoName)}"}) RETURN r.path AS path`,
+      ),
     )
+    const existingPath = existing.getAllSync()[0]?.path
+
+    // Merge repo, optionally with path
+    if (existingPath || repoPath) {
+      c.querySync(
+        `MERGE (g:RepoGroup {name: "${esc(groupName)}"})
+         MERGE (r:RepoRegistry {name: "${esc(repoName)}"})
+         SET r.path = COALESCE(r.path, "${esc(repoPath ?? (existingPath as string) ?? '')}")
+         MERGE (g)-[:HAS_REPO]->(r)`,
+      )
+    } else {
+      c.querySync(
+        `MERGE (g:RepoGroup {name: "${esc(groupName)}"})
+         MERGE (r:RepoRegistry {name: "${esc(repoName)}"})
+         MERGE (g)-[:HAS_REPO]->(r)`,
+      )
+    }
     return { success: true }
   } catch (e: any) {
     return { success: false, error: e.message }
@@ -216,7 +238,7 @@ export function syncGroupContracts(groupName: string): {
       `MATCH (g:RepoGroup {name: "${esc(groupName)}"})-[:HAS_REPO]->(r:RepoRegistry)
        RETURN r.name AS name, r.path AS path, r.dbPath AS dbPath`,
     )
-    const repos = unwrapResult(reposResult)()
+    const repos = unwrapResult(reposResult).getAllSync()
     if (repos.length === 0) {
       return {
         success: false,
@@ -230,11 +252,26 @@ export function syncGroupContracts(groupName: string): {
     const allLinks: ContractLink[] = []
 
     for (const repo of repos) {
-      const repoDbPath = repo.dbPath as string
-      if (!repoDbPath) continue
+      const repoDbPath = repo.dbPath as string | null
+      let actualDbPath: string | null = null
+
+      if (repoDbPath) {
+        actualDbPath = repoDbPath
+      } else if (repo.path && existsSync(repo.path)) {
+        // Try to find index in the repo's .forgenexus directory
+        const localIndex = join(repo.path as string, '.forgenexus', 'codebase.db')
+        if (existsSync(localIndex)) {
+          actualDbPath = localIndex
+        }
+      }
+
+      if (!actualDbPath) {
+        console.warn(`[ForgeNexus] No index found for repo "${repo.name}" (path: ${repo.path ?? 'unknown'})`)
+        continue
+      }
 
       try {
-        const repoDb = new Database(repoDbPath)
+        const repoDb = new Database(actualDbPath!)
         const repoConn = new Connection(repoDb)
         const now = new Date().toISOString()
 
@@ -245,7 +282,7 @@ export function syncGroupContracts(groupName: string): {
            RETURN n.uid AS uid, n.name AS name, n.type AS type, n.filePath AS filePath,
                   n.line AS line, n.signature AS signature LIMIT 500`,
         )
-        for (const row of unwrapResult(fnResult)()) {
+        for (const row of unwrapResult(fnResult).getAllSync()) {
           const contract: Contract = {
             id: `${repo.name}::${row.name}@${row.filePath}:${row.line}`,
             name: row.name,
@@ -264,6 +301,12 @@ export function syncGroupContracts(groupName: string): {
              SET co.name = "${esc(contract.name)}", co.type = "${contract.type}",
                  co.signature = "${esc(contract.signature ?? '')}", co.repo = "${esc(contract.repo)}",
                  co.updatedAt = "${esc(now)}"`,
+          )
+          // Link repo to contract
+          c.querySync(
+            `MERGE (r:RepoRegistry {name: "${esc(repo.name)}"})
+             MERGE (co:Contract {id: "${esc(contract.id)}"})
+             MERGE (r)-[:DEFINES_CONTRACT]->(co)`,
           )
         }
 
@@ -294,6 +337,11 @@ export function syncGroupContracts(groupName: string): {
                  co.signature = "${esc(contract.signature ?? '')}", co.repo = "${esc(contract.repo)}",
                  co.updatedAt = "${esc(now)}"`,
           )
+          c.querySync(
+            `MERGE (r:RepoRegistry {name: "${esc(repo.name)}"})
+             MERGE (co:Contract {id: "${esc(contract.id)}"})
+             MERGE (r)-[:DEFINES_CONTRACT]->(co)`,
+          )
         }
 
         // Extract tool handlers
@@ -316,6 +364,17 @@ export function syncGroupContracts(groupName: string): {
             updatedAt: now,
           }
           allContracts.push(contract)
+          c.querySync(
+            `MERGE (co:Contract {id: "${esc(contract.id)}"})
+             SET co.name = "${esc(contract.name)}", co.type = "${contract.type}",
+                 co.signature = "${esc(contract.signature ?? '')}", co.repo = "${esc(contract.repo)}",
+                 co.updatedAt = "${esc(now)}"`,
+          )
+          c.querySync(
+            `MERGE (r:RepoRegistry {name: "${esc(repo.name)}"})
+             MERGE (co:Contract {id: "${esc(contract.id)}"})
+             MERGE (r)-[:DEFINES_CONTRACT]->(co)`,
+          )
         }
 
         repoConn.close()
@@ -436,7 +495,7 @@ export function getGroupLinks(groupName: string): ContractLink[] {
  */
 export function groupStatus(groupName: string): {
   name: string
-  repos: { name: string; path: string; lastCommit?: string; dbPath?: string; stale?: boolean }[]
+  repos: { name: string; path: string; lastCommit?: string; dbPath?: string; stale?: boolean; exists?: boolean }[]
   staleCount: number
 } {
   const c = openRegistry()
@@ -448,11 +507,34 @@ export function groupStatus(groupName: string): {
     const rows = unwrapResult(result).getAllSync()
     const repos = rows.map((r: any) => ({
       name: r.name,
-      path: r.path,
-      lastCommit: r.lastCommit,
-      dbPath: r.dbPath,
+      path: r.path ?? '',
+      lastCommit: r.lastCommit ?? '',
+      dbPath: r.dbPath ?? '',
     }))
-    return { name: groupName, repos, staleCount: 0 }
+
+    // Check staleness for each repo
+    for (const repo of repos) {
+      if (!repo.path || !existsSync(repo.path)) {
+        repo.exists = false
+        continue
+      }
+      repo.exists = true
+      try {
+        const currentCommit = execSync('git rev-parse HEAD', {
+          cwd: repo.path,
+          encoding: 'utf8',
+        }).trim()
+        repo.stale = !!repo.lastCommit && repo.lastCommit !== currentCommit
+      } catch {
+        repo.stale = false
+      }
+    }
+
+    return {
+      name: groupName,
+      repos,
+      staleCount: repos.filter((r: { stale?: boolean }) => r.stale).length,
+    }
   } catch {
     return { name: groupName, repos: [], staleCount: 0 }
   } finally {

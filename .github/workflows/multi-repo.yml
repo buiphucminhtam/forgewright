@@ -1,0 +1,249 @@
+name: ForgeNexus Multi-Repo Sync
+
+on:
+  schedule:
+    # Run every 6 hours to keep contracts fresh
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      group:
+        description: 'Repository group name to sync'
+        required: true
+        default: ''
+      mode:
+        description: 'Sync mode (sync, contracts, status, query)'
+        required: false
+        default: 'sync'
+      query:
+        description: 'Query to search across group (for query mode)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        default: 'false'
+
+env:
+  FORGENEXUS_REGISTRY: ${{ vars.FORGENEXUS_REGISTRY || '.forgenexus/registry.kuzu' }}
+
+jobs:
+  # ─── Sync Contracts ─────────────────────────────────────────────────────────
+  sync-contracts:
+    if: github.event.inputs.mode == '' || github.event.inputs.mode == 'sync'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      contracts_count: ${{ steps.sync.outputs.contracts_count }}
+      links_count: ${{ steps.sync.outputs.links_count }}
+      repos_synced: ${{ steps.sync.outputs.repos_synced }}
+      status: ${{ steps.sync.outputs.status }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install ForgeNexus
+        run: npm install -g forgenexus
+
+      - name: Setup environment
+        id: setup
+        run: |
+          GROUP="${{ github.event.inputs.group || 'default' }}"
+          echo "group=$GROUP" >> $GITHUB_OUTPUT
+
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "mode=DRY RUN" >> $GITHUB_OUTPUT
+          else
+            echo "mode=LIVE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Sync Group Contracts
+        id: sync
+        if: steps.setup.outputs.mode == 'LIVE'
+        run: |
+          GROUP="${{ steps.setup.outputs.group }}"
+          
+          echo "Syncing contracts for group: $GROUP"
+          
+          # Run group sync
+          OUTPUT=$(npx forgenexus group sync "$GROUP" 2>&1)
+          echo "$OUTPUT"
+          
+          # Parse output
+          CONTRACTS=$(echo "$OUTPUT" | grep -oP '\d+(?= contract)' | head -1 || echo "0")
+          LINKS=$(echo "$OUTPUT" | grep -oP '\d+(?= cross-repo link)' | head -1 || echo "0")
+          REPOS=$(echo "$OUTPUT" | grep -oP '\d+(?= repo)' | head -1 || echo "0")
+          
+          echo "contracts_count=$CONTRACTS" >> $GITHUB_OUTPUT
+          echo "links_count=$LINKS" >> $GITHUB_OUTPUT
+          echo "repos_synced=$REPOS" >> $GITHUB_OUTPUT
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Dry Run Summary
+        if: steps.setup.outputs.mode == 'DRY RUN'
+        run: |
+          echo "🔍 DRY RUN — Multi-Repo Sync"
+          echo ""
+          echo "| Metric | Value |"
+          echo "|--------|-------|"
+          echo "| Group | ${{ steps.setup.outputs.group }} |"
+          echo ""
+          echo "Would sync all repos in the group."
+          echo ""
+          echo "✅ Dry run complete"
+
+  # ─── View Contracts ─────────────────────────────────────────────────────────
+  view-contracts:
+    if: github.event.inputs.mode == 'contracts'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      contracts: ${{ steps.contracts.outputs.contracts }}
+      repos: ${{ steps.contracts.outputs.repos }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ForgeNexus
+        run: npm install -g forgenexus
+
+      - name: View Group Contracts
+        id: contracts
+        run: |
+          GROUP="${{ github.event.inputs.group || 'default' }}"
+          
+          echo "Fetching contracts for group: $GROUP"
+          echo ""
+          
+          CONTRACTS=$(npx forgenexus group contracts "$GROUP" 2>&1)
+          echo "$CONTRACTS"
+          
+          # Convert to JSON for output
+          echo "contracts<<EOF" >> $GITHUB_OUTPUT
+          echo "$CONTRACTS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Count repos
+          REPOS=$(echo "$CONTRACTS" | grep -c "^###" || echo "0")
+          echo "repos=$REPOS" >> $GITHUB_OUTPUT
+
+  # ─── Group Status ────────────────────────────────────────────────────────────
+  group-status:
+    if: github.event.inputs.mode == 'status'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      stale_repos: ${{ steps.status.outputs.stale_repos }}
+      total_repos: ${{ steps.status.outputs.total_repos }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ForgeNexus
+        run: npm install -g forgenexus
+
+      - name: Check Group Status
+        id: status
+        run: |
+          GROUP="${{ github.event.inputs.group || 'default' }}"
+          
+          echo "Checking status for group: $GROUP"
+          echo ""
+          
+          STATUS=$(npx forgenexus group status "$GROUP" 2>&1)
+          echo "$STATUS"
+          
+          # Parse output
+          STALE=$(echo "$STATUS" | grep -c "STALE" || echo "0")
+          TOTAL=$(echo "$STATUS" | grep -c "^|" | head -1 || echo "0")
+          
+          echo "stale_repos=$STALE" >> $GITHUB_OUTPUT
+          echo "total_repos=$TOTAL" >> $GITHUB_OUTPUT
+
+  # ─── Search Across Group ─────────────────────────────────────────────────────
+  search-group:
+    if: github.event.inputs.mode == 'query'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      results: ${{ steps.query.outputs.results }}
+      match_count: ${{ steps.query.outputs.match_count }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ForgeNexus
+        run: npm install -g forgenexus
+
+      - name: Search Group
+        id: query
+        run: |
+          GROUP="${{ github.event.inputs.group || 'default' }}"
+          SEARCH="${{ github.event.inputs.query || '*' }}"
+          
+          echo "Searching for: $SEARCH in group: $GROUP"
+          echo ""
+          
+          RESULTS=$(npx forgenexus group query "$GROUP" "$SEARCH" 2>&1)
+          echo "$RESULTS"
+          
+          # Convert to JSON
+          echo "results<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESULTS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Count matches
+          MATCHES=$(echo "$RESULTS" | grep -c "^-" || echo "0")
+          echo "match_count=$MATCHES" >> $GITHUB_OUTPUT
+
+  # ─── Summary ────────────────────────────────────────────────────────────────
+  summary:
+    needs: [sync-contracts, view-contracts, group-status, search-group]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## 🔄 ForgeNexus Multi-Repo Sync Summary"
+          echo ""
+          echo "| Step | Status |"
+          echo "|------|--------|"
+          echo "| Sync Contracts | ${{ needs.sync-contracts.outputs.status || 'skipped' }} |"
+          echo "| View Contracts | ${{ needs.view-contracts.outcome == 'success' && '✅' || 'skipped' }} |"
+          echo "| Group Status | ${{ needs.group-status.outcome == 'success' && '✅' || 'skipped' }} |"
+          echo "| Search Group | ${{ needs.search-group.outcome == 'success' && '✅' || 'skipped' }} |"
+          echo ""
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "🔍 **Dry Run Mode** — No changes were made"
+          fi

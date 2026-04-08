@@ -1,0 +1,290 @@
+name: ForgeNexus Contract Verification
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'openapi.yaml'
+      - 'openapi.yml'
+      - '**/openapi*.yaml'
+      - '**/openapi*.yml'
+      - '**/swagger*.yaml'
+      - '**/swagger*.yml'
+  push:
+    branches: [main, master]
+    paths:
+      - 'openapi.yaml'
+      - 'openapi.yml'
+      - '**/openapi*.yaml'
+      - '**/openapi*.yml'
+      - '**/swagger*.yaml'
+      - '**/swagger*.yml'
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: 'Base branch/ref to compare'
+        required: false
+        default: ''
+      spec_path:
+        description: 'Path to OpenAPI spec'
+        required: false
+        default: ''
+      fail_on:
+        description: 'Fail on severity (breaking, warning, off)'
+        required: false
+        default: 'breaking'
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        default: 'false'
+
+jobs:
+  # ─── Setup oasdiff ─────────────────────────────────────────────────────────
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      base_ref: ${{ steps.env.outputs.base_ref }}
+      mode: ${{ steps.env.outputs.mode }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup environment
+        id: env
+        run: |
+          BASE_REF="${{ github.base_ref }}"
+          if [ -n "${{ github.event.inputs.base_ref }}" ]; then
+            BASE_REF="${{ github.event.inputs.base_ref }}"
+          fi
+          echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "mode=DRY RUN" >> $GITHUB_OUTPUT
+          else
+            echo "mode=LIVE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install oasdiff
+        run: |
+          curl -sSL https://raw.githubusercontent.com/oasdiff/oasdiff/main/get.sh | bash -s -- -b v1.0.0
+          oasdiff version || echo "oasdiff installed"
+
+  # ─── Find OpenAPI Specs ────────────────────────────────────────────────────
+  find-specs:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    outputs:
+      specs: ${{ steps.find.outputs.specs }}
+      spec_count: ${{ steps.find.outputs.spec_count }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find OpenAPI specs
+        id: find
+        run: |
+          SPEC_PATH="${{ github.event.inputs.spec_path }}"
+          
+          if [ -n "$SPEC_PATH" ]; then
+            SPECS="$SPEC_PATH"
+          else
+            # Auto-detect common locations
+            SPECS=$(find . -type f \( -name "*.yaml" -o -name "*.yml" \) \
+              \( -path "*/openapi*" -o -path "*/api/*" -o -name "swagger*" \) \
+              -not -path "*/node_modules/*" \
+              -not -path "*/.git/*" 2>/dev/null | head -20 || echo "")
+          fi
+          
+          echo "specs=$SPECS" >> $GITHUB_OUTPUT
+          
+          COUNT=$(echo "$SPECS" | grep -c '.' || echo 0)
+          echo "spec_count=$COUNT" >> $GITHUB_OUTPUT
+          
+          echo "Found $COUNT OpenAPI spec(s):"
+          echo "$SPECS" | head -10
+
+  # ─── Breaking Changes Check ─────────────────────────────────────────────────
+  breaking-changes:
+    needs: [setup, find-specs]
+    if: needs.find-specs.outputs.spec_count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+    outputs:
+      has_breaking: ${{ steps.check.outputs.has_breaking }}
+      breaking_count: ${{ steps.check.outputs.breaking_count }}
+      breaking_details: ${{ steps.check.outputs.details }}
+      breaking_json: ${{ steps.check.outputs.json }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install oasdiff
+        run: |
+          curl -sSL https://raw.githubusercontent.com/oasdiff/oasdiff/main/get.sh | bash -s -- -b v1.0.0
+
+      - name: Check breaking changes
+        id: check
+        run: |
+          HAS_BREAKING=false
+          BREAKING_COUNT=0
+          DETAILS=""
+          JSON_OUTPUT="[]"
+          
+          for spec in ${{ needs.find-specs.outputs.specs }}; do
+            if [ ! -f "$spec" ]; then
+              echo "Spec not found in HEAD: $spec"
+              continue
+            fi
+            
+            BASE_SPEC="origin/${{ needs.setup.outputs.base_ref }}:$spec"
+            if [ ! -f "$BASE_SPEC" ]; then
+              echo "New spec (not in base): $spec"
+              continue
+            fi
+            
+            echo "Checking: $spec"
+            echo "---"
+            
+            # Get breaking changes
+            BREAKING=$(oasdiff breaking "$BASE_SPEC" "HEAD:$spec" 2>&1 || echo "")
+            
+            if [ -n "$BREAKING" ]; then
+              HAS_BREAKING=true
+              BREAKING_COUNT=$((BREAKING_COUNT + 1))
+              DETAILS="${DETAILS}\n\n### $spec\n${BREAKING}"
+            fi
+            
+            # Get JSON output for GitHub API
+            JSON_RESULT=$(oasdiff breaking "$BASE_SPEC" "HEAD:$spec" -o json 2>/dev/null || echo "[]")
+            JSON_OUTPUT="${JSON_OUTPUT}\n${JSON_RESULT}"
+          done
+          
+          echo "has_breaking=$HAS_BREAKING" >> $GITHUB_OUTPUT
+          echo "breaking_count=$BREAKING_COUNT" >> $GITHUB_OUTPUT
+          echo "details<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$DETAILS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "json<<EOF" >> $GITHUB_OUTPUT
+          echo "$JSON_OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Set status check
+        if: needs.setup.outputs.mode == 'LIVE'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const hasBreaking = '${{ steps.check.outputs.has_breaking }}' === 'true';
+            const breakingCount = '${{ steps.check.outputs.breaking_count }}';
+            
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: hasBreaking ? 'failure' : 'success',
+              target_url: context.payload.pull_request?.html_url || context.repo.url,
+              description: hasBreaking 
+                ? `${breakingCount} breaking change(s) detected`
+                : 'No breaking changes',
+              context: 'forge-contract/breaking-changes',
+            });
+
+      - name: Fail workflow if breaking changes
+        if: |
+          needs.setup.outputs.mode == 'LIVE' &&
+          needs.setup.outputs.fail_on != 'off' &&
+          steps.check.outputs.has_breaking == 'true'
+        run: |
+          echo "❌ Breaking changes detected!"
+          exit 1
+
+  # ─── Post PR Comment ─────────────────────────────────────────────────────────
+  post-comment:
+    needs: [setup, find-specs, breaking-changes]
+    if: |
+      needs.setup.outputs.mode == 'LIVE' &&
+      github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Post PR Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const hasBreaking = '${{ needs.breaking-changes.outputs.has_breaking }}' === 'true';
+            const breakingDetails = `${{ needs.breaking-changes.outputs.details || 'No breaking changes detected.' }}`;
+            const specCount = '${{ needs.find-specs.outputs.spec_count }}';
+            const baseRef = '${{ needs.setup.outputs.base_ref }}';
+            
+            const body = [
+              `## 📋 ForgeNexus Contract Verification`,
+              ``,
+              `| Check | Result |`,
+              `|-------|--------|`,
+              `| Specs Checked | ${specCount} |`,
+              `| Breaking Changes | ${hasBreaking ? '❌ Yes' : '✅ None'} |`,
+              ``,
+              hasBreaking ? `### ⚠️ Breaking Changes Detected\n${breakingDetails}` : '',
+              ``,
+              `---`,
+              `*🤖 Generated by ForgeNexus | [oasdiff](https://oasdiff.com)*`,
+            ].filter(Boolean).join('\n');
+            
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            
+            const existingComment = comments.data.find(c => 
+              c.user.login === 'github-actions[bot]' && 
+              c.body.includes('ForgeNexus Contract Verification')
+            );
+            
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: body,
+              });
+            }
+
+  # ─── Summary ───────────────────────────────────────────────────────────────
+  summary:
+    needs: [setup, find-specs, breaking-changes]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## 📋 ForgeNexus Contract Verification Summary"
+          echo ""
+          echo "| Metric | Value |"
+          echo "|--------|-------|"
+          echo "| Specs Checked | ${{ needs.find-specs.outputs.spec_count }} |"
+          echo "| Breaking Changes | ${{ needs.breaking-changes.outputs.breaking_count || '0' }} |"
+          echo "| Mode | ${{ needs.setup.outputs.mode }} |"
+          echo ""
+          if [ "${{ needs.breaking-changes.outputs.has_breaking }}" == "true" ]; then
+            echo "❌ **Breaking changes detected**"
+          else
+            echo "✅ **No breaking changes**"
+          fi
