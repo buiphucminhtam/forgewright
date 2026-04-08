@@ -1,0 +1,220 @@
+name: 'ForgeNexus Auto Wiki'
+description: 'Generate architecture documentation from ForgeNexus code graph'
+branding:
+  icon: 'book-open'
+  color: 'blue'
+
+inputs:
+  repo_path:
+    description: 'Path to the repository'
+    required: false
+    default: '.'
+  dry_run:
+    description: 'Dry run mode (no changes will be committed)'
+    required: false
+    default: 'false'
+  force:
+    description: 'Force full re-index before generating wiki'
+    required: false
+    default: 'false'
+  model:
+    description: 'LLM model to use'
+    required: false
+    default: 'minimax-sonar'
+  llm_provider:
+    description: 'LLM provider (minimax, openai, gemini)'
+    required: false
+    default: 'minimax'
+  api_key:
+    description: 'LLM API key'
+    required: false
+    default: ''
+  base_url:
+    description: 'LLM API base URL'
+    required: false
+    default: ''
+  publish_to:
+    description: 'Where to publish (file, gist, pages)'
+    required: false
+    default: 'file'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install ForgeNexus
+      shell: bash
+      run: npm install -g forgenexus
+
+    - name: Check for index changes
+      id: detect
+      shell: bash
+      run: |
+        echo "Checking for index changes..."
+        
+        if [ ! -f ".forgenexus/codebase.db" ]; then
+          echo "needs_reindex=true" >> $GITHUB_OUTPUT
+          echo "changed_files=all" >> $GITHUB_OUTPUT
+          echo "No existing index found"
+          exit 0
+        fi
+        
+        CHANGED=$(git diff --name-only HEAD~1 | grep -E '\.(ts|tsx|js|jsx|py|go|rs|java|cs)$' | grep -v -E '\.(test|spec)\.(ts|js)$' | wc -l)
+        echo "changed_files=$CHANGED" >> $GITHUB_OUTPUT
+        
+        if [ "$CHANGED" -gt 5 ] || [ "${{ inputs.force }}" == "true" ]; then
+          echo "needs_reindex=true" >> $GITHUB_OUTPUT
+        else
+          echo "needs_reindex=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Incremental Reindex
+      if: inputs.force == 'true' || steps.detect.outputs.needs_reindex == 'true'
+      shell: bash
+      run: |
+        echo "Running incremental reindex..."
+        forgenexus analyze --incremental ${{ inputs.repo_path }}
+
+    - name: Full Reindex
+      if: inputs.force == 'true'
+      shell: bash
+      run: |
+        echo "Running full reindex..."
+        forgenexus analyze --force ${{ inputs.repo_path }}
+
+    - name: Check index exists
+      id: check_index
+      shell: bash
+      run: |
+        if [ ! -f ".forgenexus/codebase.db" ]; then
+          echo "index_found=false" >> $GITHUB_OUTPUT
+          echo "❌ No ForgeNexus index found"
+          exit 1
+        fi
+        echo "index_found=true" >> $GITHUB_OUTPUT
+        echo "✅ Index found"
+
+    - name: Generate Wiki
+      id: generate
+      if: steps.check_index.outputs.index_found == 'true' && inputs.dry_run != 'true'
+      shell: bash
+      env:
+        MINIMAX_API_KEY: ${{ inputs.api_key }}
+        GEMINI_API_KEY: ${{ inputs.api_key }}
+        OPENAI_API_KEY: ${{ inputs.api_key }}
+        API_KEY: ${{ inputs.api_key }}
+        BASE_URL: ${{ inputs.base_url }}
+      run: |
+        MODEL="${{ inputs.model }}"
+        PROVIDER="${{ inputs.llm_provider }}"
+        
+        # Determine API key and base URL based on provider
+        if [[ "$PROVIDER" == "minimax" ]]; then
+          if [ -z "$MINIMAX_API_KEY" ]; then
+            echo "❌ MINIMAX_API_KEY not set"
+            exit 1
+          fi
+          export API_KEY="$MINIMAX_API_KEY"
+          export BASE_URL="${BASE_URL:-https://api.minimaxi.chat/v1}"
+        elif [[ "$PROVIDER" == "gemini" ]]; then
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "❌ GEMINI_API_KEY not set"
+            exit 1
+          fi
+          export API_KEY="$GEMINI_API_KEY"
+          export BASE_URL="${BASE_URL:-https://generativelanguage.googleapis.com/v1beta}"
+          MODEL="gemini-2.0-flash"
+        elif [[ "$PROVIDER" == "openai" ]]; then
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "❌ OPENAI_API_KEY not set"
+            exit 1
+          fi
+          export API_KEY="$OPENAI_API_KEY"
+          export BASE_URL="${BASE_URL:-https://api.openai.com/v1}"
+        fi
+        
+        echo "Generating wiki with $MODEL..."
+        WIKI_OUTPUT=$(forgenexus wiki \
+          --model "$MODEL" \
+          --api-key "$API_KEY" \
+          --base-url "$BASE_URL" \
+          ${{ inputs.repo_path }} 2>&1)
+        echo "$WIKI_OUTPUT"
+        echo "wiki_generated=true" >> $GITHUB_OUTPUT
+
+    - name: Publish Wiki (file)
+      if: inputs.dry_run != 'true' && inputs.publish_to == 'file' && steps.generate.outputs.wiki_generated == 'true'
+      shell: bash
+      run: |
+        if [ -f "ARCHITECTURE.md" ]; then
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add ARCHITECTURE.md
+          git diff --cached --stat
+
+          COMMIT_MSG=$(printf '%s\n\n%s\n%s\n%s\n' \
+            "docs: auto-update ARCHITECTURE.md [skip ci]" \
+            "Generated by ForgeNexus Auto Wiki" \
+            "- Triggered by: ${{ github.sha }}" \
+            "- Model: ${{ inputs.model }}")
+
+          if git commit -m "$COMMIT_MSG" 2>&1; then
+            echo "Wiki committed to repository"
+          else
+            echo "No changes to commit"
+          fi
+        else
+          echo "ARCHITECTURE.md not found"
+        fi
+
+    - name: Publish to GitHub Pages
+      if: inputs.dry_run != 'true' && inputs.publish_to == 'pages'
+      uses: actions/configure-pages@v4
+
+    - name: Deploy to GitHub Pages
+      if: inputs.dry_run != 'true' && inputs.publish_to == 'pages'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ARCHITECTURE.md
+
+    - name: Deploy Pages
+      if: inputs.dry_run != 'true' && inputs.publish_to == 'pages'
+      uses: actions/deploy-pages@v4
+
+    - name: Publish to Gist
+      if: inputs.dry_run != 'true' && inputs.publish_to == 'gist'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh gist create ARCHITECTURE.md \
+          --desc "ForgeNexus Architecture Wiki - ${{ github.repository }}" \
+          --public false
+
+    - name: Dry Run Summary
+      if: inputs.dry_run == 'true'
+      shell: bash
+      run: |
+        echo "🔍 DRY RUN — Auto Wiki"
+        echo ""
+        echo "| Step | Status |"
+        echo "|------|--------|"
+        echo "| Reindex | ${{ steps.detect.outputs.needs_reindex == 'true' && '✅ Needed' || 'ℹ️ Skipped' }} |"
+        echo "| Generate | ℹ️ Would generate |"
+        echo "| Publish | ℹ️ Would publish to ${{ inputs.publish_to }} |"
+        echo ""
+        echo "✅ Dry run complete — no changes made"
+
+outputs:
+  wiki_generated:
+    description: 'Whether wiki was generated'
+    value: ${{ steps.generate.outputs.wiki_generated || 'false' }}
+  index_found:
+    description: 'Whether index was found'
+    value: ${{ steps.check_index.outputs.index_found || 'false' }}

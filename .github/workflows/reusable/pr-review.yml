@@ -1,0 +1,309 @@
+# Reusable workflow for ForgeNexus PR Review
+# Usage: Call this from your repo's workflow
+#
+# Example:
+#   jobs:
+#     forge-review:
+#       uses: buiphucminhtam/forgewright/.github/workflows/reusable-pr-review.yml@main
+#       with:
+#         openapi-enabled: true
+#       secrets:
+#         FORGENEXUS_TOKEN: ${{ secrets.FORGENEXUS_TOKEN }}
+
+on:
+  workflow_call:
+    inputs:
+      openapi-enabled:
+        type: boolean
+        default: false
+        description: Enable OpenAPI contract checking
+      openapi-specs:
+        type: string
+        default: ''
+        description: Space-separated list of OpenAPI spec paths (e.g., "openapi.yaml api/spec.yml")
+      min-risk-level:
+        type: string
+        default: 'MEDIUM'
+        description: Minimum risk level to block merge (LOW, MEDIUM, HIGH, CRITICAL)
+      require-reviewer-suggestion:
+        type: boolean
+        default: true
+        description: Suggest reviewers based on affected modules
+      dry-run:
+        type: boolean
+        default: false
+        description: Dry run mode — no changes or comments will be posted
+    secrets:
+      FORGENEXUS_TOKEN:
+        required: false
+        description: Optional ForgeNexus Enterprise token for advanced features
+
+jobs:
+  # ─── Blast Radius Analysis ───────────────────────────────────────────────────
+  blast-radius:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+    outputs:
+      base_ref: ${{ steps.setup.outputs.base_ref }}
+      risk_level: ${{ steps.analysis.outputs.risk_level }}
+      files_changed: ${{ steps.analysis.outputs.files_changed }}
+      symbols_changed: ${{ steps.analysis.outputs.symbols_changed }}
+      breaking_count: ${{ steps.analysis.outputs.breaking_count }}
+      report: ${{ steps.analysis.outputs.report }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install ForgeNexus
+        run: npm install -g forgenexus
+
+      - name: Setup environment
+        id: setup
+        run: |
+          BASE_REF="${{ github.base_ref }}"
+          echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+          
+          if [ "${{ inputs.dry-run }}" == "true" ]; then
+            echo "mode=DRY RUN" >> $GITHUB_OUTPUT
+          else
+            echo "mode=LIVE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run ForgeNexus PR Review
+        id: analysis
+        run: |
+          DRY_RUN_FLAG=""
+          if [ "${{ steps.setup.outputs.mode }}" == "DRY RUN" ]; then
+            DRY_RUN_FLAG="--dry-run"
+            echo "🔍 DRY RUN MODE — No changes will be made"
+          fi
+          
+          echo "report<<EOF" >> $GITHUB_OUTPUT
+          
+          # Try ForgeNexus PR Review first
+          if npx forgenexus pr-review "${{ steps.setup.outputs.base_ref }}" HEAD $DRY_RUN_FLAG 2>/dev/null; then
+            echo "✅ ForgeNexus PR Review completed"
+          else
+            # Fallback: basic diff analysis
+            echo "⚠️ Running basic diff analysis..."
+            echo ""
+            echo "**Files changed:**"
+            git diff --name-status "${{ steps.setup.outputs.base_ref }}" HEAD | head -20
+            echo ""
+            echo "**Symbols changed:** (requires forgenexus analyze first)"
+          fi
+          
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Extract risk level from report
+          if git diff --name-status "${{ steps.setup.outputs.base_ref }}" HEAD | grep -q "^D"; then
+            echo "risk_level=HIGH" >> $GITHUB_OUTPUT
+          else
+            echo "risk_level=LOW" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "files_changed=$(git diff --name-status "${{ steps.setup.outputs.base_ref }}" HEAD | wc -l)" >> $GITHUB_OUTPUT
+          echo "symbols_changed=0" >> $GITHUB_OUTPUT
+          echo "breaking_count=$(git diff --name-status "${{ steps.setup.outputs.base_ref }}" HEAD | grep '^D' | wc -l)" >> $GITHUB_OUTPUT
+
+  # ─── OpenAPI Contract Check ────────────────────────────────────────────────────
+  openapi-contract:
+    if: inputs.openapi-enabled
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      has_breaking: ${{ steps.check.outputs.has_breaking }}
+      breaking_details: ${{ steps.check.outputs.details }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup oasdiff
+        run: |
+          curl -sSL https://raw.githubusercontent.com/oasdiff/oasdiff/main/get.sh | bash -s -- -b v1.0.0
+
+      - name: Find OpenAPI specs
+        id: specs
+        run: |
+          if [ -n "${{ inputs.openapi-specs }}" ]; then
+            echo "Using configured specs: ${{ inputs.openapi-specs }}"
+            echo "specs=${{ inputs.openapi-specs }}" >> $GITHUB_OUTPUT
+          else
+            # Auto-detect common locations
+            SPECS=$(find . -type f \( -name "*.yaml" -o -name "*.yml" \) \
+              \( -path "*/openapi*" -o -path "*/api/*" -o -name "swagger*" \) \
+              -not -path "*/node_modules/*" 2>/dev/null | head -10 || echo "")
+            echo "Auto-detected specs:"
+            echo "$SPECS"
+            echo "specs=$SPECS" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check breaking changes
+        id: check
+        if: steps.specs.outputs.specs != ''
+        run: |
+          BREAKING=false
+          DETAILS=""
+          
+          for spec in ${{ steps.specs.outputs.specs }}; do
+            if [ ! -f "$spec" ]; then
+              echo "⚠️ Spec not found in HEAD: $spec"
+              continue
+            fi
+            
+            BASE_SPEC="origin/${{ github.base_ref }}:$spec"
+            if [ ! -f "$BASE_SPEC" ]; then
+              echo "ℹ️ Spec not found in base: $spec (new spec?)"
+              continue
+            fi
+            
+            echo "Checking: $spec"
+            RESULT=$(oasdiff breaking "$BASE_SPEC" "HEAD:$spec" 2>&1 || echo "")
+            
+            if [ -n "$RESULT" ]; then
+              BREAKING=true
+              DETAILS="${DETAILS}\n\n### $spec\n${RESULT}"
+            fi
+          done
+          
+          echo "has_breaking=$BREAKING" >> $GITHUB_OUTPUT
+          echo "details<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$DETAILS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Report no specs found
+        if: steps.specs.outputs.specs == ''
+        run: |
+          echo "No OpenAPI specs found — skipping contract check"
+
+  # ─── Post PR Comment ────────────────────────────────────────────────────────────
+  post-comment:
+    needs: [blast-radius, openapi-contract]
+    if: inputs.dry-run != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Dry run — skip comment
+        if: needs.blast-radius.outputs.mode == 'DRY RUN'
+        run: echo "🔍 DRY RUN — Skipping PR comment"
+
+      - name: Format and post comment
+        if: needs.blast-radius.outputs.mode != 'DRY RUN'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const baseRef = '${{ needs.blast-radius.outputs.base_ref }}';
+            const riskLevel = '${{ needs.blast-radius.outputs.risk_level }}';
+            const filesChanged = '${{ needs.blast-radius.outputs.files_changed }}';
+            const breakingCount = '${{ needs.blast-radius.outputs.breaking_count }}';
+            const hasBreaking = '${{ needs.openapi-contract.outputs.has_breaking }}' === 'true';
+            const breakingDetails = `${{ needs.openapi-contract.outputs.breaking_details }}`;
+            
+            const riskEmoji = {
+              'LOW': '🟢',
+              'MEDIUM': '🟡', 
+              'HIGH': '🟠',
+              'CRITICAL': '🔴'
+            };
+            
+            const body = [
+              `## 🔍 ForgeNexus PR Review`,
+              ``,
+              `| Metric | Value |`,
+              `|--------|-------|`,
+              `| Base | \`${baseRef}\` → \`HEAD\` |`,
+              `| Files Changed | ${filesChanged} |`,
+              `| Breaking Changes | ${breakingCount} |`,
+              `| Risk Level | ${riskEmoji[riskLevel] || '⚪'} **${riskLevel}** |`,
+              ``,
+              hasBreaking ? `⚠️ **OpenAPI Breaking Changes Detected!**\n\n${breakingDetails}` : '',
+              ``,
+              `---`,
+              `*🤖 Generated by ForgeNexus | [Configure](https://github.com/buiphucminhtam/forgewright/wiki/ForgeNexus-Enterprise) | [Docs](https://github.com/buiphucminhtam/forgewright/wiki)*`,
+            ].filter(Boolean).join('\n');
+            
+            // Find existing ForgeNexus comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            
+            const existingComment = comments.data.find(c => 
+              c.user.login === 'github-actions[bot]' && 
+              c.body.includes('ForgeNexus PR Review')
+            );
+            
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: body,
+              });
+            }
+
+  # ─── Status Check (for branch protection) ─────────────────────────────────────
+  status-check:
+    needs: [blast-radius, openapi-contract]
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Set status
+        run: |
+          RISK_LEVEL="${{ needs.blast-radius.outputs.risk_level }}"
+          HAS_BREAKING="${{ needs.openapi-contract.outputs.has_breaking }}"
+          
+          if [ "$HAS_BREAKING" == "true" ]; then
+            echo "OpenAPI breaking changes detected"
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "description=OpenAPI contract breaking changes detected" >> $GITHUB_OUTPUT
+          elif [ "$RISK_LEVEL" == "CRITICAL" ] || [ "$RISK_LEVEL" == "HIGH" ]; then
+            echo "High risk PR"
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "description=High risk PR: $RISK_LEVEL blast radius" >> $GITHUB_OUTPUT
+          else
+            echo "PR looks good"
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "description=ForgeNexus PR Review passed" >> $GITHUB_OUTPUT
+          fi
+        id: result
+
+      - name: Set commit status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: '${{ fromJSON(steps.result.outputs.status) }}',
+              target_url: context.payload.pull_request?.html_url || context.repo.url,
+              description: '${{ steps.result.outputs.description }}',
+              context: 'forge-review/blast-radius',
+            });
