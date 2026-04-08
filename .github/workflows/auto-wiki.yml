@@ -1,0 +1,85 @@
+name: ForgeNexus Auto Wiki
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**.ts'
+      - '**.tsx'
+      - '**.js'
+      - '**.jsx'
+      - '**.py'
+      - '**.go'
+      - '**.rs'
+      - '**.java'
+      - '**.cs'
+      - 'src/**'
+      - 'lib/**'
+      - '!**.test.ts'
+      - '!**.spec.ts'
+      - '!node_modules/**'
+      - '!dist/**'
+      - '!build/**'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (no changes will be committed)'
+        required: false
+        default: 'false'
+      force:
+        description: 'Force full re-index before generating wiki'
+        required: false
+        default: 'false'
+      model:
+        description: 'LLM model to use'
+        required: false
+        default: 'minimax-sonar'
+      llm_provider:
+        description: 'LLM provider (minimax, openai, gemini)'
+        required: false
+        default: 'minimax'
+      publish_to:
+        description: 'Where to publish (file, gist, pages)'
+        required: false
+        default: 'file'
+
+jobs:
+  auto-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto Wiki
+        uses: ./.github/actions/auto-wiki
+        with:
+          dry_run: ${{ github.event.inputs.dry_run || 'false' }}
+          force: ${{ github.event.inputs.force || 'false' }}
+          model: ${{ github.event.inputs.model || 'minimax-sonar' }}
+          llm_provider: ${{ github.event.inputs.llm_provider || 'minimax' }}
+          api_key: ${{ secrets.MINIMAX_API_KEY }}
+          publish_to: ${{ github.event.inputs.publish_to || 'file' }}
+
+  summary:
+    needs: [auto-wiki]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## 🔍 ForgeNexus Auto Wiki Summary"
+          echo ""
+          echo "| Metric | Value |"
+          echo "|--------|-------|"
+          echo "| Wiki Generated | ✅ |"
+          echo "| Dry Run | ${{ github.event.inputs.dry_run || 'false' }} |"
+          echo ""
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "🔍 **Dry Run Mode** — No changes were committed"
+          fi
