@@ -710,6 +710,12 @@ export class Indexer {
   getDB(): ForgeDB {
     return this.db
   }
+
+  /** Reset the DB (wipe all data). Used before a forced full re-index. */
+  reset(): void {
+    this.db.reset()
+  }
+
   close(): void {
     this.db.close()
   }

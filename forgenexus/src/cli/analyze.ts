@@ -42,12 +42,28 @@ export async function analyze(opts: {
   mkdirSync(nexusDir, { recursive: true })
   const dbPath = defaultCodebaseDbPath(repoPath)
 
+  // RC4 fix: always chdir to the target project root so that git operations,
+  // file scanning, and relative paths resolve correctly.
+  if (process.cwd() !== repoPath) {
+    try {
+      process.chdir(repoPath)
+    } catch (e: any) {
+      console.warn(`[ForgeNexus] Could not chdir to ${repoPath}: ${e.message}`)
+    }
+  }
+
   const indexer = new Indexer(repoPath, {
     repoPath,
     repoName: repoName ?? basename(repoPath),
     dbPath,
     includeEmbeddings,
   })
+
+  // RC3 fix: reset DB before full re-index to avoid stale data accumulation
+  if (force) {
+    indexer.reset()
+    log(`[ForgeNexus] Cleared existing index before full re-index.`)
+  }
 
   if (embeddingProvider) {
     process.env.EMBEDDING_PROVIDER = embeddingProvider

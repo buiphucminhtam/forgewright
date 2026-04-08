@@ -358,7 +358,21 @@ export class ParserEngine {
       /* skip parse errors */
     }
 
-    return { nodes, edges }
+    // ── Deduplicate nodes (tree-sitter queries may emit the same node twice
+    //     via overlapping patterns, e.g. arrow_function inside variable_declarator)
+    const seenUids = new Set<string>()
+    const uniqueNodes: CodeNode[] = []
+    for (const n of nodes) {
+      if (!seenUids.has(n.uid)) {
+        seenUids.add(n.uid)
+        uniqueNodes.push(n)
+      }
+    }
+    if (uniqueNodes.length < nodes.length) {
+      console.warn(`[ForgeNexus] Parser deduplicated ${nodes.length - uniqueNodes.length} duplicate nodes in ${filePath}.`)
+    }
+
+    return { nodes: uniqueNodes, edges }
   }
 
   // ── TSQuery-driven extraction (main path) ────────────────────────────────
@@ -429,7 +443,7 @@ export class ParserEngine {
           nameText = this.getNodeName(node, content, lang) ?? 'anonymous'
         }
 
-        const uid = `${filePath}:${nodeType}:${nameText}:${start.row + 1}`
+        const uid = `${filePath}:${nodeType}:${nameText}:${start.row + 1}:${start.column}`
         const symNode: CodeNode = {
           uid, type: nodeType, name: nameText, filePath,
           line: start.row + 1, endLine: end.row + 1,
@@ -801,7 +815,7 @@ export class ParserEngine {
     const start = node.startPosition
     const end = node.endPosition
     const name = this.getNodeName(node, content, lang) ?? 'anonymous'
-    const uid = `${filePath}:${mapping.nodeType}:${name}:${start.row + 1}`
+    const uid = `${filePath}:${mapping.nodeType}:${name}:${start.row + 1}:${start.column}`
 
     const result: CodeNode = {
       uid, type: mapping.nodeType, name, filePath,

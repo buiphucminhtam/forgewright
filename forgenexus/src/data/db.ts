@@ -1,20 +1,27 @@
 /**
  * Detect whether a database file is SQLite (the legacy format).
  * Returns the detected format or null if the file doesn't exist.
+ *
+ * RC2 fix: improved detection to handle edge cases:
+ * - Files < 16 bytes: cannot safely detect; treat as unknown (let KuzuDB handle).
+ * - Files >= 16 bytes: check for SQLite magic header.
+ * - Catch-all: treat non-SQLite files as KuzuDB.
  */
 function detectDbFormat(dbPath: string): 'sqlite' | 'kuzudb' | null {
   if (!existsSync(dbPath)) return null
 
   try {
-    // SQLite files start with the 16-byte header "SQLite format 3\0"
     const header = readFileSync(dbPath)
-    if (header.length >= 16) {
-      const magic = header.slice(0, 16).toString('utf8')
-      if (magic.startsWith('SQLite')) return 'sqlite'
-    }
+    // File too small to contain SQLite header — cannot confirm SQLite.
+    // Treat as unknown so KuzuDB can open it (if it is KuzuDB) or fail gracefully.
+    if (header.length < 16) return null
+
+    const magic = header.slice(0, 16).toString('utf8')
+    if (magic.startsWith('SQLite')) return 'sqlite'
     return 'kuzudb'
   } catch {
-    return 'kuzudb' // can't read — assume it's fine
+    // Cannot read file — assume KuzuDB and let it fail with a clear error.
+    return 'kuzudb'
   }
 }
 
@@ -271,23 +278,54 @@ export class ForgeDB {
     const processes = ops.filter((op) => op.kind === 'process')
 
     // ── Batch nodes via UNWIND ───────────────────────────────────────────────
+    // RC1 fix: escape ALL string values to prevent query syntax errors.
+    // RC5 fix: use MERGE instead of CREATE so the entire batch doesn't roll back
+    // when the parser generates duplicate UIDs (e.g. anonymous functions with
+    // the same uid:filename:anonymous:line). MERGE upserts — skips existing PKs.
     if (nodes.length > 0) {
-      const rows = nodes.map((op) => {
-        const p = sqlRowToProps((op as QueuedNode).node, (op as QueuedNode).embedding)
-        return `{uid: "${p.uid}", type: "${p.type}", name: "${p.name}", filePath: "${p.filePath}", line: ${p.line}, endLine: ${p.endLine}, columnNum: ${p.columnNum}, returnType: ${p.returnType}, paramCount: ${p.paramCount}, declaredType: ${p.declaredType}, language: ${p.language}, signature: ${p.signature}, community: ${p.community}, process: ${p.process}}`
+      // Deduplicate within the entire operation (not just per-batch) so
+      // the Set is fresh and accurate across all flush calls.
+      const seenUids = new Set<string>()
+      const uniqueNodes: CodeNode[] = []
+      for (const op of nodes) {
+        const n = (op as QueuedNode).node
+        if (!seenUids.has(n.uid)) {
+          seenUids.add(n.uid)
+          uniqueNodes.push(n)
+        }
+      }
+      if (uniqueNodes.length < nodes.length) {
+        console.warn(`[ForgeNexus] Deduplicated ${nodes.length - uniqueNodes.length} duplicate node UIDs.`)
+      }
+
+      const rows = uniqueNodes.map((n) => {
+        const uid = esc(n.uid)
+        const type = esc(n.type)
+        const name = esc(n.name)
+        const filePath = esc(n.filePath)
+        const line = n.line
+        const endLine = n.endLine
+        const columnNum = n.column ?? 0
+        const returnType = n.returnType ? `"${esc(n.returnType)}"` : 'NULL'
+        const paramCount = n.parameterCount ?? 0
+        const declaredType = n.declaredType ? `"${esc(n.declaredType)}"` : 'NULL'
+        const language = n.language ? `"${esc(n.language)}"` : 'NULL'
+        const signature = n.signature ? `"${esc(n.signature)}"` : 'NULL'
+        const community = n.community ? `"${esc(n.community)}"` : 'NULL'
+        const process = n.process ? `"${esc(n.process)}"` : 'NULL'
+        return `{uid: "${uid}", type: "${type}", name: "${name}", filePath: "${filePath}", line: ${line}, endLine: ${endLine}, columnNum: ${columnNum}, returnType: ${returnType}, paramCount: ${paramCount}, declaredType: ${declaredType}, language: ${language}, signature: ${signature}, community: ${community}, process: ${process}}`
       })
 
       const batchSize = 200
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize)
         try {
+          // Use MERGE (upsert) instead of CREATE: skips existing PKs without error
           this.conn.querySync(
-            `UNWIND [${batch.join(', ')}] AS row CREATE (n:CodeNode {uid: row.uid, type: row.type, name: row.name, filePath: row.filePath, line: row.line, endLine: row.endLine, columnNum: row.columnNum, returnType: row.returnType, paramCount: row.paramCount, declaredType: row.declaredType, language: row.language, signature: row.signature, community: row.community, process: row.process})`,
+            `UNWIND [${batch.join(', ')}] AS row MERGE (n:CodeNode {uid: row.uid}) SET n.type = row.type, n.name = row.name, n.filePath = row.filePath, n.line = row.line, n.endLine = row.endLine, n.columnNum = row.columnNum, n.returnType = row.returnType, n.paramCount = row.paramCount, n.declaredType = row.declaredType, n.language = row.language, n.signature = row.signature, n.community = row.community, n.process = row.process`,
           )
         } catch (e: any) {
-          if (!e.message?.includes('already exists') && !e.message?.includes('duplicate')) {
-            console.warn(`[ForgeNexus] UNWIND node batch failed: ${e.message?.substring(0, 100)}`)
-          }
+          console.error(`[ForgeNexus] UNWIND MERGE node batch failed (${i}-${i + batch.length}): ${e.message?.substring(0, 200)}`)
         }
       }
     }
@@ -316,8 +354,12 @@ export class ForgeDB {
             `UNWIND [${batch.join(', ')}] AS row CREATE (e:CodeNode {uid: row.uid, type: row.rel_type, name: row.rel_type, rel_type: row.rel_type, rel_from: row.rel_from, rel_to: row.rel_to, rel_confidence: row.rel_confidence, rel_reason: row.rel_reason, rel_step: row.rel_step})`,
           )
         } catch (e: any) {
-          if (e.message?.includes('already exists') || e.message?.includes('duplicate')) continue
-          console.error(`[ForgeNexus] UNWIND edge batch failed (${i}-${i + batch.length}): ${e.message?.substring(0, 200)}`)
+          // KuzuDB rolls back the ENTIRE batch on duplicate key — always report
+          if (e.message?.includes('already exists') || e.message?.includes('duplicate')) {
+            console.warn(`[ForgeNexus] UNWIND edge batch skipped (duplicate keys): ${e.message?.substring(0, 100)}`)
+          } else {
+            console.error(`[ForgeNexus] UNWIND edge batch failed: ${e.message?.substring(0, 200)}`)
+          }
         }
       }
     }
@@ -332,7 +374,7 @@ export class ForgeDB {
         )
       } catch (e: any) {
         if (!e.message?.includes('already exists') && !e.message?.includes('duplicate')) {
-          console.warn(`[ForgeNexus] Community write failed: ${e.message?.substring(0, 100)}`)
+          console.error(`[ForgeNexus] Community write failed: ${e.message?.substring(0, 200)}`)
         }
       }
     }
@@ -348,7 +390,7 @@ export class ForgeDB {
         )
       } catch (e: any) {
         if (!e.message?.includes('already exists') && !e.message?.includes('duplicate')) {
-          console.warn(`[ForgeNexus] Process write failed: ${e.message?.substring(0, 100)}`)
+          console.error(`[ForgeNexus] Process write failed: ${e.message?.substring(0, 200)}`)
         }
       }
     }
@@ -373,7 +415,15 @@ export class ForgeDB {
   }
 
   insertEdgesBatch(edges: CodeEdge[]): void {
-    for (const edge of edges) this.enqueue({ kind: 'edge', edge })
+    const seen = new Set<string>()
+    for (const edge of edges) {
+      // Deduplicate by (fromUid, type, toUid) tuple
+      const key = `${edge.fromUid}|${edge.type}|${edge.toUid}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        this.enqueue({ kind: 'edge', edge })
+      }
+    }
   }
 
   // ─── Community / Process Writers ─────────────────────────────────────────────
@@ -805,6 +855,18 @@ export class ForgeDB {
         console.warn(`[ForgeNexus] registerRepo("${repo.name}") failed: ${e.message?.substring(0, 100)}`)
       }
     }
+  }
+
+  /**
+   * Wipe all indexed data from the database.
+   * Used by `analyze --force` to ensure a clean slate before full re-index.
+   * Does NOT drop schema tables — only deletes data nodes.
+   */
+  reset(): void {
+    try { this.conn.querySync('MATCH (n:CodeNode) DELETE n') } catch { /* ok */ }
+    try { this.conn.querySync('MATCH (c:Community) DELETE c') } catch { /* ok */ }
+    try { this.conn.querySync('MATCH (p:Process) DELETE p') } catch { /* ok */ }
+    this.edgeUidCounter = 0
   }
 
   listRepos(): { name: string; path: string; indexedAt: string; stats: RepoStats }[] {

@@ -219,6 +219,24 @@ Processes:   0    ← should be non-zero if analyze ran
 
 **Fix (source-level, already applied in indexer.ts):** Changed from `insertNode()` to `conn.querySync(`MATCH ... SET n.community = ...`)`.
 
+### Bug 5: getStats() returns 0 nodes despite DB having data (v2.2.0+)
+
+**Root causes (all fixed in v2.2.0):**
+
+1. **RC1 — Missing `esc()` on node properties in `UNWIND CREATE`:** String properties (`name`, `filePath`, etc.) were interpolated without escaping. Special characters (quotes, backslashes) corrupted the Cypher query, causing silent failure. Fixed by applying `esc()` to all string values.
+
+2. **RC2 — `analyze --force` didn't wipe DB first:** The `--force` flag only set `incremental=false`, leaving old data. Fixed: `indexer.reset()` is now called before full re-index.
+
+3. **RC3 — Duplicate node UIDs from parser:** Tree-sitter queries emitted the same node multiple times (e.g., `arrow_function` matched both standalone and inside `variable_declarator`). Also, anonymous functions used only `(line)` in their UID, causing collisions. Fixed by: (a) adding `column` to UID format, (b) deduplicating nodes in `parseFile()` return, (c) deduplicating within `flushWrites()`.
+
+4. **RC4 — Duplicate edge UIDs from double-insert:** `insertEdgesBatch` was called twice with the same edges in one pipeline run (1795 × 2 = 3590). Fixed by deduplicating edges by `(fromUid|type|toUid)` tuple in `insertEdgesBatch`.
+
+5. **RC5 — `UNWIND ... CREATE` entire batch rollbacks on PK conflict:** KuzuDB rolls back the ENTIRE batch if ANY row has a duplicate PK. Fixed by switching to `UNWIND ... MERGE` (upsert) for nodes.
+
+**Symptom:** `analyze --force` reports "Parsed N nodes" but `Done: 0 nodes, 2N edges" and `ForgeDB.getStats()` returns 0 nodes.
+
+**Fix:** All fixes applied in `forgenexus/src/data/db.ts`, `forgenexus/src/analysis/parser.ts`, `forgenexus/src/analysis/parse-worker.ts`, `forgenexus/src/analysis/indexer.ts`, `forgenexus/src/cli/analyze.ts`.
+
 ---
 
 ## Troubleshooting (for AI)
@@ -228,7 +246,7 @@ Processes:   0    ← should be non-zero if analyze ran
 | `404 Not Found` on `npm install forgenexus` | Use Step 3a (GitHub subdirectory) + Step 3b (build). |
 | `Cannot find module .../dist/cli/index.js` | Run Step 3b in `node_modules/forgenexus`. |
 | `database is locked` / `file is not a database` | Stop MCP server; or rebuild (db.ts now has `isLockError` helper + `hasLockError` flag). |
-| Stats show 0 nodes, N edges | Rebuild db.ts + indexer.ts with fixes (Bug 2 fix). |
+| Stats show 0 nodes, N edges | Rebuild with v2.2.0 fixes (Bug 5 fix). |
 | Communities/Processes always 0 in stats | Rebuild db.ts (Bug 3 fix). |
 | Duplicate nodes after incremental index | Rebuild indexer.ts (Bug 4 fix). |
 | Confused `husky` errors from Antigravity path | Stop using plugin paths; install only `forgenexus` from GitHub or `file:`. |

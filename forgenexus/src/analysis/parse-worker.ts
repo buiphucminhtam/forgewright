@@ -232,7 +232,7 @@ function walk(
     if (name) {
       const start = node.startPosition, end = node.endPosition
       const nodeType = inferType(type)
-      const uid = `${filePath}:${nodeType}:${name}:${start.row + 1}`
+      const uid = `${filePath}:${nodeType}:${name}:${start.row + 1}:${start.column}`
       nodes.push({ uid, type: nodeType, name, filePath, line: start.row + 1, endLine: end.row + 1, column: start.column, language: lang })
 
       extractCalls(node, uid, content, edges)
