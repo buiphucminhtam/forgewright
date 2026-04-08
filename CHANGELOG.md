@@ -2,6 +2,47 @@
 
 All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewright).
 
+## [7.8.1] — 2026-04-08
+
+> **ForgeNexus Enterprise — Phase 1-3**
+
+### Added
+
+- **ForgeNexus Enterprise Features** (Phase 1-3)
+  - PR Review with blast radius analysis (`forgenexus pr-review <base> [head]`)
+  - Symbol impact analysis (`forgenexus impact <symbol>`)
+  - OpenAPI contract checking (oasdiff integration)
+  - Auto Wiki generation with multi-provider LLM support
+  - Auto Reindex workflow (incremental/full)
+  - Multi-repo group management (`group contracts`, `group status`, `group query`)
+  - Contract verification with oasdiff
+  - Cross-repo impact analysis
+- **GitHub Actions Workflows** (`.github/workflows/`)
+  - `pr-review.yml` — PR blast radius + OpenAPI
+  - `auto-wiki.yml` — Auto wiki generation
+  - `auto-reindex.yml` — Incremental/full reindex
+  - `contract-verification.yml` — OpenAPI breaking changes
+  - `multi-repo.yml` — Multi-repo sync
+  - `multi-repo-impact.yml` — Cross-repo impact
+- **Composite Actions** (`.github/actions/`)
+  - `pr-review/action.yml` — PR review action with dry-run
+  - `auto-wiki/action.yml` — Wiki generation action
+  - `auto-reindex/action.yml` — Reindex action
+- **Reusable Workflows** (`.github/workflows/reusable/`)
+  - `pr-review.yml` — Reusable PR review workflow
+- **Documentation**
+  - `.github/README.md` — Tổng hợp tất cả workflows
+  - `.github/actions/*/README.md` — Hướng dẫn chi tiết
+- **Test Suite** (`scripts/test-cli.sh`)
+  - Test tất cả CLI commands
+
+### Impact Assessment
+
+- **Breaking changes:** 0
+- **Backward compatibility:** 100%
+- **Migration required:** None
+- **User affected:** Only users wanting to use Enterprise features
+
 ## [7.8.0] — 2026-04-06
 
 > **⚠️ Breaking Change — ForgeNexus Database Migration**

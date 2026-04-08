@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-7.8.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/version-7.8.1-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-52-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
@@ -474,6 +474,76 @@ flowchart TD
     style CONTRACTS fill:#1e8449,stroke:#2ecc71,color:#fff
     style REPOS fill:#1a5276,stroke:#3498db,color:#fff
 ```
+
+### ForgeNexus Enterprise — GitHub Actions (CI/CD)
+
+```mermaid
+flowchart LR
+    PR["Pull Request"] --> PR_REVIEW["PR Review<br/>Blast Radius"]
+    PR --> CONTRACT["Contract Check<br/>oasdiff"]
+    PR_REVIEW --> COMMENT["PR Comment<br/>Risk Level"]
+    CONTRACT --> COMMENT
+
+    PUSH["Push to main"] --> REINDEX["Auto Reindex<br/>Incremental"]
+    PUSH --> WIKI["Auto Wiki<br/>LLM Generation"]
+
+    REINDEX --> ARTIFACT["Index Artifact<br/>Share across CI"]
+    WIKI --> PAGES["GitHub Pages<br/>or Gist"]
+
+    PR_REVIEW --> STATUS["Status Check<br/>Branch Protection"]
+
+    style PR fill:#0f3460,stroke:#e94560,color:#fff
+    style PUSH fill:#0f3460,stroke:#e94560,color:#fff
+    style COMMENT fill:#1e8449,stroke:#2ecc71,color:#fff
+    style REINDEX fill:#1e8449,stroke:#2ecc71,color:#fff
+    style WIKI fill:#1e8449,stroke:#2ecc71,color:#fff
+```
+
+#### Quick Setup — PR Review in Your Repo
+
+```yaml
+# .github/workflows/forge-review.yml
+name: ForgeNexus PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: buiphucminhtam/forgewright/.github/actions/pr-review@main
+        with:
+          dry-run: 'false'
+          openapi-enabled: 'true'
+```
+
+#### CLI Commands (New in Enterprise)
+
+| Command | Mô tả |
+|---------|--------|
+| `pr-review <base> [head]` | PR blast radius analysis |
+| `impact <symbol>` | Symbol impact analysis |
+| `group contracts <group>` | View all contracts in group |
+| `group status <group>` | Check staleness of all repos |
+| `group query <group> <term>` | Search across all repos in group |
+
+#### Enterprise Features
+
+| Feature | CLI | GitHub Actions | Dry Run |
+|---------|-----|---------------|---------|
+| PR Review Blast Radius | ✅ | ✅ | ✅ |
+| OpenAPI Contract Check (oasdiff) | N/A | ✅ | ✅ |
+| Auto Wiki Generation | ✅ | ✅ | ✅ |
+| Auto Reindex (incremental/full) | ✅ | ✅ | ✅ |
+| Multi-Repo Group Management | ✅ | ✅ | ✅ |
+| Cross-Repo Impact Analysis | N/A | ✅ | ✅ |
+
+**Compliance: 100%** — All features support dry-run mode.
 
 ### Claude Code Hooks — Auto-Reindex Flow
 
