@@ -46,10 +46,14 @@ const IMPACT_EDGE_TYPES: import('../types.js').EdgeType[] = [
  * Uses CALLS, IMPORTS, HAS_METHOD, HAS_PROPERTY, ACCESSES, EXTENDS, IMPLEMENTS edges.
  */
 export function detectCommunities(db: ForgeDB): Community[] {
-  const placeholders = COMMUNITY_EDGE_TYPES.map(() => '?').join(', ')
-  const allEdges = (db as any).db
-    .prepare(`SELECT from_uid, to_uid, type FROM edges WHERE type IN (${placeholders})`)
-    .all(...COMMUNITY_EDGE_TYPES) as any[]
+  // KuzuDB: no IN() with string literals — fetch all edge records, filter in JS
+  const edgeRows = db.query(
+    `MATCH (e:CodeNode) WHERE e.rel_type IS NOT NULL RETURN e.rel_from AS from_uid, e.rel_to AS to_uid, e.rel_type AS type`,
+  )
+  const typeSet = new Set<string>(COMMUNITY_EDGE_TYPES)
+  const allEdges = edgeRows
+    .filter((r) => typeSet.has(r.type as string))
+    .map((r) => ({ from_uid: r.from_uid as string, to_uid: r.to_uid as string, type: r.type as string }))
 
   const adj = new Map<string, AdjEntry>()
   for (const e of allEdges) {
@@ -101,10 +105,13 @@ export function detectCommunities(db: ForgeDB): Community[] {
     if (!improved) break
   }
 
-  // Build community objects
+  // KuzuDB: nodes stored as CodeNode rows with rel_type IS NULL
+  const nodeNameRows = db.query(
+    `MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN n.uid AS uid, n.name AS name`,
+  )
   const nodeNames = new Map<string, string>()
-  for (const row of (db as any).db.prepare('SELECT uid, name FROM nodes').all() as any[]) {
-    nodeNames.set(row.uid, row.name)
+  for (const row of nodeNameRows) {
+    nodeNames.set(row.uid as string, row.name as string)
   }
 
   const commMap = new Map<string, Set<string>>()
@@ -149,19 +156,38 @@ export function detectCommunities(db: ForgeDB): Community[] {
  * Entry points are functions with names like handler, route, command, main, controller, endpoint.
  */
 export function traceProcesses(db: ForgeDB): Process[] {
-  const entries = (db as any).db
-    .prepare(
-      `
-    SELECT uid, name, file_path, type FROM nodes
-    WHERE type IN ('Function', 'Method')
-      AND (name LIKE '%handler%' OR name LIKE '%route%'
-       OR name LIKE '%command%' OR name LIKE '%main%'
-       OR name LIKE '%controller%' OR name LIKE '%endpoint%'
-       OR name LIKE '%action%' OR name LIKE '%submit%')
-    LIMIT 60
-  `,
-    )
-    .all() as any[]
+  // KuzuDB: nodes stored as CodeNode rows with rel_type IS NULL
+  // No LIKE in KuzuDB — filter by type first, then pattern-match in JS
+  const ENTRY_PATTERNS = [
+    /handler/i,
+    /route/i,
+    /command/i,
+    /^main$/i,
+    /controller/i,
+    /endpoint/i,
+    /action/i,
+    /submit/i,
+  ]
+  const matchesEntry = (name: string) => ENTRY_PATTERNS.some((p) => p.test(name))
+
+  // KuzuDB: no IN() operator with string literals in v0.11.x — query each type separately
+  const fnRows = [
+    ...db.query(
+      `MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.type = 'Function' RETURN n.uid AS uid, n.name AS name, n.filePath AS filePath, n.type AS type LIMIT 60`,
+    ),
+    ...db.query(
+      `MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.type = 'Method' RETURN n.uid AS uid, n.name AS name, n.filePath AS filePath, n.type AS type LIMIT 60`,
+    ),
+  ]
+  const entries = fnRows
+    .filter((r) => matchesEntry(r.name as string))
+    .slice(0, 60)
+    .map((r) => ({
+      uid: r.uid as string,
+      name: r.name as string,
+      filePath: r.filePath as string,
+      type: r.type as string,
+    }))
 
   const processes: Process[] = []
   const visited = new Set<string>()
@@ -176,7 +202,7 @@ export function traceProcesses(db: ForgeDB): Process[] {
       if (n?.community) commSet.add(n.community)
     }
 
-    const fn = entry.file_path?.toLowerCase() ?? ''
+    const fn = (entry.filePath ?? '').toLowerCase()
     let type: Process['type'] = 'unknown'
     if (fn.includes('route') || fn.includes('handler') || fn.includes('controller')) type = 'http'
     else if (fn.includes('cli') || fn.includes('command')) type = 'cli'

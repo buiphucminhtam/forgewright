@@ -91,29 +91,41 @@ export class FileScanner {
       })
       .filter(Boolean) as string[]
 
-    const patterns = exts.flatMap((ext) => [
-      `**/*${ext}`,
-      ...this.config.skipPatterns.map((s) => `!${s}`),
-    ])
+    // Glob all matching extensions (no exclusions — let the OS/glob handle recursion)
+    const patterns = exts.map((ext) => `**/*${ext}`)
 
     const matches = globSync(patterns, {
       cwd: this.basePath,
       absolute: true,
       nodir: true,
-      ignore: this.config.skipPatterns,
     })
 
     for (const absPath of matches) {
       try {
         const stat = statSync(absPath)
-        if (stat.size > this.config.maxFileSize) continue
+        const relPath = absPath.replace(this.basePath + '/', '')
+
+        // Post-filter: skip files in unwanted directories or with unwanted extensions
+        // Check by path segments — works at any depth (e.g. foo/bar/node_modules/x.ts)
+        const pathParts = relPath.split('/')
+        if (
+          pathParts.some((p) =>
+            ['node_modules', 'dist', 'build', 'vendor', 'coverage', 'android', 'ios', '__pycache__', '.git'].includes(p),
+          ) ||
+          absPath.endsWith('.d.ts') ||
+          absPath.endsWith('.map') ||
+          absPath.endsWith('.min.js') ||
+          stat.size > this.config.maxFileSize
+        )
+          continue
+
         const ext = extname(absPath).toLowerCase()
         const lang = EXT_MAP[ext]
         if (!lang) continue
         if (!this.config.languages.includes(lang) && !this.config.languages.includes(ext)) continue
         files.push({
           path: absPath,
-          relativePath: relative(this.basePath, absPath),
+          relativePath: relPath,
           language: lang,
           size: stat.size,
           extension: ext,

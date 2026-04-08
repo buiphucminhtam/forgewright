@@ -293,9 +293,9 @@ export class Indexer {
       // Partial: delete only affected communities, keep the rest
       this.deleteAffectedCommunities(changedFilePaths)
     } else {
-      // Full rebuild
-      this.db.exec('DELETE FROM communities')
-      this.db.exec('UPDATE nodes SET community = NULL')
+      // Full rebuild: use KuzuDB MATCH syntax (not SQLite DELETE/UPDATE)
+      this.db.exec('MATCH (c:Community) DELETE c')
+      this.db.exec('MATCH (n:CodeNode) WHERE n.rel_type IS NULL SET n.community = NULL')
     }
 
     // Run Leiden with timeout protection
@@ -319,8 +319,9 @@ export class Indexer {
 
     // ── 8. Process tracing ───────────────────────────────────────────────────
     progress('processes', 0)
-    this.db.exec('DELETE FROM processes')
-    this.db.exec('UPDATE nodes SET process_name = NULL')
+    // Use KuzuDB MATCH syntax (not SQLite DELETE/UPDATE)
+    this.db.exec('MATCH (p:Process) DELETE p')
+    this.db.exec('MATCH (n:CodeNode) WHERE n.rel_type IS NULL SET n.process = NULL')
 
     const processes = traceProcesses(this.db)
     for (const proc of processes) {
@@ -557,18 +558,19 @@ export class Indexer {
     }
 
     if (affectedComms.size > 0 && affectedComms.size < 20) {
+      // Partial: delete specific communities via KuzuDB MATCH DELETE
+      const commIds = [...affectedComms].map((c) => `"${esc(c)}"`).join(', ')
       try {
-        const placeholders = [...affectedComms].map(() => '"' + esc([...affectedComms][0]) + '"').join(', ')
-        this.db.connection.querySync(`DELETE FROM Community WHERE id IN (${[...affectedComms].map((c) => `"${esc(c)}"`).join(', ')})`)
-        this.db.connection.querySync(`MATCH (n:CodeNode) WHERE n.community IN [${[...affectedComms].map((c) => `"${esc(c)}"`).join(', ')}] SET n.community = NULL`)
+        this.db.connection.querySync(`MATCH (c:Community) WHERE c.id IN [${commIds}] DELETE c`)
+        this.db.connection.querySync(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.community IN [${commIds}] SET n.community = NULL`)
       } catch (e: any) {
         console.warn(`[ForgeNexus] deleteAffectedCommunities partial failed: ${e.message}`)
       }
     } else {
       // Too many affected communities — full rebuild
       try {
-        this.db.connection.querySync(`DELETE FROM Community`)
-        this.db.connection.querySync(`MATCH (n:CodeNode) SET n.community = NULL`)
+        this.db.connection.querySync(`MATCH (c:Community) DELETE c`)
+        this.db.connection.querySync(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL SET n.community = NULL`)
       } catch (e: any) {
         console.warn(`[ForgeNexus] deleteAffectedCommunities full failed: ${e.message}`)
       }

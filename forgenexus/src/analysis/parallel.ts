@@ -147,7 +147,7 @@ async function runPersistentPool(
   // Collect results
   const allResults: ParseResult[] = []
 
-  return new Promise((masterResolve, masterReject) => {
+  return new Promise<ParseResult[]>((masterResolve, masterReject) => {
     let settled = false
     const settledWorkers = new Set<number>()
 

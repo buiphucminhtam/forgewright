@@ -383,7 +383,11 @@ export class ForgeDB {
 
   // ─── Read Methods ───────────────────────────────────────────────────────────
 
-  private q(sql: string): Record<string, any>[] {
+  /**
+   * Low-level query: runs a KuzuDB Cypher query and returns rows.
+   * Flushes pending writes first. Returns [] on error.
+   */
+  query(sql: string): Record<string, any>[] {
     this.flushWrites()
     try {
       const result = this.conn.querySync(sql)
@@ -398,14 +402,14 @@ export class ForgeDB {
   }
 
   getNode(uid: string): CodeNode | null {
-    const rows = this.q(
+    const rows = this.query(
       `MATCH (n:CodeNode {uid: "${esc(uid)}"}) RETURN n.uid AS uid, n.type AS type, n.name AS name, n.filePath AS filePath, n.line AS line, n.endLine AS endLine, n.columnNum AS columnNum, n.returnType AS returnType, n.paramCount AS paramCount, n.declaredType AS declaredType, n.language AS language, n.signature AS signature, n.community AS community, n.process AS process LIMIT 1`,
     )
     return rows.length > 0 ? rowToNode(rows[0]) : null
   }
 
   getNodesByName(name: string): CodeNode[] {
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.name = "${esc(name)}" RETURN n.uid AS uid, n.type AS type, n.name AS name, n.filePath AS filePath, n.line AS line, n.endLine AS endLine, n.columnNum AS columnNum, n.returnType AS returnType, n.paramCount AS paramCount, n.declaredType AS declaredType, n.language AS language, n.signature AS signature, n.community AS community, n.process AS process ORDER BY n.filePath`,
     ).map(rowToNode)
   }
@@ -426,47 +430,47 @@ export class ForgeDB {
     } else if (op === 'ends') {
       where = `n.rel_type IS NULL AND n.name CONTAINS '${esc(search)}'${typeFilter}`
     }
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE ${where} RETURN n.uid AS uid, n.type AS type, n.name AS name, n.filePath AS filePath, n.line AS line, n.endLine AS endLine, n.columnNum AS columnNum, n.returnType AS returnType, n.paramCount AS paramCount, n.declaredType AS declaredType, n.language AS language, n.signature AS signature, n.community AS community, n.process AS process LIMIT ${limit}`,
     ).map(rowToNode)
   }
 
   getNodesByType(type: NodeType, limit?: number): CodeNode[] {
     const limitClause = limit ? ` LIMIT ${limit}` : ''
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.type = "${esc(type)}" RETURN n.uid AS uid, n.type AS type, n.name AS name, n.filePath AS filePath, n.line AS line, n.endLine AS endLine, n.columnNum AS columnNum, n.returnType AS returnType, n.paramCount AS paramCount, n.declaredType AS declaredType, n.language AS language, n.signature AS signature, n.community AS community, n.process AS process${limitClause}`,
     ).map(rowToNode)
   }
 
   getNodesByFile(filePath: string): CodeNode[] {
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.filePath = "${esc(filePath)}" RETURN n.uid AS uid, n.type AS type, n.name AS name, n.filePath AS filePath, n.line AS line, n.endLine AS endLine, n.columnNum AS columnNum, n.returnType AS returnType, n.paramCount AS paramCount, n.declaredType AS declaredType, n.language AS language, n.signature AS signature, n.community AS community, n.process AS process`,
     ).map(rowToNode)
   }
 
   getNodesByCommunity(communityId: string): CodeNode[] {
     // Nodes have a `community` field set by the indexer
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.community = "${esc(communityId)}" RETURN n.uid AS uid, n.type AS type, n.name AS name, n.filePath AS filePath, n.line AS line, n.endLine AS endLine, n.columnNum AS columnNum, n.returnType AS returnType, n.paramCount AS paramCount, n.declaredType AS declaredType, n.language AS language, n.signature AS signature, n.community AS community, n.process AS process ORDER BY n.line`,
     ).map(rowToNode)
   }
 
   getNodesByProcess(processId: string): CodeNode[] {
     // Nodes have a `process` field set by the indexer
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NULL AND n.process = "${esc(processId)}" RETURN n.uid AS uid, n.type AS type, n.name AS name, n.filePath AS filePath, n.line AS line, n.endLine AS endLine, n.columnNum AS columnNum, n.returnType AS returnType, n.paramCount AS paramCount, n.declaredType AS declaredType, n.language AS language, n.signature AS signature, n.community AS community, n.process AS process ORDER BY n.line`,
     ).map(rowToNode)
   }
 
   getAllNodes(): CodeNode[] {
     // Filter out edge records (stored as CodeNode rows with rel_type IS NOT NULL)
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN n.uid AS uid, n.type AS type, n.name AS name, n.filePath AS filePath, n.line AS line, n.endLine AS endLine, n.columnNum AS columnNum, n.returnType AS returnType, n.paramCount AS paramCount, n.declaredType AS declaredType, n.language AS language, n.signature AS signature, n.community AS community, n.process AS process`,
     ).map(rowToNode)
   }
 
   getAllFilePaths(): string[] {
-    return this.q(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN DISTINCT n.filePath AS filePath`).map(
+    return this.query(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN DISTINCT n.filePath AS filePath`).map(
       (r) => r.filePath as string,
     )
   }
@@ -474,47 +478,47 @@ export class ForgeDB {
   // ─── Edge Readers ───────────────────────────────────────────────────────────
 
   private edgeQuery(sql: string): CodeEdge[] {
-    return this.q(sql).map(rowToEdge)
+    return this.query(sql).map(rowToEdge)
   }
 
   getIncomingEdges(uid: string, type?: EdgeType): CodeEdge[] {
     const typeFilter = type ? ` AND n.rel_type = "${esc(type)}"` : ''
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL AND n.rel_to = "${esc(uid)}"${typeFilter} RETURN n.uid AS uid, n.rel_from AS rel_from, n.rel_to AS rel_to, n.rel_type AS rel_type, n.rel_confidence AS rel_confidence, n.rel_reason AS rel_reason, n.rel_step AS rel_step`,
     ).map(rowToEdge)
   }
 
   getOutgoingEdges(uid: string, type?: EdgeType): CodeEdge[] {
     const typeFilter = type ? ` AND n.rel_type = "${esc(type)}"` : ''
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL AND n.rel_from = "${esc(uid)}"${typeFilter} RETURN n.uid AS uid, n.rel_from AS rel_from, n.rel_to AS rel_to, n.rel_type AS rel_type, n.rel_confidence AS rel_confidence, n.rel_reason AS rel_reason, n.rel_step AS rel_step`,
     ).map(rowToEdge)
   }
 
   getAllEdges(type?: EdgeType): CodeEdge[] {
     const typeFilter = type ? ` AND n.rel_type = "${esc(type)}"` : ''
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL${typeFilter} RETURN n.uid AS uid, n.rel_from AS rel_from, n.rel_to AS rel_to, n.rel_type AS rel_type, n.rel_confidence AS rel_confidence, n.rel_reason AS rel_reason, n.rel_step AS rel_step`,
     ).map(rowToEdge)
   }
 
   getEdgeCount(type?: EdgeType): number {
     const typeFilter = type ? ` AND n.rel_type = "${esc(type)}"` : ''
-    const rows = this.q(`MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL${typeFilter} RETURN count(n) AS cnt`)
+    const rows = this.query(`MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL${typeFilter} RETURN count(n) AS cnt`)
     return rows.length > 0 ? Number(rows[0].cnt) : 0
   }
 
   // ─── Convenience Readers ─────────────────────────────────────────────────────
 
   getCallers(uid: string): CodeNode[] {
-    return this.q(
+    return this.query(
       `MATCH (caller:CodeNode)-[:CALLS]->(callee:CodeNode {uid: "${esc(uid)}"})
        RETURN caller.uid AS uid, caller.type AS type, caller.name AS name, caller.filePath AS filePath, caller.line AS line, caller.endLine AS endLine, caller.columnNum AS columnNum, caller.returnType AS returnType, caller.paramCount AS paramCount, caller.declaredType AS declaredType, caller.language AS language, caller.signature AS signature, caller.community AS community, caller.process AS process, caller.embedding AS embedding`,
     ).map(rowToNode)
   }
 
   getCallees(uid: string): CodeNode[] {
-    return this.q(
+    return this.query(
       `MATCH (caller:CodeNode {uid: "${esc(uid)}"})-[:CALLS]->(callee:CodeNode)
        RETURN callee.uid AS uid, callee.type AS type, callee.name AS name, callee.filePath AS filePath, callee.line AS line, callee.endLine AS endLine, callee.columnNum AS columnNum, callee.returnType AS returnType, callee.paramCount AS paramCount, callee.declaredType AS declaredType, callee.language AS language, callee.signature AS signature, callee.community AS community, callee.process AS process, callee.embedding AS embedding`,
     ).map(rowToNode)
@@ -522,7 +526,7 @@ export class ForgeDB {
 
   getImporters(uid: string): CodeNode[] {
     const name = uid.split(':')[1] ?? uid
-    return this.q(
+    return this.query(
       `MATCH (importer:CodeNode)-[:IMPORTS]->(mod:CodeNode)
        WHERE mod.uid CONTAINS "${esc(name)}"
        RETURN importer.uid AS uid, importer.type AS type, importer.name AS name, importer.filePath AS filePath, importer.line AS line, importer.endLine AS endLine, importer.columnNum AS columnNum, importer.returnType AS returnType, importer.paramCount AS paramCount, importer.declaredType AS declaredType, importer.language AS language, importer.signature AS signature, importer.community AS community, importer.process AS process, importer.embedding AS embedding`,
@@ -538,7 +542,7 @@ export class ForgeDB {
   }
 
   getMethods(ownerUid: string): CodeNode[] {
-    return this.q(
+    return this.query(
       `MATCH (cls:CodeNode)-[:HAS_METHOD]->(m:CodeNode)
        WHERE cls.uid = "${esc(ownerUid)}"
        RETURN m.uid AS uid, m.type AS type, m.name AS name, m.filePath AS filePath, m.line AS line, m.endLine AS endLine, m.columnNum AS columnNum, m.returnType AS returnType, m.paramCount AS paramCount, m.declaredType AS declaredType, m.language AS language, m.signature AS signature, m.community AS community, m.process AS process, m.embedding AS embedding`,
@@ -546,7 +550,7 @@ export class ForgeDB {
   }
 
   getProperties(ownerUid: string): CodeNode[] {
-    return this.q(
+    return this.query(
       `MATCH (cls:CodeNode)-[:HAS_PROPERTY]->(p:CodeNode)
        WHERE cls.uid = "${esc(ownerUid)}"
        RETURN p.uid AS uid, p.type AS type, p.name AS name, p.filePath AS filePath, p.line AS line, p.endLine AS endLine, p.columnNum AS columnNum, p.returnType AS returnType, p.paramCount AS paramCount, p.declaredType AS declaredType, p.language AS language, p.signature AS signature, p.community AS community, p.process AS process, p.embedding AS embedding`,
@@ -558,7 +562,7 @@ export class ForgeDB {
   }
 
   getMembersOf(classUid: string): CodeNode[] {
-    return this.q(
+    return this.query(
       `MATCH (cls:CodeNode)-[:HAS_METHOD|HAS_PROPERTY]->(m:CodeNode)
        WHERE cls.uid = "${esc(classUid)}"
        RETURN m.uid AS uid, m.type AS type, m.name AS name, m.filePath AS filePath, m.line AS line, m.endLine AS endLine, m.columnNum AS columnNum, m.returnType AS returnType, m.paramCount AS paramCount, m.declaredType AS declaredType, m.language AS language, m.signature AS signature, m.community AS community, m.process AS process, m.embedding AS embedding`,
@@ -566,7 +570,7 @@ export class ForgeDB {
   }
 
   private relTargets(uid: string, relType: string): CodeNode[] {
-    return this.q(
+    return this.query(
       `MATCH (caller:CodeNode)-[:${relType}]->(target:CodeNode)
        WHERE caller.uid = "${esc(uid)}"
        RETURN target.uid AS uid, target.type AS type, target.name AS name, target.filePath AS filePath, target.line AS line, target.endLine AS endLine, target.columnNum AS columnNum, target.returnType AS returnType, target.paramCount AS paramCount, target.declaredType AS declaredType, target.language AS language, target.signature AS signature, target.community AS community, target.process AS process, target.embedding AS embedding`,
@@ -575,7 +579,7 @@ export class ForgeDB {
 
   getRouteHandlers(): { route: string; handler: CodeNode }[] {
     // Edges stored as CodeNode rows with rel_type IS NOT NULL
-    const results = this.q(
+    const results = this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type = "HANDLES_ROUTE" RETURN n.uid AS uid, n.rel_from AS rel_from, n.rel_to AS rel_to`,
     )
     return results
@@ -588,7 +592,7 @@ export class ForgeDB {
   }
 
   getToolHandlers(): { tool: string; handler: CodeNode }[] {
-    const results = this.q(
+    const results = this.query(
       `MATCH (n:CodeNode) WHERE n.rel_type = "HANDLES_TOOL" RETURN n.uid AS uid, n.rel_from AS rel_from, n.rel_to AS rel_to`,
     )
     return results
@@ -607,14 +611,14 @@ export class ForgeDB {
   // ─── Community Readers ────────────────────────────────────────────────────────
 
   getCommunity(id: string): Community | null {
-    const rows = this.q(
+    const rows = this.query(
       `MATCH (c:Community {id: "${esc(id)}"}) RETURN c.id AS id, c.name AS name, c.keywords AS keywords, c.description AS description, c.cohesion AS cohesion LIMIT 1`,
     )
     return rows.length > 0 ? rowToCommunity(rows[0]) : null
   }
 
   getAllCommunities(): Community[] {
-    return this.q(
+    return this.query(
       `MATCH (c:Community) RETURN c.id AS id, c.name AS name, c.keywords AS keywords, c.description AS description, c.cohesion AS cohesion ORDER BY c.cohesion DESC`,
     ).map(rowToCommunity)
   }
@@ -622,13 +626,13 @@ export class ForgeDB {
   // ─── Process Readers ─────────────────────────────────────────────────────────
 
   getAllProcesses(): Process[] {
-    return this.q(
+    return this.query(
       `MATCH (p:Process) RETURN p.id AS id, p.name AS name, p.type AS type, p.entryPointUid AS entryPointUid, p.terminalUids AS terminalUids, p.communities AS communities`,
     ).map(rowToProcess)
   }
 
   getProcess(id: string): Process | null {
-    const rows = this.q(
+    const rows = this.query(
       `MATCH (p:Process {id: "${esc(id)}"}) RETURN p.id AS id, p.name AS name, p.type AS type, p.entryPointUid AS entryPointUid, p.terminalUids AS terminalUids, p.communities AS communities LIMIT 1`,
     )
     return rows.length > 0 ? rowToProcess(rows[0]) : null
@@ -645,7 +649,7 @@ export class ForgeDB {
     query: string,
     limit = 20,
   ): { uid: string; name: string; filePath: string; type: string }[] {
-    const rows = this.q(
+    const rows = this.query(
       `MATCH (n:CodeNode) WHERE n.name CONTAINS "${esc(query)}" RETURN n.uid AS uid, n.name AS name, n.filePath AS filePath, n.type AS type LIMIT ${limit}`,
     )
     return rows.map((r) => ({
@@ -657,7 +661,7 @@ export class ForgeDB {
   }
 
   searchFiles(query: string, limit = 20): string[] {
-    return this.q(
+    return this.query(
       `MATCH (n:CodeNode) WHERE n.filePath CONTAINS "${esc(query)}" RETURN DISTINCT n.filePath AS filePath LIMIT ${limit}`,
     ).map((r) => r.filePath as string)
   }
@@ -665,11 +669,11 @@ export class ForgeDB {
   // ─── Stats ───────────────────────────────────────────────────────────────────
 
   getStats(): RepoStats {
-    const nodes = this.q(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN count(n) AS cnt`)
-    const edges = this.q(`MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL RETURN count(n) AS cnt`)
-    const files = this.q(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN count(DISTINCT n.filePath) AS cnt`)
-    const comms = this.q(`MATCH (c:Community) RETURN count(c) AS cnt`)
-    const procs = this.q(`MATCH (p:Process) RETURN count(p) AS cnt`)
+    const nodes = this.query(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN count(n) AS cnt`)
+    const edges = this.query(`MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL RETURN count(n) AS cnt`)
+    const files = this.query(`MATCH (n:CodeNode) WHERE n.rel_type IS NULL RETURN count(DISTINCT n.filePath) AS cnt`)
+    const comms = this.query(`MATCH (c:Community) RETURN count(c) AS cnt`)
+    const procs = this.query(`MATCH (p:Process) RETURN count(p) AS cnt`)
     // Embeddings: no longer stored in CodeNode table (KuzuDB UNWIND CREATE + DOUBLE[] is incompatible)
     // Embeddings are stored in a separate key-value store if needed
     const embs = 0
@@ -696,11 +700,11 @@ export class ForgeDB {
   } {
     const stats = this.getStats()
     const byType: Record<string, number> = {}
-    for (const r of this.q(`MATCH (n:CodeNode) RETURN n.type AS type, count(n) AS cnt`)) {
+    for (const r of this.query(`MATCH (n:CodeNode) RETURN n.type AS type, count(n) AS cnt`)) {
       byType[r.type as string] = Number(r.cnt)
     }
     const byEdgeType: Record<string, number> = {}
-    for (const r of this.q(`MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL RETURN n.rel_type AS type, count(n) AS cnt`)) {
+    for (const r of this.query(`MATCH (n:CodeNode) WHERE n.rel_type IS NOT NULL RETURN n.rel_type AS type, count(n) AS cnt`)) {
       byEdgeType[r.type as string] = Number(r.cnt)
     }
     return { ...stats, byType, byEdgeType }
@@ -726,7 +730,7 @@ export class ForgeDB {
   }
 
   getMeta(key: string): string | null {
-    const rows = this.q(
+    const rows = this.query(
       `MATCH (m:CodeNode {uid: "META:${esc(key)}"}) RETURN m.signature AS value LIMIT 1`,
     )
     return rows.length > 0 ? (rows[0].value as string) : null
@@ -771,7 +775,7 @@ export class ForgeDB {
   }
 
   listRepos(): { name: string; path: string; indexedAt: string; stats: RepoStats }[] {
-    return this.q(
+    return this.query(
       `MATCH (reg:RepoRegistry) RETURN reg.name AS name, reg.path AS path, reg.indexedAt AS indexedAt, reg.stats AS stats`,
     ).map((row) => ({
       name: row.name as string,
