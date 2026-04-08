@@ -48,6 +48,19 @@ function esc(s: string): string {
   return String(s ?? '').replace(/"/g, '\\"')
 }
 
+/** Standardized phase labels (mirrors GitNexus run-analyze.ts PHASE_LABELS) */
+export const PHASE_LABELS: Record<Phase, string> = {
+  scanning: 'Scanning files',
+  parsing: 'Parsing code',
+  edges: 'Resolving edges',
+  binding: 'Binding propagation',
+  communities: 'Detecting communities',
+  processes: 'Tracing execution flows',
+  fts: 'Building search index',
+  embeddings: 'Generating embeddings',
+  complete: 'Index complete',
+}
+
 export type Phase =
   | 'scanning'
   | 'parsing'
@@ -96,11 +109,11 @@ export class Indexer {
   }
 
   async analyze(
-    onProgress?: (phase: Phase, pct: number) => void,
+    onProgress?: (phase: Phase, pct: number, message?: string) => void,
     incremental = true,
   ): Promise<RepoStats> {
-    const progress = (phase: Phase, pct: number) => {
-      if (onProgress) onProgress(phase, pct)
+    const progress = (phase: Phase, pct: number, message?: string) => {
+      if (onProgress) onProgress(phase, pct, message ?? PHASE_LABELS[phase])
     }
 
     // ── 0. Early exit on unchanged commit ─────────────────────────────────────
@@ -133,7 +146,7 @@ export class Indexer {
     }
 
     // ── 2. Parallel/chunked parsing ────────────────────────────────────────────
-    progress('parsing', 0)
+    progress('parsing', 0, 'Starting file parsing...')
 
     // Build parse tasks
     const tasks: ParseTask[] = []
@@ -157,10 +170,13 @@ export class Indexer {
     let newEdges: CodeEdge[] = []
 
     if (isLargeRepo) {
-      // Use parallel parser for large repos
+      // Use parallel parser for large repos (with progress + stall timeout)
       const os = await import('os')
       const result = await parseFilesParallel(tasks, {
         concurrency: Math.max(1, Math.floor(os.cpus().length * 0.75)),
+        onProgress: (done, total) => {
+          progress('parsing', Math.round((done / total) * 100), `Parsing ${done}/${total} files...`)
+        },
       })
       newNodes = result.nodes
       newEdges = result.edges
@@ -180,13 +196,13 @@ export class Indexer {
         } catch {
           // skip
         }
-        if (i % 100 === 0 || i === tasks.length - 1) {
-          progress('parsing', Math.round((i / tasks.length) * 100))
+        if (i % 50 === 0 || i === tasks.length - 1) {
+          progress('parsing', Math.round((i / tasks.length) * 100), `Parsing ${i + 1}/${tasks.length} files...`)
         }
       }
     }
 
-    progress('parsing', 100)
+    progress('parsing', 100, `Parsed ${newNodes.length} nodes, ${newEdges.length} edges`)
 
     // ── 3. Incremental update: remove old nodes for changed files ──────────────
     const changedFilePaths = new Set([...pathsToParse])

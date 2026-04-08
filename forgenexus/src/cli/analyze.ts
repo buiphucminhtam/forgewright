@@ -53,8 +53,9 @@ export async function analyze(opts: {
     process.env.EMBEDDING_PROVIDER = embeddingProvider
   }
 
-  const stats = await indexer.analyze((phase, pct) => {
-    log(`[${phase}] ${pct}%`)
+  const stats = await indexer.analyze((phase, pct, message) => {
+    const label = message ? ` ${message}` : ''
+    log(`[${phase}] ${pct}%${label}`)
   }, incremental && !force)
 
   indexer.close()
