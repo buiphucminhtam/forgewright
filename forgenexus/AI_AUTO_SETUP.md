@@ -19,6 +19,7 @@ You are working with ForgeNexus, a self-hosted code intelligence tool. Follow th
 
 - **Public npm:** The package name `forgenexus` may return **404 Not Found** on registry.npmjs.org. That is expected until it is published. **Do not** assume `npm install forgenexus` works.
 - **Source of truth:** ForgeNexus lives in the **Forgewright** monorepo under the folder `forgenexus/` (e.g. GitHub: `buiphucminhtam/forgewright`).
+- **⚠️ Pull before you start:** Before ANY setup or update, always pull the **latest** `main` branch first. Several bugs (lock conflict, wrong stats, duplicate nodes) were fixed in recent commits — running stale code will hit those bugs. Run: `git pull origin main` from the forgewright root, then reinstall + rebuild.
 - **Wrong path:** Do **not** try to build ForgeNexus from `.antigravity/plugins/production-grade` or other plugin folders — that is **not** ForgeNexus and will fail (e.g. unrelated `husky` / dependency issues).
 - **Built output:** The repo does **not** ship `dist/` in git. After installing from Git, you **must** run `npm run build` inside the installed `forgenexus` package so `dist/cli/index.js` exists.
 - **Where to put this doc:** Do not copy this file under `.next/` (Next.js build output is ephemeral). Keep a copy under `docs/` or link to the upstream raw URL.
@@ -273,8 +274,10 @@ node node_modules/forgenexus/dist/cli/index.js status
 ### Update dependency after Git install
 
 ```bash
-npm update forgenexus
-# or reinstall with same git URL, then rebuild:
+# Always pull latest first (bug fixes are in main)
+git pull origin main
+# then reinstall + rebuild
+npm install "git+https://github.com/buiphucminhtam/forgewright.git#main:forgenexus" --save-dev
 cd node_modules/forgenexus && npm install --include=dev && npm run build && cd ../..
 ```
 
