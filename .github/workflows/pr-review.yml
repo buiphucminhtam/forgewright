@@ -9,6 +9,11 @@ on:
         description: 'Base branch to compare against'
         required: false
         default: ''
+      dry_run:
+        description: 'Dry run mode (no actual posting)'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   forge-review:
@@ -41,13 +46,19 @@ jobs:
           echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
           
           DRY_RUN=""
-          echo "mode=LIVE" >> $GITHUB_OUTPUT
+          if [ "${{ inputs.dry_run }}" == "true" ]; then
+            DRY_RUN="--dry-run"
+            echo "mode=DRY_RUN" >> $GITHUB_OUTPUT
+          else
+            echo "mode=LIVE" >> $GITHUB_OUTPUT
+          fi
           
           echo "Running ForgeNexus PR Review..."
           REPORT=$(npx forgenexus pr-review "$BASE_REF" HEAD $DRY_RUN 2>&1 || echo "⚠️ ForgeNexus analysis skipped — index may be stale or unavailable")
           echo "report=$REPORT" >> $GITHUB_OUTPUT
 
       - name: Post PR Comment
+        if: github.event_name != 'workflow_dispatch' || inputs.dry_run != true
         uses: actions/github-script@v7
         with:
           script: |
@@ -104,6 +115,8 @@ jobs:
   # ─── OpenAPI Contract Check (if OpenAPI files exist) ────────────────────────
   openapi-check:
     runs-on: ubuntu-latest
+    # Skip this job in dry-run mode
+    if: github.event_name != 'workflow_dispatch' || inputs.dry_run != true
     permissions:
       contents: read
       pull-requests: write
