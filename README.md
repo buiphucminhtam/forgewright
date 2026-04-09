@@ -6,9 +6,9 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-7.8.1-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/version-7.8.2-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-52-brightgreen.svg" alt="Skills" />
-  <img src="https://img.shields.io/badge/modes-19-blueviolet.svg" alt="Modes" />
+  <img src="https://img.shields.io/badge/modes-22-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
   <img src="https://img.shields.io/badge/Game_Dev-Unity·Unreal·Godot·Roblox-FF4500.svg" alt="Game Dev" />
   <img src="https://img.shields.io/badge/Code_Intelligence-ForgeNexus·GitNexus-4B0082.svg" alt="Code Intelligence" />
@@ -33,6 +33,7 @@ Output: production-ready code, reviewed, tested, scored 0–100
 
 **Pipeline:** `DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW`
 **Skills:** 52 specialized AI agents covering SaaS, game dev, XR, AI/ML, data engineering, and growth.
+**Modes:** 22 execution modes for precise task routing.
 
 ---
 
@@ -250,7 +251,7 @@ flowchart TD
     START(["User Request"])
     ORCH(["Orchestrator<br/>production-grade"])
 
-    ORCH --> MODE{{"Classify Request<br/>19 Modes"}}
+    ORCH --> MODE{{"Classify Request<br/>22 Modes"}}
 
     MODE --> |"Full Build"| PHASE_DEFINE["DEFINE Phase<br/>BA → PM → Architect"]
     MODE --> |"Feature"| PHASE_FEATURE["FEATURE Phase<br/>PM → BE/FE → QA"]
@@ -258,7 +259,8 @@ flowchart TD
     MODE --> |"Ship"| PHASE_SHIP["SHIP Phase<br/>DevOps → SRE"]
     MODE --> |"Game Build"| PHASE_GAME["GAME Phase<br/>Designer → Engine → Level → Audio"]
     MODE --> |"AI Build"| PHASE_AI["AI Phase<br/>AI Engineer → Prompt → Data"]
-    MODE --> |"Other"| PHASE_OTHER["Other Modes<br/>Specialized Skills"]
+    MODE --> |"Migrate"| PHASE_MIGRATE["MIGRATE Phase<br/>DB Eng → Software Eng → QA"]
+    MODE --> |"Other"| PHASE_OTHER["Other Modes<br/>Test · Review · Design · Debug · etc."]
 
     PHASE_DEFINE --> GATE1{{"Gate 1<br/>Approve?"}}
     PHASE_FEATURE --> GATE1
@@ -610,22 +612,30 @@ flowchart LR
     INPUT --> F13["Marketing<br/>Growth Strategy"]
     INPUT --> F14["Debug Fix<br/>Bug Trace"]
     INPUT --> F15["Analyze<br/>Requirements"]
+    INPUT --> F16["Migrate DB<br/>Upgrade/Move"]
+    INPUT --> F17["Harden Security<br/>Audit + Fix"]
+    INPUT --> F18["Design Architecture<br/>API/Data Model"]
+    INPUT --> F19["Write Docs<br/>Documentation"]
 
-    F1 --> M1{{"Mode:<br/>Full Build"}}
-    F2 --> M2{{"Mode:<br/>Feature"}}
-    F3 --> M3{{"Mode:<br/>Game Build"}}
-    F4 --> M4{{"Mode:<br/>XR Build"}}
-    F5 --> M5{{"Mode:<br/>Mobile"}}
-    F6 --> M6{{"Mode:<br/>AI Build"}}
-    F7 --> M7{{"Mode:<br/>Review"}}
-    F8 --> M8{{"Mode:<br/>Test"}}
-    F9 --> M9{{"Mode:<br/>Ship"}}
-    F10 --> M10{{"Mode:<br/>Design"}}
-    F11 --> M11{{"Mode:<br/>Optimize"}}
-    F12 --> M12{{"Mode:<br/>Research"}}
-    F13 --> M13{{"Mode:<br/>Marketing"}}
-    F14 --> M14{{"Mode:<br/>Debug"}}
-    F15 --> M15{{"Mode:<br/>Analyze"}}
+    F1 --> M1{{"Full Build"}}
+    F2 --> M2{{"Feature"}}
+    F3 --> M3{{"Game Build"}}
+    F4 --> M4{{"XR Build"}}
+    F5 --> M5{{"Mobile"}}
+    F6 --> M6{{"AI Build"}}
+    F7 --> M7{{"Review"}}
+    F8 --> M8{{"Test"}}
+    F9 --> M9{{"Ship"}}
+    F10 --> M10{{"Design"}}
+    F11 --> M11{{"Optimize"}}
+    F12 --> M12{{"Research"}}
+    F13 --> M13{{"Marketing"}}
+    F14 --> M14{{"Debug"}}
+    F15 --> M15{{"Analyze"}}
+    F16 --> M16{{"Migrate"}}
+    F17 --> M17{{"Harden"}}
+    F18 --> M18{{"Architect"}}
+    F19 --> M19{{"Document"}}
 
     M1 --> SK1["BA → PM → Architect →<br/>BE → FE → QA →<br/>Security → DevOps → SRE"]
     M2 --> SK2["PM → Architect →<br/>BE/FE → QA"]
@@ -642,6 +652,10 @@ flowchart LR
     M13 --> SK13["Growth Marketer →<br/>Conversion Optimizer"]
     M14 --> SK14["Debugger →<br/>Engineer"]
     M15 --> SK15["Business Analyst"]
+    M16 --> SK16["Database Engineer →<br/>Software Eng → QA"]
+    M17 --> SK17["Security → QA →<br/>Code Review → Fix"]
+    M18 --> SK18["Solution Architect"]
+    M19 --> SK19["Technical Writer"]
 
     style INPUT fill:#1a1a2e,stroke:#e94560,color:#fff
     style M1 fill:#533483,stroke:#9b59b6,color:#fff
@@ -659,6 +673,10 @@ flowchart LR
     style M13 fill:#533483,stroke:#9b59b6,color:#fff
     style M14 fill:#533483,stroke:#9b59b6,color:#fff
     style M15 fill:#533483,stroke:#9b59b6,color:#fff
+    style M16 fill:#533483,stroke:#9b59b6,color:#fff
+    style M17 fill:#533483,stroke:#9b59b6,color:#fff
+    style M18 fill:#533483,stroke:#9b59b6,color:#fff
+    style M19 fill:#533483,stroke:#9b59b6,color:#fff
     style SK1 fill:#0f3460,stroke:#3498db,color:#fff
     style SK2 fill:#0f3460,stroke:#3498db,color:#fff
     style SK3 fill:#0f3460,stroke:#3498db,color:#fff
@@ -674,6 +692,10 @@ flowchart LR
     style SK13 fill:#0f3460,stroke:#3498db,color:#fff
     style SK14 fill:#0f3460,stroke:#3498db,color:#fff
     style SK15 fill:#0f3460,stroke:#3498db,color:#fff
+    style SK16 fill:#0f3460,stroke:#3498db,color:#fff
+    style SK17 fill:#0f3460,stroke:#3498db,color:#fff
+    style SK18 fill:#0f3460,stroke:#3498db,color:#fff
+    style SK19 fill:#0f3460,stroke:#3498db,color:#fff
 ```
 
 ---
@@ -804,7 +826,7 @@ If Forgewright helps you ship faster, you can support the project here:
 ---
 
 <p align="center">
-  <strong>Forgewright — 52 AI skills. 19 modes. 15 protocols. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
+  <strong>Forgewright — 52 AI skills. 22 modes. 15 protocols. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
 </p>
 <p align="center">
   <em>Plan with precision. Build with confidence. Scale with intelligence.</em>
