@@ -252,9 +252,24 @@ See `skills/` directory for full list:
 
 ## Self-Check
 
-Before finishing any task:
-1. ✅ Request was interpreted (Step 0 completed)
-2. ✅ Unclear requests triggered clarification
-3. ✅ Plan was created and scored ≥ 8.0
-4. ✅ Large features have antigravity planning
-5. ✅ `forgenexus_impact` was run (if editing code)
+Before finishing ANY task, verify ALL of the following:
+
+| # | Check | Action if Failed |
+|---|-------|-----------------|
+| 1 | ✅ Request interpreted? | Go back to Step 0 |
+| 2 | ✅ Plan scored ≥ 8.0? | Improve plan first |
+| 3 | ✅ Code changed? | → Run QA tests |
+| 4 | ✅ Tests written? | Write tests (mandatory) |
+| 5 | ✅ Tests passed? | Fix issues first |
+| 6 | ✅ forgenexus_impact run? | Run impact analysis |
+| 7 | ✅ Scope respected? | Flag scope creep |
+| 8 | ✅ User approval? | Wait for approval (if gate) |
+
+**⚠️ MANDATORY RULE:**
+```
+Code Changed → Write Tests → Run Tests → Verify Pass → Done
+     ↑                                    ↓
+     ←←←←←←←← NO. ALWAYS RUN TESTS ←←←←←←
+```
+
+**Never wait for user to ask for tests. After any code change, auto-run QA.**

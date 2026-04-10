@@ -285,7 +285,43 @@ All modes share these behaviors:
 - Apply sensitive file protection protocol for all file operations
 - **Run plan quality loop** on EVERY skill invocation — plan first, score ≥ 8.0 before any work begins
 - **Asynchronous Heartbeat:** Periodically emit human-readable status updates (e.g., "Running tests...", "Applying self-healing fix 2/5...") so the user knows the AI is working and hasn't frozen.
+- **⚠️ QA AUTO-RUN (MANDATORY):** After any code change (build, fix, feature), ALWAYS run QA/Testing WITHOUT waiting for user prompt. The sequence is: BUILD → TEST → VERIFY → DONE. Never finish without testing.
 - Engagement mode: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution.
+
+## ⚠️ Self-Check Before Finishing (MANDATORY)
+
+**BEFORE declaring a task complete, verify ALL of the following:**
+
+| # | Check | Action if Failed |
+|---|-------|-----------------|
+| 1 | **Request interpreted?** | If Step 0 wasn't completed, go back and do it |
+| 2 | **Plan scored ≥ 8.0?** | If < 8.0, improve plan before proceeding |
+| 3 | **Code changes made?** | If yes → run QA tests |
+| 4 | **Tests written?** | If code changed → write tests |
+| 5 | **Tests passed?** | If tests exist → run them |
+| 6 | **forgenexus_impact run?** | If editing symbols → run impact analysis |
+| 7 | **Scope respected?** | If scope creep detected → flag to user |
+| 8 | **User approval obtained?** | If gate exists → wait for approval |
+
+**⚠️ NEVER finish a task without completing checks 3-5 if code was changed.**
+
+### QA Test Sequence (MANDATORY after any code change)
+
+```
+Code Changed?
+    ↓ YES
+Run QA Engineer (Express mode)
+    ↓
+Write tests (unit → integration → e2e)
+    ↓
+Run tests and verify ALL pass
+    ↓
+Report results
+    ↓
+Done ✓
+```
+
+**Do NOT wait for user to ask for tests. Run them automatically.**
 
 ### Feature Mode
 
@@ -296,10 +332,12 @@ Add a feature to an existing codebase. Lightweight DEFINE → BUILD → TEST.
 3. **PM (Express depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only). If BA ran, use `ba-package.md` to reduce questions.
 4. **Architect (scoped)** — design how this feature fits the existing architecture. New endpoints, schema changes, component additions. NOT a full system redesign.
 5. **Build** — Software Engineer and/or Frontend Engineer implement the feature
-6. **Test** — QA writes and runs tests for the new feature
+6. **⚠️ Test (AUTO-RUN)** — **Immediately** write and run tests for the new feature. **DO NOT WAIT for user to ask.** Sequence: Build → Test → Verify → Done.
 7. **Optional: Review** — Code Reviewer checks the new code against existing patterns
 
 **1 gate:** After PM scoping (step 3), confirm scope before building.
+
+**⚠️ IMPORTANT:** Step 6 (Test) is MANDATORY. After building, ALWAYS run tests without waiting for user prompt.
 
 ### Harden Mode
 
