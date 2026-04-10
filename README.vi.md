@@ -10,7 +10,7 @@
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/version-7.9.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-55-brightgreen.svg" alt="Skills" />
-  <img src="https://img.shields.io/badge/modes-22-blueviolet.svg" alt="Modes" />
+  <img src="https://img.shields.io/badge/modes-23-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-15-00CED1.svg" alt="Protocols" />
   <img src="https://img.shields.io/badge/Game_Dev-Unity·Unreal·Godot·Roblox-FF4500.svg" alt="Game Dev" />
   <img src="https://img.shields.io/badge/Code_Intelligence-ForgeNexus·GitNexus-4B0082.svg" alt="Code Intelligence" />
@@ -164,7 +164,11 @@ node --version
 ```mermaid
 flowchart TD
     START(["Bạn nói: 'Build app bán hàng'"])
+    CHAT_INT{{"Chat Interpreter<br/>(chat-interpreter)"}}
     ORCH(["Forgewright<br/>(người quản lý)"])
+
+    START --> CHAT_INT
+    CHAT_INT --> |"intent parsed"| ORCH
 
     ORCH --> MODE{{"Chọn chế độ<br/>phù hợp"}}
 
@@ -183,9 +187,8 @@ flowchart TD
     GATE2 --> |"❌ No"| REV2["Sửa lại BUILD"]
     SHIP --> END(["🎉 Production Ready"])
 
-    START --> ORCH
-
     style START fill:#1a1a2e,stroke:#e94560,color:#fff
+    style CHAT_INT fill:#8e44ad,stroke:#9b59b6,color:#fff
     style ORCH fill:#0f3460,stroke:#e94560,color:#fff
     style MODE fill:#533483,stroke:#9b59b6,color:#fff
     style GATE1 fill:#533483,stroke:#f39c12,color:#fff
@@ -201,7 +204,11 @@ flowchart TD
 ```mermaid
 flowchart TD
     START(["User Request"])
+    CHAT_INT{{"Chat Interpreter"}}
     ORCH(["Orchestrator<br/>production-grade"])
+
+    START --> CHAT_INT
+    CHAT_INT --> ORCH
 
     ORCH --> MODE{{"Classify Request<br/>22 Modes"}}
 
@@ -232,10 +239,10 @@ flowchart TD
     GATE3 --> |"No"| REVISE3["Revise SHIP"]
     SUSTAIN --> GROW["GROW Phase<br/>Growth → Optimize"]
 
-    START --> ORCH
     GROW --> END(["Output: Production<br/>Ready Code"])
 
     style START fill:#1a1a2e,stroke:#e94560,color:#fff
+    style CHAT_INT fill:#8e44ad,stroke:#9b59b6,color:#fff
     style END fill:#16213e,stroke:#0f3460,color:#e94560
     style ORCH fill:#0f3460,stroke:#e94560,color:#fff
     style MODE fill:#533483,stroke:#e94560,color:#fff
@@ -256,16 +263,17 @@ flowchart TD
     PRE2["② ContextLoader<br/>Memory + conventions + KIs"]
     PRE3["③ SkillRegistry<br/>Progressive skill discovery"]
     PRE4["④ Guardrail<br/>Pre-tool authorization"]
-    PRE5["⑤ Summarization<br/>Auto-compress if >70% budget"]
+    PRE5["⑤ PromptMaster<br/>Intent parse · Prompt techniques · Templates"]
+    PRE6["⑥ Summarization<br/>Auto-compress if >70% budget"]
     SKILL_EXEC["SKILL EXECUTION<br/>Engineer → QA → Security → ..."]
-    POST1["⑥ QualityGate<br/>4-level validation 0-100"]
-    POST2["⑦ BrownfieldSafety<br/>Regression + change manifest"]
-    POST3["⑧ TaskTracking<br/>Update task.md"]
-    POST4["⑨ Memory Turn-Close<br/>REQ: DONE: OPEN: → mem0"]
-    POST5["⑩ GracefulFailure<br/>Retry + exit strategy"]
+    POST1["⑦ QualityGate<br/>4-level validation 0-100"]
+    POST2["⑧ BrownfieldSafety<br/>Regression + change manifest"]
+    POST3["⑨ TaskTracking<br/>Update task.md"]
+    POST4["⑩ Memory Turn-Close<br/>REQ: DONE: OPEN: → mem0"]
+    POST5["⑪ GracefulFailure<br/>Retry + exit strategy"]
     RESULT(["Result / Next Skill"])
 
-    REQ --> PRE1 --> PRE2 --> PRE3 --> PRE4 --> PRE5 --> SKILL_EXEC
+    REQ --> PRE1 --> PRE2 --> PRE3 --> PRE4 --> PRE5 --> PRE6 --> SKILL_EXEC
     SKILL_EXEC --> POST1 --> POST2 --> POST3 --> POST4 --> POST5 --> RESULT
 
     style REQ fill:#1a1a2e,stroke:#e94560,color:#fff
@@ -276,6 +284,7 @@ flowchart TD
     style PRE3 fill:#1a5276,stroke:#3498db,color:#fff
     style PRE4 fill:#1a5276,stroke:#3498db,color:#fff
     style PRE5 fill:#1a5276,stroke:#3498db,color:#fff
+    style PRE6 fill:#1a5276,stroke:#3498db,color:#fff
     style POST1 fill:#1e8449,stroke:#2ecc71,color:#fff
     style POST2 fill:#1e8449,stroke:#2ecc71,color:#fff
     style POST3 fill:#1e8449,stroke:#2ecc71,color:#fff
@@ -694,6 +703,7 @@ flowchart LR
     INPUT --> F17["Harden Security<br/>Audit + Fix"]
     INPUT --> F18["Design Architecture<br/>API/Data Model"]
     INPUT --> F19["Write Docs<br/>Tài liệu"]
+    INPUT --> F20["Improve Prompts<br/>Prompt Engineering"]
 
     F1 --> M1{{"Full Build"}}
     F2 --> M2{{"Feature"}}
@@ -714,6 +724,7 @@ flowchart LR
     F17 --> M17{{"Harden"}}
     F18 --> M18{{"Architect"}}
     F19 --> M19{{"Document"}}
+    F20 --> M20{{"Prompt"}}
 
     M1 --> SK1["BA → PM → Architect →<br/>BE → FE → QA →<br/>Security → DevOps → SRE"]
     M2 --> SK2["PM → Architect →<br/>BE/FE → QA"]
@@ -734,6 +745,7 @@ flowchart LR
     M17 --> SK17["Security → QA →<br/>Code Review → Fix"]
     M18 --> SK18["Solution Architect"]
     M19 --> SK19["Technical Writer"]
+    M20 --> SK20["Prompt Engineer →<br/>chat-interpreter →<br/>prompt-techniques → templates"]
 
     style INPUT fill:#1a1a2e,stroke:#e94560,color:#fff
     style M1 fill:#533483,stroke:#9b59b6,color:#fff
@@ -755,6 +767,7 @@ flowchart LR
     style M17 fill:#533483,stroke:#9b59b6,color:#fff
     style M18 fill:#533483,stroke:#9b59b6,color:#fff
     style M19 fill:#533483,stroke:#9b59b6,color:#fff
+    style M20 fill:#8e44ad,stroke:#9b59b6,color:#fff
     style SK1 fill:#0f3460,stroke:#3498db,color:#fff
     style SK2 fill:#0f3460,stroke:#3498db,color:#fff
     style SK3 fill:#0f3460,stroke:#3498db,color:#fff
@@ -774,6 +787,7 @@ flowchart LR
     style SK17 fill:#0f3460,stroke:#3498db,color:#fff
     style SK18 fill:#0f3460,stroke:#3498db,color:#fff
     style SK19 fill:#0f3460,stroke:#3498db,color:#fff
+    style SK20 fill:#8e44ad,stroke:#3498db,color:#fff
 ```
 
 ---
