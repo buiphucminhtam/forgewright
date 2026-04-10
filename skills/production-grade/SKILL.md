@@ -274,6 +274,14 @@ All skills MUST follow the sensitive file protection protocol:
 
 !`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 8 criteria, threshold 8.0/10, improve loop with research + skill self-improvement"`
 
+## Execution Blocker Loop
+
+**ANY time a blocker is encountered during implementation, MUST run this loop BEFORE asking user:**
+
+!`cat skills/_shared/protocols/execution-blocker-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: assess → research (web/codebase/docs) → synthesize → attempt → verify → improve skill. Max 3 cycles."`
+
+**⚠️ NEVER give up after 1 failed attempt. ALWAYS research first.**
+
 ## Mode Execution (Non-Full-Build)
 
 All modes share these behaviors:

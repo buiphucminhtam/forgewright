@@ -199,6 +199,32 @@ Before ANY skill does ANY work:
 
 Max 3 iterations. No skill may skip this.
 
+## ⚠️ Execution Blocker Loop (NEW)
+
+**ANY time you get stuck during implementation:**
+
+```
+1. ASSESS → Categorize blocker (Technical/Architectural/Tooling/External/Unknown)
+2. RESEARCH → Search web, codebase, Forgewright skills, docs
+3. SYNTHESIZE → Extract key insight (NOT: "found 10 articles", YES: "the pattern is X")
+4. ATTEMPT → Apply solution
+5. VERIFY → Did it work?
+   ├─ YES → ✅ Continue, log lesson to SKILL.md
+   └─ NO → IMPROVE SKILL → Retry (max 3 cycles)
+```
+
+**⚠️ NEVER give up after 1 failed attempt. ALWAYS research first.**
+
+**Blocker Types:**
+| Type | Research Priority |
+|------|------------------|
+| Technical | Web search → Docs |
+| Architectural | Forgewright skills → Docs |
+| Tooling | Protocols → Web |
+| External | Web search → Alternatives |
+
+**After solving:** Append lesson to relevant SKILL.md for future reference.
+
 ## Large Feature Planning (Antigravity)
 
 For features with 3+ components, create planning structure BEFORE starting:
