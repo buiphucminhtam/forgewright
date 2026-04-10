@@ -1,5 +1,7 @@
 # Forgewright — Adaptive AI Orchestrator
 
+> **This is the Vietnamese version.** For English documentation, see [README.md](./README.md)
+
 <p align="center">
   <img src="assets/forgewright-banner.png" alt="Forgewright Banner" width="100%" />
 </p>
@@ -18,68 +20,68 @@
 
 ---
 
-## TL;DR — What is Forgewright?
+## TL;DR — Forgewright là gì?
 
-**Imagine:** You have a team of 55 AI experts. Each one excels at a different task — writing code, security auditing, game design, performance optimization. Forgewright is the "manager" — when you say "I want to build an e-commerce app", it automatically knows which experts to call, in what order, and how to validate quality.
+**Tưởng tượng:** Bạn có một đội ngũ 55 chuyên gia AI. Mỗi người giỏi một việc khác nhau — viết code, kiểm tra bảo mật, thiết kế game, tối ưu tốc độ. Forgewright là "người quản lý" — khi bạn nói "tôi muốn build một app bán hàng", nó tự biết cần gọi chuyên gia nào, theo thứ tự nào, và kiểm tra chất lượng ra sao.
 
-> **One sentence:** Forgewright automatically selects the right AI expert for the right job, from idea to production.
+> **Một câu:** Forgewright tự động chọn đúng chuyên gia AI cho đúng việc, từ ý tưởng đến sản phẩm.
 
-### Concrete Example
+### Ví dụ cụ thể
 
 ```
-You say:  "Build me a t-shirt selling website"
+Bạn nói:  "Build cho tôi một website bán áo thun"
 
     ↓
 
-Forgewright automatically does:
-    1. Market analysis (Business Analyst)
-    2. Feature planning (Product Manager)
-    3. Database & API architecture design (Solution Architect)
-    4. Write backend + frontend code (Software Engineer)
-    5. Write unit tests (QA Engineer)
-    6. Security audit (Security Engineer)
-    7. Deploy to server (DevOps)
-    8. Monitor & optimize (SRE)
+Forgewright tự động làm:
+    1. Phân tích thị trường (Business Analyst)
+    2. Lên kế hoạch tính năng (Product Manager)
+    3. Thiết kế kiến trúc database & API (Solution Architect)
+    4. Viết code backend + frontend (Software Engineer)
+    5. Viết unit test (QA Engineer)
+    6. Kiểm tra bảo mật (Security Engineer)
+    7. Deploy lên server (DevOps)
+    8. Monitor & tối ưu (SRE)
 
     ↓
 
-Result: Production-ready website, reviewed, tested, score 0-100
+Kết quả: Website production-ready, đã review, đã test, score 0-100
 ```
 
-### 4 Power Levels — Choose what fits you
+### 4 cấp độ "sức mạnh" — chọn cái phù hợp với bạn
 
 ```mermaid
 flowchart LR
     subgraph L1["⚡ Level 1 — Basic"]
         direction TB
-        L1A["✅ What's included"]
-        L1B["• 52 AI skills"]
-        L1C["• Automated pipeline"]
-        L1D["• Default on install"]
+        L1A["✅ Đã có gì"]
+        L1B["• 52 kỹ năng AI"]
+        L1C["• Pipeline tự động"]
+        L1D["• Mặc định khi cài đặt"]
     end
 
     subgraph L2["⚡⚡ Level 2 — Smart"]
         direction TB
-        L2A["🔍 What's added"]
-        L2B["• Ask 'what does this affect?' → instant answer"]
-        L2C["• Automatic blast radius analysis"]
-        L2D["• Requires: Node.js 18+"]
+        L2A["🔍 Thêm gì"]
+        L2B["• Hỏi 'thay đổi này ảnh hưởng gì?' → trả lời ngay"]
+        L2C["• Phân tích blast radius tự động"]
+        L2D["• Cần: Node.js 18+"]
     end
 
     subgraph L3["⚡⚡⚡ Level 3 — Memory"]
         direction TB
-        L3A["🧠 What's added"]
-        L3B["• Remembers everything across chat sessions"]
-        L3C["• Saves decisions, architecture, blockers"]
-        L3D["• Requires: Python 3.8+"]
+        L3A["🧠 Thêm gì"]
+        L3B["• Nhớ mọi thứ qua các lần chat"]
+        L3C["• Lưu quyết định, kiến trúc, blockers"]
+        L3D["• Cần: Python 3.8+"]
     end
 
     subgraph L4["⚡⚡⚡⚡ Level 4 — Full Power"]
         direction TB
-        L4A["🚀 Everything"]
-        L4B["• 12 ForgeNexus tools in chat"]
-        L4C["• Instant code lookup"]
-        L4D["• Requires: MCP server"]
+        L4A["🚀 Tất cả"]
+        L4B["• 12 công cụ ForgeNexus trong chat"]
+        L4C["• Tra cứu code tức thì"]
+        L4D["• Cần: MCP server"]
     end
 
     L1 --> L2 --> L3 --> L4
@@ -96,24 +98,24 @@ flowchart LR
 
 ---
 
-## Getting Started — 3 Easiest Steps
+## Cách bắt đầu — 3 bước dễ nhất
 
 ```mermaid
 flowchart TD
-    START(["Hey, where do I start?"])
+    START(["Bạn ơi, bắt đầu từ đâu?"])
 
-    START --> Q1{"Are you a developer?"}
-    Q1 --> |"No / Just starting"| EASY["✅ Level 1 — Basic<br/>Just install and go<br/>52 skills ready"]
-    Q1 --> |"Yes, want smarter"| SMART["✅ Level 2 — Smart<br/>Add code analysis<br/>Ask anything"]
+    START --> Q1{"Bạn là dev?"}
+    Q1 --> |"Không / mới bắt đầu"| EASY["✅ Level 1 — Basic<br/>Chỉ cần cài là xong<br/>52 kỹ năng có sẵn"]
+    Q1 --> |"Có, muốn thông minh hơn"| SMART["✅ Level 2 — Smart<br/>Thêm phân tích code<br/>Hỏi gì đáp nấy"]
 
-    SMART --> Q2{"Need memory across chats?"}
-    Q2 --> |"Yes, long project"| MEM["✅ Level 3 — Memory<br/>Save all decisions<br/>No need to repeat"]
-    Q2 --> |"No / CI only"| MCP["✅ Level 4 — Full Power<br/>12 tools in chat<br/>Instant code lookup"]
+    SMART --> Q2{"Cần nhớ qua các lần chat?"}
+    Q2 --> |"Có, dự án dài"| MEM["✅ Level 3 — Memory<br/>Lưu mọi quyết định<br/>Không phải nói lại"]
+    Q2 --> |"Không cần / CI only"| MCP["✅ Level 4 — Full Power<br/>12 công cụ trong chat<br/>Tra cứu code tức thì"]
 
-    EASY --> DONE1["🎉 Done! Start using now"]
-    SMART --> DONE2["🎉 Done! One extra step"]
-    MEM --> DONE3["🎉 Done! Two extra steps"]
-    MCP --> DONE4["🎉 Done! Two extra steps"]
+    EASY --> DONE1["🎉 Xong! Bắt đầu dùng ngay"]
+    SMART --> DONE2["🎉 Xong! Cài thêm 1 bước"]
+    MEM --> DONE3["🎉 Xong! Cài thêm 2 bước"]
+    MCP --> DONE4["🎉 Xong! Cài thêm 2 bước"]
 
     style START fill:#1a1a2e,stroke:#e94560,color:#fff
     style EASY fill:#1a5276,stroke:#3498db,color:#fff
@@ -128,57 +130,57 @@ flowchart TD
     style Q2 fill:#533483,stroke:#9b59b6,color:#fff
 ```
 
-### Quick Setup (no bash knowledge needed)
+### Cài đặt nhanh (không cần biết bash)
 
-#### If you're using Cursor / VS Code
+#### Nếu bạn dùng Cursor / VS Code
 
-1. Open Cursor or VS Code
-2. Type your question or request
-3. **Done!** No additional installation needed — Level 1 is already working
+1. Mở Cursor hoặc VS Code
+2. Điền câu hỏi hoặc yêu cầu của bạn
+3. **Xong!** Không cần cài gì thêm — Level 1 đã hoạt động
 
-#### If you want to get smarter (Level 2+)
+#### Nếu bạn muốn thông minh hơn (Level 2+)
 
-Open **Terminal** (or Command Prompt) and run:
+Mở **Terminal** (hoặc Command Prompt) và chạy:
 
 ```bash
-# Check Node.js
+# Kiểm tra Node.js
 node --version
 
-# If you see a version (e.g. v20.x.x) → you're good
-# If you get "command not found" → install Node.js first
+# Nếu thấy số (vd: v20.x.x) → đã đủ điều kiện
+# Nếu báo "command not found" → cài Node.js trước
 #   macOS: brew install node
-#   Windows: download from nodejs.org
+#   Windows: tải từ nodejs.org
 ```
 
 ---
 
-## The Flow — How Forgewright Works
+## The Flow — Forgewright làm việc thế nào?
 
-> All diagrams below render well on GitHub, GitLab, and any mermaid viewer.
-> If you don't see the diagrams — make sure your viewer uses **mermaid 10+**.
+> Tất cả sơ đồ dưới đây hiển thị tốt trên GitHub, GitLab, và mọi trình xem mermaid.
+> Nếu không thấy hình — đảm bảo trình xem dùng **mermaid 10+**.
 
-### Overview — Who Does What
+### Tổng quan — Ai làm gì
 
 ```mermaid
 flowchart TD
-    START(["You say: 'Build an e-commerce app'"])
-    ORCH(["Forgewright<br/>(the manager)"])
+    START(["Bạn nói: 'Build app bán hàng'"])
+    ORCH(["Forgewright<br/>(người quản lý)"])
 
-    ORCH --> MODE{{"Select the right<br/>mode"}}
+    ORCH --> MODE{{"Chọn chế độ<br/>phù hợp"}}
 
-    MODE --> |"Full build"| DEFINE["DEFINE<br/>Analyze → Plan"]
-    MODE --> |"Add feature"| FEATURE["FEATURE<br/>PM → Code → Test"]
+    MODE --> |"Build toàn bộ"| DEFINE["DEFINE<br/>Phân tích → Kế hoạch"]
+    MODE --> |"Thêm tính năng"| FEATURE["FEATURE<br/>PM → Code → Test"]
     MODE --> |"Build game"| GAME["GAME<br/>Designer → Code → Test"]
     MODE --> |"AI feature"| AI["AI<br/>AI Engineer → Prompt → Data"]
-    MODE --> |"Other"| OTHER["Other<br/>Test · Review · Design · Debug"]
+    MODE --> |"Khác"| OTHER["Khác<br/>Test · Review · Design · Debug"]
 
     DEFINE --> GATE1{{"OK?"}}
     FEATURE --> GATE1
     GATE1 --> |"✅ Yes"| BUILD["BUILD<br/>Code → Test → Security"]
-    GATE1 --> |"❌ No"| REV1["Revise DEFINE"]
+    GATE1 --> |"❌ No"| REV1["Sửa lại DEFINE"]
     BUILD --> GATE2{{"OK?"}}
     GATE2 --> |"✅ Yes"| SHIP["SHIP<br/>Deploy → Monitor"]
-    GATE2 --> |"❌ No"| REV2["Revise BUILD"]
+    GATE2 --> |"❌ No"| REV2["Sửa lại BUILD"]
     SHIP --> END(["🎉 Production Ready"])
 
     START --> ORCH
@@ -245,7 +247,7 @@ flowchart TD
     style REVISE3 fill:#c0392b,stroke:#e74c3c,color:#fff
 ```
 
-### Middleware Chain (every skill execution)
+### Middleware Chain (mỗi lần chạy skill)
 
 ```mermaid
 flowchart TD
@@ -329,7 +331,7 @@ sequenceDiagram
     User->>Orch: Session End
 ```
 
-### Game Build Pipeline (18 game skills)
+### Game Build Pipeline (18 kỹ năng game)
 
 ```mermaid
 flowchart TD
@@ -384,7 +386,7 @@ flowchart TD
     style ART_STYLE fill:#1e8449,stroke:#2ecc71,color:#fff
 ```
 
-### Full Build Pipeline (6 Phases + 3 Gates)
+### Full Build Pipeline (6 Phase + 3 Cổng kiểm tra)
 
 ```mermaid
 flowchart LR
@@ -476,7 +478,7 @@ flowchart TD
     style TAG fill:#1e8449,stroke:#2ecc71,color:#fff
 ```
 
-### ForgeNexus Analyze Pipeline (code analysis)
+### ForgeNexus Analyze Pipeline (phân tích code)
 
 ```mermaid
 flowchart LR
@@ -543,7 +545,7 @@ flowchart LR
     style META fill:#2c3e50,stroke:#7f8c8d
 ```
 
-### Multi-Repo Group Management
+### Multi-Repo Group Management (quản lý nhóm multi-repo)
 
 ```mermaid
 flowchart TD
@@ -598,30 +600,30 @@ flowchart LR
     style WIKI fill:#1e8449,stroke:#2ecc71,color:#fff
 ```
 
-#### Quick Setup — PR Review for your repo
+#### Cài đặt nhanh — PR Review cho repo của bạn
 
-#### CLI Commands (Enterprise)
+#### Lệnh CLI (Enterprise)
 
-| Command | Description |
-|---------|-------------|
-| `pr-review <base> [head]` | Analyze PR blast radius |
-| `impact <symbol>` | Analyze symbol impact |
-| `group contracts <group>` | View all contracts in group |
-| `group status <group>` | Check staleness of all repos |
-| `group query <group> <term>` | Search across all repos |
+| Lệnh | Mô tả |
+|-------|--------|
+| `pr-review <base> [head]` | Phân tích blast radius của PR |
+| `impact <symbol>` | Phân tích ảnh hưởng của symbol |
+| `group contracts <group>` | Xem tất cả contracts trong group |
+| `group status <group>` | Kiểm tra staleness của tất cả repos |
+| `group query <group> <term>` | Tìm kiếm xuyên suốt các repos |
 
-#### Enterprise Features
+#### Tính năng Enterprise
 
-| Feature | CLI | GitHub Actions | Dry Run |
-|---------|-----|---------------|---------|
+| Tính năng | CLI | GitHub Actions | Dry Run |
+|------------|-----|---------------|---------|
 | PR Review Blast Radius | ✅ | ✅ | ✅ |
-| OpenAPI contract check (oasdiff) | N/A | ✅ | ✅ |
-| Auto-generate Wiki | ✅ | ✅ | ✅ |
-| Auto Reindex (incremental/full) | ✅ | ✅ | ✅ |
-| Multi-Repo Group Management | ✅ | ✅ | ✅ |
-| Cross-repo impact analysis | N/A | ✅ | ✅ |
+| Kiểm tra contract OpenAPI (oasdiff) | N/A | ✅ | ✅ |
+| Tạo Wiki tự động | ✅ | ✅ | ✅ |
+| Auto Reindex (tăng dần/đầy đủ) | ✅ | ✅ | ✅ |
+| Quản lý Multi-Repo Groups | ✅ | ✅ | ✅ |
+| Phân tích ảnh hưởng xuyên repos | N/A | ✅ | ✅ |
 
-**Completion: 100%** — All features support dry-run mode.
+**Độ hoàn thiện: 100%** — Tất cả tính năng đều hỗ trợ dry-run mode.
 
 ### Claude Code Hooks — Auto-Reindex
 
@@ -667,31 +669,31 @@ flowchart TD
     style G3 fill:#d35400,stroke:#e67e22,color:#fff
 ```
 
-### 22 Modes — What You Say, Forgewright Chooses
+### 22 Modes — Bạn nói gì, Forgewright chọn cái đó
 
 ```mermaid
 flowchart LR
-    INPUT["You say..."]
+    INPUT["Bạn nói..."]
 
     INPUT --> F1["Build SaaS<br/>Production Grade"]
-    INPUT --> F2["Add feature"]
+    INPUT --> F2["Thêm tính năng"]
     INPUT --> F3["Build Game<br/>Unity/Unreal/Godot/Roblox"]
     INPUT --> F4["Build VR/AR"]
     INPUT --> F5["Build Mobile<br/>iOS/Android"]
     INPUT --> F6["AI Feature<br/>RAG/LLM/Chatbot"]
-    INPUT --> F7["Review Code<br/>Quality check"]
-    INPUT --> F8["Write Tests"]
+    INPUT --> F7["Review Code<br/>Kiểm tra chất lượng"]
+    INPUT --> F8["Viết Tests"]
     INPUT --> F9["Deploy CI/CD<br/>Docker/Terraform"]
     INPUT --> F10["Design UI<br/>UX Research"]
     INPUT --> F11["Optimize<br/>Performance"]
-    INPUT --> F12["Deep research"]
+    INPUT --> F12["Research sâu"]
     INPUT --> F13["Marketing"]
     INPUT --> F14["Debug Fix<br/>Bug Trace"]
     INPUT --> F15["Analyze<br/>Requirements"]
     INPUT --> F16["Migrate DB"]
     INPUT --> F17["Harden Security<br/>Audit + Fix"]
     INPUT --> F18["Design Architecture<br/>API/Data Model"]
-    INPUT --> F19["Write Docs"]
+    INPUT --> F19["Write Docs<br/>Tài liệu"]
 
     F1 --> M1{{"Full Build"}}
     F2 --> M2{{"Feature"}}
@@ -776,26 +778,26 @@ flowchart LR
 
 ---
 
-## 55 Skills — Which One, When?
+## 55 Skills — Dùng cái nào, khi nào?
 
 ```mermaid
 flowchart TD
-    USER["What do you want to do?"]
+    USER["Bạn muốn làm gì?"]
 
-    USER --> |"Build new website/app"| SaaS["📦 Core Engineering<br/>22 skills"]
-    USER --> |"Build game (Unity/Unreal/Godot)"| GAME["🎮 Game Development<br/>18 skills"]
-    USER --> |"Optimize / debug code"| OPT["🔧 Optimization & Debug<br/>Performance · Debugger · QA"]
-    USER --> |"Research / data analysis"| DATA["📊 Data & AI<br/>AI Engineer · Data Scientist · NotebookLM"]
+    USER --> |"Build website/app mới"| SaaS["📦 Core Engineering<br/>22 kỹ năng"]
+    USER --> |"Build game (Unity/Unreal/Godot)"| GAME["🎮 Game Development<br/>18 kỹ năng"]
+    USER --> |"Tối ưu / debug code"| OPT["🔧 Optimization & Debug<br/>Performance · Debugger · QA"]
+    USER --> |"Research / phân tích dữ liệu"| DATA["📊 Data & AI<br/>AI Engineer · Data Scientist · NotebookLM"]
     USER --> |"Deploy / CI/CD / infra"| DEVOPS["🚀 DevOps & Ship<br/>DevOps · SRE · Database"]
-    USER --> |"Marketing / growth"| GROW["📈 Growth<br/>Growth Marketer · Conversion Optimizer"]
+    USER --> |"Marketing / tăng trưởng"| GROW["📈 Growth<br/>Growth Marketer · Conversion Optimizer"]
     USER --> |"Design / UX"| DESIGN["🎨 Design & UX<br/>UX Researcher · UI Designer"]
 
-    SaaS --> SaaS_DETAIL["<b>22 skills:</b><br/>Business Analyst · Product Manager<br/>Solution Architect · Software Engineer<br/>Frontend · QA · Security · DevOps · SRE<br/>Database · API Designer · Prompt Engineer"]
-    GAME --> GAME_DETAIL["<b>18 skills:</b><br/>Game Designer · Unity/Unreal/Godot/Roblox Engineer<br/>Level Designer · Narrative Designer<br/>Technical Artist · Game Audio Engineer<br/>XR Engineer"]
-    OPT --> OPT_DETAIL["<b>Optimize:</b> Performance Engineer<br/><b>Debug:</b> Debugger → Software Engineer<br/><b>Test:</b> QA Engineer"]
+    SaaS --> SaaS_DETAIL["<b>22 kỹ năng:</b><br/>Business Analyst · Product Manager<br/>Solution Architect · Software Engineer<br/>Frontend · QA · Security · DevOps · SRE<br/>Database · API Designer · Prompt Engineer"]
+    GAME --> GAME_DETAIL["<b>18 kỹ năng:</b><br/>Game Designer · Unity/Unreal/Godot/Roblox Engineer<br/>Level Designer · Narrative Designer<br/>Technical Artist · Game Audio Engineer<br/>XR Engineer"]
+    OPT --> OPT_DETAIL["<b>Tối ưu:</b> Performance Engineer<br/><b>Debug:</b> Debugger → Software Engineer<br/><b>Test:</b> QA Engineer"]
     DATA --> DATA_DETAIL["<b>AI:</b> AI Engineer · Prompt Engineer · Data Scientist<br/><b>Research:</b> NotebookLM Researcher<br/><b>Web:</b> Web Scraper · XLSX Engineer"]
     DEVOPS --> DEVOPS_DETAIL["<b>Ship:</b> DevOps · SRE · Performance Engineer<br/><b>Data:</b> Database Engineer<br/><b>API:</b> API Designer"]
-    GROW --> GROW_DETAIL["<b>Growth:</b> Growth Marketer<br/><b>Conversion:</b> Conversion Optimizer"]
+    GROW --> GROW_DETAIL["<b>Tăng trưởng:</b> Growth Marketer<br/><b>Chuyển đổi:</b> Conversion Optimizer"]
     DESIGN --> DESIGN_DETAIL["<b>Research:</b> UX Researcher<br/><b>Design:</b> UI Designer<br/><b>Accessibility:</b> Accessibility Engineer"]
 
     style USER fill:#1a1a2e,stroke:#e94560,color:#fff
@@ -817,86 +819,86 @@ flowchart TD
 
 ---
 
-## Detailed Setup
+## Cài đặt chi tiết
 
-### Method 1: Add to another project as submodule
+### Cách 1: Thêm vào dự án khác như submodule
 
-**Step 1:** Open Terminal, run from your project root:
+**Bước 1:** Mở Terminal, chạy từ thư mục gốc dự án của bạn:
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forgewright.git \
   .antigravity/plugins/production-grade
 ```
 
-**Step 2:** Copy the 2 required files:
+**Bước 2:** Copy 2 file cần thiết:
 
 ```bash
 cp .antigravity/plugins/production-grade/AGENTS.md .
 cp .antigravity/plugins/production-grade/CLAUDE.md .
 ```
 
-**Step 3:** Commit:
+**Bước 3:** Commit:
 
 ```bash
 git add .gitmodules .antigravity AGENTS.md CLAUDE.md
 git commit -m "feat: add forgewright"
 ```
 
-**Step 4:** Initialize the submodule:
+**Bước 4:** Khởi tạo submodule:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-### Method 2: Upgrade to Level 2 (Smart)
+### Cách 2: Nâng cấp lên Level 2 (Smart)
 
-Requires: **Node.js 18+**
+Cần: **Node.js 18+**
 
 ```bash
-# Check
+# Kiểm tra
 node --version
 
-# If missing → download from nodejs.org
+# Nếu chưa có → tải tại nodejs.org
 # macOS: brew install node
 ```
 
-Then:
+Sau đó:
 
 ```bash
 npx --yes forgenexus analyze "$(pwd)"
 ```
 
-Wait 1-2 minutes (first time). Done!
+Đợi 1-2 phút (lần đầu). Xong!
 
-### Method 3: Add memory (Level 3)
+### Cách 3: Thêm bộ nhớ (Level 3)
 
-Requires: **Python 3.8+**
+Cần: **Python 3.8+**
 
 ```bash
-# Check
+# Kiểm tra
 python3 --version
 ```
 
-Then:
+Sau đó:
 
 ```bash
 bash .antigravity/plugins/production-grade/scripts/ensure-mem0.sh "$(pwd)"
 ```
 
-### Method 4: Install MCP server (Level 4)
+### Cách 4: Cài MCP server (Level 4)
 
-Run one command:
+Chạy 1 lệnh:
 
 ```bash
 bash .antigravity/plugins/production-grade/scripts/mcp-generate.sh
 ```
 
-Then restart Cursor/VS Code.
+Sau đó khởi động lại Cursor/VS Code.
 
-### Verify your installation
+### Kiểm tra đã cài đúng chưa
 
 ```bash
-echo "=== Verification ==="
+echo "=== Kiểm tra ==="
 echo "Skills: $(ls .antigravity/plugins/production-grade/skills/ -1 2>/dev/null | wc -l | tr -d ' ')"
 echo "ForgeNexus: $([ -f .antigravity/plugins/production-grade/forgenexus/dist/cli/index.js ] && echo 'OK' || echo 'MISSING')"
 echo "MCP: $([ -d .forgewright/mcp-server ] && echo 'OK' || echo 'MISSING')"
@@ -905,11 +907,11 @@ echo "Memory: $([ -f .forgewright/memory.jsonl ] && echo 'OK' || echo 'MISSING')
 
 ---
 
-## Optional Enhancements
+## Tính năng bổ sung
 
 ### Research — NotebookLM CLI (v0.5.19)
 
-> **AI research that never gets it wrong.** Use Google NotebookLM to read documents, create summaries, quizzes, flashcards, podcasts, reports, slides, and more.
+> **AI nghiên cứu không sai.** Dùng Google NotebookLM để đọc tài liệu, tạo tóm tắt, quiz, flashcards, podcast, báo cáo, slide, và hơn thế nữa.
 
 ```bash
 # Install (uv recommended)
@@ -950,68 +952,68 @@ cd paperclip && pnpm dev
 
 ---
 
-## Quality Gate — Automatic Scoring
+## Quality Gate — Chấm điểm tự động
 
-Run anytime to score your project 0-100:
+Chạy bất kỳ lúc nào để chấm điểm dự án 0-100:
 
 ```bash
 bash scripts/forge-validate.sh
 
-# CI mode (exit code only)
+# Chế độ CI (chỉ exit code)
 bash scripts/forge-validate.sh --quiet
 
-# JSON report
+# Báo cáo JSON
 bash scripts/forge-validate.sh --json
 ```
 
-| Score | Grade | Meaning |
+| Điểm | Grade | Ý nghĩa |
 |-------|-------|---------|
-| 90–100 | A | Production ready |
-| 80–89 | B | Minor issues |
-| 70–79 | C | Should review |
-| 60–69 | D | Fix before deploy |
-| < 60 | F | Not acceptable — blocks deploy |
+| 90–100 | A | Sẵn sàng production |
+| 80–89 | B | Có vài lỗi nhỏ |
+| 70–79 | C | Nên review |
+| 60–69 | D | Sửa trước khi deploy |
+| < 60 | F | Không chấp nhận được — chặn deploy |
 
 ---
 
-## Troubleshooting
+## Xử lý sự cố thường gặp
 
-| Issue | Solution |
-|-------|----------|
-| `forgenexus: command not found` | Use `npx forgenexus` instead of `forgenexus` |
-| `npm install` fails in submodule | Check `node --version` (needs 18+) |
-| Can't see MCP tools | Restart Cursor/VS Code after config change |
-| Stale index | Run `npx forgenexus analyze "$(pwd)"` |
-| Submodule not initialized | `git submodule update --init --recursive` |
-| `realpath` not found (macOS) | `brew install coreutils` |
-| `python3` not found | Install Python 3.8+ for memory feature |
-| Windows: `bash` not found | Use equivalent PowerShell commands |
-| Mermaid diagrams not showing | Make sure viewer uses **mermaid 10+**. GitHub/GitLab supported. |
-| `better-sqlite3` error after merge | Run `cd forgenexus && npm install` to install `kuzu` instead |
-
----
-
-## Available Workflow Shortcuts
-
-| Command | What it does |
-|---------|--------------|
-| `/setup` | First-time setup as git submodule |
-| `/update` | Check for and install updates (safe, keeps your changes) |
-| `/pipeline` | View full pipeline, modes, and skills list |
-| `/onboard` | Deep project analysis — creates `.forgewright/project-profile.json` |
-| `/mcp` | Generate or regenerate MCP server config |
-| `/setup-mobile-test` | Set up mobile testing for Android/iOS |
+| Vấn đề | Cách xử lý |
+|---------|------------|
+| `forgenexus: command not found` | Dùng `npx forgenexus` thay vì `forgenexus` |
+| `npm install` bị lỗi trong submodule | Kiểm tra `node --version` (cần 18+) |
+| Không thấy MCP tools | Khởi động lại Cursor/VS Code sau khi đổi config |
+| Index cũ | Chạy `npx forgenexus analyze "$(pwd)"` |
+| Submodule chưa khởi tạo | `git submodule update --init --recursive` |
+| `realpath` không tìm thấy (macOS) | `brew install coreutils` |
+| `python3` không tìm thấy | Cài Python 3.8+ cho tính năng memory |
+| Windows: `bash` không tìm thấy | Dùng lệnh PowerShell tương đương |
+| Sơ đồ mermaid không hiển thị | Đảm bảo trình xem dùng **mermaid 10+**. GitHub/GitLab đã hỗ trợ. |
+| Lỗi `better-sqlite3` sau merge | Chạy `cd forgenexus && npm install` để cài `kuzu` thay thế |
 
 ---
 
-## Contributing
+## Lệnh tắt (Shortcuts)
 
-1. Fork the repo
-2. Create branch: `git checkout -b feature/your-feature`
-3. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `feat(skill): add new capability`
-4. Open a Pull Request
+| Lệnh | Tác dụng |
+|------|-----------|
+| `/setup` | Cài đặt lần đầu như git submodule |
+| `/update` | Kiểm tra & cài cập nhật mới (an toàn, giữ thay đổi) |
+| `/pipeline` | Xem toàn bộ pipeline, modes, và danh sách skills |
+| `/onboard` | Phân tích sâu dự án — tạo `.forgewright/project-profile.json` |
+| `/mcp` | Tạo hoặc tạo lại MCP server config |
+| `/setup-mobile-test` | Cài đặt mobile testing cho Android/iOS |
 
-**Adding a new skill:** Create a file at `skills/your-skill-name/SKILL.md`. See existing skills for examples.
+---
+
+## Đóng góp
+
+1. Fork repo
+2. Tạo nhánh: `git checkout -b feature/your-feature`
+3. Commit theo [Conventional Commits](https://www.conventionalcommits.org/): `feat(skill): add new capability`
+4. Mở Pull Request
+
+**Thêm skill mới:** Tạo file `skills/your-skill-name/SKILL.md`. Xem skill có sẵn làm ví dụ.
 
 ---
 
@@ -1021,9 +1023,9 @@ MIT
 
 ---
 
-## Support the Project
+## Ủng hộ dự án
 
-If Forgewright helps you ship faster, you can support here:
+Nếu Forgewright giúp bạn ship nhanh hơn, bạn có thể ủng hộ tại đây:
 
 <p align="center">
   <img src="assets/donate/give-me-a-coffee-international.png" width="280" alt="Buy Me a Coffee" />
@@ -1035,5 +1037,5 @@ If Forgewright helps you ship faster, you can support here:
   <strong>Forgewright — 55 AI skills. 22 modes. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
 </p>
 <p align="center">
-  <em>Plan precisely. Build confidently. Scale intelligently.</em>
+  <em>Lên kế hoạch chính xác. Build với tự tin. Mở rộng thông minh.</em>
 </p>
