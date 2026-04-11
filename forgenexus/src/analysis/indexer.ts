@@ -39,7 +39,7 @@ import {
 } from './import-resolver.js'
 import { parseFilesParallel, estimateBytes } from './parallel.js'
 import { propagateBindings, shouldSkipBindingPropagation } from './binding-propagation.js'
-import { detectFrameworks } from './framework-detection.js'
+import { detectFramework } from './framework-detection.js'
 import { globalEnclosureCache } from './enclosure-cache.js'
 import type { ForgeNexusConfig, RepoStats, CodeNode, CodeEdge } from '../types.js'
 import type { ParseTask } from './parallel.js'
@@ -390,10 +390,7 @@ export class Indexer {
           /* skip */
         }
       }
-      const frameworks = detectFrameworks(
-        files.map((f) => f.path),
-        allContents,
-      )
+      const frameworks = detectFramework(allContents)
       if (frameworks.length > 0) {
         this.db.setMeta('detected_frameworks', frameworks.map((f) => f.framework).join(','))
       }

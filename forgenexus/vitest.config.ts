@@ -4,8 +4,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    pool: 'forks',
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
     reporter: 'basic',
-    include: ['test/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
+    exclude: ['integration/**', 'scripts/**', 'node_modules/**', 'dist/**'],
   },
 });

@@ -1,389 +1,392 @@
 /**
- * Framework detection — detect entry points from framework-specific patterns.
- *
- * Supports: Next.js, FastAPI, NestJS, Prisma, Supabase, Laravel, Rails,
- * Spring, Gin, Fiber, Express, Hapi, Fastify, Django, Flask, Rails,
- * Phoenix, Vapor, Echo, Koa, SvelteKit, Remix, Astro, Expo, Capacitor,
- * Flutter, React Native, Electron, Tauri, Unity, Godot, Unreal.
+ * Framework Detection with Confidence Module
+ * 
+ * Detects frameworks with confidence scoring based on evidence strength.
  */
 
-import type { CodeNode, CodeEdge } from '../types.js'
+export interface FrameworkDetectionResult {
+  framework: string;
+  confidence: number;
+  evidence: string[];
+  warnings: string[];
+  alternative?: string[];
+  metadata?: {
+    detectedAt: Date;
+    evidenceCount: number;
+    evidenceTypes: string[];
+  };
+}
 
-export interface FrameworkDetection {
-  framework: string
-  version?: string
-  entryPatterns: string[]
-  ormPatterns?: string[]
-  databasePatterns?: string[]
+export interface FrameworkPattern {
+  name: string;
+  patterns: RegExp[];
+  weight: number;
+  alternatives?: string[];
+  priority?: number;
+}
+
+// Framework patterns with weights
+const FRAMEWORK_PATTERNS: FrameworkPattern[] = [
+  // JavaScript/TypeScript Frameworks
+  {
+    name: 'Next.js',
+    patterns: [/next\.config\.(js|ts|mjs)/, /pages\/|app\//],
+    weight: 0.9,
+    alternatives: ['React', 'Vite'],
+  },
+  {
+    name: 'React',
+    patterns: [/react/, /jsx|tsx?/],
+    weight: 0.85,
+    alternatives: ['Preact', 'Solid.js'],
+  },
+  {
+    name: 'Vue.js',
+    patterns: [/vue/, /\.vue$/],
+    weight: 0.85,
+    alternatives: ['Nuxt.js', 'Vue 3'],
+  },
+  {
+    name: 'Express.js',
+    patterns: [/express/, /app\.get|app\.post|app\.use/],
+    weight: 0.8,
+    alternatives: ['Fastify', 'Koa'],
+  },
+  {
+    name: 'NestJS',
+    patterns: [/@nestjs/, /@Controller\(\)/, /@Module\(\)/],
+    weight: 0.85,
+    alternatives: ['Express', 'Fastify'],
+  },
+  {
+    name: 'Svelte',
+    patterns: [/svelte/],
+    weight: 0.85,
+    alternatives: ['SvelteKit'],
+  },
+  // Python Frameworks
+  {
+    name: 'Django',
+    patterns: [/django/, /settings\.py/],
+    weight: 0.9,
+    alternatives: ['Flask', 'FastAPI'],
+  },
+  {
+    name: 'Flask',
+    patterns: [/flask/, /from flask import/],
+    weight: 0.8,
+    alternatives: ['FastAPI', 'Django'],
+  },
+  {
+    name: 'FastAPI',
+    patterns: [/fastapi/, /from fastapi import/],
+    weight: 0.85,
+    alternatives: ['Flask', 'Django'],
+  },
+  {
+    name: 'FastStream',
+    patterns: [/faststream/],
+    weight: 0.85,
+  },
+  // Go Frameworks
+  {
+    name: 'Gin',
+    patterns: [/gin-gonic/, /gin\.Default/],
+    weight: 0.8,
+    alternatives: ['Echo', 'Fiber'],
+  },
+  {
+    name: 'Echo',
+    patterns: [/labstack\/echo/],
+    weight: 0.8,
+    alternatives: ['Gin', 'Fiber'],
+  },
+  {
+    name: 'Chi',
+    patterns: [/go-chi\/chi/],
+    weight: 0.8,
+    alternatives: ['Gin', 'Echo'],
+  },
+  // Rust Frameworks
+  {
+    name: 'Actix-web',
+    patterns: [/actix-web/, /actix-rt/],
+    weight: 0.85,
+    alternatives: ['Rocket', 'Axum'],
+  },
+  {
+    name: 'Rocket',
+    patterns: [/rocket/],
+    weight: 0.85,
+    alternatives: ['Actix-web', 'Axum'],
+  },
+  // Database
+  {
+    name: 'Prisma',
+    patterns: [/prisma/],
+    weight: 0.85,
+    alternatives: ['TypeORM', 'Drizzle'],
+  },
+  {
+    name: 'TypeORM',
+    patterns: [/typeorm/],
+    weight: 0.8,
+    alternatives: ['Prisma', 'Drizzle'],
+  },
+];
+
+/**
+ * Detect frameworks with confidence
+ */
+export async function detectFrameworkWithConfidence(
+  repoPath: string,
+  fileContents: Map<string, string>
+): Promise<FrameworkDetectionResult> {
+  const scores = new Map<string, number>();
+  const evidence: string[] = [];
+
+  // Analyze each file for framework patterns
+  for (const [file, content] of fileContents) {
+    for (const pattern of FRAMEWORK_PATTERNS) {
+      for (const regex of pattern.patterns) {
+        if (regex.test(content) || regex.test(file)) {
+          const currentScore = scores.get(pattern.name) ?? 0;
+          scores.set(pattern.name, currentScore + pattern.weight);
+          
+          evidence.push(`${file}: matched ${pattern.name} pattern`);
+        }
+      }
+    }
+  }
+
+  // Find best match
+  let bestFramework = 'Unknown';
+  let bestScore = 0;
+
+  for (const [framework, score] of scores) {
+    if (score > bestScore) {
+      bestScore = score;
+      bestFramework = framework;
+    }
+  }
+
+  // Calculate confidence
+  const confidence = calculateConfidence(bestScore, evidence.length, scores);
+
+  // Generate warnings
+  const warnings = generateWarnings(confidence, evidence.length, bestFramework, scores);
+
+  // Find alternatives
+  const frameworkPattern = FRAMEWORK_PATTERNS.find(p => p.name === bestFramework);
+  const alternatives = frameworkPattern?.alternatives?.filter(
+    alt => (scores.get(alt) ?? 0) > 0
+  );
+
+  return {
+    framework: bestFramework,
+    confidence,
+    evidence: evidence.slice(0, 10), // Limit to top 10
+    warnings,
+    alternative: alternatives,
+    metadata: {
+      detectedAt: new Date(),
+      evidenceCount: evidence.length,
+      evidenceTypes: detectEvidenceTypes(evidence),
+    },
+  };
 }
 
 /**
- * All supported framework detections.
+ * Calculate confidence based on evidence strength
  */
-export const FRAMEWORK_DETECTIONS: FrameworkDetection[] = [
-  // --- Web Frameworks ---
-  {
-    framework: 'next.js',
-    entryPatterns: [
-      'app/',
-      'pages/',
-      'src/app/',
-      'src/pages/',
-      'route.ts',
-      'route.js',
-      'layout.ts',
-      'layout.js',
-      'middleware.ts',
-      'middleware.js',
-    ],
-  },
-  {
-    framework: 'remix',
-    entryPatterns: ['app/routes/', 'app/models/', 'app/root.tsx', 'remix.config.js'],
-  },
-  {
-    framework: 'astro',
-    entryPatterns: ['src/pages/', 'src/layouts/', 'astro.config.mjs', '.astro/'],
-  },
-  {
-    framework: 'sveltekit',
-    entryPatterns: ['src/routes/', 'src/lib/server/', 'svelte.config.js'],
-  },
-  {
-    framework: 'nestjs',
-    entryPatterns: [
-      '@Controller(',
-      '@Module(',
-      '@Injectable(',
-      '@Get(',
-      '@Post(',
-      '@Put(',
-      '@Delete(',
-      '@Patch(',
-    ],
-    ormPatterns: ['TypeORM', 'Typegoose', 'nestjs/typeorm', 'getRepository('],
-  },
-  {
-    framework: 'express',
-    entryPatterns: [
-      'app.get(',
-      'router.get(',
-      'router.post(',
-      'app.post(',
-      'router.put(',
-      'router.delete(',
-      'app.use(',
-    ],
-  },
-  {
-    framework: 'fastify',
-    entryPatterns: [
-      'fastify.get(',
-      'fastify.post(',
-      'fastify.put(',
-      'fastify.delete(',
-      'fastify.register(',
-      '@fastify/',
-    ],
-  },
-  {
-    framework: 'fastapi',
-    entryPatterns: [
-      '@app.get(',
-      '@router.get(',
-      '@app.post(',
-      '@router.post(',
-      'FastAPI(',
-      'APIRouter(',
-    ],
-  },
-  {
-    framework: 'django',
-    entryPatterns: [
-      'from django',
-      'urls.py',
-      'views.py',
-      'urlpatterns',
-      '@login_required',
-      '@permission_required',
-      'django.db',
-    ],
-    databasePatterns: ['django.db.models', 'models.Model', '.objects.filter'],
-  },
-  {
-    framework: 'flask',
-    entryPatterns: ['@app.route(', '@blueprint.route(', 'Flask('],
-  },
-  {
-    framework: 'spring',
-    entryPatterns: [
-      '@RestController',
-      '@Controller',
-      '@Service',
-      '@Repository',
-      '@RequestMapping',
-      '@GetMapping',
-      '@PostMapping',
-      'public class.*Controller',
-      'public class.*Service',
-    ],
-    ormPatterns: ['@Entity', '@Table', '@Column', '@ManyToOne', 'JPA', 'Hibernate'],
-    databasePatterns: ['spring.jpa', 'spring.datasource', '@Query('],
-  },
-  {
-    framework: 'rails',
-    entryPatterns: [
-      'app/controllers/',
-      'app/models/',
-      'config/routes.rb',
-      'ActiveRecord::Base',
-      'class.*Controller < ApplicationController',
-    ],
-    ormPatterns: ['ActiveRecord', '.where(', '.find(', '.create('],
-    databasePatterns: ['ActiveRecord::Base', 'migrate/', 'schema.rb'],
-  },
-  {
-    framework: 'laravel',
-    entryPatterns: [
-      'Route::',
-      'app/Http/Controllers/',
-      'app/Models/',
-      'public function index(',
-      'public function store(',
-    ],
-    ormPatterns: ['Eloquent', 'Model', 'DB::table', 'Schema::'],
-    databasePatterns: ['Schema::create', 'DB::', 'Migration'],
-  },
-  {
-    framework: 'gin',
-    entryPatterns: ['gin.Default(', 'r.GET(', 'r.POST(', 'r.PUT(', 'r.DELETE('],
-  },
-  {
-    framework: 'fiber',
-    entryPatterns: ['app.Get(', 'app.Post(', 'app.Put(', 'app.Delete(', 'fiber.NewApp('],
-  },
-  {
-    framework: 'echo',
-    entryPatterns: ['e.GET(', 'e.POST(', 'e.PUT(', 'e.DELETE('],
-  },
-  {
-    framework: 'koa',
-    entryPatterns: ['router.get(', 'router.post(', 'app.use('],
-  },
-  {
-    framework: 'hapi',
-    entryPatterns: ['server.route(', 'exports.plugin =', '@hapi/'],
-  },
+function calculateConfidence(
+  score: number,
+  evidenceCount: number,
+  allScores: Map<string, number>
+): number {
+  let confidence = 0.5; // Base confidence
 
-  // --- Mobile ---
-  {
-    framework: 'react-native',
-    entryPatterns: [
-      'import { registerRootComponent }',
-      'AppRegistry.registerComponent',
-      'import React',
-      'useState',
-      'useEffect',
-    ],
-  },
-  {
-    framework: 'expo',
-    entryPatterns: ['expo-', 'registerRootComponent', 'expo dev', 'npx expo start', '@expo/'],
-  },
-  {
-    framework: 'flutter',
-    entryPatterns: [
-      'void main(',
-      'class _MyApp',
-      'MaterialApp(',
-      'StatelessWidget',
-      'StatefulWidget',
-    ],
-  },
+  // Evidence count bonus
+  if (evidenceCount >= 5) {
+    confidence += 0.2;
+  } else if (evidenceCount >= 3) {
+    confidence += 0.1;
+  } else if (evidenceCount >= 1) {
+    confidence += 0.05;
+  }
 
-  // --- Desktop ---
-  {
-    framework: 'electron',
-    entryPatterns: ['app.whenReady()', 'BrowserWindow', 'ipcMain', 'webPreferences:', 'mainWindow'],
-  },
-  {
-    framework: 'tauri',
-    entryPatterns: ['#[tauri::', 'tauri::', 'TauriBuilder', 'app.handle('],
-  },
+  // Score bonus
+  if (score >= 2.0) {
+    confidence += 0.2;
+  } else if (score >= 1.0) {
+    confidence += 0.1;
+  }
 
-  // --- ORMs ---
-  {
-    framework: 'prisma',
-    entryPatterns: ['generator client', 'datasource db', 'prisma.', 'client.', '@prisma/client'],
-    ormPatterns: [
-      'model User {',
-      'prisma.users',
-      'prisma.$connect',
-      'PrismaClient',
-      '.findMany(',
-      '.create(',
-    ],
-    databasePatterns: [
-      'datasource db {',
-      'provider = "postgresql"',
-      'provider = "mysql"',
-      'provider = "sqlite"',
-    ],
-  },
-  {
-    framework: 'supabase',
-    entryPatterns: [
-      'createClient(',
-      '@supabase/',
-      'supabase.',
-      'supabaseClient',
-      '.from(',
-      '.insert(',
-    ],
-    databasePatterns: ['supabase', '.select(', '.update(', '.delete('],
-  },
-  {
-    framework: 'drizzle',
-    entryPatterns: ['drizzle-orm', 'drizzle(', 'pgTable(', 'sqliteTable('],
-    databasePatterns: ['drizzle', 'pgTable', 'sqliteTable'],
-  },
-  {
-    framework: 'typeorm',
-    entryPatterns: [
-      '@Entity(',
-      '@PrimaryGeneratedColumn',
-      '@Column(',
-      'getRepository(',
-      'DataSource',
-    ],
-    databasePatterns: ['@Entity', '@Column', '@PrimaryColumn', 'dataSource'],
-  },
-
-  // --- Game Engines ---
-  {
-    framework: 'unity',
-    entryPatterns: [
-      'using UnityEngine',
-      'MonoBehaviour',
-      '@serializable',
-      'void Start(',
-      'void Update(',
-      '[SerializeField]',
-    ],
-  },
-  {
-    framework: 'godot',
-    entryPatterns: [
-      'extends Node',
-      'extends Godot',
-      '_ready(',
-      '_process(',
-      'func _ready(',
-      'func _process(',
-    ],
-  },
-  {
-    framework: 'unreal',
-    entryPatterns: [
-      'UCLASS(',
-      'UFUNCTION(',
-      'UPROPERTY(',
-      'GENERATED_BODY(',
-      'UObject',
-      'AActor',
-      'UAnimInstance',
-    ],
-  },
-  {
-    framework: 'roblox',
-    entryPatterns: [
-      'local function',
-      'workspace:',
-      'game:GetService(',
-      'ReplicatedStorage',
-      'ServerScriptService',
-    ],
-  },
-]
-
-/**
- * Detect frameworks from file paths and content patterns.
- */
-export function detectFrameworks(
-  files: string[],
-  contentMap?: Map<string, string>,
-): FrameworkDetection[] {
-  const detected = new Map<string, FrameworkDetection>()
-
-  for (const detection of FRAMEWORK_DETECTIONS) {
-    let matched = false
-
-    for (const pattern of detection.entryPatterns) {
-      // Check file paths first (fast)
-      for (const file of files) {
-        if (file.includes(pattern)) {
-          detected.set(detection.framework, detection)
-          matched = true
-          break
-        }
-      }
-
-      if (matched) break
-
-      // Check file contents
-      if (contentMap) {
-        for (const [, content] of contentMap) {
-          if (content.includes(pattern)) {
-            detected.set(detection.framework, detection)
-            matched = true
-            break
-          }
-        }
-      }
-
-      if (matched) break
+  // Check if there's competition
+  const sortedScores = [...allScores.entries()].sort((a, b) => b[1] - a[1]);
+  if (sortedScores.length > 1) {
+    const secondScore = sortedScores[1][1];
+    const ratio = score / Math.max(secondScore, 0.1);
+    
+    if (ratio > 2) {
+      confidence += 0.1; // Clear winner
+    } else if (ratio < 1.5) {
+      confidence -= 0.15; // Close competition
     }
   }
 
-  return [...detected.values()]
+  // Cap at 0.95
+  return Math.min(confidence, 0.95);
 }
 
 /**
- * Detect ORM patterns and add QUERIES edges.
+ * Generate warnings based on confidence
  */
-export function detectORMQueries(nodes: CodeNode[], contentMap: Map<string, string>): CodeEdge[] {
-  const edges: CodeEdge[] = []
-  const detectedFrameworks = detectFrameworks([], contentMap)
+function generateWarnings(
+  confidence: number,
+  evidenceCount: number,
+  framework: string,
+  scores: Map<string, number>
+): string[] {
+  const warnings: string[] = [];
 
-  const ormPatterns = new Set<string>()
-  for (const fw of detectedFrameworks) {
-    if (fw.ormPatterns) {
-      for (const p of fw.ormPatterns) ormPatterns.add(p)
+  if (confidence < 0.7) {
+    warnings.push('Low confidence, verify manually');
+  }
+
+  if (evidenceCount < 3) {
+    warnings.push('Limited evidence, more files needed for confident detection');
+  }
+
+  if (framework === 'Unknown') {
+    warnings.push('No framework detected, project may use custom structure');
+  }
+
+  // Check for unusual patterns
+  const sortedScores = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+  if (sortedScores.length > 1) {
+    const ratio = sortedScores[0][1] / Math.max(sortedScores[1][1], 0.1);
+    if (ratio < 1.2) {
+      warnings.push('Multiple frameworks detected, consider specifying explicitly');
     }
   }
 
-  if (ormPatterns.size === 0) return edges
+  return warnings;
+}
 
-  for (const node of nodes) {
-    if (node.type !== 'Function' && node.type !== 'Method') continue
+/**
+ * Detect evidence types from evidence strings
+ */
+function detectEvidenceTypes(evidence: string[]): string[] {
+  const types = new Set<string>();
 
-    const content = contentMap.get(node.filePath)
-    if (!content) continue
+  for (const e of evidence) {
+    if (e.includes('package.json') || e.includes('package-lock')) {
+      types.add('package');
+    }
+    if (e.includes('.ts') || e.includes('.tsx')) {
+      types.add('typescript');
+    }
+    if (e.includes('.js') || e.includes('.mjs')) {
+      types.add('javascript');
+    }
+    if (e.includes('.py')) {
+      types.add('python');
+    }
+    if (e.includes('.go')) {
+      types.add('go');
+    }
+  }
 
-    for (const pattern of ormPatterns) {
-      if (content.includes(pattern)) {
-        edges.push({
-          id: `${node.uid}->QUERIES:${pattern}`,
-          fromUid: node.uid,
-          toUid: `ORM:${pattern}`,
-          type: 'QUERIES',
-          confidence: 0.9,
-          reason: `orm-${detectedFrameworks.find((f) => f.ormPatterns?.includes(pattern))?.framework}`,
-        })
-        break
+  return [...types];
+}
+
+/**
+ * Simple framework detection without confidence
+ */
+export function detectFramework(
+  fileContents: Map<string, string>
+): { framework: string; score: number }[] {
+  const scores = new Map<string, number>();
+
+  for (const [, content] of fileContents) {
+    for (const pattern of FRAMEWORK_PATTERNS) {
+      for (const regex of pattern.patterns) {
+        if (regex.test(content)) {
+          scores.set(pattern.name, (scores.get(pattern.name) ?? 0) + pattern.weight);
+        }
       }
     }
   }
 
-  return edges
+  return [...scores.entries()]
+    .map(([framework, score]) => ({ framework, score }))
+    .sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Get framework by file extension
+ */
+export function inferByExtension(files: string[]): string | undefined {
+  const extCounts = new Map<string, number>();
+
+  for (const file of files) {
+    const ext = file.split('.').pop()?.toLowerCase();
+    if (ext) {
+      extCounts.set(ext, (extCounts.get(ext) ?? 0) + 1);
+    }
+  }
+
+  // Infer from extensions
+  if (extCounts.get('tsx') || extCounts.get('ts')) {
+    if (extCounts.get('tsx') && extCounts.get('jsx')) {
+      return 'React'; // Mixed TSX/JSX
+    }
+    if (extCounts.get('tsx')) {
+      return 'TypeScript-React';
+    }
+    return 'TypeScript';
+  }
+
+  if (extCounts.get('jsx')) {
+    return 'React';
+  }
+
+  if (extCounts.get('py')) {
+    return 'Python';
+  }
+
+  if (extCounts.get('go')) {
+    return 'Go';
+  }
+
+  if (extCounts.get('rs')) {
+    return 'Rust';
+  }
+
+  return undefined;
+}
+
+/**
+ * Create detection result for unknown framework
+ */
+export function createUnknownResult(): FrameworkDetectionResult {
+  return {
+    framework: 'Unknown',
+    confidence: 0,
+    evidence: [],
+    warnings: ['No framework detected', 'Project may use custom structure'],
+    metadata: {
+      detectedAt: new Date(),
+      evidenceCount: 0,
+      evidenceTypes: [],
+    },
+  };
+}
+
+/**
+ * Validate detection result
+ */
+export function isConfident(result: FrameworkDetectionResult): boolean {
+  return result.confidence >= 0.7 && result.framework !== 'Unknown';
 }

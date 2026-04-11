@@ -15,11 +15,14 @@
     "dev": "tsc --watch",
     "test": "vitest run --reporter=basic",
     "test:watch": "vitest",
+    "test:integration": "npx tsx scripts/test-integration.ts",
+    "test:all": "npm run test && npm run test:integration",
     "lint": "eslint src/ --ext .ts --max-warnings=0",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "format:write": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
     "@huggingface/transformers": "^4.0.1",
     "@modelcontextprotocol/sdk": "^1.0.1",
     "glob": "^10.3.10",

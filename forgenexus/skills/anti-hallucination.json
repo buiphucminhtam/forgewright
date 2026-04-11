@@ -1,0 +1,60 @@
+{
+  "name": "Anti-Hallucination Framework",
+  "version": "1.0.0",
+  "description": "Systematic framework for preventing, detecting, and mitigating hallucinations in AI agent workflows. Based on 2025-2026 research including Semantic Energy, ART, SinkTrack, and multi-agent verification.",
+  "category": "ai-quality",
+  "tags": [
+    "hallucination",
+    "rag",
+    "verification",
+    "multi-agent",
+    "attention",
+    "uncertainty",
+    "grounding",
+    "citations",
+    "production"
+  ],
+  "file": "forgenexus/skills/anti-hallucination.md",
+  "author": "ForgeWright Research",
+  "created": "2026-04-11",
+  "sources": [
+    "arXiv papers (68 sources)",
+    "OpenReview papers (2025-2026)",
+    "Industry reports (93 sources)",
+    "Vectara Hallucination Leaderboard"
+  ],
+  "modules": [
+    {
+      "name": "Understanding Hallucination",
+      "description": "Root causes, lifecycle analysis, attention mechanisms",
+      "complexity": "foundational"
+    },
+    {
+      "name": "Detection Techniques",
+      "description": "Semantic Entropy, Semantic Energy, neural probes, multi-agent verification",
+      "complexity": "intermediate"
+    },
+    {
+      "name": "Prevention Techniques",
+      "description": "RAG, citation-based grounding, confidence calibration, CoT",
+      "complexity": "intermediate"
+    },
+    {
+      "name": "Architecture Interventions",
+      "description": "ART, SinkTrack, Mamba alternatives, calibrated RL",
+      "complexity": "advanced"
+    },
+    {
+      "name": "Production Implementation",
+      "description": "Layered defense, self-correcting loops, evaluation frameworks",
+      "complexity": "advanced"
+    },
+    {
+      "name": "Anti-Patterns",
+      "description": "Common mistakes and red flags",
+      "complexity": "beginner"
+    }
+  ],
+  "dependencies": [],
+  "license": "MIT"
+}
