@@ -117,6 +117,8 @@ When a skill must fail, it MUST produce a structured failure report:
 
 ## Integration with Existing Protocols
 
+- **circuit-breaker.md:** Circuit Breaker complements Graceful Failure by providing a stateful, system-wide mechanism to stop requests to failing components. Graceful Failure handles individual action retries; Circuit Breaker handles systemic failures. When a circuit opens → Graceful Failure sees a "circuit open" error → skips retry, logs the event, and moves to next task.
+
 - **quality-gate.md:** Quality Gate runs AFTER skill success. Graceful Failure runs DURING skill execution when things go wrong. On failure → skip quality gate, write failure report instead.
 - **session-lifecycle.md:** Session hooks (`ERROR`) capture failures for cross-session tracking.
 - **input-validation.md:** Input validation catches issues BEFORE execution. Graceful Failure catches issues DURING execution. They are complementary.

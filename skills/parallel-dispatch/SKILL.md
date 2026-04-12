@@ -196,14 +196,102 @@ Guardrail middleware (④) enforces context isolation at the tool level:
 - Workers attempting to read files outside their contract inputs → WARN
 - Workers attempting to write outside their contract outputs → DENY
 
-### Phase 4 — Worker Dispatch
+### Phase 4 — Circuit Breaker Check
 
-Spawn Gemini CLI instances for each worktree. Each worker runs in its own shell process:
+Before dispatching workers, check circuit breaker state for each worker type:
 
 ```bash
-# For each worktree, spawn a Gemini CLI worker in the background
+# Load circuit breaker config
+CIRCUIT_FILE="${CIRCUIT_FILE:-.forgewright/circuits.json}"
+
+# Source circuit breaker functions
+source "$(dirname "$0")/../_shared/scripts/circuit-breaker.sh" 2>/dev/null || true
+
+# Check circuit state for each worker
+for task in T3a T3b T3c T4 T5 T6a T6b; do
+  circuit_key="${task,,}"  # lowercase
+
+  # Check if circuit allows request
+  state=$(should_allow "$circuit_key" 60)  # 60s timeout
+
+  if [ "$state" = "OPEN" ]; then
+    echo "[CIRCUIT_BREAKER] Skipping ${task}: circuit is OPEN"
+    continue
+  elif [ "$state" = "HALF_OPEN" ]; then
+    echo "[CIRCUIT_BREAKER] ${task}: circuit is HALF_OPEN (limited requests)"
+  else
+    echo "[CIRCUIT_BREAKER] ${task}: circuit is CLOSED"
+  fi
+done
+```
+
+**Circuit Breaker per Worker Type:**
+
+| Worker | Circuit Key | Default Config |
+|--------|-------------|----------------|
+| T3a (Backend) | `t3a` | failure_threshold: 3 |
+| T3b (Frontend) | `t3b` | failure_threshold: 3 |
+| T3c (Mobile) | `t3c` | failure_threshold: 3 |
+| T4 (DevOps) | `t4` | failure_threshold: 3 |
+| T5 (QA) | `t5` | failure_threshold: 3 |
+| T6a (Security) | `t6a` | failure_threshold: 3 |
+| T6b (Code Review) | `t6b` | failure_threshold: 3 |
+
+**State Tracking:**
+
+```json
+{
+  "t3a": { "state": "CLOSED", "failure_count": 0, "last_failure": null },
+  "t3b": { "state": "OPEN", "failure_count": 5, "last_failure": 1712912400 },
+  "t4": { "state": "HALF_OPEN", "failure_count": 3, "last_failure": 1712912400 }
+}
+```
+
+**Recording Results:**
+
+After each worker completes, record the outcome:
+
+```bash
+# On worker success
+record_success "$circuit_key"
+
+# On worker failure
+record_failure "$circuit_key" 3  # 3 = threshold
+```
+
+### Phase 4.1 — Worker Dispatch
+
+Spawn Gemini CLI instances for each worktree. Each worker runs in its own shell process with bulkhead limits:
+
+```bash
+# Load bulkhead config from .production-grade.yaml
+BULKHEAD_MEMORY="${BULKHEAD_MEMORY_MB:-512}"
+BULKHEAD_CPU="${BULKHEAD_CPU_PERCENT:-80}"
+BULKHEAD_DURATION="${BULKHEAD_DURATION_MINUTES:-30}"
+
+# Apply bulkhead limits to this shell
+# NOTE: bulkhead-limits expects: <memory_mb> <cpu_percent> <duration_min>
+scripts/worktree-manager.sh bulkhead-limits "$BULKHEAD_MEMORY" "$BULKHEAD_CPU" "$BULKHEAD_DURATION"
+
+# Per-worker resource limits
+declare -A WORKER_LIMITS=(
+  ["T3a"]="512 30"  # Backend: 512MB, 30min
+  ["T3b"]="512 30"  # Frontend: 512MB, 30min
+  ["T3c"]="512 30"  # Mobile: 512MB, 30min
+  ["T4"]="768 45"   # DevOps: 768MB, 45min
+  ["T5"]="512 30"   # QA: 512MB, 30min
+  ["T6a"]="256 20"  # Security: 256MB, 20min
+  ["T6b"]="256 20"  # Code Review: 256MB, 20min
+)
+
+# For each worktree, spawn a worker with watchdog
 for task in T3a T3b T3c; do
   worktree_path=".worktrees/${task}"
+
+  # Get worker-specific limits
+  limits="${WORKER_LIMITS[$task]}"
+  mem_mb=$(echo "$limits" | cut -d' ' -f1)
+  duration_min=$(echo "$limits" | cut -d' ' -f2)
 
   # Create worker instruction file
   cat > "${worktree_path}/WORKER_INSTRUCTIONS.md" <<INSTRUCTIONS
@@ -241,20 +329,32 @@ for task in T3a T3b T3c; do
   Write DELIVERY.json with your results. Do not attempt to merge.
   INSTRUCTIONS
 
-  # Dispatch worker (background process)
-  (
-    cd "${worktree_path}"
-    gemini -p "Read WORKER_INSTRUCTIONS.md and CONTRACT.json, then execute the task following the skill instructions. Work autonomously until complete. Write DELIVERY.json when done." \
-      2>&1 | tee "worker-${task}.log"
-  ) &
-
-  echo "Worker ${task} dispatched (PID: $!)"
+  # Dispatch worker with watchdog
+  scripts/worktree-manager.sh bulkhead-watchdog "$task" "$worktree_path" "$mem_mb" "$duration_min" &
+  echo "Worker ${task} dispatched with bulkhead (mem=${mem_mb}MB, time=${duration_min}m)"
 done
 
 # Wait for all workers to complete
 wait
 echo "All workers completed."
 ```
+
+**Bulkhead Failure Containment:**
+
+| Worker | Memory | Time | On OOM | On Timeout |
+|--------|--------|------|--------|-----------|
+| T3a (Backend) | 512MB | 30min | Kill + Skip | Kill + Skip |
+| T3b (Frontend) | 512MB | 30min | Kill + Skip | Kill + Skip |
+| T3c (Mobile) | 512MB | 30min | Kill + Skip | Kill + Skip |
+| T4 (DevOps) | 768MB | 45min | Kill + Skip | Kill + Skip |
+| T5 (QA) | 512MB | 30min | Kill + Skip | Kill + Skip |
+| T6 (Review) | 256MB | 20min | Kill + Skip | Kill + Skip |
+
+**Key Safety Guarantees:**
+1. One worker OOM/timeout does NOT crash other workers
+2. Main process remains stable
+3. All bulkhead events logged to `.forgewright/bulkhead-log.md`
+4. Workers can be monitored via `scripts/worktree-manager.sh bulkhead-status`
 
 **Alternative dispatch (for environments without `gemini` CLI):**
 

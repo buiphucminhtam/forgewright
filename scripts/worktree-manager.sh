@@ -288,6 +288,148 @@ cmd_resume() {
   _log_event "RESUME" "$task_id" "READY" ""
 }
 
+# ━━━ Bulkhead helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cmd_bulkhead_limits() {
+  local max_memory_mb="${1:-512}"
+  local max_cpu_percent="${2:-80}"
+  local max_duration_minutes="${3:-30}"
+
+  # Validate parameters
+  if ! [[ "$max_memory_mb" =~ ^[0-9]+$ ]] || [ "$max_memory_mb" -lt 64 ] || [ "$max_memory_mb" -gt 8192 ]; then
+    err "Invalid memory: $max_memory_mb (must be 64-8192 MB)"
+    return 1
+  fi
+  if ! [[ "$max_cpu_percent" =~ ^[0-9]+$ ]] || [ "$max_cpu_percent" -lt 10 ] || [ "$max_cpu_percent" -gt 100 ]; then
+    err "Invalid CPU: $max_cpu_percent (must be 10-100%)"
+    return 1
+  fi
+  if ! [[ "$max_duration_minutes" =~ ^[0-9]+$ ]] || [ "$max_duration_minutes" -lt 1 ] || [ "$max_duration_minutes" -gt 480 ]; then
+    err "Invalid duration: $max_duration_minutes (must be 1-480 min)"
+    return 1
+  fi
+
+  # CPU time limit (works on macOS and Linux)
+  ulimit -t $((max_duration_minutes * 60)) 2>/dev/null || true
+
+  log "Bulkhead limits applied: memory=${max_memory_mb}MB (watchdog), cpu=${max_cpu_percent}%, duration=${max_duration_minutes}m (ulimit -t)"
+
+  # Save to .forgewright for monitoring
+  mkdir -p ".forgewright"
+  cat > ".forgewright/bulkhead-config.json" <<EOF
+{
+  "max_memory_mb": $max_memory_mb,
+  "max_cpu_percent": $max_cpu_percent,
+  "max_duration_minutes": $max_duration_minutes,
+  "applied_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "note": "Memory limits via watchdog only (ulimit -v/-m not supported on macOS)"
+}
+EOF
+}
+
+cmd_bulkhead_status() {
+  echo ""
+  echo "━━━ Bulkhead Status ━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  if ! [ -d "$WORKTREE_BASE" ]; then
+    log "No worktrees found."
+    return
+  fi
+
+  local count=0
+  for wt_dir in "${WORKTREE_BASE}"/*/; do
+    [ -d "$wt_dir" ] || continue
+    local task_id
+    task_id=$(basename "$wt_dir")
+
+    # Find worker PID (if running)
+    local pid
+    pid=$(pgrep -f "worktree.*${task_id}" 2>/dev/null | head -1 || echo "")
+
+    if [ -n "$pid" ]; then
+      local mem cpu
+      mem=$(ps -o rss= -p "$pid" 2>/dev/null || echo "0")
+      cpu=$(ps -o %cpu= -p "$pid" 2>/dev/null || echo "0")
+      mem=$((mem / 1024))  # Convert KB to MB
+      printf "  %-12s PID:%-8s Memory:%sMB CPU:%s%%\n" "$task_id" "$pid" "$mem" "$cpu"
+    else
+      printf "  %-12s (idle)\n" "$task_id"
+    fi
+    count=$((count + 1))
+  done
+
+  echo ""
+  echo "  Total: ${count}/${MAX_WORKERS} workers"
+  echo ""
+
+  # Show config if exists
+  if [ -f ".forgewright/bulkhead-config.json" ]; then
+    echo "  Current limits:"
+    cat ".forgewright/bulkhead-config.json" | jq -r '. | "    Memory: \(.max_memory_mb)MB, Duration: \(.max_duration_minutes)m"'
+    echo ""
+  fi
+
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+cmd_bulkhead_watchdog() {
+  local task_id="$1"
+  local worktree_path="${WORKTREE_BASE}/${task_id}"
+  local max_memory_mb="${2:-512}"
+  local max_duration_min="${3:-30}"
+
+  # Validate parameters
+  if ! [[ "$max_memory_mb" =~ ^[0-9]+$ ]] || [ "$max_memory_mb" -lt 64 ] || [ "$max_memory_mb" -gt 8192 ]; then
+    err "Invalid memory: $max_memory_mb (must be 64-8192 MB)"
+    return 1
+  fi
+  if ! [[ "$max_duration_min" =~ ^[0-9]+$ ]] || [ "$max_duration_min" -lt 1 ] || [ "$max_duration_min" -gt 480 ]; then
+    err "Invalid duration: $max_duration_min (must be 1-480 min)"
+    return 1
+  fi
+  if [ ! -d "$worktree_path" ]; then
+    err "Worktree not found: $worktree_path"
+    return 1
+  fi
+
+  local max_mem_kb=$((max_memory_mb * 1024))
+  local max_seconds=$((max_duration_min * 60))
+  local log_file="${worktree_path}/worker-${task_id}.log"
+
+  # Start worker in background
+  (
+    cd "$worktree_path"
+    gemini -p "Read WORKER_INSTRUCTIONS.md and CONTRACT.json, then execute the task following the skill instructions. Work autonomously until complete. Write DELIVERY.json when done." > "$log_file" 2>&1
+  ) &
+  local worker_pid=$!
+
+  # Start watchdog
+  local start_time=$(date +%s)
+  while kill -0 "$worker_pid" 2>/dev/null; do
+    local mem=$(ps -o rss= -p "$worker_pid" 2>/dev/null || echo "0")
+    local elapsed=$(($(date +%s) - start_time))
+
+    if [ "$mem" -gt "$max_mem_kb" ]; then
+      kill -9 "$worker_pid" 2>/dev/null
+      log "Worker ${task_id} exceeded memory limit: ${mem}KB > ${max_mem_kb}KB"
+      echo "[BULKHEAD] OOM_KILLED: ${task_id} (${mem}KB > ${max_mem_kb}KB)" >> ".forgewright/bulkhead-log.md"
+      return 1
+    fi
+
+    if [ "$elapsed" -gt "$max_seconds" ]; then
+      kill -9 "$worker_pid" 2>/dev/null
+      log "Worker ${task_id} exceeded timeout: ${elapsed}s > ${max_seconds}s"
+      echo "[BULKHEAD] TIMEOUT: ${task_id} (${elapsed}s > ${max_seconds}s)" >> ".forgewright/bulkhead-log.md"
+      return 2
+    fi
+
+    sleep 5
+  done
+
+  wait "$worker_pid"
+  return $?
+}
+
 # ━━━ Internal helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 _log_event() {
@@ -324,6 +466,9 @@ usage() {
     cleanup <task_id>                Remove worktree + branch
     cleanup-all                      Remove all worktrees
     resume <task_id>                 Resume work on a failed task
+    bulkhead-limits [mem] [cpu] [dur] Apply resource limits (MB, %, min)
+    bulkhead-status                  Show resource usage for all workers
+    bulkhead-watchdog <id> [mem] [dur] Run worker with watchdog
 
   Environment:
     MAX_WORKERS    Maximum concurrent worktrees (default: 4)
@@ -351,6 +496,9 @@ main() {
     cleanup)     shift; cmd_cleanup "$@" ;;
     cleanup-all) cmd_cleanup_all ;;
     resume)      shift; cmd_resume "$@" ;;
+    bulkhead-limits) shift; cmd_bulkhead_limits "$@" ;;
+    bulkhead-status) cmd_bulkhead_status ;;
+    bulkhead-watchdog) shift; cmd_bulkhead_watchdog "$@" ;;
     help|--help|-h|"") usage ;;
     *)           err "Unknown command: $cmd"; usage; exit 1 ;;
   esac
