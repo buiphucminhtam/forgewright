@@ -131,6 +131,7 @@ All 55 skills are in the `skills/` directory:
 | Database Engineer | `skills/database-engineer/SKILL.md` |
 | Debugger | `skills/debugger/SKILL.md` |
 | Prompt Engineer | `skills/prompt-engineer/SKILL.md` |
+| Prompt Optimizer | `skills/prompt-optimizer/SKILL.md` — DSPy-powered algorithmic optimization |
 | **New Engineering (v6.1)** | |
 | AI Engineer | `skills/ai-engineer/SKILL.md` |
 | Accessibility Engineer | `skills/accessibility-engineer/SKILL.md` |

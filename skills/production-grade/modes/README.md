@@ -1,6 +1,6 @@
 # Mode Reference Index
 
-> **Purpose:** Maps each of Forgewright's 19 modes to their location in `SKILL.md`.
+> **Purpose:** Maps each of Forgewright's 23 modes to their location in `SKILL.md`.
 > This file provides a quick reference; full mode descriptions are in `skills/production-grade/SKILL.md`.
 
 ## Mode Map
@@ -11,6 +11,7 @@
 | Feature | `SKILL.md` → Feature Mode | BA → PM → Architect → BE/FE → QA | 1 |
 | Harden | `SKILL.md` → Harden Mode | Security → QA → Review | 1 |
 | Ship | `SKILL.md` → Ship Mode | DevOps → SRE | 1 |
+| Debug | `SKILL.md` → Debug Mode | Debugger → Engineer | 1 |
 | Test | `SKILL.md` → Test Mode | QA | 0 |
 | Review | `SKILL.md` → Review Mode | Code Reviewer | 0 |
 | Architect | `SKILL.md` → Architect Mode | Solution Architect | 1 |
@@ -18,17 +19,17 @@
 | Explore | `SKILL.md` → Explore Mode | Polymath | 0 |
 | Research | `SKILL.md` → Research Mode | Polymath + NotebookLM | 0 |
 | Optimize | `SKILL.md` → Optimize Mode | Performance + SRE | 1 |
-| Design | `SKILL.md` → Design Mode | UX Researcher → UI Designer | 0 |
+| Design | `SKILL.md` → Design Mode | UX Researcher → UI Designer | 1 |
 | Mobile | `SKILL.md` → Mobile Mode | BA → Mobile Engineer | 1 |
-| Game Build | `SKILL.md` → Game Build Mode | Game Designer → Engine → Level → Narrative | 4 |
-| XR Build | `SKILL.md` → XR Build Mode | XR Engineer (+ Game pipeline) | 2 |
+| Game Build | `SKILL.md` → Game Build Mode | Game Designer → Engine → Level → Narrative + Audio | 4 |
+| XR Build | `SKILL.md` → XR Build Mode | XR Engineer + Game pipeline | 2 |
 | Marketing | `SKILL.md` → Marketing Mode | Growth Marketer | 1 |
-| Grow | `SKILL.md` → Grow Mode | Conversion Optimizer | 1 |
+| Grow | `SKILL.md` → Grow Mode | Growth Marketer → Conversion Optimizer | 1 |
 | Analyze | `SKILL.md` → Analyze Mode | Business Analyst | 0 |
-| Custom | `SKILL.md` → Custom Mode | User picks from menu | varies |
 | AI Build | `SKILL.md` → AI Build Mode | AI Engineer + Prompt Eng + Data Scientist | 2 |
 | Migrate | `SKILL.md` → Migrate Mode | Database Eng → Software Eng → QA | 2 |
-| Debug | `SKILL.md` → Debug Mode | Debugger → Engineer | 1 |
+| Prompt | `SKILL.md` → Prompt Mode | Prompt Engineer + Prompt Optimizer | 0 |
+| Custom | `SKILL.md` → Custom Mode | User picks from menu | varies |
 
 ## Shared Behaviors (All Modes)
 
@@ -47,10 +48,10 @@ All modes share these behaviors (see `SKILL.md` → Mode Execution):
 
 These modes skip plan presentation — classify and invoke immediately:
 
-`Test`, `Review`, `Architect`, `Document`, `Explore`, `Design`, `Debug`, `Analyze`
+`Test`, `Review`, `Document`, `Explore`, `Analyze`, `Prompt`
 
 ## Multi-Skill Modes (Present Plan)
 
 These modes present a plan for user confirmation:
 
-`Feature`, `Harden`, `Ship`, `Optimize`, `AI Build`, `Migrate`, `Custom`
+`Feature`, `Harden`, `Ship`, `Optimize`, `Architect`, `Design`, `Debug`, `AI Build`, `Migrate`, `Custom`

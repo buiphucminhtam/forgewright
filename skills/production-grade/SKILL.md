@@ -30,7 +30,7 @@ Every skill invocation is wrapped by an ordered middleware chain. Implementation
 ```
 Pre-Skill:  ① SessionData → ② ContextLoader → ③ SkillRegistry → ④ Guardrail → ⑤ Summarization
             ═══ SKILL EXECUTION ═══
-Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure
+Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure → ⑪ CircuitBreaker → ⑫ Bulkhead → ⑬ Verification
 ```
 
 | # | Middleware | File | Hook | Purpose |
@@ -46,7 +46,9 @@ Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → �
 | ⑧ | TaskTracking | `middleware/08-task-tracking.md` | after_skill | Update todos, emit events |
 | ⑨ | Memory | `middleware/09-memory.md` | after_skill + turn_close | Persistent fact extraction |
 | ⑩ | GracefulFailure | `middleware/10-graceful-failure.md` | on_error | Retry logic, stuck detection |
-
+| ⑪ | CircuitBreaker | `skills/_shared/protocols/circuit-breaker.md` | after_skill | Fault isolation + state machine |
+| ⑫ | Bulkhead | `skills/_shared/protocols/bulkhead.md` | after_skill | Resource limits per worker type |
+| ⑬ | Verification | `skills/_shared/protocols/verification.md` | after_skill | Contract + criteria check |
 **Middleware protocol:** `skills/_shared/protocols/middleware-chain.md`
 
 ### Progressive Skill Loading (v8.0 — DeerFlow Pattern)
