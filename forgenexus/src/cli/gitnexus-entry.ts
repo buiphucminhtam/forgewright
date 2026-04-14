@@ -22,7 +22,8 @@ console.error(
     'FORGENEXUS_COMPAT_GITNEXUS_CLI will be removed in a future major release.',
 )
 
-await import('./index.js').catch((err: unknown) => {
+const { main } = await import('./index.js').catch((err: unknown) => {
   console.error(`Fatal: ${err instanceof Error ? err.message : String(err)}`)
   process.exit(1)
-})
+});
+main();

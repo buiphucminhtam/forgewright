@@ -253,3 +253,18 @@ This skill was upgraded based on deep research into:
 - ClickUp, Asana, Jira, Monday.com, Wrike official documentation
 - OKR Tracking Playbooks and KPI integration patterns
 - Remote team management best practices
+
+## Excel Generator Tool Suite (Dual Track RA/Effort Architecture)
+
+Included in this skill is the production-grade **PM Excel Generator**, located at:
+`.forgewright/project-manager/excel-generator/`
+
+The generator automates the creation of a massive 2-file Project Management Suite:
+1. `Project_Plan.xlsx` (With dual tracking: Proposed Effort vs Actual Effort via AI task-weighting).
+2. `Cost_Planning.xlsx` (Automatically cross-linked safely to the Proposed Baseline Budget to stop budget inflation).
+
+### Usage Instructions
+To generate a new project suite natively:
+1. Copy or edit `config_template.json` with your project's Milestones, Sprint counts, Backlogs, and Team roster.
+2. Run the core reactor: `python3 generator_app.py config_template.json`
+3. The AI will spawn two customized `.xlsx` files ready for enterprise-level tracking and accounting.

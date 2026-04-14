@@ -210,10 +210,9 @@ function createMockSystem() {
 // CLI Entry Point
 // ============================================================================
 
-const args = process.argv.slice(2);
-
-if (args.includes('--help') || args.includes('-h')) {
-  console.log(`
+export async function evaluateCommand(args: string[]): Promise<void> {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(`
 🔍 ForgeWright Anti-Hallucination Evaluation
 
 Usage:
@@ -235,19 +234,20 @@ Examples:
   forgenexus evaluate --output json --output-file results.json
   forgenexus evaluate --types wiki,impact --difficulties easy,medium
   forgenexus evaluate --case-ids wiki-001,impact-001
-  `);
-  process.exit(0);
+    `);
+    process.exit(0);
+  }
+
+  // Parse arguments
+  const options: EvaluateOptions = {
+    output: args.includes('--output') ? args[args.indexOf('--output') + 1] as any : 'table',
+    outputFile: args.includes('--output-file') ? args[args.indexOf('--output-file') + 1] : undefined,
+    types: args.includes('--types') ? args[args.indexOf('--types') + 1].split(',') : undefined,
+    difficulties: args.includes('--difficulties') ? args[args.indexOf('--difficulties') + 1].split(',') : undefined,
+    caseIds: args.includes('--case-ids') ? args[args.indexOf('--case-ids') + 1].split(',') : undefined,
+    verbose: args.includes('--verbose'),
+    mock: !args.includes('--no-mock'),
+  };
+
+  await evaluate(options).catch(console.error);
 }
-
-// Parse arguments
-const options: EvaluateOptions = {
-  output: args.includes('--output') ? args[args.indexOf('--output') + 1] as any : 'table',
-  outputFile: args.includes('--output-file') ? args[args.indexOf('--output-file') + 1] : undefined,
-  types: args.includes('--types') ? args[args.indexOf('--types') + 1].split(',') : undefined,
-  difficulties: args.includes('--difficulties') ? args[args.indexOf('--difficulties') + 1].split(',') : undefined,
-  caseIds: args.includes('--case-ids') ? args[args.indexOf('--case-ids') + 1].split(',') : undefined,
-  verbose: args.includes('--verbose'),
-  mock: !args.includes('--no-mock'),
-};
-
-evaluate(options).catch(console.error);

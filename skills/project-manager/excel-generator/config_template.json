@@ -1,0 +1,56 @@
+{
+  "project_name": "Sample MVP Project",
+  "start_date": "2025-10-13",
+  "project_duration_months": 14,
+  "milestones": [
+    {
+      "name": "M1 - Concept & Prototype",
+      "sprints_count": 4,
+      "backlog_epics": [
+        "Core gameplay concept",
+        "Visual style direction",
+        "Technical architecture review"
+      ]
+    },
+    {
+      "name": "M2 - Core Logic",
+      "sprints_count": 8,
+      "backlog_epics": [
+        "Character interaction",
+        "Multiplayer sync foundation",
+        "Smart contract integration"
+      ]
+    }
+  ],
+  "team": [
+    {
+      "index": "1",
+      "name": "Bùi Phúc Minh Tâm",
+      "role": "Project Manager",
+      "proposed_ra": 0.35,
+      "start": "2025-10-13",
+      "end": "2026-12-31"
+    },
+    {
+      "index": "2",
+      "name": "Dev Member 1",
+      "role": "Unity Developer",
+      "proposed_ra": 1.0,
+      "start": "2025-10-13",
+      "end": "2026-12-31"
+    },
+    {
+      "index": "3",
+      "name": "Art Member 1",
+      "role": "3D Game Artist",
+      "proposed_ra": 0.85,
+      "start": "2025-10-13",
+      "end": "2026-12-31"
+    }
+  ],
+  "cost_rates": {
+    "Project Manager": 55800000,
+    "Unity Developer": 51000000,
+    "3D Game Artist": 40300000
+  }
+}
