@@ -13,6 +13,7 @@ import { registerToolsCallCommand } from './commands/tools-call.js';
 import { registerConfigCommands } from './commands/config.js';
 import { registerDoctorCommand } from './commands/doctor.js';
 import { registerValidateCommand } from './commands/validate.js';
+import { registerCompletionCommand } from './commands/completion.js';
 import { VERSION } from './version.js';
 import { EXIT_CODES } from './exit-codes.js';
 import pc from 'picocolors';
@@ -36,6 +37,7 @@ export function buildProgram(): Command {
   registerConfigCommands(program);
   registerDoctorCommand(program);
   registerValidateCommand(program);
+  registerCompletionCommand(program);
 
   // Initialize config
   const config = getConfig();
