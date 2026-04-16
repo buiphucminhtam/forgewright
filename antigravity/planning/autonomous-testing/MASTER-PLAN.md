@@ -540,6 +540,7 @@ interfaceNOVATestGenerator {
 | **Healwright** | AI-powered locators | 9/10 |
 | **InspectWare** | Debugger middleware | 9/10 |
 | **GitHub Actions** | CI/CD | 9/10 |
+| **MiniMax** | LLM Provider (MiniMax-M2.7, MiniMax-Text-01) | 9/10 |
 
 ### Tier 2: Intelligence (Open Source + SaaS)
 
@@ -633,7 +634,7 @@ forge test audit                 # Full audit report
 |--------|-------|-------------|
 | Functionize | 5D Model | 99.95% accuracy, 200 attrs/element |
 | Qyrus NOVA | SEER | Sense-Evaluate-Execute-Report |
-| Healwright | Locators | AI-powered, multi-provider |
+| Healwright | Locators | AI-powered, multi-provider (OpenAI, Anthropic, Gemini, Ollama, **MiniMax**) |
 | Stably.ai | NL Locators | Natural language element detection |
 
 ---

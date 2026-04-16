@@ -335,6 +335,41 @@ interfaceFLARESecurity {
 | **Security** | Basic scan | **FLARE** (fuzzing) | arXiv 2025 |
 | **Visual AI** | Applitools | Applitools + **Stably** (NL locators) | Stably.ai |
 | **Debugging** | Manual | **InspectWare** (open-source) | arXiv 2025 |
+| **LLM Providers** | OpenAI only | **OpenAI + Anthropic + Gemini + Ollama + MiniMax** | Multi-provider |
+
+## LLM Provider Configuration
+
+| Provider | Model | Context | Speed | Use Case |
+|----------|-------|---------|-------|----------|
+| **OpenAI** | GPT-4o | 128K | 60 tps | Default |
+| **Anthropic** | Claude 3.5 | 200K | 60 tps | Reasoning |
+| **Gemini** | Gemini 2.0 | 1M | 60 tps | Long context |
+| **Ollama** | Local models | - | - | Privacy |
+| **MiniMax** | MiniMax-M2.7 | 204K | 100 tps | High-speed |
+| **MiniMax** | MiniMax-Text-01 | 456B params | - | Long context |
+
+### MiniMax API Configuration
+
+```typescript
+interface MiniMaxConfig {
+  baseURL: 'https://api.minimax.io';
+  endpoint: '/v1/text/chatcompletion_v2';
+  
+  models: {
+    m27: 'MiniMax-M2.7';           // 204,800 token context
+    m27Highspeed: 'MiniMax-M2.7-highspeed';  // 100 tps
+    m25: 'MiniMax-M2.5';
+    m21: 'MiniMax-M2.1';           // Enhanced programming
+    m2: 'MiniMax-M2';              // Agentic + reasoning
+    text01: 'MiniMax-Text-01';     // 456B params
+  };
+  
+  authentication: {
+    type: 'Bearer';
+    header: 'Authorization';
+  };
+}
+```
 
 ---
 
@@ -443,6 +478,7 @@ interfaceFLARESecurity {
 | arXiv 2604.05289 | FLARE | Coverage-guided fuzzing for agents |
 | Functionize | 5D Model | 99.95% accuracy, 200 attrs/element |
 | Qyrus NOVA | SEER | Sense-Evaluate-Execute-Report |
-| Healwright | Playwright | AI-powered locators, multi-provider |
+| Healwright | Playwright | AI-powered locators, multi-provider (OpenAI, Anthropic, Gemini, Ollama, **MiniMax**) |
 | Stably.ai | NL Locators | Natural language element detection |
+| MiniMax | LLM Provider | MiniMax-M2.7 (204K context), MiniMax-Text-01 (456B params) |
 | InspectWare | Debugging | Open-source debugger middleware |
