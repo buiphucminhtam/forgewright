@@ -1,77 +1,71 @@
-# Autonomous Testing & Self-Healing Workflow
+# Autonomous Testing System - Complete Implementation Guide
 
-> Complete system for autonomous code → test → detect bug → fix → continue development.
+> Vibe Coding workflow với self-healing, risk-based execution, và human-in-the-loop.
 
-## The Problem
+## Quick Reference
 
-```
-Traditional Flow (Manual):
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-│  Code   │───►│  Test   │───►│  Find   │───►│  User   │
-│ Feature │    │ Manual  │    │  Bug    │    │  Fix    │
-└─────────┘    └─────────┘    └─────────┘    └─────────┘
-     │                                          ▲
-     └──────────────────────────────────────────┘
-                    (Repeat)
-```
+```bash
+# Start autonomous mode
+forge test autonomous
 
-```
-Autonomous Flow (Self-Healing):
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-│  Code   │───►│  Auto   │───►│  Detect │───►│  Auto   │
-│ Feature │    │  Test   │    │   Bug   │    │   Fix   │
-└─────────┘    └─────────┘    └─────────┘    └─────────┘
-     │                                          │
-     │            ┌─────────┐                  │
-     └───────────►│ Continue│◄─────────────────┘
-                  │ Dev    │
-                  └─────────┘
+# Run specific layers
+forge test run --layer unit,integration,visual,e2e
+
+# Risk-based execution
+forge test risk-scan
+
+# Production monitoring
+forge test shift-right
 ```
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    AUTONOMOUS TESTING SYSTEM                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐            │
-│  │    Code      │───►│    Test      │───►│    Detect    │            │
-│  │   Feature    │    │   Runner     │    │     Bug      │            │
-│  └──────────────┘    └──────────────┘    └──────────────┘            │
-│       │                    │                    │                      │
-│       │                    │                    ▼                      │
-│       │                    │            ┌──────────────┐            │
-│       │                    │            │   Analyze    │            │
-│       │                    │            │    Error     │            │
-│       │                    │            └──────────────┘            │
-│       │                    │                    │                      │
-│       │                    │                    ▼                      │
-│       │                    │            ┌──────────────┐            │
-│       │                    │            │   Decision   │            │
-│       │                    │            │   Engine     │            │
-│       │                    │            └──────────────┘            │
-│       │                    │                    │                      │
-│       │          ┌─────────┴─────────┐         │                      │
-│       │          │                   │         ▼                      │
-│       │          ▼                   ▼   ┌──────────────┐            │
-│       │    ┌───────────┐       ┌───────────┐    │    Fix     │            │
-│       │    │   Unit    │       │   Visual   │───►│   Code     │            │
-│       │    │   Tests   │       │   Tests    │    └──────────────┘            │
-│       │    └───────────┘       └───────────┘          │                      │
-│       │          │                   │                ▼                      │
-│       │          ▼                   ▼          ┌──────────────┐            │
-│       │    ┌───────────┐       ┌───────────┐   │    Re-test   │            │
-│       │    │  Static   │       │  Screenshot│───►│    Verify    │            │
-│       │    │  Analysis │       │  Compare   │   └──────────────┘            │
-│       │    └───────────┘       └───────────┘          │                      │
-│       │          │                   │                ▼                      │
-│       │          └───────────────────┴─────────┐      ┌──────────────┐      │
-│       │                                          │      │   Continue   │      │
-│       └──────────────────────────────────────────└─────►│    Dev      │      │
-│                                                            └──────────────┘      │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                    INTENT-DRIVEN LAYER                            │   │
+│  │   "Complete guest checkout for red sweater"                       │   │
+│  │   ↓                                                              │   │
+│  │   AI Agent → Understand Goal → Generate Tests → Execute          │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                    │                                      │
+│                                    ▼                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                    RISK-BASED EXECUTION                          │   │
+│  │   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │   │
+│  │   │  Historical │  │    Code    │  │    User    │           │   │
+│  │   │   Defects   │  │   Changes  │  │   Behavior  │           │   │
+│  │   │   40%      │  │   30%     │  │   20%      │           │   │
+│  │   └─────────────┘  └─────────────┘  └─────────────┘           │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                    │                                      │
+│                                    ▼                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                    SELF-HEALING LAYER                            │   │
+│  │   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │   │
+│  │   │   DOM +     │  │    ML      │  │   Visual   │           │   │
+│  │   │   Visual    │→ │   Engine   │→ │   Hybrid   │           │   │
+│  │   │   Hybrid    │  │  (Real-time)│  │   Detection │           │   │
+│  │   └─────────────┘  └─────────────┘  └─────────────┘           │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                    │                                      │
+│                                    ▼                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                    SHIFT-RIGHT LAYER                             │   │
+│  │   Production ← Session Replays ← Crash Patterns ← Feedback         │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                    │                                      │
+│                                    ▼                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                    HUMAN-IN-THE-LOOP LAYER                       │   │
+│  │   • AI Red Teamer • Complex Logic • Security • Compliance        │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,609 +73,340 @@ Autonomous Flow (Self-Healing):
 
 ## Test Layers
 
-### Layer 1: Unit Tests (Fast - 10ms/test)
-
-```typescript
-// Automated via Jest/Vitest
-// Run on every file save
-// Fail = auto-fix or rollback
-```
-
-### Layer 2: Integration Tests (Medium - 100ms/test)
-
-```typescript
-// Automated via Supertest/Playwright
-// API + Component integration
-// Fail = detailed error report
-```
-
-### Layer 3: Visual Regression Tests (Slow - 1s/test)
-
-```typescript
-// Automated via Playwright + Applitools
-// Screenshot comparison
-// Detect UI changes automatically
-```
-
-### Layer 4: E2E Tests (Slowest - 10s/test)
-
-```typescript
-// Automated via Playwright
-// Full user flows
-// Fail = autonomous fix attempt
-```
+| Layer | Tool | Speed | Auto-Fix | Human Required |
+|-------|------|-------|----------|----------------|
+| **Unit** | Vitest | ~10ms | ✅ 100% | ❌ |
+| **Integration** | Vitest | ~100ms | ✅ 90% | ⚠️ Complex |
+| **Visual** | Playwright + Applitools | ~1s | ⚠️ 40% | ✅ Intent |
+| **E2E** | Playwright | ~10s | ⚠️ 30% | ✅ Critical |
+| **Security** | Various | ~30s | ⚠️ 50% | ✅ Always |
+| **Performance** | k6/Loader.io | ~60s | ❌ | ✅ Always |
 
 ---
 
-## Self-Healing Decision Tree
+## Self-Healing Engine
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                  BUG DETECTED                           │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-              ┌───────────────────────┐
-              │   Error Type?          │
-              └───────────────────────┘
-                          │
-         ┌────────────────┼────────────────┐
-         │                │                │
-         ▼                ▼                ▼
-   ┌───────────┐   ┌───────────┐   ┌───────────┐
-   │  Syntax   │   │  Logic    │   │   UI/UX   │
-   │   Error   │   │   Bug     │   │   Bug     │
-   └───────────┘   └───────────┘   └───────────┘
-         │                │                │
-         ▼                ▼                ▼
-   ┌───────────┐   ┌───────────┐   ┌───────────┐
-   │  Auto-fix │   │  Analyze  │   │  Screenshot│
-   │  via AI   │   │  + Suggest│   │  Compare   │
-   └───────────┘   └───────────┘   └───────────┘
-         │                │                │
-         ▼                ▼                ▼
-   ┌───────────┐   ┌───────────┐   ┌───────────┐
-   │ Re-test   │   │ Human    │   │ Update    │
-   │ + Deploy  │   │ Decision │   │ Baseline  │
-   └───────────┘   └───────────┘   └───────────┘
-```
-
----
-
-## Implementation Stack
-
-| Component | Tool | Purpose |
-|-----------|------|---------|
-| **Code Generation** | Cursor AI / Claude | Write feature code |
-| **Unit Tests** | Vitest / Jest | Logic validation |
-| **API Tests** | Supertest | Backend validation |
-| **Visual Tests** | Playwright + Applitools | UI regression |
-| **E2E Tests** | Playwright | Full flow testing |
-| **CI/CD** | GitHub Actions | Orchestration |
-| **Error Analysis** | LLM | Root cause analysis |
-| **Auto-Fix** | LLM (Claude/GPT-4) | Code repair |
-
----
-
-## Workflow Loop
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    DEVELOPMENT LOOP                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   ┌──────────────────────────────────────────────────────────┐ │
-│   │  CURSOR/CLAUDE: Write Feature Code                       │ │
-│   │  + Auto-generate unit tests                              │ │
-│   │  + Update existing tests                                 │ │
-│   └──────────────────────────────────────────────────────────┘ │
-│                              │                                   │
-│                              ▼                                   │
-│   ┌──────────────────────────────────────────────────────────┐ │
-│   │  AUTOMATED TEST RUNNER                                   │ │
-│   │  1. Vitest (unit tests) - ~10s                          │ │
-│   │  2. Playwright (API + E2E) - ~60s                       │ │
-│   │  3. Visual comparison (Applitools) - ~30s                │ │
-│   └──────────────────────────────────────────────────────────┘ │
-│                              │                                   │
-│                              ▼                                   │
-│   ┌──────────────────────────────────────────────────────────┐ │
-│   │  RESULT ANALYSIS                                          │ │
-│   │                                                          │ │
-│   │  ┌────────────┐  ┌────────────┐  ┌────────────┐         │ │
-│   │  │  ALL PASS  │  │   TESTS   │  │   TESTS   │         │ │
-│   │  │    ✓       │  │   FAIL    │  │   FAIL    │         │ │
-│   │  └────────────┘  │  (Logic)  │  │   (UI)    │         │ │
-│   │                  └────────────┘  └────────────┘         │ │
-│   │                       │                │                  │ │
-│   │                       ▼                ▼                  │ │
-│   │  ┌────────────────────────────────────────────────┐     │ │
-│   │  │  ERROR CLASSIFICATION                          │     │ │
-│   │  │  - Syntax Error → Auto-fix                     │     │ │
-│   │  │  - Logic Bug → LLM Analysis → Auto-fix        │     │ │
-│   │  │  - UI Change → Screenshot Diff → Accept/Update│     │ │
-│   │  │  - E2E Flow → Human Review Required            │     │ │
-│   │  └────────────────────────────────────────────────┘     │ │
-│   └──────────────────────────────────────────────────────────┘ │
-│                              │                                   │
-│                              ▼                                   │
-│   ┌──────────────────────────────────────────────────────────┐ │
-│   │  AUTONOMOUS FIX (if fixable)                            │ │
-│   │                                                          │ │
-│   │  1. Analyze error → Get context                         │ │
-│   │  2. Generate fix → LLM suggests solution                 │ │
-│   │  3. Apply fix → Edit code                               │ │
-│   │  4. Re-test → Verify fix works                          │ │
-│   │  5. If pass → Continue development                      │ │
-│   │  6. If fail → Log + Human review                        │ │
-│   └──────────────────────────────────────────────────────────┘ │
-│                              │                                   │
-│                              ▼                                   │
-│   ┌──────────────────────────────────────────────────────────┐ │
-│   │  COMMIT & CONTINUE                                      │ │
-│   │  ✓ Tests pass                                          │ │
-│   │  ✓ Build successful                                    │ │
-│   │  → Next feature                                        │ │
-│   └──────────────────────────────────────────────────────────┘ │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Tools Configuration
-
-### 1. Vitest (Unit Tests)
+### Multi-Attribute Element Identification
 
 ```typescript
-// vitest.config.ts
-import { defineConfig } from 'vitest/config'
-
-export default defineConfig({
-  test: {
-    environment: 'node',
-    globals: true,
-    // Auto-run on save
-    watch: true,
-    // Report coverage
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-    },
-    // Retry failed tests once
-    retry: 1,
-    // Exit on first failure in CI
-    bail: process.env.CI ? 1 : 0,
-  },
-})
+// element-fingerprint.ts
+interface ElementFingerprint {
+  visual: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+    color: string;
+  };
+  semantic: {
+    role: string;
+    ariaLabel?: string;
+  };
+  text: {
+    content: string;
+    visible: boolean;
+  };
+  dom: {
+    tag: string;
+    classes: string[];
+    id?: string;
+  };
+  context: {
+    parent?: string;
+    siblings?: string[];
+  };
+}
 ```
 
-### 2. Playwright (E2E + Visual)
+### Healing Logic
 
 ```typescript
-// playwright.config.ts
-import { defineConfig, devices } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './tests',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  
-  use: {
-    baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-  },
-
-  projects: [
-    // Setup
-    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+// healing-engine.ts
+class HealingEngine {
+  async heal(test: Test, error: Error): Promise<HealedTest> {
+    // 1. Capture failure context
+    const context = await this.captureContext(test, error);
     
-    // Chromedriver
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
-    },
-
-    // Visual Testing (Applitools)
-    {
-      name: 'visual',
-      use: { 
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1280, height: 720 },
-      },
-    },
-  ],
-
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-  },
-});
-```
-
-### 3. Applitools (Visual AI)
-
-```typescript
-// tests/visual.config.ts
-import { test, expect } from '@playwright/test';
-const { Applitools } = require('@applitools/eyes-playwright');
-
-test('homepage visual regression', async ({ page }) => {
-  const eyes = new Applitools.Eyes();
-  eyes.setApiKey(process.env.APPLITOOLS_API_KEY);
-  
-  await page.goto('/');
-  
-  // Full page visual check
-  await eyes.check('Homepage', Applitools.Region.target());
-  
-  // Specific element check
-  await eyes.check('Hero Section', page.locator('.hero'));
-  
-  // Interactive element check
-  await page.click('.btn-primary');
-  await eyes.check('After Click State');
-  
-  await eyes.close();
-});
+    // 2. Generate fingerprints for failed elements
+    const fingerprints = await this.generateFingerprints(context);
+    
+    // 3. Find best match in updated UI
+    const match = await this.findMatch(fingerprints);
+    
+    // 4. Update test with new locator
+    const healed = await this.updateLocator(test, match);
+    
+    // 5. Validate fix
+    const valid = await this.validate(healed);
+    
+    return valid ? healed : this.escalateToHuman(test, error);
+  }
+}
 ```
 
 ---
 
-## CI/CD Pipeline
+## Intent-Driven Test Generation
+
+### Natural Language → Test Cases
+
+```typescript
+// test-generator.ts
+const intentExamples = [
+  {
+    intent: "Complete guest checkout for red sweater",
+    tests: [
+      "add_to_cart_red_sweater",
+      "proceed_to_checkout",
+      "fill_guest_details",
+      "submit_order",
+      "verify_confirmation"
+    ]
+  },
+  {
+    intent: "User login with invalid credentials",
+    tests: [
+      "enter_invalid_email",
+      "enter_invalid_password",
+      "click_login",
+      "verify_error_message"
+    ]
+  }
+];
+```
+
+---
+
+## Risk-Based Prioritization
+
+### Risk Score Formula
+
+```
+Risk Score = (Historical Defects × 0.4) + 
+              (Code Changes × 0.3) + 
+              (User Behavior × 0.2) + 
+              (Module Criticality × 0.1)
+```
+
+### Priority Matrix
+
+| Risk Score | Priority | Execution |
+|------------|----------|-----------|
+| 0.8 - 1.0 | **P0** | Immediate |
+| 0.6 - 0.8 | **P1** | Within 1 hour |
+| 0.4 - 0.6 | **P2** | Within 4 hours |
+| 0.0 - 0.4 | **P3** | Next release |
+
+---
+
+## Shift-Right Integration
+
+### Production Data Sources
+
+```typescript
+// production-monitor.ts
+interface ProductionData {
+  sessionReplays: SessionReplay[];
+  crashReports: CrashReport[];
+  errorLogs: ErrorLog[];
+  userFeedback: Feedback[];
+  analytics: AnalyticsEvent[];
+}
+```
+
+### Feedback Loop
+
+```
+Production ──► Session Replays ──► Crash Patterns ──► Test Suite Update
+    │                │                    │
+    └───► Error Logs ──► Anomaly Detection ──► New Test Cases
+```
+
+---
+
+## Human-in-the-Loop
+
+### When to Escalate
+
+| Scenario | Action | Urgency |
+|----------|--------|---------|
+| Security vulnerability | Block deployment | Immediate |
+| Breaking business logic | Require approval | High |
+| Complex edge case | AI + Human review | Medium |
+| UI intentional change | Update baseline | Low |
+
+### AI Red Teamer
+
+```typescript
+// red-team.ts
+async function redTeam(agent: AIAgent): Promise<TestCase[]> {
+  const attacks = [
+    injectPrompt(),
+    bypassAuth(),
+    corruptData(),
+    exceedLimits(),
+    exploitRaceCondition(),
+  ];
+  
+  const failedCases: TestCase[] = [];
+  for (const attack of attacks) {
+    if (await attack.succeeds(agent)) {
+      failedCases.push(attack.generateTestCase());
+    }
+  }
+  return failedCases;
+}
+```
+
+---
+
+## CLI Commands
+
+```bash
+# Autonomous Mode (Full Loop)
+forge test autonomous                  # test + fix + continue
+forge test autonomous --max-attempts 5 # Custom retry
+
+# Test Layers
+forge test run --layer unit           # Unit tests only
+forge test run --layer integration   # Integration tests
+forge test run --layer visual        # Visual regression
+forge test run --layer e2e           # End-to-end
+forge test run --layer security      # Security scan
+
+# Specific Features
+forge test risk-scan                  # Risk-based prioritization
+forge test shift-right               # Production data analysis
+forge test red-team                  # AI Red Teamer
+forge test audit                     # Full audit report
+
+# Visual
+forge test update-baseline           # Update visual baselines
+forge test compare --baseline v1     # Compare versions
+
+# Fix Mode
+forge test fix                      # Auto-fix failures
+forge test fix --strategy aggressive # Aggressive fix attempt
+
+# CI/CD
+forge ci run                        # Full CI pipeline
+forge ci deploy                    # Deploy after green
+```
+
+---
+
+## Configuration
 
 ```yaml
-# .github/workflows/autonomous-test.yml
-name: Autonomous Testing
+# .forgewright/autonomous.yaml
+autonomous:
+  enabled: true
+  maxAutoFixAttempts: 3
+  
+  layers:
+    unit:
+      enabled: true
+      autoFix: true
+      timeout: 60s
+    integration:
+      enabled: true
+      autoFix: true
+      timeout: 120s
+    visual:
+      enabled: true
+      autoFix: false  # Intent changes require human
+      timeout: 300s
+    e2e:
+      enabled: true
+      autoFix: false  # Critical paths need human
+      timeout: 600s
 
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
+  riskBased:
+    enabled: true
+    weights:
+      historicalDefects: 0.4
+      codeChanges: 0.3
+      userBehavior: 0.2
+      moduleCriticality: 0.1
 
-jobs:
-  # ============================================
-  # STEP 1: Code Analysis (Fast)
-  # ============================================
-  analyze:
-    name: Code Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install deps
-        run: npm ci
-      
-      - name: ESLint
-        run: npm run lint
-      
-      - name: Type check
-        run: npm run typecheck
+  shiftRight:
+    enabled: true
+    sources:
+      - sentry
+      - session_replay
+      - crash_reporting
+      - analytics
 
-  # ============================================
-  # STEP 2: Unit Tests (Fast)
-  # ============================================
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    needs: analyze
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install deps
-        run: npm ci
-      
-      - name: Run Unit Tests
-        run: npm run test:unit
-      
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v4
-
-  # ============================================
-  # STEP 3: Integration Tests (Medium)
-  # ============================================
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: unit-tests
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install deps
-        run: npm ci
-      
-      - name: Run API Tests
-        run: npm run test:api
-      
-      - name: Run E2E Tests
-        run: npm run test:e2e
-
-  # ============================================
-  # STEP 4: Visual Regression (Slow)
-  # ============================================
-  visual-tests:
-    name: Visual Regression
-    runs-on: ubuntu-latest
-    needs: integration-tests
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install deps
-        run: npm ci
-      
-      - name: Run Visual Tests
-        run: npm run test:visual
-        env:
-          APPLITOOLS_API_KEY: ${{ secrets.APPLITOOLS_API_KEY }}
-
-  # ============================================
-  # STEP 5: Auto-Fix (On Failure)
-  # ============================================
-  auto-fix:
-    name: Auto-Fix & Retry
-    runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, visual-tests]
-    if: failure()
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install deps
-        run: npm ci
-      
-      - name: Get Error Context
-        run: |
-          # Get failed test info
-          echo "Failed tests detected. Analyzing..."
-          
-      - name: Auto-Fix via Claude
-        uses: anthropics/anthropic-actions@latest
-        with:
-          api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            Analyze the test failures and fix the code:
-            
-            1. Read the test files that failed
-            2. Read the source code being tested
-            3. Identify the root cause
-            4. Fix the code
-            5. Do NOT modify tests unless they are incorrect
-            
-            Return the fixed code changes.
-      
-      - name: Re-run Tests
-        run: npm run test
-      
-      - name: Create PR if Fixed
-        if: success()
-        run: |
-          git config user.name "Auto-Fix Bot"
-          git config user.email "bot@forgewright.ai"
-          git checkout -b fix/${{ github.sha }}
-          git add -A
-          git commit -m "fix: auto-fix test failures"
-          git push origin fix/${{ github.sha }}
-          gh pr create --title "Auto-Fix: Test Failures" --body "Automated fix from CI"
-
-  # ============================================
-  # STEP 6: Build & Deploy
-  # ============================================
-  build-deploy:
-    name: Build & Deploy
-    runs-on: ubuntu-latest
-    needs: [visual-tests]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Deploy
-        run: npm run deploy
+  humanInLoop:
+    enabled: true
+    escalateOn:
+      - security
+      - breaking_changes
+      - complex_logic
 ```
 
 ---
 
-## NPM Scripts
+## Metrics Dashboard
 
-```json
-{
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:unit": "vitest run --testPathPattern=tests/unit",
-    "test:api": "vitest run --testPathPattern=tests/api",
-    "test:e2e": "playwright test",
-    "test:visual": "playwright test --project=visual",
-    "test:all": "npm run test:unit && npm run test:api && npm run test:e2e",
-    
-    "lint": "eslint . --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit",
-    
-    "ci": "npm run lint && npm run typecheck && npm run test:all"
-  }
-}
-```
+### Key Metrics
+
+| Metric | Current | Target | Alert |
+|--------|---------|--------|-------|
+| Test Pass Rate | 70% | > 95% | < 90% |
+| Auto-fix Success | 40% | > 80% | < 60% |
+| Mean Time to Fix | 30 min | < 5 min | > 15 min |
+| Flakiness Rate | 20% | < 5% | > 10% |
+| Human Intervention | 50% | < 20% | > 40% |
 
 ---
 
-## Autonomous Agent Configuration
+## Tools Stack
 
-### Cursor Rules
+### Foundation
 
-```json
-// .cursor/rules/autonomous-testing.json
-{
-  "name": "Autonomous Testing",
-  "description": "Self-healing test-driven development",
-  "rules": [
-    {
-      "pattern": "**/*.ts",
-      "actions": {
-        "on_save": [
-          "Run related unit tests",
-          "If fail: analyze error and auto-fix",
-          "If still fail: notify and continue"
-        ]
-      }
-    },
-    {
-      "pattern": "**/*.test.ts",
-      "actions": {
-        "on_save": [
-          "Run specific test",
-          "If fail: show error + suggested fix",
-          "Auto-apply fix if confident"
-        ]
-      }
-    }
-  ]
-}
-```
+| Tool | Purpose | Command |
+|------|---------|---------|
+| Vitest | Unit + Integration | `forge test unit` |
+| Playwright | E2E + API | `forge test e2e` |
+| Applitools | Visual AI | `forge test visual` |
+| GitHub Actions | CI/CD | `forge ci run` |
 
-### Claude Desktop Config
+### Self-Healing
 
-```json
-// ~/.claude/projects/forgewright/settings.json
-{
-  "autonomous": {
-    "enabled": true,
-    "maxAutoFixAttempts": 3,
-    "requireHumanApproval": false,
-    "testOnSave": true,
-    "autoCommitOnPass": true
-  }
-}
-```
+| Tool | Purpose | Integration |
+|------|---------|-------------|
+| Functionize | Deep learning | Enterprise |
+| Qyrus NOVA | Agentic | Enterprise |
+| Tricentis | Self-healing | Enterprise |
+| Mabl | ML-powered | Enterprise |
 
----
+### Monitoring
 
-## Metrics & Reporting
-
-### Dashboard Metrics
-
-| Metric | Target | Alert |
-|--------|--------|-------|
-| Test Pass Rate | > 95% | < 90% |
-| Mean Time to Fix | < 5 min | > 15 min |
-| Auto-fix Success | > 80% | < 60% |
-| False Positive Rate | < 5% | > 10% |
-
-### Auto-Fix Categories
-
-| Category | Auto-Fixable | Human Required |
-|----------|--------------|----------------|
-| Syntax Errors | ✅ 100% | - |
-| Type Errors | ✅ 90% | Logic bugs |
-| Logic Bugs | ⚠️ 60% | Complex |
-| UI Changes | ⚠️ 40% | Intent changes |
-| E2E Failures | ⚠️ 30% | Most |
-
----
-
-## Quick Start
-
-### 1. Install Dependencies
-
-```bash
-npm install -D vitest @playwright/test @applitools/eyes-playwright
-npx playwright install --with-deps
-```
-
-### 2. Configure
-
-```bash
-cp .env.example .env
-# Add APPLITOOLS_API_KEY
-# Add ANTHROPIC_API_KEY (for auto-fix)
-```
-
-### 3. Run Autonomous Mode
-
-```bash
-# Start dev server + watch tests
-npm run dev
-npm run test:watch
-
-# Or run full CI locally
-npm run ci
-```
-
-### 4. Enable Auto-Fix
-
-```bash
-# Set environment
-export AUTONOMOUS_MODE=true
-export MAX_AUTO_FIX_ATTEMPTS=3
-
-# Run - it will auto-fix failures
-npm run ci
-```
+| Tool | Purpose | Integration |
+|------|---------|-------------|
+| Sentry | Error tracking | Shift-Right |
+| LogRocket | Session replay | Shift-Right |
+| Datadog | APM | Production |
 
 ---
 
 ## Best Practices
 
-1. **Fast feedback loop**: Unit tests should run in < 10s
-2. **Isolate tests**: Each test independent
-3. **Clear assertions**: Descriptive test names
-4. **Minimal mocking**: Test real behavior when safe
-5. **Visual baseline**: Update regularly in dev
-6. **Auto-fix limits**: Max 3 attempts before human
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Tests too slow | Run unit tests first, then E2E |
-| Flaky tests | Use test retries, fix timing issues |
-| Visual false positives | Update baselines, add tolerance |
-| Auto-fix loops | Add human approval for complex fixes |
+1. **Fast Feedback Loop**: Unit tests < 10s
+2. **Isolate Tests**: Each test independent
+3. **Clear Assertions**: Descriptive test names
+4. **Update Baselines**: Weekly visual baseline updates
+5. **Human Review**: Security & critical paths
+6. **Monitor Flakiness**: Track and fix flaky tests
 
 ---
 
-## See Also
+## Research Sources
 
-- [Vitest Documentation](https://vitest.dev/)
-- [Playwright Documentation](https://playwright.dev/)
-- [Applitools Visual AI](https://applitools.com/)
-- [Cursor IDE Testing](https://cursor.sh/)
+1. **The Sovereign Agent: Vibe Coding Revolution 2025**
+2. **Salesforce Vibe Codey: AI-Powered Testing**
+3. **Novature Tech: Agentic AI + DevOps + QA**
+4. **AI in Software Testing: Bug Detection**
+5. **Self-Healing Test Automation**
+6. **Tricentis Testim: ML Self-Healing**
+7. **Applitools + Mabl: Visual AI**
+8. **Playwright: 200% YoY Growth**
