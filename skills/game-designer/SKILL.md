@@ -24,6 +24,15 @@ tags: [game-design, gdd, gameplay-loop, economy, mechanics, balancing, progressi
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 !`cat .forgewright/codebase-context.md 2>/dev/null || true`
 
+**Coordinate System Reference:** When designing game levels and positioning assets, use `docs/coordinate-systems/` for:
+- Engine coordinate system comparisons (Unity, Godot, Unreal, Blender)
+- Asset import/export settings
+- Position conversion between engines
+- Floating Origin patterns for large worlds
+- Placement checklist before spawning objects
+
+Commands: `forge coords convert`, `forge coords validate`, `forge coords engines`
+
 **Fallback (if protocols not loaded):** Use notify_user with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads.
 
 ## Aesthetic Foundation
