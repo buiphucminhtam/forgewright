@@ -10,9 +10,13 @@ import { registerGlobalFlags } from './core/global-flags.js';
 import { registerToolsCommands } from './commands/tools.js';
 import { registerSkillsCommands } from './commands/skills.js';
 import { registerToolsCallCommand } from './commands/tools-call.js';
+import { registerConfigCommands } from './commands/config.js';
+import { registerDoctorCommand } from './commands/doctor.js';
+import { registerValidateCommand } from './commands/validate.js';
 import { VERSION } from './version.js';
 import { EXIT_CODES } from './exit-codes.js';
 import pc from 'picocolors';
+import { getConfig } from './config/store.js';
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -29,6 +33,15 @@ export function buildProgram(): Command {
   registerToolsCommands(program);
   registerSkillsCommands(program);
   registerToolsCallCommand(program);
+  registerConfigCommands(program);
+  registerDoctorCommand(program);
+  registerValidateCommand(program);
+
+  // Initialize config
+  const config = getConfig();
+  config.loadUserConfig();
+  config.loadEnvFiles(process.cwd());
+  config.loadEnvVars();
 
   // Add examples help text
   program.addHelpText(
