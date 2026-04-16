@@ -15,6 +15,7 @@ import { registerDoctorCommand } from './commands/doctor.js';
 import { registerValidateCommand } from './commands/validate.js';
 import { registerCompletionCommand } from './commands/completion.js';
 import { registerCoordsCommand } from './commands/coords.js';
+import { registerAutonomousTestCommand } from './commands/test.js';
 import { VERSION } from './version.js';
 import { EXIT_CODES } from './exit-codes.js';
 import pc from 'picocolors';
@@ -40,6 +41,7 @@ export function buildProgram(): Command {
   registerValidateCommand(program);
   registerCompletionCommand(program);
   registerCoordsCommand(program);
+  registerAutonomousTestCommand(program);
 
   // Initialize config
   const config = getConfig();
