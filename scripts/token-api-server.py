@@ -68,12 +68,18 @@ PRICING = {
 
 # Model name normalization patterns
 MODEL_ALIASES = {
+    # Cursor models -> standard names
     'claude-4.6-opus-max-thinking-fast': 'claude-4.6-opus',
     'claude-4.6-opus-high-thinking-fast': 'claude-4.6-opus',
     'claude-4-opus': 'claude-4-opus',
     'gpt-5.4-high-fast': 'gpt-5.4',
     'gpt-5.4-xhigh-fast': 'gpt-5.4',
     'gpt-4o': 'gpt-4o',
+    # Claude Code models -> standard names
+    'claude-sonnet-4-6': 'claude-sonnet-4',
+    'claude-haiku-4-5': 'claude-haiku-4',
+    'claude-sonnet-4': 'claude-sonnet-4',
+    'claude-haiku-4': 'claude-haiku-4',
 }
 
 
@@ -640,6 +646,165 @@ class CursorDBReader:
             return []
 
 
+class ClaudeTelemetryReader:
+    """Read usage data from Claude Code telemetry."""
+
+    TELEMETRY_PATH = Path.home() / ".claude" / "telemetry"
+
+    def is_available(self) -> bool:
+        """Check if Claude Code telemetry is available."""
+        return self.TELEMETRY_PATH.exists() and any(self.TELEMETRY_PATH.glob("*.json"))
+
+    def get_sessions(self) -> list:
+        """Parse session info from telemetry files."""
+        if not self.is_available():
+            return []
+
+        sessions = {}
+        cwd_map = {}  # session_id -> working directory
+
+        try:
+            # First pass: collect cwd info from shell_set_cwd events
+            for f in self.TELEMETRY_PATH.glob("*.json"):
+                with open(f) as fp:
+                    for line in fp:
+                        try:
+                            wrapper = json.loads(line)
+                            # Data is nested inside event_data
+                            event = wrapper.get("event_data", wrapper)
+                            event_name = event.get("event_name", "")
+                            sid = event.get("session_id", "")
+
+                            if event_name == "tengu_shell_set_cwd":
+                                meta_str = event.get("additional_metadata", "{}")
+                                meta = json.loads(meta_str) if isinstance(meta_str, str) else meta_str
+                                if meta.get("success"):
+                                    cwd_map[sid] = meta.get("cwd", "")
+
+                            elif event_name == "tengu_started" and sid:
+                                env = event.get("env", {})
+                                sessions[sid] = {
+                                    "session_id": sid,
+                                    "model": event.get("model", "unknown"),
+                                    "start_time": event.get("client_timestamp"),
+                                    "version": env.get("version"),
+                                    "platform": env.get("platform", "unknown"),
+                                    "cwd": cwd_map.get(sid, ""),
+                                    "betas": event.get("betas", ""),
+                                }
+                        except (json.JSONDecodeError, KeyError, TypeError):
+                            continue
+
+            return list(sessions.values())
+        except Exception as e:
+            print(f"Error reading Claude telemetry: {e}")
+            return []
+
+    def get_model_usage(self) -> list:
+        """Aggregate model usage from sessions."""
+        sessions = self.get_sessions()
+
+        models = {}
+        for s in sessions:
+            model = s.get("model", "unknown")
+            if model not in models:
+                models[model] = {"model": model, "session_count": 0}
+            models[model]["session_count"] += 1
+
+        return list(models.values())
+
+    def get_projects(self) -> list:
+        """Get unique projects from working directories."""
+        sessions = self.get_sessions()
+
+        projects = {}
+        for s in sessions:
+            cwd = s.get("cwd", "")
+            if not cwd or "/" not in cwd:
+                continue
+
+            # Extract project from /Users/name/Documents/GitHub/{project}/...
+            parts = cwd.split('/')
+            github_idx = -1
+            for i, p in enumerate(parts):
+                if p == 'GitHub' and i + 1 < len(parts):
+                    github_idx = i + 1
+                    break
+
+            if github_idx > 0:
+                project_name = parts[github_idx]
+                project_root = '/'.join(parts[:github_idx + 1])
+
+                if project_root not in projects:
+                    projects[project_root] = {
+                        "name": project_name,
+                        "path": project_root,
+                        "session_count": 0,
+                        "models": set()
+                    }
+
+                projects[project_root]["session_count"] += 1
+                projects[project_root]["models"].add(s.get("model", "unknown"))
+
+        # Convert sets to lists for JSON serialization
+        for p in projects.values():
+            p["models"] = list(p["models"])
+
+        return sorted(projects.values(), key=lambda x: x["session_count"], reverse=True)
+
+
+class UnifiedAggregator:
+    """Merge usage data from multiple platforms."""
+
+    def __init__(self):
+        self.cursor_reader = CursorDBReader()
+        self.claude_reader = ClaudeTelemetryReader()
+
+    def get_summary(self) -> dict:
+        """Get unified summary across all platforms."""
+        summary = {
+            "platforms": {
+                "cursor": {"available": False, "calls": 0, "estimated_cost": 0},
+                "claude-code": {"available": False, "sessions": 0, "models": []},
+                "forgewright": {"available": False, "calls": 0, "tokens": 0, "cost": 0},
+            },
+            "by_model": {},
+            "total_estimated_cost": 0,
+        }
+
+        # Cursor data
+        if self.cursor_reader.is_available():
+            cursor_models = self.cursor_reader.get_model_stats()
+            cursor_calls = sum(m.get("call_count", 0) for m in cursor_models)
+            cursor_cost = sum(m.get("estimated_cost", 0) for m in cursor_models)
+            summary["platforms"]["cursor"] = {
+                "available": True,
+                "calls": cursor_calls,
+                "estimated_cost": cursor_cost,
+                "models": len(cursor_models),
+            }
+            summary["total_estimated_cost"] += cursor_cost
+
+        # Claude Code data
+        if self.claude_reader.is_available():
+            claude_sessions = self.claude_reader.get_sessions()
+            claude_models = self.claude_reader.get_model_usage()
+            summary["platforms"]["claude-code"] = {
+                "available": True,
+                "sessions": len(claude_sessions),
+                "models": claude_models,
+            }
+
+        return summary
+
+    def get_by_platform(self) -> dict:
+        """Get usage broken down by platform."""
+        return {
+            "cursor": self.cursor_reader.get_model_stats() if self.cursor_reader.is_available() else [],
+            "claude": self.claude_reader.get_model_usage() if self.claude_reader.is_available() else [],
+        }
+
+
 class TokenAPI:
     def __init__(self):
         self.home = os.path.expanduser('~')
@@ -866,6 +1031,31 @@ def create_app():
                 }
             })
 
+        @app.route('/api/claude/sessions')
+        def claude_sessions():
+            """Get sessions from Claude Code telemetry."""
+            claude_reader = ClaudeTelemetryReader()
+            return jsonify({
+                'sessions': claude_reader.get_sessions(),
+                'models': claude_reader.get_model_usage(),
+                'available': claude_reader.is_available()
+            })
+
+        @app.route('/api/claude/projects')
+        def claude_projects():
+            """Get projects from Claude Code telemetry."""
+            claude_reader = ClaudeTelemetryReader()
+            return jsonify({
+                'projects': claude_reader.get_projects(),
+                'available': claude_reader.is_available()
+            })
+
+        @app.route('/api/unified/summary')
+        def unified_summary():
+            """Get unified summary across all platforms."""
+            aggregator = UnifiedAggregator()
+            return jsonify(aggregator.get_summary())
+
         return app
     else:
         return None
@@ -877,6 +1067,7 @@ def run_basic_server(port: int):
     import socketserver
 
     cursor_reader = CursorDBReader()
+    claude_reader = ClaudeTelemetryReader()
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self):
@@ -926,6 +1117,29 @@ def run_basic_server(port: int):
                         'available': cursor_reader.is_available()
                     }
                 }).encode())
+            elif self.path == '/api/claude/sessions':
+                self.send_response(200 if claude_reader.is_available() else 404)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'sessions': claude_reader.get_sessions(),
+                    'models': claude_reader.get_model_usage(),
+                    'available': claude_reader.is_available()
+                }).encode())
+            elif self.path == '/api/claude/projects':
+                self.send_response(200 if claude_reader.is_available() else 404)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'projects': claude_reader.get_projects(),
+                    'available': claude_reader.is_available()
+                }).encode())
+            elif self.path == '/api/unified/summary':
+                aggregator = UnifiedAggregator()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(aggregator.get_summary()).encode())
             elif self.path == '/api/health':
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
@@ -933,7 +1147,8 @@ def run_basic_server(port: int):
                 self.wfile.write(json.dumps({
                     'status': 'ok',
                     'projects_tracked': len(api.list_projects()),
-                    'cursor_available': cursor_reader.is_available()
+                    'cursor_available': cursor_reader.is_available(),
+                    'claude_available': claude_reader.is_available()
                 }).encode())
             elif self.path == '/dashboard' or self.path == '/':
                 self.send_response(200)
@@ -957,7 +1172,8 @@ def run_basic_server(port: int):
         print(f"   Dashboard: http://localhost:{port}/dashboard")
         print(f"   API:       http://localhost:{port}/api/usage")
         print(f"   Projects:  {len(api.list_projects())} tracked")
-        print(f"   Cursor:    {'Available' if cursor_reader.is_available() else 'Not found'}")
+        print(f"   Cursor:   {'Available' if cursor_reader.is_available() else 'Not found'}")
+        print(f"   Claude:   {'Available' if claude_reader.is_available() else 'Not found'}")
         print(f"\n   Press Ctrl+C to stop\n")
         httpd.serve_forever()
 

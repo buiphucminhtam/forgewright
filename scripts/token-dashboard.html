@@ -579,8 +579,9 @@
       </div>
       <div class="segmented-button" id="sourceTabs">
         <button id="source-all" class="selected" onclick="setSource('all')">All</button>
-        <button id="source-forgewright" onclick="setSource('forgewright')">Forgewright</button>
         <button id="source-cursor" onclick="setSource('cursor')">Cursor</button>
+        <button id="source-claude" onclick="setSource('claude')">Claude Code</button>
+        <button id="source-forgewright" onclick="setSource('forgewright')">Forgewright</button>
       </div>
       <div class="segmented-button">
         <button id="period-1" onclick="setPeriod(1)">Today</button>
@@ -661,6 +662,10 @@
         <div class="card-title">Top Projects</div>
         <canvas id="projectChart"></canvas>
       </div>
+      <div class="card chart-card">
+        <div class="card-title">Platform Usage</div>
+        <canvas id="platformChart"></canvas>
+      </div>
     </div>
     
     <!-- Bottom Section -->
@@ -698,11 +703,14 @@
     let providerChart = null;
     let modelChart = null;
     let projectChart = null;
+    let platformChart = null;
     let currentData = null;
     let cursorData = null;
+    let claudeData = null;
+    let unifiedData = null;
     let currentPeriod = 7;
     let currentSource = 'all';
-    const API_BASE = 'http://localhost:8893';
+    const API_BASE = 'http://localhost:8895';
 
     function formatNumber(n) {
       if (!n && n !== 0) return '-';
@@ -785,6 +793,18 @@
           cursorData.projects = (await projectsRes.json()).projects;
         }
 
+        // Load Claude Code data
+        const claudeRes = await fetch(API_BASE + '/api/claude/sessions');
+        if (claudeRes.ok) {
+          claudeData = await claudeRes.json();
+        }
+
+        // Load unified summary
+        const unifiedRes = await fetch(API_BASE + '/api/unified/summary');
+        if (unifiedRes.ok) {
+          unifiedData = await unifiedRes.json();
+        }
+
         updateDashboard();
         showSnackbar('Data refreshed');
       } catch (e) {
@@ -795,7 +815,9 @@
 
     function updateDashboard() {
       // Handle different sources
-      if (currentSource === 'cursor') {
+      if (currentSource === 'claude') {
+        updateClaudeDashboard();
+      } else if (currentSource === 'cursor') {
         updateCursorDashboard();
       } else if (currentSource === 'forgewright') {
         updateForgewrightDashboard();
@@ -835,6 +857,37 @@
       updateModelChart(models.slice(0, 8).map(m => ({
         name: m.model,
         tokens: m.call_count,
+        provider: m.model.includes('claude') ? 'anthropic' : m.model.includes('gpt') ? 'openai' : 'unknown'
+      })));
+    }
+
+    function updateClaudeDashboard() {
+      if (!claudeData || !claudeData.sessions) {
+        document.getElementById('totalTokens').textContent = '-';
+        document.getElementById('totalCost').textContent = '-';
+        document.getElementById('totalCalls').textContent = claudeData?.available ? '0' : 'N/A';
+        return;
+      }
+
+      const sessions = claudeData.sessions;
+      const models = claudeData.models || [];
+
+      document.getElementById('totalTokens').textContent = formatNumber(sessions.length);
+      document.getElementById('totalCost').textContent = '~';
+      document.getElementById('totalCalls').textContent = formatNumber(sessions.length);
+      document.getElementById('avgLatency').textContent = '-';
+      document.getElementById('tokenMeta').textContent = `${models.length} models, ${sessions.length} sessions`;
+
+      updateModelList(models.slice(0, 10).map(m => ({
+        name: m.model,
+        tokens: m.session_count,
+        cost: 0,
+        provider: m.model.includes('claude') ? 'anthropic' : m.model.includes('gpt') ? 'openai' : 'unknown'
+      })));
+
+      updateModelChart(models.slice(0, 8).map(m => ({
+        name: m.model,
+        tokens: m.session_count,
         provider: m.model.includes('claude') ? 'anthropic' : m.model.includes('gpt') ? 'openai' : 'unknown'
       })));
     }
@@ -916,6 +969,7 @@
       updateModelChart(Object.values(aggregated).sort((a, b) => b.tokens - a.tokens).slice(0, 10));
       if (cursorData?.projects) {
         updateProjectChart(cursorData.projects);
+        updatePlatformChart();
       }
     }
 
@@ -1120,6 +1174,85 @@
               grid: { display: false },
               ticks: { color: '#49454f', font: { size: 10 }, maxRotation: 45 }
             },
+            y: {
+              position: 'left',
+              beginAtZero: true,
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { color: '#49454f', callback: v => formatNumber(v) }
+            },
+            y1: {
+              position: 'right',
+              beginAtZero: true,
+              grid: { display: false },
+              ticks: { color: '#49454f', callback: v => '$' + v.toFixed(2) }
+            }
+          }
+        }
+      });
+    }
+
+    function updatePlatformChart() {
+      const ctx = document.getElementById('platformChart');
+      if (!ctx) return;
+      if (platformChart) platformChart.destroy();
+
+      if (!unifiedData || !unifiedData.platforms) return;
+
+      const platforms = unifiedData.platforms;
+      const labels = [];
+      const callsData = [];
+      const costsData = [];
+
+      if (platforms.cursor?.available) {
+        labels.push('Cursor');
+        callsData.push(platforms.cursor.calls || 0);
+        costsData.push(platforms.cursor.estimated_cost || 0);
+      }
+      if (platforms['claude-code']?.available) {
+        labels.push('Claude Code');
+        callsData.push(platforms['claude-code'].sessions || 0);
+        costsData.push(0);
+      }
+      if (platforms.forgewright?.available) {
+        labels.push('Forgewright');
+        callsData.push(platforms.forgewright.calls || 0);
+        costsData.push(platforms.forgewright.cost || 0);
+      }
+
+      if (labels.length === 0) return;
+
+      platformChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Calls',
+              data: callsData,
+              backgroundColor: 'rgba(66, 133, 244, 0.7)',
+              borderRadius: 8,
+              yAxisID: 'y',
+            },
+            {
+              label: 'Est. Cost ($)',
+              data: costsData,
+              backgroundColor: 'rgba(251, 188, 4, 0.7)',
+              borderRadius: 8,
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'x',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#49454f', usePointStyle: true, padding: 16 }
+            }
+          },
+          scales: {
             y: {
               position: 'left',
               beginAtZero: true,
