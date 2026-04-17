@@ -657,6 +657,10 @@
         <div class="card-title">Model Comparison</div>
         <canvas id="modelChart"></canvas>
       </div>
+      <div class="card chart-card">
+        <div class="card-title">Top Projects</div>
+        <canvas id="projectChart"></canvas>
+      </div>
     </div>
     
     <!-- Bottom Section -->
@@ -693,11 +697,12 @@
     let trendChart = null;
     let providerChart = null;
     let modelChart = null;
+    let projectChart = null;
     let currentData = null;
     let cursorData = null;
     let currentPeriod = 7;
     let currentSource = 'all';
-    const API_BASE = 'http://localhost:8892';
+    const API_BASE = 'http://localhost:8893';
 
     function formatNumber(n) {
       if (!n && n !== 0) return '-';
@@ -773,6 +778,13 @@
           cursorData = await cursorRes.json();
         }
 
+        // Load Cursor projects
+        const projectsRes = await fetch(API_BASE + '/api/cursor/projects');
+        if (projectsRes.ok) {
+          cursorData = cursorData || {};
+          cursorData.projects = (await projectsRes.json()).projects;
+        }
+
         updateDashboard();
         showSnackbar('Data refreshed');
       } catch (e) {
@@ -810,11 +822,14 @@
       document.getElementById('avgLatency').textContent = '-';
       document.getElementById('tokenMeta').textContent = `${models.length} models, ${totalConversations} conversations`;
 
+      const totalEstimatedCost = models.reduce((sum, m) => sum + (m.estimated_cost || 0), 0);
+      document.getElementById('totalCost').textContent = '~$' + totalEstimatedCost.toFixed(2);
+
       updateModelList(models.slice(0, 10).map(m => ({
         name: m.model,
         tokens: m.call_count,
-        cost: 0,
-        provider: m.model.includes('claude') ? 'anthropic' : m.model.includes('gpt') ? 'openai' : 'unknown'
+        cost: m.estimated_cost || 0,
+        provider: m.provider || 'unknown'
       })));
 
       updateModelChart(models.slice(0, 8).map(m => ({
@@ -856,12 +871,14 @@
         totalCalls = currentData.summary.total_calls;
       }
 
+      let cursorEstimatedCost = 0;
       if (cursorData?.models) {
+        cursorEstimatedCost = cursorData.models.reduce((sum, m) => sum + (m.estimated_cost || 0), 0);
         totalCalls += cursorData.models.reduce((sum, m) => sum + m.call_count, 0);
       }
 
       document.getElementById('totalTokens').textContent = formatNumber(totalTokens);
-      document.getElementById('totalCost').textContent = '$' + totalCost.toFixed(4);
+      document.getElementById('totalCost').textContent = '$' + (totalCost + cursorEstimatedCost).toFixed(2) + ' ~';
       document.getElementById('totalCalls').textContent = formatNumber(totalCalls);
       document.getElementById('avgLatency').textContent = currentData?.summary ? Math.round(currentData.summary.avg_latency_ms) + 'ms' : '-';
       document.getElementById('tokenMeta').textContent = cursorData?.available ? 'All sources' : 'Forgewright only';
@@ -897,6 +914,9 @@
 
       updateModelList(Object.values(aggregated).sort((a, b) => b.tokens - a.tokens).slice(0, 10));
       updateModelChart(Object.values(aggregated).sort((a, b) => b.tokens - a.tokens).slice(0, 10));
+      if (cursorData?.projects) {
+        updateProjectChart(cursorData.projects);
+      }
     }
 
     function updateTrendChart(trend) {
@@ -1042,6 +1062,75 @@
             y: {
               grid: { display: false },
               ticks: { color: '#49454f', font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    function updateProjectChart(projects) {
+      const ctx = document.getElementById('projectChart');
+      if (!ctx) return;
+      if (projectChart) projectChart.destroy();
+
+      if (!projects || projects.length === 0) return;
+
+      const topProjects = projects.slice(0, 8);
+      const labels = topProjects.map(p => p.name);
+      const data = topProjects.map(p => p.total_changes || 0);
+      const costs = topProjects.map(p => p.estimated_cost || 0);
+
+      projectChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Changes',
+              data,
+              backgroundColor: 'rgba(66, 133, 244, 0.7)',
+              borderRadius: 8,
+              yAxisID: 'y',
+            },
+            {
+              label: 'Est. Cost ($)',
+              data: costs,
+              backgroundColor: 'rgba(251, 188, 4, 0.7)',
+              borderRadius: 8,
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#49454f', usePointStyle: true, padding: 16 }
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: ${ctx.dataset.label.includes('Cost') ? '$' : ''}${ctx.raw.toFixed(2)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#49454f', font: { size: 10 }, maxRotation: 45 }
+            },
+            y: {
+              position: 'left',
+              beginAtZero: true,
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { color: '#49454f', callback: v => formatNumber(v) }
+            },
+            y1: {
+              position: 'right',
+              beginAtZero: true,
+              grid: { display: false },
+              ticks: { color: '#49454f', callback: v => '$' + v.toFixed(2) }
             }
           }
         }

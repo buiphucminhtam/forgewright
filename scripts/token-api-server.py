@@ -32,25 +32,80 @@ except ImportError:
     print("   Or run dashboard directly as HTML file.\n")
 
 # Provider pricing (USD per 1M tokens)
+# Note: Cursor stores call counts, not tokens. Cost is estimated.
 PRICING = {
     'anthropic': {
-        'claude-3-5-sonnet-20241022': {'input': 3.0, 'output': 15.0},
-        'claude-3-5-sonnet': {'input': 3.0, 'output': 15.0},
-        'claude-3-opus-20240229': {'input': 15.0, 'output': 75.0},
-        'claude-3-haiku-20240307': {'input': 0.25, 'output': 1.25},
-        'claude-3-5-haiku-20241022': {'input': 0.8, 'output': 4.0},
-        'claude-sonnet-4-20250514': {'input': 3.0, 'output': 15.0},
+        # Claude 4 series (2026)
+        'claude-4.6-opus': {'input': 15.0, 'output': 75.0, 'estimate_tokens_per_call': 5000},
+        'claude-4.5-opus': {'input': 15.0, 'output': 75.0, 'estimate_tokens_per_call': 5000},
+        'claude-4-opus': {'input': 15.0, 'output': 75.0, 'estimate_tokens_per_call': 5000},
+        # Claude 3.5 series
+        'claude-3-5-sonnet-20241022': {'input': 3.0, 'output': 15.0, 'estimate_tokens_per_call': 3000},
+        'claude-3-5-sonnet': {'input': 3.0, 'output': 15.0, 'estimate_tokens_per_call': 3000},
+        'claude-3-5-haiku-20241022': {'input': 0.8, 'output': 4.0, 'estimate_tokens_per_call': 1500},
+        # Claude 3 series
+        'claude-3-opus-20240229': {'input': 15.0, 'output': 75.0, 'estimate_tokens_per_call': 4000},
+        'claude-3-haiku-20240307': {'input': 0.25, 'output': 1.25, 'estimate_tokens_per_call': 1500},
+        'claude-sonnet-4-20250514': {'input': 3.0, 'output': 15.0, 'estimate_tokens_per_call': 3000},
     },
     'openai': {
-        'gpt-4o': {'input': 2.5, 'output': 10.0},
-        'gpt-4o-mini': {'input': 0.15, 'output': 0.60},
-        'gpt-4-turbo': {'input': 10.0, 'output': 30.0},
+        # GPT-5 series (2026)
+        'gpt-5.4': {'input': 10.0, 'output': 40.0, 'estimate_tokens_per_call': 4000},
+        'gpt-5': {'input': 10.0, 'output': 40.0, 'estimate_tokens_per_call': 4000},
+        'gpt-5.4-mini': {'input': 0.5, 'output': 2.0, 'estimate_tokens_per_call': 2500},
+        # GPT-4o series
+        'gpt-4o': {'input': 2.5, 'output': 10.0, 'estimate_tokens_per_call': 3000},
+        'gpt-4o-mini': {'input': 0.15, 'output': 0.60, 'estimate_tokens_per_call': 2000},
+        'gpt-4-turbo': {'input': 10.0, 'output': 30.0, 'estimate_tokens_per_call': 3000},
     },
     'google': {
-        'gemini-2.5-pro': {'input': 1.25, 'output': 5.0},
-        'gemini-2.5-flash': {'input': 0.075, 'output': 0.30},
+        'gemini-2.5-pro': {'input': 1.25, 'output': 5.0, 'estimate_tokens_per_call': 4000},
+        'gemini-2.5-flash': {'input': 0.075, 'output': 0.30, 'estimate_tokens_per_call': 2500},
+        'gemini-2-pro': {'input': 1.25, 'output': 5.0, 'estimate_tokens_per_call': 4000},
+        'gemini-2-flash': {'input': 0.075, 'output': 0.30, 'estimate_tokens_per_call': 2500},
     },
 }
+
+# Model name normalization patterns
+MODEL_ALIASES = {
+    'claude-4.6-opus-max-thinking-fast': 'claude-4.6-opus',
+    'claude-4.6-opus-high-thinking-fast': 'claude-4.6-opus',
+    'claude-4-opus': 'claude-4-opus',
+    'gpt-5.4-high-fast': 'gpt-5.4',
+    'gpt-5.4-xhigh-fast': 'gpt-5.4',
+    'gpt-4o': 'gpt-4o',
+}
+
+
+def get_pricing_for_model(model_name: str) -> dict:
+    """Get pricing info for a model by matching name patterns."""
+    model_lower = model_name.lower()
+
+    # Check exact aliases first
+    for alias, canonical in MODEL_ALIASES.items():
+        if alias.lower() in model_lower or model_lower in alias.lower():
+            for provider, models in PRICING.items():
+                for model_key, pricing in models.items():
+                    if model_key.lower() in canonical.lower():
+                        return pricing
+
+    # Try matching by prefix
+    for provider, models in PRICING.items():
+        for model_key, pricing in models.items():
+            if model_key.lower() in model_lower or model_lower.startswith(model_key.lower().split('-')[0]):
+                return pricing
+
+    # Default estimate for unknown models
+    return {'input': 5.0, 'output': 20.0, 'estimate_tokens_per_call': 3000}
+
+
+def estimate_cost(call_count: int, model_name: str) -> float:
+    """Estimate cost for Cursor calls (no token data available)."""
+    pricing = get_pricing_for_model(model_name)
+    tokens_per_call = pricing.get('estimate_tokens_per_call', 3000)
+    total_input = call_count * tokens_per_call * 0.7  # 70% input
+    total_output = call_count * tokens_per_call * 0.3  # 30% output
+    return (total_input / 1_000_000) * pricing['input'] + (total_output / 1_000_000) * pricing['output']
 
 # Dashboard HTML (inline)
 DASHBOARD_HTML = """
@@ -448,7 +503,7 @@ class CursorDBReader:
         return self.db_path.exists() and self.db_path.stat().st_size > 0
 
     def get_model_stats(self) -> list:
-        """Get aggregated model usage statistics."""
+        """Get aggregated model usage statistics with estimated costs."""
         if not self.is_available():
             return []
 
@@ -470,7 +525,16 @@ class CursorDBReader:
             """)
             rows = cursor.fetchall()
             conn.close()
-            return [dict(row) for row in rows]
+
+            # Add estimated cost
+            results = []
+            for row in rows:
+                stats = dict(row)
+                stats['estimated_cost'] = estimate_cost(stats['call_count'], stats['model'])
+                stats['provider'] = 'anthropic' if 'claude' in stats['model'].lower() else 'openai' if 'gpt' in stats['model'].lower() else 'unknown'
+                results.append(stats)
+
+            return results
         except (sqlite3.Error, Exception) as e:
             print(f"Error reading Cursor DB: {e}")
             return []
@@ -503,7 +567,7 @@ class CursorDBReader:
             return []
 
     def get_projects(self) -> list:
-        """Get unique project paths from conversations."""
+        """Get unique project paths with usage stats."""
         if not self.is_available():
             return []
 
@@ -511,16 +575,66 @@ class CursorDBReader:
             conn = sqlite3.connect(str(self.db_path))
             conn.row_factory = sqlite3.Row
             cursor = conn.execute("""
-                SELECT DISTINCT fileName as project_path, COUNT(*) as changes
+                SELECT
+                    fileName,
+                    model,
+                    COUNT(*) as changes,
+                    MAX(createdAt) as last_used
                 FROM ai_code_hashes
                 WHERE fileName IS NOT NULL
-                GROUP BY fileName
+                    AND model IS NOT NULL
+                    AND model != 'default'
+                GROUP BY fileName, model
                 ORDER BY changes DESC
-                LIMIT 20
             """)
             rows = cursor.fetchall()
             conn.close()
-            return [dict(row) for row in rows]
+
+            # Aggregate by project directory (first 4 path components)
+            projects = {}
+            for row in rows:
+                entry = dict(row)
+                full_path = entry['fileName']
+
+                # Extract project root from path like /Users/name/Documents/GitHub/{project}/...
+                # Path starts with / so parts[0] is empty
+                parts = full_path.split('/')
+                # Find "GitHub" in path to locate project
+                github_idx = -1
+                for i, p in enumerate(parts):
+                    if p == 'GitHub' and i + 1 < len(parts):
+                        github_idx = i + 1
+                        break
+
+                if github_idx > 0:
+                    project_name = parts[github_idx]
+                    project_root = '/'.join(parts[:github_idx + 1])
+                else:
+                    project_name = parts[-2] if len(parts) > 1 else 'unknown'
+                    project_root = full_path
+
+                if project_root not in projects:
+                    projects[project_root] = {
+                        'path': project_root,
+                        'name': project_name,
+                        'total_changes': 0,
+                        'models': {},
+                        'last_used': 0
+                    }
+
+                model = entry['model']
+                changes = entry['changes']
+                projects[project_root]['total_changes'] += changes
+                projects[project_root]['models'][model] = changes
+                projects[project_root]['last_used'] = max(projects[project_root]['last_used'], entry['last_used'] or 0)
+
+            # Calculate costs
+            for project in projects.values():
+                project['estimated_cost'] = sum(
+                    estimate_cost(count, model) for model, count in project['models'].items()
+                )
+
+            return sorted(projects.values(), key=lambda x: x['total_changes'], reverse=True)[:20]
         except (sqlite3.Error, Exception) as e:
             print(f"Error reading Cursor projects: {e}")
             return []
