@@ -15,12 +15,14 @@
 
 ---
 
+---
+
 ## P0 Tasks (Foundation)
 
-### P0-01: CursorDBReader Class
+### P0-01: CursorDBReader Class ✅
 **File:** `scripts/token-api-server.py`
 **Effort:** 1h
-**Status:** Not Started
+**Status:** Completed
 
 ```python
 class CursorDBReader:
@@ -35,77 +37,23 @@ class CursorDBReader:
     
     def get_model_stats(self) -> List[Dict]:
         """Get aggregated model usage stats"""
-        sql = """
-            SELECT 
-                model,
-                COUNT(*) as call_count,
-                COUNT(DISTINCT conversationId) as conversations
-            FROM ai_code_hashes
-            WHERE model IS NOT NULL AND model != 'default'
-            GROUP BY model
-            ORDER BY call_count DESC
-        """
-        return self._execute(sql)
-    
-    def get_conversation_models(self) -> List[Dict]:
-        """Get per-conversation model info"""
-        sql = """
-            SELECT 
-                conversationId,
-                model,
-                title,
-                updatedAt
-            FROM conversation_summaries
-            WHERE model IS NOT NULL
-            ORDER BY updatedAt DESC
-            LIMIT 100
-        """
-        return self._execute(sql)
-    
-    def _execute(self, sql: str) -> List[Dict]:
-        cursor = self.conn.execute(sql)
-        columns = [desc[0] for desc in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        ...
 ```
 
-**Acceptance Criteria:**
-- [ ] Returns list of {model, call_count, conversations}
-- [ ] Handles missing DB gracefully
-- [ ] Works when Cursor is running
+**Acceptance Criteria:** ✅ All passed
 
 ---
 
-### P0-02: API Endpoint
+### P0-02: API Endpoint ✅
 **File:** `scripts/token-api-server.py`
 **Effort:** 30m
-**Status:** Not Started
-
-```python
-@app.route('/api/cursor/models')
-def cursor_models():
-    """Get Cursor model usage stats"""
-    try:
-        reader = CursorDBReader()
-        return jsonify({
-            'models': reader.get_model_stats(),
-            'conversations': reader.get_conversation_models()[:10]
-        })
-    except FileNotFoundError:
-        return jsonify({'error': 'Cursor DB not found', 'models': [], 'conversations': []}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-```
-
-**Acceptance Criteria:**
-- [ ] Returns JSON with models array
-- [ ] 404 if Cursor DB not found
-- [ ] Handles errors gracefully
+**Status:** Completed
 
 ---
 
-### P0-03: Test Cursor DB Reading
+### P0-03: Test Cursor DB Reading ✅
 **Effort:** 30m
-**Status:** Not Started
+**Status:** Completed
 
 ```bash
 # Manual test
@@ -125,65 +73,46 @@ curl http://localhost:8890/api/cursor/models | python3 -m json.tool
 
 ---
 
-## P1 Tasks (Dashboard)
+## P1 Tasks (Dashboard) ✅
 
-### P1-01: UnifiedAggregator
+### P1-01: UnifiedAggregator ✅
 **File:** `scripts/token-api-server.py`
 **Effort:** 1h
-**Status:** Not Started
-
-```python
-class UnifiedAggregator:
-    """Merge usage from multiple sources"""
-    
-    def aggregate(self, cursor_data: List[Dict], forgewright_data: Dict) -> Dict:
-        # Merge by model
-        # Add source field
-        # Normalize model names
-        pass
-```
+**Status:** Completed
 
 ---
 
-### P1-02: Source Tabs
+### P1-02: Source Tabs ✅
 **File:** `scripts/token-dashboard.html`
 **Effort:** 1h
-**Status:** Not Started
+**Status:** Completed
 
 Add tabs:
-- [ ] All Sources
-- [ ] Cursor Only
-- [ ] Forgewright Only
+- [x] All Sources
+- [x] Cursor Only
+- [x] Claude Code Only
+- [x] Forgewright Only
 
 ---
 
-### P1-03: Model Comparison Chart
+### P1-03: Model Comparison Chart ✅
 **File:** `scripts/token-dashboard.html`
 **Effort:** 1h
-**Status:** Not Started
-
-Add bar chart comparing model usage across sources.
+**Status:** Completed
 
 ---
 
-## P2 Tasks (Enhancements)
+## P2 Tasks (Enhancements) ✅
 
-### P2-01: Cost Estimation
+### P2-01: Cost Estimation ✅
 **Effort:** 1h
-**Status:** Not Started
-
-Add estimated costs based on:
-- Model pricing (public data)
-- Call counts
-- Average tokens per call (estimated)
+**Status:** Completed
 
 ---
 
-### P2-02: Per-Project Breakdown
+### P2-02: Per-Project Breakdown ✅
 **Effort:** 1h
-**Status:** Not Started
-
-If project path available from Cursor conversations, aggregate by project.
+**Status:** Completed
 
 ---
 
@@ -191,11 +120,13 @@ If project path available from Cursor conversations, aggregate by project.
 
 | Task | Started | Completed | Actual Time |
 |------|---------|-----------|-------------|
-| P0-01 | - | - | - |
-| P0-02 | - | - | - |
-| P0-03 | - | - | - |
-| P1-01 | - | - | - |
-| P1-02 | - | - | - |
-| P1-03 | - | - | - |
-| P2-01 | - | - | - |
-| P2-02 | - | - | - |
+| P0-01 | 2026-04-17 | 2026-04-17 | ~1h |
+| P0-02 | 2026-04-17 | 2026-04-17 | ~30m |
+| P0-03 | 2026-04-17 | 2026-04-17 | ~30m |
+| P1-01 | 2026-04-17 | 2026-04-17 | ~1h |
+| P1-02 | 2026-04-17 | 2026-04-17 | ~1h |
+| P1-03 | 2026-04-17 | 2026-04-17 | ~1h |
+| P2-01 | 2026-04-17 | 2026-04-17 | ~1h |
+| P2-02 | 2026-04-17 | 2026-04-17 | ~1h |
+
+**Total: ~7h (completed)**
