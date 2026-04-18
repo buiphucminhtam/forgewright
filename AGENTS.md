@@ -70,7 +70,7 @@ Users can invoke these workflows directly:
 - `/setup-mobile-test` — Set up plug-and-play mobile testing (Android/iOS)
 - `/setup-paperclip` — Set up Paperclip multi-agent orchestration (optional)
 - `/onboard` — Run deep project analysis (creates `.forgewright/project-profile.json`)
-- `/mcp` — Start auto-generated project-specific MCP server
+- `/mcp` — Generate MCP workspace isolation config — creates `.antigravity/mcp-manifest.json` for Antigravity conflict-free multi-project support
 
 ## Auto-Initialization Check
 
@@ -82,6 +82,7 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 2. **If missing**, silently execute the following terminal commands to auto-initialize it:
    - `npx --yes forgenexus analyze`
    - `bash <path-to-forgewright-submodule>/scripts/mcp-generate.sh`
+   - `bash <path-to-forgewright-submodule>/scripts/forgewright-mcp-launcher.sh --mode install`
    - Yield a brief message to the user: `ℹ Auto-initialized ForgeNexus index and MCP server (missing setup).`
 3. **If exists**, continue normally without doing anything.
 
@@ -108,7 +109,7 @@ All 56 skills are in the `skills/` directory:
 | Parallel Dispatch | `skills/parallel-dispatch/SKILL.md` |
 | Memory Manager | `skills/memory-manager/SKILL.md` |
 | Skill Maker | `skills/skill-maker/SKILL.md` |
-| MCP Generator | `skills/mcp-generator/SKILL.md` |
+| MCP Generator | `skills/mcp-generator/SKILL.md` — generates `.antigravity/mcp-manifest.json` for Antigravity workspace isolation |
 | **Planning** | |
 | Antigravity | `antigravity/README.md` |
 | **Engineering** | |

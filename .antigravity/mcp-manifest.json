@@ -1,0 +1,18 @@
+{
+  "manifest_version": "1.0",
+  "workspace": "/Users/buiphucminhtam/Documents/GitHub/forgewright",
+  "generated_at": "2026-04-18T12:00:00Z",
+  "generated_by": "forgewright/mcp-generator",
+  "forgewright_version": "7.7.0",
+  "servers": [
+    {
+      "name": "forgenexus",
+      "type": "forgenexus",
+      "enabled": true,
+      "description": "Code intelligence — query, context, impact, blast-radius analysis",
+      "config": {
+        "forgenexus_path": "/Users/buiphucminhtam/Documents/GitHub/forgewright/forgenexus/dist/cli/index.js"
+      }
+    }
+  ]
+}

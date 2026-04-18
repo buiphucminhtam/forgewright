@@ -85,7 +85,49 @@ cd .forgewright/mcp-server/
 npm install
 ```
 
-### Step 5 — Generate Client Config Snippets
+### Step 5 — Generate `.antigravity/mcp-manifest.json`
+
+Create the manifest that enables Antigravity workspace isolation:
+
+```bash
+# Create .antigravity directory
+mkdir -p "${PROJECT_ROOT}/.antigravity"
+
+# Generate manifest
+cat > "${PROJECT_ROOT}/.antigravity/mcp-manifest.json" << 'MANIFEST_EOF'
+{
+  "manifest_version": "1.0",
+  "workspace": "${PROJECT_ROOT}",
+  "generated_at": "${GENERATED_AT}",
+  "generated_by": "forgewright/mcp-generator",
+  "forgewright_version": "${FORGEWRIGHT_VERSION}",
+  "servers": [
+    {
+      "name": "${PROJECT_SLUG}-forgewright",
+      "type": "forgewright-mcp-server",
+      "enabled": true,
+      "description": "Forgewright project intelligence — code graph, project profile, filesystem tools"
+    },
+    {
+      "name": "forgenexus",
+      "type": "forgenexus",
+      "enabled": true,
+      "description": "Code intelligence — query, context, impact, blast-radius analysis",
+      "config": {
+        "forgenexus_path": "${FORGENEXUS_PATH}"
+      }
+    }
+  ]
+}
+MANIFEST_EOF
+```
+
+> **Why `.antigravity/` instead of `.forgewright/`?**
+> - Antigravity reads from `.antigravity/` for its MCP integration
+> - `.forgewright/` remains project-internal (committed to repo)
+> - `.antigravity/` can be gitignored separately
+
+### Step 6 — Generate Client Config Snippets
 
 Output integration configs for popular clients:
 
@@ -123,7 +165,7 @@ Cursor (.cursor/mcp.json):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### Step 6 — Update Project Profile
+### Step 7 — Update Project Profile
 
 Add to `project-profile.json`:
 
@@ -132,6 +174,7 @@ Add to `project-profile.json`:
   "mcp_server": {
     "generated": true,
     "path": ".forgewright/mcp-server/",
+    "manifest_path": ".antigravity/mcp-manifest.json",
     "tools_count": 9,
     "resources_count": 3,
     "prompts_count": 3,
@@ -140,6 +183,62 @@ Add to `project-profile.json`:
   }
 }
 ```
+
+### Step 8 — Workspace Isolation Summary
+
+Print a summary explaining the workspace isolation:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ✅ MCP Workspace Isolation Ready
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Manifest: .antigravity/mcp-manifest.json
+ Servers:  2 active (forgewright + forgenexus)
+ Transport: stdio
+
+ 🔒 How it works:
+    Antigravity reads .antigravity/mcp-manifest.json
+    from the current workspace automatically.
+    No global config conflicts.
+
+    Each workspace has its own MCP config
+    committed to the project repository.
+
+    Switch workspaces → MCP servers follow
+    automatically.
+
+ 📋 Next steps:
+    1. Commit .antigravity/mcp-manifest.json
+    2. Update Antigravity global config:
+       → See section "Antigravity Global Config"
+    3. Restart Antigravity
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Also output the Antigravity global config update:
+
+```
+📋 Antigravity Global Config (replace claude_desktop_config.json):
+
+{
+  "mcpServers": {
+    "forgewright-workspace": {
+      "command": "bash",
+      "args": [
+        "/path/to/forgewright/scripts/forgewright-mcp-launcher.sh"
+      ],
+      "env": {
+        "FORGEWRIGHT_WORKSPACE": "${workspaceFolder}"
+      }
+    }
+  }
+}
+```
+
+> Replace `/path/to/forgewright/` with the absolute path to your
+> forgewright submodule in the host project.
 
 ## MCP Primitives Reference
 
@@ -205,6 +304,71 @@ When the project changes significantly (new onboarding, architecture changes):
 - **project-onboarding.md** — Phase 1.6 triggers this skill
 - **session-lifecycle.md** — MCP server can re-index at session start/end
 - **code-intelligence.md** — Shares ForgeNexus data source
+
+## Workspace Isolation (Zero-Friction)
+
+> **Problem solved:** When forgewright is a submodule in multiple projects, each project needs its own MCP config. Previously, a global `claude_desktop_config.json` with hardcoded paths caused conflicts when switching workspaces.
+
+### Architecture
+
+```
+Antigravity global config (SINGLE entry):
+  forgewright-workspace → forgewright-mcp-launcher.sh
+
+Per-workspace manifest:
+  <project>/.antigravity/mcp-manifest.json
+    → Lists allowed MCP servers
+    → Workspace-relative paths
+
+Launcher reads manifest:
+  → Resolves absolute paths
+  → Auto-installs deps if needed
+  → Returns MCP config to Antigravity
+```
+
+### Manifest Format
+
+```json
+{
+  "manifest_version": "1.0",
+  "workspace": "/absolute/path/to/project",
+  "generated_at": "2026-04-18T...",
+  "generated_by": "forgewright/mcp-generator",
+  "forgewright_version": "7.0.0",
+  "servers": [
+    {
+      "name": "myproject-forgewright",
+      "type": "forgewright-mcp-server",
+      "enabled": true,
+      "description": "..."
+    },
+    {
+      "name": "forgenexus",
+      "type": "forgenexus",
+      "enabled": true,
+      "config": {
+        "forgenexus_path": "optional/override/path.js"
+      }
+    }
+  ]
+}
+```
+
+### Allowed Server Types (Allowlist)
+
+Only these server types are permitted in manifests:
+
+| Type | Description |
+|------|-------------|
+| `forgewright-mcp-server` | Auto-generated project MCP server |
+| `forgenexus` | Code intelligence graph |
+| `notebooklm-mcp` | NotebookLM integration |
+
+### Security
+
+- **Path validation:** All paths are validated for traversal (`..`) and blocked for `.git`, `.env`
+- **Allowlist only:** Arbitrary commands cannot be added — only pre-approved server types
+- **Repo-committed:** Manifest travels with the project, auditable by git
 
 ---
 

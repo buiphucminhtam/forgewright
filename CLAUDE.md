@@ -201,8 +201,8 @@ See `skills/` directory for full list:
 | `/setup` | First-time setup as git submodule |
 | `/update` | Check for and install updates |
 | `/pipeline` | Show full pipeline reference |
-| `/onboard` | Deep project analysis |
-| `/mcp` | Generate MCP server config |
+| `/onboard` | Deep project analysis (includes MCP setup) |
+| `/mcp` | Generate MCP workspace isolation config — creates `.antigravity/mcp-manifest.json` for Antigravity conflict-free multi-project support |
 
 ## Self-Check
 

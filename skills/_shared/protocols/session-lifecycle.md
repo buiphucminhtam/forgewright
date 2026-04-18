@@ -65,7 +65,7 @@ IF .forgenexus/ directory exists AND forgenexus CLI available:
   Check index freshness:
     last_indexed = .forgenexus/metadata.json → indexed_at
     commits_since = git rev-list --count HEAD ^<last_indexed_commit>
-  
+
   IF commits_since > 0 OR index_age > 1 hour:
     Log: "⧖ Code Intelligence index stale — auto-reindexing"
     Run: npx forgenexus analyze 2>/dev/null
@@ -80,6 +80,37 @@ IF .forgenexus/ directory exists AND forgenexus CLI available:
 ELSE IF project-profile.json → code_intelligence.indexed == false:
   Log: "ℹ Code Intelligence not set up — run 'npx forgenexus analyze' for deep code understanding"
   Continue without Code Intelligence (graceful degradation)
+```
+
+### Step 3.6 — MCP Workspace Isolation (Antigravity)
+
+```
+IF running in Antigravity (Claude Code):
+  Detect current workspace:
+    workspace = git rev-parse --show-toplevel 2>/dev/null || pwd
+
+  Check for .antigravity/mcp-manifest.json:
+    manifest = workspace + "/.antigravity/mcp-manifest.json"
+
+    IF manifest exists:
+      Log: "✓ MCP manifest found — workspace isolation active"
+      IF .forgewright/mcp-server/server.ts exists:
+        Log: "  └── forgewright-mcp-server: ready"
+      IF .antigravity/plugins/production-grade/forgenexus/ exists:
+        Log: "  └── forgenexus: ready"
+      # MCP server spawning is handled by forgewright-mcp-launcher.sh
+      # (configured once in claude_desktop_config.json)
+
+    ELSE IF .forgewright/mcp-server/server.ts exists:
+      Log: "ℹ MCP server generated but no manifest found"
+      Log: "  Run '/mcp' to generate .antigravity/mcp-manifest.json"
+
+    ELSE:
+      Log: "ℹ MCP not set up — run '/mcp' to generate workspace-isolated config"
+
+ELSE:
+  # Non-Antigravity clients (Cursor, VS Code) use per-project config
+  Log: "✓ Per-project MCP config (.cursor/mcp.json)"
 ```
 
 ### Step 4 — Detect Manual Changes

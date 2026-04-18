@@ -3,6 +3,9 @@
 # Forgewright MCP Server Generator (Standalone)
 #
 # Generates .forgewright/mcp-server/ from templates.
+# Also generates .antigravity/mcp-manifest.json for Antigravity
+# workspace isolation (zero config conflicts across projects).
+#
 # No AI session required — runs from CLI directly.
 #
 # Usage:
@@ -39,6 +42,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 log_info()  { echo -e "${BLUE}ℹ${NC} $1"; }
@@ -160,6 +164,59 @@ install_deps() {
   log_ok "Dependencies installed"
 }
 
+# ─── Generate Antigravity MCP Manifest ─────────────────────
+
+generate_manifest() {
+  log_info "Generating Antigravity MCP manifest..."
+
+  local ANTIGRAVITY_DIR="${PROJECT_ROOT}/.antigravity"
+  mkdir -p "$ANTIGRAVITY_DIR"
+
+  # Find forgenexus path
+  local FORGENEXUS_PATH=""
+  local candidates=(
+    "${PROJECT_ROOT}/.antigravity/plugins/production-grade/forgenexus/dist/cli/index.js"
+    "${PROJECT_ROOT}/.forgewright/plugins/forgenexus/dist/cli/index.js"
+    "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js"
+    "${HOME}/.forgewright/forgenexus/dist/cli/index.js"
+  )
+  for candidate in "${candidates[@]}"; do
+    if [ -f "$candidate" ]; then
+      FORGENEXUS_PATH="$candidate"
+      break
+    fi
+  done
+
+  cat > "${ANTIGRAVITY_DIR}/mcp-manifest.json" << EOF
+{
+  "manifest_version": "1.0",
+  "workspace": "${PROJECT_ROOT}",
+  "generated_at": "${GENERATED_AT}",
+  "generated_by": "forgewright/mcp-generator",
+  "forgewright_version": "${FORGEWRIGHT_VERSION}",
+  "servers": [
+    {
+      "name": "${PROJECT_SLUG}-forgewright",
+      "type": "forgewright-mcp-server",
+      "enabled": true,
+      "description": "Forgewright project intelligence — code graph, project profile, filesystem tools"
+    },
+    {
+      "name": "forgenexus",
+      "type": "forgenexus",
+      "enabled": true,
+      "description": "Code intelligence — query, context, impact, blast-radius analysis",
+      "config": {
+        "forgenexus_path": "${FORGENEXUS_PATH}"
+      }
+    }
+  ]
+}
+EOF
+
+  log_ok "Generated .antigravity/mcp-manifest.json"
+}
+
 # ─── Print Summary ───────────────────────────────────────
 
 print_summary() {
@@ -168,24 +225,34 @@ print_summary() {
   echo -e " ${GREEN}✓ MCP Server Generated Successfully${NC}"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  echo "  Project:   ${PROJECT_NAME}"
-  echo "  Language:  ${PROJECT_LANGUAGE}"
-  echo "  Framework: ${PROJECT_FRAMEWORK}"
-  echo "  Output:    ${OUTPUT_DIR}"
-  echo "  Tools:     9 active"
-  echo "  Resources: 3 active"
-  echo "  Prompts:   3 active"
+  echo "  Project:    ${PROJECT_NAME}"
+  echo "  Language:   ${PROJECT_LANGUAGE}"
+  echo "  Framework:  ${PROJECT_FRAMEWORK}"
+  echo "  MCP Server: .forgewright/mcp-server/"
+  echo "  Manifest:   .antigravity/mcp-manifest.json"
+  echo "  Tools:      9 active"
+  echo "  Resources:  3 active"
+  echo "  Prompts:    3 active"
   echo ""
-  echo -e " ${YELLOW}To connect your AI client, add:${NC}"
+  echo -e " ${GREEN}🔒 Workspace Isolation: ENABLED${NC}"
+  echo "  Antigravity automatically uses .antigravity/mcp-manifest.json"
+  echo "  from the current workspace — no global config conflicts."
   echo ""
-  echo '  {' 
+  echo -e " ${CYAN}To complete Antigravity setup:${NC}"
+  echo "  Update ~/Library/Application Support/Claude/claude_desktop_config.json"
+  echo "  with a SINGLE entry pointing to the launcher:"
+  echo ""
+  echo "  {"
   echo '    "mcpServers": {'
-  echo "      \"${PROJECT_SLUG}\": {"
-  echo '        "command": "npx",'
-  echo "        \"args\": [\"tsx\", \"${OUTPUT_DIR}/server.ts\"]"
-  echo '      }'
-  echo '    }'
-  echo '  }'
+  echo '      "forgewright-workspace": {'
+  echo '        "command": "bash",'
+  echo "        \"args\": [\"${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh\"]"
+  echo "      }"
+  echo "    }"
+  echo "  }"
+  echo ""
+  echo "  ⚠️  Replace ${FORGEWRIGHT_DIR} with the absolute path"
+  echo "      to your forgewright submodule."
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
@@ -201,6 +268,7 @@ main() {
   read_project_vars
   generate_server
   install_deps
+  generate_manifest
   print_summary
 }
 
