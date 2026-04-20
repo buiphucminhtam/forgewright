@@ -126,31 +126,115 @@ flowchart TD
     style Q2 fill:#533483,stroke:#9b59b6,color:#fff
 ```
 
-### Quick Setup (no bash knowledge needed)
+### Quick Setup — Copy, Paste, Done
 
-#### If you're using Cursor / VS Code
-
-1. Open Cursor or VS Code
-2. Type your question or request
-3. **Done!** No additional installation needed — Level 1 is already working
-
-#### If you want to get smarter (Level 2+)
-
-Open **Terminal** (or Command Prompt) and run:
+**Step 1: Open your project in terminal**
 
 ```bash
-# Check Node.js
-node --version
+# Navigate to your project folder
+cd /path/to/your/project
 
-# If you see a version (e.g. v20.x.x) → you're good
-# If you get "command not found" → install Node.js first
-#   macOS: brew install node
-#   Windows: download from nodejs.org
+# If you don't have a project yet, create one
+mkdir my-project && cd my-project
+git init
+```
+
+**Step 2: Clone Forgewright (choose ONE way)**
+
+```bash
+# Way A — Clone as a standalone tool (recommended)
+git clone https://github.com/buiphucminhtam/forgewright.git
+
+# Way B — Add as git submodule inside your project
+git submodule add https://github.com/buiphucminhtam/forgewright.git forgewright
+
+# Way C — Clone anywhere, use Antigravity plugin from any project
+git clone https://github.com/buiphucminhtam/forgewright.git ~/.forgewright-home
+```
+
+**Step 3: Run MCP Setup (Level 4 — enables 12 AI tools in your IDE)**
+
+```bash
+# If you cloned forgewright standalone (Way A) — run from forgewright directory:
+cd forgewright
+bash scripts/forgewright-mcp-setup.sh
+
+# If you added as submodule (Way B) — run from your project directory:
+bash forgewright/scripts/forgewright-mcp-setup.sh
+
+# If you used Antigravity plugin (Way C):
+bash ~/.forgewright-home/.antigravity/plugins/production-grade/scripts/forgewright-mcp-setup.sh
+```
+
+**Step 4: Restart your IDE**
+
+After setup completes, **restart Cursor / VS Code / Claude Desktop** to load the MCP server.
+
+**Step 5: Verify**
+
+```bash
+# Check MCP status
+bash scripts/forgewright-mcp-setup.sh --check
 ```
 
 ---
 
-## AgentScope-Inspired Features (v8.1)
+### IDE-Specific Setup
+
+#### Cursor
+
+1. **Clone forgewright into your project** (Way A or B above)
+2. **Run setup:**
+   ```bash
+   bash scripts/forgewright-mcp-setup.sh   # from forgewright/ directory
+   ```
+3. **Restart Cursor** — the MCP server auto-loads from `~/.cursor/mcp.json`
+4. **Done.** Type your first request and Forgewright's 56 skills activate automatically.
+
+#### Claude Desktop
+
+1. Clone forgewright (Way A or B):
+   ```bash
+   git clone https://github.com/buiphucminhtam/forgewright.git
+   cd forgewright
+   ```
+2. Run setup:
+   ```bash
+   bash scripts/forgewright-mcp-setup.sh
+   ```
+3. **Restart Claude Desktop**
+4. The MCP server is registered in `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+#### VS Code (with Claude Extension)
+
+1. Install the Claude extension from the VS Code marketplace
+2. Clone forgewright and run setup (same commands as Cursor)
+3. Restart VS Code
+
+---
+
+### Quick Reference — What Gets Installed
+
+| What | Where | Purpose |
+|------|-------|---------|
+| `forgewright-mcp-setup.sh` | `scripts/` | One-command MCP setup |
+| `mcp-server/` | `.forgewright/` | Project-specific AI tools |
+| `mcp-manifest.json` | `.antigravity/` | Workspace isolation config |
+| `project-profile.json` | `.forgewright/` | Auto-generated on first chat |
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `forgewright-mcp-setup.sh: not found` | Make sure you're in the right directory. Check with `ls scripts/` |
+| MCP tools not showing after restart | Run `bash scripts/forgewright-mcp-setup.sh --diagnose` |
+| Need to reset everything | `bash scripts/forgewright-mcp-setup.sh --force` |
+| Want to remove MCP | `bash scripts/forgewright-mcp-setup.sh --uninstall` |
+| `node: command not found` | Install Node.js 18+: [nodejs.org](https://nodejs.org) |
+
+---
+
+## AgentScope-Inspired Features
 
 Inspired by [AgentScope Studio](https://github.com/agentscope-ai/agentscope), these 3 features enhance Forgewright's developer experience.
 
