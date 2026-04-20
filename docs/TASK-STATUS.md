@@ -17,6 +17,12 @@
 | **P1-T3** | I-NEW-1.3: RTK Detection in MCP setup | `31a8dd8` | `scripts/forgewright-mcp-setup.sh` — Detects rtk, chop, snip, ctx, tkill at setup time. Writes `.forgewright/settings.env` with `FORGEWRIGHT_SHELL_COMPRESSOR`. Shows compressor in `--check` output. Synced to Antigravity plugin. |
 | **P1-T4** | I2: Tool Output Sandboxing middleware | `31a8dd8` | `mcp/src/middleware/tool-sandbox.ts`. ANSI stripping, prompt injection detection, compression (>10KB truncate), structured summaries per tool type. Audit log: `.forgewright/audit/{session}/{turn}/{tool}/{hash}.jsonl`. Protocol: `skills/_shared/protocols/tool-sandbox.md`. |
 
+### P2 — ForgeNexus Code Intelligence (Medium Priority)
+
+| Task ID | Name | Commit | Notes |
+|---------|------|--------|-------|
+| **P2-T1** | I5: ForgeNexus Outline Mode tool | `HEAD` | `forgenexus/src/mcp/outline.ts` + `outline.test.ts`. Pattern-based structural extraction for TS/JS/Python/Go/Rust/Java/C++. Thresholds: >200 lines or >6000 tokens triggers outline mode. Session dedup prevents re-reading. 19 unit tests. Integration: `forgenexus/src/mcp/tools.ts` (outline tool). |
+
 ---
 
 ## 📋 Remaining Tasks (Priority Order)
@@ -25,7 +31,6 @@
 
 | Task ID | Name | Score | Description |
 |---------|------|-------|-------------|
-| **P2-T1** | I5: ForgeNexus Outline Mode tool | 9.10 | Add outline mode to ForgeNexus MCP tools. Large files (>200 lines) return function signatures only. Inspired by Tilth's structural reading approach. Uses existing tree-sitter parse worker. Integrate with KuzuDB graph. |
 | **P2-T2** | I-NEW-2: ForgeNexus Callee Footer + Session Dedup | 9.30 | Show call targets (callees) as footer in code navigation. Integrate with session dedup to avoid re-querying graph for same symbol. |
 
 **Key files to read first:**
@@ -92,6 +97,9 @@
 | `skills/_shared/protocols/shell-filter.md` | Shell filter protocol doc |
 | `skills/production-grade/middleware/05-session-deduplication.md` | Session dedup middleware spec |
 | `skills/production-grade/middleware/06-tool-sandbox.md` | Tool sandbox middleware spec |
+| `forgenexus/src/mcp/outline.ts` | Outline mode: structural file extraction (pattern-based) |
+| `forgenexus/src/mcp/outline.test.ts` | 19 unit tests for outline tool |
+| `forgenexus/src/mcp/tools.ts` | Added `outline` MCP tool |
 
 ### Project Intelligence
 
@@ -117,9 +125,9 @@
 
 ## 🎯 Current Focus
 
-**Next task: P2-T1 — ForgeNexus Outline Mode tool**
+**Next task: P2-T2 — ForgeNexus Callee Footer + Session Dedup**
 
 Read these files first:
 - `forgenexus/src/mcp/tools.ts` — existing tool definitions
-- `forgenexus/src/analysis/parse-worker.ts` — tree-sitter parsing
 - `forgenexus/src/data/graph.ts` — KuzuDB graph structure
+- `docs/improvement-roadmap-v2.md` §I-NEW-2

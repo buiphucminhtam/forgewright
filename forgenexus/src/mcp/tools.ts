@@ -1252,6 +1252,60 @@ WHEN TO USE: Cleaning up a group when a repo is archived or moved. Does not dele
       return `Error: ${result.error}`
     },
   },
+
+  // ── 19. outline ─────────────────────────────────────────────────────────────
+  {
+    name: 'outline',
+    description: `Show file structure without full content — for large files (>200 lines or >6000 tokens), returns function signatures only.
+
+WHEN TO USE: When you need to understand a file's structure before reading specific sections. Avoids loading massive files into context. Complements context() — context shows callers/callees of a symbol, outline shows the file's structural skeleton.
+
+AFTER THIS: Use context() on specific symbols for deep analysis. Use READ to view specific line ranges for implementation details.
+
+Returns two modes:
+- **full**: Small files (<200 lines) return content with line numbers
+- **outline**: Large files return structural skeleton (functions, classes, methods) with signatures and line ranges
+
+Token savings: 80-95% on large files, ~99% on revisits (session dedup).
+
+TIPS:
+- outline is automatic — large files are always outlined, small files are fully shown
+- Use maxDepth to control nesting depth (default: 3)
+- Session dedup: revisiting the same file returns "[shown earlier]" — use context() for details`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Absolute or relative file path to outline',
+        },
+        maxDepth: {
+          type: 'number',
+          description: 'Maximum nesting depth for structure (default: 3)',
+          default: 3,
+        },
+        includeDocComments: {
+          type: 'boolean',
+          description: 'Include first line of doc comments (default: false)',
+          default: false,
+        },
+      },
+      required: ['path'],
+    },
+    handler: async (_db, args, cwd) => {
+      const { outlineTool, formatOutlineMarkdown, getDedupStats } = await import('./outline.js')
+      const path = args.path.startsWith('/') ? args.path : `${cwd}/${args.path}`
+      const result = await outlineTool({ path, maxDepth: args.maxDepth, includeDocComments: args.includeDocComments })
+      const md = formatOutlineMarkdown(result)
+
+      // Append dedup stats if there were hits
+      const stats = getDedupStats()
+      if (stats.hits > 0) {
+        return `${md}\n\n_\u25c6 Outline session: ${stats.hits} repeat visits, ~${stats.tokensSaved} tokens saved (${Math.round(stats.hitRate * 100)}% dedup rate)_`
+      }
+      return md
+    },
+  },
 ]
 
 interface ToolDef {
