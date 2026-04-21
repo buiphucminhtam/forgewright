@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-8.1.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/version-8.2.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-56-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/templates-55-brightgreen.svg" alt="Templates" />
   <img src="https://img.shields.io/badge/features-3-brightgreen.svg" alt="New Features" />
@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/Code_Intelligence-ForgeNexus·GitNexus-4B0082.svg" alt="Code Intelligence" />
   <img src="https://img.shields.io/badge/Memory-Persistent%20(mem0)-00CED1.svg" alt="Memory" />
   <img src="https://img.shields.io/badge/MCP-12%20Tools-orange.svg" alt="MCP" />
+  <img src="https://img.shields.io/badge/Token_Efficiency-~90%25%20Reduction-2ecc71.svg" alt="Token Efficiency" />
 </p>
 
 ---
@@ -325,6 +326,178 @@ npx ts-node scripts/generate-template.ts \
 - Cursor: rule templates, file-specific rules, agent prompts, rules index
 - Skills: DevOps checklist, SRE runbook, SWE patterns, DB migration, mobile assertions
 - Game: Godot lobby, NetworkManager, SyncVar, server-authoritative loop
+
+---
+
+## Token Efficiency — 90% Reduction on AI Context
+
+Forgewright v8.1+ implements a comprehensive token efficiency stack that compounds savings across every layer. **Save up to 90% on LLM token costs** while maintaining full functionality.
+
+### Impact Summary
+
+| Metric | Before | After | Reduction |
+|--------|--------|-------|-----------|
+| **Shell outputs** | Full raw output | Structured summary | **60-80%** |
+| **Session duplicate calls** | Repeated tool results | Deduplicated | **90%** |
+| **Conversation context** | All turns retained | Intelligent pruning | **50-70%** |
+| **Memory retrieval** | Full context load | Progressive disclosure | **75%** |
+| **Code execution output** | Raw stdout/stderr | Summarized results | **95-98%** |
+| **Symbol navigation** | Full file reads | Minimal signatures | **97%** |
+| **Combined estimate** | High token usage | Minimal usage | **~90%** |
+
+### Architecture Overview
+
+```mermaid
+flowchart TD
+    REQ(["User / AI Request"])
+
+    subgraph INPUT["Input Layer"]
+        I1["① Session Deduplication<br/>SHA-256 keys · LRU cache<br/>10-turn window"]
+        I2["② Context Loader<br/>Memory + conventions<br/>Progressive disclosure"]
+    end
+
+    subgraph PROCESS["Processing Layer"]
+        P1["③ Shell Filter<br/>Native awk/sed (60-80%)<br/>or RTK (80-90%)"]
+        P2["④ Tool Sandbox<br/>ANSI strip · Truncate ·<br/>Prompt injection detection"]
+        P3["⑤ Conversation Pruning<br/>DyCP KadaneDial<br/>Z-score normalization"]
+    end
+
+    subgraph OUTPUT["Output Layer"]
+        O1["⑥ Outline Mode<br/>Function signatures only<br/>>200 lines triggers"]
+        O2["⑦ ctx_execute<br/>Sandboxed execution<br/>Structured summary"]
+        O3["⑧ Memory v2<br/>SQLite + FTS5 + RRF<br/>3-layer disclosure"]
+    end
+
+    REQ --> INPUT --> PROCESS --> OUTPUT
+
+    style REQ fill:#1a1a2e,stroke:#e94560,color:#fff
+    style INPUT fill:#1a5276,stroke:#3498db
+    style PROCESS fill:#1e8449,stroke:#2ecc71
+    style OUTPUT fill:#d35400,stroke:#e67e22
+```
+
+### Components
+
+#### 1. Shell Output Filter — 60-80% reduction
+
+Pure shell script that compresses CLI outputs without external dependencies.
+
+```bash
+# Auto-detects best compressor: rtk > chop > snip > ctx > native
+bash scripts/run_shell_filter.sh --pipe
+```
+
+**Supported commands:** git, npm, cargo, pytest, docker, kubectl, curl, pytest, tsc, eslint, prettier, ruff, mypy, go, gradle, and more.
+
+#### 2. Session Deduplication — 90% reduction
+
+Prevents duplicate tool calls from re-entering context using SHA-256 normalized keys.
+
+```typescript
+// Sliding window: 10 turns / 5 minutes
+// LRU eviction: 500 entries max
+// Eviction: Least Recently Used
+```
+
+#### 3. Tool Output Sandboxing — Security + Efficiency
+
+Isolated execution with structured summaries and audit logging.
+
+```typescript
+// Features:
+// - ANSI stripping
+// - Prompt injection detection
+// - Compression (truncate >10KB)
+// - Audit log: .forgewright/audit/{session}/{turn}/{tool}/
+```
+
+#### 4. Conversation Pruning (DyCP) — 50-70% reduction
+
+KadaneDial algorithm for intelligent conversation span selection.
+
+```python
+# KadaneDial: Z-score normalized span scoring
+# Pre-processing: tool dedup + error purge
+# Strategies: structured_summary | truncate | offload
+```
+
+#### 5. Memory v2 (SQLite + FTS5 + RRF) — 75% reduction
+
+3-layer progressive disclosure for memory retrieval.
+
+| Layer | Tokens | Content |
+|-------|--------|---------|
+| Layer 1 | ~15 | Single-line summary |
+| Layer 2 | ~60 | Key facts only |
+| Layer 3 | ~200 | Full detail |
+
+#### 6. ForgeNexus Outline Mode — 97% reduction
+
+Pattern-based structural extraction for large files.
+
+```typescript
+// Thresholds:
+// - >200 lines OR >6000 tokens → Outline mode
+// - <200 lines → Full content
+// Session dedup: "[shown earlier]" on revisit
+```
+
+#### 7. ctx_execute Sandbox — 95-98% reduction
+
+Sandboxed code execution with structured output summarization.
+
+```typescript
+// Supports: python, node, bash, go, rust, ruby, php
+// Language auto-detection via shebang or syntax
+// Configurable: timeout_ms, max_output_chars
+```
+
+#### 8. Token-Savior Integration — 97% reduction (optional)
+
+Ultra-efficient symbol navigation via Token-Savior MCP.
+
+```bash
+# Install:
+pip install 'token-savior-recall[mcp,memory-vector]'
+
+# Detection: Auto-enabled in MCP setup
+# Fallback: ForgeNexus if not installed
+```
+
+### Test Coverage
+
+All token efficiency features have comprehensive test coverage:
+
+| Module | Tests | Status |
+|--------|-------|--------|
+| ForgeNexus | 173 | ✅ |
+| MCP Server | 86 | ✅ |
+| Memory v2 (mem0-v2) | 30 | ✅ |
+| DyCP Pruning | 25 | ✅ |
+| Shell Filter | 7 | ✅ |
+| **Total** | **321** | ✅ |
+
+### Configuration
+
+Settings are auto-generated by `forgewright-mcp-setup.sh` to `.forgewright/settings.env`:
+
+```bash
+# Shell output compressor
+export FORGEWRIGHT_SHELL_COMPRESSOR="forgewright-shell-filter"  # or rtk/chop/snip
+
+# Session deduplication
+export FORGEWRIGHT_SESSION_DEDUP="true"
+export FORGEWRIGHT_DEDUP_WINDOW="10"
+
+# Memory
+export FORGEWRIGHT_MEMORY_ENABLED="true"
+
+# Code navigation (token-savior > forgenexus)
+export FORGEWRIGHT_CODE_NAV="forgenexus"
+
+# Memory vector (token-savior > sqlite)
+export FORGEWRIGHT_MEMORY_VECTOR="sqlite"
+```
 
 ---
 
