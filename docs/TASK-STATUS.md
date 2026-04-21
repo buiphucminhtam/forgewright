@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-21
 > Session: Token Efficiency Roadmap Implementation
-> Commit: `HEAD` — `feat(dycp): KadaneDial conversation pruning (p4-t1, i-new-5)`
+> Commit: `HEAD` — `feat(shell): run_shell_filter wrapper (p5-t1, i11)`
 
 ---
 
@@ -36,6 +36,12 @@
 |---------|------|--------|-------|
 | **P4-T1** | I-NEW-5: DyCP KadaneDial Conversation Pruning | `HEAD` | `scripts/dycp.py` — KadaneDial algorithm for conversation span selection. Z-score normalization, adaptive theta. Pre-processing: tool result dedup, error-only message purge. 3 strategies: structured_summary, truncate, offload. 25 passing tests. Integration: hooks between middleware ⑤ and ⑥. |
 
+### P5 — External Tool Integration (Low Priority)
+
+| Task ID | Name | Commit | Notes |
+|---------|------|--------|-------|
+| **P5-T1** | I11: RTK + chop + snip Detection & Integration | `HEAD` | `scripts/run_shell_filter.sh` — RTK delegation wrapper. Auto-detects available compressors (rtk > chop > snip > ctx > tkill > native). Reads from `SHELL_COMPRESSOR` env or `.forgewright/settings.env`. Pipe mode and function mode. Synced to Antigravity plugin. 7 passing tests. |
+
 ---
 
 ## 📋 Remaining Tasks (Priority Order)
@@ -44,7 +50,6 @@
 
 | Task ID | Name | Score | Description |
 |---------|------|-------|-------------|
-| **P5-T1** | I11: RTK + chop + snip Detection & Integration | 9.35 | Full integration once RTK is installed. Hook `run_shell_filter()` function into tool execution. |
 | **P5-T2** | I-NEW-4: Context-Mode Integration (ctx_execute MCP tool) | 9.15 | Add `ctx_execute` MCP tool to ForgeNexus MCP server. Sandbox code execution, return structured summary. |
 | **P5-T3** | I-NEW-6: Token-Savior MCP Integration | 9.00 | Integrate Token-Savior's structured navigation (97% reduction) and persistent memory (SQLite + vector embeddings). |
 
@@ -82,6 +87,8 @@
 | `scripts/mem0-v2.test.py` | 30 unit tests cho Memory v2 |
 | `scripts/dycp.py` | DyCP KadaneDial conversation pruning |
 | `scripts/dycp.test.py` | 25 unit tests for DyCP |
+| `scripts/run_shell_filter.sh` | RTK delegation wrapper (new) |
+| `scripts/run_shell_filter.test.sh` | 7 unit tests for shell filter wrapper |
 
 ### Project Intelligence
 
@@ -108,9 +115,9 @@
 
 ## 🎯 Current Focus
 
-**Next task: P5-T1 — RTK + chop + snip Detection & Integration**
+**Next task: P5-T2 — Context-Mode Integration (ctx_execute MCP tool)**
 
 Read these files first:
 - `forgenexus/src/mcp/tools.ts`
 - `mcp/src/index.ts`
-- `docs/improvement-roadmap-v2.md` §I11
+- `docs/improvement-roadmap-v2.md` §I-NEW-4
