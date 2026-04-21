@@ -284,6 +284,22 @@ All skills MUST follow the sensitive file protection protocol:
 
 **⚠️ NEVER give up after 1 failed attempt. ALWAYS research first.**
 
+## Review Intensity Mode
+
+**Control how much design/architecture review happens at each step:**
+
+!`cat skills/_shared/protocols/review-intensity.md 2>/dev/null || echo "Protocol not found — apply defaults: Review mode defaults to Lean (reviews only at phase gates). Set in production/review-mode.txt. Modes: full (all reviews), lean (gate reviews only), solo (no reviews)."`
+
+User can override per-invocation with `--review [mode]` flag.
+
+## Model Tier Assignment
+
+**Assign optimal Claude model tier to each skill invocation:**
+
+!`cat skills/_shared/protocols/model-tier.md 2>/dev/null || echo "Protocol not found — apply defaults: Sonnet for most skills. Haiku for /sprint-status, /help, /scope-check, /onboard. Opus for /architecture-review, /gate-check, /code-review."`
+
+Override per-invocation with `--model [haiku|sonnet|opus]` flag.
+
 ## Mode Execution (Non-Full-Build)
 
 All modes share these behaviors:
@@ -313,6 +329,7 @@ All modes share these behaviors:
 | 6 | **forgenexus_impact run?** | If editing symbols → run impact analysis |
 | 7 | **Scope respected?** | If scope creep detected → flag to user |
 | 8 | **User approval obtained?** | If gate exists → wait for approval |
+| 9 | **Review mode respected?** | If Full mode → run director reviews; if Solo → confirm skip OK |
 
 **⚠️ NEVER finish a task without completing checks 3-5 if code was changed.**
 
@@ -1064,22 +1081,38 @@ IF Basic:
 **Write settings file:**
 
 ```bash
-mkdir -p .forgewright
+mkdir -p .forgewright production
 cat > .forgewright/settings.md << 'EOF'
 # Pipeline Settings
 Power_Level: [selected]
 Engagement: [express/standard/thorough/meticulous — default: standard]
 Execution: [parallel/sequential — default: parallel]
+Review_Mode: [full/lean/solo — default: lean]
 EOF
 ```
+
+**Review Mode Configuration:**
+
+Follow `skills/_shared/protocols/review-intensity.md` for review mode selection:
+- **Full** — Director specialists review at every step
+- **Lean** (default) — Reviews only at phase gate transitions
+- **Solo** — No reviews, maximum speed
+
+```bash
+mkdir -p production
+echo "lean" > production/review-mode.txt
+```
+
+User can override per-invocation with `--review [mode]` flag.
 
 **Log checkpoint:**
 ```
 Log: "✓ System init complete:
   - Node.js: [version] ✓
-  - Python 3: [version] ✓  
+  - Python 3: [version] ✓
   - mem0: [ready] ✓
   - Power level: [level] ✓
+  - Review mode: [mode] ✓
   - Settings: written to .forgewright/settings.md"
 ```
 
@@ -1633,6 +1666,26 @@ then re-presents the original gate options when the user is ready.
 
 This ensures non-technical users can understand what they're approving without the orchestrator needing to be the translator.
 
+### Review Mode Integration
+
+At each gate, adapt behavior based on `production/review-mode.txt`:
+
+| Mode | Gate Behavior |
+|------|--------------|
+| **Full** | Run director reviews, show detailed findings, longer approval flow |
+| **Lean** | Quick validation, abbreviated findings, streamlined approval |
+| **Solo** | Skip gate pause, auto-proceed with quality gate score only |
+
+```
+REVIEW_MODE=$(cat production/review-mode.txt 2>/dev/null || echo "lean")
+if [ "$REVIEW_MODE" = "solo" ]; then
+  # Skip gate pause, log quality score
+  Log: "Quality Gate Score: [X]/100 — Auto-proceeding (Solo mode)"
+else
+  # Show gate options as normal
+fi
+```
+
 ### Strategic Gates (4 total — 3 user-facing + 1 automated)
 
 **Gate 1 — BRD Approval** (after T1):
@@ -1687,6 +1740,24 @@ After Gate 2 is approved, automatically persist architecture decisions to memory
 **Why this matters:** Future sessions can search `mem0-cli.py search "architecture"` to retrieve the approved stack without re-reading all architecture files.
 
 **Gate 3 — Production Readiness** (after T9):
+
+**Read review mode first:**
+```
+REVIEW_MODE=$(cat production/review-mode.txt 2>/dev/null || echo "lean")
+```
+
+**Solo mode: Auto-proceed with quality gate score:**
+```
+if [ "$REVIEW_MODE" = "solo" ]; then
+  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  Log: "Phase 5 — SUSTAIN Complete [Review: Solo]"
+  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  Log: "Quality Gate Score: [X]/100"
+  Log: "All phases complete — auto-proceeding (Solo mode)"
+  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  # Skip to final summary
+fi
+```
 
 **Step G3.1 — Run VERIFIER subagent (before showing Gate 3 to user):**
 

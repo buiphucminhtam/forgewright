@@ -128,6 +128,80 @@ ELSE:
   Continue without drift detection
 ```
 
+### Step 5 — Project Gap Detection (CCGS Pattern)
+
+After loading project state, automatically detect missing pieces and warn the user. Inspired by CCGS `detect-gaps.sh`.
+
+```
+1. FRESH PROJECT CHECK:
+   - If no source files + no design docs + no production artifacts:
+     → Log: "🚀 NEW PROJECT: No code, no design docs, no planning."
+     → Log: "  Run /onboard to get started, or tell me what you want to build."
+
+2. CODE-TO-DESIGN RATIO:
+   - If src/ has 50+ files AND design/ has < 5 files:
+     → Warn: "⚠️ GAP: [N] source files but only [M] design docs"
+     → Suggest: "Consider /reverse-document to capture design decisions"
+
+3. PROTOTYPE DOCUMENTATION:
+   - If prototypes/ has directories without README.md:
+     → Warn: "⚠️ GAP: [N] undocumented prototype(s)"
+     → Suggest: "Add README.md to each prototype"
+
+4. ARCHITECTURE GAPS:
+   - If src/core/ or src/engine/ exists but no docs/architecture/:
+     → Warn: "⚠️ GAP: Core systems without architecture docs"
+     → Suggest: "Run /architecture-decision or /reverse-document"
+
+5. GAMEPLAY DESIGN GAPS:
+   - If src/gameplay/ has subsystem dirs with 5+ files but no design/gdd/ doc:
+     → Warn: "⚠️ GAP: Gameplay system '[name]' has no design doc"
+     → Suggest: "Create design/gdd/[name]-system.md"
+
+6. PRODUCTION PLANNING:
+   - If codebase has 100+ files but no production/ directory:
+     → Warn: "⚠️ GAP: Large codebase without production planning"
+     → Suggest: "Create production/ or run /sprint-plan"
+```
+
+**Gap Detection Summary:**
+```
+Log: "=== Documentation Check ==="
+Log: "[N] source files | [M] design docs | [K] architecture docs"
+Log: "💡 Run /project-stage-detect for full analysis"
+Log: "================================"
+```
+
+## Status Line Block (Production+)
+
+When actively working on a feature, include in `production/session-state/active.md`:
+
+```markdown
+<!-- STATUS -->
+Epic: User Authentication
+Feature: Login Flow
+Task: Implement OAuth integration
+<!-- /STATUS -->
+```
+
+**Status Line Display Format:**
+```
+[Context %] [Model] | [Phase] > [Epic] > [Feature] > [Task]
+
+Example: 67% [lean] | BUILD > Auth > Login > OAuth
+```
+
+**Update Triggers:**
+- When starting new epic → update Epic field
+- When starting new feature → update Feature field
+- When starting new task → update Task field
+- When task completes → clear Task field
+
+**Integration:**
+- Run `scripts/statusline.sh` to display current status
+- Read from `production/session-state/active.md` on every turn
+- Display status line in CLI output
+
 ## Turn-Start Memory Retrieval (Within-Session Continuity)
 
 **When:** Before answering each user request within a session. Runs **before** orchestrator processes the new request.

@@ -402,7 +402,7 @@ parentPort.on('message', async (msg: PoolMessage) => {
 
     // Pre-load languages needed across all tasks (sent in first batch)
     // We load on demand as we see languages
-    initialized = true
+    // initialized = true
     parentPort!.postMessage({ type: 'ready', workerId: myWorkerId })
   } else if (msg.type === 'batch') {
     const tasks: ParseTask[] = msg.tasks ?? []

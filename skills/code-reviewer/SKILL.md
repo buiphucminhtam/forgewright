@@ -1,5 +1,6 @@
 ---
 name: code-reviewer
+model: opus
 description: >
   [production-grade internal] Reviews code for quality — architecture
   conformance, anti-patterns, performance issues, maintainability.

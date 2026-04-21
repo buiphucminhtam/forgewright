@@ -253,3 +253,49 @@ IF guardrail rule evaluation fails (regex error, config parse error):
   3. Default to DENY (fail-closed for security rules marked critical: true)
   4. Continue pipeline — NEVER block pipeline on guardrail internal error
 ```
+
+## Path-Scoped Coding Standards (CCGS Pattern)
+
+Automatically load and enforce coding standards based on file location. See `rules/README.md` for full documentation.
+
+```
+!`cat rules/README.md 2>/dev/null || echo "Rules directory not found — no path-scoped standards active"`
+```
+
+### Path-to-Rule Mapping
+
+| Path Pattern | Rules File | Enforcement |
+|--------------|------------|-------------|
+| `src/gameplay/**` | `rules/gameplay-standards.md` | Warn |
+| `src/core/**` | `rules/core-standards.md` | Warn |
+| `src/ui/**` | `rules/ui-standards.md` | Warn |
+| `frontend/src/**` | `rules/ui-standards.md` | Warn |
+| `api/**` | `rules/api-standards.md` | Block |
+| `services/**` | `rules/api-standards.md` | Block |
+| `tests/**` | `rules/test-standards.md` | Warn |
+| `docs/**` | `rules/doc-standards.md` | Suggest |
+
+### Enforcement Flow
+
+```
+1. Before writing to file:
+   - Detect file path
+   - Match to rule pattern
+   - Load relevant standards file
+   - Inject standards into context
+
+2. Check for violations:
+   - Forbid patterns → BLOCK
+   - Required patterns → WARN if missing
+   - Forbidden patterns → WARN
+
+3. Show violation:
+   ⚠️ Path-Scoped Rule Violation
+   File: src/gameplay/combat/MeleeAttack.cs
+   Rule: gameplay-standards.md
+   
+   Found: health -= 10;
+   Problem: Magic number detected
+   
+   Fix: Use GameData.get_value("melee_damage")
+```

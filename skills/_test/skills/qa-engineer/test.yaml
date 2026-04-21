@@ -1,0 +1,70 @@
+skill: qa-engineer
+version: "1.0.0"
+description: Tests for the QA Engineer skill
+
+tests:
+  - id: test-unit-test-generation
+    description: Generate unit tests for a TypeScript function
+    tags: [unit, typescript, testing]
+    input:
+      language: typescript
+      framework: vitest
+      file: src/math/calculator.ts
+      function: add
+    expected:
+      contains:
+        - "describe"
+        - "it"
+        - "expect"
+        - "add"
+      files_created: 1
+      min_test_cases: 3
+    validate:
+      - output_contains_all
+      - file_count_matches
+      - min_test_cases_satisfied
+    timeout: 60s
+  
+  - id: test-integration-test-generation
+    description: Generate integration tests for API endpoint
+    tags: [integration, api, rest]
+    input:
+      language: typescript
+      framework: supertest
+      endpoint: /api/users
+      method: POST
+    expected:
+      contains:
+        - "describe"
+        - "POST"
+        - "status"
+        - "body"
+      files_created: 1
+    validate:
+      - output_contains_all
+      - file_count_matches
+    timeout: 90s
+  
+  - id: test-e2e-test-generation
+    description: Generate E2E tests for login flow
+    tags: [e2e, playwright, user-flow]
+    input:
+      language: typescript
+      framework: playwright
+      flow: login
+      steps:
+        - navigate to /login
+        - fill email
+        - fill password
+        - click submit
+    expected:
+      contains:
+        - "test"
+        - "page.goto"
+        - "page.fill"
+        - "page.click"
+      files_created: 1
+    validate:
+      - output_contains_all
+      - file_count_matches
+    timeout: 90s

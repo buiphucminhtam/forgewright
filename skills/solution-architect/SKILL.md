@@ -1,5 +1,6 @@
 ---
 name: solution-architect
+model: opus
 description: >
   [production-grade internal] Designs system architecture when you need to
   decide tech stack, API contracts, data models, or infrastructure shape.

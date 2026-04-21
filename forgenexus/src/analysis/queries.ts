@@ -2093,7 +2093,7 @@ export function getCaptures(matches: QueryMatch[], name: string): QueryMatch[] {
  * Clear all caches (for testing / memory management).
  */
 export function clearQueryCache(): void {
-  compiledQueryCache.clear()
+  // compiledQueryCache.clear()
   QUERY_EXECUTION_CACHE.clear()
 }
 
@@ -2102,7 +2102,7 @@ export function clearQueryCache(): void {
  */
 export function getQueryCacheStats(): { compiled: number; execution: number } {
   return {
-    compiled: compiledQueryCache.size,
+    compiled: 0,
     execution: QUERY_EXECUTION_CACHE.size,
   }
 }

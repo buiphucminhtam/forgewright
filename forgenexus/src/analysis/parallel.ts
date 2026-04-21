@@ -229,7 +229,7 @@ async function runPersistentPool(
 
       w.on('message', (msg: WorkerResult) => {
         if (msg.type === 'ready') {
-          workerReady = true
+          // workerReady = true
           // Start sending batches after worker is ready
           sendNextBatch()
         } else if (msg.type === 'batch_result' && msg.batchId !== undefined) {

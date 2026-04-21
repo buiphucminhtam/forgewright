@@ -1,0 +1,61 @@
+skill: product-manager
+version: "1.0.0"
+description: Tests for the Product Manager skill
+
+tests:
+  - id: test-brd-generation
+    description: Generate a Business Requirements Document
+    tags: [brd, requirements, user-stories]
+    input:
+      feature: "User authentication"
+      complexity: medium
+      stakeholders:
+        - End users
+        - Admin users
+    expected:
+      contains:
+        - "User Story"
+        - "Acceptance Criteria"
+        - "Priority"
+        - "User Authentication"
+      min_user_stories: 3
+    validate:
+      - output_contains_all
+      - min_user_stories_satisfied
+    timeout: 120s
+  
+  - id: test-user-story-generation
+    description: Generate user stories from feature description
+    tags: [user-stories, agile]
+    input:
+      epic: "E-commerce Platform"
+      feature: "Shopping Cart"
+      format: "user-story"
+    expected:
+      contains:
+        - "As a"
+        - "I want"
+        - "So that"
+      min_stories: 4
+    validate:
+      - output_contains_all
+      - min_stories_satisfied
+    timeout: 60s
+  
+  - id: test-acceptance-criteria
+    description: Generate acceptance criteria for a user story
+    tags: [acceptance-criteria, requirements]
+    input:
+      user_story: "As a user, I want to reset my password so that I can regain access if I forget it"
+      format: "given-when-then"
+    expected:
+      contains:
+        - "Given"
+        - "When"
+        - "Then"
+        - "password"
+      min_criteria: 3
+    validate:
+      - output_contains_all
+      - min_criteria_satisfied
+    timeout: 60s

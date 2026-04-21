@@ -1,0 +1,32 @@
+skill: forgewright-core
+version: "1.0.0"
+description: Core skill testing metadata
+
+skills:
+  - name: software-engineer
+    tests_count: 0
+    last_tested: null
+    status: not_tested
+  - name: code-reviewer
+    tests_count: 0
+    last_tested: null
+    status: not_tested
+  - name: qa-engineer
+    tests_count: 0
+    last_tested: null
+    status: not_tested
+  - name: security-engineer
+    tests_count: 0
+    last_tested: null
+    status: not_tested
+  - name: product-manager
+    tests_count: 0
+    last_tested: null
+    status: not_tested
+
+coverage_targets:
+  minimum: 50
+  target: 75
+  excellent: 90
+
+test_case_version: "1.0.0"

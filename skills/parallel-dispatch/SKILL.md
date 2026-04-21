@@ -48,6 +48,20 @@ Based on the Forgewright task dependency graph, these groups can run in parallel
 
 **Note:** T4 (DevOps) depends on T3a (Backend) for service discovery, so it starts after T3a or runs in a second wave if group size exceeds MAX_WORKERS.
 
+## Subagent Parallel Protocol
+
+Follow `skills/_shared/protocols/parallel-protocol.md` for subagent coordination:
+
+```
+!`cat skills/_shared/protocols/parallel-protocol.md 2>/dev/null || echo "Protocol not found — apply defaults: Issue all independent Task calls before waiting, surface blocks immediately, produce partial reports."`
+```
+
+**Quick Reference:**
+- Spawn independent tasks simultaneously
+- Surface BLOCKED agents immediately (never skip)
+- Produce partial reports if some fail
+- Wait for wave completion before next wave
+
 ## Execution Flow
 
 ### Phase 1 — Dependency Analysis

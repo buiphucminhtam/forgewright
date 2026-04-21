@@ -1,0 +1,111 @@
+skill: software-engineer
+version: "1.0.0"
+description: Tests for the Software Engineer skill
+
+tests:
+  - id: test-basic-rest-endpoint
+    description: Generate a basic REST endpoint with CRUD operations
+    tags: [basic, api, rest, crud]
+    input:
+      language: typescript
+      framework: express
+      endpoint: /api/tasks
+      operations: [create, read, update, delete]
+    expected:
+      contains:
+        - "export default"
+        - "router"
+        - "async function"
+        - "/api/tasks"
+      files_created: 1
+      min_lines: 30
+    validate:
+      - output_contains_all
+      - file_count_matches
+      - min_lines_satisfied
+      - no_todos
+    timeout: 60s
+  
+  - id: test-auth-service
+    description: Generate JWT authentication service
+    tags: [auth, jwt, security]
+    input:
+      language: typescript
+      type: auth-service
+      auth_type: jwt
+    expected:
+      contains:
+        - "jwt"
+        - "sign"
+        - "verify"
+        - "authorization"
+        - "Bearer"
+      not_contains:
+        - "TODO"
+        - "FIXME"
+        - "password"  # Should be hashed, not plain
+    validate:
+      - output_contains_all
+      - output_excludes_none
+      - no_todos
+    timeout: 90s
+  
+  - id: test-database-model
+    description: Generate a database model with TypeScript
+    tags: [database, model, typescript]
+    input:
+      language: typescript
+      orm: prisma
+      model: User
+      fields:
+        - id: UUID
+        - email: String
+        - name: String
+        - createdAt: DateTime
+    expected:
+      contains:
+        - "model"
+        - "User"
+        - "@id"
+        - "@map"
+      files_created: 1
+    validate:
+      - output_contains_all
+      - file_count_matches
+    timeout: 60s
+  
+  - id: test-middleware
+    description: Generate Express middleware
+    tags: [middleware, express]
+    input:
+      language: typescript
+      type: middleware
+      middleware_type: rate-limit
+    expected:
+      contains:
+        - "middleware"
+        - "next"
+        - "rate"
+      files_created: 1
+    validate:
+      - output_contains_all
+      - file_count_matches
+    timeout: 60s
+  
+  - id: test-error-handler
+    description: Generate global error handler
+    tags: [error-handling, middleware]
+    input:
+      language: typescript
+      type: error-handler
+    expected:
+      contains:
+        - "Error"
+        - "status"
+        - "message"
+      not_contains:
+        - "console.log"
+    validate:
+      - output_contains_all
+      - output_excludes_none
+    timeout: 60s

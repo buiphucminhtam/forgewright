@@ -1,5 +1,6 @@
 ---
 name: security-engineer
+model: opus
 description: >
   [production-grade internal] Audits code for security vulnerabilities —
   OWASP top 10, auth flaws, injection, data exposure, dependency risks,

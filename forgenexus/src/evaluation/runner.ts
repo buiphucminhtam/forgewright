@@ -216,14 +216,14 @@ export class EvaluationRunner {
   /**
    * Find claims that are incorrect (not in ground truth)
    */
-  private findIncorrectClaims(_actual: string[], _groundTruth: GroundTruth): number {
+  private findIncorrectClaims(_actual: string[], _groundTruth: any): number {
     return 0;
   }
 
   /**
    * Detect hallucinations (claims not supported by evidence)
    */
-  private detectHallucinations(actual: string[], groundTruth: GroundTruth): string[] {
+  private detectHallucinations(actual: string[], groundTruth: any): string[] {
     const hallucinations: string[] = [];
 
     // Check for incorrect claims in ground truth

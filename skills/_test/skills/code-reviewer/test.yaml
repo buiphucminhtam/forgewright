@@ -1,0 +1,98 @@
+skill: code-reviewer
+version: "1.0.0"
+description: Tests for the Code Reviewer skill
+
+tests:
+  - id: test-basic-review
+    description: Review basic TypeScript file for issues
+    tags: [basic, typescript, review]
+    input:
+      language: typescript
+      file: src/services/user.ts
+      code: |
+        function getUser(id) {
+          return fetch('/api/users/' + id);
+        }
+    expected:
+      contains:
+        - "SQL injection"  # Should detect string concatenation
+        - "no typing"     # Should detect missing types
+      severity_count:
+        high: 1
+        medium: 1
+    validate:
+      - output_contains_all
+      - severity_counts_match
+    timeout: 60s
+  
+  - id: test-security-review
+    description: Review for security vulnerabilities
+    tags: [security, owasp]
+    input:
+      language: typescript
+      file: src/auth/login.ts
+      code: |
+        async function login(email, password) {
+          const user = await db.query(
+            `SELECT * FROM users WHERE email = '${email}'`
+          );
+          return user;
+        }
+    expected:
+      contains:
+        - "SQL injection"
+        - "HIGH"
+        - "severity"
+      min_high_findings: 1
+    validate:
+      - output_contains_all
+      - min_high_findings_satisfied
+    timeout: 90s
+  
+  - id: test-performance-review
+    description: Review for performance issues
+    tags: [performance, optimization]
+    input:
+      language: typescript
+      file: src/api/data.ts
+      code: |
+        function getAllData() {
+          const data = [];
+          for (let i = 0; i < 10000; i++) {
+            data.push(heavyOperation());
+          }
+          return data;
+        }
+    expected:
+      contains:
+        - "N+1"
+        - "loop"
+        - "performance"
+      min_medium_findings: 1
+    validate:
+      - output_contains_all
+      - min_medium_findings_satisfied
+    timeout: 60s
+  
+  - id: test-clean-architecture-review
+    description: Review for clean architecture compliance
+    tags: [architecture, clean-code]
+    input:
+      language: typescript
+      file: src/components/Button.tsx
+      code: |
+        const Button = () => {
+          const data = await fetch('/api/config');
+          await db.users.update({ id: 1, data });
+          return <button>{data.name}</button>;
+        }
+    expected:
+      contains:
+        - "separation of concerns"
+        - "business logic"
+        - "UI component"
+      min_findings: 2
+    validate:
+      - output_contains_all
+      - min_findings_satisfied
+    timeout: 90s

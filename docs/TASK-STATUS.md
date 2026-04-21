@@ -105,3 +105,52 @@ Token efficiency improvements implemented:
 - 75% memory savings (SQLite + FTS5 + RRF)
 - 95-98% code execution savings (ctx_execute)
 - 97% navigation savings (Token-Savior integration)
+
+---
+
+## 🆕 CCGS-Inspired Improvements (2026-04-21)
+
+Inspired by [Claude-Code-Game-Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) (14.6k stars).
+
+### Phase 1 — Completed
+
+| Task | File | Description |
+|------|------|-------------|
+| **Review Intensity Modes** | `skills/_shared/protocols/review-intensity.md` | Full/Lean/Solo review modes |
+| **Review Intensity** | `skills/production-grade/SKILL.md` | Integrated into orchestrator |
+| **Project Gap Detection** | `skills/_shared/protocols/session-lifecycle.md` | Step 0.5 with 6 gap checks |
+| **Model Tier Assignment** | `skills/_shared/protocols/model-tier.md` | Haiku/Sonnet/Opus per skill |
+| **Model Tier** | 5 skill frontmatter | `code-reviewer: opus`, `sre: opus`, `security-engineer: opus`, `token-tracker: haiku`, `solution-architect: opus` |
+
+### Phase 2 — Completed
+
+| Task | File | Description |
+|------|------|-------------|
+| **Parallel Protocol** | `skills/_shared/protocols/parallel-protocol.md` | Formal subagent dependency rules |
+| **Parallel Dispatch** | `skills/parallel-dispatch/SKILL.md` | Enhanced with parallel protocol |
+| **Path-Scoped Rules** | `rules/` directory | `gameplay-`, `api-`, `core-`, `ui-`, `test-` standards |
+| **Path-Scoped Rules** | `skills/_shared/protocols/guardrail.md` | Integrated path rules |
+| **Pre-Commit Hook** | `scripts/validate-commit.sh` | Magic numbers, TODO format, JSON validation |
+| **Pre-Push Hook** | `scripts/validate-push.sh` | Protected branches, uncommitted changes |
+| **Asset Hook** | `scripts/validate-assets.sh` | Naming conventions, file size limits |
+
+### Phase 3 — Completed
+
+| Task | File | Description |
+|------|------|-------------|
+| **Status Line** | `scripts/statusline.sh` | Breadcrumb display format |
+| **Status Block** | `skills/_shared/protocols/session-lifecycle.md` | <!-- STATUS --> block |
+| **Skill Testing Framework** | `skills/_test/` | Test framework structure |
+| **Test Runner** | `scripts/test-runner.sh` | Bash-based test runner |
+| **Test Cases** | 4 skill test YAMLs | `software-engineer`, `code-reviewer`, `qa-engineer`, `product-manager` |
+
+### Key Features Added
+
+1. **Review Intensity Modes** — Choose review depth: Full (all reviews), Lean (gate reviews), Solo (none)
+2. **Project Gap Detection** — Auto-detect missing design docs, prototypes, architecture
+3. **Model Tier Assignment** — Optimize cost with Haiku/Sonnet/Opus per skill
+4. **Parallel Subagent Protocol** — Formal dependency analysis and wave planning
+5. **Path-Scoped Coding Standards** — Enforce rules based on file location
+6. **Pre-Commit Hooks** — Validate commits, pushes, and assets automatically
+7. **Status Line** — Breadcrumb display of current epic/feature/task
+8. **Skill Testing Framework** — Test skills to ensure quality over time
