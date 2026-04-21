@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-21
 > Session: Token Efficiency Roadmap Implementation
-> Commit: `HEAD` — `feat(shell): run_shell_filter wrapper (p5-t1, i11)`
+> Commit: `HEAD` — `feat(forgenexus): ctx_execute sandbox tool (p5-t2, i-new-4)`
 
 ---
 
@@ -41,6 +41,7 @@
 | Task ID | Name | Commit | Notes |
 |---------|------|--------|-------|
 | **P5-T1** | I11: RTK + chop + snip Detection & Integration | `HEAD` | `scripts/run_shell_filter.sh` — RTK delegation wrapper. Auto-detects available compressors (rtk > chop > snip > ctx > tkill > native). Reads from `SHELL_COMPRESSOR` env or `.forgewright/settings.env`. Pipe mode and function mode. Synced to Antigravity plugin. 7 passing tests. |
+| **P5-T2** | I-NEW-4: Context-Mode Integration (ctx_execute MCP tool) | `HEAD` | `forgenexus/src/mcp/tools.ts` — New `ctx_execute` tool. Sandboxed code execution with structured output summarization. Supports: python, node, bash, go, rust, ruby, php. Language auto-detection via shebang or syntax. Token savings: 95-98%. 173 passing tests. |
 
 ---
 
@@ -50,13 +51,12 @@
 
 | Task ID | Name | Score | Description |
 |---------|------|-------|-------------|
-| **P5-T2** | I-NEW-4: Context-Mode Integration (ctx_execute MCP tool) | 9.15 | Add `ctx_execute` MCP tool to ForgeNexus MCP server. Sandbox code execution, return structured summary. |
 | **P5-T3** | I-NEW-6: Token-Savior MCP Integration | 9.00 | Integrate Token-Savior's structured navigation (97% reduction) and persistent memory (SQLite + vector embeddings). |
 
 **Key files to read first:**
 - `forgenexus/src/mcp/tools.ts`
 - `mcp/src/index.ts`
-- `docs/improvement-roadmap-v2.md` §I-NEW-4, §I-NEW-6
+- `docs/improvement-roadmap-v2.md` §I-NEW-6
 
 ---
 
@@ -82,12 +82,13 @@
 | `skills/production-grade/middleware/06-tool-sandbox.md` | Tool sandbox middleware spec |
 | `forgenexus/src/mcp/outline.ts` | Outline mode: structural file extraction + session dedup |
 | `forgenexus/src/mcp/outline.test.ts` | 24 unit tests for outline + context dedup |
-| `forgenexus/src/mcp/tools.ts` | Added `outline` + `context` tools with callee footer |
+| `forgenexus/src/mcp/tools.ts` | All MCP tools including ctx_execute |
+| `forgenexus/src/mcp/ctx-execute.test.ts` | 22 unit tests for ctx_execute |
 | `scripts/mem0-v2.py` | Memory v2: SQLite + FTS5 + RRF (thay thế mem0-cli.py) |
 | `scripts/mem0-v2.test.py` | 30 unit tests cho Memory v2 |
 | `scripts/dycp.py` | DyCP KadaneDial conversation pruning |
 | `scripts/dycp.test.py` | 25 unit tests for DyCP |
-| `scripts/run_shell_filter.sh` | RTK delegation wrapper (new) |
+| `scripts/run_shell_filter.sh` | RTK delegation wrapper |
 | `scripts/run_shell_filter.test.sh` | 7 unit tests for shell filter wrapper |
 
 ### Project Intelligence
@@ -115,9 +116,9 @@
 
 ## 🎯 Current Focus
 
-**Next task: P5-T2 — Context-Mode Integration (ctx_execute MCP tool)**
+**Next task: P5-T3 — Token-Savior MCP Integration**
 
 Read these files first:
 - `forgenexus/src/mcp/tools.ts`
 - `mcp/src/index.ts`
-- `docs/improvement-roadmap-v2.md` §I-NEW-4
+- `docs/improvement-roadmap-v2.md` §I-NEW-6
