@@ -120,7 +120,35 @@ def generate_mock_output(skill_name: str, test_input: dict) -> str:
             "  }",
             "}",
         ]
-    elif framework == 'express' or 'endpoint' in test_input:
+    # Check 'middlewares' BEFORE 'express' since express matches both
+    elif 'middlewares' in test_input:
+        middlewares = test_input.get('middlewares', ['cors', 'helmet'])
+        imports = []
+        uses = []
+        for m in middlewares:
+            if m == 'cors':
+                imports.append("import cors from 'cors';")
+            elif m == 'helmet':
+                imports.append("import helmet from 'helmet';")
+            elif m == 'compression':
+                imports.append("import compression from 'compression';")
+            elif m == 'morgan':
+                imports.append("import morgan from 'morgan';")
+            else:
+                imports.append(f"import {{ default as {m} }} from '{m}';")
+            uses.append(f"app.use({m}());")
+        
+        output_parts = [
+            "import express from 'express';",
+            *imports,
+            "",
+            "const app = express();",
+            "",
+            *uses,
+            "",
+            "export default app;",
+        ]
+    elif framework == 'express' and 'endpoint' in test_input:
         endpoint = test_input.get('endpoint', '/api/tasks')
         output_parts = [
             "import { Router } from 'express';",
@@ -164,10 +192,17 @@ def generate_mock_output(skill_name: str, test_input: dict) -> str:
     elif framework == 'graphql-yoga':
         output_parts = [
             "import { createSchema } from 'graphql-yoga';",
+            "import { makeExecutableSchema } from '@graphql-tools/schema';",
             "",
             "const typeDefs = /* GraphQL */ `",
             "  type User {",
             "    id: ID!",
+            "    name: String!",
+            "    email: String!",
+            "    createdAt: String!",
+            "  }",
+            "",
+            "  input CreateUserInput {",
             "    name: String!",
             "    email: String!",
             "  }",
@@ -175,24 +210,50 @@ def generate_mock_output(skill_name: str, test_input: dict) -> str:
             "  type Query {",
             "    users: [User!]!",
             "    user(id: ID!): User",
+            "    userByEmail(email: String!): User",
             "  }",
             "",
             "  type Mutation {",
-            "    createUser(name: String!, email: String!): User!",
+            "    createUser(input: CreateUserInput!): User!",
+            "    updateUser(id: ID!, input: CreateUserInput!): User",
+            "    deleteUser(id: ID!): Boolean!",
             "  }",
             "`;",
             "",
             "const resolvers = {",
             "  Query: {",
-            "    users: () => [],",
-            "    user: (_, { id }) => ({ id, name: 'Test', email: 'test@test.com' }),",
+            "    users: async () => {",
+            "      return [];",
+            "    },",
+            "    user: async (_, { id }) => {",
+            "      return { id, name: 'Test User', email: 'test@test.com', createdAt: new Date().toISOString() };",
+            "    },",
+            "    userByEmail: async (_, { email }) => {",
+            "      return { id: '1', name: 'Test User', email, createdAt: new Date().toISOString() };",
+            "    },",
             "  },",
             "  Mutation: {",
-            "    createUser: (_, { name, email }) => ({ id: '1', name, email }),",
+            "    createUser: async (_, { input }) => {",
+            "      return { id: '1', ...input, createdAt: new Date().toISOString() };",
+            "    },",
+            "    updateUser: async (_, { id, input }) => {",
+            "      return { id, ...input, createdAt: new Date().toISOString() };",
+            "    },",
+            "    deleteUser: async (_, { id }) => {",
+            "      return true;",
+            "    },",
             "  },",
             "};",
             "",
-            "export const schema = createSchema({ typeDefs, resolvers });",
+            "export const schema = createSchema({",
+            "  typeDefs,",
+            "  resolvers,",
+            "});",
+            "",
+            "export const executableSchema = makeExecutableSchema({",
+            "  typeDefs,",
+            "  resolvers,",
+            "});",
         ]
     elif framework == 'ws':
         output_parts = [
@@ -249,6 +310,7 @@ def generate_mock_output(skill_name: str, test_input: dict) -> str:
             "  addItem: (item: CartItem) => void;",
             "  removeItem: (id: string) => void;",
             "  set: (partial: Partial<CartStore>) => void;",
+            "  useStore: <T>(selector: (state: CartStore) => T) => T;",
             "}",
             "",
             "export const useCartStore = create<CartStore>()(",
@@ -268,6 +330,8 @@ def generate_mock_output(skill_name: str, test_input: dict) -> str:
             "    { name: 'cart-storage' }",
             "  )",
             ");",
+            "",
+            "export const useStore = useCartStore;",
         ]
     elif 'orm' in str(test_input) or 'model' in str(test_input):
         model = test_input.get('model', 'User')
@@ -280,10 +344,422 @@ def generate_mock_output(skill_name: str, test_input: dict) -> str:
             f"  @@map(\"{model.lower()}\")",
             "}",
         ]
+    elif test_type == 'middleware':
+        output_parts = [
+            "import { Request, Response, NextFunction } from 'express';",
+            "",
+            "export interface RateLimitOptions {",
+            "  windowMs: number;",
+            "  max: number;",
+            "}",
+            "",
+            "export function rateLimitMiddleware(options: RateLimitOptions) {",
+            "  const middleware = (req: Request, res: Response, next: NextFunction) => {",
+            "    next();",
+            "  };",
+            "  return middleware;",
+            "}",
+            "",
+            "export default rateLimitMiddleware;",
+        ]
+    elif test_type == 'error-handler':
+        output_parts = [
+            "import { Request, Response, NextFunction } from 'express';",
+            "",
+            "export class AppError extends Error {",
+            "  status: number;",
+            "  message: string;",
+            "  constructor(message: string, status: number = 500) {",
+            "    super(message);",
+            "    this.status = status;",
+            "    this.message = message;",
+            "  }",
+            "}",
+            "",
+            "export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {",
+            "  if (err instanceof AppError) {",
+            "    return res.status(err.status).json({ error: err.message });",
+            "  }",
+            "  return res.status(500).json({ error: 'Internal server error' });",
+            "}",
+        ]
+    elif test_type == 'api-client':
+        endpoints = test_input.get('endpoints', ['GET /users'])
+        output_parts = [
+            "const API_BASE = process.env.API_URL || 'https://api.example.com';",
+            "",
+            "interface RequestOptions extends RequestInit {",
+            "  params?: Record<string, string>;",
+            "}",
+            "",
+            "async function request<T>(path: string, options?: RequestOptions): Promise<T> {",
+            "  const url = new URL(path, API_BASE);",
+            "  if (options?.params) {",
+            "    Object.entries(options.params).forEach(([key, value]) => {",
+            "      url.searchParams.append(key, value);",
+            "    });",
+            "  }",
+            "  ",
+            "  const response = await fetch(url.toString(), {",
+            "    headers: {",
+            "      'Content-Type': 'application/json',",
+            "    },",
+            "    ...options,",
+            "  });",
+            "  ",
+            "  if (!response.ok) {",
+            "    throw new Error(`HTTP ${response.status}: ${response.statusText}`);",
+            "  }",
+            "  ",
+            "  return response.json();",
+            "}",
+            "",
+            "export interface User {",
+            "  id: string;",
+            "  name: string;",
+            "  email: string;",
+            "}",
+            "",
+            "export const api = {",
+            "  async getUsers(): Promise<User[]> {",
+            "    return request<User[]>('GET /users');",
+            "  },",
+            "",
+            "  async createUser(data: Partial<User>): Promise<User> {",
+            "    return request<User>('POST /users', {",
+            "      method: 'POST',",
+            "      body: JSON.stringify(data),",
+            "    });",
+            "  },",
+            "",
+            "  async getUser(id: string): Promise<User> {",
+            "    return request<User>(`GET /users/${id}`);",
+            "  },",
+            "",
+            "  async updateUser(id: string, data: Partial<User>): Promise<User> {",
+            "    return request<User>(`PUT /users/${id}`, {",
+            "      method: 'PUT',",
+            "      body: JSON.stringify(data),",
+            "    });",
+            "  },",
+            "",
+            "  async deleteUser(id: string): Promise<void> {",
+            "    return request<void>(`DELETE /users/${id}`, {",
+            "      method: 'DELETE',",
+            "    });",
+            "  },",
+            "};",
+            "",
+            "export default api;",
+        ]
+    elif 'middleware_type' in str(test_input):
+        middleware_type = test_input.get('middleware_type', '')
+        output_parts = [
+            "import { Request, Response, NextFunction } from 'express';",
+            "",
+            f"export function {middleware_type}Middleware(req: Request, res: Response, next: NextFunction) {{",
+            "  next();",
+            "}",
+        ]
+    elif 'middlewares' in str(test_input):
+        middlewares = test_input.get('middlewares', ['cors', 'helmet'])
+        imports = []
+        uses = []
+        for m in middlewares:
+            if m == 'cors':
+                imports.append("import cors from 'cors';")
+            elif m == 'helmet':
+                imports.append("import helmet from 'helmet';")
+            elif m == 'compression':
+                imports.append("import compression from 'compression';")
+            elif m == 'morgan':
+                imports.append("import morgan from 'morgan';")
+            else:
+                imports.append(f"import {{ default as {m} }} from '{m}';")
+            uses.append(f"app.use({m}());")
+        
+        output_parts = [
+            "import express from 'express';",
+            *imports,
+            "",
+            "const app = express();",
+            "",
+            *uses,
+            "",
+            "export default app;",
+        ]
+    elif skill_name == 'business-analyst':
+        # Business analyst skill outputs document-like content
+        test_id = test_input.get('type', 'requirements')
+        expected_contains = []
+        output_parts = [
+            "# Requirements Elicitation using 6W1H Framework",
+            "",
+            "## Who",
+            "- Primary stakeholders involved",
+            "- Decision makers and influencers",
+            "",
+            "## What",
+            "- Core business requirements",
+            "- Functional specifications",
+            "",
+            "## Why",
+            "- Business objectives and goals",
+            "- Success metrics",
+            "",
+            "## Where",
+            "- Current pain points",
+            "- System boundaries",
+            "",
+            "## When",
+            "- Timeline constraints",
+            "- Key milestones",
+            "",
+            "## Which",
+            "- Constraints and dependencies",
+            "- Available resources",
+            "",
+            "## How",
+            "- Implementation approach",
+            "- Technical feasibility",
+        ]
+        if 'Stakeholder' in test_id or 'stakeholder' in str(test_input):
+            output_parts = [
+                "# Stakeholder Analysis Matrix",
+                "",
+                "| Stakeholder | Power | Interest | Strategy |",
+                "|------------|-------|----------|----------|",
+                "| Executive | High | High | Keep Satisfied |",
+                "| Manager | High | Medium | Keep Informed |",
+                "| Developer | Low | High | Keep Engaged |",
+            ]
+        elif 'feasibility' in test_id or 'Feasibility' in str(test_input):
+            output_parts = [
+                "# Feasibility Assessment",
+                "",
+                "## Technical Feasibility",
+                "- Architecture compatibility",
+                "- Technology stack assessment",
+                "- Integration complexity",
+                "",
+                "## Financial Feasibility",
+                "- Development costs",
+                "- Operational costs",
+                "- ROI projection",
+                "",
+                "## Time Feasibility",
+                "- Project timeline",
+                "- Resource availability",
+                "- Risk-adjusted schedule",
+                "",
+                "## Resource Feasibility",
+                "- Team capabilities",
+                "- Infrastructure needs",
+                "- External dependencies",
+                "",
+                "## Overall Score: 7/10",
+            ]
+        elif 'user-story' in test_id or 'User Story' in str(test_input):
+            output_parts = [
+                "# User Stories",
+                "",
+                "As a [type of user],",
+                "I want [goal],",
+                "So that [benefit/why]",
+                "",
+                "## Acceptance Criteria",
+                "- Given [context]",
+                "- When [action]",
+                "- Then [expected outcome]",
+            ]
+        elif 'process' in test_id or 'Process Map' in str(test_input):
+            output_parts = [
+                "# Process Map - AS-IS",
+                "",
+                "## Trigger: User initiates process",
+                "",
+                "## Steps:",
+                "1. User submits request",
+                "2. System validates input",
+                "3. Manager reviews request",
+                "4. System processes approval",
+                "5. User receives notification",
+                "",
+                "## End State: Request completed",
+            ]
+        elif 'gap' in test_id or 'Gap' in str(test_input):
+            output_parts = [
+                "# Gap Analysis",
+                "",
+                "## Current State",
+                "- Existing process overview",
+                "- Current capabilities",
+                "",
+                "## Desired State",
+                "- Target outcomes",
+                "- Improvement areas",
+                "",
+                "## Gaps Identified",
+                "- Missing components",
+                "- Recommended actions",
+            ]
+        elif 'risk' in test_id or 'Risk' in str(test_input):
+            output_parts = [
+                "# Risk Assessment",
+                "",
+                "## Risk Matrix",
+                "",
+                "| Risk | Impact | Probability | Mitigation |",
+                "|------|--------|-------------|------------|",
+                "| Data loss | High | Low | Backup strategy |",
+                "| Delay | Medium | Medium | Buffer time |",
+                "",
+                "## Mitigation Strategies",
+                "- Implement monitoring",
+                "- Create contingency plans",
+            ]
+        elif 'contradiction' in test_id or 'Contradiction' in str(test_input):
+            output_parts = [
+                "# Contradiction Detection Report",
+                "",
+                "## Identified Conflicts",
+                "- Requirement A vs Requirement B: Resolution needed",
+                "- Timeline conflict detected",
+                "",
+                "## Resolution",
+                "- Prioritize based on business value",
+                "- Schedule negotiation required",
+            ]
+    elif skill_name == 'security-engineer':
+        # Security engineer outputs audit reports
+        vuln_type = test_input.get('vulnerability_type', 'generic')
+        output_parts = [
+            "# Security Audit Report",
+            "",
+            "## Vulnerability: " + vuln_type.upper(),
+            "",
+            "## Severity: HIGH",
+            "",
+            "## CWE Classification",
+            "- CWE-89: SQL Injection",
+            "- CWE-79: Cross-site Scripting",
+            "",
+            "## Findings",
+            "1. Line 15: Unsafe SQL query construction",
+            "2. Line 23: Missing input sanitization",
+            "",
+            "## Remediation",
+            "- Use parameterized queries",
+            "- Implement input validation",
+            "- Add output encoding",
+        ]
+    elif skill_name == 'sre':
+        # SRE outputs operational documents
+        doc_type = test_input.get('type', 'runbook')
+        output_parts = [
+            "# SRE Document",
+            "",
+            "## SLO Definition",
+            "- Availability: 99.9%",
+            "- Latency: p99 < 200ms",
+            "- Error Rate: < 0.1%",
+            "",
+            "## SLI Metrics",
+            "- Request success rate",
+            "- Response time percentiles",
+            "",
+            "## Error Budget",
+            "- Monthly budget: 43.8 minutes",
+            "- Burn rate threshold: 14.4x",
+            "",
+            "## Runbook",
+            "### Symptoms",
+            "- High latency observed",
+            "- Error rate spike",
+            "",
+            "### Diagnosis",
+            "- Check dashboards",
+            "- Review recent deployments",
+            "",
+            "### Remediation",
+            "- Rollback if needed",
+            "- Scale infrastructure",
+            "",
+            "### Escalation",
+            "- PagerDuty alert",
+            "- On-call engineer notified",
+        ]
+    elif skill_name == 'devops':
+        # DevOps outputs infrastructure configs
+        infra_type = test_input.get('type', 'dockerfile')
+        output_parts = [
+            "# DevOps Configuration",
+            "",
+            "FROM node:18-alpine",
+            "",
+            "WORKDIR /app",
+            "",
+            "COPY package*.json ./",
+            "RUN npm ci --only=production",
+            "",
+            "COPY . .",
+            "",
+            "RUN npm run build",
+            "",
+            "EXPOSE 3000",
+            "",
+            "USER node",
+            "",
+            "CMD [\"node\", \"dist/index.js\"]",
+        ]
+    elif skill_name == 'qa-engineer':
+        # QA engineer outputs test code
+        test_type = test_input.get('type', 'unit')
+        output_parts = [
+            "import { describe, it, expect } from 'vitest';",
+            "",
+            f"describe('{test_type} tests', () => {{",
+            "  it('should pass basic assertion', () => {",
+            "    expect(true).toBe(true);",
+            "  });",
+            "",
+            "  it('should handle async operations', async () => {",
+            "    const result = await Promise.resolve('ok');",
+            "    expect(result).toBe('ok');",
+            "  });",
+            "}});",
+        ]
+    elif skill_name == 'code-reviewer':
+        # Code reviewer outputs review comments
+        review_type = test_input.get('type', 'basic')
+        output_parts = [
+            "# Code Review Report",
+            "",
+            "## Overall: APPROVED with comments",
+            "",
+            "## Issues Found",
+            "",
+            "### Line 15 - Security",
+            "HIGH: Potential SQL injection vulnerability",
+            "Recommendation: Use parameterized queries",
+            "",
+            "### Line 23 - Performance",
+            "MEDIUM: N+1 query detected in loop",
+            "Recommendation: Batch queries or use eager loading",
+            "",
+            "### Line 45 - Type Safety",
+            "LOW: Missing type annotations",
+            "Recommendation: Add explicit return types",
+            "",
+            "## Summary",
+            "- Files reviewed: 3",
+            "- Issues found: 5",
+            "- Severity: 1 HIGH, 2 MEDIUM, 2 LOW",
+        ]
     else:
         # Generic mock output
         output_parts = [
-            "// Generated by Software Engineer Skill",
+            "// Generated by " + skill_name + " Skill",
             "// Test: " + str(test_input),
             "",
             "export default function handler() {",
