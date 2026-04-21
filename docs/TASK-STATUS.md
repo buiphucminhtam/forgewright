@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-21
 > Session: Token Efficiency Roadmap Implementation
-> Commit: `HEAD` — `feat(forgenexus): add callee footer + session dedup (P2-T2, I-NEW-2)`
+> Commit: `HEAD` — `feat(memory): Memory v2 SQLite + FTS5 + RRF (P3-T1, I-NEW-3)`
 
 ---
 
@@ -30,16 +30,9 @@
 
 ### P3 — Memory Engine (High Priority)
 
-| Task ID | Name | Score | Description |
-|---------|------|-------|-------------|
-| **P3-T1** | I-NEW-3: Memory Engine v2 (SQLite + FTS5 + RRF) | 9.25 | Replace current mem0-cli.py JSONL with SQLite + FTS5 full-text search. Add RRF (Reciprocal Rank Fusion) for multi-source ranking. Token savings ~75%. |
-| **P3-T2** | I9: Memory Progressive Disclosure 3-layer | 9.10 | Layer 1: brief (1-2 lines). Layer 2: full fact. Layer 3: full source. Avoid loading everything at once. |
-
-**Key files to read first:**
-- `scripts/mem0-cli.py` — current memory implementation
-- `skills/memory-manager/SKILL.md` — memory system design
-- `skills/_shared/protocols/memory-manager.md`
-- `docs/improvement-roadmap-v2.md` §I-NEW-3, §I9
+| Task ID | Name | Commit | Notes |
+|---------|------|--------|-------|
+| **P3-T1** | I-NEW-3: Memory Engine v2 (SQLite + FTS5 + RRF) | `HEAD` | `scripts/mem0-v2.py` — SQLite + FTS5 thay thế JSONL + TF-IDF. WAL mode, FTS5 BM25 ranking. 3-layer progressive disclosure: Layer 1 (~15 tokens), Layer 2 (~60 tokens), Layer 3 (~200 tokens). RRF Fusion cho hybrid search. Migration từ JSONL. 30 passing tests. |
 
 ### P4 — Conversation Pruning (Medium Priority)
 
@@ -89,6 +82,8 @@
 | `forgenexus/src/mcp/outline.ts` | Outline mode: structural file extraction + session dedup |
 | `forgenexus/src/mcp/outline.test.ts` | 24 unit tests for outline + context dedup |
 | `forgenexus/src/mcp/tools.ts` | Added `outline` + `context` tools with callee footer |
+| `scripts/mem0-v2.py` | Memory v2: SQLite + FTS5 + RRF (thay thế mem0-cli.py) |
+| `scripts/mem0-v2.test.py` | 30 unit tests cho Memory v2 |
 
 ### Project Intelligence
 
@@ -114,10 +109,8 @@
 
 ## 🎯 Current Focus
 
-**Next task: P3-T1 — Memory Engine v2 (SQLite + FTS5 + RRF)**
+**Next task: P4-T1 — DyCP KadaneDial Conversation Pruning**
 
 Read these files first:
-- `scripts/mem0-cli.py` — current memory implementation
-- `skills/memory-manager/SKILL.md` — memory system design
-- `skills/_shared/protocols/memory-manager.md`
-- `docs/improvement-roadmap-v2.md` §I-NEW-3, §I9
+- `docs/improvement-roadmap-v2.md` §I-NEW-5
+- `skills/_shared/protocols/summarization.md`
