@@ -276,6 +276,21 @@ export FORGEWRIGHT_DEDUP_WINDOW="10"
 export FORGEWRIGHT_SESSION_DEDUP="true"
 export FORGEWRIGHT_TOOL_SANDBOX="true"
 export FORGEWRIGHT_MEMORY_ENABLED="true"
+
+# Code navigation tool (token-savior > forgenexus)
+if command -v token-savior &> /dev/null; then
+    export FORGEWRIGHT_CODE_NAV="token-savior"
+    log_ok "Found: Token-Savior — 97% navigation token reduction"
+else
+    export FORGEWRIGHT_CODE_NAV="forgenexus"
+fi
+
+# Memory vector store (token-savior > sqlite)
+if command -v token-savior &> /dev/null; then
+    export FORGEWRIGHT_MEMORY_VECTOR="token-savior"
+else
+    export FORGEWRIGHT_MEMORY_VECTOR="sqlite"  # Uses mem0-v2.py
+fi
 SETTINGS_EOF
 
     chmod 644 "$settings_file"
