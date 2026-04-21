@@ -57,6 +57,12 @@ TAG_FILTER=""
 LIST_MODE=false
 RUN_ALL=false
 
+# Global counters for test results
+passed=0
+failed=0
+skipped=0
+test_result=0
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --all|-a)
@@ -170,8 +176,8 @@ run_test() {
         echo "Description: $description"
     fi
     
-    # Run the test
-    local start_time=$(date +%s%3N)
+    # Run the test (cross-platform timing)
+    local start_time=$(python3 -c 'import time; print(int(time.time() * 1000))' 2>/dev/null || ruby -e 'puts (Time.now.to_f * 1000).to_i' 2>/dev/null || echo $(($(date +%s) * 1000)))
     local result="passed"
     local error=""
     
@@ -187,15 +193,16 @@ run_test() {
     echo "Skill: $skill_name"
     echo "Timeout: $timeout"
     
-    local end_time=$(date +%s%3N)
+    local end_time=$(python3 -c 'import time; print(int(time.time() * 1000))' 2>/dev/null || ruby -e 'puts (Time.now.to_f * 1000).to_i' 2>/dev/null || echo $(($(date +%s) * 1000)))
     local duration=$((end_time - start_time))
     
-    # Return result (currently always "skipped" since not implemented)
+    # Currently tests are not implemented - count as skipped
     echo ""
     log_skip "Test not yet implemented"
     echo "  Duration: ${duration}ms"
     
-    return 0
+    # Return 2 to indicate skipped (not 0=passed or 1=failed)
+    return 2
 }
 
 # =============================================================================
@@ -224,9 +231,10 @@ run_skill_tests() {
         return 1
     fi
     
-    local passed=0
-    local failed=0
-    local skipped=0
+    # Use global counters
+    passed=0
+    failed=0
+    skipped=0
     
     for test_id in $test_ids; do
         # Filter by tag if specified
@@ -242,11 +250,9 @@ run_skill_tests() {
             continue
         fi
         
-        if run_test "$skill_name" "$test_id"; then
-            ((passed++))
-        else
-            ((failed++))
-        fi
+        # Run test and count as skipped (not implemented yet)
+        run_test "$skill_name" "$test_id" || :
+        ((skipped++))
     done
     
     echo ""
@@ -287,7 +293,15 @@ run_all_tests() {
                 continue
             fi
             
+            # Run tests and capture results
             run_skill_tests "$skill_name"
+            local skill_result=$?
+            
+            # Accumulate totals (passed=1, failed=2, error=other)
+            if [ $skill_result -eq 0 ]; then
+                # Tests ran successfully
+                :
+            fi
         fi
     done
     
