@@ -279,6 +279,83 @@ git submodule update --init --recursive
 
 ---
 
+### 🔀 Multi-Project Workflow
+
+Làm việc với nhiều project cùng lúc:
+
+#### Cách 1: Nhiều Cursor/IDE windows (Đơn giản nhất)
+
+Mỗi project mở 1 window riêng:
+
+```bash
+# Project A
+cursor /path/to/project-a
+
+# Project B (terminal khác)
+cursor /path/to/project-b
+```
+
+**Mỗi window có:**
+- Memory riêng (`.forgewright/memory.jsonl`)
+- ForgeNexus index riêng
+- MCP config riêng
+
+#### Cách 2: Git Worktrees (Cùng repo, nhiều branches)
+
+Dùng khi cần test nhiều features trên cùng repo:
+
+```bash
+# Tạo worktree cho feature mới
+cd your-repo
+git worktree add .worktrees/feature-login feature/login
+
+# Tạo worktree cho hotfix
+git worktree add .worktrees/hotfix-payment hotfix/payment
+
+# Mở từng worktree trong Cursor riêng
+cursor .worktrees/feature-login
+cursor .worktrees/hotfix-payment
+```
+
+#### Cách 3: MCP cho mỗi workspace
+
+Mỗi project cần chạy MCP setup riêng:
+
+```bash
+# Project A
+cd project-a
+bash forgewright/scripts/forgewright-mcp-setup.sh
+
+# Project B (port khác để tránh conflict)
+cd project-b
+STUDIO_PORT=7893 bash forgewright/scripts/forgewright-mcp-setup.sh
+```
+
+#### Architecture: Multi-Project Isolation
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Your Machine                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  Project A  │  │  Project B  │  │  Project C  │        │
+│  │  .forgewright│  │  .forgewright│  │  .forgewright│        │
+│  │  memory.jsonl│  │  memory.jsonl│  │  memory.jsonl│        │
+│  │  index.db   │  │  index.db   │  │  index.db   │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│         │                │                │                │
+│         ▼                ▼                ▼                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │ MCP Server  │  │ MCP Server  │  │ MCP Server  │        │
+│  │  (port A)   │  │  (port B)   │  │  (port C)   │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 🎯 Sau Khi Cài Đặt — Làm Gì?
 
 ### Dùng như thế nào?
@@ -458,6 +535,24 @@ A: Tất cả data được lưu trong `.forgewright/` và `.antigravity/` của
 
 **Q: Gặp lỗi thì làm sao?**
 A: Chạy `bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose`
+
+**Q: Làm việc với nhiều project cùng lúc thì sao?**
+A: Có 3 cách:
+
+| Cách | Khi nào dùng | Cách setup |
+|------|---------------|------------|
+| **Nhiều Cursor windows** | Mỗi project 1 window riêng | Mỗi project cần có `AGENTS.md` + `CLAUDE.md` |
+| **Git worktrees** | Cùng 1 repo, nhiều branches chạy song song | Dùng `scripts/worktree-manager.sh` |
+| **MCP per workspace** | Mỗi project có MCP riêng | Mỗi project chạy `forgewright-mcp-setup.sh` |
+
+**Q: Mỗi project có memory riêng không?**
+A: Có! Memory được lưu trong `.forgewright/memory.jsonl` của từng project. Nếu muốn cross-project memory, dùng NotebookLM.
+
+**Q: Project A và B có bị conflict không?**
+A: Không. Mỗi project có workspace isolation riêng:
+- `.forgewright/` — project-specific state
+- `.antigravity/` — plugin config
+- MCP config — per-workspace (`~/.cursor/mcp.json`)
 
 ---
 
