@@ -1,11 +1,7 @@
 ---
 name: code-reviewer
 model: opus
-description: >
-  [production-grade internal] Reviews code for quality — architecture
-  conformance, anti-patterns, performance issues, maintainability.
-  Read-only analysis, never modifies code.
-  Routed via the production-grade orchestrator.
+description: "Reviews code for quality — architecture conformance, anti-patterns, performance issues, maintainability. Read-only analysis that detects circular dependencies, N+1 queries, dead code, naming violations, and layering breaches. Use when the user asks for a code review, wants feedback on code quality, PR review, tech debt analysis, or architecture conformance checks."
 ---
 
 # Code Reviewer Skill
@@ -107,14 +103,12 @@ All artifacts are written to `.forgewright/code-reviewer/` in the project root.
 
 ## Severity Levels
 
-Every finding should be assigned exactly one severity level — consistent severity grading lets the developer prioritize fixes efficiently and prevents "alert fatigue" from mis-categorized issues. Use these definitions:
-
-| Severity | Definition | Action Required | Examples |
-|----------|-----------|----------------|---------|
-| **Critical** | Data loss risk or correctness bug that will cause production incidents | Must fix before any deployment | Race condition causing double charges, unencrypted PII storage, missing auth check on admin endpoint |
-| **High** | Architectural violation, significant design flaw, or reliability risk that will cause problems at scale | Must fix before production release | Violates ADR decision, synchronous call in async pipeline, missing circuit breaker on external dependency, N+1 query on high-traffic endpoint |
-| **Medium** | Code quality issue that increases maintenance cost, makes debugging harder, or indicates emerging tech debt | Should fix within current sprint | SOLID violation, duplicated business logic across services, poor error messages, missing structured logging |
-| **Low** | Style issue, minor optimization, or improvement that would make code marginally better | Fix when convenient; consider adding to backlog | Inconsistent naming convention, unused import, suboptimal but correct algorithm, missing JSDoc on public API |
+| Severity | Definition | Action |
+|----------|-----------|--------|
+| **Critical** | Data loss risk or correctness bug causing production incidents | Must fix before deployment |
+| **High** | Architectural violation or reliability risk at scale | Must fix before production release |
+| **Medium** | Code quality issue increasing maintenance cost | Fix within current sprint |
+| **Low** | Style issue or minor optimization | Fix when convenient |
 
 ---
 
@@ -180,25 +174,19 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 
 **Review checklist:**
 
-**SOLID Principles:**
-1. **Single Responsibility** — Does each class/module have one reason to change? Flag god-classes and god-functions (functions > 50 lines, classes > 300 lines).
-2. **Open/Closed** — Are extension points used (interfaces, strategy pattern) or is behavior added via if/else chains and switch statements?
-3. **Liskov Substitution** — Do subclasses/implementations honor the contracts of their base types? Are there type-check downcasts that violate polymorphism?
-4. **Interface Segregation** — Are interfaces focused? Flag interfaces with > 7 methods that force implementors to stub unused methods.
-5. **Dependency Inversion** — Do high-level modules depend on abstractions? Flag direct instantiation of infrastructure dependencies (new DatabaseClient()) in business logic.
+**SOLID Principles:** Flag violations with thresholds — god-classes (> 300 lines), god-functions (> 50 lines), interfaces > 7 methods, direct infrastructure instantiation in business logic.
 
 **Code Structure:**
-6. **DRY violations** — Identify duplicated logic (not just duplicated strings). Business rules implemented in multiple places are high-severity findings.
-7. **Cyclomatic complexity** — Flag functions with complexity > 10. Calculate and record in `metrics/complexity.json`.
-8. **Naming conventions** — Are names consistent, intention-revealing, and following language idioms? Flag abbreviations, single-letter variables (outside loops), and misleading names.
-9. **Error handling** — Are errors caught at the right level? Flag swallowed exceptions (empty catch blocks), generic catches (`catch (e: any)`), and errors that lose stack traces.
-10. **Logging** — Is logging structured (JSON)? Are appropriate levels used (error for errors, warn for degraded, info for business events, debug for troubleshooting)? Are sensitive fields redacted?
+- **DRY violations** — duplicated business logic (not just strings) across multiple places
+- **Cyclomatic complexity** — flag functions > 10, record in `metrics/complexity.json`
+- **Error handling** — flag swallowed exceptions, generic catches (`catch (e: any)`), lost stack traces
+- **Logging** — verify structured (JSON), appropriate levels, sensitive fields redacted
 
 **Frontend-Specific:**
-11. **Component size** — Flag components > 200 lines. Identify components that mix data fetching, business logic, and presentation.
-12. **State management** — Is state lifted to the appropriate level? Flag prop drilling > 3 levels. Flag global state used for local concerns.
-13. **Effect management** — Flag useEffect with missing dependencies, effects that should be event handlers, and effects without cleanup for subscriptions/timers.
-14. **Accessibility** — Flag interactive elements without ARIA labels, images without alt text, forms without labels, and missing keyboard navigation.
+- Flag components > 200 lines mixing data fetching + business logic + presentation
+- Flag prop drilling > 3 levels, global state for local concerns
+- Flag useEffect with missing dependencies or missing cleanup
+- Flag missing ARIA labels, alt text, keyboard navigation
 
 **Output:** Write findings to `.forgewright/code-reviewer/findings/` by severity. Write complexity metrics to `.forgewright/code-reviewer/metrics/complexity.json`.
 
@@ -285,42 +273,9 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
    - `medium.md` — Findings that should be fixed soon
    - `low.md` — Advisory findings
 
-   Each finding in these files uses the following format:
-   ```markdown
-   ### [FINDING-ID] Short description
+   Each finding: `### [FINDING-ID] Short description` with Severity, Category, Location (`file:line`), Description, Impact, Evidence (code block), and Recommendation.
 
-   **Severity:** Critical | High | Medium | Low
-   **Category:** Architecture | Code Quality | Performance | Test Quality
-   **Location:** `path/to/file.ts:42`
-
-   **Description:**
-   What the issue is and why it matters.
-
-   **Impact:**
-   What happens if this is not fixed.
-
-   **Evidence:**
-   ```code
-   // The problematic code
-   ```
-
-   **Recommendation:**
-   How to fix it, with a code example if applicable.
-   ```
-
-3. Generate auto-fix suggestions for findings where the fix is mechanical and unambiguous:
-   - Missing null checks
-   - Missing auth middleware
-   - Missing input validation
-   - Missing error handling
-   - Unused imports
-   - Missing index definitions
-
-   Write each auto-fix to `.forgewright/code-reviewer/auto-fixes/<service>/<file>.patch.md` with:
-   - Finding ID reference
-   - Before code block
-   - After code block
-   - Explanation of the change
+3. Generate auto-fix suggestions for mechanical, unambiguous fixes (missing null checks, auth middleware, input validation, unused imports, missing indexes). Write to `.forgewright/code-reviewer/auto-fixes/<service>/<file>.patch.md` with before/after code blocks.
 
 4. Compile metrics:
    - `.forgewright/code-reviewer/metrics/complexity.json` — Cyclomatic complexity per function, flagged functions with complexity > 10
@@ -331,25 +286,15 @@ Wait for all 4 agents, then run Phase 5 (Review Report) sequentially — it comp
 
 ---
 
-## Common Mistakes
+## Key Constraints
 
-| # | Mistake | Why It Fails | What to Do Instead |
-|---|---------|-------------|-------------------|
-| 1 | Reporting linter-level issues (missing semicolons, trailing whitespace) as review findings | Wastes reviewer credibility on noise; these should be caught by automated linting in CI | Focus on structural, architectural, and logical issues that linters and formatters cannot catch |
-| 2 | Flagging code without reading the ADR that justified it | The "violation" may be an intentional, documented trade-off | Always cross-reference `docs/architecture/` ADRs before flagging an architectural concern |
-| 3 | Marking every finding as Critical | Severity inflation makes the report useless — developers ignore it entirely | Use Critical only for data loss risks and correctness bugs. Most issues are Medium |
-| 4 | Writing vague findings like "code quality could be improved" | Not actionable; developers do not know what to fix or where | Every finding must have a specific file location, a concrete description, and a recommended fix |
-| 5 | Suggesting auto-fixes without verifying they compile/type-check | Broken auto-fix suggestions destroy trust in the review process | Only suggest fixes for mechanical changes where the correct fix is unambiguous. Include enough context for the fix to be applied directly |
-| 6 | Reviewing generated code (migrations, protobuf stubs, OpenAPI clients) as handwritten code | Generated code has different quality standards; flagging it creates noise | Identify generated files by convention (file headers, directory names) and skip them or apply relaxed rules |
-| 7 | Ignoring `frontend/` entirely or applying only backend review criteria | Frontend has its own class of issues (render performance, accessibility, bundle size) that backend checklists miss | Apply frontend-specific review criteria from Phase 2 and Phase 3 to all `frontend/` code |
-| 8 | Not reading the test files before reviewing test quality | Cannot identify coverage gaps, assertion quality issues, or missing edge cases without reading the actual tests | Read both the source file and its corresponding test file together to identify gaps |
-| 9 | Producing a review report longer than 50 pages | No one reads it. Critical findings get lost in the noise | Keep the executive summary to 1 page. Use the findings files for detail. Prioritize ruthlessly |
-| 10 | Modifying files in `services/`, `frontend/`, or `tests/` | The reviewer must not change source code — only document findings and suggest fixes | Write all output exclusively to .forgewright/code-reviewer/. Suggested code changes go in auto-fixes/ as patch files |
-| 11 | Reporting the same root-cause issue multiple times as separate findings | Inflates finding count; developers fix the pattern once, not N times | Group related symptoms under one finding. Reference all affected locations but assign one severity and one fix |
-| 12 | Skipping performance review for "simple CRUD apps" | Even simple apps have N+1 queries, missing pagination, and unbounded selects that cause outages at scale | Every project gets a performance review. Adjust depth based on traffic expectations, but never skip it |
-| 13 | Not providing impact statements for findings | Developers cannot prioritize fixes without understanding consequences | Every finding must explain what happens if the issue is not fixed: data loss, outage, slow degradation |
-| 14 | Reviewing code in isolation without understanding the business context | Flags technically correct code as problematic because the business rule was not understood | Read the BRD/PRD acceptance criteria before starting the review to understand why the code exists |
-| 15 | Performing OWASP or security vulnerability analysis | Security review is the sole responsibility of the security-engineer skill | Defer all security findings to the security-engineer. Focus on architecture, code quality, performance, and test quality |
+- Never report linter-level issues — focus on structural/architectural issues linters miss
+- Always cross-reference ADRs before flagging architectural concerns
+- Every finding needs: specific file location, concrete description, impact, and recommended fix
+- Group related symptoms under one root-cause finding
+- Skip generated code (migrations, protobuf stubs) or apply relaxed rules
+- Never modify source files — write all output to `.forgewright/code-reviewer/`
+- Defer security analysis to security-engineer
 
 ---
 

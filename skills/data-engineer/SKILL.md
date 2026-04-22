@@ -1,10 +1,6 @@
 ---
 name: data-engineer
-description: >
-  [production-grade internal] Builds data infrastructure — ETL/ELT pipelines,
-  data warehousing, stream processing, data quality, orchestration (Airflow/Dagster),
-  and analytics engineering (dbt).
-  Routed via the production-grade orchestrator (Feature/Full Build mode).
+description: "Builds data infrastructure — ETL/ELT pipelines, data warehousing, stream processing, data quality, orchestration (Airflow/Dagster), and analytics engineering (dbt). Use when the user asks to build data pipelines, set up ETL/ELT workflows, design a data warehouse, configure stream processing, or implement analytics engineering with dbt, Airflow, or Dagster."
 version: 1.0.0
 author: forgewright
 tags: [data, etl, pipeline, warehouse, spark, airflow, dbt, streaming, data-quality]
@@ -18,12 +14,6 @@ tags: [data, etl, pipeline, warehouse, spark, airflow, dbt, streaming, data-qual
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback:** Use notify_user with options, "Chat about this" last, recommended first.
-
-## Identity
-
-You are the **Data Engineering Specialist**. You build reliable, scalable data infrastructure — from source systems to analytics-ready datasets. You design ETL/ELT pipelines, data warehouses, stream processing systems, and data quality frameworks. You use modern tools (dbt, Airflow, Spark, Kafka) to ensure data is accurate, timely, and accessible.
-
-**Distinction from Database Engineer:** Database Engineer focuses on schema design, queries, and RDBMS optimization. Data Engineer builds the **pipelines, transformations, and infrastructure** that move data between systems at scale.
 
 ## Critical Rules
 
@@ -69,6 +59,8 @@ Source → Ingestion → Raw Layer → Transform → Clean Layer → Marts → C
 - Choose orchestrator (Airflow, Dagster, Prefect)
 - Define data contracts with upstream systems
 
+- **Gate:** Do not proceed until all data sources are mapped and data contracts agreed with upstream.
+
 ### Phase 2 — Ingestion Pipelines
 - Build extraction from each source (API, CDC, file upload, streaming)
 - Implement incremental loading (not full refresh every time)
@@ -81,7 +73,20 @@ Source → Ingestion → Raw Layer → Transform → Clean Layer → Marts → C
   - Staging models: 1:1 with source, rename/cast/clean
   - Intermediate models: joins, deduplication, business logic
   - Mart models: aggregated, consumer-ready
+- Example staging model:
+  ```sql
+  -- models/staging/stg_orders.sql
+  with source as (select * from {{ source('raw', 'orders') }})
+  select
+      id as order_id,
+      cast(created_at as timestamp) as ordered_at,
+      status,
+      total_cents / 100.0 as total_amount
+  from source
+  where id is not null
+  ```
 - dbt tests on every model (not_null, unique, accepted_values, relationships)
+- **Gate:** Run `dbt test` after each model layer — only proceed to mart models when staging tests pass.
 - Documentation: every model and column described
 
 ### Phase 4 — Monitoring & Quality

@@ -1,10 +1,6 @@
 ---
 name: api-designer
-description: >
-  [production-grade internal] Designs production-grade APIs —
-  REST, GraphQL, gRPC, and AsyncAPI patterns including pagination,
-  versioning, error handling, rate limiting, and API governance.
-  Routed via the production-grade orchestrator.
+description: "Designs production-grade APIs — REST, GraphQL, gRPC, and AsyncAPI patterns including pagination, versioning, error handling, rate limiting, and API governance. Use when the user asks to design APIs, create endpoints, build an API layer, write OpenAPI specs, or needs help with REST/GraphQL/gRPC service design."
 ---
 
 # API Designer
@@ -98,19 +94,7 @@ Wait for both, then run Phase 5 (Documentation) sequentially.
    - **Lookup/reference** — read-only, rarely change (`/countries`, `/categories`)
    - **Action resources** — represent operations, not data (`/orders/{id}/cancel`)
 
-4. Map CRUD operations to HTTP methods:
-
-| Operation | HTTP Method | URL Pattern | Idempotent |
-|-----------|------------|-------------|------------|
-| List | GET | `/resources` | Yes |
-| Read | GET | `/resources/{id}` | Yes |
-| Create | POST | `/resources` | No* |
-| Update (full) | PUT | `/resources/{id}` | Yes |
-| Update (partial) | PATCH | `/resources/{id}` | No |
-| Delete | DELETE | `/resources/{id}` | Yes |
-| Action | POST | `/resources/{id}/{action}` | Depends |
-
-*Make POST idempotent with `Idempotency-Key` header.
+4. Map CRUD operations to HTTP methods (standard REST mapping, use `Idempotency-Key` header for POST idempotency)
 
 **Output:** Entity-relationship diagram, resource hierarchy.
 
@@ -155,6 +139,8 @@ Wait for both, then run Phase 5 (Documentation) sequentially.
 
 **Default: cursor-based pagination** with `?cursor=abc123&limit=20` and `next_cursor` in response.
 
+**Gate:** Validate resource inventory covers all domain entities before proceeding.
+
 **Output:** URL inventory, request/response schemas.
 
 ---
@@ -191,6 +177,8 @@ Wait for both, then run Phase 5 (Documentation) sequentially.
 - Version in URL is explicit, cacheable, and easy to route
 - Support N-1 version minimum (current + previous)
 - Deprecation: `Sunset` header + 6 months notice + migration guide
+
+**Gate:** Run OpenAPI linter on generated spec before proceeding.
 
 **Output:** OpenAPI 3.1 spec files in `api/openapi/`.
 

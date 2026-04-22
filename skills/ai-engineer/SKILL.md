@@ -1,10 +1,6 @@
 ---
 name: ai-engineer
-description: >
-  [production-grade internal] Builds production AI/ML systems — model training,
-  fine-tuning, MLOps pipelines, model serving, evaluation frameworks,
-  RAG optimization, and agent orchestration at scale.
-  Routed via the production-grade orchestrator (AI Build mode).
+description: "Builds production AI/ML systems — model training, fine-tuning, MLOps pipelines, model serving, evaluation frameworks, RAG optimization, and agent orchestration at scale. Use when the user asks to build, train, or deploy ML models, set up MLOps pipelines, optimize RAG systems, create inference endpoints, or design production AI agents."
 version: 1.0.0
 author: forgewright
 tags: [ai, ml, mlops, model-serving, fine-tuning, rag, agents, evaluation, llm]
@@ -19,12 +15,6 @@ tags: [ai, ml, mlops, model-serving, fine-tuning, rag, agents, evaluation, llm]
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback:** Use notify_user with options, "Chat about this" last, recommended first.
-
-## Identity
-
-You are the **AI Engineer Specialist**. You build production-grade AI/ML systems — from model selection and fine-tuning, through MLOps pipelines, to deployment and monitoring at scale. You go deeper than the Data Scientist on infrastructure: model serving with proper inference optimization, evaluation frameworks with statistical rigor, RAG pipeline optimization (chunking, retrieval, reranking), and multi-agent orchestration. You ensure AI systems are reliable, cost-effective, and continuously improving in production.
-
-**Distinction from Data Scientist:** Data Scientist focuses on research, experimentation, and RAG design. AI Engineer focuses on **production deployment, scaling, monitoring, and optimization** of those systems.
 
 ## Context & Position in Pipeline
 
@@ -78,7 +68,6 @@ Data → Preprocessing → Training/Fine-tuning → Evaluation → Registry → 
 - ❌ No evaluation framework ("it works on my examples")
 - ❌ Single model provider with no fallback
 - ❌ RAG without reranking (poor retrieval quality)
-- ❌ Prompt templates in code instead of managed config
 - ❌ No cost tracking (surprise $10K bills)
 - ❌ Synchronous LLM calls blocking user requests (use streaming/async)
 
@@ -88,8 +77,15 @@ Data → Preprocessing → Training/Fine-tuning → Evaluation → Registry → 
 - Benchmark model options: compare cost/latency/quality on representative samples
 - Design model routing strategy (simple → cheap model, complex → premium model)
 - Design RAG architecture if applicable (chunking strategy, embedding model, vector DB, reranker)
-- Set up provider abstraction layer (LiteLLM, OpenRouter, or custom)
+- Set up provider abstraction layer:
+  ```python
+  # Example: LiteLLM provider abstraction
+  from litellm import completion
+  response = completion(model="gpt-4", messages=[{"role": "user", "content": "Hello"}])
+  # Swap to: model="claude-3-opus" — zero code changes
+  ```
 - Define evaluation metrics and acceptance criteria
+- **Gate:** Do not proceed until model benchmarks show ≥1 candidate meeting acceptance criteria.
 
 ### Phase 2 — ML Pipeline & Fine-Tuning
 - Data pipeline: collection, cleaning, formatting (JSONL, Parquet)
@@ -97,6 +93,8 @@ Data → Preprocessing → Training/Fine-tuning → Evaluation → Registry → 
 - Training infrastructure: cloud GPUs (RunPod, Lambda, together.ai) or managed (OpenAI, Vertex)
 - Hyperparameter optimization: learning rate sweep, epoch tuning, data mix ratios
 - Model registry: version, tag, promote (staging → production)
+
+- **Gate:** Do not proceed until evaluation on benchmark set shows fine-tuned model meets acceptance criteria from Phase 1.
 
 ### Phase 3 — Serving & Integration
 - Model serving: API endpoints with streaming support

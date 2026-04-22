@@ -1,11 +1,6 @@
 ---
 name: debugger
-description: >
-  [production-grade internal] Systematic debugging and root-cause analysis —
-  hypothesis-driven investigation, log analysis, bisection, reproduction
-  strategies, and fix verification. Activated when bugs, errors, or
-  unexpected behavior need diagnosis.
-  Routed via the production-grade orchestrator.
+description: "Systematic debugging and root-cause analysis — hypothesis-driven investigation, log analysis, bisection, reproduction strategies, and fix verification. Use when the user reports a bug, crash, error, exception, broken feature, failing test, performance degradation, or says something is 'not working'."
 ---
 
 # Debugger
@@ -121,72 +116,9 @@ Wait for all investigators. The hypothesis with the strongest evidence becomes t
 
 > **Inspired by [Superpowers](https://github.com/obra/superpowers) systematic debugging methodology**
 
-```
-NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
-```
+**NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.** If Phase 1 is not complete, do not propose fixes.
 
-If you haven't completed Phase 1, you **cannot propose fixes**. Period.
-
-**Violating the letter of this process is violating the spirit of debugging.**
-
-### Common Rationalizations
-
-| Excuse | Reality |
-|--------|---------|
-| "Issue is simple, don't need process" | Simple issues have root causes too. Process is fast for simple bugs. |
-| "Emergency, no time for process" | Systematic debugging is FASTER than guess-and-check thrashing. |
-| "Just try this first, then investigate" | First fix sets the pattern. Do it right from the start. |
-| "I see the problem, let me fix it" | Seeing symptoms ≠ understanding root cause. |
-| "Multiple fixes at once saves time" | Can't isolate what worked. Causes new bugs. |
-| "One more fix attempt" (after 2+ failures) | 3+ failures = likely architectural problem. Question the pattern, don't fix again. |
-| "Reference too long, I'll adapt the pattern" | Partial understanding guarantees bugs. Read it completely. |
-| "I don't fully understand but this might work" | This is the definition of guessing. STOP. Return to Phase 1. |
-
-### Real-World Impact
-
-| Approach | Time to Fix | First-Time Fix Rate | New Bugs Introduced |
-|----------|-------------|--------------------|--------------------|
-| **Systematic (follow this process)** | 15-30 minutes | ~95% | Near zero |
-| **Random fixes (guess and check)** | 2-3 hours of thrashing | ~40% | Common |
-
-### Red Flags — STOP and Return to Phase 1
-
-If you catch yourself thinking:
-- "Quick fix for now, investigate later"
-- "Just try changing X and see if it works"
-- "Add multiple changes, run tests"
-- "Skip the test, I'll manually verify"
-- "It's probably X, let me fix that"
-- "Here are the main problems: [lists fixes without investigation]"
-- Proposing solutions before tracing data flow
-- **"One more fix attempt" (when already tried 2+)**
-- **Each fix reveals new problem in different place**
-
-**ALL of these mean: STOP. Return to Phase 1.**
-
-**If 3+ fixes failed:** Question the architecture, not just the symptoms.
-
-### Human Partner Signals — Recognize User Frustration
-
-**Watch for these redirections from the user — they signal you are off-track:**
-
-| User Signal | What It Means | Your Action |
-|-------------|---------------|-------------|
-| "Is that not happening?" | You assumed without verifying | STOP. Go verify the assumption empirically. |
-| "Will it show us...?" | You should have added evidence gathering | Add diagnostic logging/output. Don't skip evidence. |
-| "Stop guessing" | You're proposing fixes without understanding | STOP. Return to Phase 1. Full investigation. |
-| "Ultrathink this" | You need to question fundamentals, not symptoms | Step back. Reconsider the entire problem from first principles. |
-| "We're stuck?" (frustrated tone) | Your approach isn't working | STOP current approach. Try a completely different angle. |
-| *Any sign of frustration* | You are not being systematic enough | Acknowledge. Return to Phase 1. Show your evidence trail. |
-
-**When you see any of these signals: STOP. Return to Phase 1.**
-
-### Supporting Techniques
-
-These techniques complement systematic debugging:
-- **Root-cause tracing** — Trace bugs backward through call stack to find original trigger
-- **Defense-in-depth** — Add validation at multiple layers after finding root cause
-- **Condition-based waiting** — Replace arbitrary timeouts with condition polling
+**Stop signals** — return to Phase 1 if: proposing solutions before tracing data flow, 3+ failed fix attempts (question architecture, not symptoms), or user shows frustration with the approach.
 
 ---
 
@@ -419,34 +351,11 @@ tests/regression/
 
 ---
 
-## Bug Pattern Reference
+## Key Constraints
 
-Quick lookup for common root causes:
-
-| Symptom | Common Causes | First Check |
-|---------|--------------|-------------|
-| `TypeError: Cannot read property 'x' of undefined` | Missing null check, async timing, wrong data shape | Check the variable's source — where should it be set? |
-| `ECONNREFUSED` / `ETIMEDOUT` | Service down, wrong port, DNS, firewall, connection pool exhausted | Check target service health, env var for URL, connection pool config |
-| `500 Internal Server Error` (no details) | Unhandled exception, missing error middleware | Check error handling middleware, look for unhandled promise rejections |
-| Works locally, fails in CI/prod | Env vars, file paths, timing assumptions, missing dependencies | Compare env vars, check `__dirname` vs relative paths, check `package-lock.json` |
-| Intermittent failures | Race condition, cache expiry, connection pool, GC pauses | Add timestamps to logs, check for shared mutable state, check retry logic |
-| Data appears correct but feature fails | Type coercion (`"1" !== 1`), timezone, encoding, decimal precision | Check types at boundaries (API → DB, string → number), log actual values |
-| Memory growing over time | Event listener leak, growing cache without eviction, unclosed connections | Check for `.on()` without `.off()`, Map/Set without cleanup, connection pool stats |
-| Works for user A but not user B | Permission/role, data-dependent path, feature flag, A/B test bucket | Check user roles/permissions, compare user data, check feature flag state |
-| Performance degradation after deploy | N+1 query, missing index, removed cache, expensive serialization | Profile the hot path, check query count, compare query plans before/after |
-| Tests pass but feature broken | Test mocking too broadly, testing implementation not behavior | Check if mocks match real service behavior, add integration test |
-
-## Common Mistakes
-
-| Mistake | Fix |
-|---------|-----|
-| Fixing the symptom, not the root cause | A null check hides a bug. Ask: WHY is this null? Fix that. |
-| Changing code without understanding it first | Read the full context. Understand the author's intent before changing. |
-| Making the fix too large | Minimal fix only. Refactoring is a separate task. |
-| No regression test | EVERY fix must include a test. No exceptions. |
-| Debugging by print statement only | Use structured logging, debugger breakpoints, and binary search. |
-| Assuming the bug is in your code | Check dependencies, infrastructure, data. The bug might be elsewhere. |
-| Not checking recent changes first | `git log` and `git diff` are your first tools. Regressions are the most common bugs. |
-| Stopping at the first hypothesis | Generate multiple hypotheses. The obvious answer is often wrong. |
-| Ignoring intermittent bugs | They are real bugs with real causes. Usually: race conditions, timing, or data-dependent. |
-| Not documenting the investigation | Future-you needs to know what was checked and ruled out. Write it down. |
+- Always fix the root cause, not the symptom — a null check that hides a bug is not a fix
+- Every fix must include a regression test, no exceptions
+- Minimal change only — refactoring is a separate task
+- Check `git log` and `git diff` first — regressions are the most common bugs
+- Generate multiple hypotheses — the obvious answer is often wrong
+- Never ignore intermittent bugs — they have real causes (race conditions, timing, data-dependent)
