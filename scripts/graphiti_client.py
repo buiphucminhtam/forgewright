@@ -21,6 +21,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
 
 # Graphiti core
+GRAPHITI_AVAILABLE = False
 try:
     from graphiti_core import Graphiti
     from graphiti_core.driver.neo4j_driver import Neo4jDriver
@@ -29,7 +30,7 @@ try:
     from graphiti_core.embedder.openai import OpenAIEmbedderConfig
     from graphiti_core.llm_client.config import LLMConfig
     GRAPHITI_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     GRAPHITI_AVAILABLE = False
     print("⚠️ graphiti-core not installed. Run: pip install -r requirements-graphiti.txt")
 
@@ -272,41 +273,35 @@ class GraphitiClient:
         """
         text = self._redact_secrets(text)
         
-        # Create episode for this memory
+        # Create episode for this memory (v0.28.2 API)
         episode_name = f"{source}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        episode = await self.graphiti.add_episode(
+        result = await self.graphiti.add_episode(
             name=episode_name,
-            date=datetime.now(),
-            summary=text[:200],  # First 200 chars as summary
-            source=source,
-            categories=[category],
+            episode_body=text,
+            source_description=f"{category} memory from {source}",
+            reference_time=datetime.now(),
+            source="message",
         )
         
-        # Add fact to episode (LLM extracts entities/relations)
-        fact = await self.graphiti.add_fact(
-            episode=episode,
-            fact_body=text,
-            fact_categories=[category],
-        )
+        episode = result.episode
         
         # Store in cache for quick access
         memory_id = self._make_id(text + datetime.now().isoformat())
         
-        result = {
+        response = {
             "id": memory_id,
             "text": text,
             "category": category,
             "source": source,
             "created": datetime.now().isoformat(timespec="seconds"),
             "episode_id": episode.uuid if hasattr(episode, 'uuid') else str(episode),
-            "fact_id": fact.uuid if hasattr(fact, 'uuid') else str(fact),
         }
         
         if metadata:
-            result["metadata"] = metadata
+            response["metadata"] = metadata
         
-        self._episodes_cache[memory_id] = result
-        return result
+        self._episodes_cache[memory_id] = response
+        return response
     
     async def search(
         self,

@@ -1,12 +1,12 @@
 {
   "manifest_version": "1.0",
-  "workspace": "/Users/buiphucminhtam/Documents/GitHub/tieuman-openclaw/.antigravity/plugins/production-grade",
-  "generated_at": "2026-04-20T05:51:30Z",
-  "generated_by": "forgewright/mcp-generator",
+  "workspace": "/Users/buiphucminhtam/Documents/GitHub/forgewright",
+  "generated_at": "2026-04-24T15:15:55Z",
+  "generated_by": "forgewright/setup-scripts",
   "forgewright_version": "7.0.0",
   "servers": [
     {
-      "name": "production-grade-forgewright",
+      "name": "forgewright-core",
       "type": "forgewright-mcp-server",
       "enabled": true,
       "description": "Forgewright project intelligence — code graph, project profile, filesystem tools"
@@ -17,7 +17,7 @@
       "enabled": true,
       "description": "Code intelligence — query, context, impact, blast-radius analysis",
       "config": {
-        "forgenexus_path": "/Users/buiphucminhtam/Documents/GitHub/tieuman-openclaw/.antigravity/plugins/production-grade/forgenexus/dist/cli/index.js"
+        "forgenexus_path": "/Users/buiphucminhtam/Documents/GitHub/forgewright/forgenexus/dist/cli/index.js"
       }
     }
   ]

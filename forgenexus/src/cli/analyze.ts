@@ -8,6 +8,7 @@ import { execSync } from 'child_process'
 import { Indexer } from '../analysis/indexer.js'
 import { ForgeDB } from '../data/db.js'
 import { ensureNexusDataDirMigrated, nexusDataDir, defaultCodebaseDbPath } from '../paths.js'
+import { ProgressBar } from './progress.js'
 
 export async function analyze(opts: {
   repoPath: string
@@ -27,14 +28,15 @@ export async function analyze(opts: {
     incremental = true,
     force = false,
   } = opts
-  const log = silent ? () => {} : console.error.bind(console)
 
-  log(`[ForgeNexus] Indexing ${repoPath}...`)
-  if (incremental && !force) {
-    log(`[ForgeNexus] Mode: incremental (only changed files since last index)`)
-  } else {
-    log(`[ForgeNexus] Mode: full re-index`)
-  }
+  // Use progress bar for non-silent mode
+  const progressBar = silent ? null : new ProgressBar({ enabled: true })
+
+  const log = silent
+    ? () => {}
+    : progressBar
+    ? () => {} // Progress bar handles output
+    : console.error.bind(console)
 
   const isGit = existsSync(join(repoPath, '.git'))
   ensureNexusDataDirMigrated(repoPath)
@@ -69,10 +71,20 @@ export async function analyze(opts: {
     process.env.EMBEDDING_PROVIDER = embeddingProvider
   }
 
-  const stats = await indexer.analyze((phase, pct, message) => {
-    const label = message ? ` ${message}` : ''
-    log(`[${phase}] ${pct}%${label}`)
-  }, incremental && !force)
+  const stats = await indexer.analyze(
+    (phase, pct, message) => {
+      if (progressBar) {
+        progressBar.update(phase as any, pct, message)
+        if (phase === 'complete') {
+          progressBar.complete()
+        }
+      } else {
+        const label = message ? ` ${message}` : ''
+        log(`[${phase}] ${pct}%${label}`)
+      }
+    },
+    incremental && !force,
+  )
 
   indexer.close()
 
@@ -92,8 +104,13 @@ export async function analyze(opts: {
   })
   db.close()
 
-  log(`[ForgeNexus] Done: ${stats.files} files, ${stats.nodes} nodes, ${stats.edges} edges`)
-  log(`[ForgeNexus] Communities: ${stats.communities}, Processes: ${stats.processes}`)
-  if (stats.hasEmbeddings) log(`[ForgeNexus] Embeddings: enabled`)
-  if (stats.files > 0) log(`[ForgeNexus] Re-run with --force for full re-index`)
+  if (progressBar) {
+    progressBar.complete()
+  }
+
+  // Show final stats after progress bar
+  console.error(`[ForgeNexus] Done: ${stats.files} files, ${stats.nodes} nodes, ${stats.edges} edges`)
+  console.error(`[ForgeNexus] Communities: ${stats.communities}, Processes: ${stats.processes}`)
+  if (stats.hasEmbeddings) console.error(`[ForgeNexus] Embeddings: enabled`)
+  if (stats.files > 0) console.error(`[ForgeNexus] Re-run with --force for full re-index`)
 }

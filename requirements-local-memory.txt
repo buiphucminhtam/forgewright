@@ -1,0 +1,9 @@
+# Local Memory - Forgewright
+# No Docker, No API key needed - runs entirely local
+
+# Core
+chromadb>=0.4.22
+
+# Local embeddings - sentence-transformers (ONNX/CPU/GPU)
+sentence-transformers>=2.2.0
+torch>=2.0.0
