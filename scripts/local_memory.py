@@ -7,6 +7,7 @@ Uses ChromaDB + local embeddings (sentence-transformers with ONNX).
 
 import os
 import json
+import sys
 import hashlib
 from datetime import datetime
 from pathlib import Path
@@ -246,3 +247,102 @@ def get_client() -> LocalMemoryClient:
     if _client is None:
         _client = LocalMemoryClient()
     return _client
+
+
+# ── CLI Interface ─────────────────────────────────────
+
+def main():
+    """Command-line interface for local_memory."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description="Forgewright Local Memory CLI",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # Add command
+    add_parser = subparsers.add_parser("add", help="Add a memory")
+    add_parser.add_argument("text", help="Memory text to store")
+    add_parser.add_argument("--category", "-c", default="general", help="Category (default: general)")
+    add_parser.add_argument("--source", "-s", default="cli", help="Source (default: cli)")
+    
+    # Search command
+    search_parser = subparsers.add_parser("search", help="Search memories")
+    search_parser.add_argument("query", help="Search query")
+    search_parser.add_argument("--limit", "-l", type=int, default=5, help="Max results (default: 5)")
+    search_parser.add_argument("--category", "-c", help="Filter by category")
+    
+    # List command
+    list_parser = subparsers.add_parser("list", help="List memories")
+    list_parser.add_argument("--category", "-c", help="Filter by category")
+    list_parser.add_argument("--limit", "-l", type=int, default=20, help="Max results (default: 20)")
+    
+    # Stats command
+    subparsers.add_parser("stats", help="Show memory statistics")
+    
+    # Clear command
+    subparsers.add_parser("clear", help="Clear all memories")
+    
+    args = parser.parse_args()
+    
+    if args.command is None:
+        parser.print_help()
+        return 1
+    
+    try:
+        client = get_client()
+        
+        if args.command == "add":
+            result = client.add(args.text, category=args.category, source=args.source)
+            print(f"✓ Memory added: {result['id']}")
+            print(f"  Category: {result['category']}")
+            print(f"  Created: {result['created']}")
+            
+        elif args.command == "search":
+            results = client.search(args.query, limit=args.limit, category=args.category)
+            if not results:
+                print("No matching memories found.")
+            else:
+                print(f"Found {len(results)} result(s):\n")
+                for i, r in enumerate(results, 1):
+                    print(f"{i}. [{r['category']}] {r['text']}")
+                    print(f"   Score: {r.get('score', 'N/A')}, Created: {r.get('created', 'N/A')}")
+                    print()
+                    
+        elif args.command == "list":
+            memories = client.list(category=args.category, limit=args.limit)
+            if not memories:
+                print("No memories stored yet.")
+            else:
+                print(f"Showing {len(memories)} of {client.stats()['total']} total:\n")
+                for i, m in enumerate(memories, 1):
+                    print(f"{i}. [{m['category']}] {m['text'][:80]}...")
+                    print(f"   Created: {m.get('created', 'N/A')}")
+                    print()
+                    
+        elif args.command == "stats":
+            stats = client.stats()
+            print(f"Memory Statistics:")
+            print(f"  Total: {stats['total']}")
+            print(f"  Embedder: {stats['embedder']}")
+            print(f"  Model: {stats['model']}")
+            print(f"  Storage: {stats['storage']}")
+            print(f"\nCategories:")
+            for cat, count in stats.get('categories', {}).items():
+                print(f"  - {cat}: {count}")
+                
+        elif args.command == "clear":
+            count = client.clear()
+            print(f"✓ Cleared {count} memories")
+            
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

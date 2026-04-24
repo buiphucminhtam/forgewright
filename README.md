@@ -358,11 +358,11 @@ flowchart TB
     P2 --> M2[".forgewright/"]
     P3 --> M3[".forgewright/"]
 
-    M1 --> DB1["memory.jsonl"]
+    M1 --> DB1["memory_db/"]
     M1 --> IDX1["index.db"]
-    M2 --> DB2["memory.jsonl"]
+    M2 --> DB2["memory_db/"]
     M2 --> IDX2["index.db"]
-    M3 --> DB3["memory.jsonl"]
+    M3 --> DB3["memory_db/"]
     M3 --> IDX3["index.db"]
 
     style PC fill:#1a1a2e,stroke:#e94560,color:#fff

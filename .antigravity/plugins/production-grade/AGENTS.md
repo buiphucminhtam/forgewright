@@ -1,21 +1,33 @@
 # Forgewright — Production Grade AI Pipeline
 
-> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 52 specialized skills.
+> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 56 specialized skills.
 
 ## What is Forgewright?
 
-Forgewright is an adaptive orchestrator with **52 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Roblox game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
+Forgewright is an adaptive orchestrator with **56 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Phaser 3/Three.js game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
 
-**Pipeline:** `DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
+**Pipeline:** `INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
 ## How to Use (For Every New Chat)
 
 **IMPORTANT:** When the user gives any software development request, you MUST:
 
-1. **Read `skills/production-grade/SKILL.md`** — this is the orchestrator that routes to all skills
-2. **Classify the request** into one of 19 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze**)
-3. **Follow the pipeline** as defined in the orchestrator
-4. **PLAN FIRST, ALWAYS** — Before ANY skill does ANY work, it MUST create a plan, score it (8 criteria, threshold ≥ 9.0/10), and improve until passing. See `skills/_shared/protocols/plan-quality-loop.md`
+1. **STEP 0 — Chat Interpreter (MANDATORY)**: Read `skills/production-grade/SKILL.md` for the full request interpretation flow. This step:
+   - Extracts 9 dimensions from the user's message
+   - Detects vague/confusing requests and asks clarifying questions (MAX 3)
+   - Generates a structured request with clear scope and success criteria
+   - **DO NOT SKIP THIS STEP** — if the request is unclear, ask before proceeding
+2. **STEP 1 — Classify the request** into one of 24 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze**, **Prompt**, **Autonomous**)
+3. **STEP 2 — PLAN FIRST, ALWAYS** — Before ANY skill does ANY work, it MUST create a plan, score it (8 criteria, threshold ≥ 9.0/10), and improve until passing. See `skills/_shared/protocols/plan-quality-loop.md`
+4. **STEP 3 — Execute the pipeline** as defined in the orchestrator
+
+**⚠️ CRITICAL RULE: NEVER START EXECUTING WITHOUT INTERPRETATION**
+
+If the user's request is vague or missing critical information:
+- STOP immediately
+- Ask clarifying questions (max 3)
+- Wait for user response
+- ONLY then proceed to skill execution
 
 Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the production-grade skill classify and route.
 
@@ -28,15 +40,15 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 
 | User Says | Mode | What Happens |
 |-----------|------|-------------|
-| "Build a SaaS for..." | Full Build | All skills, 5 phases, 3 gates |
-| "Add [feature]..." | Feature | PM → Architect → BE/FE → QA |
+| "Build a SaaS for..." | Full Build | All skills, 6 phases, 3 gates |
+| "Add [feature]..." | Feature | PM → Architect → BE/FE → QA → auto-test |
 | "Review my code" | Review | Code Reviewer only |
 | "Write tests" | Test | QA Engineer only |
 | "Deploy / CI/CD" | Ship | DevOps → SRE |
 | "Design UI for..." | Design | UX Researcher → UI Designer |
 | "Build mobile app" | Mobile | Mobile Engineer (+ PM, Architect) |
 | "Help me think about..." | Explore | Polymath co-pilot |
-| "Deep research on..." | Research | Polymath + NotebookLM MCP (grounded) |
+| "Deep research on..." | Research | NotebookLM Researcher + Polymath (grounded) |
 | "Marketing strategy for..." | Marketing | Growth Marketer → Conversion Optimizer |
 | "Optimize conversions" | Grow | Conversion Optimizer → Growth Marketer |
 | "Optimize performance" | Optimize | Performance Engineer + SRE |
@@ -58,28 +70,47 @@ Users can invoke these workflows directly:
 - `/setup-mobile-test` — Set up plug-and-play mobile testing (Android/iOS)
 - `/setup-paperclip` — Set up Paperclip multi-agent orchestration (optional)
 - `/onboard` — Run deep project analysis (creates `.forgewright/project-profile.json`)
-- `/mcp` — Start auto-generated project-specific MCP server
+- `/mcp` — Generate MCP workspace isolation config — creates `.antigravity/mcp-manifest.json` for Antigravity conflict-free multi-project support
 
 ## Auto-Initialization Check
 
 Run silently BEFORE any execution (all modes) to ensure project intelligence is fully configured.
 
-**Step 0.1 — MCP & ForgeNexus Check:**
+**Step 0.1 — ForgeNexus + MCP Check:**
 
-1. Check if the file `.forgewright/mcp-server/mcp-config.json` exists in the project root.
-2. **If missing**, silently execute the following terminal commands to auto-initialize it:
-   - `npx --yes forgenexus analyze`
-   - `bash <path-to-forgewright-submodule>/scripts/mcp-generate.sh`
-   - Yield a brief message to the user: `ℹ Auto-initialized ForgeNexus index and MCP server (missing setup).`
-3. **If exists**, continue normally without doing anything.
+1. Check if `.antigravity/mcp-manifest.json` exists and is current in the project root.
+2. **If missing or stale**, run ONE command to set up everything:
 
-**Step 0.2 — Memory (mem0) Check (required):**
+   **Detect forgewright path first**, then run:
 
-Forgewright **requires** local project memory: **`.forgewright/memory.jsonl`**, created by `scripts/mem0-cli.py` (Python 3, stdlib only). **If missing**, run:
+   ```bash
+   # If forgewright is a submodule in the project:
+   bash <project-root>/forgewright/scripts/forgewright-mcp-setup.sh
 
-`bash <path-to-forgewright>/scripts/ensure-mem0.sh`
+   # If forgewright IS the project:
+   bash scripts/forgewright-mcp-setup.sh
 
-If that fails, install Python 3 and retry. **CI only:** `FORGEWRIGHT_SKIP_MEM0=1` skips this step.
+   # For Antigravity plugin users (universal, works from any project):
+   bash <forgewright>/.antigravity/plugins/production-grade/scripts/forgewright-mcp-setup.sh
+   ```
+
+   This single command:
+   - Analyzes the project (ForgeNexus index)
+   - Generates the MCP server
+   - Creates the workspace manifest
+   - Updates global config (Cursor/Claude)
+   - Verifies installation
+
+3. After setup, yield a brief message:
+   `ℹ MCP server ready for this workspace. Restart your AI client to activate.`
+
+4. **If already set up**, continue normally.
+
+**Why a single script?**
+- No more juggling multiple scripts (`mcp-generate.sh`, `mcp-serve.sh`, `mcp-launcher.sh`)
+- No more manual JSON editing
+- No more "which script should I run?" confusion
+- Works consistently across all project types (submodule, standalone, worktree)
 
 ## Auto-Update Check
 
@@ -94,7 +125,7 @@ If a newer version exists, mention it briefly: *"Forgewright update available (v
 
 ## Skills Directory
 
-All 50 skills are in the `skills/` directory:
+All 56 skills are in the `skills/` directory:
 
 | Skill | Location |
 |-------|----------|
@@ -104,7 +135,9 @@ All 50 skills are in the `skills/` directory:
 | Parallel Dispatch | `skills/parallel-dispatch/SKILL.md` |
 | Memory Manager | `skills/memory-manager/SKILL.md` |
 | Skill Maker | `skills/skill-maker/SKILL.md` |
-| MCP Generator | `skills/mcp-generator/SKILL.md` |
+| MCP Generator | `skills/mcp-generator/SKILL.md` — generates `.antigravity/mcp-manifest.json` for Antigravity workspace isolation |
+| **Planning** | |
+| Antigravity | `antigravity/README.md` |
 | **Engineering** | |
 | Business Analyst | `skills/business-analyst/SKILL.md` |
 | Product Manager | `skills/product-manager/SKILL.md` |
@@ -125,6 +158,7 @@ All 50 skills are in the `skills/` directory:
 | Database Engineer | `skills/database-engineer/SKILL.md` |
 | Debugger | `skills/debugger/SKILL.md` |
 | Prompt Engineer | `skills/prompt-engineer/SKILL.md` |
+| Prompt Optimizer | `skills/prompt-optimizer/SKILL.md` — DSPy-powered algorithmic optimization |
 | **New Engineering (v6.1)** | |
 | AI Engineer | `skills/ai-engineer/SKILL.md` |
 | Accessibility Engineer | `skills/accessibility-engineer/SKILL.md` |
@@ -133,27 +167,34 @@ All 50 skills are in the `skills/` directory:
 | Data Engineer | `skills/data-engineer/SKILL.md` |
 | XLSX Engineer | `skills/xlsx-engineer/SKILL.md` |
 | Project Manager | `skills/project-manager/SKILL.md` |
+| **Testing** | |
+| Autonomous Testing | `skills/autonomous-testing/SKILL.md` — Self-healing E2E workflow |
 | **Growth** | |
 | Growth Marketer | `skills/growth-marketer/SKILL.md` |
 | Conversion Optimizer | `skills/conversion-optimizer/SKILL.md` |
 | **Data Acquisition** | |
 | Web Scraper | `skills/web-scraper/SKILL.md` |
+| NotebookLM Researcher | `skills/notebooklm-researcher/SKILL.md` |
 | **Integration** | |
 | Paperclip Protocol | `skills/_shared/protocols/paperclip-integration.md` |
 | **Game Development** | |
 | Game Designer | `skills/game-designer/SKILL.md` |
-| Unity Engineer | `skills/unity-engineer/SKILL.md` |
+| Unity Engineer | `skills/unity-engineer/SKILL.md` + Unity-MCP integration |
+| **Unity Quickstart** | `docs/unity-project-quickstart.md` |
 | Unreal Engineer | `skills/unreal-engineer/SKILL.md` |
 | Godot Engineer | `skills/godot-engineer/SKILL.md` |
 | Godot Multiplayer | `skills/godot-multiplayer/SKILL.md` |
 | Roblox Engineer | `skills/roblox-engineer/SKILL.md` |
+| **Phaser 3 Engineer** | `skills/phaser3-engineer/SKILL.md` |
+| **Three.js Engineer** | `skills/threejs-engineer/SKILL.md` |
 | Level Designer | `skills/level-designer/SKILL.md` |
 | Narrative Designer | `skills/narrative-designer/SKILL.md` |
 | Technical Artist | `skills/technical-artist/SKILL.md` |
 | Game Asset & VFX | `skills/game-asset-vfx/SKILL.md` |
 | Game Audio Engineer | `skills/game-audio-engineer/SKILL.md` |
-| Unity Shader Artist | `skills/unity-shader-artist/SKILL.md` |
-| Unity Multiplayer | `skills/unity-multiplayer/SKILL.md` |
+| Unity Shader Artist | `skills/unity-shader-artist/SKILL.md` + Unity-MCP visual feedback |
+| Unity Multiplayer | `skills/unity-multiplayer/SKILL.md` + Unity-MCP testing |
+| Unity MCP | `skills/unity-mcp/SKILL.md` — Editor automation, 100+ tools |
 | Unreal Technical Artist | `skills/unreal-technical-artist/SKILL.md` |
 | Unreal Multiplayer | `skills/unreal-multiplayer/SKILL.md` |
 | XR Engineer | `skills/xr-engineer/SKILL.md` |
@@ -171,17 +212,26 @@ All 50 skills are in the `skills/` directory:
 | Code Intelligence Protocol | `skills/_shared/protocols/code-intelligence.md` |
 | Paperclip Integration Protocol | `skills/_shared/protocols/paperclip-integration.md` |
 | Worktree Manager | `scripts/worktree-manager.sh` |
-| Memory CLI | `scripts/mem0-cli.py` |
+| Memory CLI | `scripts/local_memory.py` |
 | Mobile Test Setup | `scripts/mobile-test-setup.sh` |
 
 ## Configuration
 
 Optional: create `.production-grade.yaml` at project root to customize paths, preferences, and feature flags. If absent, defaults apply.
 
+**Setting up Dry Run Mode (v7.6+)**
+For zero-risk refactoring with self-improvement loop:
+```yaml
+guardrail:
+  enabled: true
+  mode: "dry_run"
+planQuality:
+  threshold: 9.0
+```
+
 ## Project State (v7.0)
 
 Forgewright maintains project state in the `.forgewright/` directory:
-- `memory.jsonl` — Cross-session memory (mem0 / `mem0-cli.py`; **required** after setup — run `scripts/ensure-mem0.sh` if absent)
 - `project-profile.json` — Project fingerprint, health, patterns, risk (committed)
 - `code-conventions.md` — Detected coding patterns for consistency (committed)
 - `session-log.json` — Session history and resume state (gitignored)
@@ -193,17 +243,21 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- forgenexus:start -->
 # ForgeNexus — Code Intelligence
 
-This project is indexed by ForgeNexus as **forgewright** (256 symbols, 383 relationships, 20 execution flows). Use the ForgeNexus MCP tools to understand code, assess impact, and navigate safely.
+<<<<<<< Updated upstream
+> **NOTE:** This block describes the self-hosted ForgeNexus engine built into Forgewright. It replaces the previous `forgenexus` npm dependency. Run `forgenexus analyze` to index any codebase.
+=======
+This project is indexed by GitNexus as **forgewright** (2868 symbols, 3021 relationships, 25 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> If any ForgeNexus tool warns the index is stale, run `npx forgenexus analyze` in terminal first.
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+>>>>>>> Stashed changes
 
 ## Always Do
 
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `forgenexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `forgenexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius to the user.
 - **MUST run `forgenexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
 - When exploring unfamiliar code, use `forgenexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `forgenexus_context({name: "symbolName"})`.
+- When you need full context on a specific symbol, use `forgenexus_context({name: "symbolName"})`.
 
 ## When Debugging
 
@@ -214,13 +268,13 @@ This project is indexed by ForgeNexus as **forgewright** (256 symbols, 383 relat
 
 ## When Refactoring
 
-- **Renaming**: MUST use `forgenexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` first. Review the preview — graph edits are safe, text_search edits need manual review. Then run with `dry_run: false`.
-- **Extracting/Splitting**: MUST run `forgenexus_context({name: "target"})` to see all incoming/outgoing refs, then `forgenexus_impact({target: "target", direction: "upstream"})` to find all external callers before moving code.
+- **Renaming**: MUST use `forgenexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` first.
+- **Extracting/Splitting**: MUST run `forgenexus_context({name: "target"})` to see all refs, then `forgenexus_impact({target: "target", direction: "upstream"})`.
 - After any refactor: run `forgenexus_detect_changes({scope: "all"})` to verify only expected files changed.
 
 ## Never Do
 
-- NEVER edit a function, class, or method without first running `forgenexus_impact` on it.
+- NEVER edit a function, class, or method without first running `forgenexus_impact`.
 - NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
 - NEVER rename symbols with find-and-replace — use `forgenexus_rename` which understands the call graph.
 - NEVER commit changes without running `forgenexus_detect_changes()` to check affected scope.
@@ -234,7 +288,9 @@ This project is indexed by ForgeNexus as **forgewright** (256 symbols, 383 relat
 | `impact` | Blast radius before editing | `forgenexus_impact({target: "X", direction: "upstream"})` |
 | `detect_changes` | Pre-commit scope check | `forgenexus_detect_changes({scope: "staged"})` |
 | `rename` | Safe multi-file rename | `forgenexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
-| `cypher` | Custom graph queries | `forgenexus_cypher({query: "MATCH ..."})` |
+| `cypher` | Custom graph queries | `forgenexus_cypher({query: "..."})` |
+| `list_repos` | List indexed repositories | `forgenexus_list_repos()` |
+| `route_map` | API route to handler mapping | `forgenexus_route_map()` |
 
 ## Impact Risk Levels
 
@@ -248,10 +304,12 @@ This project is indexed by ForgeNexus as **forgewright** (256 symbols, 383 relat
 
 | Resource | Use for |
 |----------|---------|
-| `forgenexus://repo/forgewright/context` | Codebase overview, check index freshness |
+| `forgenexus://repos` | All indexed repositories |
+| `forgenexus://repo/forgewright/context` | Codebase overview, check freshness |
 | `forgenexus://repo/forgewright/clusters` | All functional areas |
 | `forgenexus://repo/forgewright/processes` | All execution flows |
 | `forgenexus://repo/forgewright/process/{name}` | Step-by-step execution trace |
+| `forgenexus://schema` | Graph schema reference |
 
 ## Self-Check Before Finishing
 
@@ -261,10 +319,42 @@ Before completing any code modification task, verify:
 3. `forgenexus_detect_changes()` confirms changes match expected scope
 4. All d=1 (WILL BREAK) dependents were updated
 
+## Keeping the Index Fresh
+<<<<<<< Updated upstream
+
+After committing code changes, the ForgeNexus index becomes stale. Re-run analyze to update it:
+=======
+
+After committing code changes, the GitNexus index becomes stale. Re-run analyze to update it:
+
+```bash
+npx gitnexus analyze
+```
+
+If the index previously included embeddings, preserve them by adding `--embeddings`:
+
+```bash
+npx gitnexus analyze --embeddings
+```
+
+To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.embeddings` field shows the count (0 means no embeddings). **Running analyze without `--embeddings` will delete any previously generated embeddings.**
+
+> Claude Code users: A PostToolUse hook handles this automatically after `git commit` and `git merge`.
+
 ## CLI
 
-- Re-index: `npx forgenexus analyze`
-- Check freshness: `npx forgenexus status`
-- Generate docs: `npx forgenexus wiki`
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+>>>>>>> Stashed changes
+
+```bash
+npx forgenexus analyze
+```
 
 <!-- forgenexus:end -->

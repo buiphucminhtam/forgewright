@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────
-# Ensures Forgewright local memory (mem0-cli) is initialized
-# in the host project (.forgewright/memory.jsonl).
+# Ensures Forgewright local memory is initialized
+# Uses ChromaDB + sentence-transformers (local, no API needed)
 #
 # Usage (from host project):
 #   bash <path-to-forgewright>/scripts/ensure-mem0.sh [PROJECT_ROOT]
@@ -10,12 +10,12 @@
 # If PROJECT_ROOT is omitted: same resolution as mcp-generate.sh (sibling of
 # this repo with a .git, else this repo root).
 #
-# Skip (CI / headless only): FORGEWRIGHT_SKIP_MEM0=1
+# Skip (CI / headless only): FORGEWRIGHT_SKIP_MEMORY=1
 # ─────────────────────────────────────────────────────────
 
 set -euo pipefail
 
-if [ "${FORGEWRIGHT_SKIP_MEM0:-}" = "1" ]; then
+if [ "${FORGEWRIGHT_SKIP_MEMORY:-}" = "1" ]; then
   exit 0
 fi
 
@@ -32,32 +32,31 @@ else
   fi
 fi
 
-MEMORY_FILE="${PROJECT_ROOT}/.forgewright/memory.jsonl"
-MEM0_CLI="${FORGEWRIGHT_DIR}/scripts/mem0-cli.py"
+MEMORY_DB="${PROJECT_ROOT}/.forgewright/memory_db"
+LOCAL_MEMORY_CLI="${FORGEWRIGHT_DIR}/scripts/local_memory.py"
 
-if [ -f "$MEMORY_FILE" ]; then
+# Check if memory DB already exists
+if [ -d "$MEMORY_DB" ]; then
   exit 0
 fi
 
 if ! command -v python3 &>/dev/null; then
-  echo "[Forgewright] mem0 requires python3. Install Python 3 and re-run:" >&2
+  echo "[Forgewright] Local memory requires python3. Install Python 3 and re-run:" >&2
   echo "  bash ${FORGEWRIGHT_DIR}/scripts/ensure-mem0.sh" >&2
   exit 1
 fi
 
-if [ ! -f "$MEM0_CLI" ]; then
-  echo "[Forgewright] Missing mem0 CLI at ${MEM0_CLI}" >&2
+# Install dependencies
+echo "[Forgewright] Setting up local memory (ChromaDB + sentence-transformers)..." >&2
+pip3 install --quiet chromadb sentence-transformers torch 2>/dev/null || true
+
+# Initialize by running stats (creates the DB)
+cd "$PROJECT_ROOT"
+python3 "$LOCAL_MEMORY_CLI" stats &>/dev/null || true
+
+if [ ! -d "$MEMORY_DB" ]; then
+  echo "[Forgewright] Memory setup did not create ${MEMORY_DB}" >&2
   exit 1
 fi
 
-(
-  cd "$PROJECT_ROOT"
-  python3 "$MEM0_CLI" setup
-)
-
-if [ ! -f "$MEMORY_FILE" ]; then
-  echo "[Forgewright] mem0 setup did not create ${MEMORY_FILE}" >&2
-  exit 1
-fi
-
-echo "[Forgewright] mem0 initialized (.forgewright/memory.jsonl). Run: python3 ${MEM0_CLI} refresh" >&2
+echo "[Forgewright] Local memory initialized (.forgewright/memory_db)" >&2

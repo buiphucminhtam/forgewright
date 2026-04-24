@@ -29,6 +29,8 @@ User Request
 │  ⑧ TaskTracking    Update todos, emit events        │
 │  ⑨ Memory          Async fact extraction + store     │
 │  ⑩ GracefulFailure Retry logic, stuck detection     │
+│  ⑪ ASIP            Mandatory research + skill self-improvement │
+│  ⑫ CircuitBreaker Fault isolation + state machine  │
 │                                                     │
 └─────────────────────────────────────────────────────┘
   │
@@ -43,7 +45,7 @@ Result / Next Skill
 | # | Middleware | Source Protocol | Hook | Purpose |
 |---|-----------|----------------|------|---------|
 | ① | **SessionData** | session-lifecycle.md §Steps 1-3 | `before_skill()` | Load project-profile.json, session-log.json, detect manual changes |
-| ② | **ContextLoader** | session-lifecycle.md §Step 4 + memory-manager | `before_skill()` | Search mem0 with task keywords, load code-conventions.md |
+| ② | **ContextLoader** | session-lifecycle.md §Step 4 + memory-manager | `before_skill()` | Search local_memory with task keywords, load code-conventions.md |
 | ③b| **DryRunContext** | dryrun-interceptor.md | `before_skill()` | Inject global system prompt instructing AI it is in test mode (Option B) |
 | ③ | **SkillRegistry** | skills-config.json | `before_skill()` | Filter available skills by classified mode (progressive loading) |
 | ④ | **Guardrail** | guardrail.md | `before_tool()` | Authorize each tool call against allow/blocklist rules (Option A integration) |
@@ -56,8 +58,10 @@ Result / Next Skill
 | ⑥ | **QualityGate** | quality-gate.md | `after_skill()` | Run 4-level validation, calculate 0-100 score |
 | ⑦ | **BrownfieldSafety** | brownfield-safety.md | `after_skill()` | Regression check, protected path enforcement, change manifest |
 | ⑧ | **TaskTracking** | session-lifecycle.md §Hooks | `after_skill()` | Emit SKILL_COMPLETED event, update task.md |
-| ⑨ | **Memory** | memory-manager.md §Hooks + session-lifecycle §Per-request | `after_skill()` **and** `turn_close()` | After each skill: extract decisions/blockers → mem0. **After each completed user request:** mandatory Turn-Close `add` (session + optional decisions/architecture/blockers) — not optional unless `MEM0_DISABLED` / `FORGEWRIGHT_SKIP_MEM0` |
+| ⑨ | **Memory** | memory-manager.md §Hooks + session-lifecycle §Per-request | `after_skill()` **and** `turn_close()` | After each skill: extract decisions/blockers → local_memory. **After each completed user request:** mandatory Turn-Close `add` (session + optional decisions/architecture/blockers) — not optional unless `LOCAL_MEMORY_DISABLED` / `FORGEWRIGHT_SKIP_MEMORY` |
 | ⑩ | **GracefulFailure** | graceful-failure.md | `on_error()` | Detect stuck states, manage retry counts, trigger exit |
+| ⑪ | **ASIP** | self-improving-loop.md | `after_skill()` + `on_error()` | Mandatory 2-failure-then-research loop. Track attempts, trigger research gate, update skills |
+| ⑫ | **CircuitBreaker** | circuit-breaker.md | `after_skill()` | Update circuit state, transition based on outcome |
 
 ## Execution Rules
 
@@ -128,6 +132,7 @@ Per-Skill hooks (run once per skill invocation):
   ⑧ TaskTracking.after_skill()
   ⑨ Memory.after_skill()
   ⑩ GracefulFailure.on_error()
+  ⑪ ASIP.after_skill() / ASIP.on_error()
 
 Per-Tool hooks (run on EVERY tool call within a skill):
   ④ Guardrail.before_tool()    ← runs before each write_to_file, run_command, etc.
@@ -166,6 +171,19 @@ middleware:
       enabled: true
     - name: graceful-failure
       enabled: true
+    - name: asip
+      enabled: true
+      enforceResearchGate: true  # Cannot be disabled - safety critical
+      planQuality:
+        threshold: 9.0
+        mandatoryResearchAfter: 2
+      executionBlocker:
+        failureThreshold: 2
+    - name: circuit-breaker
+      enabled: true
+      failure_threshold: 3
+      timeout_duration: 60
+      recovery_timeout: 120
 ```
 
 ## Integration with Existing Protocols

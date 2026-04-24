@@ -966,7 +966,7 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 
 **Step 0.2 — System Requirements + Power Level Check (required):**
 
-Forgewright requires **Node.js 18+** (ForgeNexus) and **Python 3** (mem0). Power level determines which tools are needed.
+Forgewright requires **Node.js 18+** (ForgeNexus) and **Python 3** (local memory). Power level determines which tools are needed.
 
 **Step 0.2.1 — System Requirements Check:**
 
@@ -975,16 +975,16 @@ Run these in parallel:
 ```
 node_check:  node --version 2>/dev/null | grep -oE '[0-9]+' | head -1
 python_check: python3 --version 2>/dev/null
-mem0_check:  [ -f .forgewright/memory.jsonl ] && echo "exists" || echo "missing"
+memory_check:  [ -d .forgewright/memory_db ] && echo "ready" || echo "setup"
 settings_check: [ -f .forgewright/settings.md ] && echo "exists" || echo "missing"
 ```
 
 **Decision matrix:**
 
-| node | python | mem0 | Action |
-|------|--------|------|--------|
-| ≥18 | ≥3.8 | exists | ✅ Full Persistent — continue to Step 0.3 |
-| ≥18 | ≥3.8 | missing | ⧖ mem0 missing — run ensure-mem0.sh |
+| node | python | memory | Action |
+|------|--------|--------|--------|
+| ≥18 | ≥3.8 | ready | ✅ Full Persistent — continue to Step 0.3 |
+| ≥18 | ≥3.8 | setup | ⧖ Memory setup needed — run memory-local.sh |
 | ≥18 | missing | — | ⚠️ Python missing — stop, tell user install Python 3 |
 | <18 | — | — | ⚠️ Node.js <18 — stop, tell user upgrade Node.js |
 | missing | — | — | ⚠️ Node.js missing — stop, tell user install Node.js 18+ |
@@ -995,7 +995,7 @@ notify_user:
   "⚠️ Missing required tools for Forgewright:
 
    Node.js 18+ required for: ForgeNexus code intelligence, MCP server
-   Python 3.8+ required for: Cross-session memory (mem0)
+   Python 3.8+ required for: Local memory (ChromaDB + sentence-transformers)
 
    How to install:
    macOS:  brew install node python3
@@ -1008,13 +1008,13 @@ notify_user:
   > "Chat about this"
 ```
 
-**If mem0 missing (non-blocking):**
+**If memory needs setup (non-blocking):**
 ```
 # Run silently
-bash <path-to-forgewright>/scripts/ensure-mem0.sh "$(pwd)" 2>/dev/null
+bash <path-to-forgewright>/scripts/memory-local.sh "$(pwd)" 2>/dev/null
 
 # If failed (no python3)
-Log: "⚠️ mem0 init failed — install Python 3 first. Forcing: FORGEWRIGHT_SKIP_MEM0=1"
+Log: "⚠️ Memory init failed — install Python 3 first. Forcing: FORGEWRIGHT_SKIP_MEMORY=1"
 # CI/headless exemption auto-applied
 ```
 
@@ -1023,7 +1023,7 @@ Log: "⚠️ mem0 init failed — install Python 3 first. Forcing: FORGEWRIGHT_S
 Log: "✓ System requirements verified:
   - Node.js: [version] ✓
   - Python 3: [version] ✓
-  - mem0: [ready/missing → initialized] ✓"
+  - Memory: [ready/setup needed] ✓"
 ```
 
 **Step 0.2.2 — Power Level Check:**
@@ -1045,7 +1045,7 @@ notify_user:
 
   ⚡ Basic       — 55 skills, full pipeline (Node.js only)
   ⚡⚡ Smart     — + ForgeNexus blast-radius analysis (Node.js only)
-  ⚡⚡⚡ Persistent — + mem0 cross-session memory (Node.js + Python 3)
+  ⚡⚡⚡ Persistent — + Local memory with ChromaDB (Node.js + Python 3)
   ⚡⚡⚡⚡ Research  — + NotebookLM grounded research (optional)
   ⚡⚡⚡⚡⚡ Full Power — All of the above + crawl4ai, Midscene, Paperclip
 
@@ -1067,7 +1067,7 @@ IF Full Power:
   notify_user:
     "⚡ Full Power selected! You have everything you need:
 
-     MANDATORY (auto-verified): Node.js 18+, Python 3.8+, mem0 ✓
+     MANDATORY (auto-verified): Node.js 18+, Python 3.8+, local memory ✓
 
      OPTIONAL — install anytime to unlock more capability:
 
@@ -1117,7 +1117,7 @@ IF Research:
   Log: "Optional: pip install notebooklm-mcp"
 
 IF Persistent:
-  Log: "✓ Power level: Persistent — mem0 ready"
+  Log: "✓ Power level: Persistent — Local memory ready"
 
 IF Smart:
   Log: "✓ Power level: Smart — ForgeNexus ready"
@@ -1158,7 +1158,7 @@ User can override per-invocation with `--review [mode]` flag.
 Log: "✓ System init complete:
   - Node.js: [version] ✓
   - Python 3: [version] ✓
-  - mem0: [ready] ✓
+  - Memory: [ready] ✓
   - Power level: [level] ✓
   - Review mode: [mode] ✓
   - Settings: written to .forgewright/settings.md"
@@ -1211,9 +1211,9 @@ Run AFTER update check, BEFORE mode classification. Follows `skills/_shared/prot
    - If last session completed → log summary, continue to new request
    - If first session → continue normally
 
-3. **Load memory context (mem0 is required — Step 0.2):**
-   - Run `python3 <path-to-forgewright>/scripts/mem0-cli.py search "<project-name> <user-request-keywords>" --limit 5 --format compact` (or `./scripts/mem0-cli.py` when the project is the Forgewright repo)
-   - If the store is empty or search returns nothing → run `python3 ... mem0-cli.py refresh` once, then search again
+3. **Load memory context (required for Persistent power level — Step 0.2):**
+   - Run `python3 <path-to-forgewright>/scripts/local_memory.py search "<project-name> <user-request-keywords>" --limit 5` (or `./scripts/local_memory.py` when the project is the Forgewright repo)
+   - If the store is empty or search returns nothing → run `python3 ... local_memory.py` again to verify setup
    - Also read `.forgewright/code-conventions.md` if it exists for extra conventions
 
 4. **Detect manual changes:**
@@ -1614,8 +1614,8 @@ Write analysis report to `.forgewright/scope-analysis.md` for future reference.
 When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-dispatch skill (`skills/parallel-dispatch/SKILL.md`) to spawn git worktrees, distribute Task Contracts, and merge results. When **Sequential** is selected, the pipeline behaves as before.
 
 6. **Detect existing workspace & load memory** — if `.forgewright/` has prior state, use session-lifecycle resume protocol. If `.forgewright/session-log.json` has interrupted state, offer resume. Otherwise offer clean start via notify_user.
-   - **Memory load:** Run `python3 scripts/mem0-cli.py search "<project-name> <user-request-keywords>" --limit 5 --format compact` to retrieve relevant project context. Inject results into your context for this session.
-   - If no results or memory is empty, run `python3 scripts/mem0-cli.py refresh` once to bootstrap memory from project files.
+   - **Memory load:** Run `python3 scripts/local_memory.py search "<project-name> <user-request-keywords>" --limit 5` to retrieve relevant project context. Inject results into your context for this session.
+   - If no results or memory is empty, verify setup with `python3 scripts/local_memory.py stats`.
 
 7. **Polymath pre-flight check:**
    - If `.forgewright/polymath/handoff/context-package.md` exists → read it, pass to PM as pre-loaded context. Log: `✓ Polymath context loaded — skipping redundant discovery`
@@ -1657,7 +1657,7 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
 Create a `task.md` file in `.forgewright/` with all 13 tasks and their statuses. Track dependencies and completion.
 
 10. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
-   - **Memory save (session start):** Run `python3 scripts/mem0-cli.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
+   - **Memory save (session start):** Run `python3 scripts/local_memory.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
 
 **Key principle:** Research, plan, start building. Pause at the 3 approval gates. **Exception — greenfield Full Build:** BA elicitation is a **hard gate before PM**; do not jump to T1 until `ba-package.md` exists and minimum rounds above are satisfied (unless an explicit escape hatch in 7.5 was used). In Thorough/Meticulous mode, show phase summaries between major phases (inform; strategic gates still rule).
 
@@ -1686,10 +1686,10 @@ Call these hooks at the appropriate lifecycle points:
 | Phase completes | `PHASE_COMPLETE(name, summary)` | Update session-log, save to memory, update quality metrics |
 | Task completes | `TASK_COMPLETE(id, name, status, summary)` | Update session-log |
 | Gate decided | `GATE_DECISION(gate#, decision, feedback)` | Update session-log, save decision to memory |
-| Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Save architecture to mem0 — see Gate 2.5 |
+| Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Save architecture to memory — see Gate 2.5 |
 | Error occurs | `ERROR(task_id, type, details)` | Update session-log, save blocker to memory |
 | Pipeline ends | Session End | Summarize, save to memory, update project profile |
-| User request answered | `TURN_CLOSE` | Mandatory mem0 `add` — see session-lifecycle §Per-request memory |
+| User request answered | `TURN_CLOSE` | Mandatory memory `add` — see session-lifecycle §Per-request memory |
 
 ## User Experience Protocol
 
@@ -1772,20 +1772,20 @@ After Gate 2 is approved, automatically persist architecture decisions to memory
    - Database choices
    - Key architectural patterns
 
-2. Run mem0 persistence commands:
+2. Run memory persistence commands:
    # Main architecture
-   python3 scripts/mem0-cli.py add "ARCH: [tech stack] | SERVICES: [service list] | REASON: [key rationale]" --category architecture
+   python3 scripts/local_memory.py add "ARCH: [tech stack] | SERVICES: [service list] | REASON: [key rationale]" --category architecture
    
    # Individual ADRs
-   python3 scripts/mem0-cli.py add "DECISION: [ADR title] | ALTERNATIVE: [rejected options] | REASON: [why chosen]" --category decisions
+   python3 scripts/local_memory.py add "DECISION: [ADR title] | ALTERNATIVE: [rejected options] | REASON: [why chosen]" --category decisions
    
    # Project scope
-   python3 scripts/mem0-cli.py add "PROJECT: [project name] | SCOPE: [feature list] | STATUS: active" --category project
+   python3 scripts/local_memory.py add "PROJECT: [project name] | SCOPE: [feature list] | STATUS: active" --category project
 
 3. Log: "✓ Architecture decisions persisted to memory — [N] decisions saved"
 ```
 
-**Why this matters:** Future sessions can search `mem0-cli.py search "architecture"` to retrieve the approved stack without re-reading all architecture files.
+**Why this matters:** Future sessions can search `local_memory.py search "architecture"` to retrieve the approved stack without re-reading all architecture files.
 
 **Gate 3 — Production Readiness** (after T9):
 

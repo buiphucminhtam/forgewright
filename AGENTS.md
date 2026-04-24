@@ -212,7 +212,7 @@ All 56 skills are in the `skills/` directory:
 | Code Intelligence Protocol | `skills/_shared/protocols/code-intelligence.md` |
 | Paperclip Integration Protocol | `skills/_shared/protocols/paperclip-integration.md` |
 | Worktree Manager | `scripts/worktree-manager.sh` |
-| Memory CLI | `scripts/mem0-cli.py` |
+| Memory CLI | `scripts/local_memory.py` |
 | Mobile Test Setup | `scripts/mobile-test-setup.sh` |
 
 ## Configuration

@@ -11,7 +11,7 @@ description: >
 # Production Grade
 
 !`git status 2>/dev/null || echo "No git repo detected"`
-!`cat ANTIGRAVITY.md 2>/dev/null || echo "No ANTIGRAVITY.md found"`
+!`cat CLAUDE.md 2>/dev/null || echo "No CLAUDE.md found"`
 !`ls .forgewright/ 2>/dev/null || echo "No existing workspace"`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config file — defaults apply"`
 
@@ -19,26 +19,44 @@ description: >
 
 Adaptive meta-skill orchestrator for all software engineering work. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 17-skill greenfield build.
 
-**17 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
+**55 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
 
 **All skills are bundled in this plugin. Single install, everything included.**
 
 ### Middleware Chain (v8.0 — DeerFlow Pattern)
 
-Every skill invocation is wrapped by an ordered middleware chain. Read `skills/_shared/protocols/middleware-chain.md` for the full specification.
+Every skill invocation is wrapped by an ordered middleware chain. Implementation details are in `skills/production-grade/middleware/`:
 
 ```
 Pre-Skill:  ① SessionData → ② ContextLoader → ③ SkillRegistry → ④ Guardrail → ⑤ Summarization
             ═══ SKILL EXECUTION ═══
-Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure
+Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure → ⑪ CircuitBreaker → ⑫ Bulkhead → ⑬ Verification
 ```
+
+| # | Middleware | File | Hook | Purpose |
+|---|-----------|------|------|---------|
+| ① | SessionData | `middleware/01-session-data.md` | before_skill | Load profile, session state |
+| ② | ContextLoader | `middleware/02-context-loader.md` | before_skill | Load memory, conventions |
+| ③b| DryRunContext | `skills/_shared/protocols/dryrun-interceptor.md` | before_skill | Dry-run mode system prompt injection |
+| ③ | SkillRegistry | `middleware/03-skill-registry.md` | before_skill | Progressive skill loading |
+| ④ | Guardrail | `middleware/04-guardrail.md` | before_tool | Pre-tool authorization |
+| ⑤ | Summarization | `middleware/05-summarization.md` | before_skill | Context compression |
+| ⑥ | QualityGate | `middleware/06-quality-gate.md` | after_skill | Post-skill validation |
+| ⑦ | BrownfieldSafety | `middleware/07-brownfield-safety.md` | after_skill | Regression + protected paths |
+| ⑧ | TaskTracking | `middleware/08-task-tracking.md` | after_skill | Update todos, emit events |
+| ⑨ | Memory | `middleware/09-memory.md` | after_skill + turn_close | Persistent fact extraction |
+| ⑩ | GracefulFailure | `middleware/10-graceful-failure.md` | on_error | Retry logic, stuck detection |
+| ⑪ | CircuitBreaker | `skills/_shared/protocols/circuit-breaker.md` | after_skill | Fault isolation + state machine |
+| ⑫ | Bulkhead | `skills/_shared/protocols/bulkhead.md` | after_skill | Resource limits per worker type |
+| ⑬ | Verification | `skills/_shared/protocols/verification.md` | after_skill | Contract + criteria check |
+**Middleware protocol:** `skills/_shared/protocols/middleware-chain.md`
 
 ### Progressive Skill Loading (v8.0 — DeerFlow Pattern)
 
 Skills are loaded on-demand based on classified mode. Read `.forgewright/skills-config.json` for the mode→skill mapping.
 
 ```
-Instead of loading all 50 skill descriptions (~66KB), only load skills relevant to the mode:
+Instead of loading all 52 skill descriptions (~66KB), only load skills relevant to the mode:
   Review mode  → loads 1 skill  (~3KB)
   Feature mode → loads 5 skills (~15KB)
   Full Build   → loads 10 skills (~30KB)
@@ -81,9 +99,86 @@ If detected:
 
 If not detected → proceed normally (no changes).
 
+## Step 0 — Request Interpretation (MANDATORY)
+
+**⚠️ DO NOT SKIP THIS STEP. EVER.**
+
+Before ANY skill execution, interpret the user's request:
+
+1. **Extract 9 dimensions** (from chat-interpreter):
+   - Task: What they actually want
+   - Target tool: Forgewright mode
+   - Output format: What they expect
+   - Constraints: Explicit limits
+   - Input: What they're providing
+   - Context: Prior decisions, project state
+   - Audience: Who uses output
+   - Success criteria: How they know it's done
+   - Examples: Reference systems
+
+2. **Scan for vague patterns** (from credit-killing patterns):
+   - Vague verb ("help me", "make it", "do something") → ask specifics
+   - Two tasks in one → ask priority
+   - No success criteria → derive and confirm
+   - Emotional description → extract technical fault
+   - Assumed knowledge → inject context
+   - No project context → pull from project-profile.json
+   - No scope boundary → ask what's in/out
+   - No file path → ask for location
+
+3. **Clarification Rules:**
+   - **MAX 3 clarifying questions** — pick the 3 most critical
+   - **If HIGH confidence**: Skip clarification, generate structured request
+   - **If MEDIUM/LOW confidence**: Ask before proceeding
+   - **NEVER start executing** if request is unclear
+   - **Use defaults** for everything else (don't over-ask)
+
+4. **Generate Structured Request:**
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🔍 INTERPRETED REQUEST
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Mode: [detected]
+   Confidence: [HIGH/MEDIUM/LOW]
+
+   Intent: "[original message quoted]"
+
+   What you want:
+     [1-sentence clear description]
+
+   Key decisions made:
+     [Defaults applied with reasoning]
+
+   Scope:
+     ✓ [In scope]
+     ✗ [Out of scope]
+
+   Success criteria:
+     [How we know it's done]
+
+   Missing (will be handled by PM):
+     [Max 3 items]
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
 **Step 1 — Analyze the request:**
 
-Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
+Read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` (from chat-interpreter Step -1) for the authoritative request analysis. The chat-interpreter has already performed 9-dimension extraction and mode detection.
+
+If `confidence: HIGH` → use the detected mode directly, skip the classification table.
+If `confidence: MEDIUM` → present 2 most likely modes to the user.
+If `confidence: LOW` → present 3 most likely modes to the user.
+
+**⚠️ ENFORCEMENT: If request is unclear, STOP and ask. DO NOT start executing.**
+
+The following requests MUST trigger clarification:
+- Contains vague verbs: "help me", "make it", "do something", "fix it"
+- No specific scope: "build an app", "add a feature", "update the system"
+- Two or more tasks in one: "explain AND build", "fix AND test"
+- No success criteria: "make it better", "improve it"
+- No file/location specified: "update login", "add auth"
+
+Override the detected mode only if the user's intent clearly differs from what was interpreted. Otherwise, trust the chat-interpreter's analysis.
 
 | Mode | Trigger Signals | Skills Involved |
 |------|----------------|-----------------|
@@ -92,18 +187,18 @@ Read `$ARGUMENTS` and the user's message. Classify into one of these modes:
 | **Harden** | "review", "audit", "secure", "harden", "before launch", "production ready" (on EXISTING code) | Security + QA + Code Review (sequential) → Remediation |
 | **Ship** | "deploy", "CI/CD", "containerize", "infrastructure", "terraform", "docker" | DevOps → SRE |
 | **Debug** | "debug", "fix bug", "broken", "investigate", "not working", "error", "trace", "crashes" | Debugger (→ Software/Frontend Engineer for fix) |
-| **AI Build** | "AI feature", "chatbot", "RAG", "embeddings", "LLM", "agent", "prompt", "AI-powered", "scrape", "crawl website" | AI Engineer + Prompt Engineer + Data Scientist + Web Scraper (if web data) + Architect (scoped) → BE/FE |
+| **AI Build** | "AI feature", "chatbot", "RAG", "embeddings", "LLM", "agent", "prompt", "AI-powered" | AI Engineer + Prompt Engineer + Data Scientist + Architect (scoped) → BE/FE |
 | **Migrate** | "migrate", "upgrade", "migration", "database change", "schema change", "refactor DB", "move to" | Database Engineer + Software Engineer → QA |
 | **Test** | "write tests", "test coverage", "test this", "add tests" | QA |
 | **Review** | "review my code", "code review", "code quality", "check my code" | Code Reviewer |
 | **Architect** | "design", "architecture", "API design", "data model", "tech stack", "how should I structure" | Solution Architect |
 | **Document** | "document", "write docs", "API docs", "README" | Technical Writer |
 | **Explore** | "explain", "understand", "help me think", "what should I", "I'm not sure" | Polymath |
-| **Research** | "research", "deep research", "find sources", "analyze topic", "investigate [domain]" | Polymath (research mode) + NotebookLM MCP (optional) + crawl4ai (optional, for JS-rendered sites) |
+| **Research** | "research", "deep research", "find sources", "analyze topic", "investigate [domain]", "NotebookLM", "study materials", "generate quiz" | NotebookLM Researcher → Polymath (research mode) + NotebookLM MCP (primary) |
 | **Optimize** | "performance", "slow", "optimize", "scale", "reliability" | Performance Engineer + SRE + Code Reviewer |
 | **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow" | UX Researcher → UI Designer |
 | **Mobile** | "mobile app", "React Native", "Flutter", "iOS", "Android" | BA (if gaps detected) → Mobile Engineer (+ PM scoped, Architect scoped if needed) |
-| **Game Build** | "game", "Unity", "Unreal", "Godot", "Roblox", "gameplay", "game design", "build a game" | Game Designer → Engine Engineer (Unity/Unreal/Godot/Roblox) → Level/Narrative/TechArt/Audio |
+| **Game Build** | "game", "Unity", "Unreal", "Godot", "Roblox", "Phaser", "Three.js", "gameplay", "game design", "build a game" | Game Designer → Engine Engineer (Unity/Unreal/Godot/Phaser 3/Three.js) → Level/Narrative/TechArt/Audio |
 | **XR Build** | "VR", "AR", "MR", "XR", "spatial", "Quest", "Vision Pro", "WebXR" | XR Engineer (+ Game Build pipeline if game-like XR) |
 | **Marketing** | "marketing", "SEO", "launch strategy", "copywriting", "content strategy", "go-to-market" | Growth Marketer (+ Conversion Optimizer if CRO mentioned) |
 | **Grow** | "growth", "CRO", "conversion", "funnel", "A/B test", "churn", "retention", "referral" | Conversion Optimizer (+ Growth Marketer if strategy needed) |
@@ -124,9 +219,21 @@ Here's my plan:
 Scope: [light / moderate / heavy]
 
 1. **Looks good — start (Recommended)** — Execute this plan
-2. **I want the full production-grade pipeline** — Run all 17 skills, 5 phases, 3 gates
+2. **I want the full production-grade pipeline** — Run all 55 skills, 6 phases, 3 gates
 3. **Adjust the plan** — Add or remove skills from the plan
 4. **Chat about this** — Free-form input
+```
+
+**Large Feature Mode** (Feature with 3+ components, or any request with complexity): Create planning document on antigravity BEFORE starting:
+
+```
+antigravity/
+└── planning/
+    └── [feature-name]/
+        ├── PLAN.md          # Main planning document
+        ├── SCOPE.md         # Scope definition
+        ├── ARCHITECTURE.md  # Technical architecture (if needed)
+        └── TASKS.md         # Task breakdown
 ```
 
 **Full Build mode**: Always proceed to the Full Build Pipeline section below.
@@ -169,6 +276,75 @@ All skills MUST follow the sensitive file protection protocol:
 
 !`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 8 criteria, threshold 9.0/10, improve loop with research + skill self-improvement"`
 
+### ⚠️ ASIP Enforcement for Plan Quality
+
+**After 2 consecutive failed plan attempts (score < 9.0):**
+1. **TRIGGER MANDATORY RESEARCH GATE** — Cannot skip
+2. Research via NotebookLM (deep mode)
+3. Update skill SKILL.md (Planning Improvements section)
+4. Append to `.forgewright/plan-lessons.md`
+5. Only then re-plan with injected knowledge
+
+**This is NON-NEGOTIABLE. The system will not proceed until research is complete.**
+
+## Execution Blocker Loop
+
+**ANY time a blocker is encountered during implementation, MUST run this loop BEFORE asking user:**
+
+!`cat skills/_shared/protocols/execution-blocker-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: assess → research (web/codebase/docs) → synthesize → attempt → verify → improve skill. Max 3 cycles."`
+
+**⚠️ NEVER give up after 1 failed attempt. ALWAYS research first.**
+
+### ⚠️ ASIP Enforcement for Execution Blockers
+
+**After 2 consecutive failed execution attempts:**
+1. **TRIGGER MANDATORY RESEARCH GATE** — Cannot skip
+2. Categorize: Technical/Architectural/Tooling/External
+3. Research via NotebookLM (deep mode)
+4. Update skill SKILL.md (Execution Learnings section)
+5. Append to `.forgewright/execution-lessons.md`
+6. Only then retry with updated skill
+7. If still fails → ESCALATE to user
+
+**This is NON-NEGOTIABLE. The system will not proceed until research is complete.**
+
+## Adaptive Self-Improving Loop (ASIP)
+
+**Combined Plan Quality + Execution Blocker Loop with mandatory NotebookLM research:**
+
+!`cat skills/_shared/protocols/self-improving-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: 2 failures → research via NotebookLM → update skill → retry"`
+
+**Core principle:** Every failure is a learning opportunity. Skills improve over time based on real failures.
+
+### ASIP Metrics
+
+Track project adaptation:
+```json
+{
+  "totalResearchGates": 0,
+  "totalSkillUpdates": 0,
+  "uniquePatterns": 0,
+  "lessonsLearned": 0,
+  "failuresAvoided": 0
+}
+```
+
+## Review Intensity Mode
+
+**Control how much design/architecture review happens at each step:**
+
+!`cat skills/_shared/protocols/review-intensity.md 2>/dev/null || echo "Protocol not found — apply defaults: Review mode defaults to Lean (reviews only at phase gates). Set in production/review-mode.txt. Modes: full (all reviews), lean (gate reviews only), solo (no reviews)."`
+
+User can override per-invocation with `--review [mode]` flag.
+
+## Model Tier Assignment
+
+**Assign optimal Claude model tier to each skill invocation:**
+
+!`cat skills/_shared/protocols/model-tier.md 2>/dev/null || echo "Protocol not found — apply defaults: Sonnet for most skills. Haiku for /sprint-status, /help, /scope-check, /onboard. Opus for /architecture-review, /gate-check, /code-review."`
+
+Override per-invocation with `--model [haiku|sonnet|opus]` flag.
+
 ## Mode Execution (Non-Full-Build)
 
 All modes share these behaviors:
@@ -180,7 +356,123 @@ All modes share these behaviors:
 - Apply sensitive file protection protocol for all file operations
 - **Run plan quality loop** on EVERY skill invocation — plan first, score ≥ 9.0 before any work begins
 - **Asynchronous Heartbeat:** Periodically emit human-readable status updates (e.g., "Running tests...", "Applying self-healing fix 2/5...") so the user knows the AI is working and hasn't frozen.
+- **⚠️ QA AUTO-RUN (MANDATORY):** After any code change (build, fix, feature), ALWAYS run QA/Testing WITHOUT waiting for user prompt. The sequence is: BUILD → TEST → VERIFY → DONE. Never finish without testing.
+- **Antigravity Planning (for large features):** Features with 3+ components MUST use antigravity planning structure BEFORE starting implementation. Create `antigravity/planning/[feature-name]/` with PLAN.md, SCOPE.md, ARCHITECTURE.md, TASKS.md files.
 - Engagement mode: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution.
+
+## ⚠️ Self-Check Before Finishing (MANDATORY)
+
+**BEFORE declaring a task complete, verify ALL of the following:**
+
+| # | Check | Action if Failed |
+|---|-------|-----------------|
+| 1 | **Request interpreted?** | If Step 0 wasn't completed, go back and do it |
+| 2 | **Plan scored ≥ 9.0?** | If < 9.0, improve plan before proceeding |
+| 3 | **ASIP Research Gate followed?** | If 2 failures occurred → research + skill update was mandatory |
+| 4 | **Lessons written?** | Append to skill SKILL.md + .forgewright/lessons.md |
+| 5 | **Code changes made?** | If yes → run QA tests |
+| 6 | **Tests written?** | If code changed → write tests |
+| 7 | **Tests passed?** | If tests exist → run them |
+| 8 | **forgenexus_impact run?** | If editing symbols → run impact analysis |
+| 9 | **Scope respected?** | If scope creep detected → flag to user |
+| 10 | **User approval obtained?** | If gate exists → wait for approval |
+| 11 | **Review mode respected?** | If Full mode → run director reviews; if Solo → confirm skip OK |
+| 12 | **ASIP metrics updated?** | Increment counters in .forgewright/asip-metrics.json |
+
+**⚠️ NEVER finish a task without completing checks 3-5 if code was changed.**
+
+### QA Test Sequence (MANDATORY after any code change)
+
+```
+Code Changed?
+    ↓ YES
+Run QA Engineer (Express mode)
+    ↓
+Write tests (unit → integration → e2e)
+    ↓
+Run tests and verify ALL pass
+    ↓
+Report results
+    ↓
+Done ✓
+```
+
+**Do NOT wait for user to ask for tests. Run them automatically.**
+
+## Antigravity Planning System
+
+For large features (3+ components), use the Antigravity Planning System to structure your work.
+
+### When to Use Antigravity
+
+| Feature Type | Antigravity? |
+|--------------|--------------|
+| Single file change | ❌ No |
+| Small (1-2 components) | ❌ No |
+| Medium (3+ components) | ✅ Yes |
+| Full Build / Game Build | ✅ Required |
+| Multi-team coordination | ✅ Required |
+| New integration (auth, payment) | ✅ Yes |
+
+### Antigravity Folder Structure
+
+```
+antigravity/
+└── planning/
+    └── [feature-name]/
+        ├── PLAN.md          # Main planning document
+        ├── SCOPE.md         # Scope definition
+        ├── ARCHITECTURE.md   # Technical architecture
+        ├── TASKS.md         # Task breakdown
+        ├── DECISIONS.md     # Architecture decisions log
+        └── RETROSPECTIVE.md # Post-completion retrospective
+```
+
+### Quick Commands
+
+```bash
+# Create new feature plan
+./scripts/antigravity/antigravity.sh new <feature-name>
+
+# Check status
+./scripts/antigravity/antigravity.sh status
+
+# Show progress
+./scripts/antigravity/antigravity.sh progress <feature>
+
+# Archive completed
+./scripts/antigravity/antigravity.sh archive <feature>
+```
+
+### Feature Plan Template
+
+Each feature plan must include:
+
+| File | Required? | Content |
+|------|-----------|---------|
+| `PLAN.md` | ✅ Yes | Overview, goals, key decisions, timeline |
+| `SCOPE.md` | ✅ Yes | In/out scope, constraints, risks, acceptance criteria |
+| `ARCHITECTURE.md` | ⚠️ If complex | Component diagram, data models, API design |
+| `TASKS.md` | ✅ Yes | Task breakdown by priority, estimates |
+| `DECISIONS.md` | ⚠️ Recommended | Architecture Decision Records |
+| `RETROSPECTIVE.md` | ⚠️ After completion | Lessons learned, metrics |
+
+### Plan Quality Criteria
+
+Each feature plan must score ≥ 9.0/10 on:
+
+| Criteria | Description |
+|----------|-------------|
+| Clarity | Scope clearly defined |
+| Completeness | Enough info to implement |
+| Feasibility | Achievable in timeframe |
+| Risk Awareness | Risks identified |
+| Testability | Clear acceptance criteria |
+| Maintainability | Long-term viable |
+| Priority | Impact vs effort clear |
+| Dependencies | External deps identified |
+
+See `antigravity/README.md` for full documentation.
 
 ### Feature Mode
 
@@ -191,10 +483,12 @@ Add a feature to an existing codebase. Lightweight DEFINE → BUILD → TEST.
 3. **PM (Express depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only). If BA ran, use `ba-package.md` to reduce questions.
 4. **Architect (scoped)** — design how this feature fits the existing architecture. New endpoints, schema changes, component additions. NOT a full system redesign.
 5. **Build** — Software Engineer and/or Frontend Engineer implement the feature
-6. **Test** — QA writes and runs tests for the new feature
+6. **⚠️ Test (AUTO-RUN)** — **Immediately** write and run tests for the new feature. **DO NOT WAIT for user to ask.** Sequence: Build → Test → Verify → Done.
 7. **Optional: Review** — Code Reviewer checks the new code against existing patterns
 
 **1 gate:** After PM scoping (step 3), confirm scope before building.
+
+**⚠️ IMPORTANT:** Step 6 (Test) is MANDATORY. After building, ALWAYS run tests without waiting for user prompt.
 
 ### Harden Mode
 
@@ -270,20 +564,27 @@ Thinking partner. Single skill.
 
 ### Research Mode
 
-Deep, grounded research on any topic. Polymath + NotebookLM MCP (optional) + crawl4ai (optional).
+Deep, grounded research on any topic. **NotebookLM Researcher is the primary skill** (v0.5.19, 35+ tools: research, studio, audio, quiz, flashcards, slides, cross-notebook, batch, pipelines, tags). Polymath + crawl4ai are enhancement layers.
 
-1. Read `skills/polymath/SKILL.md` and invoke in **research mode**
-2. **Phase 1 — Web Discovery:** Polymath runs broad `search_web` sweeps (3-5 parallel) to gather relevant URLs and initial understanding
-3. **Phase 1.5 — Deep Crawling (optional):** If crawl4ai is installed and `read_url_content` fails on key URLs (JS-rendered, anti-bot), use Polymath's Crawl4AI Deep Research pattern. Security: library-only, URL validation, output sanitization. See `skills/web-scraper/SKILL.md`.
-4. **Phase 2 — NotebookLM Enhancement (optional):**
-   - Check if NotebookLM MCP tools are available (`server_info()`)
-   - If available: create notebook → add source URLs → run deep research → iterative querying → generate report
-   - If unavailable: skip — Polymath synthesizes from web search alone (still effective)
-   - Follow `workflows/deep-research.md` for detailed steps
-5. **Phase 3 — Synthesize:** Combine all findings into grounded research report with citations, trade-offs, and recommendations
-6. When ready, offer handoff to relevant mode (Feature, Architect, Full Build, etc.)
+1. Read `skills/notebooklm-researcher/SKILL.md` and follow its instructions
+2. Check authentication: `nlm auth status`
+3. Check for existing notebooks before creating new: `nlm notebook list`
+4. **Phase 1 — Discovery:** Identify if this is a new topic (→ create notebook) or existing notebook (→ add sources)
+5. **Phase 2 — Source Ingestion:** Add source URLs, text notes, or YouTube videos. Use `nlm research start --mode deep` for automatic web discovery
+6. **Phase 3 — NotebookLM Synthesis:** Use `notebook describe`, `notebook query`, `cross query` to synthesize findings
+7. **Phase 4 — Content Generation:** Generate study materials: audio (podcast), report (briefing doc/study guide), quiz, flashcards, slides, infographic
+8. **Phase 5 — Cross-Notebook (if needed):** Query across multiple notebooks for comparative research
+9. **Phase 6 — Handoff:** Format findings as research report with citations, hand off to relevant mode
 
-**0 gates.** Polymath manages dialogue. NotebookLM and crawl4ai are enhancement layers, not requirements.
+**NotebookLM Capabilities (v0.5.19):**
+- 35+ MCP tools: notebook, source, research, studio, audio, video, report, quiz, flashcards, mindmap, slides, infographic, data-table, download, export, chat, share, batch, cross, pipeline, tag, alias, config, doctor, skill, setup
+- Batch operations: same action across multiple notebooks
+- Pipelines: `ingest-and-podcast`, `research-and-report`, `multi-format`
+- Drive sync: stale source detection and sync
+- Multi-profile: multiple Google accounts
+- Enterprise/Workspace support via `NOTEBOOKLM_BASE_URL`
+
+**0 gates.** NotebookLM Researcher manages dialogue.
 
 ### Optimize Mode
 
@@ -373,32 +674,34 @@ Which skills do you need? (list the numbers separated by commas)
 
 --- Game Development ---
 24. **Game Designer** — GDD, gameplay loops, economy, mechanic specs
-25. **Unity Engineer** — C# game architecture, ScriptableObjects, Editor tools
+25. **Unity Engineer** — C# ScriptableObjects, Editor tools, URP
 26. **Unreal Engineer** — C++/Blueprint, GAS, Nanite/Lumen
 27. **Godot Engineer** — GDScript, scene tree, signals, cross-platform
 28. **Godot Multiplayer** — MultiplayerSpawner, ENet, prediction, dedicated server
 29. **Roblox Engineer** — Luau, DataStore, Roblox Studio, experience design
+30. **Phaser 3 Engineer** — TypeScript, modular scenes, ECS-optional, WebGL/Canvas, shared vfx/ui helpers
+31. **Three.js Engineer** — ECS, WebGPU/WebGL, Rapier physics, performance budgets, post-processing
 30. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
 31. **Narrative Designer** — Branching dialogue, character voice, lore
-32. **Technical Artist** — Shaders, VFX, LOD, performance budgets
-33. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
-34. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
-35. **Unity Multiplayer** — Netcode for GameObjects, relay, prediction
-36. **Unreal Technical Artist** — Niagara, Material Editor, Lumen/Nanite
-37. **Unreal Multiplayer** — Replication, dedicated server, GAS networking
-38. **XR Engineer** — AR/VR/MR, spatial UI, hand tracking, comfort
+34. **Technical Artist** — Shaders, VFX, LOD, performance budgets
+35. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
+36. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
+37. **Unity Multiplayer** — Netcode for GameObjects, relay, prediction
+38. **Unreal Technical Artist** — Niagara, Material Editor, Lumen/Nanite
+39. **Unreal Multiplayer** — Replication, dedicated server, GAS networking
+40. **XR Engineer** — AR/VR/MR, spatial UI, hand tracking, comfort
 
 --- Growth ---
-39. **Growth Marketer** — Launch strategy, content, channels, SEO
-40. **Conversion Optimizer** — CRO, funnel analysis, A/B testing, retention
+41. **Growth Marketer** — Launch strategy, content, channels, SEO
+42. **Conversion Optimizer** — CRO, funnel analysis, A/B testing, retention
 
 --- Data Acquisition ---
-41. **Web Scraper** — Secure web crawling (crawl4ai), URL validation, output sanitization, CSS/LLM extraction
+43. **Web Scraper** — Secure web crawling (crawl4ai), URL validation, output sanitization, CSS/LLM extraction
 
 --- Integration ---
-42. **Paperclip** (optional) — Multi-agent orchestration, ticket management, budget control, heartbeat scheduling
+44. **Paperclip** (optional) — Multi-agent orchestration, ticket management, budget control, heartbeat scheduling
 
-43. **Chat about this** — Free-form input
+45. **Chat about this** — Free-form input
 ```
 
 Execute selected skills in dependency order. If user picks conflicting skills, resolve via the authority hierarchy.
@@ -453,22 +756,35 @@ Build a game from concept to playable build. Full game development pipeline.
    1. **Unity** (Recommended for indie-AA, mobile, 2D/3D)
    2. **Unreal Engine** (AAA quality, heavy 3D, C++/Blueprint)
    3. **Godot** (Open-source, lightweight, rapid iteration)
+   4. **Phaser 3** (Web-native 2D, HTML5, Canvas/WebGL — no install, instant play)
+   5. **Three.js** (Web-native 3D, WebGPU/WebGL — browser-native 3D experiences)
    ```
 3. **Game Designer** — `skills/game-designer/SKILL.md` — design pillars, core loop, economy, mechanic specs, player flows
 4. **Engine Engineer** — based on chosen engine:
-   - Unity: `skills/unity-engineer/SKILL.md` — SO architecture, gameplay systems, UI, Editor tools
-   - Unreal: `skills/unreal-engineer/SKILL.md` — C++ architecture, GAS, AI, Blueprint layer
-   - Godot: `skills/godot-engineer/SKILL.md` — scene tree, signals, Resources, export
+   - Unity: `skills/unity-engineer/SKILL.md` — C# architecture, ScriptableObjects, Editor tools
+   - Unreal: `skills/unreal-engineer/SKILL.md` — C++/Blueprint, GAS, AI, Blueprint layer
+   - Godot: `skills/godot-engineer/SKILL.md` — GDScript, scene tree, signals
+   - Phaser 3: `skills/phaser3-engineer/SKILL.md` — TypeScript, modular scenes, ECS-optional, WebGL/Canvas
+   - Three.js: `skills/threejs-engineer/SKILL.md` — ECS architecture, WebGPU/WebGL, Rapier physics
 5. **Level Designer** — `skills/level-designer/SKILL.md` — level structure, encounters, pacing, blockouts
 6. **Narrative Designer** (if story-driven) — `skills/narrative-designer/SKILL.md` — dialogue, characters, lore
 7. **Technical Artist** — `skills/technical-artist/SKILL.md` — shaders, VFX, LOD, performance budgets
-8. **Game Audio Engineer** — `skills/game-audio-engineer/SKILL.md` — SFX, adaptive music, mix
+8. **Game Audio Engineer** — `skills/game-audio-engineer/SKILL.md` — SFX, adaptive music, spatial audio
 9. **Engine-specific depth** (optional, based on game needs):
-   - Multiplayer: `skills/unity-multiplayer/SKILL.md` or `skills/unreal-multiplayer/SKILL.md`
-   - Shader/VFX: `skills/unity-shader-artist/SKILL.md` or `skills/unreal-technical-artist/SKILL.md`
-10. **QA** — test gameplay systems, balance verification, edge cases
+   - Multiplayer: `skills/unity-multiplayer/SKILL.md`, `skills/unreal-multiplayer/SKILL.md`, `skills/godot-multiplayer/SKILL.md`
+   - Shader/VFX: `skills/unity-shader-artist/SKILL.md`, `skills/unreal-technical-artist/SKILL.md`
+10. **QA** — per `skills/_shared/protocols/game-test-protocol.md` (extended for Phaser 3 and Three.js):
+    - Mechanics Validation (engine-specific tests: Unity UTF, Unreal Automation, Godot GUT, Phaser 3 Vitest/Jest, Three.js ECS system tests)
+    - Balance Validation (economy, XP curves, difficulty scaling against GDD)
+    - State Machine Validation (all mechanic transitions match GDD state diagrams)
+    - Performance Validation (FPS, memory, load time per platform targets; Three.js: draw calls < 100/frame)
+    - Build Verification (compile, references, platform builds, boot test; Phaser 3: Vite build; Three.js: Vite bundle)
+    - Integration Validation (cross-system regressions)
+    - Platform Validation (web browsers, mobile WebGL, desktop WebGL/WebGPU)
+11. **Quality Gate** — run `skills/_shared/protocols/quality-gate.md` with game-specific thresholds (see `tests/coverage/thresholds.json`)
+12. **Task Validator** — run `skills/_shared/protocols/task-validator.md` to validate delivery against Task Contract
 
-**3 gates:** After Game Designer GDD (step 3), after engine architecture (step 4), and after first playable (step 9).
+**4 gates:** After Game Designer GDD (step 3), after engine architecture (step 4), after first playable (step 9), and after QA test suite (step 10).
 
 ### XR Build Mode
 
@@ -481,6 +797,159 @@ Build AR/VR/MR applications. XR Engineer + optional game development pipeline.
 5. **QA** — comfort testing, frame rate validation, input model coverage
 
 **2 gates:** After XR architecture (step 2), and after spatial interaction playable (step 3-4).
+
+## Chat Interpretation (Pre-Processing — BEFORE everything else)
+
+> **Powered by prompt-master methodology.** Run BEFORE Step 0.1 on every user message.
+
+Every user message is first interpreted through the `chat-interpreter` Cursor subagent. This converts vague natural language into a structured, unambiguous pipeline request — eliminating the need for users to speak "prompt engineer."
+
+**Step -1 — Chat Interpretation:**
+
+```
+Invoke: /chat-interpreter [user's message]
+```
+
+**The chat-interpreter subagent performs:**
+
+1. **9-Dimension Extraction** — silently extracts: Task, Target tool, Output format, Constraints, Input, Context, Audience, Success criteria, Examples
+
+2. **Mode Detection** — maps the request to Forgewright's 19 modes with confidence level (HIGH/MEDIUM/LOW)
+
+3. **Gap Detection** — identifies missing information (max 3 clarifying questions if needed)
+
+4. **Default Application** — fills in reasonable defaults for unstated requirements
+
+5. **Structured Output** — produces `INTERPRETED_REQUEST.md` with:
+   - Detected mode + confidence
+   - Intent (original quoted)
+   - Key decisions made
+   - Scope (included/excluded)
+   - Constraints
+   - Missing items
+   - Success criteria
+
+**If confidence is HIGH:**
+```
+✓ Request interpreted — [mode] mode detected
+[Structured request summary — 3 lines max]
+→ Proceeding to Step 0.1
+```
+
+**If confidence is MEDIUM:**
+```
+Request understood. Detected [mode] but [alternative] is also possible.
+
+1. **[mode] (Recommended)** — [reason]
+2. **[alternative]** — [reason why user might want this]
+3. **Chat about this** — Tell me more
+```
+
+**If confidence is LOW:**
+```
+I'm not sure what you want. A few quick questions:
+
+1. [most critical unknown — max 3 questions]
+2. [second most critical]
+3. [third most critical — last one]
+
+After your answers, I'll route to the right pipeline.
+```
+
+**Paperclip Detection (auto-handled):**
+- If `#42`, `CLIP-`, or `[paperclip]` detected → route to **Express** engagement mode
+- chat-interpreter appends `engagement_override: express` to `INTERPRETED_REQUEST.md`
+
+**Chat Interpretation Output:**
+```
+.forgewright/subagent-context/INTERPRETED_REQUEST.md
+  ├── mode: [detected mode]
+  ├── confidence: [HIGH/MEDIUM/LOW]
+  ├── intent_summary: [1 sentence]
+  ├── scope: {included: [...], excluded: [...]}
+  ├── constraints: [...]
+  ├── missing: [...]
+  ├── success_criteria: [...]
+  └── engagement_override: [express/standard/thorough/meticulous if set]
+```
+
+**Reading the interpreted request before proceeding:**
+All subsequent pipeline steps read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` as the authoritative source of user intent — not the raw chat message.
+
+## Tool-Specific Routing (from prompt-master)
+
+When generating prompts for specific AI tools, use the appropriate template and technique based on the target tool. Reference files:
+
+| File | Read When |
+|------|-----------|
+| `skills/_shared/protocols/prompt-templates.md` | Need template structure for any tool category |
+| `skills/_shared/protocols/credit-killing-patterns.md` | Fixing bad prompts or diagnosing failures |
+| `skills/_shared/protocols/prompt-techniques.md` | Selecting safe techniques per model |
+
+### Code AI Tools
+
+| Tool | Template | Key Fixes |
+|------|----------|-----------|
+| **Claude Code** | ReAct + Stop Conditions (H) | Stop conditions MANDATORY, file scope, human review triggers |
+| **Cursor / Windsurf** | File-Scope (G) | Path + function + do-not-touch list + done_when |
+| **GitHub Copilot** | RTF (A) | Exact function signature as docstring |
+| **Cline (Claude Dev)** | ReAct + Stop Conditions (H) | File scope + approval gates + stop conditions |
+
+### Reasoning Models
+
+| Tool | Template | Key Fixes |
+|------|----------|-----------|
+| **Claude (claude.ai)** | RTF/CO-STAR (A/B) | XML tags, explicit length, no over-engineering |
+| **ChatGPT / GPT-5.x** | RTF/CO-STAR (A/B) | Output contract, verbosity control, compact structure |
+| **o3 / o4-mini** | Short clean only | **REMOVE CoT** — they think internally, under 200 words |
+| **Gemini 2.x/3** | CO-STAR (B) | Grounding anchors, citation rules, format locks |
+| **DeepSeek-R1** | Short clean only | **REMOVE CoT**, short instructions only |
+| **Qwen3 (thinking)** | Short clean only | Treat like o3 — no CoT scaffolding |
+| **Qwen3 (non-thinking)** | RTF (A) | Full structure, explicit format, role assignment |
+| **MiniMax** | RTF (A) | Temperature 0-1 only, structured output |
+
+### Local Models
+
+| Tool | Template | Key Fixes |
+|------|----------|-----------|
+| **Ollama** | RTF (A) | Ask which model first, shorter prompts, simple structure |
+| **Llama / Mistral** | RTF (A) | Shorter prompts, flat structure, explicit role |
+| **CodeLlama** | File-Scope (G) | Coding-focused prompts, shorter |
+
+### Image/Video AI
+
+| Tool | Template | Key Fixes |
+|------|----------|-----------|
+| **Midjourney** | Visual Descriptor (I) | Comma-separated, negative prompt, parameters |
+| **DALL-E 3** | Visual Descriptor (I) | Prose works, text exclusion, foreground/background |
+| **Stable Diffusion** | Visual Descriptor (I) | `(word:weight)` syntax, CFG 7-12, negative mandatory |
+| **ComfyUI** | ComfyUI (K) | Separate positive/negative, checkpoint-specific |
+| **Reference editing** | Reference Image (J) | Delta only, attach reference first |
+| **Sora / Runway** | Visual Descriptor (I) | Camera movement, duration, cinematic language |
+
+### Full-Stack Generators
+
+| Tool | Template | Key Fixes |
+|------|----------|-----------|
+| **Bolt / v0 / Lovable** | RISEN (C) | Stack + version + what NOT to scaffold |
+| **Figma Make** | RISEN (C) | Component names from Figma, scope boundaries |
+| **Google Stitch** | RISEN (C) | Interface goal over implementation, Material Design 3 |
+
+### Autonomous Agents
+
+| Tool | Template | Key Fixes |
+|------|----------|-----------|
+| **Devin / SWE-agent** | ReAct + Stop Conditions (H) | Starting state + target state + forbidden actions |
+| **Manus / Perplexity Computer** | RISEN (C) | End deliverable focus, permission scope |
+
+### Quick Reference
+
+- **Claude Code, Devin, AutoGPT** → Template H (ReAct + Stop Conditions)
+- **Cursor, Windsurf, Copilot** → Template G (File-Scope)
+- **o3, o4-mini, R1, Qwen3-thinking** → **REMOVE CoT**, keep under 200 words
+- **Claude, GPT-4o, Gemini** → CoT allowed, use Template E if logic-heavy
+- **Midjourney, SD, DALL-E** → Template I (Visual Descriptor), negative prompts
+- **Complex multi-step** → Template C (RISEN)
 
 ## Auto-Initialization Check
 
@@ -495,17 +964,205 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
    - Yield a brief message to the user: `ℹ Auto-initialized ForgeNexus index and MCP server (missing setup).`
 3. **If exists**, continue normally without doing anything.
 
-**Step 0.2 — Memory (mem0) Check (required):**
+**Step 0.2 — System Requirements + Power Level Check (required):**
 
-Forgewright **requires** local project memory via `scripts/mem0-cli.py` (Python 3, no pip deps). The store is **`.forgewright/memory.jsonl`** in the project root.
+Forgewright requires **Node.js 18+** (ForgeNexus) and **Python 3** (local memory). Power level determines which tools are needed.
 
-1. Check if **`.forgewright/memory.jsonl`** exists in the project root.
-2. **If missing**, silently run:
-   - `bash <path-to-forgewright>/scripts/ensure-mem0.sh`  
-     (from the **host** project: optional explicit root `bash .../ensure-mem0.sh "$(pwd)"`)
-   - Default: resolves host root like `mcp-generate.sh` (sibling of the Forgewright repo with `.git`, else Forgewright repo root).
-3. **If `ensure-mem0.sh` fails** (e.g. no `python3`), tell the user mem0 is mandatory: install Python 3 and re-run the script. Do not skip session memory. **Exception:** `FORGEWRIGHT_SKIP_MEM0=1` (CI/headless only).
-4. **If setup succeeded**, yield briefly: `ℹ Initialized Forgewright memory (mem0). Run mem0-cli refresh if the store is empty.`
+**Step 0.2.1 — System Requirements Check:**
+
+Run these in parallel:
+
+```
+node_check:  node --version 2>/dev/null | grep -oE '[0-9]+' | head -1
+python_check: python3 --version 2>/dev/null
+memory_check:  [ -d .forgewright/memory_db ] && echo "ready" || echo "setup"
+settings_check: [ -f .forgewright/settings.md ] && echo "exists" || echo "missing"
+```
+
+**Decision matrix:**
+
+| node | python | memory | Action |
+|------|--------|--------|--------|
+| ≥18 | ≥3.8 | ready | ✅ Full Persistent — continue to Step 0.3 |
+| ≥18 | ≥3.8 | setup | ⧖ Memory setup needed — run memory-local.sh |
+| ≥18 | missing | — | ⚠️ Python missing — stop, tell user install Python 3 |
+| <18 | — | — | ⚠️ Node.js <18 — stop, tell user upgrade Node.js |
+| missing | — | — | ⚠️ Node.js missing — stop, tell user install Node.js 18+ |
+
+**If Node.js or Python missing (blocking):**
+```
+notify_user:
+  "⚠️ Missing required tools for Forgewright:
+
+   Node.js 18+ required for: ForgeNexus code intelligence, MCP server
+   Python 3.8+ required for: Local memory (ChromaDB + sentence-transformers)
+
+   How to install:
+   macOS:  brew install node python3
+   Linux:  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt install -y nodejs python3
+   Windows: Download from nodejs.org + python.org
+
+   After installing, re-run your request."
+  Options:
+  > "I'll install and try again (Recommended)"
+  > "Chat about this"
+```
+
+**If memory needs setup (non-blocking):**
+```
+# Run silently
+bash <path-to-forgewright>/scripts/memory-local.sh "$(pwd)" 2>/dev/null
+
+# If failed (no python3)
+Log: "⚠️ Memory init failed — install Python 3 first. Forcing: FORGEWRIGHT_SKIP_MEMORY=1"
+# CI/headless exemption auto-applied
+```
+
+**If all requirements met:**
+```
+Log: "✓ System requirements verified:
+  - Node.js: [version] ✓
+  - Python 3: [version] ✓
+  - Memory: [ready/setup needed] ✓"
+```
+
+**Step 0.2.2 — Power Level Check:**
+
+```
+IF .forgewright/settings.md exists:
+  Read engagement + execution from settings
+  Log: "✓ Power level loaded: [level]"
+  Continue to Step 0.3
+ELSE:
+  # First-time setup — ask user
+  Log: "⧖ Power level not set — prompting user"
+```
+
+**Prompt for power level (only if settings missing):**
+```
+notify_user:
+  "Forgewright has 5 power levels. Choose based on how much capability you need:
+
+  ⚡ Basic       — 55 skills, full pipeline (Node.js only)
+  ⚡⚡ Smart     — + ForgeNexus blast-radius analysis (Node.js only)
+  ⚡⚡⚡ Persistent — + Local memory with ChromaDB (Node.js + Python 3)
+  ⚡⚡⚡⚡ Research  — + NotebookLM grounded research (optional)
+  ⚡⚡⚡⚡⚡ Full Power — All of the above + crawl4ai, Midscene, Paperclip
+
+  Which level?"
+  Options:
+  > "⚡⚡⚡ Persistent (Recommended) — Standard for active projects"
+  > "⚡⚡⚡⚡⚡ Full Power — Maximum capability"
+  > "⚡⚡ Smart — Code intelligence without memory"
+  > "⚡ Basic — Just the pipeline"
+  > "Chat about this"
+```
+
+**After user selects:**
+
+```
+IF Full Power:
+  Log: "✓ Power level: Full Power"
+  # Prompt user about optional Full Power tools (required acknowledgment)
+  notify_user:
+    "⚡ Full Power selected! You have everything you need:
+
+     MANDATORY (auto-verified): Node.js 18+, Python 3.8+, local memory ✓
+
+     OPTIONAL — install anytime to unlock more capability:
+
+     📚 Research Mode
+        pip install notebooklm-mcp
+        (Grounded AI with zero hallucinations, citations from your sources)
+
+     🌐 Web Intelligence
+        pip install crawl4ai>=0.8.0
+        (Scrape & crawl any website for RAG or research)
+
+     📱 Mobile Testing
+        npm install -g @anthropic-ai/midscene
+        (AI-powered UI testing on real Android/iOS devices)
+
+     Which optional tools would you like to install now?"
+    Options:
+    > "Install all optional tools now (Recommended)"
+    > "Install [specific tool] only — I'll do others later"
+    > "Skip — I'll install manually later"
+    > "Chat about this"
+
+  IF user selects "Install all":
+    Log: "Installing optional Full Power tools..."
+    # Try pip tools first (each tool independently — if one fails, continue others)
+    Run: pip install notebooklm-mcp 2>/dev/null && Log: "  ✓ notebooklm-mcp" || Log: "  ⚠ notebooklm-mcp skipped (pip error)"
+    Run: pip install crawl4ai>=0.8.0 2>/dev/null && Log: "  ✓ crawl4ai" || Log: "  ⚠ crawl4ai skipped (pip error)"
+    # npm tool last (requires node)
+    Run: npm install -g @anthropic-ai/midscene 2>/dev/null && Log: "  ✓ Midscene" || Log: "  ⚠ Midscene skipped (npm error)"
+    # Verify which tools are now importable / executable
+    Run: python3 -c "import notebooklm_mcp" 2>/dev/null && npb="✓" || npb="⚠"
+    Run: python3 -c "import crawl4ai" 2>/dev/null && crw="✓" || crw="⚠"
+    Run: which midscene >/dev/null 2>&1 && mids="✓" || mids="⚠"
+    Log: "✓ Optional tools status: notebooklm-mcp [$npb]  crawl4ai [$crw]  Midscene [$mids]"
+    Log: "  Full install commands (if any skipped):"
+    Log: "    pip install notebooklm-mcp crawl4ai>=0.8.0"
+    Log: "    npm install -g @anthropic-ai/midscene"
+  IF user selects specific tool:
+    Log: "Installing [selected tool]..."
+    Run: [corresponding install command]
+    Log: "✓ [tool] installed"
+  IF user selects skip:
+    Log: "⧖ Optional tools deferred — run install commands manually when ready"
+
+IF Research:
+  Log: "✓ Power level: Research"
+  Log: "Optional: pip install notebooklm-mcp"
+
+IF Persistent:
+  Log: "✓ Power level: Persistent — Local memory ready"
+
+IF Smart:
+  Log: "✓ Power level: Smart — ForgeNexus ready"
+
+IF Basic:
+  Log: "✓ Power level: Basic"
+```
+
+**Write settings file:**
+
+```bash
+mkdir -p .forgewright production
+cat > .forgewright/settings.md << 'EOF'
+# Pipeline Settings
+Power_Level: [selected]
+Engagement: [express/standard/thorough/meticulous — default: standard]
+Execution: [parallel/sequential — default: parallel]
+Review_Mode: [full/lean/solo — default: lean]
+EOF
+```
+
+**Review Mode Configuration:**
+
+Follow `skills/_shared/protocols/review-intensity.md` for review mode selection:
+- **Full** — Director specialists review at every step
+- **Lean** (default) — Reviews only at phase gate transitions
+- **Solo** — No reviews, maximum speed
+
+```bash
+mkdir -p production
+echo "lean" > production/review-mode.txt
+```
+
+User can override per-invocation with `--review [mode]` flag.
+
+**Log checkpoint:**
+```
+Log: "✓ System init complete:
+  - Node.js: [version] ✓
+  - Python 3: [version] ✓
+  - Memory: [ready] ✓
+  - Power level: [level] ✓
+  - Review mode: [mode] ✓
+  - Settings: written to .forgewright/settings.md"
+```
 
 ## Auto-Update Check
 
@@ -554,9 +1211,9 @@ Run AFTER update check, BEFORE mode classification. Follows `skills/_shared/prot
    - If last session completed → log summary, continue to new request
    - If first session → continue normally
 
-3. **Load memory context (mem0 is required — Step 0.2):**
-   - Run `python3 <path-to-forgewright>/scripts/mem0-cli.py search "<project-name> <user-request-keywords>" --limit 5 --format compact` (or `./scripts/mem0-cli.py` when the project is the Forgewright repo)
-   - If the store is empty or search returns nothing → run `python3 ... mem0-cli.py refresh` once, then search again
+3. **Load memory context (required for Persistent power level — Step 0.2):**
+   - Run `python3 <path-to-forgewright>/scripts/local_memory.py search "<project-name> <user-request-keywords>" --limit 5` (or `./scripts/local_memory.py` when the project is the Forgewright repo)
+   - If the store is empty or search returns nothing → run `python3 ... local_memory.py` again to verify setup
    - Also read `.forgewright/code-conventions.md` if it exists for extra conventions
 
 4. **Detect manual changes:**
@@ -567,6 +1224,73 @@ Run AFTER update check, BEFORE mode classification. Follows `skills/_shared/prot
    - Read `.forgewright/quality-history.json` → show trend of last 5 sessions
 
 Log: `✓ Session context loaded — [project name], last session: [summary or "first session"]`
+
+**Step 0.6 — Cursor Subagent Context Preparation:**
+
+Run AFTER session context is loaded, AFTER chat-interpreter (Step -1), BEFORE any skill or phase execution. This ensures subagents have clean, bounded context.
+
+1. **Ensure subagent context directory exists:**
+   ```
+   mkdir -p .forgewright/subagent-context/
+   ```
+
+2. **Read chat-interpreter output:**
+   ```
+   Read .forgewright/subagent-context/INTERPRETED_REQUEST.md
+   → This is the authoritative source of user intent
+   → All skills use this instead of the raw chat message
+   ```
+
+3. **Write PIPELINE_SUMMARY.md** (refresh for each new phase): (refresh for each new phase):
+   - Read `.forgewright/project-profile.json` if exists
+   - Read current phase status from `.forgewright/task.md`
+   - Read approved architecture from `docs/architecture/` (if exists)
+   - Read BRD summary from `product-manager/BRD/` (if exists)
+   - Compress to ≤ 2,000 tokens
+   - Write to `.forgewright/subagent-context/PIPELINE_SUMMARY.md`
+
+3. **Write REVIEWER_CONTRACT.md** (per-review, generated dynamically):
+   ```
+   For each review task, write:
+   - REVIEWER_CONTRACT.md with scope, acceptance criteria, forbidden paths
+   - Reference: .forgewright/subagent-context/REVIEWER_CONTRACT_TEMPLATE.md
+   ```
+
+4. **Update SECURITY_STANDARDS.md** (refresh for HARDEN phase):
+   - Run security-engineer skill output through SECURITY_STANDARDS template
+   - Write to `.forgewright/subagent-context/SECURITY_STANDARDS.md`
+
+5. **Log:**
+   ```
+   ✓ Subagent context prepared — [N] files in .forgewright/subagent-context/
+   ```
+
+**Cursor Subagent Invocation Convention:**
+
+When invoking a Cursor subagent, use the exact pattern below:
+
+```
+Invoke: /[subagent-name] [task context]
+Example: /verifier Review the T3a backend services delivery
+Example: /spec-reviewer Check T3b frontend against CONTRACT.json
+Example: /quality-reviewer Assess T3a services code quality
+Example: /security-auditor Perform read-only OWASP audit on T3a auth code
+```
+
+**Built-in Cursor EXPLORE subagent** (automatic, no explicit invocation needed):
+
+The Cursor built-in `explore` subagent runs 10 parallel searches simultaneously using a fast model. This is automatically used by Cursor's Agent for context-heavy exploration. In the DEFINE phase (Step 4: Codebase Discovery), use natural language and the explore subagent handles parallel search automatically — you do NOT need to manually invoke it.
+
+**Available Cursor Subagents:**
+
+| Subagent | Model | Best For | Invocation |
+|----------|-------|---------|-----------|
+| `chat-interpreter` | fast | Translates chat to structured request | `/chat-interpreter [message]` |
+| `explore` | fast (built-in) | 10 parallel codebase searches | Automatic (Cursor Agent) |
+| `verifier` | fast | Confirm deliverables actually work | `/verifier [task]` |
+| `spec-reviewer` | fast | Verify spec compliance | `/spec-reviewer [task]` |
+| `quality-reviewer` | inherit | Deep quality/architecture review | `/quality-reviewer [task]` |
+| `security-auditor` | inherit | OWASP read-only audit | `/security-auditor [task]` |
 
 ## Full Build Pipeline
 
@@ -600,6 +1324,9 @@ mkdir -p .forgewright/
 | `quality-dashboard.md` | Quality scoring & reporting: real-time tracking, final dashboard, machine-readable JSON reports, cross-session trending, early warning |
 | `graceful-failure.md` | Retry limits, stuck detection, graceful exit format, failure categories — prevents skills from looping on impossible tasks |
 | `code-intelligence.md` | ForgeNexus-powered knowledge graph: impact analysis, 360° context, process tracing, pre-commit risk — optional enhancement for deep code awareness |
+| `prompt-templates.md` | 12 prompt templates auto-selected by task type: RTF, CO-STAR, RISEN, CRISPE, Chain of Thought, Few-Shot, File-Scope, ReAct+Stop, Visual Descriptor, Reference Image, ComfyUI, Prompt Decompiler |
+| `credit-killing-patterns.md` | 35 patterns that waste tokens: 7 task, 6 context, 6 format, 6 scope, 5 reasoning, 5 agentic |
+| `prompt-techniques.md` | 5 safe techniques: Role Assignment, Few-Shot, XML Tags, Grounding Anchors, Chain of Thought. Also lists forbidden techniques: ToT, GoT, USC, prompt chaining, MoE |
 
 Read these from the plugin's `skills/_shared/protocols/` directory and copy them. If plugin path is unavailable, write from the summaries above.
 
@@ -614,6 +1341,20 @@ Read these from the plugin's `skills/_shared/protocols/` directory and copy them
    find_by_name("Dockerfile*"), find_by_name("*", ".github/workflows/"), find_by_name("*", "infrastructure/"), find_by_name("*", "terraform/")
    find_by_name(".production-grade.yaml")
    ```
+
+   **Cursor EXPLORE Enhancement (automatic):**
+
+   Cursor's built-in `explore` subagent can be triggered naturally. When the Agent sees you need to understand the codebase structure, it automatically runs up to 10 parallel searches using the `explore` subagent — each with a fast model, consuming no context in the main conversation. The explore subagent returns only the synthesized findings.
+
+   To leverage this explicitly in the DEFINE phase, frame your discovery queries naturally:
+   ```
+   Agent (you): "Explore the backend structure — find services, APIs, and database models"
+   → Cursor Agent spawns explore subagent with 10 parallel searches
+   → explore subagent returns: [list of services], [API endpoints], [DB schemas], [key patterns]
+   → You inject results into project profile
+   ```
+
+   This replaces manual `find_by_name` calls for complex discovery with a more intelligent, semantically-driven approach. Use both — `find_by_name` for exact file discovery, explore for architectural pattern analysis.
 
    **Classify the project:**
 
@@ -873,8 +1614,8 @@ Write analysis report to `.forgewright/scope-analysis.md` for future reference.
 When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-dispatch skill (`skills/parallel-dispatch/SKILL.md`) to spawn git worktrees, distribute Task Contracts, and merge results. When **Sequential** is selected, the pipeline behaves as before.
 
 6. **Detect existing workspace & load memory** — if `.forgewright/` has prior state, use session-lifecycle resume protocol. If `.forgewright/session-log.json` has interrupted state, offer resume. Otherwise offer clean start via notify_user.
-   - **Memory load:** Run `python3 scripts/mem0-cli.py search "<project-name> <user-request-keywords>" --limit 5 --format compact` to retrieve relevant project context. Inject results into your context for this session.
-   - If no results or memory is empty, run `python3 scripts/mem0-cli.py refresh` once to bootstrap memory from project files.
+   - **Memory load:** Run `python3 scripts/local_memory.py search "<project-name> <user-request-keywords>" --limit 5` to retrieve relevant project context. Inject results into your context for this session.
+   - If no results or memory is empty, verify setup with `python3 scripts/local_memory.py stats`.
 
 7. **Polymath pre-flight check:**
    - If `.forgewright/polymath/handoff/context-package.md` exists → read it, pass to PM as pre-loaded context. Log: `✓ Polymath context loaded — skipping redundant discovery`
@@ -916,7 +1657,7 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
 Create a `task.md` file in `.forgewright/` with all 13 tasks and their statuses. Track dependencies and completion.
 
 10. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
-   - **Memory save (session start):** Run `python3 scripts/mem0-cli.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
+   - **Memory save (session start):** Run `python3 scripts/local_memory.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
 
 **Key principle:** Research, plan, start building. Pause at the 3 approval gates. **Exception — greenfield Full Build:** BA elicitation is a **hard gate before PM**; do not jump to T1 until `ba-package.md` exists and minimum rounds above are satisfied (unless an explicit escape hatch in 7.5 was used). In Thorough/Meticulous mode, show phase summaries between major phases (inform; strategic gates still rule).
 
@@ -945,9 +1686,10 @@ Call these hooks at the appropriate lifecycle points:
 | Phase completes | `PHASE_COMPLETE(name, summary)` | Update session-log, save to memory, update quality metrics |
 | Task completes | `TASK_COMPLETE(id, name, status, summary)` | Update session-log |
 | Gate decided | `GATE_DECISION(gate#, decision, feedback)` | Update session-log, save decision to memory |
+| Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Save architecture to memory — see Gate 2.5 |
 | Error occurs | `ERROR(task_id, type, details)` | Update session-log, save blocker to memory |
 | Pipeline ends | Session End | Summarize, save to memory, update project profile |
-| User request answered | `TURN_CLOSE` | Mandatory mem0 `add` — see session-lifecycle §Per-request memory |
+| User request answered | `TURN_CLOSE` | Mandatory memory `add` — see session-lifecycle §Per-request memory |
 
 ## User Experience Protocol
 
@@ -972,7 +1714,27 @@ then re-presents the original gate options when the user is ready.
 
 This ensures non-technical users can understand what they're approving without the orchestrator needing to be the translator.
 
-### Strategic Gates (3 total)
+### Review Mode Integration
+
+At each gate, adapt behavior based on `production/review-mode.txt`:
+
+| Mode | Gate Behavior |
+|------|--------------|
+| **Full** | Run director reviews, show detailed findings, longer approval flow |
+| **Lean** | Quick validation, abbreviated findings, streamlined approval |
+| **Solo** | Skip gate pause, auto-proceed with quality gate score only |
+
+```
+REVIEW_MODE=$(cat production/review-mode.txt 2>/dev/null || echo "lean")
+if [ "$REVIEW_MODE" = "solo" ]; then
+  # Skip gate pause, log quality score
+  Log: "Quality Gate Score: [X]/100 — Auto-proceeding (Solo mode)"
+else
+  # Show gate options as normal
+fi
+```
+
+### Strategic Gates (4 total — 3 user-facing + 1 automated)
 
 **Gate 1 — BRD Approval** (after T1):
 
@@ -998,16 +1760,94 @@ Architecture complete: [tech stack summary]. Approve to start building?
 4. **Chat about this** — Free-form input about the architecture
 ```
 
+**Gate 2.5 — Architecture Memory Persistence** (auto, no user interaction):
+
+After Gate 2 is approved, automatically persist architecture decisions to memory:
+
+```
+1. Extract key architecture decisions:
+   - Tech stack (language, framework, key libraries)
+   - Service decomposition (services, modules)
+   - API style (REST, GraphQL, etc.)
+   - Database choices
+   - Key architectural patterns
+
+2. Run memory persistence commands:
+   # Main architecture
+   python3 scripts/local_memory.py add "ARCH: [tech stack] | SERVICES: [service list] | REASON: [key rationale]" --category architecture
+   
+   # Individual ADRs
+   python3 scripts/local_memory.py add "DECISION: [ADR title] | ALTERNATIVE: [rejected options] | REASON: [why chosen]" --category decisions
+   
+   # Project scope
+   python3 scripts/local_memory.py add "PROJECT: [project name] | SCOPE: [feature list] | STATUS: active" --category project
+
+3. Log: "✓ Architecture decisions persisted to memory — [N] decisions saved"
+```
+
+**Why this matters:** Future sessions can search `local_memory.py search "architecture"` to retrieve the approved stack without re-reading all architecture files.
+
 **Gate 3 — Production Readiness** (after T9):
 
-Notify user via notify_user:
+**Read review mode first:**
 ```
-All phases complete. [summary]. Ship it?
+REVIEW_MODE=$(cat production/review-mode.txt 2>/dev/null || echo "lean")
+```
 
-1. **Ship it — production ready (Recommended)** — Finalize assembly and deploy
-2. **Show full report** — Display complete pipeline summary
+**Solo mode: Auto-proceed with quality gate score:**
+```
+if [ "$REVIEW_MODE" = "solo" ]; then
+  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  Log: "Phase 5 — SUSTAIN Complete [Review: Solo]"
+  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  Log: "Quality Gate Score: [X]/100"
+  Log: "All phases complete — auto-proceeding (Solo mode)"
+  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  # Skip to final summary
+fi
+```
+
+**Step G3.1 — Run VERIFIER subagent (before showing Gate 3 to user):**
+
+Before presenting Gate 3 options to the user, run the Cursor `verifier` subagent to confirm all work is actually complete:
+
+```
+Invoke: /verifier Confirm all pipeline deliverables are complete and functional for [project-name]
+```
+
+The verifier subagent:
+1. Reads `.forgewright/subagent-context/PIPELINE_SUMMARY.md` for scope
+2. Reads all DELIVERY.json from completed tasks
+3. Runs compilation and tests for each deliverable
+4. Scans for TODOs, secrets, and obvious bugs
+5. Writes report to `.forgewright/subagent-context/VERIFIER_REPORT.md`
+
+**Step G3.2 — Present Gate 3 options (using verifier report):**
+
+Notify user via notify_user (with verifier report summary):
+```
+All phases complete. Ship it?
+
+## Verifier Report Summary
+[VERIFIER_REPORT.md summary — PASS/FAIL count]
+
+1. **Ship it — production ready (Recommended)** — Verifier confirmed ✓
+2. **Show full report** — Display complete pipeline summary + verifier details
 3. **Fix issues first** — Address remaining findings before shipping
 4. **Chat about this** — Free-form input about production readiness
+```
+
+If verifier returned **FAIL** or **PARTIAL**:
+```
+⚠️ Verifier found issues. Review before shipping.
+
+## Verifier Report
+[FAIL/PARTIAL findings from VERIFIER_REPORT.md]
+
+1. **Fix and retry verifier** — Address issues, re-run /verifier
+2. **Show full report** — See all findings in detail
+3. **Override — ship anyway** — Proceed with known issues (not recommended)
+4. **Chat about this** — Discuss the findings
 ```
 
 ## Task Dependency Graph
@@ -1267,7 +2107,7 @@ The dashboard includes:
 Also display the legacy summary for backward compatibility:
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║          FORGE17 v{local_version} — COMPLETE                    ║
+║          Forgewright v{local_version} — COMPLETE                    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Project: <name>                                             ║
 ║  Quality Score: [XX]/100 (Grade [A-F])                       ║
@@ -1321,3 +2161,15 @@ For ALL brownfield projects (any mode, not just Full Build), activate the safety
 | Modifying protected paths | Check brownfield-safety protected paths before ANY file write |
 | No regression check in brownfield | After EACH build skill, verify existing tests still pass against baseline |
 | Not saving session state | Call session lifecycle hooks at every phase/task/gate completion |
+
+## Execution Learnings
+
+> Auto-generated by ASIP. DO NOT DELETE.
+
+### 2026-04-24 — Architectural: Self-Improving Agentic System Design
+- **Problem:** Needed to design ASIP protocol for adaptive skill improvement
+- **Failed Attempts:** N/A (initial design)
+- **Research Source:** https://notebooklm.google.com/notebook/ca68602f-fcf2-4ab9-b8e9-9743868e18b6
+- **Solution:** ASIP design combines ACE (incremental delta updates) + Multi-Agent Reflexion (diverse perspectives) + HyperAgents (self-modification)
+- **Key Insight:** Self-improvement should be persistent (in code files), human-readable, and transferable. Avoid context collapse by using incremental updates.
+- **Apply When:** Designing any self-improvement loop, skill adaptation, or knowledge retention system
