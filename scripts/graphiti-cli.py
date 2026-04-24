@@ -90,22 +90,22 @@ def check_dependencies():
     if provider not in ("openai", "anthropic", "gemini", "minimax"):
         issues.append(f"Unsupported provider: {provider}")
     
-    # Check FalkorDB
+    # Check Neo4j
     try:
-        import falkordb
+        import neo4j
     except ImportError:
-        issues.append("falkordb not installed")
+        issues.append("neo4j not installed")
     
     return issues
 
 
-def check_falkordb_connection():
-    """Check if FalkorDB is running."""
+def check_neo4j_connection():
+    """Check if Neo4j is running."""
     try:
         import socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(2)
-        result = sock.connect_ex(("localhost", 6379))
+        result = sock.connect_ex(("localhost", 7687))
         sock.close()
         return result == 0
     except Exception:
@@ -135,15 +135,15 @@ def cmd_setup(args):
     
     print_success("All dependencies available")
     
-    # Check FalkorDB connection
-    print("\n🔌 Checking FalkorDB connection...")
-    if not check_falkordb_connection():
-        print_warning("FalkorDB not running")
+    # Check Neo4j connection
+    print("\n🔌 Checking Neo4j connection...")
+    if not check_neo4j_connection():
+        print_warning("Neo4j not running")
         print("   Start with: docker-compose -f docker-compose.graphiti.yml up -d")
-        print("   Or: docker run -p 6379:6379 falkordb/falkordb:latest")
+        print("   Or: docker run -p 7474:7474 -p 7687:7687 neo4j:latest")
         return 1
     
-    print_success("FalkorDB connected")
+    print_success("Neo4j connected")
     
     # Check API configuration
     print("\n🔑 Checking API Configuration...")
@@ -529,10 +529,10 @@ def cmd_health(args):
         print("   Set: export GRAPHITI_API_KEY=sk-...")
         all_ok = False
     
-    # Check FalkorDB
-    print("\n🗄️ FalkorDB:")
-    if check_falkordb_connection():
-        print_success("FalkorDB running")
+    # Check Neo4j
+    print("\n🗄️ Neo4j:")
+    if check_neo4j_connection():
+        print_success("Neo4j running")
         try:
             client = SyncGraphitiClient()
             stats = client.stats()
@@ -541,7 +541,7 @@ def cmd_health(args):
         except Exception as e:
             print_warning(f"Cannot access graph: {e}")
     else:
-        print_error("FalkorDB not running")
+        print_error("Neo4j not running")
         print("   Start with: docker-compose -f docker-compose.graphiti.yml up -d")
         all_ok = False
     

@@ -23,13 +23,11 @@ from dataclasses import dataclass, field
 # Graphiti core
 try:
     from graphiti_core import Graphiti
-    from graphiti_core.driver.falkordb_driver import FalkorDriver
+    from graphiti_core.driver.neo4j_driver import Neo4jDriver
     from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
     from graphiti_core.embedder.openai import OpenAIEmbedder
     from graphiti_core.embedder.openai import OpenAIEmbedderConfig
     from graphiti_core.llm_client.config import LLMConfig
-    from graphiti_core.language_models import OpenAIChatModel
-    from graphiti_core.embedder import EmbedderConfig
     GRAPHITI_AVAILABLE = True
 except ImportError:
     GRAPHITI_AVAILABLE = False
@@ -214,11 +212,11 @@ class GraphitiClient:
                 "Graphiti not available. Install: pip install -r requirements-graphiti.txt"
             )
         
-        # FalkorDB driver
-        driver = FalkorDriver(
-            host=os.environ.get("FALKORDB_HOST", "localhost"),
-            port=int(os.environ.get("FALKORDB_PORT", "6379")),
-            database=self.graph_name,
+        # Neo4j driver
+        driver = Neo4jDriver(
+            uri=os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
+            user=os.environ.get("NEO4J_USER", "neo4j"),
+            password=os.environ.get("NEO4J_PASSWORD", "neo4j"),
         )
         
         # LLM config (API-based, OpenAI-compatible)

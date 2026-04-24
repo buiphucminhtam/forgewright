@@ -1,22 +1,23 @@
-# Docker Compose for Graphiti + FalkorDB
+# Docker Compose for Graphiti + Neo4j
 # Usage: docker-compose -f docker-compose.graphiti.yml up -d
 
 services:
-  falkordb:
-    image: falkordb/falkordb:latest
-    container_name: forgewright-falkordb
+  neo4j:
+    image: neo4j:latest
+    container_name: forgewright-neo4j
     ports:
-      - "6379:6379"
+      - "7474:7474"
+      - "7687:7687"
     environment:
-      - FALKORDB_DATABASE=${FALKORDB_DATABASE:-forgewright_memory}
+      - NEO4J_AUTH=none
     volumes:
-      - falkordb_data:/data
+      - neo4j_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "neo4j", "RETURN 1"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  falkordb_data:
+  neo4j_data:
     driver: local
