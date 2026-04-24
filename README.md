@@ -185,11 +185,28 @@ flowchart TB
 ```bash
 # One command does everything
 cd your-project
-bash forgewright/scripts/forgewright-mcp-setup.sh
+bash forgewright/scripts/forgewright-setup.sh
 
 # Restart your IDE, then:
 # Type "/onboard" to analyze your project
 # Type "/mcp" to check status
+```
+
+Or use the quick setup for fastest results:
+
+```bash
+# Ultra-simple one-liner
+bash forgewright/scripts/forgeNexus-quick-setup.sh
+```
+
+**For existing installations, update with:**
+
+```bash
+# Check for updates
+bash forgewright/scripts/forgewright-update.sh --check
+
+# Update + migrate + reindex everything
+bash forgewright/scripts/forgewright-update.sh --all
 ```
 
 ---
@@ -385,14 +402,44 @@ A: Yes! Each project has isolated memory and index.
 |---------|-----|
 | MCP not working | Restart IDE, run `--diagnose` |
 | Skills not found | Check AGENTS.md + CLAUDE.md copied |
-| Stale index | Run `npx forgenexus analyze` |
+| Stale index | Run `npx forgenexus analyze --force` |
 | Submodule issues | `git submodule update --init --recursive` |
+| Need to update | `bash forgewright/scripts/forgewright-update.sh` |
 
 ```bash
 # Quick diagnostics
-bash forgewright/scripts/forgewright-mcp-setup.sh --check
-bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose
+bash forgewright/scripts/forgewright-setup.sh --check
+bash forgewright/scripts/forgewright-setup.sh --diagnose
+
+# Update ForgeWright
+bash forgewright/scripts/forgewright-update.sh --check
+bash forgewright/scripts/forgewright-update.sh --all
 ```
+
+---
+
+## ForgeNexus — Code Intelligence CLI
+
+ForgeNexus indexes your codebase and provides instant code context:
+
+```bash
+# Index a repository
+npx forgenexus analyze
+
+# With semantic search
+npx forgenexus analyze --embeddings
+
+# Query code
+npx forgenexus query "findUser"
+npx forgenexus context getUser
+npx forgenexus impact validateToken
+
+# Check status
+npx forgenexus status
+npx forgenexus list
+```
+
+See [`forgenexus/ARCHITECTURE.md`](forgenexus/ARCHITECTURE.md) for full documentation.
 
 ---
 
