@@ -38,3 +38,8 @@ __pycache__/
 
 # Antigravity planning directories (ephemeral planning notes)
 antigravity/planning/
+
+# Local sensitive configuration and credentials
+.tieu-mo-config.md
+scripts/cf-dns-add.sh
+scripts/cf-dns-remove.sh
