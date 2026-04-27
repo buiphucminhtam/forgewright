@@ -243,13 +243,9 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- forgenexus:start -->
 # ForgeNexus — Code Intelligence
 
-<<<<<<< Updated upstream
-> **NOTE:** This block describes the self-hosted ForgeNexus engine built into Forgewright. It replaces the previous `forgenexus` npm dependency. Run `forgenexus analyze` to index any codebase.
-=======
-This project is indexed by GitNexus as **forgewright** (2868 symbols, 3021 relationships, 25 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by ForgeNexus as **forgewright** (2868 symbols, 3021 relationships, 25 execution flows). Use the ForgeNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
->>>>>>> Stashed changes
+> If any ForgeNexus tool warns the index is stale, run `npx forgenexus analyze` in terminal first.
 
 ## Always Do
 
@@ -320,41 +316,19 @@ Before completing any code modification task, verify:
 4. All d=1 (WILL BREAK) dependents were updated
 
 ## Keeping the Index Fresh
-<<<<<<< Updated upstream
 
 After committing code changes, the ForgeNexus index becomes stale. Re-run analyze to update it:
-=======
-
-After committing code changes, the GitNexus index becomes stale. Re-run analyze to update it:
 
 ```bash
-npx gitnexus analyze
+npx forgenexus analyze
 ```
 
 If the index previously included embeddings, preserve them by adding `--embeddings`:
 
 ```bash
-npx gitnexus analyze --embeddings
+npx forgenexus analyze --embeddings
 ```
 
-To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.embeddings` field shows the count (0 means no embeddings). **Running analyze without `--embeddings` will delete any previously generated embeddings.**
-
-> Claude Code users: A PostToolUse hook handles this automatically after `git commit` and `git merge`.
-
-## CLI
-
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
->>>>>>> Stashed changes
-
-```bash
-npx forgenexus analyze
-```
+> Forgewright users: The MCP server handles this automatically after `git commit` and `git merge` via PostToolUse hooks.
 
 <!-- forgenexus:end -->

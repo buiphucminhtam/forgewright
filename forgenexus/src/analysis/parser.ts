@@ -47,7 +47,10 @@ async function loadLanguage(lang: string): Promise<any> {
       } catch { return null }
     }
     case 'python': {
-      try { return (_require('tree-sitter-python') as any).default ?? null }
+      try { 
+        const mod = _require('tree-sitter-python') as any;
+        return mod.language ?? mod.default ?? null;
+      }
       catch { return null }
     }
     case 'go': {

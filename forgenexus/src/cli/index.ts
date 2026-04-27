@@ -17,6 +17,8 @@ import { analyze } from './analyze.js';
 import { startMCPServer } from '../mcp/server.js';
 import { status } from './status.js';
 import { clean } from './clean.js';
+import { doctor } from './doctor.js';
+import { check } from './check.js';
 import { Registry } from '../data/registry.js';
 import { ForgeDB } from '../data/db.js';
 
@@ -24,8 +26,9 @@ export { evaluateCommand } from './evaluate.js';
 export { wikiCommand, generateWiki } from './wiki.js';
 export { impactCommand, analyzeImpact } from './impact.js';
 export { queryCommand, query } from './query.js';
+export { doctor } from './doctor.js';
 
-const VERSION = '2.2.1'
+const VERSION = '2.3.0'
 
 interface GlobalFlags {
   silent?: boolean
@@ -66,6 +69,8 @@ function printHelp() {
 \x1b[1mCommands:\x1b[0m
   \x1b[32manalyze\x1b[0m    Index a repository (default: current directory)
   \x1b[32mstatus\x1b[0m     Check index freshness and stats
+  \x1b[32mdoctor\x1b[0m     Diagnose setup issues and suggest fixes
+  \x1b[32mcheck\x1b[0m      Quick status check (summary only)
   \x1b[32mlist\x1b[0m       List all indexed repositories
   \x1b[32mquery\x1b[0m      Search the code base
   \x1b[32mcontext\x1b[0m    Get symbol context (alias: c)
@@ -81,12 +86,18 @@ function printHelp() {
   --embeddings     Enable embedding generation
   --no-incremental Disable incremental mode
   --lang <lang>    Specify language (default: all)
+  --quick          Fast index (files modified in last 30 days)
+
+\x1b[1mdoctor options:\x1b[0m
+  --fix            Attempt automatic repairs
 
 \x1b[1mExamples:\x1b[0m
   forgenexus analyze                    # Index current directory
   forgenexus analyze /path/to/repo     # Index specific directory
   forgenexus analyze --force           # Force full rebuild
   forgenexus analyze --embeddings      # With semantic search
+  forgenexus doctor                    # Diagnose issues
+  forgenexus doctor --fix              # Auto-fix issues
   forgenexus status                    # Check index
   forgenexus query "findUser"          # Search symbol
   forgenexus context getUser           # Get symbol details
@@ -131,6 +142,7 @@ export async function main() {
           includeEmbeddings?: boolean
           incremental?: boolean
           languages?: string[]
+          quick?: boolean
         } = { repoPath: process.cwd() }
 
         for (let i = 0; i < commandArgs.length; i++) {
@@ -138,6 +150,7 @@ export async function main() {
           if (arg === '--force') analyzeOpts.force = true
           else if (arg === '--embeddings') analyzeOpts.includeEmbeddings = true
           else if (arg === '--no-incremental') analyzeOpts.incremental = false
+          else if (arg === '--quick') analyzeOpts.quick = true
           else if (arg === '--lang' && commandArgs[i + 1]) {
             analyzeOpts.languages = [commandArgs[++i]]
           }
@@ -154,6 +167,20 @@ export async function main() {
       case 'status': {
         const path = commandArgs[0] || process.cwd()
         status({ repoPath: path })
+        break
+      }
+
+      case 'doctor': {
+        const path = commandArgs[0] || process.cwd()
+        const fix = commandArgs.includes('--fix')
+        const verbose = commandArgs.includes('--verbose')
+        doctor({ repoPath: path, fix, verbose })
+        break
+      }
+
+      case 'check': {
+        const path = commandArgs[0] || process.cwd()
+        check({ repoPath: path })
         break
       }
 

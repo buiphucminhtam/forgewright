@@ -503,6 +503,16 @@ verify_installation() {
         log_warn "Dependencies not installed (will auto-install on first use)"
     fi
 
+    # Run forgenexus doctor
+    if [[ -f "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js" ]]; then
+        ((checks++))
+        log_step "Running ForgeNexus diagnostics..."
+        node "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js" doctor "${PROJECT_ROOT}" 2>/dev/null || {
+            log_warn "ForgeNexus doctor failed (index may not exist yet)"
+        }
+        ((passed++))
+    fi
+
     return 0
 }
 
@@ -543,6 +553,13 @@ console.log('  Generated: ' + m.generated_at);
         log_ok "Server: $server_dir"
     else
         log_error "Server: NOT FOUND (run setup)"
+    fi
+    echo ""
+
+    # ForgeNexus status
+    if [[ -f "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js" ]]; then
+        log_step "ForgeNexus: Running quick check..."
+        node "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js" check "${PROJECT_ROOT}" 2>/dev/null || true
     fi
     echo ""
 

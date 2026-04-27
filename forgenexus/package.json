@@ -1,6 +1,6 @@
 {
   "name": "forgenexus",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "ForgeNexus — Self-hosted code intelligence for AI agents",
   "type": "module",
   "main": "dist/index.js",

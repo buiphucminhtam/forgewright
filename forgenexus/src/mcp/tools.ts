@@ -17,6 +17,17 @@ import { hybridSearch, type HybridResult } from '../data/embeddings.js'
 import { executeCypher, formatCypherResult } from './cypher-executor.js'
 import { spawn } from 'child_process'
 import { promisify } from 'util'
+import {
+  ForgeNexusErrorCode,
+  createErrorResponse,
+  formatErrorAsText,
+} from '../errors/verified.js'
+import {
+  searchContent,
+  getSymbolContext,
+  formatFallbackResult,
+  isFallbackNeeded,
+} from './fallback.js'
 
 const exec = promisify(execSync)
 
@@ -33,12 +44,30 @@ export function registerTools(server: Server, db: ForgeDB, cwd: string): void {
     const { name, arguments: args } = request.params
     try {
       const tool = TOOLS.find((t) => t.name === name)
-      if (!tool) throw new Error(`Unknown tool: ${name}`)
+      if (!tool) {
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.TOOL_NOT_FOUND,
+          `Unknown tool: ${name}. Run 'forgenexus tools' to see available tools.`,
+          {
+            recoveryHint: 'Use one of the available tools listed in the tools list.',
+            details: { requestedTool: name }
+          }
+        )
+        return { content: [{ type: 'text', text: formatErrorAsText(error) }], isError: true }
+      }
       const result = await tool.handler(db, args ?? {}, cwd)
       return { content: [{ type: 'text', text: result }] }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      return { content: [{ type: 'text', text: `Error: ${msg}` }], isError: true }
+      const error = createErrorResponse(
+        ForgeNexusErrorCode.TOOL_EXECUTION_FAILED,
+        msg,
+        {
+          recoveryHint: 'Check the error message above. If this persists, run "forgenexus doctor" to diagnose issues.',
+          details: { tool: name }
+        }
+      )
+      return { content: [{ type: 'text', text: formatErrorAsText(error) }], isError: true }
     }
   })
 }
@@ -91,7 +120,17 @@ on other tools (query, context, impact, etc.) to target the correct one.`,
     },
     handler: async (db) => {
       const repos = db.listRepos()
-      if (repos.length === 0) return "No indexed repositories. Run 'forgenexus analyze' first."
+      if (repos.length === 0) {
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.INDEX_NOT_FOUND,
+          'No indexed repositories found. The index may not exist or is empty.',
+          {
+            recoveryHint: "Run 'forgenexus analyze' to index your codebase.",
+            quickStart: 'forgenexus analyze --quick  # Fast initial index'
+          }
+        )
+        return formatErrorAsText(error)
+      }
       return repos
         .map(
           (r) =>
@@ -141,7 +180,22 @@ TIPS:
       },
       required: ['query'],
     },
-    handler: async (db, args) => {
+    handler: async (db, args, cwd) => {
+      // Check if graph is available
+      const repos = db.listRepos()
+      const useGraph = repos.length > 0
+
+      if (!useGraph) {
+        // Use fallback search
+        const result = await searchContent({
+          query: args.query,
+          cwd,
+          maxResults: args.limit ?? 5,
+        })
+        return formatFallbackResult(result)
+      }
+
+      // Graph-based search
       const provider = (process.env.EMBEDDING_PROVIDER as any) ?? 'transformers'
       let hybridResults: HybridResult[] = []
 
@@ -155,7 +209,7 @@ TIPS:
         hybridResults.length === 0 ? db.searchSymbols(args.query, args.limit ?? 5) : []
 
       if (ftsResults.length === 0 && hybridResults.length === 0) {
-        return `No results for "${args.query}".`
+        return `No results for "${args.query}".\n\nTry:\n- A broader search term\n- Different keywords\n- Check spelling`
       }
 
       const lines: string[] = []
@@ -215,9 +269,32 @@ TIPS:
       },
       required: [],
     },
-    handler: async (db, args) => {
+    handler: async (db, args, cwd) => {
+      // Check if graph is available
+      const repos = db.listRepos()
+      const useGraph = repos.length > 0
+
+      // Try to find symbol
       const uid = args.uid ?? (args.name ? db.getNodesByName(args.name)[0]?.uid : null)
-      if (!uid) return `Symbol not found: ${args.name}`
+      
+      if (!uid || !useGraph) {
+        // Use fallback context search
+        if (args.name) {
+          const result = await getSymbolContext(args.name, cwd)
+          return formatFallbackResult(result)
+        }
+        
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.INDEX_NOT_FOUND,
+          `Symbol not found: ${args.name}. No index exists for this repository.`,
+          {
+            recoveryHint: "Run 'forgenexus analyze' to index your codebase first.",
+            quickStart: 'forgenexus analyze --quick  # Fast initial index'
+          }
+        )
+        return formatErrorAsText(error)
+      }
+      
       const node = db.getNode(uid)
       if (!node) return `No symbol with uid: ${uid}`
 
@@ -378,7 +455,21 @@ TIPS:
       const maxDepth = args.maxDepth ?? 3
 
       const targetUid = db.getNodesByName(args.target)[0]?.uid ?? args.target
-      if (!targetUid) return `Symbol not found: ${args.target}`
+      if (!targetUid) {
+        const repos = db.listRepos()
+        if (repos.length === 0) {
+          const error = createErrorResponse(
+            ForgeNexusErrorCode.INDEX_NOT_FOUND,
+            `Symbol not found: ${args.target}. No index exists for this repository.`,
+            {
+              recoveryHint: "Run 'forgenexus analyze' to index your codebase first.",
+              quickStart: 'forgenexus analyze --quick  # Fast initial index'
+            }
+          )
+          return formatErrorAsText(error)
+        }
+        return `Symbol not found: ${args.target}\n\nCheck spelling or use a different symbol name.`
+      }
       const result = analyzeImpact(db, targetUid, maxDepth, { minConfidence, includeTests })
 
       let md = `## Impact Analysis: ${args.target}\n\n`
@@ -457,6 +548,18 @@ TIPS:
       required: [],
     },
     handler: async (db, args) => {
+      const repos = db.listRepos()
+      if (repos.length === 0) {
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.INDEX_NOT_FOUND,
+          'Cannot detect changes: no index exists for this repository.',
+          {
+            recoveryHint: "Run 'forgenexus analyze' to index your codebase first.",
+            quickStart: 'forgenexus analyze --quick  # Fast initial index'
+          }
+        )
+        return formatErrorAsText(error)
+      }
       const result = await detectChanges(db, args.scope ?? 'unstaged', args.base_ref)
       let md = `## Change Detection\n\n`
       md += `**Risk:** ${result.riskSummary}\n`
@@ -614,7 +717,15 @@ Returns: route nodes with their handlers, middleware wrapper chains (e.g., withA
         .all() as any[]
 
       if (routes.length === 0 && allRoutes.length === 0) {
-        return 'No route handlers found. Index API files (Express, FastAPI, Next.js, NestJS, Django routes).'
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.GRAPH_UNAVAILABLE,
+          'No route handlers found. The index may be incomplete or this is not an API project.',
+          {
+            recoveryHint: 'Index API files (Express, FastAPI, Next.js, NestJS, Django routes) by running forgenexus analyze.',
+            details: { foundRoutes: 0, foundRouteEdges: 0 }
+          }
+        )
+        return formatErrorAsText(error)
       }
 
       let md = '## Route Map\n\n'
@@ -666,7 +777,15 @@ AFTER THIS: Use impact() on specific tool handlers to see blast radius.`,
         .all() as any[]
 
       if (allToolEdges.length === 0) {
-        return 'No tool definitions found. Index files with @tool, @command decorators or tool handler objects.'
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.GRAPH_UNAVAILABLE,
+          'No tool definitions found. The index may be incomplete.',
+          {
+            recoveryHint: 'Index files with @tool, @command decorators or tool handler objects.',
+            details: { foundToolEdges: 0 }
+          }
+        )
+        return formatErrorAsText(error)
       }
 
       let md = '## Tool Map\n\n'
@@ -1024,7 +1143,15 @@ Returns: list of groups with member repos and metadata.`,
       const { listGroups } = await import('../data/groups.js')
       const groups = listGroups()
       if (groups.length === 0) {
-        return 'No repository groups configured. Run `forgenexus group create <name>` first.'
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.GRAPH_UNAVAILABLE,
+          'No repository groups configured.',
+          {
+            recoveryHint: "Run 'forgenexus group create <name>' to create a group.",
+            quickStart: 'forgenexus group create my-group'
+          }
+        )
+        return formatErrorAsText(error)
       }
       let md = `## Repository Groups\n\n`
       for (const g of groups) {
@@ -1062,7 +1189,15 @@ After creating a group, use group_add to add repos to it, then group_sync to ext
       if (result.success) {
         return `Group "${args.name}" created. Add repos with group_add, then run group_sync to extract contracts.`
       }
-      return `Error: ${result.error}`
+      const error = createErrorResponse(
+        ForgeNexusErrorCode.TOOL_EXECUTION_FAILED,
+        result.error ?? 'Failed to create group',
+        {
+          recoveryHint: 'Check the error message. Group names must be unique.',
+          details: { groupName: args.name }
+        }
+      )
+      return formatErrorAsText(error)
     },
   },
 
@@ -1088,7 +1223,15 @@ Run group_sync after adding repos to extract contracts from all group members.`,
       if (result.success) {
         return `Added "${args.repo}" to group "${args.group}". Run group_sync to extract contracts.`
       }
-      return `Error: ${result.error}`
+      const error = createErrorResponse(
+        ForgeNexusErrorCode.TOOL_EXECUTION_FAILED,
+        result.error ?? 'Failed to add repo to group',
+        {
+          recoveryHint: 'Make sure the repo is indexed (run forgenexus analyze) and the group exists.',
+          details: { group: args.group, repo: args.repo }
+        }
+      )
+      return formatErrorAsText(error)
     },
   },
 
@@ -1111,7 +1254,15 @@ This populates the contract registry so group_query and group_contracts can work
       const { syncGroupContracts } = await import('../data/groups.js')
       const result = syncGroupContracts(args.group)
       if (!result.success) {
-        return `Sync failed: ${result.error}`
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.TOOL_EXECUTION_FAILED,
+          result.error ?? 'Sync failed',
+          {
+            recoveryHint: 'Make sure the group exists and has repos added.',
+            details: { group: args.group }
+          }
+        )
+        return formatErrorAsText(error)
       }
       const byType: Record<string, number> = {}
       for (const c of result.contracts) {
@@ -1153,7 +1304,15 @@ Returns contracts grouped by repository with their function signatures, and cros
       const { contracts, byRepo } = getGroupContracts(args.group)
       const links = getGroupLinks(args.group)
       if (contracts.length === 0) {
-        return `No contracts found for group "${args.group}". Run group_sync first.`
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.GRAPH_UNAVAILABLE,
+          `No contracts found for group "${args.group}".`,
+          {
+            recoveryHint: 'Run group_sync first to extract contracts from group repos.',
+            details: { group: args.group, foundContracts: 0 }
+          }
+        )
+        return formatErrorAsText(error)
       }
       let md = `## Contracts: ${args.group}\n\n`
       for (const [repo, cs] of Object.entries(byRepo)) {
@@ -1195,7 +1354,15 @@ Returns matching contracts from each repo with their source locations.`,
       const { getGroupContracts } = await import('../data/groups.js')
       const { contracts, byRepo } = getGroupContracts(args.group)
       if (contracts.length === 0) {
-        return `No contracts in group "${args.group}". Run group_sync first.`
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.GRAPH_UNAVAILABLE,
+          `No contracts in group "${args.group}".`,
+          {
+            recoveryHint: 'Run group_sync first to extract contracts.',
+            details: { group: args.group, foundContracts: 0 }
+          }
+        )
+        return formatErrorAsText(error)
       }
       const q = args.query.toLowerCase()
       const limit = args.limit ?? 10
@@ -1245,7 +1412,15 @@ A repo is stale if its git HEAD is ahead of the last indexed commit.`,
       const { groupStatus } = await import('../data/groups.js')
       const result = groupStatus(args.group)
       if (result.repos.length === 0) {
-        return `Group "${args.group}" not found or has no repos.`
+        const error = createErrorResponse(
+          ForgeNexusErrorCode.GRAPH_UNAVAILABLE,
+          `Group "${args.group}" not found or has no repos.`,
+          {
+            recoveryHint: 'Create the group first with group_create, then add repos with group_add.',
+            details: { group: args.group, foundRepos: 0 }
+          }
+        )
+        return formatErrorAsText(error)
       }
       let md = `## Group Status: ${args.group}\n\n`
       md += `| Repo | Last Commit | Stale? |\n`
@@ -1282,7 +1457,15 @@ WHEN TO USE: Cleaning up a group when a repo is archived or moved. Does not dele
       if (result.success) {
         return `Removed "${args.repo}" from group "${args.group}".`
       }
-      return `Error: ${result.error}`
+      const error = createErrorResponse(
+        ForgeNexusErrorCode.TOOL_EXECUTION_FAILED,
+        result.error ?? 'Failed to remove repo from group',
+        {
+          recoveryHint: 'Check that the group and repo exist.',
+          details: { group: args.group, repo: args.repo }
+        }
+      )
+      return formatErrorAsText(error)
     },
   },
 

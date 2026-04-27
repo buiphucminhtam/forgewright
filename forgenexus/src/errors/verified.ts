@@ -1,8 +1,94 @@
 /**
  * Verified Errors Module for ForgeWright Anti-Hallucination System
  * 
- * Provides structured error types for verification failures.
+ * Provides structured error types for verification failures and
+ * ForgeNexus-specific error codes for MCP operations.
  */
+
+// ============================================================================
+// ForgeNexus Error Codes (MCP Operations)
+// ============================================================================
+
+export enum ForgeNexusErrorCode {
+  // Index errors
+  INDEX_NOT_FOUND = 'INDEX_NOT_FOUND',
+  INDEX_CORRUPTED = 'INDEX_CORRUPTED',
+  INDEX_STALE = 'INDEX_STALE',
+  
+  // Database errors
+  DB_UNAVAILABLE = 'DB_UNAVAILABLE',
+  DB_CORRUPTED = 'DB_CORRUPTED',
+  DB_LOCK_CONFLICT = 'DB_LOCK_CONFLICT',
+  
+  // Setup errors
+  SETUP_INCOMPLETE = 'SETUP_INCOMPLETE',
+  DEPENDENCY_MISSING = 'DEPENDENCY_MISSING',
+  
+  // Query errors
+  GRAPH_UNAVAILABLE = 'GRAPH_UNAVAILABLE',
+  QUERY_FAILED = 'QUERY_FAILED',
+  EMBEDDING_FAILED = 'EMBEDDING_FAILED',
+  
+  // Tool errors
+  TOOL_NOT_FOUND = 'TOOL_NOT_FOUND',
+  TOOL_EXECUTION_FAILED = 'TOOL_EXECUTION_FAILED',
+  
+  // Fallback errors
+  FALLBACK_DISABLED = 'FALLBACK_DISABLED',
+  FALLBACK_TIMEOUT = 'FALLBACK_TIMEOUT',
+  
+  // Generic
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+}
+
+// ============================================================================
+// ForgeNexus Structured Error Response
+// ============================================================================
+
+export interface ForgeNexusErrorResponse {
+  error: {
+    code: ForgeNexusErrorCode;
+    message: string;
+    recoveryHint?: string;
+    quickStart?: string;
+    details?: Record<string, unknown>;
+  };
+}
+
+export function createErrorResponse(
+  code: ForgeNexusErrorCode,
+  message: string,
+  options?: {
+    recoveryHint?: string;
+    quickStart?: string;
+    details?: Record<string, unknown>;
+  }
+): ForgeNexusErrorResponse {
+  return {
+    error: {
+      code,
+      message,
+      ...(options?.recoveryHint && { recoveryHint: options.recoveryHint }),
+      ...(options?.quickStart && { quickStart: options.quickStart }),
+      ...(options?.details && { details: options.details }),
+    },
+  };
+}
+
+export function formatErrorAsText(error: ForgeNexusErrorResponse): string {
+  const { error: err } = error;
+  let text = `⚠️ ${err.code}\n\n${err.message}`;
+  
+  if (err.recoveryHint) {
+    text += `\n\n💡 Recovery: ${err.recoveryHint}`;
+  }
+  
+  if (err.quickStart) {
+    text += `\n\n🚀 Quick start: \`${err.quickStart}\``;
+  }
+  
+  return text;
+}
 
 // ============================================================================
 // Error Types
@@ -207,6 +293,58 @@ export interface RecoverySuggestion {
 
 export function getRecoverySuggestions(error: ForgeWrightError): RecoverySuggestion[] {
   switch (error.code) {
+    // ForgeNexus-specific errors
+    case 'INDEX_NOT_FOUND':
+      return [
+        { action: 'Run forgenexus analyze to index the codebase', command: 'forgenexus analyze', priority: 'high' },
+        { action: 'Quick index for fast setup', command: 'forgenexus analyze --quick', priority: 'medium' },
+        { action: 'Run forgenexus doctor to check setup', command: 'forgenexus doctor', priority: 'low' },
+      ];
+
+    case 'INDEX_STALE':
+      return [
+        { action: 'Update the index with latest code changes', command: 'forgenexus analyze', priority: 'high' },
+        { action: 'Force re-index if there are issues', command: 'forgenexus analyze --force', priority: 'medium' },
+        { action: 'Check what changed with forgenexus status', command: 'forgenexus status', priority: 'low' },
+      ];
+
+    case 'INDEX_CORRUPTED':
+    case 'DB_CORRUPTED':
+      return [
+        { action: 'Rebuild the index from scratch', command: 'forgenexus analyze --force', priority: 'high' },
+        { action: 'Check for backup and restore if needed', command: './scripts/rollback-forgenexus.sh', priority: 'medium' },
+        { action: 'Run doctor to diagnose issues', command: 'forgenexus doctor', priority: 'low' },
+      ];
+
+    case 'DB_LOCK_CONFLICT':
+      return [
+        { action: 'Stop other ForgeNexus processes', command: 'pkill -f forgenexus', priority: 'high' },
+        { action: 'Wait 5 seconds and retry', priority: 'medium' },
+        { action: 'Check running processes', command: 'ps aux | grep forgenexus', priority: 'low' },
+      ];
+
+    case 'SETUP_INCOMPLETE':
+      return [
+        { action: 'Complete ForgeNexus setup', command: 'forgenexus setup', priority: 'high' },
+        { action: 'Run doctor to see missing setup steps', command: 'forgenexus doctor', priority: 'medium' },
+        { action: 'Check prerequisites (Node.js, git)', priority: 'low' },
+      ];
+
+    case 'GRAPH_UNAVAILABLE':
+      return [
+        { action: 'Check if the index was created', command: 'forgenexus analyze', priority: 'high' },
+        { action: 'Try with text-search fallback (if enabled)', priority: 'medium' },
+        { action: 'Run doctor to diagnose', command: 'forgenexus doctor', priority: 'low' },
+      ];
+
+    case 'EMBEDDING_FAILED':
+      return [
+        { action: 'Check API key configuration', command: 'forgenexus doctor', priority: 'high' },
+        { action: 'Retry without semantic search', command: 'EMBEDDING_PROVIDER=none forgenexus analyze', priority: 'medium' },
+        { action: 'Use local embeddings', command: 'EMBEDDING_PROVIDER=transformers forgenexus analyze', priority: 'medium' },
+      ];
+
+    // Original ForgeWright errors
     case 'VERIFICATION_ERROR':
       return [
         { action: 'Add more evidence to verify claims', priority: 'high' },
@@ -245,6 +383,7 @@ export function getRecoverySuggestions(error: ForgeWrightError): RecoverySuggest
       return [
         { action: 'Retry the operation', priority: 'medium' },
         { action: 'Check for updates', command: 'forgenexus version', priority: 'low' },
+        { action: 'Run doctor to diagnose', command: 'forgenexus doctor', priority: 'low' },
       ];
   }
 }

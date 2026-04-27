@@ -18,6 +18,7 @@ export async function analyze(opts: {
   embeddingProvider?: string
   incremental?: boolean
   force?: boolean
+  quick?: boolean
 }): Promise<void> {
   const {
     repoPath,
@@ -27,6 +28,7 @@ export async function analyze(opts: {
     embeddingProvider,
     incremental = true,
     force = false,
+    quick = false,
   } = opts
 
   // Use progress bar for non-silent mode
