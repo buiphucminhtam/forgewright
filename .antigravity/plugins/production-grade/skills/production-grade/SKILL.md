@@ -1614,8 +1614,8 @@ Write analysis report to `.forgewright/scope-analysis.md` for future reference.
 When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-dispatch skill (`skills/parallel-dispatch/SKILL.md`) to spawn git worktrees, distribute Task Contracts, and merge results. When **Sequential** is selected, the pipeline behaves as before.
 
 6. **Detect existing workspace & load memory** — if `.forgewright/` has prior state, use session-lifecycle resume protocol. If `.forgewright/session-log.json` has interrupted state, offer resume. Otherwise offer clean start via notify_user.
-   - **Memory load:** Run `python3 scripts/local_memory.py search "<project-name> <user-request-keywords>" --limit 5` to retrieve relevant project context. Inject results into your context for this session.
-   - If no results or memory is empty, verify setup with `python3 scripts/local_memory.py stats`.
+   - **Memory load:** Run `python3 scripts/mem0-v2.py search "<project-name> <user-request-keywords>" --limit 5` to retrieve relevant project context. Inject results into your context for this session.
+   - If no results or memory is empty, verify setup with `python3 scripts/mem0-v2.py stats`.
 
 7. **Polymath pre-flight check:**
    - If `.forgewright/polymath/handoff/context-package.md` exists → read it, pass to PM as pre-loaded context. Log: `✓ Polymath context loaded — skipping redundant discovery`
@@ -1657,7 +1657,7 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
 Create a `task.md` file in `.forgewright/` with all 13 tasks and their statuses. Track dependencies and completion.
 
 10. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
-   - **Memory save (session start):** Run `python3 scripts/local_memory.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
+   - **Memory save (session start):** Run `python3 scripts/mem0-v2.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
 
 **Key principle:** Research, plan, start building. Pause at the 3 approval gates. **Exception — greenfield Full Build:** BA elicitation is a **hard gate before PM**; do not jump to T1 until `ba-package.md` exists and minimum rounds above are satisfied (unless an explicit escape hatch in 7.5 was used). In Thorough/Meticulous mode, show phase summaries between major phases (inform; strategic gates still rule).
 
@@ -1774,13 +1774,13 @@ After Gate 2 is approved, automatically persist architecture decisions to memory
 
 2. Run memory persistence commands:
    # Main architecture
-   python3 scripts/local_memory.py add "ARCH: [tech stack] | SERVICES: [service list] | REASON: [key rationale]" --category architecture
+   python3 scripts/mem0-v2.py add "ARCH: [tech stack] | SERVICES: [service list] | REASON: [key rationale]" --category architecture
    
    # Individual ADRs
-   python3 scripts/local_memory.py add "DECISION: [ADR title] | ALTERNATIVE: [rejected options] | REASON: [why chosen]" --category decisions
+   python3 scripts/mem0-v2.py add "DECISION: [ADR title] | ALTERNATIVE: [rejected options] | REASON: [why chosen]" --category decisions
    
    # Project scope
-   python3 scripts/local_memory.py add "PROJECT: [project name] | SCOPE: [feature list] | STATUS: active" --category project
+   python3 scripts/mem0-v2.py add "PROJECT: [project name] | SCOPE: [feature list] | STATUS: active" --category project
 
 3. Log: "✓ Architecture decisions persisted to memory — [N] decisions saved"
 ```

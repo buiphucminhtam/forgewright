@@ -47,9 +47,9 @@ ELSE:
 
 ```
 IF LOCAL_MEMORY_DISABLED != true AND FORGEWRIGHT_SKIP_MEMORY != 1:
-  Run: python3 scripts/local_memory.py search "<project-name> <user-request-keywords>" --limit 5
+  Run: python3 scripts/mem0-v2.py search "<project-name> <user-request-keywords>" --limit 5
   IF no results returned:
-    Run: python3 scripts/local_memory.py refresh
+    Run: python3 scripts/mem0-v2.py add "Project initialized" --category project --source "session-start"
     Run search again with same query
   Inject results into prompt context (max 800 tokens)
   Log: "✓ Memory loaded: [N] relevant items"
@@ -223,10 +223,10 @@ IF .forgewright/subagent-context/CONVERSATION_SUMMARY.md exists:
 ```
 IF LOCAL_MEMORY_DISABLED != true AND FORGEWRIGHT_SKIP_MEMORY != 1:
   # Search for recent conversation facts (within current session)
-  python3 scripts/local_memory.py search "conversation recent" --limit 3
+  python3 scripts/mem0-v2.py search "conversation recent" --limit 3
   
   # Search for task context relevant to current request
-  python3 scripts/local_memory.py list --category session --limit 3
+  python3 scripts/mem0-v2.py list --category session --limit 3
   
   # Inject: "Recent context: [top memories]"
   Log: "✓ Recent turns loaded — [N] relevant items"
@@ -281,7 +281,7 @@ Called after each pipeline phase completes (DEFINE, BUILD, HARDEN, SHIP, SUSTAIN
    }
 
 2. Save phase summary to memory:
-   Run: python3 scripts/local_memory.py add "Phase [phase_name] completed: [summary]" --category tasks
+   Run: python3 scripts/mem0-v2.py add "Phase [phase_name] completed: [summary]" --category tasks
 
 3. Update quality metrics (see quality-dashboard.md)
 ```
@@ -302,7 +302,7 @@ Called after each strategic gate.
 ```
 1. Update session-log.json → gates.[gate_number] = { decision, feedback, decided_at }
 2. Save to memory:
-   Run: python3 scripts/local_memory.py add "Gate [N] [decision]: [feedback summary]" --category decisions
+   Run: python3 scripts/mem0-v2.py add "Gate [N] [decision]: [feedback summary]" --category decisions
 ```
 
 ### Hook: HEARTBEAT(task_id, status_message)
@@ -439,10 +439,10 @@ BEFORE running the mem0 add command, auto-generate a summary:
 
 ### Step TC2 — Write Turn-Close Memory (Mandatory)
 
-**MUST run at least one** `local_memory.py add` per turn, using a **single compact line** (redact secrets; stay under ~400 chars):
+**MUST run at least one** `mem0-v2.py add` per turn, using a **single compact line** (redact secrets; stay under ~400 chars):
 
 ```bash
-python3 scripts/local_memory.py add "REQ: [1-line user goal] | DONE: [what changed or decided] | OPEN: [blockers/questions or none] | SCOPE_UPDATE: [scope change or 'stable'] | CONVERSATION: [auto-summary from TC1]" --category session
+python3 scripts/mem0-v2.py add "REQ: [1-line user goal] | DONE: [what changed or decided] | OPEN: [blockers/questions or none] | SCOPE_UPDATE: [scope change or 'stable'] | CONVERSATION: [auto-summary from TC1]" --category session
 ```
 
 ### SCOPE_UPDATE Field
@@ -504,10 +504,10 @@ Called when pipeline completes OR when session is explicitly ended.
    }
 
 3. Save to memory:
-   Run: python3 scripts/local_memory.py add "Session completed: [summary]. Next: [next_steps]" --category session
+   Run: python3 scripts/mem0-v2.py add "Session completed: [summary]. Next: [next_steps]" --category session
 
-4. Refresh project identity:
-   Run: python3 scripts/local_memory.py refresh 2>/dev/null || true
+4. Add project identity (if no memories exist):
+   Run: python3 scripts/mem0-v2.py add "Project: [name] v[version]" --category project --source "session-end" 2>/dev/null || true
 
 5. Auto-reindex Code Intelligence:
    IF .forgenexus/ exists AND forgenexus CLI available:

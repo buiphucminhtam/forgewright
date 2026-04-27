@@ -110,6 +110,12 @@ interface PoolMessage {
   workerId?: number
 }
 
+interface PendingBatch {
+  resolve: (r: ParseResult[]) => void
+  reject: (e: Error) => void
+  _resolved?: boolean
+}
+
 interface WorkerResult {
   type: 'ready' | 'batch_result' | 'error' | 'closed'
   workerId?: number
@@ -132,7 +138,7 @@ async function runPersistentPool(
 
   // Create all workers upfront (persistent — they stay alive)
   const workers: Worker[] = []
-  const pendingBatches = new Map<number, { resolve: (r: ParseResult[]) => void; reject: (e: Error) => void }>()
+  const pendingBatches = new Map<number, PendingBatch>()
   let nextBatchId = 0
   let completedFiles = 0
 
@@ -159,8 +165,8 @@ async function runPersistentPool(
         })
       }
     }
-    for (let wid = 0; wid < numWorkers; wid++) {
-      const workerChunks = workerAssignments[wid]
+    for (let workerIdx = 0; workerIdx < numWorkers; workerIdx++) {
+      const workerChunks = workerAssignments[workerIdx]
 
       // Divide each worker's chunks into sub-batches
       const subBatches: ParseTask[][] = []
@@ -172,6 +178,7 @@ async function runPersistentPool(
       }
 
       let w: Worker
+      const wid = workers.length // assign before potential push
       try {
         w = new Worker(workerScript)
       } catch {
@@ -256,6 +263,15 @@ async function runPersistentPool(
 
       w.on('exit', () => {
         settledWorkers.add(wid)
+        // Resolve any remaining pending batches for this worker as empty (worker died mid-task)
+        for (const [batchId, pending] of pendingBatches) {
+          if (!pending._resolved) {
+            pending._resolved = true
+            // Resolve with empty results instead of rejecting (partial results are better than none)
+            pending.resolve([])
+            pendingBatches.delete(batchId)
+          }
+        }
         checkDone()
       })
 

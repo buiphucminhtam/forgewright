@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
 """
+⚠️  DEPRECATED — This script is deprecated as of v8.0.
+
+Please use `mem0-v2.py` instead:
+  python3 scripts/mem0-v2.py setup      # First time setup
+  python3 scripts/mem0-v2.py add ...   # Add memory
+  python3 scripts/mem0-v2.py search ... # Search
+  python3 scripts/migrate-chroma-to-sqlite.py  # Migrate data first
+
+For migration:
+  python3 scripts/migrate-chroma-to-sqlite.py  # ChromaDB → SQLite
+
+This script is kept for backward compatibility but will be removed in a future version.
+
+---
+
 Local Memory Client - Forgewright
 Simple, fast, no Docker needed.
 Uses ChromaDB + local embeddings (sentence-transformers with ONNX).

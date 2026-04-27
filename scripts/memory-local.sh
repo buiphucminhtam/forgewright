@@ -2,21 +2,22 @@
 set -euo pipefail
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Forgewright Local Memory Manager
+# Forgewright Memory CLI Wrapper
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# Uses ChromaDB + sentence-transformers for fully local operation.
-# No API key required.
+# ⚠️  DEPRECATED — This wrapper is deprecated as of v8.0.
 #
-# Usage:
-#   memory-local.sh add <text> [--category cat]   — add memory
-#   memory-local.sh search <query> [--limit N]  — search memories
-#   memory-local.sh list [--limit N]             — list memories
-#   memory-local.sh stats                        — show stats
-#   memory-local.sh clear                        — clear all memories
-#   memory-local.sh help                         — show this help
+# Please use `mem0-v2.py` directly:
+#   python3 scripts/mem0-v2.py add <text> [--category cat]
+#   python3 scripts/mem0-v2.py search <query> [--limit N]
+#   python3 scripts/mem0-v2.py list [--limit N]
+#   python3 scripts/mem0-v2.py stats
 #
-# Storage: .forgewright/memory_db/ (ChromaDB)
+# For migration from old systems:
+#   python3 scripts/mem0-v2.py migrate          # JSONL → SQLite
+#   python3 scripts/migrate-chroma-to-sqlite.py  # ChromaDB → SQLite
+#
+# Storage: .forgewright/memory.db (SQLite + FTS5)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -30,17 +31,29 @@ else
   PROJECT_ROOT="$(pwd)"
 fi
 
-LOCAL_MEMORY_CLI="$SCRIPT_DIR/local_memory.py"
+MEMORY_CLI="$SCRIPT_DIR/mem0-v2.py"
 
 # Skip if disabled
-if [[ "${FORGEWRIGHT_SKIP_MEMORY:-}" = "1" ]]; then
-  echo "Memory disabled (FORGEWRIGHT_SKIP_MEMORY=1)"
+if [[ "${MEM0_DISABLED:-}" = "true" ]]; then
+  echo "Memory disabled (MEM0_DISABLED=true)"
   exit 0
 fi
 
 # ── Help ──────────────────────────────────────────────
 show_help() {
-  head -17 "$0" | tail -14
+  echo "Forgewright Memory CLI (mem0-v2.py wrapper)"
+  echo ""
+  echo "⚠️  DEPRECATED — Please use mem0-v2.py directly"
+  echo ""
+  echo "Usage:"
+  echo "  memory-local.sh add <text> [--category cat]   — add memory"
+  echo "  memory-local.sh search <query> [--limit N]  — search memories"
+  echo "  memory-local.sh list [--limit N]             — list memories"
+  echo "  memory-local.sh stats                        — show stats"
+  echo ""
+  echo "Recommended (v8.0+):"
+  echo "  python3 scripts/mem0-v2.py add <text> --category <cat>"
+  echo "  python3 scripts/mem0-v2.py search <query> --limit N"
 }
 
 # ── Add ───────────────────────────────────────────────
@@ -63,7 +76,7 @@ cmd_add() {
   fi
 
   cd "$PROJECT_ROOT"
-  python3 "$LOCAL_MEMORY_CLI" add "$text" --category "$category"
+  python3 "$MEMORY_CLI" add "$text" --category "$category"
 }
 
 # ── Search ────────────────────────────────────────────
@@ -86,7 +99,7 @@ cmd_search() {
   fi
 
   cd "$PROJECT_ROOT"
-  python3 "$LOCAL_MEMORY_CLI" search "$query" --limit "$limit"
+  python3 "$MEMORY_CLI" search "$query" --limit "$limit"
 }
 
 # ── List ──────────────────────────────────────────────
@@ -105,22 +118,16 @@ cmd_list() {
 
   cd "$PROJECT_ROOT"
   if [[ -n "$category" ]]; then
-    python3 "$LOCAL_MEMORY_CLI" list --category "$category" --limit "$limit"
+    python3 "$MEMORY_CLI" list --category "$category" --limit "$limit"
   else
-    python3 "$LOCAL_MEMORY_CLI" list --limit "$limit"
+    python3 "$MEMORY_CLI" list --limit "$limit"
   fi
 }
 
 # ── Stats ─────────────────────────────────────────────
 cmd_stats() {
   cd "$PROJECT_ROOT"
-  python3 "$LOCAL_MEMORY_CLI" stats
-}
-
-# ── Clear ─────────────────────────────────────────────
-cmd_clear() {
-  cd "$PROJECT_ROOT"
-  python3 "$LOCAL_MEMORY_CLI" clear
+  python3 "$MEMORY_CLI" stats
 }
 
 # ── Dispatch ──────────────────────────────────────────
@@ -132,7 +139,6 @@ case "$CMD" in
   search)  cmd_search "$@" ;;
   list)    cmd_list "$@" ;;
   stats)   cmd_stats ;;
-  clear)   cmd_clear ;;
   help)    show_help ;;
   *)       echo "Unknown: $CMD. Run: memory-local.sh help"; exit 1 ;;
 esac

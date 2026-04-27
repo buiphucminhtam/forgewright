@@ -10,7 +10,7 @@
 
 ```
 1. Extract key decisions and blockers from skill output
-2. Run: python3 scripts/local_memory.py add "<facts>" --category decisions
+2. Run: python3 scripts/mem0-v2.py add "<facts>" --category decisions
 3. Store skill completion facts
 ```
 
@@ -18,7 +18,7 @@
 
 ```
 1. Mandatory memory add:
-   python3 scripts/local_memory.py add "Session: [mode] mode, engagement: [level]" --category session
+   python3 scripts/mem0-v2.py add "Session: [mode] mode, engagement: [level]" --category session
    
 2. Optional additional stores:
    - Decisions: architecture choices, key rationale
@@ -34,5 +34,6 @@
 
 ## Failure Handling
 
-- If local_memory unavailable → LOG warning, continue (non-blocking)
-- Check `LOCAL_MEMORY_DISABLED` or `FORGEWRIGHT_SKIP_MEMORY` env vars
+- If mem0-v2 unavailable → LOG warning, continue (non-blocking)
+- Check `MEM0_DISABLED` env var
+- System uses SQLite (built-in) — no external dependencies

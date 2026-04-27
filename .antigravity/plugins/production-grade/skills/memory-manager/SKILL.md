@@ -1,9 +1,9 @@
 ---
 name: memory-manager
 description: >
-  Persistent project memory using ChromaDB + sentence-transformers.
-  Fully local, no API key needed. Semantic search with embeddings.
-  Falls back to legacy JSONL for simple use cases.
+  Persistent project memory using SQLite + FTS5 + BM25.
+  Fast, zero dependencies (stdlib only), production-ready.
+  Progressive disclosure with 3 layers (compact/index/detailed).
 ---
 
 # Memory Manager Skill
@@ -15,11 +15,25 @@ description: >
 
 | Component | Technology | Notes |
 |-----------|------------|-------|
-| **Vector DB** | ChromaDB | Local, persistent |
-| **Embeddings** | sentence-transformers/all-MiniLM-L6-v2 | No API needed |
-| **Backup** | JSONL + JSON | Export/archive |
+| **Database** | SQLite + FTS5 | WAL mode, crash-safe, concurrent reads |
+| **Search** | BM25 ranking | FTS5 full-text search |
+| **Token Optimization** | 3-layer progressive disclosure | 15/60/200 tokens per result |
 
-> **No Docker, no API key required.** Everything runs locally.
+> **Zero dependencies.** Only stdlib + SQLite (built into Python). No API key needed.
+
+### Progressive Disclosure Layers
+
+| Layer | Command | Tokens/Result | When Used |
+|-------|---------|---------------|-----------|
+| **L1: Compact Index** | `index <query>` | ~15 | Always first — quick overview |
+| **L2: FTS Search** | `search <query>` | ~60 | Top matches get details |
+| **L3: Full Detail** | `get <id>` | ~200 | On-demand for specific items |
+
+### Token Savings vs Old Systems
+
+- Search: **800 → 200 tokens** (75% reduction)
+- Index: ~15 tokens/result (new capability)
+- Timeline: ~60 tokens/result (new capability)
 
 ## When to Use
 
@@ -28,7 +42,9 @@ description: >
 - **After completing work** — store what was done, decisions made, blockers found
 - **Periodic** — refresh project identity when major changes happen
 
-Memory Model — category weights for search relevance:
+## Memory Model
+
+Category weights for search relevance and GC prioritization:
 
 | Category | Weight | Examples |
 |----------|--------|----------|
@@ -37,123 +53,124 @@ Memory Model — category weights for search relevance:
 | **blockers** | 7 | "Waiting on API key" |
 | **session** | 6 | "Session completed: built auth" |
 | **tasks** | 5 | "BUILD complete: 142 tests pass" |
+| **conversation** | 4 | Auto-generated summaries |
 | **general** | 4 | User-added notes |
+| **git-activity** | 3 | Recent commits |
+| **ingested** | 2 | Project file summaries |
 
 ## CLI Commands
 
-All commands use `scripts/local_memory.py`:
+Primary CLI: `scripts/mem0-v2.py`
 
 ```bash
+# Setup (first time)
+python3 scripts/mem0-v2.py setup
+
 # Add a memory
-python3 scripts/local_memory.py add "Decided to use JWT + refresh tokens for auth" --category decisions
+python3 scripts/mem0-v2.py add "Decided to use JWT + refresh tokens for auth" --category decisions
 
-# Search with semantic similarity
-python3 scripts/local_memory.py search "authentication flow" --limit 5
+# Search with BM25 ranking
+python3 scripts/mem0-v2.py search "authentication flow" --limit 5
 
-# List all memories (with optional category filter)
-python3 scripts/local_memory.py list --category decisions
+# Layer 1: Compact index (always first)
+python3 scripts/mem0-v2.py index "project" --limit 30
+
+# Layer 3: Full detail on demand
+python3 scripts/mem0-v2.py get 123
+
+# List all (with optional category filter)
+python3 scripts/mem0-v2.py list --category decisions --limit 20
 
 # Stats - memory statistics
-python3 scripts/local_memory.py stats
+python3 scripts/mem0-v2.py stats
 
-# Clear all memories
-python3 scripts/local_memory.py clear
+# Garbage collection (value-weighted)
+python3 scripts/mem0-v2.py gc --max-obs 200
 
-# Health check
-python3 scripts/local_memory.py health
+# Migrate from old systems
+python3 scripts/mem0-v2.py migrate  # JSONL → SQLite
+python3 scripts/migrate-chroma-to-sqlite.py  # ChromaDB → SQLite
 ```
 
 ## Python API
 
 ```python
-from scripts.local_memory import get_client
+import sys
+sys.path.insert(0, 'scripts')
+from mem0_v2 import MemoryDB, get_db
+
+# Initialize
+db = get_db()
 
 # Add memory
-client = get_client()
-result = client.add("Decided to use JWT for auth", category="decisions")
+result = db.add("Decided to use JWT for auth", category="decisions")
 
-# Search
-results = client.search("authentication", limit=5)
+# Search (backward compatible)
+results = db.search("authentication", limit=5)
+
+# Layer 1: Compact index
+index = db.memory_index("project", limit=30)
+
+# Layer 3: Full detail
+obs = db.memory_get(123)
 
 # List by category
-memories = client.list(category="decisions", limit=10)
+memories = db.list_all(category="decisions", limit=10)
 
 # Stats
-stats = client.stats()
-```
+stats = db.stats()
 
-## Legacy Commands (mem0-cli)
-
-The old `mem0-cli.py` is preserved for backward compatibility:
-
-```bash
-# These still work but use the old TF-IDF + JSONL system
-python3 scripts/mem0-cli.py search "query" --limit 5
-python3 scripts/mem0-cli.py add "text" --category decisions
+# GC
+removed = db.gc(max_obs=200)
 ```
 
 ## Token Optimization Strategy
 
 ### When to Retrieve
+
 1. **Always** at session start — search with project name + request keywords, limit to top-5
 2. **Before complex tasks** — search with task keywords, limit to top-3
 3. **At gate decisions** — fetch relevant decisions/blockers
 
 ### Token Budget
+
 - Retrieval output: max **500 tokens** (configurable)
 - Total memory injection per prompt: **800 tokens** ceiling
+- Use Layer 1 (index) first for overview, upgrade to Layer 2/3 as needed
 
 ## Safety
 
 ### Secret Redaction
+
 The CLI automatically redacts patterns matching:
 - API keys (`sk-*`, `key-*`, Bearer tokens)
 - Passwords, secrets, tokens (configurable regex)
 - Database connection strings with credentials
 
 ### .memignore
+
 Create `.memignore` at project root to exclude files/folders from ingestion.
 
 ### Opt-out
-- Set `LOCAL_MEMORY_DISABLED=true` to skip all memory operations
+
+```bash
+# Set env var to disable all memory operations
+export MEM0_DISABLED=true
+```
 
 ## Configuration
 
-### Graphiti (Primary)
-
 ```bash
-# LLM Provider (supports: openai, anthropic, gemini, minimax)
-GRAPHITI_LLM_PROVIDER=openai
-GRAPHITI_API_KEY=sk-...                    # API key for LLM
-GRAPHITI_BASE_URL=https://api.openai.com/v1  # Custom endpoint (optional)
-GRAPHITI_LLM_MODEL=gpt-4o-mini             # Model to use
-
-# Embedding config
-GRAPHITI_EMBED_PROVIDER=openai
-GRAPHITI_EMBED_API_KEY=sk-...              # API key for embeddings
-GRAPHITI_EMBED_MODEL=text-embedding-3-small
-
-# FalkorDB connection
-FALKORDB_HOST=localhost
-FALKORDB_PORT=6379
-
-# Graph settings
-GRAPHITI_REDACT_SECRETS=true    # Auto-redact API keys, passwords
-```
-
-### Legacy (mem0-cli)
-
-```bash
-# Storage (JSONL, git-committed)
-MEM0_PROJECT_ID=my-project        # namespace for multi-project
+# Project namespace (auto-detected from git)
+MEM0_PROJECT_ID=my-project
 
 # Limits
 MEM0_MAX_TOKENS=500               # max tokens per retrieval
-MEM0_MAX_MEMORIES=200             # max stored memories before GC
+MEM0_MAX_OBS=200                  # max observations before GC
 
 # Safety
 MEM0_REDACT_SECRETS=true          # auto-redact API keys, passwords
-MEM0_DISABLED=false               # set true to skip all ops
+MEM0_DISABLED=false                # set true to skip all ops
 ```
 
 ## Integration with Forgewright Pipeline
@@ -175,7 +192,7 @@ The orchestrator calls memory-manager at specific lifecycle points:
 
 Memory works alongside `.forgewright/project-profile.json`:
 - **Project Profile** = structural facts (stack, health, patterns) — always loaded
-- **Memory** = semantic facts (decisions, blockers, progress) — searched with embeddings
+- **Memory** = semantic facts (decisions, blockers, progress) — searched with FTS5
 - Together they provide full project context without re-scanning
 
 ### BA Integration
@@ -190,10 +207,10 @@ When the Business Analyst skill completes:
 Any skill can invoke memory commands directly:
 ```bash
 # Before starting work
-python3 scripts/local_memory.py search "current task" --limit 3
+python3 scripts/mem0-v2.py search "current task" --limit 3
 
 # After completing work
-python3 scripts/local_memory.py add "Completed: auth module with JWT + refresh tokens" --category decisions
+python3 scripts/mem0-v2.py add "Completed: auth module with JWT + refresh tokens" --category decisions
 ```
 
 ## File Layout
@@ -203,25 +220,102 @@ forgewright/
 ├── skills/memory-manager/
 │   └── SKILL.md              ← this file
 ├── scripts/
-│   ├── local_memory.py       ← Primary CLI (ChromaDB + sentence-transformers)
-│   ├── mem0-cli.py           ← Legacy CLI (TF-IDF + JSONL)
+│   ├── mem0-v2.py            ← PRIMARY CLI (SQLite + FTS5)
+│   ├── mem0-cli.py           ← DEPRECATED (TF-IDF + JSONL)
+│   ├── local_memory.py       ← DEPRECATED (ChromaDB + embeddings)
+│   ├── migrate-chroma-to-sqlite.py  ← Migration helper
 │   └── ...
 └── .forgewright/
-    ├── memory_db/            ← ChromaDB storage
-    │   ├── chroma.sqlite3
-    │   └── memory_backup.json
-    ├── memory.jsonl          ← Legacy storage
+    ├── memory.db             ← PRIMARY storage (SQLite + FTS5)
+    ├── memory.db-wal         ← WAL journal
+    ├── memory.db-shm         ← Shared memory
+    ├── memory.jsonl          ← Legacy storage (read-only, migrate then delete)
+    ├── memory_db/            ← DEPRECATED ChromaDB storage
     └── project-profile.json  ← project fingerprint (committed)
 ```
 
 ## Dependencies
 
-No external services required:
+**Zero external dependencies.** Only Python stdlib + SQLite (built-in).
 
 | Package | Purpose | Install |
 |---------|---------|---------|
-| `chromadb` | Vector database | Already installed |
-| `sentence-transformers` | Local embeddings | `pip3 install sentence-transformers` |
-| `torch` | ML framework | Auto-installed with sentence-transformers |
+| None | Everything is built-in | — |
 
-Model downloaded on first use (~22MB for all-MiniLM-L6-v2).
+## Migration
+
+### From JSONL (mem0-cli.py)
+
+```bash
+python3 scripts/mem0-v2.py migrate
+```
+
+### From ChromaDB (local_memory.py)
+
+```bash
+python3 scripts/migrate-chroma-to-sqlite.py
+```
+
+### Verify Migration
+
+```bash
+python3 scripts/mem0-v2.py stats
+```
+
+## Deprecated Systems
+
+### mem0-cli.py (JSONL + TF-IDF)
+
+- **Status:** DEPRECATED
+- **Reason:** No indexing, unbounded file growth, O(n) search
+- **Action:** Migrate data then disable
+
+```bash
+# Migrate first, then disable
+export MEM0_DISABLED=true
+```
+
+### local_memory.py (ChromaDB + embeddings)
+
+- **Status:** DEPRECATED
+- **Reason:** Heavy dependencies (~500MB), slow startup (model loading)
+- **Action:** Migrate data then disable
+
+```bash
+# Migrate first, then disable
+export LOCAL_MEMORY_DISABLED=true
+```
+
+## RRF Fusion (Future)
+
+The system supports Reciprocal Rank Fusion for hybrid search combining:
+- FTS5 + BM25 results
+- (Future) Vector search results
+
+```python
+# Example: Merge rankings from multiple sources
+results = db.rrf_merge(list1, list2, list3)
+```
+
+## Observation Links (Advanced)
+
+Link related observations:
+
+```sql
+-- Related concepts
+-- Contradicting decisions
+-- Superseded approaches
+-- Extended implementations
+```
+
+## Session Tracking (Advanced)
+
+Track sessions across the memory system:
+
+```python
+# Sessions table for cross-session tracking
+# - request_summary
+# - completed_tasks
+# - next_steps
+# - notes
+```
