@@ -77,7 +77,14 @@ update_progress "QUEUED" "" "" ""
     CONVO_HISTORY=$(python3 /root/scripts/memory-wrapper.py list -c "$PROJECT" -l 3 2>/dev/null || echo "Không có lịch sử trước đó.")
 
     MAIN_DOMAIN="${MAIN_DOMAIN:-hethongdoanhnghiep.com}"
-    SYSTEM_RULES="[QUY TẮC: TUYỆT ĐỐI KHÔNG TỰ Ý thay đổi kiến trúc hệ thống gốc. ForgeNexus Context DB path is $FORGENEXUS_DB. Tôn trọng cách ly dự án!]\n[THÔNG TIN DỰ ÁN]: Tên dự án: $PROJECT\nNgữ cảnh hiện tại:\n$PROJECT_CONTEXT\n[WORKSPACE & DEPLOY]: Source code ĐÃ ĐƯỢC hệ thống tự động tải về thư mục máy chủ: $CODE_DIR. Việc deploy sẽ ĐƯỢC TỰ ĐỘNG CHẠY LÊN VERCEL bằng Script CI/CD. Subdomain sẽ được tự động tạo theo format: [ten-du-an].${MAIN_DOMAIN}. => TUYỆT ĐỐI TUYỆT ĐỐI KHÔNG HỎI MẤY CÂU NGỚ NGẨN (vu vơ) VỀ NỀN TẢNG DEPLOY HAY FOLDER SOURCE CODE (ví dụ: 'Mã nguồn nằm ở đâu?', 'Deploy trên AWS hay Vercel?').\n[LỊCH SỬ TRAO ĐỔI GẦN ĐÂY NHẤT (MEMORY)]:\n$CONVO_HISTORY"
+    
+    # Load Core Rules
+    CORE_RULES=""
+    if [ -f "/root/openclaw/rules/.tieu-mo-deployment-flow.md" ]; then
+        CORE_RULES=$(cat /root/openclaw/rules/.tieu-mo-deployment-flow.md)
+    fi
+
+    SYSTEM_RULES="[QUY TẮC: TUYỆT ĐỐI KHÔNG TỰ Ý thay đổi kiến trúc hệ thống gốc. ForgeNexus Context DB path is $FORGENEXUS_DB. Tôn trọng cách ly dự án!]\n[THÔNG TIN DỰ ÁN]: Tên dự án: $PROJECT\nNgữ cảnh hiện tại:\n$PROJECT_CONTEXT\n[WORKSPACE & DEPLOY]: Source code ĐÃ ĐƯỢC hệ thống tự động tải về thư mục máy chủ: $CODE_DIR. Việc deploy sẽ ĐƯỢC TỰ ĐỘNG CHẠY LÊN VERCEL bằng Script CI/CD. Subdomain sẽ được tự động tạo theo format: [ten-du-an].${MAIN_DOMAIN}. => TUYỆT ĐỐI TUYỆT ĐỐI KHÔNG HỎI MẤY CÂU NGỚ NGẨN (vu vơ) VỀ NỀN TẢNG DEPLOY HAY FOLDER SOURCE CODE (ví dụ: 'Mã nguồn nằm ở đâu?', 'Deploy trên AWS hay Vercel?').\n[LỊCH SỬ TRAO ĐỔI GẦN ĐÂY NHẤT (MEMORY)]:\n$CONVO_HISTORY\n[CORE RULES BẮT BUỘC]:\n$CORE_RULES"
 
     CLARIFY_PROMPT="${SYSTEM_RULES}\nBạn là Tiểu Mơ trưởng nhóm lập trình. Sếp đưa ra yêu cầu: '${TASK}'\n[CHỈ ĐẠO BẮT BUỘC TỪ HỆ THỐNG]: CẤM HỎI về Server/Deploy/Source Code/Github. CHỈ HỎI sâu duy nhất 1 CÂU nếu bạn thấy logic/nghiệp vụ MẬP MỜ. Nếu BẮT BUỘC phải hỏi, bạn MỚI hỏi và PHẢI BẮT ĐẦU bằng chuỗi '[CLARIFY] '. Nếu requirement ĐÃ RÕ RÀNG thì KHÔNG HỎI THÊM, bấm triển luôn và PHẢI BẮT ĐẦU bằng chuỗi '[READY] '. Đóng vai xưng 'em, sếp'. Chốt lại là 'em đã đưa Context vào Database cô lập của dự án ($PROJECT), sếp muốn triển thì hú em'. Nhớ confirm lại domain deploy sẽ là subdomain của ${MAIN_DOMAIN}."
     CLARIFY_OUT=$(python3 /root/llm/cli.py MiniMax-M2.7 "$CLARIFY_PROMPT")
@@ -135,16 +142,31 @@ update_progress "QUEUED" "" "" ""
     fi
     
     if [ -n "$VERCEL_TOKEN" ]; then
+        SAFE_SUBDOMAIN=$(echo "$PROJECT" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]/-/g')
+        CUSTOM_DOMAIN="${SAFE_SUBDOMAIN}.${MAIN_DOMAIN}"
+        
+        # Hardened Project Binding
+        echo "{\"name\":\"$SAFE_SUBDOMAIN\"}" > vercel.json
+        rm -rf .vercel
+        vercel link --yes --project "$SAFE_SUBDOMAIN" --token "$VERCEL_TOKEN" > /dev/null 2>&1 || true
+        
         DEPLOY_OUT=$(vercel --prod --yes --token "$VERCEL_TOKEN" 2>&1)
         if echo "$DEPLOY_OUT" | grep -q "https://"; then
             RAW_DEPLOY_URL=$(echo "$DEPLOY_OUT" | grep -Eo "https://[a-zA-Z0-9./?=_-]*" | head -1)
             
-            SAFE_SUBDOMAIN=$(echo "$PROJECT" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]/-/g')
-            CUSTOM_DOMAIN="${SAFE_SUBDOMAIN}.${MAIN_DOMAIN}"
-            vercel domains add "$CUSTOM_DOMAIN" "$PROJECT" --token "$VERCEL_TOKEN" > /dev/null 2>&1 || true
+            vercel domains add "$CUSTOM_DOMAIN" --token "$VERCEL_TOKEN" > /dev/null 2>&1 || true
             DEPLOY_URL="https://$CUSTOM_DOMAIN"
+            
+            # HTTP Validation
+            send_telegram "⏳ Đang kiểm tra trạng thái hoạt động của domain: $DEPLOY_URL ..."
+            sleep 5
+            HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}\n" "$DEPLOY_URL")
+            if [ "$HTTP_STATUS" != "200" ] && [ "$HTTP_STATUS" != "308" ]; then
+                send_telegram "⚠️ Lệnh gán subdomain thành công nhưng trả về HTTP $HTTP_STATUS. Cần khoảng 1-2 phút để DNS cập nhật."
+            fi
         else
             DEPLOY_URL="Lỗi Deploy, check log VPS!"
+            send_telegram "❌ Quá trình Vercel Deploy gặp lỗi:\n\`\`\`\n$DEPLOY_OUT\n\`\`\`"
         fi
     else
         DEPLOY_URL="Vercel token not configured"
