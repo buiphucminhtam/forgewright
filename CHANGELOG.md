@@ -2,6 +2,16 @@
 
 All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewright).
 
+## [8.1.0] — 2026-04-29
+
+> **v8.1 — Autonomous Pipeline Hardening (Clarify-to-Deploy)**
+
+### Added
+- **Strict Cognitive Rules** (`rules/.tieu-mo-deployment-flow.md`) — Enforced ground truth for the AI orchestrator to prevent DevOps-related hallucinations during Clarify phase.
+- **Automated Vercel Project Binding** (`scripts/task-runner.sh`) — Automatically generates `vercel.json` with a sanitized project name before deployment to resolve Vercel directory name collision bugs.
+- **HTTP Validation Loop** (`scripts/task-runner.sh`) — Added a self-verifying HTTP ping check after assigning the custom Vercel subdomain to ensure DNS propagation before confirming task completion.
+- **Global Memory Injection** — Integrated memory-wrapper injection to ensure the Orchestrator inherently understands the CI/CD boundaries.
+
 ## [8.0.0] — 2026-04-13
 
 > **v8.0 — Stability, Resilience, Audit, Quality, Timeout**
