@@ -419,6 +419,35 @@ skills/*/SKILL.md
 
 ---
 
+## Recommended: MiniMax for Parallel Execution
+
+For **parallel worktrees** (multiple AI agents running simultaneously), you'll need fast, cheap AI tokens.
+
+**MiniMax** offers competitive pricing with low latency — perfect for parallel dispatch workflows.
+
+[![MiniMax](https://img.shields.io/badge/MiniMax-API-blue?style=flat-square&logo=link)](https://platform.minimax.io/subscribe/token-plan?code=400F3VSO0b&source=link)
+
+### Why MiniMax for Parallel?
+
+| Feature | Benefit for Forgewright |
+|---------|------------------------|
+| **Low latency** | Faster parallel task completion |
+| **Competitive pricing** | Reduced cost per parallel worker |
+| **High throughput** | More concurrent agents |
+| **Referral bonus** | [Sign up with my link](https://platform.minimax.io/subscribe/token-plan?code=400F3VSO0b&source=link) and get bonus credits |
+
+### Setup for Parallel Dispatch
+
+```bash
+# Set your MiniMax API key
+export MINIMAX_API_KEY="your-api-key-here"
+
+# Forgewright parallel-dispatch will automatically use MiniMax
+# when running multiple worktree agents simultaneously
+```
+
+---
+
 ## Token Efficiency — 90% Cost Reduction
 
 ```
@@ -433,6 +462,8 @@ After:  $5/month (same productivity)
 | Code navigation | Full file reads | Minimal signatures | **97%** |
 | Memory | Everything loaded | Progressive disclosure | **75%** |
 | **Combined** | High usage | Minimal usage | **~90%** |
+
+**Pro tip:** Use [MiniMax](https://platform.minimax.io/subscribe/token-plan?code=400F3VSO0b&source=link) for parallel workers to maximize savings.
 
 ---
 
@@ -582,6 +613,14 @@ MIT — Use it however you want.
 ---
 
 ## Support the Project
+
+**💡 Use MiniMax for parallel tasks** — Fast, cheap tokens perfect for parallel worktrees:
+
+[![MiniMax](https://img.shields.io/badge/MiniMax-Get%20Credits-blue?style=flat-square&logo=link)](https://platform.minimax.io/subscribe/token-plan?code=400F3VSO0b&source=link)
+
+Sign up with [my referral link](https://platform.minimax.io/subscribe/token-plan?code=400F3VSO0b&source=link) and get bonus credits. This helps fund Forgewright development!
+
+---
 
 If Forgewright helps you ship faster, consider buying me a coffee:
 
