@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────
 # forgewright-mcp-setup — ONE-COMMAND MCP Setup
 #
 # Single command to set up MCP for ANY project.
 # No manual JSON editing. No path confusion.
 #
-# Usage (run from any project using Forgewright):
-#   bash .antigravity/plugins/production-grade/scripts/forgewright-mcp-setup.sh
-#   # or if forgewright IS the project:
-#   bash scripts/forgewright-mcp-setup.sh
-# ─────────────────────────────────────────────────────────
+# USAGE (run from any project using Forgewright):
+#   bash forgewright/scripts/forgewright-mcp-setup.sh
+#
+# This sets up BOTH:
+#   - forgewright-mcp-launcher.sh (Forgewright tools, skills, memory)
+#   - forgenexus-mcp-launcher.sh (Code intelligence, graph, query)
+# ─────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
 # ─── Detect Forgewright Location ────────────────────────────────────────────────
 
-# Capture via stdout, pass forgewright path via a global
 declare FORGEWRIGHT_DIR=""
 declare FORGEWRIGHT_IS_PROJECT="false"
 
@@ -181,7 +182,7 @@ EXAMPLES:
   forgewright-mcp-setup.sh --diagnose
 
 QUICK START (from any project using Forgewright):
-  bash <forgewright>/scripts/forgewright-mcp-setup.sh
+  bash forgewright/scripts/forgewright-mcp-setup.sh
 EOF
 }
 
@@ -386,9 +387,9 @@ update_global_config() {
     # Create backup
     cp "$config_path" "${config_path}.bak.$(date +%Y%m%d%H%M%S)"
 
-    # Update config with jq
-    local server_name="forgewright-workspace"
-    local launcher_path="${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
+    # Update config with both launchers
+    local fw_launcher="${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
+    local fnx_launcher="${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh"
 
     local new_config
     new_config=$(node -e "
@@ -400,13 +401,19 @@ try {
     cfg = {mcpServers: {}};
 }
 if (!cfg.mcpServers) cfg.mcpServers = {};
-cfg.mcpServers['$server_name'] = {
+
+// Update forgewright launcher
+cfg.mcpServers['forgewright'] = {
     command: 'bash',
-    args: ['$launcher_path'],
-    env: {
-        FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
-    }
+    args: ['$fw_launcher']
 };
+
+// Update forgenexus launcher
+cfg.mcpServers['forgenexus'] = {
+    command: 'bash',
+    args: ['$fnx_launcher']
+};
+
 console.log(JSON.stringify(cfg, null, 2));
 " 2>/dev/null) || {
         log_error "Failed to update config"
@@ -415,13 +422,15 @@ console.log(JSON.stringify(cfg, null, 2));
 
     echo "$new_config" > "$config_path"
     log_ok "Updated $config_path"
-    log_info "  Server name: $server_name"
-    log_info "  Workspace: $PROJECT_ROOT"
+    log_info "  forgewright → $fw_launcher"
+    log_info "  forgenexus → $fnx_launcher"
+    log_info ""
+    log_info "  Multi-project mode: Works for ALL projects!"
 }
 
 print_manual_config() {
-    local server_name="forgewright-workspace"
-    local launcher_path="${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
+    local fw_launcher="${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
+    local fnx_launcher="${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh"
 
     cat << EOF
 
@@ -441,12 +450,13 @@ print_manual_config() {
 
   {
     "mcpServers": {
-      "$server_name": {
+      "forgewright": {
         "command": "bash",
-        "args": ["$launcher_path"],
-        "env": {
-          "FORGEWRIGHT_WORKSPACE": "$PROJECT_ROOT"
-        }
+        "args": ["$fw_launcher"]
+      },
+      "forgenexus": {
+        "command": "bash",
+        "args": ["$fnx_launcher"]
       }
     }
   }
@@ -503,10 +513,37 @@ verify_installation() {
         log_warn "Dependencies not installed (will auto-install on first use)"
     fi
 
+    # Check launchers exist
+    ((checks++))
+    if [[ -f "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh" ]]; then
+        ((passed++))
+        log_ok "forgewright-mcp-launcher.sh exists"
+    else
+        log_error "forgewright-mcp-launcher.sh missing"
+    fi
+
+    ((checks++))
+    if [[ -f "${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh" ]]; then
+        ((passed++))
+        log_ok "forgenexus-mcp-launcher.sh exists"
+    else
+        log_warn "forgenexus-mcp-launcher.sh missing (optional)"
+    fi
+
+    # Run forgenexus doctor
+    if [[ -f "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js" ]]; then
+        ((checks++))
+        log_step "Running ForgeNexus diagnostics..."
+        node "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js" doctor "${PROJECT_ROOT}" 2>/dev/null || {
+            log_warn "ForgeNexus doctor failed (index may not exist yet)"
+        }
+        ((passed++))
+    fi
+
     return 0
 }
 
-# ─── Command: Check ────────────────────────────────────────────────────────
+# ─── Command: Check ───────────────────────────────────────────────────────
 
 cmd_check() {
     local client
@@ -546,22 +583,25 @@ console.log('  Generated: ' + m.generated_at);
     fi
     echo ""
 
+    # ForgeNexus status
+    if [[ -f "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js" ]]; then
+        log_step "ForgeNexus: Running quick check..."
+        node "${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js" check "${PROJECT_ROOT}" 2>/dev/null || true
+    fi
+    echo ""
+
     # Global config
     if [[ "$client" != "unknown" ]]; then
         log_ok "AI Client: $client"
         if [[ -f "$config_path" ]]; then
             log_ok "Config: $config_path"
-    # Check if this workspace is configured
-    local server_pattern="forgewright-$(basename "$PROJECT_ROOT")"
-    local generic_pattern="forgewright-workspace"
-    if grep -q "$server_pattern" "$config_path" 2>/dev/null; then
-        log_ok "Server entry: FOUND ($server_pattern)"
-    elif grep -q "$generic_pattern" "$config_path" 2>/dev/null; then
-        log_ok "Server entry: FOUND ($generic_pattern — shared config)"
-        log_info "  Note: Using shared workspace config"
-    else
-        log_warn "Server entry: NOT FOUND in config"
-    fi
+            # Check launchers
+            if grep -q "forgewright-mcp-launcher" "$config_path" 2>/dev/null; then
+                log_ok "Launcher: forgewright-mcp-launcher.sh"
+            fi
+            if grep -q "forgenexus-mcp-launcher" "$config_path" 2>/dev/null; then
+                log_ok "Launcher: forgenexus-mcp-launcher.sh"
+            fi
         else
             log_error "Config: NOT FOUND"
         fi
@@ -583,7 +623,18 @@ console.log('  Generated: ' + m.generated_at);
         log_warn "Settings: NOT FOUND (.forgewright/settings.env)"
     fi
     echo ""
-    echo "━━━━━━━━━━━━━━━━━━━"
+
+    # Multi-project info
+    echo "━━━ Multi-Project Mode ━━━"
+    echo ""
+    log_info "With launcher setup, ONE config works for ALL projects."
+    log_info ""
+    log_info "Launchers auto-detect workspace from:"
+    log_info "  - FORGEWRIGHT_WORKSPACE env var"
+    log_info "  - MCP_WORKSPACE_ROOT env var"
+    log_info "  - Git repository root"
+    log_info ""
+    echo "━━━━━━━━━━━━━━━━━━"
 }
 
 # ─── Command: Diagnose ─────────────────────────────────────────────────────
@@ -603,6 +654,13 @@ cmd_diagnose() {
     echo "  DIR:     $FORGEWRIGHT_DIR"
     echo "  PROJECT: $PROJECT_ROOT"
     echo "  EXISTS:  $([ -d "$FORGEWRIGHT_DIR" ] && echo YES || echo NO)"
+    echo ""
+
+    log_step "Launchers"
+    echo "  forgewright: ${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
+    echo "  EXISTS: $([ -f "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh" ] && echo YES || echo NO)"
+    echo "  forgenexus:  ${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh"
+    echo "  EXISTS: $([ -f "${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh" ] && echo YES || echo NO)"
     echo ""
 
     log_step "Manifest"
@@ -630,7 +688,6 @@ console.log(m.workspace || 'ERROR');
     client="$(get_client_type)"
     echo "  CLIENT: $client"
     local config_path
-    config_path="$(get_client_type "$client")"
     config_path="$(get_config_path "$client")"
     echo "  PATH:  $config_path"
     echo "  EXISTS: $([ -f "$config_path" ] && echo YES || echo NO)"
@@ -663,11 +720,11 @@ cmd_uninstall() {
     config_path="$(get_config_path "$client")"
 
     if [[ -f "$config_path" ]]; then
-        local server_name="forgewright-workspace"
         node -e "
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$config_path', 'utf8'));
-delete cfg.mcpServers['$server_name'];
+delete cfg.mcpServers['forgewright'];
+delete cfg.mcpServers['forgenexus'];
 fs.writeFileSync('$config_path', JSON.stringify(cfg, null, 2));
 " 2>/dev/null
         log_ok "Removed from $config_path"
@@ -749,6 +806,8 @@ main() {
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo -e " ${GREEN}✓ MCP Setup Complete${NC}"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "  Multi-Project Mode: ONE config works for ALL projects!"
             echo ""
             echo "  Next: Restart your AI client (Cursor/Claude)"
             echo "        Then verify: bash ${BASH_SOURCE[0]} --check"
