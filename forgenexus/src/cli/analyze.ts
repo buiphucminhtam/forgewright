@@ -114,5 +114,13 @@ export async function analyze(opts: {
   console.error(`[ForgeNexus] Done: ${stats.files} files, ${stats.nodes} nodes, ${stats.edges} edges`)
   console.error(`[ForgeNexus] Communities: ${stats.communities}, Processes: ${stats.processes}`)
   if (stats.hasEmbeddings) console.error(`[ForgeNexus] Embeddings: enabled`)
+  if (stats.cacheHits !== undefined) {
+    const total = (stats.cacheHits as number) + (stats.cacheMisses as number)
+    const hitRate = total > 0 ? ((stats.cacheHits as number) / total * 100).toFixed(1) : '0'
+    console.error(`[ForgeNexus] AST Cache: ${stats.cacheHits} hits, ${stats.cacheMisses} misses (${hitRate}%)`)
+  }
+  if (stats.trieBuildMs !== undefined) {
+    console.error(`[ForgeNexus] Trie: Built in ${stats.trieBuildMs}ms`)
+  }
   if (stats.files > 0) console.error(`[ForgeNexus] Re-run with --force for full re-index`)
 }

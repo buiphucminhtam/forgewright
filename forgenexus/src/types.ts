@@ -109,6 +109,9 @@ export interface RepoStats {
   communities: number
   processes: number
   hasEmbeddings: boolean
+  cacheHits?: number
+  cacheMisses?: number
+  trieBuildMs?: number
 }
 
 export interface QueryResult {
