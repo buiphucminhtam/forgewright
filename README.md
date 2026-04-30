@@ -522,14 +522,17 @@ bash scripts/forge-validate.sh
 
 ## ForgeNexus — Code Intelligence CLI
 
-ForgeNexus indexes your codebase and provides instant code context:
+ForgeNexus is ForgeWright's code intelligence engine. It indexes your codebase and provides instant context about code relationships.
 
 ```bash
 # Index a repository
 npx forgenexus analyze
 
-# With semantic search
-npx forgenexus analyze --embeddings
+# Re-run (uses persistent AST cache for faster incremental updates)
+npx forgenexus analyze
+
+# Force full re-index
+npx forgenexus analyze --force
 
 # Query code
 npx forgenexus query "findUser"
@@ -541,7 +544,25 @@ npx forgenexus status
 npx forgenexus list
 ```
 
-See [`forgenexus/ARCHITECTURE.md`](forgenexus/ARCHITECTURE.md) for full documentation.
+### Performance Features
+
+| Feature | Benefit |
+|---------|---------|
+| **AST Cache** | Skip re-parsing unchanged files (content-hash validated) |
+| **Incremental Community** | Only re-run Leiden when ≤5% files changed |
+| **Suffix Trie** | O(1) import path resolution |
+| **Early Exit** | Skip analysis on unchanged commits |
+
+### Benchmark Results
+
+| Metric | Cold Run | Warm Run |
+|--------|----------|----------|
+| Total Time | ~60s | ~10s |
+| Parse Time | ~40s | ~2s |
+| AST Cache Hits | 0% | 95%+ |
+| Trie Build | 3-4ms | 3-4ms |
+
+See [`forgenexus/README.md`](forgenexus/README.md) for full documentation.
 
 ---
 

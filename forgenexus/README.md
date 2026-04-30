@@ -1,59 +1,32 @@
-# ForgeNexus — Code Intelligence Platform
+# ForgeNexus — Code Intelligence Engine
 
-> **High-performance code analysis with persistent caching for fast incremental updates.**
+> **Part of [ForgeWright](https://github.com/buiphucminhtam/forgewright)** — High-performance code analysis with persistent caching.
 
-## Features
-
-- **Incremental Analysis**: Only re-analyze changed files
-- **Persistent AST Cache**: Skip re-parsing unchanged files (content-hash validated)
-- **Suffix Trie Resolution**: O(1) import path resolution
-- **Community Detection**: Leiden algorithm with incremental updates
-- **Process Tracing**: BFS execution flow analysis
-- **Full-Text Search**: SQLite FTS5 incremental indexing
-- **Multi-Language**: TypeScript, JavaScript, Python, Go, Rust, Java, C#, C++, and more
-
-## Installation
-
-```bash
-npm install
-```
+ForgeNexus is ForgeWright's code intelligence engine. It indexes codebases and provides instant context about symbols, relationships, and execution flows.
 
 ## Quick Start
 
-### CLI Usage
-
 ```bash
-# Analyze current directory
-npx forgenexus analyze
+# From forgewright directory
+cd forgenexus
+npm install && npm run build
 
-# Force full re-index
-npx forgenexus analyze --force
+# Analyze any project
+npx forgenexus analyze /path/to/project
 
-# Check code intelligence
-npx forgenexus query "auth"
+# Query the index
+npx forgenexus query "findUser"
+npx forgenexus context getUser
 ```
 
-### Programmatic Usage
-
-```typescript
-import { Indexer } from '@forgewright/forgenexus';
-
-const indexer = new Indexer(process.cwd(), {
-  includeEmbeddings: false,
-});
-
-const stats = await indexer.analyze();
-console.log(`Indexed ${stats.files} files, ${stats.nodes} nodes`);
-```
-
-## Performance Optimizations
+## Performance Features
 
 ### AST Cache
 
 Caches parsed AST results to skip re-parsing unchanged files:
 
 ```
-Cache: AST 142/145 hits (97.9%)
+AST Cache: 142/145 hits (97.9%)
 Parse: 2.1s (vs ~60s without cache)
 ```
 
@@ -92,51 +65,35 @@ Resolve: 50ms (vs ~5s without trie)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Modules
+## Module Structure
 
-### Data Layer
-
-| Module | Description |
-|--------|-------------|
-| `ast-cache.ts` | Persistent AST cache with content-hash validation |
-| `community-cache.ts` | Incremental community detection |
-| `trie-cache.ts` | Persistent suffix trie (build is fast) |
-| `leiden.ts` | Pure TypeScript Leiden algorithm |
-| `graph.ts` | Execution flow tracing |
-
-### Analysis Layer
-
-| Module | Description |
-|--------|-------------|
-| `indexer.ts` | Main analysis pipeline |
-| `scanner.ts` | File discovery |
-| `parser.ts` | Tree-sitter parsing |
-| `binding-propagation.ts` | Cross-file binding |
-| `framework-detection.ts` | Framework detection |
-
-### CLI
-
-| Command | Description |
-|---------|-------------|
-| `analyze` | Run full analysis |
-| `query` | Query the knowledge graph |
-
-## Configuration
-
-```typescript
-const config: ForgeNexusConfig = {
-  languages: ['typescript', 'javascript', 'python'],
-  maxFileSize: 512 * 1024,
-  skipPatterns: ['**/node_modules/**'],
-  includeEmbeddings: false,
-  repoName: 'my-project',
-};
+```
+src/
+├── analysis/           # Core analysis pipeline
+│   ├── indexer.ts     # Main pipeline orchestrator
+│   ├── scanner.ts     # File discovery
+│   └── parser.ts      # Tree-sitter parsing
+├── data/              # Data layer
+│   ├── ast-cache.ts   # Persistent AST cache
+│   ├── community-cache.ts  # Incremental community
+│   ├── leiden.ts      # Leiden algorithm
+│   └── graph.ts       # Execution flow tracing
+└── cli/               # CLI commands
+    └── analyze.ts     # analyze command
 ```
 
-## Cache Management
+## Benchmark Results
 
-```bash
-# Cache location
+| Metric | Cold Run | Warm Run |
+|--------|----------|----------|
+| Total Time | ~60s | ~10s |
+| Parse Time | ~40s | ~2s |
+| AST Cache Hits | 0% | 95%+ |
+| Trie Build | 3-4ms | 3-4ms |
+
+## Cache Location
+
+```
 .forgenexus/
 ├── cache/
 │   ├── ast/           # AST cache
@@ -147,15 +104,33 @@ const config: ForgeNexusConfig = {
     └── codebase.db    # Knowledge graph
 ```
 
-## Performance Benchmarks
+## Development
 
-| Metric | Cold Run | Warm Run |
-|--------|----------|----------|
-| Total Time | ~60s | ~10s |
-| Parse Time | ~40s | ~2s |
-| AST Cache Hits | 0% | 95%+ |
-| Trie Build | 3-4ms | 3-4ms |
+```bash
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Run tests
+npm test
+
+# Type check
+npx tsc --noEmit
+```
+
+## Integration with ForgeWright
+
+ForgeNexus is primarily used through ForgeWright's MCP server. When you set up ForgeWright with Level 4 (MCP), ForgeNexus tools are available in your IDE:
+
+- `forgenexus_query` — Find code by concept
+- `forgenexus_context` — Get symbol details
+- `forgenexus_impact` — Blast radius analysis
+- `forgenexus_route_map` — API routes
+
+See [ForgeWright README](../README.md) for setup instructions.
 
 ## License
 
-MIT
+MIT — Same as ForgeWright
