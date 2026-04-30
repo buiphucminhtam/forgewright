@@ -159,6 +159,32 @@ def append_to_summary(checkpoint_id: str, reason: str, summary: str):
         f.write(f"| {timestamp} | {checkpoint_id} | {reason} | {summary} |\n")
 
 
+def update_memory_bank_progress(summary: str):
+    """Update Memory Bank progress.md at checkpoint (NEW v8.0)."""
+    progress_file = Path(".forgewright/memory-bank/progress.md")
+    
+    if not progress_file.exists():
+        return
+    
+    try:
+        content = progress_file.read_text()
+        
+        # Update last_updated in header
+        today = datetime.now().strftime("%Y-%m-%d")
+        if "Last Updated:" in content:
+            import re
+            content = re.sub(
+                r"Last Updated: \d{4}-\d{2}-\d{2}",
+                f"Last Updated: {today}",
+                content
+            )
+        
+        progress_file.write_text(content)
+        log(f"Memory Bank progress.md updated")
+    except Exception as e:
+        warn(f"Could not update Memory Bank: {e}")
+
+
 def generate_summary(reason: str) -> str:
     """Generate checkpoint summary from git status."""
     try:
@@ -189,6 +215,9 @@ def do_checkpoint(reason: str = "manual"):
 
     # Save to mem0
     save_to_mem0(summary, checkpoint_id)
+
+    # Update Memory Bank (NEW v8.0)
+    update_memory_bank_progress(summary)
 
     # Update session
     session["message_count"] = 0

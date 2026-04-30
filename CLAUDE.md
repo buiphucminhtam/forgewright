@@ -272,6 +272,29 @@ Before finishing ANY task, verify ALL of the following:
 | 6 | ✅ Scope respected? | Flag scope creep |
 | 7 | ✅ User approval? | Wait for approval (if gate) |
 | 8 | ✅ Turn-Close memory saved? | Save before ending turn |
+| 9 | ✅ Memory Bank updated? | Update progress.md at session end |
+
+## Session-End Ritual (NEW v8.0)
+
+**Before closing any session, ALWAYS run:**
+
+```
+1. Update progress.md:
+   - Mark completed tasks
+   - Add blockers/open questions
+   - Update last_updated timestamp
+
+2. Update activeContext.md:
+   - Summarize current state
+   - Note next steps
+
+3. Update session-log.json:
+   - Set status to "completed" OR "interrupted"
+   - Add completed_at timestamp
+   - Add summary of what was done
+```
+
+**Why:** Ensures next session starts with fresh, accurate context.
 
 **⚠️ MANDATORY RULE:**
 ```
@@ -368,4 +391,63 @@ When context resets (overflow), these are auto-loaded:
 ```
 
 **Token budget:** Max 500 tokens for memory injection.
+
+### Step 0.6 — Session Health Check
+
+**⚠️ NEW (v8.0) — Prevents stale session data from causing wrong decisions.**
+
+```
+1. Check session-log.json:
+   IF exists AND status == "in_progress" AND last_update > 24h:
+     Log: "⚠️ Stale session detected — updating to interrupted"
+     Update status to "interrupted"
+     Add last_update timestamp
+     Update interrupted_reason: "Session health check - stale data detected"
+
+2. Check Memory Bank freshness:
+   IF .forgewright/memory-bank/progress.md exists:
+     Read last_updated from header
+     IF last_updated > 7 days:
+       Log: "⚠️ Memory Bank may be stale — update at session end"
+```
+
+**Why:** Stale session data causes wrong resume decisions. This check ensures every session starts fresh.
+
+### Token Monitoring (NEW v8.0)
+
+**Context window management based on research — trigger compaction at 80%.**
+
+```
+1. Monitor token usage during long sessions
+2. At ~80% context:
+   - Log: "⧖ Context at 80% — triggering compaction"
+   - Trigger memory-middleware.py checkpoint
+   - Generate session summary
+
+3. At ~95% context:
+   - Log: "⚠️ Context critical — session may need handover"
+   - Offer Handover Procedure
+```
+
+**Why:** Prevents context rot and abrupt information loss.
+
+### Handover Procedure (NEW v8.0)
+
+**When context hits limits, use this procedure:**
+
+```
+1. Generate handover document:
+   - Write to .forgewright/memory-bank/handover-[date].md
+   - Include: goals, what was done, key decisions, blockers, next steps
+
+2. Start fresh session:
+   - Upload only handover document + project brief
+   - Clear context window
+
+3. Resume from handover:
+   - Read handover document
+   - Continue from where previous session stopped
+```
+
+**Inspired by:** SWE-Pruner pattern, Session Handoff pattern from NotebookLM research.
 
