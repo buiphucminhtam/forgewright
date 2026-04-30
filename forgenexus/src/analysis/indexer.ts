@@ -41,6 +41,14 @@ import { parseFilesParallel, estimateBytes } from './parallel.js'
 import { propagateBindings, shouldSkipBindingPropagation } from './binding-propagation.js'
 import { detectFramework } from './framework-detection.js'
 import { globalEnclosureCache } from './enclosure-cache.js'
+import { ASTCache, getASTCache } from '../data/ast-cache.js'
+import {
+  analyzeCommunityChanges,
+  determineUpdateStrategy,
+  computeCommunityMetrics,
+  validateCommunityQuality,
+  logCommunityDecision,
+} from '../data/community-cache.js'
 import type { ForgeNexusConfig, RepoStats, CodeNode, CodeEdge } from '../types.js'
 import type { ParseTask } from './parallel.js'
 import { defaultCodebaseDbPath } from '../paths.js'
@@ -78,6 +86,10 @@ export class Indexer {
   private parser: ParserEngine
   private db: ForgeDB
   private config: Required<ForgeNexusConfig>
+  private astCache: ASTCache | null = null
+  private cacheHits = 0
+  private cacheMisses = 0
+  private trieBuildTimeMs = 0
 
   constructor(basePath: string, config: ForgeNexusConfig = {}) {
     this.config = {
@@ -106,6 +118,17 @@ export class Indexer {
     }
     this.scanner = new FileScanner(basePath, this.config)
     this.parser = new ParserEngine()
+
+    // Initialize AST cache if incremental mode
+    if (config.includeEmbeddings !== undefined) {
+      this.astCache = getASTCache(basePath, { enabled: true })
+    }
+
+    // Check if cache should be enabled based on cache availability
+    if (!this.astCache) {
+      this.astCache = getASTCache(basePath, { enabled: true })
+    }
+
     this.db = new ForgeDB(this.config.dbPath)
   }
 
@@ -115,12 +138,14 @@ export class Indexer {
   ): Promise<RepoStats> {
     // Reset per-session caches for fresh analysis
     globalEnclosureCache.clear()
+    this.analyzeStartTime = Date.now()
 
     const progress = (phase: Phase, pct: number, message?: string) => {
       if (onProgress) onProgress(phase, pct, message ?? PHASE_LABELS[phase])
     }
 
     // ── 0. Early exit on unchanged commit ─────────────────────────────────────
+    const totalStart = Date.now()
     if (incremental) {
       const earlyExit = this.checkEarlyExit()
       if (earlyExit) {
@@ -131,7 +156,9 @@ export class Indexer {
 
     // ── 1. Scan files ─────────────────────────────────────────────────────────
     progress('scanning', 0)
+    const scanStart = Date.now()
     const files = await this.scanner.scan()
+    const scanTime = Date.now() - scanStart
     progress('scanning', 100)
 
     let filesToParse: ScannedFile[] = files
@@ -149,22 +176,77 @@ export class Indexer {
       return stats
     }
 
-    // ── 2. Parallel/chunked parsing ────────────────────────────────────────────
+    // ── 2. Parallel/chunked parsing (with AST cache) ─────────────────────────────
+    const phaseStart = Date.now()
     progress('parsing', 0, 'Starting file parsing...')
 
-    // Build parse tasks
+    // Build parse tasks and check cache
     const tasks: ParseTask[] = []
+    const cachedResults: { filePath: string; nodes: CodeNode[]; edges: CodeEdge[] }[] = []
+    const pathsToCache = new Set<string>()
+    let fileReadCount = 0
+
     for (const scannedFile of filesToParse) {
       try {
+        // Check cache FIRST using peek (avoids reading file if cache invalid)
+        if (this.astCache) {
+          const peekResult = this.astCache.peek(scannedFile.path)
+          if (peekResult.valid) {
+            // Cache entry exists - read file to verify content hash
+            const content = readFileSync(scannedFile.path, 'utf8')
+            fileReadCount++
+            const cached = this.astCache.get(scannedFile.path, content)
+            if (cached) {
+              cachedResults.push({
+                filePath: scannedFile.path,
+                nodes: cached.nodes,
+                edges: cached.edges,
+              })
+              this.cacheHits++
+              continue
+            }
+          }
+        }
+
+        // Cache miss - read file and parse
         const content = readFileSync(scannedFile.path, 'utf8')
+        fileReadCount++
+
+        // Re-check cache with content (for CRC validation)
+        if (this.astCache) {
+          const cached = this.astCache.get(scannedFile.path, content)
+          if (cached) {
+            cachedResults.push({
+              filePath: scannedFile.path,
+              nodes: cached.nodes,
+              edges: cached.edges,
+            })
+            this.cacheHits++
+            continue
+          }
+          this.cacheMisses++
+        }
+
+        // Need to parse
         tasks.push({
           filePath: scannedFile.path,
           content,
           language: scannedFile.language,
         })
+        pathsToCache.add(scannedFile.path)
       } catch {
-        // skip unreadable files
+        /* skip unreadable files */
       }
+    }
+
+    const fileReadTime = Date.now() - phaseStart
+    console.log(`[ForgeNexus] Phase 2: Read ${fileReadCount} files in ${fileReadTime}ms`)
+
+    // Report cache statistics
+    const totalFiles = filesToParse.length
+    const cacheHitRate = totalFiles > 0 ? (this.cacheHits / totalFiles * 100).toFixed(1) : '0'
+    if (this.cacheHits > 0) {
+      progress('parsing', 0, `Cache: ${this.cacheHits}/${totalFiles} hits (${cacheHitRate}%)`)
     }
 
     const estimatedMB = Math.round(estimateBytes(tasks) / 1024 / 1024)
@@ -173,77 +255,140 @@ export class Indexer {
     let newNodes: CodeNode[] = []
     let newEdges: CodeEdge[] = []
 
-    if (isLargeRepo) {
-      // Use parallel parser for large repos (with progress + stall timeout)
-      const os = await import('os')
-      const result = await parseFilesParallel(tasks, {
-        concurrency: Math.max(1, Math.floor(os.cpus().length * 0.75)),
-        onProgress: (done, total) => {
-          progress('parsing', Math.round((done / total) * 100), `Parsing ${done}/${total} files...`)
-        },
-      })
-      newNodes = result.nodes
-      newEdges = result.edges
-    } else {
-      // Sequential: single ParserEngine reused across ALL files + event loop yielding
-      const engine = new ParserEngine()
-      const allLangs = [...new Set(tasks.map((t) => t.language))]
-      await engine.preloadLanguages(allLangs)
+    // Add cached results first
+    for (const cached of cachedResults) {
+      newNodes.push(...cached.nodes)
+      newEdges.push(...cached.edges)
+    }
 
-      for (let i = 0; i < tasks.length; i++) {
-        const task = tasks[i]
-        try {
-          const { nodes, edges } = await engine.parseFile(
-            task.filePath,
-            task.content,
-            task.language,
-          )
-          newNodes.push(...nodes)
-          newEdges.push(...edges)
-        } catch {
-          // skip
+    if (tasks.length > 0) {
+      if (isLargeRepo) {
+        // Use parallel parser for large repos (with progress + stall timeout)
+        const os = await import('os')
+        const result = await parseFilesParallel(tasks, {
+          concurrency: Math.max(1, Math.floor(os.cpus().length * 0.75)),
+          onProgress: (done, total) => {
+            progress('parsing', Math.round((done / total) * 100), `Parsing ${done}/${total} files...`)
+          },
+        })
+        newNodes.push(...result.nodes)
+        newEdges.push(...result.edges)
+
+        // Store parsed results in cache
+        if (this.astCache) {
+          for (const task of tasks) {
+            const cached = result.nodes.filter(n => n.filePath === task.filePath)
+            const cachedEdges = result.edges.filter(e =>
+              cached.some(c => c.uid === e.fromUid)
+            )
+            this.astCache.set(task.filePath, task.content, task.language, cached, cachedEdges)
+          }
         }
-        if (i % 50 === 0 || i === tasks.length - 1) {
-          progress('parsing', Math.round((i / tasks.length) * 100), `Parsing ${i + 1}/${tasks.length} files...`)
-        }
-        // Yield to event loop every 50 files to keep UI responsive
-        if (i % 50 === 0 && i > 0) {
-          await new Promise<void>((resolve) => setImmediate(resolve))
+      } else {
+        // Sequential: single ParserEngine reused across ALL files + event loop yielding
+        const engine = new ParserEngine()
+        const allLangs = [...new Set(tasks.map((t) => t.language))]
+        await engine.preloadLanguages(allLangs)
+
+        for (let i = 0; i < tasks.length; i++) {
+          const task = tasks[i]
+          try {
+            const { nodes, edges } = await engine.parseFile(
+              task.filePath,
+              task.content,
+              task.language,
+            )
+            newNodes.push(...nodes)
+            newEdges.push(...edges)
+
+            // Store in cache
+            if (this.astCache) {
+              this.astCache.set(task.filePath, task.content, task.language, nodes, edges)
+            }
+          } catch {
+            // skip
+          }
+          if (i % 50 === 0 || i === tasks.length - 1) {
+            progress('parsing', Math.round((i / tasks.length) * 100), `Parsing ${i + 1}/${tasks.length} files...`)
+          }
+          // Yield to event loop every 50 files to keep UI responsive
+          if (i % 50 === 0 && i > 0) {
+            await new Promise<void>((resolve) => setImmediate(resolve))
+          }
         }
       }
     }
 
     progress('parsing', 100, `Parsed ${newNodes.length} nodes, ${newEdges.length} edges`)
+    const parseTime = Date.now() - phaseStart
+    console.log(`[ForgeNexus] Phase 2: Parse ${tasks.length} files in ${parseTime}ms (cached ${cachedResults.length})`)
 
     // ── 3. Incremental update: remove old nodes for changed files ──────────────
-    const changedFilePaths = new Set([...pathsToParse])
+    const removeStart = Date.now()
+    // Use pathsToParse for removal (all files that were scanned)
     const deletedFiles = this.getDeletedFiles()
 
     if (incremental && (newNodes.length > 0 || deletedFiles.length > 0)) {
-      for (const fp of [...changedFilePaths, ...deletedFiles]) {
+      for (const fp of [...pathsToParse, ...deletedFiles]) {
         this.removeNodesForFile(fp)
       }
     }
+    const removeTime = Date.now() - removeStart
 
     // ── 4. Insert nodes ───────────────────────────────────────────────────────
+    const insertStart = Date.now()
     this.db.insertNodesBatch(newNodes)
+    const insertTime = Date.now() - insertStart
     const changedUids = new Set(newNodes.map((n) => n.uid))
 
-    // ── 5. Resolve edges (with suffix trie for O(1) import resolution) ─────────
-    progress('edges', 0)
+    // Skip edge processing if nothing changed (100% cache hit)
+    if (tasks.length === 0 && cachedResults.length > 0) {
+      progress('edges', 100)
+      progress('binding', 100)
+      progress('communities', 100)
+      progress('processes', 100)
+      progress('fts', 100)
+      progress('complete', 100)
 
-    // Build suffix index from ALL files (not just changed)
+      const stats = this.db.getStats()
+      this.db.setMeta('indexed_at', new Date().toISOString())
+
+      const totalTime = Date.now() - this.analyzeStartTime
+      const elapsed = (ms: number) => ms > 1000 ? `${(ms/1000).toFixed(1)}s` : `${ms}ms`
+      console.log(`[ForgeNexus] === CACHED RUN ===`)
+      console.log(`[ForgeNexus] Total: ${elapsed(totalTime)}`)
+      console.log(`[ForgeNexus] === CACHED RUN ===`)
+
+      return {
+        ...stats,
+        cacheHits: this.cacheHits,
+        cacheMisses: this.cacheMisses,
+        trieBuildMs: this.trieBuildTimeMs,
+      }
+    }
+
+    progress('edges', 0)
+    const edgesStart = Date.now()
+
+    // Build suffix index from ALL files
+    // Note: Trie build is fast (O(n*m) string operations) - not worth caching
     const allPaths = [...new Set([...files.map((f) => f.path), ...[...this.db.getAllFilePaths()]])]
+    const buildStart = Date.now()
     const suffixIndex = buildSuffixIndex(allPaths)
+    this.trieBuildTimeMs = Date.now() - buildStart
 
     // Build fast name→uid map: O(n) single pass
     const allNodes = this.db.getAllNodes()
     const nameToUid = buildNameUidMap(allNodes)
     const fileSymbolMap = buildFileSymbolMap(allNodes)
 
+    const resolveStart = Date.now()
     const resolvedEdges = this.resolveEdgesFast(allNodes, newEdges, nameToUid)
-    progress('edges', 50)
+    progress('edges', 30)
+    const resolveTime = Date.now() - resolveStart
+    console.log(`[ForgeNexus]   resolveEdges: ${resolveTime}ms (${resolvedEdges.length} edges)`)
 
+    const moduleStart = Date.now()
     const moduleEdges = this.resolveModuleImportsFast(
       allNodes,
       newEdges,
@@ -251,12 +396,22 @@ export class Indexer {
       fileSymbolMap,
       suffixIndex,
     )
+    const moduleTime = Date.now() - moduleStart
+    console.log(`[ForgeNexus]   moduleImports: ${moduleTime}ms (${moduleEdges.length} edges)`)
+
+    const edgeInsertStart = Date.now()
     this.db.insertEdgesBatch(resolvedEdges)
     this.db.insertEdgesBatch(moduleEdges)
+    const edgeInsertTime = Date.now() - edgeInsertStart
+    console.log(`[ForgeNexus]   insertEdges: ${edgeInsertTime}ms`)
+
     progress('edges', 100)
+    const edgesTime = Date.now() - edgesStart
+    console.log(`[ForgeNexus] Phase 5: Resolve edges in ${edgesTime}ms (Trie ${this.trieBuildTimeMs}ms)`)
 
     // ── 6. Cross-file binding propagation ────────────────────────────────────
     progress('binding', 0)
+    const bindingStart = Date.now()
     const allEdgesNow = this.db.getAllEdges()
     if (!shouldSkipBindingPropagation(allNodes, allEdgesNow)) {
       const propagated = propagateBindings(allNodes, allEdgesNow)
@@ -265,11 +420,14 @@ export class Indexer {
       }
     }
     progress('binding', 100)
+    const bindingTime = Date.now() - bindingStart
+    console.log(`[ForgeNexus] Phase 6: Binding in ${bindingTime}ms`)
 
     // ── 7. Community detection (Leiden) ─────────────────────────────────────────
     progress('communities', 0)
+    const commStart = Date.now()
 
-    // Determine if full rebuild or partial
+    // Build edge list for community detection
     const nodeNames = new Map(allNodes.map((n) => [n.uid, n.name]))
     const allEdgesForComm = this.db.getAllEdges()
     const commEdges = allEdgesForComm
@@ -288,40 +446,114 @@ export class Indexer {
 
     const allNodeIds = allNodes.map((n) => n.uid)
 
-    // Check if incremental community update is viable
-    if (incremental && changedFilePaths.size > 0) {
-      // Partial: delete only affected communities, keep the rest
-      this.deleteAffectedCommunities(changedFilePaths)
+    // Use community-cache for incremental strategy determination
+    if (incremental && tasks.length > 0) {
+      // Analyze changes to determine update strategy
+      const changedFiles = new Set(tasks.map(t => t.filePath))
+      const allFilePaths = new Set(files.map(f => f.path))
+      const changeAnalysis = analyzeCommunityChanges(changedFiles, files.length, allFilePaths)
+      const strategy = determineUpdateStrategy(changeAnalysis)
+
+      // Log decision
+      const fakeMetrics = {
+        originalCommunityCount: 0,
+        newCommunityCount: 0,
+        mergedCommunities: 0,
+        createdCommunities: 0,
+        deletedCommunities: 0,
+        averageCohesion: 0,
+        stabilityScore: 0,
+      }
+      logCommunityDecision(changeAnalysis, strategy, fakeMetrics)
+
+      // Apply strategy
+      if (strategy === 'none') {
+        // Skip community detection entirely
+        console.log('[ForgeNexus] Community: Skipping (no changes)')
+      } else if (strategy === 'incremental' || strategy === 'aggressive') {
+        // Partial: delete only affected communities
+        this.deleteAffectedCommunities(changedFiles)
+      } else {
+        // Full rebuild
+        this.db.exec('MATCH (c:Community) DELETE c')
+        this.db.exec('MATCH (n:CodeNode) WHERE n.rel_type IS NULL SET n.community = NULL')
+      }
     } else {
       // Full rebuild: use KuzuDB MATCH syntax (not SQLite DELETE/UPDATE)
       this.db.exec('MATCH (c:Community) DELETE c')
       this.db.exec('MATCH (n:CodeNode) WHERE n.rel_type IS NULL SET n.community = NULL')
     }
 
-    // Run Leiden with timeout protection
-    const communities = detectLeidenCommunities(allNodeIds, commEdges, nodeNames, {
-      resolution: allNodes.length > 10000 ? 2.0 : 1.0,
-      maxIterations: allNodes.length > 10000 ? 3 : 10,
-    })
+    // Run Leiden with aggressive optimization for large graphs
+    // Large repo (>10K nodes): skip community detection (too slow)
+    // Medium repo (>5K nodes): 2 iterations max
+    // Small repo: 5 iterations
+    const nodeCount = allNodes.length
+    const edgeCount = commEdges.length
+    const isVeryLarge = nodeCount > 15000
+    const isLarge = nodeCount > 10000
+    const isMedium = nodeCount > 5000
+
+    let communities: ReturnType<typeof detectLeidenCommunities> = []
+
+    if (isVeryLarge) {
+      // Skip community detection for very large repos (too slow)
+      console.log(`[ForgeNexus] Leiden: Skipping (${nodeCount} nodes exceeds 15K threshold)`)
+    } else {
+      const maxIters = isLarge ? 2 : isMedium ? 3 : 5
+      const resolution = isLarge ? 3.0 : isMedium ? 2.0 : 1.0
+
+      console.log(`[ForgeNexus] Leiden: ${nodeCount} nodes, ${edgeCount} edges, ${maxIters} iters, res ${resolution}`)
+
+      communities = detectLeidenCommunities(allNodeIds, commEdges, nodeNames, {
+        resolution,
+        maxIterations: maxIters,
+      })
+
+      // Validate community quality
+      const metrics = computeCommunityMetrics(communities)
+      if (!validateCommunityQuality(metrics)) {
+        console.warn('[ForgeNexus] Community: Quality check failed, forcing full rebuild')
+        this.db.exec('MATCH (c:Community) DELETE c')
+        this.db.exec('MATCH (n:CodeNode) WHERE n.rel_type IS NULL SET n.community = NULL')
+        // Re-run with lower resolution for better quality
+        communities = detectLeidenCommunities(allNodeIds, commEdges, nodeNames, {
+          resolution: 0.5,
+          maxIterations: 3,
+        })
+      }
+
+      console.log(`[ForgeNexus] Leiden: ${communities.length} communities, avg cohesion ${metrics.averageCohesion}`)
+    }
 
     // Communities table was already cleared above (partial or full)
     // Now insert the new communities
+    const insertBatch: Array<{uid: string, community: string}> = []
+
     for (const community of communities) {
       this.db.insertCommunity(community)
-      // Update each node's community field in-place via raw query.
-      // KuzuDB v0.11.x has no simple UPDATE, so use raw querySync.
       for (const nodeUid of community.nodes) {
-        try {
-          this.db.connection.querySync(
-            `MATCH (n:CodeNode {uid: "${esc(nodeUid)}"}) SET n.community = "${esc(community.id)}"`,
-          )
-        } catch { /* node may not exist */ }
+        insertBatch.push({ uid: nodeUid, community: community.id })
       }
     }
+
+    // Batch update nodes (faster than individual queries)
+    const batchStart = Date.now()
+    for (const { uid, community } of insertBatch) {
+      try {
+        this.db.connection.querySync(
+          `MATCH (n:CodeNode {uid: "${esc(uid)}"}) SET n.community = "${esc(community)}"`,
+        )
+      } catch { /* node may not exist */ }
+    }
+    const batchTime = Date.now() - batchStart
     progress('communities', 100)
+    const commTime = Date.now() - commStart
+    console.log(`[ForgeNexus] Phase 7: Community detection in ${commTime}ms (${communities.length} communities)`)
 
     // ── 8. Process tracing ───────────────────────────────────────────────────
     progress('processes', 0)
+    const procStart = Date.now()
     // Use KuzuDB MATCH syntax (not SQLite DELETE/UPDATE)
     this.db.exec('MATCH (p:Process) DELETE p')
     this.db.exec('MATCH (n:CodeNode) WHERE n.rel_type IS NULL SET n.process = NULL')
@@ -337,15 +569,20 @@ export class Indexer {
       }
     }
     progress('processes', 100)
+    const procTime = Date.now() - procStart
+    console.log(`[ForgeNexus] Phase 8: Process tracing in ${procTime}ms`)
 
     // ── 9. Incremental FTS update ─────────────────────────────────────────────
     progress('fts', 0)
+    const ftsStart = Date.now()
     if (incremental) {
       incrementalFTSUpdate(this.db, changedUids, allNodes.length)
     } else {
       this.db.rebuildFTS()
     }
     progress('fts', 100)
+    const ftsTime = Date.now() - ftsStart
+    console.log(`[ForgeNexus] Phase 9: FTS in ${ftsTime}ms`)
 
     // ── 10. Embeddings (cache-first via generateEmbeddings internal logic) ──────
     if (this.config.includeEmbeddings) {
@@ -399,8 +636,26 @@ export class Indexer {
     }
 
     progress('complete', 100)
-    return stats
+
+    // Log phase timing summary
+    const totalTime = Date.now() - this.analyzeStartTime
+    const elapsed = (ms: number) => ms > 1000 ? `${(ms/1000).toFixed(1)}s` : `${ms}ms`
+    console.log(`[ForgeNexus] === TIMING SUMMARY ===`)
+    console.log(`[ForgeNexus] Total: ${elapsed(totalTime)}`)
+    console.log(`[ForgeNexus] === TIMING SUMMARY ===`)
+
+    // Add cache statistics to stats
+    const finalStats = {
+      ...stats,
+      cacheHits: this.cacheHits,
+      cacheMisses: this.cacheMisses,
+      trieBuildMs: this.trieBuildTimeMs,
+    }
+
+    return finalStats
   }
+
+  private analyzeStartTime = 0
 
   /**
    * Check if the repo is already up-to-date (early exit).
@@ -588,42 +843,27 @@ export class Indexer {
     edges: CodeEdge[],
     nameToUid: Map<string, string>,
   ): CodeEdge[] {
-    const resolved: CodeEdge[] = []
+    // Pre-filter: only process UNKNOWN edges (most common case)
+    const unknownEdges = edges.filter(e => e.toUid.startsWith('UNKNOWN:'))
+    const otherEdges = edges.filter(e => !e.toUid.startsWith('UNKNOWN:'))
 
-    for (const edge of edges) {
-      const toUid = edge.toUid
+    const resolved: CodeEdge[] = otherEdges // Non-UNKNOWN edges pass through unchanged
 
-      // Skip non-UNKNOWN edges
-      if (
-        toUid.startsWith('IMPORT:') ||
-        toUid.startsWith('QUERY:') ||
-        toUid.startsWith('Route:') ||
-        toUid.startsWith('Tool:') ||
-        toUid.startsWith('MEMBER_OF:') ||
-        toUid.startsWith('ORM:')
-      ) {
+    for (const edge of unknownEdges) {
+      const parts = edge.toUid.split(':')
+      const type = parts[1]
+      const calleeName = parts[2]
+
+      if (!type || !calleeName) {
         resolved.push(edge)
         continue
       }
 
-      if (toUid.startsWith('UNKNOWN:')) {
-        const parts = toUid.split(':')
-        const type = parts[1]
-        const calleeName = parts[2]
+      const key = `${type}:${calleeName}`
+      const resolvedUid = nameToUid.get(key)
 
-        if (!type || !calleeName) {
-          resolved.push(edge)
-          continue
-        }
-
-        const key = `${type}:${calleeName}`
-        const resolvedUid = nameToUid.get(key)
-
-        if (resolvedUid) {
-          resolved.push({ ...edge, toUid: resolvedUid })
-        } else {
-          resolved.push(edge)
-        }
+      if (resolvedUid) {
+        resolved.push({ ...edge, toUid: resolvedUid })
       } else {
         resolved.push(edge)
       }

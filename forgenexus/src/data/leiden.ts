@@ -15,6 +15,11 @@
 
 import type { Community } from '../types.js'
 
+// Threshold for skipping expensive operations
+const SKIP_REFINEMENT_SIZE = 100 // Skip refinement for graphs < 100 nodes
+const SKIP_LEIDEN_EDGES = 10 // Skip Leiden entirely if < 10 edges
+const SKIP_LEIDEN_NODES = 5 // Skip Leiden entirely if < 5 nodes
+
 interface GraphNode {
   id: string
   degree: number
@@ -274,6 +279,20 @@ export function detectLeidenCommunities(
 ): Community[] {
   if (nodes.length === 0) return []
 
+  // Early exit for tiny graphs
+  if (nodes.length < SKIP_LEIDEN_NODES || edges.length < SKIP_LEIDEN_EDGES) {
+    // Just put all nodes in one community
+    return [{
+      id: 'comm_0',
+      name: 'all',
+      nodes,
+      keywords: [],
+      description: `${nodes.length} symbols`,
+      cohesion: 0,
+      symbolCount: nodes.length,
+    }]
+  }
+
   const opts = { ...DEFAULTS, ...options }
 
   // Build graph
@@ -282,8 +301,10 @@ export function detectLeidenCommunities(
   // Run Leiden
   let assignment = leidenCore(graph, opts)
 
-  // Refinement phase (optional — improves quality)
-  assignment = refinePhase(graph, assignment)
+  // Refinement phase (skip for small graphs - expensive for little benefit)
+  if (nodes.length >= SKIP_REFINEMENT_SIZE) {
+    assignment = refinePhase(graph, assignment)
+  }
 
   // Group nodes by community
   const commMembers = new Map<string, Set<string>>()
