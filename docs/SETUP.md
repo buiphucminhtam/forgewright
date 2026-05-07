@@ -208,6 +208,111 @@ If needed, add to your Antigravity config:
 
 ---
 
+## Multi-IDE Setup (Cursor + Claude + Antigravity)
+
+If you use multiple AI IDEs with the same project, here's how it works:
+
+### Architecture Overview
+
+```
+Project/
+├── .antigravity/mcp-manifest.json    # Antigravity reads this
+├── .forgewright/                    # Shared ForgeWright state
+└── .forgenexus/                    # Shared code graph (index)
+
+~/.cursor/mcp.json                   # Cursor MCP config
+~/Library/.../claude_desktop_config.json  # Claude Desktop MCP config
+```
+
+### Setup Steps
+
+#### Step 1: Run Setup Once
+
+```bash
+cd /path/to/project
+bash forgewright/scripts/fw-mcp.sh setup
+```
+
+This creates the shared files:
+- `.antigravity/mcp-manifest.json`
+- `.forgewright/fw-mcp-launcher.sh`
+- `.forgenexus/` (if ForgeNexus is set up)
+
+#### Step 2: Restart All IDEs
+
+```
+1. Quit Cursor completely (Cmd+Q)
+2. Quit Claude Desktop completely
+3. Restart Antigravity (if running)
+```
+
+#### Step 3: Verify All IDEs
+
+Each IDE will automatically detect the workspace and load the correct context.
+
+### How Each IDE Loads MCP
+
+| IDE | Config Location | Auto-Detection |
+|-----|---------------|-----------------|
+| **Cursor** | `~/.cursor/mcp.json` | Updated by `fw-mcp.sh` |
+| **Claude Desktop** | `~/.config/Claude/...` | Updated by `fw-mcp.sh` |
+| **Antigravity** | `.antigravity/` | Reads manifest automatically |
+
+### Workspace Detection Per IDE
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Cursor                                                      │
+│   ↓ ~/.cursor/mcp.json → forgewright-mcp-launcher.sh      │
+│   ↓ Workspace: git rev-parse --show-toplevel               │
+│   ↓ Project context loaded                                 │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ Claude Desktop                                              │
+│   ↓ ~/.config/Claude/... → forgewright-mcp-launcher.sh    │
+│   ↓ Workspace: git rev-parse --show-toplevel               │
+│   ↓ Project context loaded                                 │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ Antigravity                                                 │
+│   ↓ Reads .antigravity/mcp-manifest.json                   │
+│   ↓ Sets FORGEWRIGHT_WORKSPACE env var                     │
+│   ↓ forgewright-mcp-launcher.sh uses this env var          │
+│   ↓ Project context loaded                                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Benefits of Shared Setup
+
+| Feature | Benefit |
+|---------|---------|
+| **Shared code graph** | `.forgenexus/` index works across all IDEs |
+| **Shared manifest** | Antigravity auto-detects project |
+| **Same launchers** | No duplicate configs to maintain |
+| **Consistent context** | All IDEs see same project state |
+
+### Switching Between IDEs
+
+When you switch from one IDE to another:
+
+1. **Workspace is preserved**: All IDEs use the same git root detection
+2. **Code index is shared**: No need to re-index
+3. **Context is consistent**: Same project files, same skills
+
+### Testing Multi-IDE Setup
+
+```bash
+# Check which IDEs are configured
+bash forgewright/scripts/fw-mcp.sh check
+
+# Run diagnostics for detailed view
+bash forgewright/scripts/fw-mcp.sh diagnose
+```
+
+---
+
 ## Commands Reference
 
 ### fw-mcp.sh
@@ -395,6 +500,23 @@ bash scripts/fw-mcp.sh setup --force
 ```bash
 bash fw-mcp.sh uninstall
 ```
+
+### Q: Can I use ForgeWright with multiple IDEs simultaneously?
+
+**A:** Yes! Setup once, use everywhere:
+
+```bash
+# Setup once
+bash forgewright/scripts/fw-mcp.sh setup
+
+# Restart all IDEs (Cursor + Claude Desktop + Antigravity)
+# They all share the same:
+#   - .antigravity/mcp-manifest.json
+#   - .forgewright/ (state)
+#   - .forgenexus/ (code graph)
+```
+
+See [Multi-IDE Setup](#multi-ide-setup-cursor--claude--antigravity) section above for details.
 
 ### Q: Where is my data stored?
 
