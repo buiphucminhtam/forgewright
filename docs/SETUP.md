@@ -425,7 +425,11 @@ bash fw-mcp.sh diagnose --verbose
 
 **Solution:**
 ```bash
-node forgewright/forgenexus/dist/cli/index.js analyze --force
+# Install ForgeNexus globally
+npm install -g forgenexus
+
+# Re-analyze
+npx forgenexus analyze --force
 ```
 
 ### Launcher Script Not Found

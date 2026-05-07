@@ -324,8 +324,6 @@ else
     WORKSPACE="$(pwd -P)"
 fi
 
-# Run MCP server
-exec npx tsx "${FORGEWRIGHT_DIR}/.cursor/forgenexus-mcp.js" "$WORKSPACE"
 LAUNCHER
     chmod +x "$launcher"
     log_ok "Launcher created"

@@ -223,14 +223,11 @@ bash forgewright/scripts/fw-mcp.sh diagnose
 #### Step 4: Setup ForgeNexus (Code Intelligence)
 
 ```bash
-# One-command ForgeNexus setup
-bash forgewright/scripts/forgenexus-setup.sh
-
-# Or use the MCP command
-bash forgewright/scripts/fw-mcp.sh forgenexus
+# Install ForgeNexus globally (recommended)
+npm install -g forgenexus
 
 # Index your project
-node forgewright/forgenexus/dist/cli/index.js analyze "$(pwd)"
+npx forgenexus analyze "$(pwd)"
 ```
 
 #### Step 5: Restart Your IDE
@@ -240,9 +237,27 @@ Restart Cursor or Claude Desktop to load the MCP servers.
 #### Step 6: Verify Setup
 
 ```bash
-cd forgewright
+# From forgewright directory
 bash scripts/fw-mcp.sh check
 ```
+
+---
+
+### For Existing Projects (Already Have Old Setup)
+
+If you already have an old `.cursor/mcp.json` or `forgewright-mcp-setup.sh` config:
+
+```bash
+# 1. Backup old config
+cp ~/.cursor/mcp.json ~/.cursor/mcp.json.bak.$(date +%Y%m%d)
+
+# 2. Run new setup (auto-detects and updates global config)
+bash forgewright/scripts/fw-mcp.sh setup --force
+
+# 3. Restart your IDE
+```
+
+No need to delete old project-level configs — the launcher auto-detects workspace.
 
 ---
 

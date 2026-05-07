@@ -1,24 +1,21 @@
 {
-  "manifest_version": "1.0",
+  "manifest_version": "2.0",
   "workspace": "/Users/buiphucminhtam/GitHub/forgewright",
-  "generated_at": "2026-05-03T08:20:19Z",
-  "generated_by": "forgewright/mcp-generator",
-  "forgewright_version": "7.0.0",
+  "forgewright_path": "/Users/buiphucminhtam/GitHub/forgewright",
+  "generated_at": "2026-05-07T14:17:12Z",
+  "forgewright_version": "2.0.0",
   "servers": [
     {
-      "name": "forgewright-forgewright",
-      "type": "forgewright-mcp-server",
+      "name": "forgewright",
+      "type": "forgewright",
       "enabled": true,
-      "description": "Forgewright project intelligence — code graph, project profile, filesystem tools"
+      "description": "ForgeWright project intelligence"
     },
     {
       "name": "forgenexus",
       "type": "forgenexus",
       "enabled": true,
-      "description": "Code intelligence — query, context, impact, blast-radius analysis",
-      "config": {
-        "forgenexus_path": "/Users/buiphucminhtam/GitHub/forgewright/forgenexus/dist/cli/index.js"
-      }
+      "description": "Code intelligence graph"
     }
   ]
 }
