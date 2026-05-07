@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────
+# ⚠️ DEPRECATED: Use fw-mcp.sh instead
+#
+# This script is deprecated and will be removed in v9.0.
+# Please migrate to the new unified script:
+#
+#   bash forgewright/scripts/fw-mcp.sh check    # Status check
+#   bash forgewright/scripts/fw-mcp.sh diagnose  # Diagnostics
+#
+# For more information, see:
+#   docs/SETUP.md
+#   docs/SETUP-REFERENCE.md
+# ─────────────────────────────────────────────────────────────────
+
 # Forgewright MCP Server Manager
 # Usage: forgewright-mcp [start|stop|status|config|manifest|launcher]
 #

@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────
+# ⚠️ DEPRECATED: Use fw-mcp.sh instead
+#
+# This script is deprecated and will be removed in v9.0.
+# Please migrate to the new unified script:
+#
+#   bash forgewright/scripts/fw-mcp.sh setup
+#
+# For more information, see:
+#   docs/SETUP.md
+#   docs/SETUP-QUICK.md
+# ─────────────────────────────────────────────────────────────────
+
 # forgewright-mcp-setup — One-Command MCP Setup (v2)
 #
 # Improved version with:

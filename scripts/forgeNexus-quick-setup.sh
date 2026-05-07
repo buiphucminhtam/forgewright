@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────
+# ⚠️ DEPRECATED: Use forgenexus-setup.sh or fw-mcp.sh instead
+#
+# This script is deprecated and will be removed in v9.0.
+# Please migrate to the new scripts:
+#
+#   bash forgewright/scripts/forgenexus-setup.sh     # ForgeNexus only
+#   bash forgewright/scripts/fw-mcp.sh setup        # Full MCP setup
+#
+# For more information, see:
+#   docs/SETUP.md
+#   docs/SETUP-QUICK.md
+# ─────────────────────────────────────────────────────────────────
+
 # forgeNexus-quick-setup — Easiest way to set up ForgeNexus MCP
 #
 # Just run this ONE COMMAND from any project:

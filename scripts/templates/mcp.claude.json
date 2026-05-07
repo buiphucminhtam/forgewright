@@ -1,0 +1,22 @@
+{
+  "version": "2.0",
+  "name": "ForgeWright MCP",
+  "description": "ForgeWright + ForgeNexus MCP Configuration for Claude Desktop",
+  "servers": {
+    "forgewright": {
+      "command": "bash",
+      "args": ["FORGEWRIGHT/scripts/forgewright-mcp-launcher.sh"],
+      "description": "ForgeWright project intelligence and skills"
+    },
+    "forgenexus": {
+      "command": "bash",
+      "args": ["FORGEWRIGHT/scripts/forgenexus-mcp-launcher.sh"],
+      "description": "Code intelligence graph"
+    }
+  },
+  "notes": {
+    "installation": "Run 'fw-mcp.sh setup' from your project to auto-generate this config",
+    "workspace": "Launchers auto-detect workspace from git root or FORGEWRIGHT_WORKSPACE env var",
+    "restart": "Restart Claude Desktop after modifying this file"
+  }
+}

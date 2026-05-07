@@ -204,77 +204,61 @@ cp forgewright/AGENTS.md .
 cp forgewright/CLAUDE.md .
 ```
 
-#### Step 3: Generate MCP Server
+#### Step 3: Setup MCP (New Method)
 
 ```bash
-cd forgewright
-bash scripts/mcp-generate.sh
-cd ..
+# One-command setup with the new unified script
+bash forgewright/scripts/fw-mcp.sh setup
+
+# Or use the interactive wizard
+bash forgewright/scripts/fw-mcp.sh wizard
+
+# Check status
+bash forgewright/scripts/fw-mcp.sh check
+
+# Diagnose issues
+bash forgewright/scripts/fw-mcp.sh diagnose
 ```
 
-#### Step 4: Update Global MCP Config
-
-Add **both launchers** to your IDE's MCP config:
-
-**For Cursor (`~/.cursor/mcp.json`):**
-```json
-{
-  "mcpServers": {
-    "forgewright": {
-      "command": "bash",
-      "args": ["/path/to/forgewright/scripts/forgewright-mcp-launcher.sh"]
-    },
-    "forgenexus": {
-      "command": "bash",
-      "args": ["/path/to/forgewright/scripts/forgenexus-mcp-launcher.sh"]
-    }
-  }
-}
-```
-
-**For Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):**
-```json
-{
-  "mcpServers": {
-    "forgewright": {
-      "command": "bash",
-      "args": ["/path/to/forgewright/scripts/forgewright-mcp-launcher.sh"]
-    },
-    "forgenexus": {
-      "command": "bash",
-      "args": ["/path/to/forgewright/scripts/forgenexus-mcp-launcher.sh"]
-    }
-  }
-}
-```
-
-> ⚠️ Replace `/path/to/forgewright` with the actual path to your forgewright directory.
-
-#### Step 5: Index Your Project (ForgeNexus)
+#### Step 4: Setup ForgeNexus (Code Intelligence)
 
 ```bash
-# Install ForgeNexus dependencies (if not already built)
-cd forgewright
-npm install && npm run build
-cd ..
+# One-command ForgeNexus setup
+bash forgewright/scripts/forgenexus-setup.sh
+
+# Or use the MCP command
+bash forgewright/scripts/fw-mcp.sh forgenexus
 
 # Index your project
-npx forgenexus analyze "$(pwd)"
-
-# Verify
-npx forgenexus status
+node forgewright/forgenexus/dist/cli/index.js analyze "$(pwd)"
 ```
 
-#### Step 6: Restart Your IDE
+#### Step 5: Restart Your IDE
 
 Restart Cursor or Claude Desktop to load the MCP servers.
 
-#### Step 7: Verify Setup
+#### Step 6: Verify Setup
 
 ```bash
 cd forgewright
-bash scripts/forgewright-mcp-setup.sh --check
+bash scripts/fw-mcp.sh check
 ```
+
+---
+
+### Legacy MCP Setup (Still Supported)
+
+If you prefer the old method, these scripts still work:
+
+```bash
+# Generate MCP server (legacy)
+bash scripts/mcp-generate.sh
+
+# Setup script (legacy)
+bash scripts/forgewright-mcp-setup.sh
+```
+
+> ⚠️ These scripts are deprecated and will be removed in v9.0. Please use `fw-mcp.sh` instead.
 
 ---
 
@@ -349,10 +333,10 @@ cd forgewright
 git pull origin main
 git submodule update --init --recursive
 
-# Re-generate MCP server for current project
-bash scripts/mcp-generate.sh
+# Re-setup MCP (new method)
+bash scripts/fw-mcp.sh setup --force
 
-# Check for updates
+# Legacy update method
 bash scripts/forgewright-update.sh --check
 ```
 
@@ -781,7 +765,11 @@ A: `forgewright` provides Forgewright skills, memory, and orchestrator tools. `f
 | Wrong project detected | Set `FORGEWRIGHT_WORKSPACE` env var |
 
 ```bash
-# Quick diagnostics
+# Quick diagnostics (new unified script)
+bash forgewright/scripts/fw-mcp.sh check
+bash forgewright/scripts/fw-mcp.sh diagnose
+
+# Legacy diagnostics
 bash forgewright/scripts/forgewright-mcp-setup.sh --check
 bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose
 

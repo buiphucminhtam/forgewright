@@ -1,0 +1,8 @@
+# ShellCheck Configuration for ForgeWright MCP Scripts
+# https://www.shellcheck.net/
+
+# Disable these warnings globally for this project
+disable=SC1090,SC1091
+
+# Source files (don't check sourced files)
+exclude=SC1090

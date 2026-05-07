@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
+# ⚠️ DEPRECATED: Use fw-mcp.sh instead
+#
+# This script is deprecated and will be removed in v9.0.
+# Please migrate to the new unified script:
+#
+#   bash forgewright/scripts/fw-mcp.sh setup
+#
+# For more information, see:
+#   docs/SETUP.md
+#   docs/SETUP-QUICK.md
+# ─────────────────────────────────────────────────────────────────
+
 # forgewright-mcp-setup — ONE-COMMAND MCP Setup
 #
 # Single command to set up MCP for ANY project.
@@ -11,7 +23,6 @@
 # This sets up BOTH:
 #   - forgewright-mcp-launcher.sh (Forgewright tools, skills, memory)
 #   - forgenexus-mcp-launcher.sh (Code intelligence, graph, query)
-# ─────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 

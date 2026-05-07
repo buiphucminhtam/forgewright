@@ -1,0 +1,29 @@
+{
+  "version": "2.0",
+  "name": "ForgeWright MCP",
+  "description": "ForgeWright + ForgeNexus MCP Configuration for Antigravity",
+  "servers": {
+    "forgewright-workspace": {
+      "command": "bash",
+      "args": ["FORGEWRIGHT/scripts/forgewright-mcp-launcher.sh"],
+      "env": {
+        "FORGEWRIGHT_WORKSPACE": "${workspaceFolder}"
+      },
+      "description": "ForgeWright project intelligence with workspace isolation"
+    },
+    "forgenexus-workspace": {
+      "command": "bash",
+      "args": ["FORGEWRIGHT/scripts/forgenexus-mcp-launcher.sh"],
+      "env": {
+        "FORGENEXUS_WORKSPACE": "${workspaceFolder}"
+      },
+      "description": "Code intelligence with workspace isolation"
+    }
+  },
+  "notes": {
+    "installation": "Run 'fw-mcp.sh setup' from your project to auto-generate this config",
+    "workspace": "Antigravity sets workspaceFolder env var automatically",
+    "restart": "Restart Antigravity after modifying this file",
+    "multi_project": "One config works for ALL projects with Antigravity"
+  }
+}

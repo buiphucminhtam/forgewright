@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────
+# ⚠️ DEPRECATED: Use fw-mcp.sh instead
+#
+# This script is deprecated and will be removed in v9.0.
+# Please migrate to the new unified script:
+#
+#   bash forgewright/scripts/fw-mcp.sh setup
+#
+# For more information, see:
+#   docs/SETUP.md
+#   docs/SETUP-REFERENCE.md
+# ─────────────────────────────────────────────────────────────────
+
 # Forgewright MCP Server Generator (Standalone)
 #
 # Generates .forgewright/mcp-server/ from templates.
