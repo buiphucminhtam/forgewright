@@ -223,11 +223,12 @@ bash forgewright/scripts/fw-mcp.sh diagnose
 #### Step 4: Setup ForgeNexus (Code Intelligence)
 
 ```bash
-# Install ForgeNexus globally (recommended)
-npm install -g forgenexus
+# Index your project (from forgewright directory)
+node forgenexus/dist/cli/index.js analyze "$(pwd)"
 
-# Index your project
-npx forgenexus analyze "$(pwd)"
+# Or install globally if forgenexus is published:
+# npm install -g forgenexus
+# npx forgenexus analyze "$(pwd)"
 ```
 
 #### Step 5: Restart Your IDE
