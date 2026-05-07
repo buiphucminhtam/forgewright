@@ -531,9 +531,9 @@ export class Indexer {
     // Small repo: 3 iterations
     const nodeCount = allNodes.length
     const edgeCount = commEdges.length
-    const isVeryLarge = nodeCount > 5000   // [MEMORY-OPT] Was 15K → Now 5K
-    const isLarge = nodeCount > 2000       // [MEMORY-OPT] Was 10K → Now 2K
-    const isMedium = nodeCount > 1000     // [MEMORY-OPT] Was 5K → Now 1K
+    const isVeryLarge = nodeCount > 20000   // [MEMORY-OPT] Was 15K → 5K → 20K (support larger projects)
+    const isLarge = nodeCount > 10000       // [MEMORY-OPT] Was 10K → 2K → 10K
+    const isMedium = nodeCount > 5000       // [MEMORY-OPT] Was 5K → 1K → 5K
 
     let communities: ReturnType<typeof detectLeidenCommunities> = []
 
