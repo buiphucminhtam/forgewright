@@ -1,0 +1,1 @@
+# Test post-commit hook for GitNexus auto-reindex
