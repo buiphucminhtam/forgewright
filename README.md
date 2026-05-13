@@ -7,7 +7,7 @@
   <a href="https://github.com/buiphucminhtam/forgewright/network/members">
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
-  <img src="https://img.shields.io/badge/version-8.4.0-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-8.5.0-blue?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/skills-58-brightgreen?style=flat-square" alt="Skills" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
@@ -219,7 +219,7 @@ flowchart TB
 
 ### Level 4 Setup — Multi-Project MCP
 
-Level 4 gives you **12 ForgeNexus tools** and **multi-project support** with a single global config.
+Level 4 gives you **ForgeWright skills** and **GitNexus code intelligence** with a single global config.
 
 #### Step 1: Set Up Your Project
 
@@ -257,15 +257,20 @@ bash forgewright/scripts/fw-mcp.sh check
 bash forgewright/scripts/fw-mcp.sh diagnose
 ```
 
-#### Step 4: Setup ForgeNexus (Code Intelligence)
+#### Step 4: Setup GitNexus (Code Intelligence)
 
 ```bash
-# Index your project (from forgewright directory)
-node forgenexus/dist/cli/index.js analyze "$(pwd)"
+# Install GitNexus
+npm install -g gitnexus
 
-# Or install globally if forgenexus is published:
-# npm install -g forgenexus
-# npx forgenexus analyze "$(pwd)"
+# Auto-configure for all editors (Claude, Cursor, Codex, etc.)
+gitnexus setup
+
+# Index your project
+gitnexus analyze
+
+# Check status
+gitnexus status
 ```
 
 #### Step 5: Restart Your IDE
@@ -277,6 +282,9 @@ Restart Cursor or Claude Desktop to load the MCP servers.
 ```bash
 # From forgewright directory
 bash scripts/fw-mcp.sh check
+
+# Check GitNexus
+gitnexus status
 ```
 
 ---
@@ -663,49 +671,86 @@ bash scripts/forge-validate.sh
 
 ---
 
-## ForgeNexus — Code Intelligence CLI
+## ForgeNexus → GitNexus — Code Intelligence
 
-ForgeNexus is ForgeWright's code intelligence engine. It indexes your codebase and provides instant context about code relationships.
+> **v8.5.0 UPDATE:** ForgeNexus has been migrated to **GitNexus** — the recommended code intelligence tool. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.
+
+This project is indexed by GitNexus as **forgewright** (16,112 nodes, 23,551 edges, 322 clusters, 250 flows).
+
+### Why GitNexus?
+
+| Feature | GitNexus | ForgeNexus (Legacy) |
+|---------|----------|---------------------|
+| Installation | `npm install -g gitnexus` | Manual submodule setup |
+| Setup | `gitnexus setup` (auto-detects editors) | Manual config per editor |
+| Community | 38K+ stars, active Discord | Internal only |
+| Multi-repo | Yes (`gitnexus group`) | No |
+
+### Quick Start
 
 ```bash
-# Index a repository
-npx forgenexus analyze
+# 1. Install GitNexus
+npm install -g gitnexus
 
-# Re-run (uses persistent AST cache for faster incremental updates)
-npx forgenexus analyze
+# 2. Setup for all editors
+gitnexus setup
 
-# Force full re-index
-npx forgenexus analyze --force
+# 3. Analyze project
+gitnexus analyze
 
-# Query code
-npx forgenexus query "findUser"
-npx forgenexus context getUser
-npx forgenexus impact validateToken
-
-# Check status
-npx forgenexus status
-npx forgenexus list
+# 4. Check status
+gitnexus status
 ```
 
-### Performance Features
+### MCP Tools (16 tools)
 
-| Feature | Benefit |
-|---------|---------|
-| **AST Cache** | Skip re-parsing unchanged files (content-hash validated) |
-| **Incremental Community** | Only re-run Leiden when ≤5% files changed |
-| **Suffix Trie** | O(1) import path resolution |
-| **Early Exit** | Skip analysis on unchanged commits |
+| Tool | Purpose | Command |
+|------|---------|---------|
+| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
+| `context` | 360-degree symbol view | `gitnexus_context({name: "validateUser"})` |
+| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
+| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
+| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
+| `cypher` | Custom graph queries | `gitnexus_cypher({query: "..."})` |
 
-### Benchmark Results
+### Mandatory Rules (GitNexus)
 
-| Metric | Cold Run | Warm Run |
-|--------|----------|----------|
-| Total Time | ~60s | ~10s |
-| Parse Time | ~40s | ~2s |
-| AST Cache Hits | 0% | 95%+ |
-| Trie Build | 3-4ms | 3-4ms |
+**Always Do:**
+- **MUST** run impact analysis before editing any symbol
+- **MUST** run `gitnexus_detect_changes()` before committing
+- **MUST** warn the user if impact analysis returns HIGH or CRITICAL risk
 
-See [`forgenexus/README.md`](forgenexus/README.md) for full documentation.
+**Never Do:**
+- NEVER edit a function without first running `gitnexus_impact`
+- NEVER ignore HIGH or CRITICAL risk warnings
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename`
+
+### Keeping Index Fresh
+
+```bash
+gitnexus analyze  # Re-index after code changes
+gitnexus status   # Check index freshness
+```
+
+### Migration from ForgeNexus
+
+If you were using ForgeNexus:
+
+```bash
+# 1. Install GitNexus
+npm install -g gitnexus
+
+# 2. Setup
+gitnexus setup
+
+# 3. Analyze projects
+gitnexus analyze
+
+# 4. Remove legacy ForgeNexus (optional)
+rm -rf forgenexus/
+```
+
+See [`docs/SETUP-GITNEXUS.md`](docs/SETUP-GITNEXUS.md) for full documentation.
 
 ---
 
@@ -848,8 +893,29 @@ A: All data stays in your `.forgewright/` folder. Nothing sent elsewhere.
 **Q: Multiple projects?**
 A: Yes! Each project has isolated memory, index, and MCP server. With the launcher setup, a single global config works for all projects.
 
+**Q: Can I use just GitNexus without ForgeWright?**
+
+A:** Yes. Run:
+```bash
+npm install -g gitnexus
+gitnexus setup
+```
+
+**Q: What's new in v8.5.0?**
+
+A:** Major migration from ForgeNexus to GitNexus:
+- GitNexus provides 38K+ stars, npm installation, auto-setup for all editors
+- Single `gitnexus setup` command replaces multi-step ForgeNexus setup
+- 16 MCP tools with improved performance
+- Multi-repo support with `gitnexus group`
+
+See [`docs/SETUP-GITNEXUS.md`](docs/SETUP-GITNEXUS.md) for full migration guide.
+
 **Q: What's the difference between forgewright and forgenexus MCP?**
-A: `forgewright` provides Forgewright skills, memory, and orchestrator tools. `forgenexus` provides code intelligence (query, context, impact analysis).
+
+A:** `forgewright` provides ForgeWright skills, memory, and orchestrator tools. `gitnexus` (formerly forgenexus) provides code intelligence.
+
+Both work together. You typically need both.
 
 ---
 
@@ -859,7 +925,7 @@ A: `forgewright` provides Forgewright skills, memory, and orchestrator tools. `f
 |---------|-----|
 | MCP not working | Restart IDE, run `--diagnose` |
 | Skills not found | Check AGENTS.md + CLAUDE.md copied |
-| Stale index | Run `npx forgenexus analyze --force` |
+| GitNexus index stale | Run `gitnexus analyze --force` |
 | Submodule issues | `git submodule update --init --recursive` |
 | Need to update | `bash forgewright/scripts/forgewright-update.sh` |
 | Wrong project detected | Set `FORGEWRIGHT_WORKSPACE` env var |
@@ -873,13 +939,52 @@ bash forgewright/scripts/fw-mcp.sh diagnose
 bash forgewright/scripts/forgewright-mcp-setup.sh --check
 bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose
 
+# GitNexus diagnostics
+gitnexus status
+gitnexus analyze --force
+
 # Debug workspace detection
 FORGEWRIGHT_DEBUG=1 bash forgewright/scripts/forgewright-mcp-launcher.sh
-FORGENEXUS_DEBUG=1 bash forgewright/scripts/forgenexus-mcp-launcher.sh
 
 # Update ForgeWright
 bash forgewright/scripts/forgewright-update.sh --check
 bash forgewright/scripts/forgewright-update.sh --all
+```
+
+---
+
+## Changelog
+
+### v8.5.0 (May 2026) — GitNexus Migration
+
+**Major Changes:**
+
+| Change | Description |
+|--------|-------------|
+| **GitNexus Migration** | ForgeNexus → GitNexus (38K+ stars, npm install) |
+| **fw-mcp.sh v3.0.0** | Unified setup script with `gitnexus` command |
+| **Single-command Setup** | `gitnexus setup` replaces multi-step ForgeNexus setup |
+| **Multi-repo Support** | New `gitnexus group` for cross-repo analysis |
+
+**Breaking Changes:**
+
+| Old | New |
+|-----|-----|
+| `npx forgenexus analyze` | `gitnexus analyze` |
+| `forgenexus_*` MCP tools | `gitnexus_*` MCP tools |
+| `fw-mcp.sh forgenexus` | `fw-mcp.sh gitnexus` |
+
+**Migration:**
+
+```bash
+# Install GitNexus
+npm install -g gitnexus
+
+# Setup for all editors
+gitnexus setup
+
+# Analyze projects
+gitnexus analyze
 ```
 
 ---

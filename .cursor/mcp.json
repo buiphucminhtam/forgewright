@@ -14,10 +14,6 @@
         "@modelcontextprotocol/server-filesystem",
         "${workspaceFolder}"
       ]
-    },
-    "notebooklm-mcp": {
-      "command": "/Users/buiphucminhtam/.local/bin/notebooklm-mcp",
-      "args": []
     }
   }
 }

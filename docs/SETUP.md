@@ -43,7 +43,7 @@ Expected output:
   ➜ Project: /path/to/project
   ✓ Manifest: ✓
   ✓ ForgeWright Launcher: ✓
-  ✓ ForgeNexus Launcher: ✓
+  ✓ GitNexus: ✓ (16K nodes indexed)
 ```
 
 ---
@@ -92,16 +92,21 @@ This automatically:
     "forgewright": {
       "command": "bash",
       "args": ["/path/to/forgewright/scripts/forgewright-mcp-launcher.sh"]
-    },
-    "forgenexus": {
-      "command": "bash",
-      "args": ["/path/to/forgewright/scripts/forgenexus-mcp-launcher.sh"]
     }
   }
 }
 ```
 
-2. Restart Cursor
+**Note:** GitNexus MCP is configured separately via `gitnexus setup`.
+
+2. Setup GitNexus separately:
+
+```bash
+npm install -g gitnexus
+gitnexus setup
+```
+
+3. Restart Cursor
 
 #### Verify Cursor Setup
 
@@ -134,7 +139,7 @@ bash forgewright/scripts/fw-mcp.sh setup
    - **Linux**: `~/.config/Claude/claude_desktop_config.json`
    - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-2. Add servers:
+2. Add forgewright server:
 
 ```json
 {
@@ -142,16 +147,19 @@ bash forgewright/scripts/fw-mcp.sh setup
     "forgewright": {
       "command": "bash",
       "args": ["/absolute/path/to/forgewright/scripts/forgewright-mcp-launcher.sh"]
-    },
-    "forgenexus": {
-      "command": "bash",
-      "args": ["/absolute/path/to/forgewright/scripts/forgenexus-mcp-launcher.sh"]
     }
   }
 }
 ```
 
-3. Restart Claude Desktop
+3. Setup GitNexus separately:
+
+```bash
+npm install -g gitnexus
+gitnexus setup
+```
+
+4. Restart Claude Desktop
 
 #### Verify Claude Setup
 
@@ -218,10 +226,11 @@ If you use multiple AI IDEs with the same project, here's how it works:
 Project/
 ├── .antigravity/mcp-manifest.json    # Antigravity reads this
 ├── .forgewright/                    # Shared ForgeWright state
-└── .forgenexus/                    # Shared code graph (index)
+└── .gitnexus/                       # GitNexus code graph (index)
 
 ~/.cursor/mcp.json                   # Cursor MCP config
 ~/Library/.../claude_desktop_config.json  # Claude Desktop MCP config
+~/.gitnexus/                         # GitNexus registry
 ```
 
 ### Setup Steps
@@ -236,7 +245,7 @@ bash forgewright/scripts/fw-mcp.sh setup
 This creates the shared files:
 - `.antigravity/mcp-manifest.json`
 - `.forgewright/fw-mcp-launcher.sh`
-- `.forgenexus/` (if ForgeNexus is set up)
+- `.gitnexus/` (GitNexus code graph index)
 
 #### Step 2: Restart All IDEs
 
@@ -288,7 +297,7 @@ Each IDE will automatically detect the workspace and load the correct context.
 
 | Feature | Benefit |
 |---------|---------|
-| **Shared code graph** | `.forgenexus/` index works across all IDEs |
+| **Shared code graph** | `.gitnexus/` index works across all IDEs |
 | **Shared manifest** | Antigravity auto-detects project |
 | **Same launchers** | No duplicate configs to maintain |
 | **Consistent context** | All IDEs see same project state |
@@ -332,30 +341,34 @@ bash fw-mcp.sh diagnose            # Detailed diagnostics
 bash fw-mcp.sh uninstall           # Remove MCP
 bash fw-mcp.sh wizard             # Interactive wizard
 
-# ForgeNexus
-bash fw-mcp.sh forgenexus         # Setup ForgeNexus only
+# GitNexus
+bash fw-mcp.sh gitnexus            # Setup GitNexus (recommended)
 
 # Help
 bash fw-mcp.sh --help
 bash fw-mcp.sh --version
 ```
 
-### forgenexus-setup.sh
-
-One-command ForgeNexus installer.
+### GitNexus CLI
 
 ```bash
 # Install
-bash forgenexus-setup.sh
+npm install -g gitnexus
 
-# Check status
-bash forgenexus-setup.sh --check
-
-# Force re-install
-bash forgenexus-setup.sh --force
+# Setup for all editors
+gitnexus setup
 
 # Analyze project
-bash forgenexus-setup.sh analyze
+gitnexus analyze
+
+# Check status
+gitnexus status
+
+# Clean index
+gitnexus clean
+
+# List indexed repos
+gitnexus list
 ```
 
 ### Environment Variables
@@ -419,14 +432,14 @@ bash fw-mcp.sh diagnose --verbose
    bash fw-mcp.sh check
    ```
 
-### ForgeNexus Index Stale
+### GitNexus Index Stale
 
 **Symptoms:** Query returns old/outdated results
 
 **Solution:**
 ```bash
-# Re-analyze from forgewright directory
-node forgenexus/dist/cli/index.js analyze --force
+# Re-analyze with GitNexus
+gitnexus analyze --force
 ```
 
 ### Launcher Script Not Found
@@ -463,19 +476,20 @@ bash fw-mcp.sh setup --force
 
 ## FAQ
 
-### Q: What's the difference between ForgeWright and ForgeNexus MCP?
+### Q: What's the difference between ForgeWright and GitNexus?
 
 **A:**
 - **ForgeWright** provides project intelligence, skills, and orchestration
-- **ForgeNexus** provides code graph, context analysis, and impact detection
+- **GitNexus** provides code graph, context analysis, and impact detection
 
 Both work together. You typically need both.
 
-### Q: Can I use just ForgeNexus without ForgeWright?
+### Q: Can I use just GitNexus without ForgeWright?
 
 **A:** Yes. Run:
 ```bash
-bash fw-mcp.sh forgenexus
+npm install -g gitnexus
+gitnexus setup
 ```
 
 ### Q: How do I update ForgeWright MCP?
@@ -514,7 +528,7 @@ bash forgewright/scripts/fw-mcp.sh setup
 # They all share the same:
 #   - .antigravity/mcp-manifest.json
 #   - .forgewright/ (state)
-#   - .forgenexus/ (code graph)
+#   - .gitnexus/ (code graph)
 ```
 
 See [Multi-IDE Setup](#multi-ide-setup-cursor--claude--antigravity) section above for details.
@@ -523,7 +537,8 @@ See [Multi-IDE Setup](#multi-ide-setup-cursor--claude--antigravity) section abov
 
 **A:**
 - **Manifest**: `.antigravity/mcp-manifest.json`
-- **ForgeNexus Index**: `.forgenexus/codebase.db`
+- **GitNexus Index**: `.gitnexus/` (in project directory)
+- **GitNexus Registry**: `~/.gitnexus/registry.json`
 - **Settings**: `.forgewright/settings.env`
 
 All are in your project directory and can be committed to git.
@@ -541,4 +556,4 @@ All are in your project directory and can be committed to git.
 
 - [Quick Start Guide](SETUP-QUICK.md) - Fast 1-minute setup
 - [Technical Reference](SETUP-REFERENCE.md) - Detailed technical docs
-- [ForgeNexus](../forgenexus/README.md) - Code intelligence documentation
+- [GitNexus Setup](SETUP-GITNEXUS.md) - Code intelligence setup guide

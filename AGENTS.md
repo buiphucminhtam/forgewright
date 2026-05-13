@@ -142,7 +142,7 @@ Users can invoke these workflows directly:
 
 Run silently BEFORE any execution (all modes) to ensure project intelligence is fully configured.
 
-**Step 0.1 — ForgeNexus + MCP Check:**
+**Step 0.1 — GitNexus + MCP Check:**
 
 1. Check if `.antigravity/mcp-manifest.json` exists and is current in the project root.
 2. **If missing or stale**, run ONE command to set up everything:
@@ -161,16 +161,22 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
    ```
 
    This single command:
-   - Analyzes the project (ForgeNexus index)
+   - Analyzes the project (GitNexus index via `gitnexus analyze`)
    - Generates the MCP server
    - Creates the workspace manifest
    - Updates global config (Cursor/Claude)
    - Verifies installation
 
-3. After setup, yield a brief message:
+3. **GitNexus Setup** (if not already done):
+   ```bash
+   npm install -g gitnexus
+   gitnexus setup  # Auto-configures all editors
+   ```
+
+4. After setup, yield a brief message:
    `ℹ MCP server ready for this workspace. Restart your AI client to activate.`
 
-4. **If already set up**, continue normally.
+5. **If already set up**, continue normally.
 
 **Why a single script?**
 - No more juggling multiple scripts (`mcp-generate.sh`, `mcp-serve.sh`, `mcp-launcher.sh`)
@@ -307,94 +313,92 @@ Forgewright maintains project state in the `.forgewright/` directory:
 - `change-manifest-{session}.json` — File change tracking (gitignored)
 
 <!-- forgenexus:start -->
-# ForgeNexus — Code Intelligence
+<!-- DEPRECATED: ForgeNexus is legacy. Use GitNexus instead (see below). -->
+<!--
+# ForgeNexus — Code Intelligence (LEGACY)
+# 
+# This section is kept for backward compatibility only.
+# NEW PROJECTS: Use GitNexus instead (see <!-- gitnexus:start --> section below.
+#
+# To migrate: npm install -g gitnexus && gitnexus setup
+-->
 
-This project is indexed by ForgeNexus as **forgewright** (2868 symbols, 3021 relationships, 25 execution flows). Use the ForgeNexus MCP tools to understand code, assess impact, and navigate safely.
+<!-- forgenexus:end -->
 
-> If any ForgeNexus tool warns the index is stale, run `npx forgenexus analyze` in terminal first.
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
 
-## Always Do
+> **RECOMMENDED:** This project uses GitNexus for code intelligence. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.
 
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `forgenexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius to the user.
-- **MUST run `forgenexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+This project is indexed by GitNexus as **forgewright** (16,112 nodes, 23,551 edges, 322 clusters, 250 flows).
+
+## Quick Start
+
+```bash
+# Install (if not already)
+npm install -g gitnexus
+
+# Analyze/update index
+gitnexus analyze
+
+# Check status
+gitnexus status
+```
+
+## Always Do (MANDATORY)
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `forgenexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol, use `forgenexus_context({name: "symbolName"})`.
-
-## When Debugging
-
-1. `forgenexus_query({query: "<error or symptom>"})` — find execution flows related to the issue
-2. `forgenexus_context({name: "<suspect function>"})` — see all callers, callees, and process participation
-3. `READ forgenexus://repo/forgewright/process/{processName}` — trace the full execution flow step by step
-4. For regressions: `forgenexus_detect_changes({scope: "compare", base_ref: "main"})` — see what your branch changed
-
-## When Refactoring
-
-- **Renaming**: MUST use `forgenexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` first.
-- **Extracting/Splitting**: MUST run `forgenexus_context({name: "target"})` to see all refs, then `forgenexus_impact({target: "target", direction: "upstream"})`.
-- After any refactor: run `forgenexus_detect_changes({scope: "all"})` to verify only expected files changed.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
 
 ## Never Do
 
-- NEVER edit a function, class, or method without first running `forgenexus_impact`.
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
 - NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `forgenexus_rename` which understands the call graph.
-- NEVER commit changes without running `forgenexus_detect_changes()` to check affected scope.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
 
-## Tools Quick Reference
+## MCP Tools Quick Reference
 
 | Tool | When to use | Command |
 |------|-------------|---------|
-| `query` | Find code by concept | `forgenexus_query({query: "auth validation"})` |
-| `context` | 360-degree view of one symbol | `forgenexus_context({name: "validateUser"})` |
-| `impact` | Blast radius before editing | `forgenexus_impact({target: "X", direction: "upstream"})` |
-| `detect_changes` | Pre-commit scope check | `forgenexus_detect_changes({scope: "staged"})` |
-| `rename` | Safe multi-file rename | `forgenexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
-| `cypher` | Custom graph queries | `forgenexus_cypher({query: "..."})` |
-| `list_repos` | List indexed repositories | `forgenexus_list_repos()` |
-| `route_map` | API route to handler mapping | `forgenexus_route_map()` |
-
-## Impact Risk Levels
-
-| Depth | Meaning | Action |
-|-------|---------|--------|
-| d=1 | WILL BREAK — direct callers/importers | MUST update these |
-| d=2 | LIKELY AFFECTED — indirect deps | Should test |
-| d=3 | MAY NEED TESTING — transitive | Test if critical path |
+| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
+| `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
+| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
+| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
+| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
+| `cypher` | Custom graph queries | `gitnexus_cypher({query: "..."})` |
+| `list_repos` | List indexed repositories | `gitnexus_list_repos()` |
 
 ## Resources
 
 | Resource | Use for |
 |----------|---------|
-| `forgenexus://repos` | All indexed repositories |
-| `forgenexus://repo/forgewright/context` | Codebase overview, check freshness |
-| `forgenexus://repo/forgewright/clusters` | All functional areas |
-| `forgenexus://repo/forgewright/processes` | All execution flows |
-| `forgenexus://repo/forgewright/process/{name}` | Step-by-step execution trace |
-| `forgenexus://schema` | Graph schema reference |
-
-## Self-Check Before Finishing
-
-Before completing any code modification task, verify:
-1. `forgenexus_impact` was run for all modified symbols
-2. No HIGH/CRITICAL risk warnings were ignored
-3. `forgenexus_detect_changes()` confirms changes match expected scope
-4. All d=1 (WILL BREAK) dependents were updated
+| `gitnexus://repo/forgewright/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/forgewright/clusters` | All functional areas |
+| `gitnexus://repo/forgewright/processes` | All execution flows |
+| `gitnexus://repo/forgewright/process/{name}` | Step-by-step execution trace |
 
 ## Keeping the Index Fresh
 
-After committing code changes, the ForgeNexus index becomes stale. Re-run analyze to update it:
+After code changes, re-index to keep the graph current:
 
 ```bash
-npx forgenexus analyze
+gitnexus analyze
 ```
 
-If the index previously included embeddings, preserve them by adding `--embeddings`:
+## Editor Skills (Claude Code)
 
-```bash
-npx forgenexus analyze --embeddings
-```
+When using Claude Code, these skills are auto-installed:
 
-> Forgewright users: The MCP server handles this automatically after `git commit` and `git merge` via PostToolUse hooks.
+| Task | Skill |
+|------|-------|
+| Understand architecture | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius analysis | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Refactoring | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| CLI reference | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
-<!-- forgenexus:end -->
+<!-- gitnexus:end -->

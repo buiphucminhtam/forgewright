@@ -517,3 +517,80 @@ When context resets (overflow), these are auto-loaded:
 
 **Inspired by:** SWE-Pruner pattern, Session Handoff pattern from NotebookLM research.
 
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+> **RECOMMENDED:** This project uses GitNexus for code intelligence. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.
+
+This project is indexed by GitNexus as **forgewright** (16,112 nodes, 23,551 edges, 322 clusters, 250 flows).
+
+## Quick Start
+
+```bash
+# Install (if not already)
+npm install -g gitnexus
+
+# Analyze/update index
+gitnexus analyze
+
+# Check status
+gitnexus status
+```
+
+## Always Do (MANDATORY)
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+
+## MCP Tools Quick Reference
+
+| Tool | When to use | Command |
+|------|-------------|---------|
+| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
+| `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
+| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
+| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
+| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
+| `cypher` | Custom graph queries | `gitnexus_cypher({query: "..."})` |
+| `list_repos` | List indexed repositories | `gitnexus_list_repos()` |
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/forgewright/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/forgewright/clusters` | All functional areas |
+| `gitnexus://repo/forgewright/processes` | All execution flows |
+| `gitnexus://repo/forgewright/process/{name}` | Step-by-step execution trace |
+
+## Keeping the Index Fresh
+
+After code changes, re-index to keep the graph current:
+
+```bash
+gitnexus analyze
+```
+
+## Editor Skills (Claude Code)
+
+When using Claude Code, these skills are auto-installed:
+
+| Task | Skill |
+|------|-------|
+| Understand architecture | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius analysis | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Refactoring | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| CLI reference | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->

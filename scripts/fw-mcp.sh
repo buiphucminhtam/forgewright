@@ -28,7 +28,7 @@
 set -euo pipefail
 
 # ─── Version ─────────────────────────────────────────────────────
-VERSION="2.0.0"
+VERSION="3.0.0"
 
 # ─── Colors ──────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -114,7 +114,7 @@ COMMANDS:
   diagnose        Show detailed diagnostics
   uninstall       Remove MCP setup
   wizard          Interactive setup wizard
-  forgenexus      Setup ForgeNexus only
+  gitnexus        Setup GitNexus (recommended)
 
 FLAGS:
   --help          Show this help
@@ -283,6 +283,10 @@ cmd_setup() {
   "forgewright_path": "${FORGEWRIGHT_DIR}",
   "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "forgewright_version": "${VERSION}",
+  "code_intelligence": {
+    "tool": "gitnexus",
+    "description": "GitNexus code intelligence graph"
+  },
   "servers": [
     {
       "name": "forgewright",
@@ -291,10 +295,10 @@ cmd_setup() {
       "description": "ForgeWright project intelligence"
     },
     {
-      "name": "forgenexus",
-      "type": "forgenexus",
+      "name": "gitnexus",
+      "type": "gitnexus",
       "enabled": true,
-      "description": "Code intelligence graph"
+      "description": "GitNexus code intelligence"
     }
   ]
 }
@@ -338,6 +342,14 @@ LAUNCHER
             cp "$config_path" "${config_path}.bak.$(date +%Y%m%d%H%M%S)"
         fi
 
+        # GitNexus is auto-configured by 'gitnexus setup' command
+        # Just verify it's working
+        if command -v gitnexus &> /dev/null; then
+            log_ok "GitNexus: available (run 'gitnexus setup' to configure editors)"
+        else
+            log_warn "GitNexus: not installed (run 'npm install -g gitnexus')"
+        fi
+
         node -e "
 var fs = require('fs');
 var cfg = {mcpServers: {}};
@@ -349,10 +361,6 @@ try {
 cfg.mcpServers['forgewright'] = {
     command: 'bash',
     args: ['$launcher_path']
-};
-cfg.mcpServers['forgenexus'] = {
-    command: 'bash',
-    args: ['${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh']
 };
 
 fs.writeFileSync('$config_path', JSON.stringify(cfg, null, 2));
@@ -406,12 +414,15 @@ console.log('  Servers: ' + (m.servers || []).length + ' configured');
         log_error "ForgeWright Launcher: ✗"
     fi
 
-    # ForgeNexus launcher
-    local fnx_launcher="${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh"
-    if [[ -f "$fnx_launcher" ]]; then
-        log_ok "ForgeNexus Launcher: ✓"
+    # GitNexus status
+    echo ""
+    log_info "GitNexus Status:"
+    if command -v gitnexus &> /dev/null; then
+        log_ok "GitNexus: installed ($(gitnexus --version))"
+        gitnexus status 2>/dev/null | head -5 || echo "  (run 'gitnexus analyze' to index)"
     else
-        log_warn "ForgeNexus Launcher: ✗ (optional)"
+        log_error "GitNexus: not installed"
+        log_info "Install: npm install -g gitnexus"
     fi
     echo ""
 
@@ -488,14 +499,23 @@ cmd_diagnose() {
     done
     echo ""
 
-    log_info "ForgeNexus Status:"
-    local fnx_cli="${FORGEWRIGHT_DIR}/forgenexus/dist/cli/index.js"
-    if [[ -f "$fnx_cli" ]]; then
-        echo "  CLI: ✓"
-        node "$fnx_cli" status 2>/dev/null | head -10 || echo "  (run 'analyze' to index)"
+    log_info "GitNexus Status:"
+    if command -v gitnexus &> /dev/null; then
+        log_ok "GitNexus CLI: installed ($(gitnexus --version))"
+        echo "  Run 'gitnexus status' for details"
     else
-        echo "  CLI: ✗ (not built)"
-        echo "  Run: cd $FORGEWRIGHT_DIR/forgenexus && npm install && npm run build"
+        log_error "GitNexus CLI: not installed"
+        echo "  Install: npm install -g gitnexus"
+    fi
+    echo ""
+
+    log_info "GitNexus MCP:"
+    if [[ -f "$HOME/.gitnexus/registry.json" ]]; then
+        local repo_count
+        repo_count=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('$HOME/.gitnexus/registry.json', 'utf8')).repos || {}).length)" 2>/dev/null || echo "0")
+        log_ok "Registry: $repo_count indexed repos"
+    else
+        log_warn "Registry: not found (run 'gitnexus analyze')"
     fi
     echo ""
 
@@ -533,7 +553,6 @@ cmd_uninstall() {
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$config_path', 'utf8'));
 delete cfg.mcpServers['forgewright'];
-delete cfg.mcpServers['forgenexus'];
 fs.writeFileSync('$config_path', JSON.stringify(cfg, null, 2));
 " 2>/dev/null && log_ok "Config updated" || log_warn "Config update failed"
     fi
@@ -574,8 +593,8 @@ cmd_wizard() {
     # Step 2: Setup type
     echo "Step 2/4: Setup type"
     echo ""
-    echo "  [1] Full setup (ForgeWright + ForgeNexus)"
-    echo "  [2] ForgeNexus only"
+    echo "  [1] Full setup (ForgeWright + GitNexus) - RECOMMENDED"
+    echo "  [2] GitNexus only (code intelligence)"
     echo "  [3] ForgeWright only"
     echo ""
     read -p "  Your choice [1]: " setup_choice
@@ -585,7 +604,7 @@ cmd_wizard() {
     local setup_type=""
     case "$setup_choice" in
         1) setup_type="full" ;;
-        2) setup_type="forgenexus" ;;
+        2) setup_type="gitnexus" ;;
         3) setup_type="forgewright" ;;
     esac
     log_ok "Setup type: $setup_type"
@@ -623,13 +642,15 @@ cmd_wizard() {
         cmd_setup
     fi
 
-    if [[ "$setup_type" == "full" ]] || [[ "$setup_type" == "forgenexus" ]]; then
+    if [[ "$setup_type" == "full" ]] || [[ "$setup_type" == "gitnexus" ]]; then
         echo ""
-        echo "━━━ Setting up ForgeNexus ━━━"
-        if [[ -f "${FORGEWRIGHT_DIR}/scripts/forgenexus-setup.sh" ]]; then
-            bash "${FORGEWRIGHT_DIR}/scripts/forgenexus-setup.sh"
+        echo "━━━ Setting up GitNexus ━━━"
+        if command -v gitnexus &> /dev/null; then
+            gitnexus setup
+            log_ok "GitNexus MCP configured"
         else
-            log_warn "ForgeNexus setup script not found"
+            log_error "GitNexus not installed"
+            log_info "Install: npm install -g gitnexus"
         fi
     fi
 
@@ -642,21 +663,47 @@ cmd_wizard() {
     echo ""
 }
 
-# ─── ForgeNexus Command ──────────────────────────────────────────
-cmd_forgenexus() {
+# ─── GitNexus Command ──────────────────────────────────────────
+cmd_gitnexus() {
     echo ""
-    echo -e "${CYAN}━━━ ForgeNexus Setup ━━━${NC}"
+    echo -e "${CYAN}━━━ GitNexus Setup ━━━${NC}"
     echo ""
 
-    local fnx_setup="${FORGEWRIGHT_DIR}/scripts/forgenexus-setup.sh"
-
-    if [[ -f "$fnx_setup" ]]; then
-        bash "$fnx_setup"
-    else
-        log_error "ForgeNexus setup script not found"
-        log_info "Looking for: $fnx_setup"
-        exit 1
+    # Check if gitnexus is installed
+    if ! command -v gitnexus &> /dev/null; then
+        log_error "GitNexus not installed"
+        echo ""
+        log_step "Installing GitNexus..."
+        npm install -g gitnexus
+        echo ""
     fi
+
+    # Run gitnexus setup
+    log_step "Running gitnexus setup..."
+    gitnexus setup
+
+    echo ""
+    log_ok "GitNexus setup complete!"
+
+    # Check if current repo is indexed
+    if git rev-parse --show-toplevel &> /dev/null; then
+        local repo_root
+        repo_root="$(git rev-parse --show-toplevel)"
+        echo ""
+        log_info "Indexing current repository..."
+        cd "$repo_root"
+        gitnexus analyze
+    fi
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e " ${GREEN}✓ GitNexus Ready!${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "  Next steps:"
+    echo "    1. Restart your AI IDE"
+    echo "    2. Use 'gitnexus status' to check index"
+    echo ""
 }
 
 # ─── Main ───────────────────────────────────────────────────────
@@ -715,8 +762,8 @@ main() {
         wizard)
             cmd_wizard
             ;;
-        forgenexus|fnx)
-            cmd_forgenexus
+        gitnexus|gn)
+            cmd_gitnexus
             ;;
         help)
             show_help
