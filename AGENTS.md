@@ -8,6 +8,29 @@ Forgewright is an adaptive orchestrator with **56 AI skills** that covers the en
 
 **Pipeline:** `INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
+## ⚠️ MANDATORY RULE: ALWAYS USE FORGEWRIGHT
+
+**After Forgewright is installed, EVERY user request MUST go through the Forgewright pipeline.**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    FORGEWRIGHT MANDATORY RULE                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ⚠️ NEVER skip Forgewright for user requests.                       │
+│  ⚠️ NEVER handle requests directly without the orchestrator.       │
+│  ⚠️ ALWAYS interpret → classify → plan → execute via skills.       │
+│                                                                     │
+│  EXCEPTION: BA Scope Clarification                                 │
+│  ─────────────────────────────────                                 │
+│  If the request is a NEW PROJECT requiring Business Analyst          │
+│  scope elicitation, the BA skill will ask clarifying questions     │
+│  first. This is NOT a conflict — it's the correct Forgewright      │
+│  workflow (Step 0: Interpret → Identify need for BA).              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
 ## How to Use (For Every New Chat)
 
 **IMPORTANT:** When the user gives any software development request, you MUST:
@@ -33,8 +56,39 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 
 > **⚠️ MANDATORY: Plan Quality Loop**
 > Every skill invocation MUST follow: **PLAN → SCORE → META-EVALUATE → CHECK ≥9 → EXECUTE**.
-> If score < 9.0: **LEARN (identify weak criteria) → RESEARCH (search for solutions) → IMPROVE SKILL (append lessons to SKILL.md) → RE-PLAN**.
+> If score < 9.0: **LEARN (identify weak criteria) → RESEARCH (NotebookLM → Web Search) → IMPROVE SKILL (append lessons) → RE-PLAN**.
 > Max 3 iterations. No skill may skip this. Read `skills/_shared/protocols/plan-quality-loop.md` for full rubric.
+
+**Enhanced Research Flow (NEW v8.1):**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│              RESEARCH GATE (when plan score < 9.0)                 │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. TRY NotebookLM CLI first:                                      │
+│     nlm notebook create "[Project] - [Skill] - [Topic]"           │
+│     nlm research start "[topic]" --mode deep                       │
+│                                                                     │
+│  2. FALLBACK to Web Search if NotebookLM unavailable:              │
+│     WebSearch: "best practices [topic]"                            │
+│     WebSearch: "[framework] [pattern] implementation"               │
+│                                                                     │
+│  3. SYNTHESIZE: Extract 1-3 actionable insights                   │
+│     ✓ "Auth pattern: JWT + refresh token rotation"                │
+│     ✗ "Found 15 articles about auth"                               │
+│                                                                     │
+│  4. APPEND lesson to SKILL.md (Planning Improvements section)      │
+│                                                                     │
+│  5. RE-PLAN with new insights, then re-score                      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**⚠️ BA Scope Exception:**
+- If plan requires Business Analyst scope elicitation (new project, unclear requirements), ASK clarifying questions via BA skill
+- This is NOT blocking — this IS the Forgewright workflow for new projects
+- Continue Plan → Score loop after BA scope is defined
 
 ## Quick Reference
 

@@ -2,6 +2,29 @@
 
 > **This file is read by Claude Code on every new chat.** It tells Claude Code how to use Forgewright's production pipeline.
 
+## ⚠️ MANDATORY RULE: ALWAYS USE FORGEWRIGHT
+
+**After Forgewright is installed, EVERY user request MUST go through the Forgewright pipeline.**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    FORGEWRIGHT MANDATORY RULE                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ⚠️ NEVER skip Forgewright for user requests.                       │
+│  ⚠️ NEVER handle requests directly without the orchestrator.       │
+│  ⚠️ ALWAYS interpret → classify → plan → execute via skills.       │
+│                                                                     │
+│  EXCEPTION: BA Scope Clarification                                 │
+│  ─────────────────────────────────                                 │
+│  If the request is a NEW PROJECT requiring Business Analyst          │
+│  scope elicitation, the BA skill will ask clarifying questions     │
+│  first. This is NOT a conflict — it's the correct Forgewright      │
+│  workflow (Step 0: Interpret → Identify need for BA).              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
 ## Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
 
 ## Step 0 — Request Interpretation (MANDATORY)
@@ -143,14 +166,45 @@ After interpretation, classify into one of 24 modes:
 
 ## Step 2 — Plan First, Always
 
-**⚠️ MANDATORY: Plan Quality Loop**
+**⚠️ MANDATORY: Plan Quality Loop with Research Gate**
 
 Before ANY skill does ANY work:
 1. **PLAN** — Create a plan with 8 criteria
 2. **SCORE** — Score against rubric (0-10 each)
 3. **META-EVALUATE** — Check threshold ≥ 9.0
-4. **IMPROVE** (if < 9.0) — Research + improve plan
+4. **IMPROVE** (if < 9.0) — Research → Improve skill → Re-plan
 5. **EXECUTE** — Only after passing threshold
+
+**Enhanced Research Flow (NEW):**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│              RESEARCH GATE (when score < 9.0)                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. TRY NotebookLM CLI first:                                      │
+│     nlm notebook create "[Project] - [Skill] - [Topic]"           │
+│     nlm research start "[topic]" --mode deep                       │
+│                                                                     │
+│  2. FALLBACK to Web Search if NotebookLM unavailable:              │
+│     WebSearch: "best practices [topic]"                            │
+│     WebSearch: "[framework] [pattern] implementation"               │
+│                                                                     │
+│  3. SYNTHESIZE: Extract 1-3 actionable insights (NOT 10 articles) │
+│     ✓ "Auth pattern: JWT + refresh token rotation"                 │
+│     ✗ "Found 15 articles about auth"                               │
+│                                                                     │
+│  4. APPEND lesson to SKILL.md (Planning Improvements section)      │
+│                                                                     │
+│  5. RE-PLAN with new insights                                      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**⚠️ BA Scope Exception:**
+- If plan requires Business Analyst scope elicitation (new project, unclear requirements), ASK clarifying questions via BA skill
+- This is NOT blocking — this IS the Forgewright workflow for new projects
+- Continue Plan → Score loop after BA scope is defined
 
 Max 3 iterations. No skill may skip this.
 

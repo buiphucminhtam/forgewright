@@ -280,10 +280,27 @@ All skills MUST follow the sensitive file protection protocol:
 
 **After 2 consecutive failed plan attempts (score < 9.0):**
 1. **TRIGGER MANDATORY RESEARCH GATE** — Cannot skip
-2. Research via NotebookLM (deep mode)
-3. Update skill SKILL.md (Planning Improvements section)
-4. Append to `.forgewright/plan-lessons.md`
-5. Only then re-plan with injected knowledge
+2. **Research Priority Order:**
+   ```
+   a) TRY NotebookLM CLI first:
+      nlm notebook create "[Project] - [Skill] - [Topic]"
+      nlm research start "[topic]" --mode deep
+      nlm notebook query <id> "Best practices?"
+   
+   b) FALLBACK to Web Search if NotebookLM unavailable:
+      WebSearch: "best practices [topic]"
+      WebSearch: "[framework] [pattern] implementation"
+   ```
+3. SYNTHESIZE findings into 1-3 actionable insights
+4. Update skill SKILL.md (Planning Improvements section)
+5. Append to `.forgewright/plan-lessons.md`
+6. RE-PLAN with injected knowledge
+7. Re-score — only proceed if ≥ 9.0
+
+**⚠️ BA Scope Exception:**
+- If weak criteria reveals **unclear project requirements**, STOP research and trigger BA skill
+- BA will ask clarifying questions → define scope → resume Plan Quality Loop
+- This is NOT blocking — scope elicitation IS the Forgewright workflow
 
 **This is NON-NEGOTIABLE. The system will not proceed until research is complete.**
 
@@ -300,11 +317,23 @@ All skills MUST follow the sensitive file protection protocol:
 **After 2 consecutive failed execution attempts:**
 1. **TRIGGER MANDATORY RESEARCH GATE** — Cannot skip
 2. Categorize: Technical/Architectural/Tooling/External
-3. Research via NotebookLM (deep mode)
-4. Update skill SKILL.md (Execution Learnings section)
-5. Append to `.forgewright/execution-lessons.md`
-6. Only then retry with updated skill
-7. If still fails → ESCALATE to user
+3. **Research Priority Order:**
+   ```
+   a) TRY NotebookLM CLI first:
+      nlm notebook create "[Project] - [Skill] - [Topic]"
+      nlm research start "[topic]" --mode deep
+   
+   b) FALLBACK to Web Search if NotebookLM unavailable:
+      WebSearch: "[error message]"
+      WebSearch: "[technology] troubleshooting"
+   ```
+4. SYNTHESIZE findings into 1-3 actionable insights
+5. Update skill SKILL.md (Execution Learnings section)
+6. Append to `.forgewright/execution-lessons.md`
+7. Retry with updated skill
+8. If still fails → ESCALATE to user
+
+**⚠️ NEVER give up after 1 failed attempt. ALWAYS research first.**
 
 **This is NON-NEGOTIABLE. The system will not proceed until research is complete.**
 

@@ -2,6 +2,29 @@
 
 > **Purpose:** Every skill MUST plan before acting. Plans are scored against a quality rubric. Plans below threshold enter a LEARN → RESEARCH → IMPROVE SKILL cycle until quality is sufficient. NO skill may begin implementation without a passing plan score.
 
+## ⚠️ MANDATORY RULE: ALWAYS USE FORGEWRIGHT
+
+**After Forgewright is installed, EVERY user request MUST go through the Forgewright pipeline.**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    FORGEWRIGHT MANDATORY RULE                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ⚠️ NEVER skip Forgewright for user requests.                       │
+│  ⚠️ NEVER handle requests directly without the orchestrator.       │
+│  ⚠️ ALWAYS interpret → classify → plan → execute via skills.       │
+│                                                                     │
+│  EXCEPTION: BA Scope Clarification                                 │
+│  ─────────────────────────────────                                 │
+│  If the request is a NEW PROJECT requiring Business Analyst          │
+│  scope elicitation, the BA skill will ask clarifying questions     │
+│  first. This is NOT a conflict — it's the correct Forgewright      │
+│  workflow (Step 0: Interpret → Identify need for BA).              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
 ## When to Apply
 
 **EVERY skill invocation.** No exceptions. When any skill is called, it MUST:
@@ -26,23 +49,25 @@ Not all skills need the same plan depth. Scale the plan to the task:
 ## Loop Flow
 
 ```
-┌───────────────────────────────────────────────────┐
-│ Phase N — Planning Stage                          │
-│                                                   │
-│  1. PLAN      → Skill creates plan                │
-│  2. SCORE     → Evaluate against rubric (8 criteria) │
-│  3. CHECK     → Score ≥ threshold?                │
-│      ├─ YES   → PROCEED to implementation         │
-│      └─ NO    → 4. LEARN + IMPROVE SKILL          │
-│                  (identify weak criteria,          │
-│                   APPEND lessons to SKILL.md)      │
-│               → 5. RESEARCH                       │
-│                  (web, codebase, protocols)        │
-│               → 6. RE-PLAN                        │
-│                  (re-read improved skill + lessons)│
-│               → Go back to Step 2                 │
-│                  (max 3 iterations)                │
-└───────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│ Phase N — Planning Stage                                      │
+│                                                               │
+│  1. PLAN      → Skill creates plan                            │
+│  2. SCORE     → Evaluate against rubric (8 criteria)         │
+│  3. CHECK     → Score ≥ threshold?                           │
+│      ├─ YES   → PROCEED to implementation                     │
+│      └─ NO    → 4. LEARN + IMPROVE SKILL                     │
+│                  (identify weak criteria,                       │
+│                   APPEND lessons to SKILL.md)                  │
+│              → 5. RESEARCH (Enhanced Research Gate)           │
+│                  (NotebookLM CLI → Web Search fallback)         │
+│              → 6. RE-PLAN                                     │
+│                  (re-read improved skill + lessons)             │
+│              → Go back to Step 2                               │
+│                  (max 3 iterations)                            │
+└───────────────────────────────────────────────────────────────┘
+
+⚠️ BA Exception: If unclear scope → trigger BA skill first
 ```
 
 ## Scoring Rubric
@@ -213,30 +238,44 @@ When plan scores below threshold:
 
 Before re-planning, actively search for knowledge to address weak criteria:
 
-**For Plan Quality Loop (2 failed iterations → mandatory research):**
+**Research Priority Order (MANDATORY):**
 
-1. **⚠️ MANDATORY: NotebookLM Research**
-   - Create notebook: `nlm notebook create "[Project] - [Skill] - [Topic]"`
-   - Deep research: `nlm research start "[weak criteria topics]" --mode deep`
-   - Import sources, generate study guide
-   - Query: `nlm notebook query <id> "Best practices for [topic]?"`
-   - Save notebook URL for lesson documentation
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│              RESEARCH GATE (when plan score < 9.0)                 │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. TRY NotebookLM CLI first:                                      │
+│     nlm notebook create "[Project] - [Skill] - [Topic]"            │
+│     nlm research start "[weak criteria topics]" --mode deep       │
+│     nlm notebook query <id> "Best practices for [topic]?"         │
+│     → Save notebook URL for lesson documentation                   │
+│                                                                     │
+│  2. FALLBACK to Web Search if NotebookLM unavailable:              │
+│     WebSearch: "best practices [topic]"                            │
+│     WebSearch: "[framework] [pattern] implementation"              │
+│     WebSearch: "[technology] common pitfalls"                      │
+│                                                                     │
+│  3. SYNTHESIZE: Extract 1-3 actionable insights                   │
+│     ✓ "Auth pattern: JWT + refresh token rotation"                │
+│     ✗ "Found 15 articles about auth"                               │
+│                                                                     │
+│  4. APPEND lesson to SKILL.md (Planning Improvements section)      │
+│                                                                     │
+│  5. RE-PLAN with new insights                                      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-2. **Web Search** (supplemental)
-   - Search for best practices, patterns, or reference implementations
-   - Example: Specificity low → search "implementation plan template [framework]"
+**Additional Research Sources:**
+- **Codebase Search**: Find similar solved patterns in the existing project
+- **Forgewright Skills**: Check other skills for relevant patterns
+- **Existing Protocols**: Reference `code-intelligence.md`, `quality-gate.md`
 
-3. **Codebase Search**
-   - Find similar solved patterns in the existing project
-   - Check `.forgewright/` artifacts for past plans
-
-4. **Check existing protocols**
-   - Reference `code-intelligence.md` for blast radius analysis
-   - Reference `quality-gate.md` for verification criteria
-
-5. **Synthesize findings** — extract 1-3 specific, applicable insights
-   - NOT: "Found 10 articles about auth"
-   - YES: "Express.js auth best practice: passport.js + JWT, separate auth middleware, rate-limit login endpoint"
+**⚠️ BA Scope Exception for Research:**
+- If weak criteria reveals **unclear project requirements** (missing scope, undefined stakeholders, no success criteria), STOP research and trigger BA skill
+- BA will ask clarifying questions → define scope → resume Plan Quality Loop
+- This is NOT blocking — scope elicitation is part of the Forgewright workflow
 
 ## Step 6: RE-PLAN
 
