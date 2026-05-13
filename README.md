@@ -7,7 +7,7 @@
   <a href="https://github.com/buiphucminhtam/forgewright/network/members">
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
-  <img src="https://img.shields.io/badge/version-8.3.0-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-8.4.0-blue?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/skills-58-brightgreen?style=flat-square" alt="Skills" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
@@ -38,6 +38,43 @@ Forgewright: [Skips synchronous DB calls] → [Built correctly the first time]
 | Hallucinates solutions | **Grounded in research** — uses NotebookLM |
 | No quality guarantee | **Auto-scored 0-100** — you know when it's ready |
 | Starts from scratch each chat | **Persistent memory** — remembers everything |
+| Handles requests directly | **Always via pipeline** — never skips orchestration |
+
+---
+
+## ⚠️ MANDATORY RULE: Always Use Forgewright
+
+**After Forgewright is installed, EVERY user request MUST go through the Forgewright pipeline.**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    FORGEWRIGHT MANDATORY RULE                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ⚠️ NEVER skip Forgewright for user requests.                       │
+│  ⚠️ NEVER handle requests directly without the orchestrator.         │
+│  ⚠️ ALWAYS interpret → classify → plan → execute via skills.        │
+│                                                                     │
+│  EXCEPTION: BA Scope Clarification                                 │
+│  ─────────────────────────────────                                 │
+│  If the request is a NEW PROJECT requiring Business Analyst         │
+│  scope elicitation, the BA skill will ask clarifying questions     │
+│  first. This is NOT a conflict — it's the correct Forgewright      │
+│  workflow (Step 0: Interpret → Identify need for BA).             │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Pipeline flow:**
+
+```
+INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
+     ↓
+  1. Classify mode (Feature, Build, Debug, etc.)
+  2. Plan with quality score ≥ 9.0/10
+  3. Execute via appropriate skills
+  4. Quality gate verification
+```
 
 ---
 
@@ -377,7 +414,7 @@ bash scripts/forgewright-update.sh --check
 
 ## Featured: ASIP — The Self-Improving Protocol
 
-> **New in v8.3.0** — Skills that learn from failures.
+> **New in v8.4.0** — Enhanced Research Gate with automatic failure tracking.
 
 ```mermaid
 flowchart LR
@@ -386,36 +423,83 @@ flowchart LR
     A2 --> F2["Fail again?"]
     F2 -->|"Yes"| GATE["🔬 RESEARCH GATE"]
     F2 -->|"No"| CONT["Continue ✓"]
-    
-    GATE --> R["NotebookLM Research"]
-    R --> U["Update Skill Files"]
-    U --> L["Write Lessons"]
-    L --> RT["Retry with Knowledge"]
+
+    GATE --> CHECK["0. Check: nlm --version?"]
+    CHECK -->|Available| NLM["1. NotebookLM Research"]
+    CHECK -->|Not Available| WEB["2. Web Search Fallback"]
+
+    NLM --> SYN["3. Synthesize Insights"]
+    WEB --> SYN
+    SYN --> U["4. Update Tracker"]
+    U --> TRACK["forgewright-session-tracker.sh"]
+    TRACK --> L["5. Write Lessons"]
+    L --> RT["6. Retry with Knowledge"]
     RT --> WIN["Solved! ✓"]
     RT --> ESC["Escalate"]
-    
+
     style GATE fill:#c0392b,stroke:#e74c3c,color:#fff
-    style R fill:#8e44ad,stroke:#9b59b6,color:#fff
-    style U fill:#1e8449,stroke:#2ecc71,color:#fff
+    style NLM fill:#8e44ad,stroke:#9b59b6,color:#fff
+    style WEB fill:#1e8449,stroke:#2ecc71,color:#fff
+    style CHECK fill:#d35400,stroke:#e67e22,color:#fff
+```
+
+**Enhanced Research Gate (v8.4.0):**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  0. CHECK NotebookLM availability                                  │
+│     nlm --version 2>/dev/null || NOT_AVAILABLE                   │
+│                                                                     │
+│  1. TRY NotebookLM CLI (if available)                             │
+│     nlm notebook create "[Project] - [Skill] - [Topic]"           │
+│     nlm research start "[topic]" --mode deep                       │
+│                                                                     │
+│  2. FALLBACK to Web Search (always available)                     │
+│     WebSearch: "best practices [topic]"                           │
+│                                                                     │
+│  3. SYNTHESIZE: Extract 1-3 actionable insights                  │
+│                                                                     │
+│  4. UPDATE session tracker:                                       │
+│     bash scripts/forgewright-session-tracker.sh plan <score>       │
+│     bash scripts/forgewright-session-tracker.sh check              │
+│                                                                     │
+│  5. RE-PLAN with new insights                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Session Tracking:**
+
+```bash
+# Initialize tracker
+bash scripts/forgewright-session-tracker.sh init
+
+# Record plan attempt
+bash scripts/forgewright-session-tracker.sh plan 7.5
+
+# Check if research gate needed
+bash scripts/forgewright-session-tracker.sh check
+
+# Status
+bash scripts/forgewright-session-tracker.sh status
 ```
 
 **What gets learned:**
 
 ```
 .forgewright/
-├── lessons.md              # Your project lessons
-├── asip-metrics.json     # Track improvements
-└── skill-adaptations/    # Project-specific knowledge
+├── session-track.json     # Consecutive failure tracking
+├── lessons.md            # Your project lessons
+└── plan-lessons.md       # Plan quality learnings
 
 skills/*/SKILL.md
-└── ## Execution Learnings    # Auto-updated from failures
+└── ## Planning Improvements  # Auto-updated from failures
 ```
 
 **Enforced rules:**
-- 2 failed attempts → Mandatory NotebookLM research
-- Research → Update skill files → Retry
-- Lessons persist across sessions
-- Skills get smarter over time
+- 2 failed attempts → Mandatory Research Gate
+- NotebookLM first → Web Search fallback
+- Session tracker records all attempts
+- Skills improve over time
 
 ---
 
