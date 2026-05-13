@@ -280,22 +280,28 @@ All skills MUST follow the sensitive file protection protocol:
 
 **After 2 consecutive failed plan attempts (score < 9.0):**
 1. **TRIGGER MANDATORY RESEARCH GATE** — Cannot skip
-2. **Research Priority Order:**
+2. **Record attempt:** `bash scripts/forgewright-session-tracker.sh plan <score>`
+3. **Check if gate needed:** `bash scripts/forgewright-session-tracker.sh check`
+4. **Research Priority Order:**
    ```
-   a) TRY NotebookLM CLI first:
+   a) CHECK NotebookLM availability:
+      nlm --version 2>/dev/null || echo "NOT_AVAILABLE"
+      └─ If NOT_AVAILABLE → SKIP to (b)
+   
+   b) TRY NotebookLM CLI (if available):
       nlm notebook create "[Project] - [Skill] - [Topic]"
       nlm research start "[topic]" --mode deep
       nlm notebook query <id> "Best practices?"
    
-   b) FALLBACK to Web Search if NotebookLM unavailable:
+   c) FALLBACK to Web Search (always available):
       WebSearch: "best practices [topic]"
       WebSearch: "[framework] [pattern] implementation"
    ```
-3. SYNTHESIZE findings into 1-3 actionable insights
-4. Update skill SKILL.md (Planning Improvements section)
-5. Append to `.forgewright/plan-lessons.md`
-6. RE-PLAN with injected knowledge
-7. Re-score — only proceed if ≥ 9.0
+5. SYNTHESIZE findings into 1-3 actionable insights
+6. Update skill SKILL.md (Planning Improvements section)
+7. Append to `.forgewright/plan-lessons.md`
+8. RE-PLAN with injected knowledge
+9. Re-score — only proceed if ≥ 9.0
 
 **⚠️ BA Scope Exception:**
 - If weak criteria reveals **unclear project requirements**, STOP research and trigger BA skill
@@ -316,22 +322,28 @@ All skills MUST follow the sensitive file protection protocol:
 
 **After 2 consecutive failed execution attempts:**
 1. **TRIGGER MANDATORY RESEARCH GATE** — Cannot skip
-2. Categorize: Technical/Architectural/Tooling/External
-3. **Research Priority Order:**
+2. **Record attempt:** `bash scripts/forgewright-session-tracker.sh exec failure`
+3. **Check if gate needed:** `bash scripts/forgewright-session-tracker.sh check`
+4. Categorize: Technical/Architectural/Tooling/External
+5. **Research Priority Order:**
    ```
-   a) TRY NotebookLM CLI first:
+   a) CHECK NotebookLM availability:
+      nlm --version 2>/dev/null || echo "NOT_AVAILABLE"
+      └─ If NOT_AVAILABLE → SKIP to (b)
+   
+   b) TRY NotebookLM CLI (if available):
       nlm notebook create "[Project] - [Skill] - [Topic]"
       nlm research start "[topic]" --mode deep
    
-   b) FALLBACK to Web Search if NotebookLM unavailable:
+   c) FALLBACK to Web Search (always available):
       WebSearch: "[error message]"
       WebSearch: "[technology] troubleshooting"
    ```
-4. SYNTHESIZE findings into 1-3 actionable insights
-5. Update skill SKILL.md (Execution Learnings section)
-6. Append to `.forgewright/execution-lessons.md`
-7. Retry with updated skill
-8. If still fails → ESCALATE to user
+6. SYNTHESIZE findings into 1-3 actionable insights
+7. Update skill SKILL.md (Execution Learnings section)
+8. Append to `.forgewright/execution-lessons.md`
+9. Retry with updated skill
+10. If still fails → ESCALATE to user
 
 **⚠️ NEVER give up after 1 failed attempt. ALWAYS research first.**
 

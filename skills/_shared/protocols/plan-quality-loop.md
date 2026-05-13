@@ -245,32 +245,41 @@ Before re-planning, actively search for knowledge to address weak criteria:
 │              RESEARCH GATE (when plan score < 9.0)                 │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  1. TRY NotebookLM CLI first:                                      │
+│  0. CHECK NotebookLM availability:                                 │
+│     nlm --version 2>/dev/null || echo "NOT_AVAILABLE"             │
+│     └─ If NOT_AVAILABLE → SKIP to Step 2 (Web Search fallback)    │
+│                                                                     │
+│  1. TRY NotebookLM CLI (if available):                             │
 │     nlm notebook create "[Project] - [Skill] - [Topic]"            │
 │     nlm research start "[weak criteria topics]" --mode deep       │
 │     nlm notebook query <id> "Best practices for [topic]?"         │
 │     → Save notebook URL for lesson documentation                   │
 │                                                                     │
-│  2. FALLBACK to Web Search if NotebookLM unavailable:              │
+│  2. FALLBACK to Web Search (always available):                   │
 │     WebSearch: "best practices [topic]"                            │
 │     WebSearch: "[framework] [pattern] implementation"              │
 │     WebSearch: "[technology] common pitfalls"                      │
 │                                                                     │
 │  3. SYNTHESIZE: Extract 1-3 actionable insights                   │
-│     ✓ "Auth pattern: JWT + refresh token rotation"                │
+│     ✓ "Auth pattern: JWT + refresh token rotation"                 │
 │     ✗ "Found 15 articles about auth"                               │
 │                                                                     │
-│  4. APPEND lesson to SKILL.md (Planning Improvements section)      │
+│  4. UPDATE session tracker:                                       │
+│     bash scripts/forgewright-session-tracker.sh plan <score>        │
+│     bash scripts/forgewright-session-tracker.sh check              │
+│     └─ If ≥2 consecutive failures → Research Gate MANDATORY        │
 │                                                                     │
-│  5. RE-PLAN with new insights                                      │
+│  5. APPEND lesson to SKILL.md (Planning Improvements section)      │
+│                                                                     │
+│  6. RE-PLAN with new insights                                      │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Additional Research Sources:**
-- **Codebase Search**: Find similar solved patterns in the existing project
-- **Forgewright Skills**: Check other skills for relevant patterns
-- **Existing Protocols**: Reference `code-intelligence.md`, `quality-gate.md`
+**Session Tracking (NEW v8.1):**
+- Use `scripts/forgewright-session-tracker.sh` to track consecutive failures
+- Check before triggering Research Gate: `bash scripts/forgewright-session-tracker.sh check`
+- Record after each attempt: `bash scripts/forgewright-session-tracker.sh plan <score>`
 
 **⚠️ BA Scope Exception for Research:**
 - If weak criteria reveals **unclear project requirements** (missing scope, undefined stakeholders, no success criteria), STOP research and trigger BA skill

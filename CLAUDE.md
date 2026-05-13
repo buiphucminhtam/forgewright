@@ -179,27 +179,39 @@ Before ANY skill does ANY work:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│              RESEARCH GATE (when score < 9.0)                     │
+│              RESEARCH GATE (when score < 9.0)                      │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  1. TRY NotebookLM CLI first:                                      │
-│     nlm notebook create "[Project] - [Skill] - [Topic]"           │
+│  0. CHECK NotebookLM availability:                                 │
+│     nlm --version 2>/dev/null || echo "NOT_AVAILABLE"             │
+│     └─ If NOT_AVAILABLE → SKIP to Step 2 (Web Search fallback)    │
+│                                                                     │
+│  1. TRY NotebookLM CLI (if available):                             │
+│     nlm notebook create "[Project] - [Skill] - [Topic]"            │
 │     nlm research start "[topic]" --mode deep                       │
 │                                                                     │
-│  2. FALLBACK to Web Search if NotebookLM unavailable:              │
+│  2. FALLBACK to Web Search (always available):                     │
 │     WebSearch: "best practices [topic]"                            │
 │     WebSearch: "[framework] [pattern] implementation"               │
 │                                                                     │
-│  3. SYNTHESIZE: Extract 1-3 actionable insights (NOT 10 articles) │
+│  3. SYNTHESIZE: Extract 1-3 actionable insights                   │
 │     ✓ "Auth pattern: JWT + refresh token rotation"                 │
-│     ✗ "Found 15 articles about auth"                               │
+│     ✗ "Found 15 articles about auth"                              │
 │                                                                     │
-│  4. APPEND lesson to SKILL.md (Planning Improvements section)      │
+│  4. UPDATE session tracker:                                         │
+│     bash scripts/forgewright-session-tracker.sh plan <score>        │
+│     bash scripts/forgewright-session-tracker.sh check               │
+│     └─ If ≥2 consecutive failures → Research Gate MANDATORY        │
 │                                                                     │
 │  5. RE-PLAN with new insights                                      │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+**Session Tracking (NEW v8.1):**
+- Use `scripts/forgewright-session-tracker.sh` to track consecutive failures
+- Check: `bash scripts/forgewright-session-tracker.sh check`
+- Record: `bash scripts/forgewright-session-tracker.sh plan <score>`
 
 **⚠️ BA Scope Exception:**
 - If plan requires Business Analyst scope elicitation (new project, unclear requirements), ASK clarifying questions via BA skill
