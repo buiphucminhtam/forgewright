@@ -203,11 +203,14 @@ Override the detected mode only if the user's intent clearly differs from what w
 | **Marketing** | "marketing", "SEO", "launch strategy", "copywriting", "content strategy", "go-to-market" | Growth Marketer (+ Conversion Optimizer if CRO mentioned) |
 | **Grow** | "growth", "CRO", "conversion", "funnel", "A/B test", "churn", "retention", "referral" | Conversion Optimizer (+ Growth Marketer if strategy needed) |
 | **Analyze** | "analyze requirements", "evaluate this", "is this feasible", "validate requirements", "check completeness", "client says" | Business Analyst (standalone requirements analysis) |
+| **Goal** | "set goal", "work toward", "keep going until", "autonomous", "/goal" | Goal-Driven orchestrator — auto-evaluate and continue until condition met |
 | **Custom** | Doesn't fit above patterns | Present skill menu, let user pick |
 
 **Step 2 — Present or skip the plan:**
 
-**Single-skill modes** (Test, Review, Architect, Document, Explore, Design, Debug, Analyze): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
+**Single-skill modes** (Test, Review, Architect, Document, Explore, Design, Debug, Analyze, Goal): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
+
+**Goal mode** is special — it works with ANY skill. After each turn, it auto-evaluates and continues until the condition is met.
 
 **Multi-skill modes** (Feature, Harden, Ship, Optimize, AI Build, Migrate, Custom): Present the plan for confirmation via notify_user:
 
@@ -400,6 +403,39 @@ All modes share these behaviors:
 - **⚠️ QA AUTO-RUN (MANDATORY):** After any code change (build, fix, feature), ALWAYS run QA/Testing WITHOUT waiting for user prompt. The sequence is: BUILD → TEST → VERIFY → DONE. Never finish without testing.
 - **Antigravity Planning (for large features):** Features with 3+ components MUST use antigravity planning structure BEFORE starting implementation. Create `antigravity/planning/[feature-name]/` with PLAN.md, SCOPE.md, ARCHITECTURE.md, TASKS.md files.
 - Engagement mode: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution.
+
+### Goal Mode Execution (v8.2)
+
+When Goal mode is triggered, Forgewright enters autonomous pursuit mode:
+
+```
+1. SET GOAL:
+   - Parse condition from user message
+   - Validate condition is measurable
+   - Create .forgewright/active-goal.json
+
+2. AUTONOMOUS LOOP:
+   After each turn:
+   a. Run evaluation:
+      bash scripts/goal-evaluate.py "[condition]"
+   b. Check result:
+      - MET: Report completion, clear goal, exit autonomous mode
+      - NOT_MET: Continue to next turn (no user prompt needed)
+      - UNKNOWN: Ask user to verify
+
+3. PROGRESS TRACKING:
+   - Write progress to .forgewright/goal-progress.md
+   - Update turns counter in active-goal.json
+   - Emit heartbeat: "Working toward goal: [reason why not met yet]"
+
+4. EXIT CONDITIONS:
+   - Condition is met (evaluator returns MET)
+   - User runs `/goal clear`
+   - Safety limit reached (max_turns, timeout)
+   - User explicitly stops
+```
+
+**Integration with other skills:** Goal mode wraps ANY skill execution. The underlying skill does the work; Goal mode handles the loop and evaluation.
 
 ## ⚠️ Self-Check Before Finishing (MANDATORY)
 

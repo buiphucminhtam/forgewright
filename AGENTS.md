@@ -231,6 +231,8 @@ All 56 skills are in the `skills/` directory:
 | Debugger | `skills/debugger/SKILL.md` |
 | Prompt Engineer | `skills/prompt-engineer/SKILL.md` |
 | Prompt Optimizer | `skills/prompt-optimizer/SKILL.md` — DSPy-powered algorithmic optimization |
+| **Meta & Workflow** | |
+| Goal-Driven | `skills/goal-driven/SKILL.md` — Autonomous goal pursuit (inspired by Codex /goal) |
 | **New Engineering (v6.1)** | |
 | AI Engineer | `skills/ai-engineer/SKILL.md` |
 | Accessibility Engineer | `skills/accessibility-engineer/SKILL.md` |
@@ -328,24 +330,11 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-> **RECOMMENDED:** This project uses GitNexus for code intelligence. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.
+This project is indexed by GitNexus as **forgewright** (16276 symbols, 23755 relationships, 251 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-This project is indexed by GitNexus as **forgewright** (16,112 nodes, 23,551 edges, 322 clusters, 250 flows).
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
-## Quick Start
-
-```bash
-# Install (if not already)
-npm install -g gitnexus
-
-# Analyze/update index
-gitnexus analyze
-
-# Check status
-gitnexus status
-```
-
-## Always Do (MANDATORY)
+## Always Do
 
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
@@ -360,18 +349,6 @@ gitnexus status
 - NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
 - NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
 
-## MCP Tools Quick Reference
-
-| Tool | When to use | Command |
-|------|-------------|---------|
-| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
-| `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
-| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
-| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
-| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
-| `cypher` | Custom graph queries | `gitnexus_cypher({query: "..."})` |
-| `list_repos` | List indexed repositories | `gitnexus_list_repos()` |
-
 ## Resources
 
 | Resource | Use for |
@@ -381,24 +358,15 @@ gitnexus status
 | `gitnexus://repo/forgewright/processes` | All execution flows |
 | `gitnexus://repo/forgewright/process/{name}` | Step-by-step execution trace |
 
-## Keeping the Index Fresh
+## CLI
 
-After code changes, re-index to keep the graph current:
-
-```bash
-gitnexus analyze
-```
-
-## Editor Skills (Claude Code)
-
-When using Claude Code, these skills are auto-installed:
-
-| Task | Skill |
-|------|-------|
-| Understand architecture | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius analysis | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Refactoring | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| CLI reference | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->

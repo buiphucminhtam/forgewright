@@ -277,8 +277,9 @@ antigravity/
 | "Mobile app" | Mobile | Mobile Engineer |
 | "improve prompts" | Prompt | Prompt Engineer + chat-interpreter |
 | "Run autonomous tests" | Autonomous | Autonomous Testing + Self-Healing E2E |
+| "Set goal: ..." | Goal | Goal-Driven: autonomous until condition met |
 
-## Available Skills (56 total)
+## Available Skills (57 total)
 
 See `skills/` directory for full list:
 - **Orchestrator**: `skills/production-grade/SKILL.md`
@@ -517,27 +518,88 @@ When context resets (overflow), these are auto-loaded:
 
 **Inspired by:** SWE-Pruner pattern, Session Handoff pattern from NotebookLM research.
 
+## Goal-Driven Workflow (v8.2)
+
+> **Set it and forget it.** Inspired by Codex `/goal` and Claude Code `/goal`.
+
+When you want Forgewright to work continuously toward a goal without prompting at each step:
+
+```
+User: "Set goal: Migrate auth to JWT until all tests pass"
+Forgewright: "✓ Goal set. Working toward: Migrate auth to JWT until all tests pass"
+→ (works continuously)
+→ (evaluates after each turn)
+→ (continues until condition met)
+```
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  GOAL-DRIVEN WORKFLOW                                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. User sets goal with completion condition                       │
+│  2. Forgewright enters autonomous mode                            │
+│  3. After each turn:                                              │
+│     a. Evaluate: Is the condition met?                             │
+│     b. If NO: Continue to next turn (no user prompt needed)        │
+│     c. If YES: Report completion, exit autonomous mode            │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Goal Commands
+
+| Command | What it does |
+|---------|--------------|
+| `/goal [condition]` | Set a goal and start working |
+| `/goal status` | Check current goal progress |
+| `/goal clear` | Cancel the active goal |
+
+### Example Goals
+
+| Goal | Condition |
+|------|-----------|
+| `/goal All tests pass` | Verifies via `npm test` or `pytest` |
+| `/goal Implement auth until all acceptance criteria met` | Checks against criteria file |
+| `/goal Migrate database until migrations run successfully` | Runs migration scripts |
+| `/goal Build succeeds and lint is clean` | Runs `npm run build` + `npm run lint` |
+
+### Configuration
+
+In `.production-grade.yaml`:
+
+```yaml
+goal:
+  auto_mode: true      # Approve tool calls automatically
+  max_turns: 50        # Safety limit (0 = unlimited)
+  evaluator:
+    model: "haiku"     # Smaller model for faster evaluation
+```
+
+### For Skills
+
+When running in goal mode, skills should:
+1. Emit progress to `.forgewright/goal-progress.md`
+2. Log what was done so evaluator can check
+3. Make outputs verifiable (test results, file counts, build status)
+
+### Resume Support
+
+Goals survive context resets:
+- Load `active-goal.json` on session resume
+- Continue from where left off
+- User does NOT need to re-explain the goal
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-> **RECOMMENDED:** This project uses GitNexus for code intelligence. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.
+This project is indexed by GitNexus as **forgewright** (16276 symbols, 23755 relationships, 251 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-This project is indexed by GitNexus as **forgewright** (16,112 nodes, 23,551 edges, 322 clusters, 250 flows).
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
-## Quick Start
-
-```bash
-# Install (if not already)
-npm install -g gitnexus
-
-# Analyze/update index
-gitnexus analyze
-
-# Check status
-gitnexus status
-```
-
-## Always Do (MANDATORY)
+## Always Do
 
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
@@ -552,18 +614,6 @@ gitnexus status
 - NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
 - NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
 
-## MCP Tools Quick Reference
-
-| Tool | When to use | Command |
-|------|-------------|---------|
-| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
-| `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
-| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
-| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
-| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
-| `cypher` | Custom graph queries | `gitnexus_cypher({query: "..."})` |
-| `list_repos` | List indexed repositories | `gitnexus_list_repos()` |
-
 ## Resources
 
 | Resource | Use for |
@@ -573,24 +623,15 @@ gitnexus status
 | `gitnexus://repo/forgewright/processes` | All execution flows |
 | `gitnexus://repo/forgewright/process/{name}` | Step-by-step execution trace |
 
-## Keeping the Index Fresh
+## CLI
 
-After code changes, re-index to keep the graph current:
-
-```bash
-gitnexus analyze
-```
-
-## Editor Skills (Claude Code)
-
-When using Claude Code, these skills are auto-installed:
-
-| Task | Skill |
-|------|-------|
-| Understand architecture | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius analysis | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Refactoring | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| CLI reference | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
