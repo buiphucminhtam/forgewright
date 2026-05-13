@@ -44,3 +44,7 @@ antigravity/planning/
 scripts/cf-dns-add.sh
 scripts/cf-dns-remove.sh
 .next/
+
+# Excel/spreadsheet files (may contain sensitive data)
+*.xlsx
+*.xls
