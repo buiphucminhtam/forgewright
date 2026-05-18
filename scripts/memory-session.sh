@@ -98,11 +98,27 @@ do_checkpoint() {
     local summary
     summary=$(generate_checkpoint_summary "${reason}")
 
-    # Save to memory
+    # Save to memory (Legacy Token-Savior / mem0)
     if command -v python3 &>/dev/null; then
         python3 "${SCRIPT_DIR}/mem0-v2.py" add \
             "CHECKPOINT: [${checkpoint_id}] msg:${message_count} | ${summary}" \
             --category session 2>/dev/null || true
+            
+        # [GraphRAG V3] Save to Conversational Graph
+        local graph_src="${SCRIPT_DIR}/../antigravity/src/memory"
+        if [[ -f "${graph_src}/graph_ingest.py" ]]; then
+            # We assume virtual environment or global has networkx installed
+            PYTHONPATH="${SCRIPT_DIR}/../antigravity" python3 "${graph_src}/graph_ingest.py" \
+                --node-id "${checkpoint_id}" \
+                --type "Decision" \
+                --content "${summary}" \
+                --weight 5.0 2>/dev/null || true
+                
+            # [GraphRAG V3] Run cognitive decay and prune graph
+            PYTHONPATH="${SCRIPT_DIR}/../antigravity" python3 "${graph_src}/graph_gc.py" \
+                --decay-rate 0.8 \
+                --threshold 1.0 2>/dev/null || true
+        fi
     fi
 
     # Update session
