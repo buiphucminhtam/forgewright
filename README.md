@@ -7,7 +7,7 @@
   <a href="https://github.com/buiphucminhtam/forgewright/network/members">
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
-  <img src="https://img.shields.io/badge/version-8.5.0-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-8.6.0-blue?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/skills-58-brightgreen?style=flat-square" alt="Skills" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
@@ -37,7 +37,7 @@ Forgewright: [Skips synchronous DB calls] → [Built correctly the first time]
 | Gives generic advice | **Project-specific** — remembers your stack |
 | Hallucinates solutions | **Grounded in research** — uses NotebookLM |
 | No quality guarantee | **Auto-scored 0-100** — you know when it's ready |
-| Starts from scratch each chat | **Persistent memory** — remembers everything |
+| Starts from scratch each chat | **GraphRAG Memory V3** — biological-inspired graph memory |
 | Handles requests directly | **Always via pipeline** — never skips orchestration |
 
 ---
@@ -187,12 +187,12 @@ flowchart TB
 
     LEVEL2 --> LEVEL3
 
-    subgraph LEVEL3["⚡⚡⚡ Level 3 — Persistent Memory"]
+    subgraph LEVEL3["⚡⚡⚡ Level 3 — GraphRAG Memory V3"]
         direction TB
-        L3A["🧠 Remembers across sessions"]
-        L3B["Saves decisions & architecture"]
-        L3C["No need to repeat context"]
-        L3D["Requires: Python 3.8+"]
+        L3A["🧠 Biological Graph Brain"]
+        L3B["Auto-prunes old context"]
+        L3C["Learns patterns via clustering"]
+        L3D["Requires: Python 3.8+ (NetworkX)"]
     end
 
     LEVEL3 --> LEVEL4
@@ -420,9 +420,24 @@ bash scripts/forgewright-update.sh --check
 
 ---
 
+## Featured: GraphRAG Memory V3 (Biological Brain)
+
+> **New in v8.6.0** — Replaces flat Markdown memory with a self-pruning Knowledge Graph.
+
+The biggest issue with long AI sessions is **context bloat** — the AI forgets the beginning of the chat because the memory file gets too large.
+
+**GraphRAG V3** solves this by mimicking the human brain's **Ebbinghaus Forgetting Curve**:
+
+1. **Graph Construction:** Every action, error, and decision is stored as a Node in a Local NetworkX Graph (`graph_memory.json`).
+2. **Cognitive Decay:** Over time, nodes lose "weight" (Decay Rate = 0.8). 
+3. **Garbage Collection:** Nodes that fall below the threshold are automatically pruned, keeping the context perfectly lean.
+4. **Self-Evolution:** `graph_cluster.py` detects repeated "Error → Decision" patterns and automatically upgrades Forgewright's `SKILL.md` files.
+
+---
+
 ## Featured: ASIP — The Self-Improving Protocol
 
-> **New in v8.4.0** — Enhanced Research Gate with automatic failure tracking.
+> **Updated in v8.4.0** — Enhanced Research Gate with automatic failure tracking.
 
 ```mermaid
 flowchart LR
