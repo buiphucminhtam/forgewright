@@ -330,23 +330,30 @@ var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('${CURSOR_MCP_JSON}', 'utf8'));
 if (!cfg.mcpServers) cfg.mcpServers = {};
 
-// Update forgewright to global launcher
+// Update forgewright to direct tsx execution (more reliable than bash launcher)
+// Note: ${FORGEWRIGHT_DIR} should point to the actual forgewright installation
 cfg.mcpServers['forgewright'] = {
-    command: 'bash',
-    args: ['${GLOBAL_LAUNCHER}']
+    command: 'npx',
+    args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
+    env: {
+        FORGEWRIGHT_WORKSPACE: '${workspaceFolder}'
+    }
 };
 
 fs.writeFileSync('${CURSOR_MCP_JSON}', JSON.stringify(cfg, null, 2));
 "
             log_ok "Updated: $CURSOR_MCP_JSON"
         else
-            # Create new
+            # Create new with direct npx tsx (more reliable)
             cat > "$CURSOR_MCP_JSON" << EOF
 {
   "mcpServers": {
     "forgewright": {
-      "command": "bash",
-      "args": ["${GLOBAL_LAUNCHER}"]
+      "command": "npx",
+      "args": ["tsx", "${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts"],
+      "env": {
+        "FORGEWRIGHT_WORKSPACE": "\${workspaceFolder}"
+      }
     }
   }
 }
@@ -375,10 +382,13 @@ var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('${CLAUDE_CONFIG_JSON}', 'utf8'));
 if (!cfg.mcpServers) cfg.mcpServers = {};
 
-// Update forgewright to global launcher
+// Update forgewright to direct tsx execution
 cfg.mcpServers['forgewright'] = {
-    command: 'bash',
-    args: ['${GLOBAL_LAUNCHER}']
+    command: 'npx',
+    args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
+    env: {
+        FORGEWRIGHT_WORKSPACE: '${workspaceFolder}'
+    }
 };
 
 fs.writeFileSync('${CLAUDE_CONFIG_JSON}', JSON.stringify(cfg, null, 2));
@@ -399,8 +409,9 @@ var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('${path}', 'utf8'));
 if (!cfg.mcpServers) cfg.mcpServers = {};
 cfg.mcpServers['forgewright'] = {
-    command: 'bash',
-    args: ['${GLOBAL_LAUNCHER}']
+    command: 'npx',
+    args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
+    env: { FORGEWRIGHT_WORKSPACE: '${workspaceFolder}' }
 };
 fs.writeFileSync('${path}', JSON.stringify(cfg, null, 2));
 "

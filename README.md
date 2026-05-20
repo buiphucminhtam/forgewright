@@ -314,28 +314,34 @@ No need to delete old project-level configs — the launcher auto-detects worksp
 
 ### Multi-Project Architecture
 
-With the **global setup**, **ONE config works for ALL projects**:
+### MCP Configuration Format
 
+The recommended MCP config for Cursor/Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "forgewright": {
+      "command": "npx",
+      "args": ["tsx", "/path/to/forgewright/.forgewright/mcp-server/server.ts"],
+      "env": {
+        "FORGEWRIGHT_WORKSPACE": "${workspaceFolder}"
+      }
+    }
+  }
+}
 ```
-~/.config/forgewright/
-├── global-setup.sh      # One-time setup
-├── global-launcher.sh  # Auto-detects workspace
-├── registry.json       # Project registry
-└── mcp-server/         # Shared MCP server
-```
 
-**Workspace Detection Priority:**
+**Key points:**
+- Uses `npx tsx` to run the TypeScript server directly
+- `${workspaceFolder}` is replaced by Cursor/Claude with the current project path
+- The server auto-detects the forgewright installation from the workspace
 
-1. `FORGEWRIGHT_WORKSPACE` env var (set by Antigravity)
-2. `MCP_WORKSPACE_ROOT` env var (MCP standard)
-3. Git repository root (auto-detected)
-4. Current working directory
+**Manual setup:** If setup script fails, edit `~/.cursor/mcp.json` manually with the format above.
 
-**Benefits:**
-- ✅ Single config entry, works for all projects
-- ✅ No need to update config when switching projects
-- ✅ Each project has its own isolated state
-- ✅ Auto-detects workspace without per-project setup
+---
+
+### Multi-Project Architecture
 
 ---
 
@@ -888,8 +894,9 @@ Both work together. You typically need both.
 
 | Problem | Fix |
 |---------|-----|
-| MCP not working after setup | Restart IDE; check with `bash scripts/fw-global-setup.sh --diagnose` |
-| `MCP server not found` | Run `npm run build:forgenexus` in forgewright directory |
+| MCP not working after setup | Restart IDE; re-run `bash scripts/fw-global-setup.sh --force` |
+| `MCP server not found` | Edit `~/.cursor/mcp.json` manually (see MCP Configuration Format above) |
+| `tsx` not found | Install tsx: `npm install -g tsx` |
 | Skills not found | Check AGENTS.md + CLAUDE.md copied |
 | GitNexus index stale | Run `gitnexus analyze --force` |
 | Submodule issues | `git submodule update --init --recursive` |
