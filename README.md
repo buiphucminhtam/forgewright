@@ -241,20 +241,25 @@ cp forgewright/AGENTS.md .
 cp forgewright/CLAUDE.md .
 ```
 
-#### Step 3: Setup MCP (New Method)
+#### Step 3: Build Dependencies
 
 ```bash
-# One-command setup with the new unified script
-bash forgewright/scripts/fw-mcp.sh setup
+cd forgewright
+npm install --legacy-peer-deps
+npm run build:forgenexus
+```
 
-# Or use the interactive wizard
-bash forgewright/scripts/fw-mcp.sh wizard
+#### Step 4: Setup MCP (New Method)
+
+```bash
+# One-command global setup (works for ALL projects)
+bash scripts/fw-global-setup.sh
 
 # Check status
-bash forgewright/scripts/fw-mcp.sh check
+bash scripts/fw-global-setup.sh --check
 
 # Diagnose issues
-bash forgewright/scripts/fw-mcp.sh diagnose
+bash scripts/fw-global-setup.sh --diagnose
 ```
 
 #### Step 4: Setup GitNexus (Code Intelligence)
@@ -938,32 +943,25 @@ Both work together. You typically need both.
 
 | Problem | Fix |
 |---------|-----|
-| MCP not working | Restart IDE, run `--diagnose` |
+| MCP not working after setup | Restart IDE; check with `bash scripts/fw-global-setup.sh --diagnose` |
+| `MCP server not found` | Run `npm run build:forgenexus` in forgewright directory |
 | Skills not found | Check AGENTS.md + CLAUDE.md copied |
 | GitNexus index stale | Run `gitnexus analyze --force` |
 | Submodule issues | `git submodule update --init --recursive` |
-| Need to update | `bash forgewright/scripts/forgewright-update.sh` |
-| Wrong project detected | Set `FORGEWRIGHT_WORKSPACE` env var |
 
 ```bash
-# Quick diagnostics (new unified script)
-bash forgewright/scripts/fw-mcp.sh check
-bash forgewright/scripts/fw-mcp.sh diagnose
+# Quick diagnostics
+bash scripts/fw-global-setup.sh --diagnose
 
-# Legacy diagnostics
-bash forgewright/scripts/forgewright-mcp-setup.sh --check
-bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose
-
-# GitNexus diagnostics
+# Check GitNexus
 gitnexus status
 gitnexus analyze --force
 
 # Debug workspace detection
-FORGEWRIGHT_DEBUG=1 bash forgewright/scripts/forgewright-mcp-launcher.sh
+FORGEWRIGHT_DEBUG=1 bash ~/.config/forgewright/global-launcher.sh
 
 # Update ForgeWright
-bash forgewright/scripts/forgewright-update.sh --check
-bash forgewright/scripts/forgewright-update.sh --all
+bash scripts/fw-global-setup.sh --force
 ```
 
 ---

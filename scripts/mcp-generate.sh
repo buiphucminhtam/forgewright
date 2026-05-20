@@ -1,16 +1,29 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# ⚠️ DEPRECATED: Use fw-mcp.sh instead
+# ⚠️ DEPRECATED: Use fw-global-launcher.sh instead
 #
-# This script is deprecated and will be removed in v9.0.
-# Please migrate to the new unified script:
+# This script is deprecated. Please use:
+#   ~/.config/forgewright/global-launcher.sh
 #
-#   bash forgewright/scripts/fw-mcp.sh setup
-#
-# For more information, see:
-#   docs/SETUP.md
-#   docs/SETUP-REFERENCE.md
+# After running: bash scripts/fw-global-setup.sh
 # ─────────────────────────────────────────────────────────────────
+
+# Try to find the new global launcher
+GLOBAL_LAUNCHER="${HOME}/.config/forgewright/global-launcher.sh"
+
+if [[ -f "$GLOBAL_LAUNCHER" ]]; then
+    exec bash "$GLOBAL_LAUNCHER" "$@"
+else
+    # Fallback to the new script in scripts/
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "${SCRIPT_DIR}/fw-global-launcher.sh" ]]; then
+        exec bash "${SCRIPT_DIR}/fw-global-launcher.sh" "$@"
+    else
+        echo -e "\033[0;31m✗ Global launcher not found.\033[0m"
+        echo "Run: bash scripts/fw-global-setup.sh"
+        exit 1
+    fi
+fi
 
 # Forgewright MCP Server Generator (Standalone)
 #

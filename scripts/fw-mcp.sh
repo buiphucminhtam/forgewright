@@ -1,28 +1,34 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# ⚠️ DEPRECATED: Use fw-mcp.sh instead
+# ⚠️ DEPRECATED: Use fw-global-setup.sh instead
 #
-# This script is deprecated and will be removed in v9.0.
-# Please migrate to the new unified script:
+# This script is deprecated. Please use the new global setup:
+#   bash scripts/fw-global-setup.sh
 #
-#   bash forgewright/scripts/fw-mcp.sh setup
-#
-# For more information, see:
-#   docs/SETUP.md
-#   docs/SETUP-QUICK.md
+# Benefits of new setup:
+#   - ONE setup for ALL projects and IDEs
+#   - No per-project configuration needed
+#   - Works automatically with any project
 # ─────────────────────────────────────────────────────────────────
 
-# forgewright-mcp-setup — ONE-COMMAND MCP Setup
-#
-# Single command to set up MCP for ANY project.
-# No manual JSON editing. No path confusion.
-#
-# USAGE (run from any project using Forgewright):
-#   bash forgewright/scripts/forgewright-mcp-setup.sh
-#
-# This sets up BOTH:
-#   - forgewright-mcp-launcher.sh (Forgewright tools, skills, memory)
-#   - forgenexus-mcp-launcher.sh (Code intelligence, graph, query)
+echo -e "\033[0;33m⚠️ WARNING: fw-mcp.sh is deprecated.\033[0m"
+echo -e "Please use the new global setup:"
+echo -e "  bash scripts/fw-global-setup.sh"
+echo ""
+echo "Benefits:"
+echo "  - ONE setup for ALL projects and IDEs"
+echo "  - No per-project configuration needed"
+echo "  - Works automatically with any project"
+echo ""
+
+# Offer to run the new setup
+if [[ -f "${BASH_SOURCE[0]%/*}/fw-global-setup.sh" ]]; then
+    echo -n "Run new setup now? [Y/n] "
+    read -r response
+    if [[ ! "$response" =~ ^[Nn]$ ]]; then
+        bash "${BASH_SOURCE[0]%/*}/fw-global-setup.sh"
+    fi
+fi
 
 set -euo pipefail
 

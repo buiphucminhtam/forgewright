@@ -1,26 +1,34 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# forgewright-mcp-launcher — Zero-Friction MCP Workspace Forwarder
+# ⚠️ DEPRECATED: Use fw-global-launcher.sh instead
 #
-# A thin bash/stdio bridge for Antigravity MCP integration.
-# Detects current workspace, then FORWARDS all MCP protocol traffic
-# to the project's forgewright MCP server.
+# This script redirects to the global launcher.
+# Please use:
+#   ~/.config/forgewright/global-launcher.sh
 #
-# HOW IT WORKS:
-#   Antigravity → stdio JSON-RPC → launcher → project's MCP server
-#
-# USAGE (single entry in claude_desktop_config.json):
-#   {
-#     "mcpServers": {
-#       "forgewright": {
-#         "command": "bash",
-#         "args": ["/path/to/scripts/forgewright-mcp-launcher.sh"]
-#       }
-#     }
-#   }
-#
-# DEBUG MODE:
-#   FORGEWRIGHT_DEBUG=1 forgewright-mcp-launcher.sh
+# After running: bash scripts/fw-global-setup.sh
+# ─────────────────────────────────────────────────────────────────
+
+# Try to find the new global launcher
+GLOBAL_LAUNCHER="${HOME}/.config/forgewright/global-launcher.sh"
+
+if [[ -f "$GLOBAL_LAUNCHER" ]]; then
+    exec bash "$GLOBAL_LAUNCHER" "$@"
+else
+    # Fallback to the new script in scripts/
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "${SCRIPT_DIR}/fw-global-launcher.sh" ]]; then
+        exec bash "${SCRIPT_DIR}/fw-global-launcher.sh" "$@"
+    else
+        echo -e "\033[0;31m✗ Global launcher not found.\033[0m"
+        echo "Run: bash scripts/fw-global-setup.sh"
+        exit 1
+    fi
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# LEGACY CODE BELOW - KEPT FOR REFERENCE
+# This legacy code is now handled by fw-global-launcher.sh
 # ─────────────────────────────────────────────────────────────────
 
 set -euo pipefail

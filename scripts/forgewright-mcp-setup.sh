@@ -1,16 +1,31 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# ⚠️ DEPRECATED: Use fw-mcp.sh instead
+# ⚠️ DEPRECATED: Use fw-global-setup.sh instead
 #
-# This script is deprecated and has been replaced by the unified
-# IDE Adaptive MCP orchestrator: fw-mcp.sh
+# This script is deprecated. Please use the new global setup:
+#   bash scripts/fw-global-setup.sh
+#
+# The new global setup:
+#   - ONE setup for ALL projects and IDEs
+#   - No per-project configuration needed
+#   - Works automatically with any project
 # ─────────────────────────────────────────────────────────────────
 
 echo -e "\033[0;33m⚠️ WARNING: forgewright-mcp-setup.sh is deprecated.\033[0m"
-echo -e "Please use the new unified IDE Adaptive script:"
-echo -e "  bash scripts/fw-mcp.sh $@"
+echo -e "Please use the new global setup:"
+echo -e "  bash scripts/fw-global-setup.sh"
+echo ""
+echo "Benefits:"
+echo "  - ONE setup for ALL projects and IDEs"
+echo "  - No per-project configuration needed"
+echo "  - Works automatically with any project"
 echo ""
 
-# Forward the execution to the new script
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-bash "$SCRIPT_DIR/fw-mcp.sh" "$@"
+# Offer to run the new setup
+if [[ -f "${BASH_SOURCE[0]%/*}/fw-global-setup.sh" ]]; then
+    echo -n "Run new setup now? [Y/n] "
+    read -r response
+    if [[ ! "$response" =~ ^[Nn]$ ]]; then
+        bash "${BASH_SOURCE[0]%/*}/fw-global-setup.sh"
+    fi
+fi
