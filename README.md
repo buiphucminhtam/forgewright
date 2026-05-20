@@ -282,11 +282,11 @@ gitnexus status
 
 Restart Cursor or Claude Desktop to load the MCP servers.
 
-#### Step 6: Verify Setup
+#### Step 5: Verify Setup
 
 ```bash
 # From forgewright directory
-bash scripts/fw-mcp.sh check
+bash scripts/fw-global-setup.sh --check
 
 # Check GitNexus
 gitnexus status
@@ -296,14 +296,14 @@ gitnexus status
 
 ### For Existing Projects (Already Have Old Setup)
 
-If you already have an old `.cursor/mcp.json` or `forgewright-mcp-setup.sh` config:
+If you already have an old `.cursor/mcp.json` or legacy MCP config:
 
 ```bash
 # 1. Backup old config
 cp ~/.cursor/mcp.json ~/.cursor/mcp.json.bak.$(date +%Y%m%d)
 
 # 2. Run new setup (auto-detects and updates global config)
-bash forgewright/scripts/fw-mcp.sh setup --force
+bash scripts/fw-global-setup.sh --force
 
 # 3. Restart your IDE
 ```
@@ -312,82 +312,30 @@ No need to delete old project-level configs — the launcher auto-detects worksp
 
 ---
 
-### Legacy MCP Setup (Still Supported)
-
-If you prefer the old method, these scripts still work:
-
-```bash
-# Generate MCP server (legacy)
-bash scripts/mcp-generate.sh
-
-# Setup script (legacy)
-bash scripts/forgewright-mcp-setup.sh
-```
-
-> ⚠️ These scripts are deprecated and will be removed in v9.0. Please use `fw-mcp.sh` instead.
-
----
-
 ### Multi-Project Architecture
 
-With the launcher setup, **ONE global config works for ALL projects**:
+With the **global setup**, **ONE config works for ALL projects**:
 
-```mermaid
-flowchart TB
-    subgraph GLOBAL["~/.cursor/mcp.json / Claude Config"]
-        FW["forgewright → forgewright-mcp-launcher.sh"]
-        FNX["forgenexus → forgenexus-mcp-launcher.sh"]
-    end
-
-    FW --> LAUNCHER_FW["forgewright-mcp-launcher"]
-    FNX --> LAUNCHER_FNX["forgenexus-mcp-launcher"]
-
-    LAUNCHER_FW --> WS_DETECT["Workspace Detection"]
-    LAUNCHER_FNX --> WS_DETECT2["Workspace Detection"]
-
-    WS_DETECT --> P1["Project A"]
-    WS_DETECT --> P2["Project B"]
-    WS_DETECT --> P3["Project C"]
-
-    WS_DETECT2 --> P1
-    WS_DETECT2 --> P2
-    WS_DETECT2 --> P3
-
-    P1 --> MANIFEST1[".antigravity/mcp-manifest.json"]
-    P1 --> IDX1[".forgenexus/codebase.db"]
-
-    P2 --> MANIFEST2[".antigravity/mcp-manifest.json"]
-    P2 --> IDX2[".forgenexus/codebase.db"]
-
-    P3 --> MANIFEST3[".antigravity/mcp-manifest.json"]
-    P3 --> IDX3[".forgenexus/codebase.db"]
-
-    style GLOBAL fill:#1a1a2e,stroke:#e94560,color:#fff
-    style LAUNCHER_FW fill:#1a5276,stroke:#3498db,color:#fff
-    style LAUNCHER_FNX fill:#1a5276,stroke:#3498db,color:#fff
+```
+~/.config/forgewright/
+├── global-setup.sh      # One-time setup
+├── global-launcher.sh  # Auto-detects workspace
+├── registry.json       # Project registry
+└── mcp-server/         # Shared MCP server
 ```
 
 **Workspace Detection Priority:**
 
 1. `FORGEWRIGHT_WORKSPACE` env var (set by Antigravity)
 2. `MCP_WORKSPACE_ROOT` env var (MCP standard)
-3. `FORGENEXUS_WORKSPACE` env var
-4. Git repository root (auto-detected)
-5. Current working directory
-
-**Each project has isolated state:**
-
-| Project | MCP Server | Code Graph | Manifest |
-|---------|------------|------------|----------|
-| Project A | `.forgewright/mcp-server/` | `.forgenexus/codebase.db` | `.antigravity/mcp-manifest.json` |
-| Project B | `.forgewright/mcp-server/` | `.forgenexus/codebase.db` | `.antigravity/mcp-manifest.json` |
-| Project C | `.forgewright/mcp-server/` | `.forgenexus/codebase.db` | `.antigravity/mcp-manifest.json` |
+3. Git repository root (auto-detected)
+4. Current working directory
 
 **Benefits:**
-- ✅ Single config entry per tool, works everywhere
+- ✅ Single config entry, works for all projects
 - ✅ No need to update config when switching projects
 - ✅ Each project has its own isolated state
-- ✅ Antigravity auto-detects workspace
+- ✅ Auto-detects workspace without per-project setup
 
 ---
 
@@ -399,11 +347,8 @@ cd forgewright
 git pull origin main
 git submodule update --init --recursive
 
-# Re-setup MCP (new method)
-bash scripts/fw-mcp.sh setup --force
-
-# Legacy update method
-bash scripts/forgewright-update.sh --check
+# Re-setup MCP
+bash scripts/fw-global-setup.sh --force
 ```
 
 ---
@@ -826,9 +771,9 @@ See [`multica-hub/README.md`](multica-hub/README.md) for full documentation.
 Automatic workspace detection and project-specific context.
 
 ```
-forgewright-mcp-launcher.sh
+~/.config/forgewright/global-launcher.sh
 ├── Detect workspace (env vars, git root, cwd)
-├── Load .antigravity/mcp-manifest.json
+├── Load project registry
 └── Start MCP server with project context
 ```
 

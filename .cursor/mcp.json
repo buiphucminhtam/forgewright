@@ -1,18 +1,23 @@
 {
   "mcpServers": {
-    "forgewright-forgenexus": {
-      "command": "node",
-      "args": [
-        ".cursor/forgenexus-mcp.js"
-      ],
-      "cwd": "${workspaceFolder}"
-    },
     "cursor-ide-browser": {
       "command": "npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
         "${workspaceFolder}"
+      ]
+    },
+    "forgewright": {
+      "command": "bash",
+      "args": [
+        "/Users/buiphucminhtam/.config/forgewright/global-launcher.sh"
+      ]
+    },
+    "gitnexus": {
+      "command": "/opt/homebrew/bin/gitnexus",
+      "args": [
+        "mcp"
       ]
     }
   }
