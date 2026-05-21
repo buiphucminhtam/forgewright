@@ -20,10 +20,16 @@ set -euo pipefail
 # ─── Resolve Paths ───────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FORGEWRIGHT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Detect project root: either parent of forgewright submodule, or forgewright itself
-if [ -f "${FORGEWRIGHT_DIR}/../.git" ] || [ -d "${FORGEWRIGHT_DIR}/../.git" ]; then
+if [ -n "${FORGEWRIGHT_DIR_OVERRIDE:-}" ]; then
+  FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR_OVERRIDE"
+else
+  FORGEWRIGHT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+fi
+
+if [ -n "${PROJECT_ROOT_OVERRIDE:-}" ]; then
+  PROJECT_ROOT="$PROJECT_ROOT_OVERRIDE"
+elif [ -f "${FORGEWRIGHT_DIR}/../.git" ] || [ -d "${FORGEWRIGHT_DIR}/../.git" ]; then
   PROJECT_ROOT="$(cd "${FORGEWRIGHT_DIR}/.." && pwd)"
 else
   PROJECT_ROOT="$FORGEWRIGHT_DIR"
@@ -144,6 +150,10 @@ generate_server() {
     sed -i '' "s|{{testCommand}}|npm test|g" "${OUTPUT_DIR}/${output_name}"
     sed -i '' "s|{{lintCommand}}|npm run lint|g" "${OUTPUT_DIR}/${output_name}"
     sed -i '' "s|{{buildCommand}}|npm run build|g" "${OUTPUT_DIR}/${output_name}"
+
+    # Resolve the absolute path of the local forgenexus package and escape it
+    local forgenexus_path="${FORGEWRIGHT_DIR}/forgenexus"
+    sed -i '' "s|\"forgenexus\": \"latest\"|\"forgenexus\": \"file:${forgenexus_path}\"|g" "${OUTPUT_DIR}/${output_name}"
 
     log_ok "Generated ${output_name}"
   done

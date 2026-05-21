@@ -4,11 +4,18 @@
  * - Use WeakMap for nodeSubclasses (N-API External doesn't support property assignment)
  */
 import { readFileSync, writeFileSync } from 'fs';
-import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
+import { resolve, dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const tsPath = resolve(__dirname, '../node_modules/tree-sitter/index.js');
+
+let tsPath = resolve(__dirname, '../node_modules/tree-sitter/index.js');
+if (!existsSync(tsPath)) {
+  console.log('[patch-tree-sitter] Could not find tree-sitter/index.js, skipping patch.');
+  process.exit(0);
+}
+
 let content = readFileSync(tsPath, 'utf8');
 
 // Only patch if not already patched

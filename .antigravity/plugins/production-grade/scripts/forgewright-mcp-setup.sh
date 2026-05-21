@@ -32,37 +32,8 @@ detect_forgewright() {
         resolved="$(cd "$PWD" && cd "$(dirname "$script_path")" && pwd -P)"
     fi
 
-    # If this script is in scripts/ under forgewright root
-    if [[ "$resolved" == */scripts ]]; then
-        local possible_fw="$(dirname "$resolved")"
-        FORGEWRIGHT_DIR="$possible_fw"
-
-        # Check if this is actually forgewright (has AGENTS.md)
-        if [[ -f "${possible_fw}/AGENTS.md" ]] || [[ -f "${possible_fw}/CLAUDE.md" ]]; then
-            FORGEWRIGHT_IS_PROJECT="true"
-        else
-            # forgewright might be a submodule — walk up to find the project root
-            local current="$possible_fw"
-            while [[ "$current" != "/" ]] && [[ "$current" != "$HOME" ]]; do
-                if [[ -f "${current}/AGENTS.md" ]] || [[ -f "${current}/CLAUDE.md" ]]; then
-                    FORGEWRIGHT_DIR="$current"
-                    FORGEWRIGHT_IS_PROJECT="true"
-                    break
-                fi
-                # Also stop if we find a .git directory (not a file) — this is the repo root
-                if [[ -d "${current}/.git" ]]; then
-                    # This .git dir means current is the project root
-                    FORGEWRIGHT_IS_PROJECT="true"
-                    break
-                fi
-                current="$(dirname "$current")"
-            done
-            if [[ "$FORGEWRIGHT_IS_PROJECT" != "true" ]]; then
-                FORGEWRIGHT_IS_PROJECT="false"
-            fi
-        fi
     # If this script is in scripts/ under Antigravity plugin
-    elif [[ "$resolved" == */.antigravity/plugins/production-grade/scripts ]]; then
+    if [[ "$resolved" == */.antigravity/plugins/production-grade/scripts ]]; then
         local plugin_root="$(dirname "$(dirname "$(dirname "$resolved")")")"
 
         # Walk up from plugin_root to find forgewright submodule
@@ -96,6 +67,35 @@ detect_forgewright() {
         else
             FORGEWRIGHT_DIR="$plugin_root"
             FORGEWRIGHT_IS_PROJECT="false"
+        fi
+    # If this script is in scripts/ under forgewright root
+    elif [[ "$resolved" == */scripts ]]; then
+        local possible_fw="$(dirname "$resolved")"
+        FORGEWRIGHT_DIR="$possible_fw"
+
+        # Check if this is actually forgewright (has AGENTS.md)
+        if [[ -f "${possible_fw}/AGENTS.md" ]] || [[ -f "${possible_fw}/CLAUDE.md" ]]; then
+            FORGEWRIGHT_IS_PROJECT="true"
+        else
+            # forgewright might be a submodule — walk up to find the project root
+            local current="$possible_fw"
+            while [[ "$current" != "/" ]] && [[ "$current" != "$HOME" ]]; do
+                if [[ -f "${current}/AGENTS.md" ]] || [[ -f "${current}/CLAUDE.md" ]]; then
+                    FORGEWRIGHT_DIR="$current"
+                    FORGEWRIGHT_IS_PROJECT="true"
+                    break
+                fi
+                # Also stop if we find a .git directory (not a file) — this is the repo root
+                if [[ -d "${current}/.git" ]]; then
+                    # This .git dir means current is the project root
+                    FORGEWRIGHT_IS_PROJECT="true"
+                    break
+                fi
+                current="$(dirname "$current")"
+            done
+            if [[ "$FORGEWRIGHT_IS_PROJECT" != "true" ]]; then
+                FORGEWRIGHT_IS_PROJECT="false"
+            fi
         fi
     # Fallback
     else
@@ -209,7 +209,7 @@ check_prerequisites() {
     log_ok "Node.js $(node -v)"
 
     # Check forgewright dir
-    if [[ ! -f "${FORGEWRIGHT_DIR}/scripts/mcp-generate.sh" ]]; then
+    if [[ ! -f "${FORGEWRIGHT_DIR}/scripts/mcp-generate.sh" ]] && [[ ! -f "$(dirname "${BASH_SOURCE[0]}")/mcp-generate.sh" ]]; then
         log_error "Forgewright MCP scripts not found at:"
         log_info "  $FORGEWRIGHT_DIR"
         exit 1
@@ -302,12 +302,36 @@ SETTINGS_EOF
 
 setup_mcp_server() {
     log_step "Generating MCP server..."
-    bash "${FORGEWRIGHT_DIR}/scripts/mcp-generate.sh" > /dev/null 2>&1
-    if [[ $? -eq 0 ]]; then
+    if FORGEWRIGHT_DIR_OVERRIDE="$FORGEWRIGHT_DIR" PROJECT_ROOT_OVERRIDE="$PROJECT_ROOT" bash "$(dirname "${BASH_SOURCE[0]}")/mcp-generate.sh"; then
         log_ok "MCP server generated"
     else
         log_error "Failed to generate MCP server"
         exit 1
+    fi
+
+    # Generate manifest
+    local manifest="${PROJECT_ROOT}/.antigravity/mcp-manifest.json"
+    mkdir -p "$(dirname "$manifest")"
+    cat > "$manifest" <<EOF
+{
+  "forgewright_version": "1.0.0",
+  "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "workspace": "${PROJECT_ROOT}",
+  "forgewright_path": "${FORGEWRIGHT_DIR}"
+}
+EOF
+    log_ok "Manifest generated at $manifest"
+
+    # Copy launcher scripts to FORGEWRIGHT_DIR/scripts/
+    mkdir -p "${FORGEWRIGHT_DIR}/scripts"
+    local script_dir="$(dirname "${BASH_SOURCE[0]}")"
+    if cp "${script_dir}/forgewright-mcp-launcher.sh" "${FORGEWRIGHT_DIR}/scripts/" 2>/dev/null; then
+        chmod +x "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
+        log_ok "Copied forgewright-mcp-launcher.sh"
+    fi
+    if cp "${script_dir}/forgenexus-mcp-launcher.sh" "${FORGEWRIGHT_DIR}/scripts/" 2>/dev/null; then
+        chmod +x "${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh"
+        log_ok "Copied forgenexus-mcp-launcher.sh"
     fi
 }
 
