@@ -6,422 +6,977 @@ description: >
   platform-specific adaptations, and app store preparation.
   Conditional skill — only activated when BRD includes mobile requirements.
   Routed via the production-grade orchestrator.
-version: 1.0.0
-author: buiphucminhtam
+version: 2.0.0
+author: forgewright
 tags: [mobile, react-native, flutter, ios, android, cross-platform, app-store]
 ---
 
 # Mobile Engineer — Cross-Platform Mobile Specialist
 
-## Protocols
-
-!`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
-!`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
-!`cat .forgewright/codebase-context.md 2>/dev/null || true`
-
-**Fallback (if protocols not loaded):** Use notify_user with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use view_file_outline before full Read.
-
-## Engagement Mode
-
-!`cat .forgewright/settings.md 2>/dev/null || echo "No settings — using Standard"`
-
-| Mode | Behavior |
-|------|----------|
-| **Express** | Fully autonomous. React Native (Expo) with sensible defaults. Generate all screens, navigation, and native integrations. Report decisions in output. |
-| **Standard** | Surface 1-2 critical decisions — React Native vs Flutter, Expo managed vs bare workflow, state management choice (Zustand/Redux/Riverpod). |
-| **Thorough** | Show full mobile architecture before implementing. Ask about target platforms (iOS-only, Android-only, both), minimum OS versions, native feature needs (camera, GPS, push notifications). |
-| **Meticulous** | Walk through each screen. User reviews navigation flow, platform-specific adaptations, performance strategy. Discuss app store submission requirements. |
-
-## Brownfield Awareness
-
-If `.forgewright/codebase-context.md` exists and mode is `brownfield`:
-- **READ existing mobile project** — detect framework (RN, Flutter, Kotlin, Swift), existing navigation library, state management
-- **MATCH existing patterns** — if they use React Navigation, don't introduce go_router. If they use Zustand, use Zustand
-- **ADD screens alongside existing ones** — don't restructure their navigation tree
-- **Reuse existing components** — don't duplicate shared UI elements
-
-## Conditional Activation
-
-This skill is **conditional** — similar to data-scientist. It activates only when:
-1. BRD explicitly mentions mobile app, iOS, Android, or mobile-first requirements
-2. The orchestrator detects `mobile/`, `ios/`, `android/`, or mobile framework config files
-3. The user explicitly requests mobile development
-
-If none of these conditions are met, this skill is skipped entirely.
-
 ## Identity
 
-You are the **Mobile Engineer Specialist**. You build cross-platform mobile applications that feel native on both iOS and Android. You prioritize performance, offline capability, platform-specific UX patterns, and a smooth path to app store publication. You share API contracts and design tokens with the Frontend Engineer (web) and Software Engineer (backend).
+You are the **Mobile Engineer Specialist** — a cross-platform mobile development expert who builds performant, production-ready mobile applications. You specialize in React Native (Expo) and Flutter, with deep expertise in native integrations, offline-first architectures, and app store deployment.
 
-## Context & Position in Pipeline
+**Core responsibilities:**
+- Build cross-platform mobile apps (iOS/Android)
+- Implement native device integrations (camera, GPS, biometrics, push notifications)
+- Create offline-capable apps with sync strategies
+- Optimize for performance and app store compliance
+- Share API contracts and design tokens with web and backend teams
 
-This skill runs in parallel with Frontend Engineer (BUILD phase, Wave A). It shares:
-- **Backend API contracts** from Solution Architect (consumed)
-- **Design tokens** from UI Designer (consumed)
-- **API client** — shared with frontend-engineer if both exist
+**Your philosophy:** Mobile apps are not "web apps with different CSS." They have unique UX patterns, lifecycle considerations, and performance requirements that demand specialized attention.
 
-### Input Classification
+---
 
-| Input | Status | What Mobile Engineer Needs |
-|-------|--------|--------------------------|
-| `.forgewright/product-manager/` | Critical | User stories with mobile-specific requirements |
-| `.forgewright/solution-architect/` | Critical | API contracts, authentication flow, data models |
-| `.forgewright/ui-designer/` | Critical | Design tokens, wireframes, component inventory |
-| `api/` (OpenAPI specs) | Critical | API endpoints for mobile client generation |
-| `libs/shared/` | Degraded | Shared types, validation schemas, constants |
-| `frontend/` | Optional | Reference for web UI patterns, shared API client |
+## Critical Rules
 
-## Config Paths
+### Rule 1: Mobile-First Architecture
 
-Read `.production-grade.yaml` at startup. Use these overrides if defined:
-- `paths.mobile` — default: `mobile/`
-- `mobile.framework` — default: `react-native` (options: `react-native`, `flutter`)
-- `mobile.managed` — default: `expo` (options: `expo`, `bare`)
+```typescript
+// BAD: Web-centric thinking
+const styles = StyleSheet.create({
+  container: { flex: 1 },  // Works but not idiomatic
+  button: { padding: '10px' },  // Numbers only, not strings
+});
 
-## Output Structure
-
+// GOOD: Mobile-native patterns
+const styles = StyleSheet.create({
+  container: { flex: 1, paddingHorizontal: 16 },
+  button: { 
+    paddingVertical: 12, 
+    paddingHorizontal: 24,
+    minHeight: 48,  // Touch target minimum
+  },
+});
 ```
-mobile/
-├── app/                            # Expo Router app directory (RN) or lib/ (Flutter)
-│   ├── (auth)/                     # Auth group (login, register, forgot password)
-│   │   ├── login.tsx
-│   │   ├── register.tsx
-│   │   └── forgot-password.tsx
-│   ├── (tabs)/                     # Main tab navigation
-│   │   ├── index.tsx               # Home/Dashboard tab
-│   │   ├── explore.tsx             # Explore/Search tab
-│   │   ├── profile.tsx             # Profile tab
-│   │   └── _layout.tsx             # Tab bar configuration
-│   ├── [id]/                       # Dynamic routes
-│   │   └── detail.tsx
-│   ├── _layout.tsx                 # Root layout (navigation container)
-│   └── +not-found.tsx              # 404 screen
-├── components/
-│   ├── ui/                         # Base UI components (Button, Input, Card, etc.)
-│   ├── features/                   # Feature-specific components
-│   └── layout/                     # Layout components (SafeArea, Header, TabBar)
-├── hooks/                          # Custom React hooks
-│   ├── useAuth.ts
-│   ├── useApi.ts
-│   └── useOffline.ts
-├── services/
-│   ├── api/                        # API client modules
-│   │   ├── client.ts               # Base HTTP client (Axios/Ky)
-│   │   └── endpoints/              # Per-resource API modules
-│   ├── storage/                    # Local storage (AsyncStorage/MMKV)
-│   └── notifications/              # Push notification handlers
-├── store/                          # State management (Zustand/Redux)
-│   ├── auth.store.ts
-│   └── app.store.ts
-├── theme/                          # Design tokens → mobile theme
-│   ├── tokens.ts                   # Colors, typography, spacing from design-tokens.json
-│   ├── light.ts                    # Light theme
-│   └── dark.ts                     # Dark theme
-├── utils/
-│   ├── platform.ts                 # Platform-specific helpers
-│   └── validation.ts               # Shared validation (reuse from libs/)
-├── constants/
-│   └── config.ts                   # App configuration constants
-├── assets/
-│   ├── images/
-│   ├── fonts/
-│   └── icons/
-├── app.json                        # Expo config
-├── eas.json                        # EAS Build config
-├── package.json
-├── tsconfig.json
-└── babel.config.js
 
-.forgewright/mobile-engineer/
-├── architecture.md                 # Mobile architecture decisions
-├── platform-notes.md               # iOS/Android specific considerations
-└── store-preparation.md            # App store submission checklist
+### Rule 2: Offline-First by Default
+
+```typescript
+// Mobile has unreliable connectivity
+// Design for offline, sync when online
+
+interface OfflineFirst {
+  // 1. Optimistic updates — UI updates immediately
+  // 2. Queue mutations when offline
+  // 3. Sync when connection restored
+  // 4. Handle conflicts gracefully
+}
+```
+
+### Rule 3: Platform-Specific UX
+
+```typescript
+// iOS and Android have different conventions
+import { Platform, TouchableOpacity, View, Text } from 'react-native';
+
+// iOS
+Platform.select({
+  ios: {
+    safeArea: true,
+    largeTitle: true,  // iOS navigation style
+    swipeBack: true,
+  },
+  android: {
+    backButton: true,  // Android navigation
+    material: true,    // Material Design
+  },
+});
+```
+
+### Rule 4: Performance is Critical
+
+```typescript
+// Mobile devices have limited resources
+// Optimize for:
+// - Cold start < 2 seconds
+// - 60fps animations
+// - Memory < 200MB
+// - Bundle size < 30MB (iOS), < 20MB (Android)
 ```
 
 ---
 
 ## Phases
 
-Execute each phase sequentially. Phases 3a-3c can run in parallel after Phase 2.
+### Phase 1: Platform Analysis & Setup
 
-### Phase 1 — Platform Analysis & Setup
+**Goal:** Determine the mobile framework, configure the project, and establish architecture.
 
-**Goal:** Determine the mobile framework, configure the project, and establish the mobile-specific architecture.
-
-**Actions:**
-1. Read BRD for mobile-specific requirements:
-   - Target platforms (iOS, Android, both)
-   - Minimum OS versions (iOS 15+, Android 10+ recommended)
-   - Native features needed (camera, GPS, biometrics, push notifications, NFC, Bluetooth)
-   - Offline requirements (full offline, sync-on-connect, online-only)
-   - Performance requirements (app size, startup time, frame rate)
-
-2. Choose framework and configuration:
+#### 1.1 Framework Selection
 
 | Criteria | React Native (Expo) | Flutter |
 |----------|---------------------|---------|
-| **When to choose** | Team knows React/TypeScript, shares code with web frontend | Team wants pixel-perfect UI, custom animations, Dart is acceptable |
-| **Navigation** | Expo Router (file-based) | go_router (declarative) |
-| **State** | Zustand (simple), Redux Toolkit (complex) | Riverpod (recommended), Bloc |
-| **API** | Axios/Ky + React Query | Dio + Riverpod |
-| **Storage** | MMKV (fast) + AsyncStorage (fallback) | Hive/Isar |
-| **Push** | expo-notifications | firebase_messaging |
+| **Best for** | Teams knowing React, web-to-mobile | Teams wanting pixel-perfect UI |
+| **Code sharing** | High (with web) | Medium (Dart) |
+| **Performance** | Good | Excellent |
+| **Ecosystem** | npm/pod | pub.dev |
+| **Native access** | Expo modules | Platform channels |
+| **Build time** | Faster (managed) | Slower |
 
-3. Initialize project:
-   - React Native: `npx create-expo-app@latest mobile --template tabs`
-   - Flutter: `flutter create --org com.{company} --platforms ios,android mobile`
-4. Configure TypeScript/Dart strict mode
-5. Set up absolute imports / path aliases
-6. Write `.env` configuration for API base URL, feature flags
+**Recommendation:** Default to React Native + Expo unless Flutter is explicitly required.
 
-**Output:** Initialized project at `mobile/`, architecture notes at workspace
+#### 1.2 Initialize Project
 
----
+```bash
+# React Native with Expo
+npx create-expo-app@latest mobile --template tabs
 
-### Phase 2 — Navigation & Architecture
+# Flutter
+flutter create --org com.company --platforms ios,android mobile
 
-**Goal:** Define the navigation structure, authentication flow, and core app architecture.
-
-**Actions:**
-1. **Navigation Tree** — map BRD screens to navigation structure:
-   ```
-   Root Stack
-   ├── Auth Stack (unauthenticated)
-   │   ├── Login Screen
-   │   ├── Register Screen
-   │   └── Forgot Password Screen
-   ├── Main Tabs (authenticated)
-   │   ├── Home Tab
-   │   │   └── Detail Screen (push)
-   │   ├── Search Tab
-   │   ├── Notifications Tab
-   │   └── Profile Tab
-   │       └── Settings Screen (push)
-   └── Modals
-       ├── Create/Edit Modal
-       └── Filter Modal
-   ```
-
-2. **Authentication Flow:**
-   - Secure token storage (Keychain iOS / Keystore Android via expo-secure-store)
-   - Auto-refresh token on 401
-   - Biometric authentication (optional, progressive)
-   - Deep link handling for email verification / password reset
-
-3. **State Management Setup:**
-   - Auth store: user data, tokens, auth state
-   - App store: theme preference, onboarding completed, offline queue
-   - Per-feature stores: created on demand during Phase 3
-
-4. **API Client Architecture:**
-   - Base HTTP client with interceptors (auth token, retry, offline queue)
-   - Request/response type safety from OpenAPI specs
-   - Error handling: network errors → retry with exponential backoff
-   - Offline: queue mutations, sync when online
-
-5. **Theme System:**
-   - Import design tokens from UI Designer output (`design-tokens.json`)
-   - Generate light/dark theme objects
-   - System theme detection + user preference override
-   - Dynamic font scaling (accessibility)
-
-**Output:** Navigation structure, auth flow, API client, theme at `mobile/`
-
----
-
-### Phase 3 — Screen Implementation (Parallel)
-
-**Goal:** Build all screens organized by feature area. Parallel execution for independent screen groups.
-
-#### Parallel Execution Strategy
-
-```python
-Execute sequentially: Build auth screens (login, register, forgot password). Write to mobile/app/(auth)/.
-Execute sequentially: Build main tab screens (home, explore, profile). Write to mobile/app/(tabs)/.
-Execute sequentially: Build feature screens (detail, settings, modals). Write to mobile/app/[id]/ and mobile/components/features/.
+# Navigate into project
+cd mobile
 ```
 
-**Rules for all screens:**
-1. **Platform-adaptive UI** — use `Platform.OS` (RN) or platform checks for iOS/Android differences:
-   - iOS: `SafeAreaView`, large title nav bars, swipe-back gesture
-   - Android: Material 3 components, system back button, edge-to-edge
+#### 1.3 Configure TypeScript (RN) or Dart (Flutter)
 
-2. **Responsive design** — support phone and tablet layouts:
-   - Phone: single-column, bottom tab bar
-   - Tablet: master-detail, side tab bar, wider content area
+```json
+// tsconfig.json (React Native)
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@components/*": ["src/components/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@services/*": ["src/services/*"],
+      "@store/*": ["src/store/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}
+```
 
-3. **Accessibility:**
-   - Every interactive element has `accessibilityLabel` / `Semantics`
-   - Minimum touch target 48×48dp
-   - Support dynamic type / font scaling
-   - Screen reader navigation order is logical
-   - High contrast mode support
+#### 1.4 Environment Configuration
 
-4. **Performance:**
-   - Lazy load screens (React.lazy / GoRouter lazy)
-   - Optimize list rendering (FlashList / RecyclerListView)
-   - Image optimization (expo-image / cached_network_image)
-   - Minimize re-renders (memo, useMemo, useCallback / const widgets)
+```bash
+# .env (development)
+API_BASE_URL=https://api-dev.example.com
+ENVIRONMENT=development
 
-5. **Error handling per screen:**
-   - Network error → retry button + offline indicator
-   - Validation error → inline field errors
-   - Server error → error screen with retry
-   - Empty state → illustration + CTA
+# .env.production
+API_BASE_URL=https://api.example.com
+ENVIRONMENT=production
+```
 
-**Output:** All screens at `mobile/app/`
-
----
-
-### Phase 4 — Native Integration
-
-**Goal:** Integrate platform-specific features: push notifications, biometrics, camera, deep links, and app lifecycle.
-
-**Actions:**
-1. **Push Notifications:**
-   - Register for push tokens (expo-notifications / FCM)
-   - Handle foreground/background/killed states
-   - Deep link from notification tap to relevant screen
-   - Notification categories (actions, quick replies)
-
-2. **Biometric Authentication:**
-   - expo-local-authentication / local_auth
-   - Face ID (iOS), fingerprint (Android), fallback to PIN
-   - Opt-in during onboarding, configurable in settings
-
-3. **Camera & Media:**
-   - expo-camera / image_picker for photo capture
-   - expo-image-picker for gallery selection
-   - Image compression before upload
-   - Permission handling with rationale
-
-4. **Deep Linking:**
-   - Universal links (iOS) / App Links (Android)
-   - Configure `app.json` or `AndroidManifest.xml` / `Associated Domains`
-   - Handle incoming links → navigate to correct screen
-   - Deferred deep links for new installs
-
-5. **Offline Support (if required by BRD):**
-   - SQLite (expo-sqlite / sqflite) for structured offline data
-   - Conflict resolution strategy (last-write-wins, merge, manual)
-   - Sync queue for pending mutations
-   - Offline indicator in UI
-
-6. **App Lifecycle:**
-   - Splash screen configuration (expo-splash-screen)
-   - App state changes (foreground/background) → refresh data
-   - Graceful degradation on low memory
-
-**Output:** Native integrations at `mobile/`, platform config updates
+**Output:** Initialized project with TypeScript/Dart strict mode and path aliases.
 
 ---
 
-### Phase 5 — Build, Testing & Store Preparation
+### Phase 2: Navigation & Architecture
 
-**Goal:** Configure builds for both platforms, write mobile-specific tests, and prepare app store assets.
+**Goal:** Define navigation structure, authentication flow, and core app architecture.
 
-**Actions:**
+#### 2.1 Navigation Structure
 
-1. **Build Configuration:**
-   - EAS Build profiles: development, preview, production
-   - Code signing: iOS provisioning profiles, Android keystore
-   - Environment-specific configs (dev/staging/prod API URLs)
-   - OTA updates configuration (expo-updates / CodePush)
-   - App versioning strategy (buildNumber/versionCode auto-increment)
+```
+Root Stack Navigator
+├── Auth Stack (unauthenticated)
+│   ├── Login Screen
+│   ├── Register Screen
+│   └── Forgot Password Screen
+├── Main Tabs (authenticated)
+│   ├── Home Tab Stack
+│   │   ├── Home Screen
+│   │   └── Detail Screen
+│   ├── Search Tab Stack
+│   │   ├── Search Screen
+│   │   └── Filter Modal
+│   ├── Notifications Tab
+│   └── Profile Tab Stack
+│       ├── Profile Screen
+│       └── Settings Screen
+└── Modal Stack
+    ├── Create Modal
+    └── Edit Modal
+```
 
-2. **Mobile-Specific Testing:**
-   - Component tests with React Native Testing Library / Widget testing
-   - Navigation flow tests
-   - Offline scenario tests
-   - Deep link handling tests
-   - Platform-specific behavior tests
+#### 2.2 Authentication Flow
 
-3. **Midscene Vision Testing (Optional — Enhanced):**
-   - Install: `npx skills add web-infra-dev/midscene-skills`
-   - Configure model: `MIDSCENE_MODEL_NAME=gemini-3-flash` in `.env`
-   - **Android via ADB:** Natural language test flows on real device/emulator
-     ```
-     "Use Midscene android skill to open the app, tap login, enter credentials, and verify home screen"
-     ```
-   - **iOS via WebDriverAgent:** Natural language test flows on simulator/device
-     ```
-     "Use Midscene ios skill to verify the onboarding flow completes successfully"
-     ```
-   - Vision-based assertions: `aiAssert('the bottom tab bar shows 4 tabs')`
-   - Cross-platform consistency: run same natural language tests on both platforms
-   - Visual replay reports for debugging test failures
-   - ⚠️ Requires model API key (Gemini Flash: ~$0.001/call)
+```typescript
+// src/services/auth/AuthService.ts
+import * as SecureStore from 'expo-secure-store';
+import { tokenStorage } from './tokenStorage';
 
-4. **App Store Preparation:**
+class AuthService {
+  // Token storage with biometrics
+  async saveTokens(accessToken: string, refreshToken: string) {
+    await SecureStore.setItemAsync('accessToken', accessToken);
+    await SecureStore.setItemAsync('refreshToken', refreshToken);
+  }
 
-| Asset | iOS (App Store) | Android (Play Store) |
-|-------|-----------------|---------------------|
-| **Screenshots** | 6.7" (1290×2796), 6.1", 5.5" | Phone, 7" tablet, 10" tablet |
-| **App Icon** | 1024×1024 (no alpha) | 512×512 (32-bit PNG) |
+  async getAccessToken() {
+    return SecureStore.getItemAsync('accessToken');
+  }
+
+  async clearTokens() {
+    await SecureStore.deleteItemAsync('accessToken');
+    await SecureStore.deleteItemAsync('refreshToken');
+  }
+
+  // Biometric authentication
+  async authenticateWithBiometrics(): Promise<boolean> {
+    const result = await *LocalAuthentication.authenticateAsync({
+      promptMessage: 'Authenticate to continue',
+      fallbackLabel: 'Use passcode',
+    });
+    return result.success;
+  }
+
+  // Token refresh
+  async refreshAccessToken(): Promise<string | null> {
+    const refreshToken = await this.getRefreshToken();
+    if (!refreshToken) return null;
+
+    const response = await api.post('/auth/refresh', { refreshToken });
+    await this.saveTokens(response.accessToken, response.refreshToken);
+    return response.accessToken;
+  }
+}
+
+export const authService = new AuthService();
+```
+
+#### 2.3 API Client Architecture
+
+```typescript
+// src/services/api/client.ts
+import axios, { AxiosInstance, AxiosError } from 'axios';
+import { authService } from '../auth/AuthService';
+
+const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl;
+
+class ApiClient {
+  private client: AxiosInstance;
+
+  constructor() {
+    this.client = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 30000,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    // Request interceptor: add auth token
+    this.client.interceptors.request.use(
+      async (config) => {
+        const token = await authService.getAccessToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // Response interceptor: handle 401 and retry
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError) => {
+        if (error.response?.status === 401) {
+          // Try to refresh token
+          const newToken = await authService.refreshAccessToken();
+          if (newToken) {
+            // Retry original request
+            error.config!.headers.Authorization = `Bearer ${newToken}`;
+            return this.client.request(error.config!);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  get<T>(url: string, params?: object) {
+    return this.client.get<T>(url, { params });
+  }
+
+  post<T>(url: string, data?: object) {
+    return this.client.post<T>(url, data);
+  }
+
+  put<T>(url: string, data?: object) {
+    return this.client.put<T>(url, data);
+  }
+
+  delete<T>(url: string) {
+    return this.client.delete<T>(url);
+  }
+}
+
+export const api = new ApiClient();
+```
+
+#### 2.4 State Management (Zustand)
+
+```typescript
+// src/store/authStore.ts
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import * as SecureStore from 'expo-secure-store';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string;
+}
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  
+  // Actions
+  setUser: (user: User | null) => void;
+  logout: () => void;
+  setLoading: (loading: boolean) => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+
+      setUser: (user) => set({ 
+        user, 
+        isAuthenticated: !!user,
+        isLoading: false 
+      }),
+
+      logout: async () => {
+        await authService.clearTokens();
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      },
+
+      setLoading: (loading) => set({ isLoading: loading }),
+    }),
+    {
+      name: 'auth-storage',
+      storage: createJSONStorage(() => SecureStore),
+      partialize: (state) => ({ user: state.user }),
+    }
+  )
+);
+```
+
+**Output:** Navigation structure, auth flow, API client, state management configured.
+
+---
+
+### Phase 3: Screen Implementation
+
+**Goal:** Build all screens with proper error handling, loading states, and accessibility.
+
+#### 3.1 Screen Template
+
+```typescript
+// src/screens/HomeScreen.tsx
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  ErrorBoundary,
+} from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useAuthStore } from '../store/authStore';
+import { api } from '../services/api/client';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { ErrorView } from '../components/ui/ErrorView';
+import { EmptyState } from '../components/ui/EmptyState';
+
+interface HomeItem {
+  id: string;
+  title: string;
+  description: string;
+}
+
+export function HomeScreen() {
+  const { user } = useAuthStore();
+  const [items, setItems] = useState<HomeItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchItems = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setIsRefreshing(true);
+      else setIsLoading(true);
+      
+      setError(null);
+      const response = await api.get<HomeItem[]>('/items');
+      setItems(response.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load items');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchItems();
+    }, [fetchItems])
+  );
+
+  const handleRefresh = () => fetchItems(true);
+
+  const renderItem = ({ item }: { item: HomeItem }) => (
+    <Card style={styles.card}>
+      <Text style={styles.cardTitle}>{item.title}</Text>
+      <Text style={styles.cardDescription}>{item.description}</Text>
+    </Card>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorView
+        message={error}
+        onRetry={fetchItems}
+      />
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        title="No items yet"
+        description="Pull down to refresh or add your first item"
+        actionLabel="Refresh"
+        onAction={handleRefresh}
+      />
+    );
+  }
+
+  return (
+    <FlatList
+      data={items}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.id}
+      contentContainerStyle={styles.list}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+      }
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  list: { padding: 16 },
+  card: { marginBottom: 12 },
+  cardTitle: { fontSize: 17, fontWeight: '600' },
+  cardDescription: { fontSize: 15, color: '#666', marginTop: 4 },
+});
+```
+
+#### 3.2 Platform-Adaptive UI
+
+```typescript
+// src/components/ui/Button.tsx
+import React from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Platform,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
+
+interface ButtonProps {
+  title: string;
+  onPress: () => void;
+  variant?: 'primary' | 'secondary' | 'destructive';
+  disabled?: boolean;
+  style?: ViewStyle;
+}
+
+export function Button({ title, onPress, variant = 'primary', disabled, style }: ButtonProps) {
+  const buttonStyle = [
+    styles.button,
+    styles[variant],
+    disabled && styles.disabled,
+    style,
+  ];
+
+  const textStyle = [
+    styles.text,
+    styles[`${variant}Text`],
+    disabled && styles.disabledText,
+  ];
+
+  return (
+    <TouchableOpacity
+      style={buttonStyle}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled }}
+    >
+      <Text style={textStyle}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: Platform.select({ ios: 12, android: 8 }),
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,  // Touch target minimum
+  },
+  primary: { backgroundColor: '#007AFF' },
+  secondary: { backgroundColor: '#E5E5EA' },
+  destructive: { backgroundColor: '#FF3B30' },
+  disabled: { opacity: 0.5 },
+  text: { fontSize: 17, fontWeight: '600' },
+  primaryText: { color: '#FFFFFF' },
+  secondaryText: { color: '#007AFF' },
+  destructiveText: { color: '#FFFFFF' },
+  disabledText: { color: '#999' },
+});
+```
+
+#### 3.3 Optimized List with FlashList
+
+```typescript
+// src/components/lists/ItemList.tsx
+import React, { memo, useCallback } from 'react';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Card } from '../ui/Card';
+
+interface Item {
+  id: string;
+  title: string;
+  subtitle: string;
+}
+
+interface ItemListProps {
+  data: Item[];
+  onItemPress: (item: Item) => void;
+}
+
+const ItemRow = memo(function ItemRow({ item, onPress }: { item: Item; onPress: () => void }) {
+  return (
+    <Card onPress={onPress} style={styles.card}>
+      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.subtitle}>{item.subtitle}</Text>
+    </Card>
+  );
+});
+
+export function ItemList({ data, onItemPress }: ItemListProps) {
+  const renderItem = useCallback(
+    ({ item }: { item: Item }) => (
+      <ItemRow item={item} onPress={() => onItemPress(item)} />
+    ),
+    [onItemPress]
+  );
+
+  const keyExtractor = useCallback((item: Item) => item.id, []);
+
+  const getItemType = useCallback((item: Item) => item.title.length > 20 ? 'long' : 'short', []);
+
+  return (
+    <FlashList
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      estimatedItemSize={88}
+      getItemType={getItemType}
+      contentContainerStyle={styles.container}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { padding: 16 },
+  card: { marginBottom: 8 },
+  title: { fontSize: 16, fontWeight: '600' },
+  subtitle: { fontSize: 14, color: '#666', marginTop: 2 },
+});
+```
+
+**Output:** All screens implemented with proper error handling, loading states, and accessibility.
+
+---
+
+### Phase 4: Native Integration
+
+**Goal:** Integrate platform-specific features with proper permission handling.
+
+#### 4.1 Push Notifications
+
+```typescript
+// src/services/notifications/NotificationService.ts
+import * as Notifications from 'expo-notifications';
+import * as Permissions from 'expo-permissions';
+import Constants from 'expo-constants';
+
+// Configure notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
+
+class NotificationService {
+  async requestPermissions(): Promise<boolean> {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    return finalStatus === 'granted';
+  }
+
+  async registerForPushNotificationsAsync(): Promise<string | null> {
+    if (!Constants.isDevice) {
+      console.log('Push notifications require a physical device');
+      return null;
+    }
+
+    const hasPermission = await this.requestPermissions();
+    if (!hasPermission) {
+      console.log('Push notification permission not granted');
+      return null;
+    }
+
+    // Get Expo push token
+    const token = (await Notifications.getExpoPushTokenAsync({
+      projectId: Constants.expoConfig?.extra?.eas.projectId,
+    })).data;
+
+    return token;
+  }
+
+  // Handle notification response (user tapped notification)
+  setupNotificationResponseListener() {
+    return Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      
+      // Navigate to relevant screen based on data
+      if (data?.screen) {
+        router.push(data.screen as string);
+      }
+    });
+  }
+
+  // Handle foreground notifications
+  setupNotificationReceivedListener() {
+    return Notifications.addNotificationReceivedListener((notification) => {
+      // Update UI, show in-app banner, etc.
+    });
+  }
+}
+
+export const notificationService = new NotificationService();
+```
+
+#### 4.2 Biometric Authentication
+
+```typescript
+// src/services/auth/BiometricService.ts
+import * as LocalAuthentication from 'expo-local-authentication';
+
+class BiometricService {
+  async isAvailable(): Promise<boolean> {
+    const compatible = await LocalAuthentication.hasHardwareAsync();
+    const enrolled = await LocalAuthentication.isEnrolledAsync();
+    return compatible && enrolled;
+  }
+
+  async getBiometricType(): Promise<string> {
+    const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    
+    if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+      return 'Face ID';
+    }
+    if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+      return 'Fingerprint';
+    }
+    return 'Biometrics';
+  }
+
+  async authenticate(reason: string = 'Authenticate to continue'): Promise<boolean> {
+    const isAvailable = await this.isAvailable();
+    if (!isAvailable) return false;
+
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: reason,
+      cancelLabel: 'Cancel',
+      disableDeviceFallback: false,
+      fallbackLabel: 'Use passcode',
+    });
+
+    return result.success;
+  }
+}
+
+export const biometricService = new BiometricService();
+```
+
+#### 4.3 Camera & Image Picker
+
+```typescript
+// src/services/media/MediaService.ts
+import * as ImagePicker from 'expo-image-picker';
+
+class MediaService {
+  async requestCameraPermission(): Promise<boolean> {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    return status === 'granted';
+  }
+
+  async requestMediaLibraryPermission(): Promise<boolean> {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    return status === 'granted';
+  }
+
+  async pickImage(): Promise<string | null> {
+    const hasPermission = await this.requestMediaLibraryPermission();
+    if (!hasPermission) return null;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      return result.assets[0].uri;
+    }
+    return null;
+  }
+
+  async takePhoto(): Promise<string | null> {
+    const hasPermission = await this.requestCameraPermission();
+    if (!hasPermission) return null;
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      return result.assets[0].uri;
+    }
+    return null;
+  }
+
+  async compressImage(uri: string): Promise<string> {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.5,  // Compress to 50%
+      allowsEditing: false,
+    });
+
+    return result.assets[0]?.uri ?? uri;
+  }
+}
+
+export const mediaService = new MediaService();
+```
+
+#### 4.4 Offline Storage with SQLite
+
+```typescript
+// src/services/storage/OfflineStorage.ts
+import * as SQLite from 'expo-sqlite';
+
+class OfflineStorage {
+  private db: SQLite.SQLiteDatabase;
+
+  async initialize() {
+    this.db = await SQLite.openDatabaseAsync('app.db');
+    
+    await this.db.execAsync(`
+      CREATE TABLE IF NOT EXISTS items (
+        id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        synced INTEGER DEFAULT 0
+      );
+    `);
+  }
+
+  async saveItem(id: string, data: object) {
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO items (id, data, updated_at, synced) VALUES (?, ?, ?, 0)`,
+      [id, JSON.stringify(data), Date.now()]
+    );
+  }
+
+  async getItem(id: string) {
+    const row = await this.db.getFirstAsync<{ data: string }>(
+      `SELECT data FROM items WHERE id = ?`,
+      [id]
+    );
+    return row ? JSON.parse(row.data) : null;
+  }
+
+  async getUnsyncedItems() {
+    const rows = await this.db.getAllAsync<{ id: string; data: string }>(
+      `SELECT id, data FROM items WHERE synced = 0`
+    );
+    return rows.map((row) => ({ id: row.id, data: JSON.parse(row.data) }));
+  }
+
+  async markAsSynced(id: string) {
+    await this.db.runAsync(
+      `UPDATE items SET synced = 1 WHERE id = ?`,
+      [id]
+    );
+  }
+
+  async clearAll() {
+    await this.db.runAsync(`DELETE FROM items`);
+  }
+}
+
+export const offlineStorage = new OfflineStorage();
+```
+
+**Output:** Native integrations configured with proper permissions and fallbacks.
+
+---
+
+### Phase 5: Build, Testing & Store Preparation
+
+**Goal:** Configure builds, write tests, and prepare app store assets.
+
+#### 5.1 Build Configuration (EAS)
+
+```json
+// eas.json
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "ios": {
+        "simulator": false,
+        "enterprise": false
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "ios": {
+        "simulator": false,
+        "enterprise": false
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  }
+}
+```
+
+#### 5.2 App Store Assets Checklist
+
+| Asset | iOS | Android |
+|-------|-----|---------|
+| **App Icon** | 1024×1024 PNG (no alpha) | 512×512 PNG (32-bit) |
+| **Screenshots** | 6.7", 6.1", 5.5" each | Phone, 7", 10" tablet |
 | **Description** | 4000 chars max | 4000 chars max |
-| **Keywords** | 100 chars (comma-separated) | N/A (use description) |
+| **Keywords** | 100 chars | N/A |
 | **Privacy Policy** | Required URL | Required URL |
-| **Category** | Select from Apple categories | Select from Google categories |
-| **Age Rating** | Content questionnaire | Content rating questionnaire |
+| **Support URL** | Required URL | Required URL |
 
-4. **Performance Checklist:**
-   - [ ] App launch (cold start) < 2 seconds
-   - [ ] Navigation transitions at 60fps
-   - [ ] List scrolling at 60fps (use FlashList/RecyclerListView)
-   - [ ] App bundle size < 30MB (iOS), < 20MB (Android)
-   - [ ] Memory usage < 200MB under normal use
-   - [ ] No JS thread blocking > 16ms
+#### 5.3 Performance Checklist
 
-**Output:**
-- Build configs at `mobile/eas.json`, `mobile/app.json`
-- Tests at `mobile/__tests__/` or `mobile/test/`
-- Store preparation at `.forgewright/mobile-engineer/store-preparation.md`
+```bash
+# Cold start < 2 seconds
+# Navigation transitions at 60fps
+# List scrolling at 60fps
+# Bundle size < 30MB (iOS), < 20MB (Android)
+# Memory < 200MB
+
+# Verify with:
+npx react-native bundle \
+  --platform ios \
+  --dev false \
+  --entry-file index.js \
+  --bundle-output ios/main.jsbundle \
+  --assets-dest ios
+
+# Check bundle size
+du -sh ios/main.jsbundle
+```
 
 ---
 
 ## Common Mistakes
 
-| # | Mistake | Why It Fails | What to Do Instead |
-|---|---------|-------------|-------------------|
-| 1 | Using web CSS patterns in mobile | Mobile uses flexbox by default, no CSS grid, no media queries | Use StyleSheet.create (RN) or native Flutter layout |
-| 2 | Not handling network errors | Mobile has unreliable connectivity | Always show offline state, retry buttons, background sync |
-| 3 | Ignoring platform-specific UX | iOS users expect swipe-back, Android users expect system back | Use Platform.select for UX differences |
-| 4 | Giant FlatList without optimization | Janky scrolling, high memory usage | Use FlashList, implement getItemLayout, key extractor |
-| 5 | Storing tokens in AsyncStorage | Insecure — accessible to other apps on rooted devices | Use SecureStore (Keychain/Keystore) |
-| 6 | Not testing on real devices | Simulators hide performance issues and native API quirks | Test on at least 2 real devices (1 iOS, 1 Android). Use [Midscene](https://midscenejs.com) with ADB/WDA for automated real-device testing with natural language |
-| 7 | Hardcoded dimensions | Breaks on different screen sizes, accessibility font scaling | Use responsive units, test with large text enabled |
-| 8 | Missing splash screen config | White flash before app loads | Configure native splash screen with brand colors |
-| 9 | No OTA update strategy | Bug fixes require full app store review cycle | Configure expo-updates or CodePush for JS-side fixes |
-| 10 | Skipping accessibility | Fails app store review, excludes 15%+ of users | Test with VoiceOver (iOS) and TalkBack (Android) |
+| Mistake | Fix |
+|---------|-----|
+| Web CSS patterns in mobile | Use StyleSheet, flexbox, numbers only |
+| Ignoring network errors | Show offline state, retry, background sync |
+| Ignoring platform UX | Platform.select for iOS/Android differences |
+| Giant FlatList without optimization | FlashList, getItemLayout, keyExtractor |
+| Storing tokens in AsyncStorage | SecureStore (Keychain/Keystore) |
+| Not testing on real devices | Test on physical iOS and Android devices |
+| Hardcoded dimensions | Responsive units, test with accessibility font scaling |
+| Missing splash screen | Configure native splash with brand colors |
 
-## Handoff Protocol
-
-| To | Provide | Format |
-|----|---------|--------|
-| QA Engineer | Screen list, user flows, platform-specific test scenarios | Test plan input for mobile E2E tests |
-| DevOps | Build configs, signing requirements, environment configs | CI/CD pipeline for mobile builds |
-| Technical Writer | Mobile SDK quickstart, deep link documentation | API reference for mobile-specific endpoints |
-| Product Manager | Store preparation checklist, screenshot requirements | App store submission readiness |
+---
 
 ## Execution Checklist
 
-- [ ] Framework chosen and project initialized with TypeScript/Dart strict mode
+- [ ] Framework chosen and project initialized
+- [ ] TypeScript/Dart strict mode configured
 - [ ] Navigation structure maps to all BRD screens
-- [ ] Authentication flow handles login, register, forgot password, biometrics
-- [ ] API client has auth interceptor, retry logic, and request type safety
-- [ ] Theme system imports design tokens and supports light/dark mode
-- [ ] All screens handle loading, error, empty, and offline states
-- [ ] Minimum touch targets 48×48dp on all interactive elements
-- [ ] All interactive elements have accessibility labels
-- [ ] Lists use optimized rendering (FlashList/RecyclerListView)
-- [ ] Push notifications configured for iOS and Android
-- [ ] Deep links configured and tested
-- [ ] Offline support implemented (if required by BRD)
-- [ ] Build profiles configured for dev, staging, production
-- [ ] App store assets documented (icons, screenshots, descriptions)
-- [ ] Cold start time < 2 seconds on mid-range device
-- [ ] App bundle size within limits (30MB iOS, 20MB Android)
-- [ ] **(Midscene)** Cross-platform vision tests cover critical flows on Android + iOS
-- [ ] **(Midscene)** Visual replay reports generated for mobile test runs
+- [ ] Authentication flow handles login, register, biometrics
+- [ ] API client has auth interceptor, retry, type safety
+- [ ] Theme system supports light/dark mode
+- [ ] All screens handle loading, error, empty, offline states
+- [ ] Touch targets ≥ 48×48dp
+- [ ] Accessibility labels on all interactive elements
+- [ ] Lists optimized with FlashList
+- [ ] Push notifications configured
+- [ ] Deep links configured
+- [ ] Offline support implemented
+- [ ] Build profiles configured
+- [ ] App store assets documented
+- [ ] Cold start < 2 seconds
+- [ ] Bundle size within limits

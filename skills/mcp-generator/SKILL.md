@@ -1,227 +1,638 @@
 ---
 name: MCP Generator
-description: Auto-generates a project-specific MCP server that exposes codebase intelligence (ForgeNexus graph, project profile, conventions) as MCP Tools, Resources, and Prompts — enabling any MCP-compatible AI client to understand the project.
+description: >
+  Auto-generates a project-specific MCP server that exposes codebase intelligence
+  (GitNexus graph, project profile, conventions) as MCP Tools, Resources, and Prompts
+  — enabling any MCP-compatible AI client to understand the project.
+version: 2.0.0
 ---
 
-# MCP Generator Skill
+# MCP Generator — Project Intelligence Server Specialist
 
-**Generates a project-specific MCP server powered by ForgeNexus code intelligence.**
+## Identity
 
-When Forgewright is installed as a submodule and the project is onboarded, this skill auto-generates an MCP (Model Context Protocol) server at `.forgewright/mcp-server/`. Any MCP-compatible client (Claude Desktop, Cursor, VS Code, Antigravity) can connect and gain deep project understanding.
+You are the **MCP Generator Specialist** — an expert at creating project-specific MCP (Model Context Protocol) servers that expose codebase intelligence as tools, resources, and prompts. You enable AI clients like Claude Desktop, Cursor, and Antigravity to understand and work with any project codebase through a standardized interface.
 
-## When to Invoke
+**Core responsibilities:**
+- Generate MCP servers from project context (GitNexus index, project profile)
+- Configure tools, resources, and prompts based on project needs
+- Set up workspace isolation for multi-project environments
+- Implement security guardrails (path validation, allowlists)
+- Document integration with popular AI clients
 
-- **Automatically** during project onboarding (Phase 1.6) when `code_intelligence.indexed == true`
-- **Explicitly** when user requests MCP server generation: "generate MCP server", "create MCP for this project"
-- **Re-generation** when user runs `/onboard` again or requests MCP refresh
+**Your philosophy:** Every project should be immediately understandable by AI tools. MCP servers bridge the gap between raw code and AI comprehension.
 
-## Prerequisites
+---
 
-- ForgeNexus indexed (`.forgenexus/` exists with valid index)
-- `project-profile.json` exists (from onboarding Phase 1–5)
-- Node.js installed (for `@modelcontextprotocol/server` SDK)
+## Critical Rules
 
-## Execution Steps
+### Rule 1: One Canonical Server Per Installation
 
-### Step 1 — Validate Prerequisites
-
-```
-1. Check .forgenexus/ exists and has valid index
-   → If missing: STOP — "Code Intelligence required. Run /onboard first."
-
-2. Check project-profile.json exists
-   → If missing: STOP — "Project profile required. Run /onboard first."
-
-3. Check Node.js available
-   → command -v node
-   → If missing: notify user with install instructions
-
-4. Read project-profile.json to determine:
-   - Project language/framework
-   - Available health commands (test, lint, build)
-   - Detected patterns
-```
-
-### Step 2 — Scaffold MCP Server
-
-Create `.forgewright/mcp-server/` directory with the following structure:
-
-```
-.forgewright/mcp-server/
-├── server.ts              # Single-file entry — all tools, resources, prompts
-├── package.json           # Dependencies: @modelcontextprotocol/sdk, forgenexus, zod
-├── tsconfig.json          # TypeScript config
-└── mcp-config.json        # Tool/resource registry (which are enabled)
-```
-
-> **Scope note:** The server is a single monolithic file. This is intentional — it avoids import resolution complexity in auto-generated code and keeps the attack surface small.
-
-### Step 3 — Configure Based on Project
-
-The generated server is **customized** per project:
-
-```
-ALWAYS enabled:
-  → 4 ForgeNexus graph tools (query, context, impact, detect_changes)
-  → 2 filesystem tools (navigate, search)
-  → 3 action tools (write_file, git_status, run_script)
-  → 3 resources (profile, architecture, conventions)
-  → 3 prompts (debug, review, plan)
-
-Scope guardrails:
-  → project_write_file: max 512KB, path traversal blocked, .env/.git blocked
-  → project_run_script: only scripts listed in package.json are allowed
-  → project_navigate: path traversal and .env/.git access blocked
-```
-
-Write `mcp-config.json` documenting which tools/resources are active.
-
-> **Explicitly out of scope:** Separate `project_run_tests`, `project_lint`, `project_build` tools are NOT generated — `project_run_script` subsumes them to avoid tool redundancy.
-
-### Step 4 — Install Dependencies
+The MCP server lives at exactly ONE location:
 
 ```bash
-cd .forgewright/mcp-server/
+# ❌ WRONG: Submodule paths in global configs
+# ~/.cursor/mcp.json contains:
+{
+  "mcpServers": {
+    "forgewright": {
+      "command": "npx",
+      "args": ["tsx", "/project/submodule/forgewright/.forgewright/mcp-server/server.ts"]
+    }
+  }
+}
+
+# ✅ CORRECT: Canonical path in global configs
+# ~/.cursor/mcp.json contains:
+{
+  "mcpServers": {
+    "forgewright": {
+      "command": "npx",
+      "args": ["tsx", "~/.forgewright/mcp-server/server.ts"]
+    }
+  }
+}
+```
+
+### Rule 2: Workspace Isolation via Manifest
+
+```json
+// Project A: .antigravity/mcp-manifest.json
+{
+  "manifest_version": "1.0",
+  "workspace": "/Users/dev/project-a",
+  "servers": [
+    {
+      "name": "project-a-forgewright",
+      "type": "forgewright-mcp-server",
+      "enabled": true
+    }
+  ]
+}
+
+// Project B: .antigravity/mcp-manifest.json
+{
+  "manifest_version": "1.0",
+  "workspace": "/Users/dev/project-b",
+  "servers": [
+    {
+      "name": "project-b-forgewright",
+      "type": "forgewright-mcp-server",
+      "enabled": true
+    }
+  ]
+}
+```
+
+### Rule 3: Security Guardrails
+
+```typescript
+// Path validation - block traversal attacks
+function validatePath(path: string): boolean {
+  const blocked = ['..', '.git', '.env', 'node_modules'];
+  return !blocked.some(segment => path.includes(segment));
+}
+
+// Allowlist only - only approved commands
+const ALLOWED_SCRIPTS = [
+  'test',
+  'lint',
+  'build',
+  'typecheck',
+  'format'
+];
+```
+
+---
+
+## Phases
+
+### Phase 1: Prerequisites Validation
+
+**Goal:** Verify all requirements are met before generation.
+
+#### 1.1 Checklist
+
+```bash
+#!/bin/bash
+# validate-prerequisites.sh
+
+echo "=== MCP Generator Prerequisites ==="
+
+# Check GitNexus
+if [ -d ".forgenexus" ] || [ -d ".gitnexus" ]; then
+    echo "✅ Code intelligence index found"
+else
+    echo "❌ Code intelligence required"
+    echo "   Run: npm install -g gitnexus && gitnexus analyze"
+fi
+
+# Check project profile
+if [ -f ".forgewright/project-profile.json" ]; then
+    echo "✅ Project profile found"
+else
+    echo "❌ Project profile required"
+    echo "   Run: /onboard first"
+fi
+
+# Check Node.js
+if command -v node >/dev/null 2>&1; then
+    echo "✅ Node.js: $(node --version)"
+else
+    echo "❌ Node.js required"
+fi
+
+# Check workspace
+if git rev-parse --show-toplevel >/dev/null 2>&1; then
+    echo "✅ Git repository: $(basename $(git rev-parse --show-toplevel))"
+else
+    echo "⚠️ Not a git repository"
+fi
+```
+
+#### 1.2 Validation Script
+
+```bash
+validate-prerequisites.sh || {
+    echo "Prerequisites not met. Run /onboard first."
+    exit 1
+}
+```
+
+**Output:** Prerequisites verified, ready for generation.
+
+---
+
+### Phase 2: Server Scaffold Creation
+
+**Goal:** Create the MCP server directory structure.
+
+#### 2.1 Directory Structure
+
+```bash
+# Create server directory
+mkdir -p .forgewright/mcp-server
+
+# Structure
+.forgewright/mcp-server/
+├── server.ts              # Main entry point (single file)
+├── package.json           # Dependencies
+├── tsconfig.json          # TypeScript config
+└── mcp-config.json       # Tool/resource registry
+```
+
+#### 2.2 package.json
+
+```json
+{
+  "name": "forgewright-mcp-server",
+  "version": "1.0.0",
+  "description": "Forgewright project intelligence MCP server",
+  "main": "server.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+```
+
+#### 2.3 tsconfig.json
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["server.ts"],
+  "exclude": ["node_modules"]
+}
+```
+
+**Output:** Scaffold created at `.forgewright/mcp-server/`
+
+---
+
+### Phase 3: Server Implementation
+
+**Goal:** Write the MCP server with tools, resources, and prompts.
+
+#### 3.1 Server Template
+
+```typescript
+// server.ts - Single file MCP server
+import { Server } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ListPromptsRequestSchema,
+  ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
+
+// ============================================
+// Tool Definitions
+// ============================================
+
+const tools = [
+  {
+    name: 'project_query',
+    description: 'Search codebase by concept via GitNexus',
+    inputSchema: z.object({
+      query: z.string().describe('Search query'),
+    }),
+  },
+  {
+    name: 'project_context',
+    description: 'Get 360° view of a symbol (callers, callees, processes)',
+    inputSchema: z.object({
+      name: z.string().describe('Symbol name'),
+    }),
+  },
+  {
+    name: 'project_impact',
+    description: 'Analyze blast radius of changes',
+    inputSchema: z.object({
+      target: z.string().describe('Target symbol'),
+      direction: z.enum(['upstream', 'downstream']).describe('Impact direction'),
+    }),
+  },
+  {
+    name: 'project_navigate',
+    description: 'Navigate to file or function',
+    inputSchema: z.object({
+      path: z.string().describe('File path'),
+      line: z.number().optional().describe('Line number'),
+    }),
+  },
+  {
+    name: 'project_search',
+    description: 'Search code by text pattern',
+    inputSchema: z.object({
+      pattern: z.string().describe('Search pattern'),
+      includes: z.array(z.string()).optional().describe('File patterns to include'),
+    }),
+  },
+  {
+    name: 'project_git_status',
+    description: 'Get current git status',
+    inputSchema: z.object({}),
+  },
+];
+
+// ============================================
+// Resource Definitions
+// ============================================
+
+const resources = [
+  {
+    uri: 'project://profile',
+    name: 'Project Profile',
+    description: 'Full project fingerprint (language, framework, patterns)',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'project://architecture',
+    name: 'Architecture',
+    description: 'Architecture overview from GitNexus clusters',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: 'project://conventions',
+    name: 'Conventions',
+    description: 'Coding conventions and patterns',
+    mimeType: 'text/markdown',
+  },
+];
+
+// ============================================
+// Prompt Definitions
+// ============================================
+
+const prompts = [
+  {
+    name: 'debug-issue',
+    description: 'Debug an issue with project context',
+    arguments: [
+      { name: 'error', description: 'Error message or issue description' },
+      { name: 'file', description: 'Optional: File path related to issue', required: false },
+    ],
+  },
+  {
+    name: 'review-changes',
+    description: 'Review code changes with conventions awareness',
+    arguments: [
+      { name: 'scope', description: 'Scope of changes to review', required: false },
+    ],
+  },
+  {
+    name: 'plan-feature',
+    description: 'Plan a new feature with architecture context',
+    arguments: [
+      { name: 'feature', description: 'Feature description' },
+    ],
+  },
+];
+
+// ============================================
+// Server Implementation
+// ============================================
+
+class ForgewrightMCPServer {
+  private server: Server;
+
+  constructor() {
+    this.server = new Server(
+      {
+        name: 'forgewright-mcp-server',
+        version: '1.0.0',
+      },
+      {
+        capabilities: {
+          tools: {},
+          resources: {},
+          prompts: {},
+        },
+      }
+    );
+
+    this.setupHandlers();
+  }
+
+  private setupHandlers() {
+    // List tools
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: tools.map(t => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema,
+      })),
+    }));
+
+    // List resources
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: resources.map(r => ({
+        uri: r.uri,
+        name: r.name,
+        description: r.description,
+        mimeType: r.mimeType,
+      })),
+    }));
+
+    // List prompts
+    this.server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+      prompts: prompts.map(p => ({
+        name: p.name,
+        description: p.description,
+        arguments: p.arguments,
+      })),
+    }));
+
+    // Read resource
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      const uri = request.params.uri;
+      
+      if (uri === 'project://profile') {
+        return {
+          contents: [{
+            uri,
+            mimeType: 'application/json',
+            text: JSON.stringify(this.loadProjectProfile(), null, 2),
+          }],
+        };
+      }
+      
+      throw new Error(`Unknown resource: ${uri}`);
+    });
+
+    // Call tool
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+      
+      try {
+        switch (name) {
+          case 'project_query':
+            return await this.handleQuery(args.query);
+          case 'project_context':
+            return await this.handleContext(args.name);
+          case 'project_impact':
+            return await this.handleImpact(args.target, args.direction);
+          case 'project_navigate':
+            return this.handleNavigate(args.path, args.line);
+          case 'project_search':
+            return await this.handleSearch(args.pattern, args.includes);
+          case 'project_git_status':
+            return await this.handleGitStatus();
+          default:
+            throw new Error(`Unknown tool: ${name}`);
+        }
+      } catch (error) {
+        return {
+          content: [{
+            type: 'text',
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          }],
+          isError: true,
+        };
+      }
+    });
+  }
+
+  // Tool handlers
+  private async handleQuery(query: string) {
+    // Implementation uses GitNexus
+    const results = await gitnexus_query({ query });
+    return {
+      content: [{ type: 'text', text: JSON.stringify(results, null, 2) }],
+    };
+  }
+
+  private async handleContext(name: string) {
+    const context = await gitnexus_context({ name });
+    return {
+      content: [{ type: 'text', text: JSON.stringify(context, null, 2) }],
+    };
+  }
+
+  private async handleImpact(target: string, direction: 'upstream' | 'downstream') {
+    const impact = await gitnexus_impact({ target, direction });
+    return {
+      content: [{ type: 'text', text: JSON.stringify(impact, null, 2) }],
+    };
+  }
+
+  private handleNavigate(path: string, line?: number) {
+    // Validate path for security
+    if (!this.validatePath(path)) {
+      throw new Error('Invalid path');
+    }
+    return {
+      content: [{ type: 'text', text: `Navigating to ${path}:${line || 1}` }],
+    };
+  }
+
+  private validatePath(path: string): boolean {
+    const blocked = ['..', '.git', '.env', 'node_modules'];
+    return !blocked.some(segment => path.includes(segment));
+  }
+
+  private loadProjectProfile() {
+    try {
+      return JSON.parse(readFileSync('.forgewright/project-profile.json', 'utf-8'));
+    } catch {
+      return { error: 'Project profile not found' };
+    }
+  }
+
+  async start() {
+    const transport = new StdioServerTransport();
+    await this.server.connect(transport);
+    console.error('Forgewright MCP Server started');
+  }
+}
+
+// Start server
+const server = new ForgewrightMCPServer();
+server.start().catch(console.error);
+```
+
+#### 3.2 MCP Config
+
+```json
+// mcp-config.json
+{
+  "server": {
+    "name": "forgewright-mcp-server",
+    "version": "1.0.0"
+  },
+  "tools": {
+    "enabled": [
+      "project_query",
+      "project_context",
+      "project_impact",
+      "project_navigate",
+      "project_search",
+      "project_git_status"
+    ],
+    "disabled": []
+  },
+  "resources": {
+    "enabled": [
+      "project://profile",
+      "project://architecture",
+      "project://conventions"
+    ]
+  },
+  "prompts": {
+    "enabled": [
+      "debug-issue",
+      "review-changes",
+      "plan-feature"
+    ]
+  },
+  "security": {
+    "path_validation": true,
+    "blocked_paths": ["..", ".git", ".env", "node_modules"],
+    "allowed_scripts": ["test", "lint", "build", "typecheck"]
+  }
+}
+```
+
+**Output:** Complete MCP server implementation.
+
+---
+
+### Phase 4: Dependencies Installation
+
+**Goal:** Install server dependencies.
+
+```bash
+cd .forgewright/mcp-server
 npm install
 ```
 
-### Step 5 — Generate `.antigravity/mcp-manifest.json`
+**Output:** Dependencies installed, server ready to run.
 
-Create the manifest that enables Antigravity workspace isolation:
+---
+
+### Phase 5: Manifest Generation
+
+**Goal:** Create workspace isolation manifest.
 
 ```bash
-# Create .antigravity directory
-mkdir -p "${PROJECT_ROOT}/.antigravity"
+#!/bin/bash
+# generate-manifest.sh
 
-# Generate manifest
-cat > "${PROJECT_ROOT}/.antigravity/mcp-manifest.json" << 'MANIFEST_EOF'
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+PROJECT_SLUG=$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+GENERATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+FORGEWRIGHT_VERSION=$(cat .forgewright/VERSION 2>/dev/null || echo "unknown")
+
+mkdir -p "$PROJECT_ROOT/.antigravity"
+
+cat > "$PROJECT_ROOT/.antigravity/mcp-manifest.json" << EOF
 {
   "manifest_version": "1.0",
-  "workspace": "${PROJECT_ROOT}",
-  "generated_at": "${GENERATED_AT}",
+  "workspace": "$PROJECT_ROOT",
+  "generated_at": "$GENERATED_AT",
   "generated_by": "forgewright/mcp-generator",
-  "forgewright_version": "${FORGEWRIGHT_VERSION}",
+  "forgewright_version": "$FORGEWRIGHT_VERSION",
   "servers": [
     {
       "name": "${PROJECT_SLUG}-forgewright",
       "type": "forgewright-mcp-server",
       "enabled": true,
-      "description": "Forgewright project intelligence — code graph, project profile, filesystem tools"
+      "description": "Forgewright project intelligence"
     },
     {
-      "name": "forgenexus",
-      "type": "forgenexus",
+      "name": "gitnexus",
+      "type": "gitnexus",
       "enabled": true,
-      "description": "Code intelligence — query, context, impact, blast-radius analysis",
-      "config": {
-        "forgenexus_path": "${FORGENEXUS_PATH}"
-      }
+      "description": "Code intelligence graph"
     }
   ]
 }
-MANIFEST_EOF
+EOF
+
+echo "Manifest generated at: $PROJECT_ROOT/.antigravity/mcp-manifest.json"
 ```
 
-> **Why `.antigravity/` instead of `.forgewright/`?**
-> - Antigravity reads from `.antigravity/` for its MCP integration
-> - `.forgewright/` remains project-internal (committed to repo)
-> - `.antigravity/` can be gitignored separately
+**Output:** Workspace manifest created at `.antigravity/mcp-manifest.json`
 
-### Step 6 — Generate Client Config Snippets
+---
 
-Output integration configs for popular clients:
+### Phase 6: Client Integration
 
-```
-📋 MCP Server Generated
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**Goal:** Generate client configuration snippets.
 
-Tools:     6 active
-Resources: 3 active
-Prompts:   3 active
-Transport: stdio
-
-To connect, add to your MCP client config:
-
-Antigravity / Claude Desktop:
-  {
-    "mcpServers": {
-      "<project-name>": {
-        "command": "npx",
-        "args": ["tsx", "<project-root>/.forgewright/mcp-server/server.ts"]
-      }
-    }
-  }
-
-Cursor (.cursor/mcp.json):
-  {
-    "mcpServers": {
-      "<project-name>": {
-        "command": "npx",
-        "args": ["tsx", "<project-root>/.forgewright/mcp-server/server.ts"]
-      }
-    }
-  }
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### Step 7 — Update Project Profile
-
-Add to `project-profile.json`:
+#### 6.1 Antigravity / Claude Desktop
 
 ```json
-{
-  "mcp_server": {
-    "generated": true,
-    "path": ".forgewright/mcp-server/",
-    "manifest_path": ".antigravity/mcp-manifest.json",
-    "tools_count": 9,
-    "resources_count": 3,
-    "prompts_count": 3,
-    "transport": "stdio",
-    "generated_at": "ISO-8601"
-  }
-}
-```
-
-### Step 8 — Workspace Isolation Summary
-
-Print a summary explaining the workspace isolation:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- ✅ MCP Workspace Isolation Ready
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
- Manifest: .antigravity/mcp-manifest.json
- Servers:  2 active (forgewright + forgenexus)
- Transport: stdio
-
- 🔒 How it works:
-    Antigravity reads .antigravity/mcp-manifest.json
-    from the current workspace automatically.
-    No global config conflicts.
-
-    Each workspace has its own MCP config
-    committed to the project repository.
-
-    Switch workspaces → MCP servers follow
-    automatically.
-
- 📋 Next steps:
-    1. Commit .antigravity/mcp-manifest.json
-    2. Update Antigravity global config:
-       → See section "Antigravity Global Config"
-    3. Restart Antigravity
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-Also output the Antigravity global config update:
-
-```
-📋 Antigravity Global Config (replace claude_desktop_config.json):
-
+// Add to ~/.claude/settings.json (mcpServers section)
 {
   "mcpServers": {
     "forgewright-workspace": {
@@ -237,215 +648,232 @@ Also output the Antigravity global config update:
 }
 ```
 
-> Replace `/path/to/forgewright/` with the absolute path to your
-> forgewright submodule in the host project.
-
-## MCP Primitives Reference
-
-### Tools
-
-| Tool | Input Schema | Description |
-|------|-------------|-------------|
-| `project_query` | `{ query: string }` | Search codebase by concept via ForgeNexus |
-| `project_context` | `{ name: string }` | 360° view: callers, callees, processes |
-| `project_impact` | `{ target: string, direction: "upstream"\|"downstream" }` | Blast radius analysis |
-| `project_detect_changes` | `{ scope?: string }` | Pre-commit risk assessment |
-| `project_navigate` | `{ path: string, line?: number }` | Navigate to file/function |
-| `project_search` | `{ pattern: string, includes?: string[] }` | ripgrep text search |
-| `project_write_file` | `{ path: string, content: string }` | Write files (max 512KB, path-validated) |
-| `project_run_script` | `{ script: string }` | Run npm scripts (allowlisted from package.json) |
-| `project_git_status` | `{}` | Get current git status |
-
-### Resources
-
-| URI | Description |
-|-----|-------------|
-| `project://profile` | Full project fingerprint (JSON) |
-| `project://architecture` | Architecture overview from ForgeNexus clusters |
-| `project://conventions` | Coding conventions and patterns |
-
-### Prompts
-
-| Prompt | Arguments | Description |
-|--------|-----------|-------------|
-| `debug-issue` | `{ error: string, file?: string }` | Structured debugging using project context |
-| `review-changes` | `{ scope?: string }` | Code review with conventions awareness |
-| `plan-feature` | `{ feature: string }` | Feature planning with architecture context |
-
-## Graceful Degradation
-
-```
-IF ForgeNexus tools fail:
-  → Disable affected MCP tools
-  → Keep resources and prompts working
-  → Log: "⚠ ForgeNexus unavailable — MCP tools limited"
-
-IF project-profile.json missing:
-  → Return empty profile resource
-  → Log: "⚠ Project profile not found"
-
-IF code-conventions.md missing:
-  → Return "No conventions documented" resource
-  → Proceed normally
-```
-
-## Re-generation
-
-When the project changes significantly (new onboarding, architecture changes):
-
-```
-1. Delete .forgewright/mcp-server/
-2. Re-run Steps 1–6
-3. Client configs remain the same (path unchanged)
-```
-
-## Integration Points
-
-- **project-onboarding.md** — Phase 1.6 triggers this skill
-- **session-lifecycle.md** — MCP server can re-index at session start/end
-- **code-intelligence.md** — Shares ForgeNexus data source
-
-## Workspace Isolation (Zero-Friction)
-
-> **Problem solved:** When forgewright is a submodule in multiple projects, each project needs its own MCP config. Previously, a global `claude_desktop_config.json` with hardcoded paths caused conflicts when switching workspaces.
-
-### Architecture
-
-```
-Antigravity global config (SINGLE entry):
-  forgewright-workspace → forgewright-mcp-launcher.sh
-
-Per-workspace manifest:
-  <project>/.antigravity/mcp-manifest.json
-    → Lists allowed MCP servers
-    → Workspace-relative paths
-
-Launcher reads manifest:
-  → Resolves absolute paths
-  → Auto-installs deps if needed
-  → Returns MCP config to Antigravity
-```
-
-### Manifest Format
+#### 6.2 Cursor
 
 ```json
-{
-  "manifest_version": "1.0",
-  "workspace": "/absolute/path/to/project",
-  "generated_at": "2026-04-18T...",
-  "generated_by": "forgewright/mcp-generator",
-  "forgewright_version": "7.0.0",
-  "servers": [
-    {
-      "name": "myproject-forgewright",
-      "type": "forgewright-mcp-server",
-      "enabled": true,
-      "description": "..."
-    },
-    {
-      "name": "forgenexus",
-      "type": "forgenexus",
-      "enabled": true,
-      "config": {
-        "forgenexus_path": "optional/override/path.js"
-      }
-    }
-  ]
-}
-```
-
-### Allowed Server Types (Allowlist)
-
-Only these server types are permitted in manifests:
-
-| Type | Description |
-|------|-------------|
-| `forgewright-mcp-server` | Auto-generated project MCP server |
-| `forgenexus` | Code intelligence graph |
-| `notebooklm-mcp` | NotebookLM integration |
-
-### Security
-
-- **Path validation:** All paths are validated for traversal (`..`) and blocked for `.git`, `.env`
-- **Allowlist only:** Arbitrary commands cannot be added — only pre-approved server types
-- **Repo-committed:** Manifest travels with the project, auditable by git
-
----
-
-## Unity Project Detection
-
-The MCP Generator can detect Unity projects and offer Unity-MCP integration.
-
-### Detection Criteria
-
-A project is identified as Unity if:
-1. `Assets/` folder exists
-2. `ProjectSettings/ProjectVersion.txt` exists
-3. `Packages/manifest.json` exists with Unity registry
-
-```bash
-# Check for Unity project
-if [ -d "Assets" ] && [ -f "ProjectSettings/ProjectVersion.txt" ]; then
-  echo "Unity project detected"
-fi
-```
-
-### Unity Project Options
-
-When Unity project is detected, offer to generate:
-
-1. **Unity-MCP Config Snippet** — Quick config for Unity-MCP connection
-2. **Unity-Specific Tools** — Game-related ForgeNexus tools
-3. **Documentation** — Link to `docs/unity-mcp-setup.md`
-
-### Unity-MCP Config Generation
-
-For Unity projects, generate a config snippet:
-
-```json
+// Add to ~/.cursor/mcp.json
 {
   "mcpServers": {
-    "unity-game-developer": {
-      "command": "<unity-project>/Library/mcp-server/osx-arm64/unity-mcp-server",
-      "args": ["--port=8080", "--client-transport=stdio"]
+    "forgewright": {
+      "command": "npx",
+      "args": ["tsx", "~/.forgewright/mcp-server/server.ts"]
     }
   }
 }
 ```
 
-### Unity-Specific ForgeNexus Queries
+#### 6.3 VS Code
 
-Unity projects benefit from game-specific queries:
+```json
+// Add to settings.json
+{
+  "mcp": {
+    "servers": {
+      "forgewright": {
+        "command": "npx",
+        "args": ["tsx", "~/.forgewright/mcp-server/server.ts"]
+      }
+    }
+  }
+}
+```
 
-| Query | Use Case |
-|-------|----------|
-| "MonoBehaviour scripts" | Find gameplay scripts |
-| "ScriptableObject" | Find data assets |
-| "NetworkVariable" | Find networked state |
-| "Shader Graph" | Find visual assets |
-
-### Workflow for Unity Projects
+#### 6.4 Generation Summary
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. Detect Unity project via file structure                     │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ 2. Offer Unity-MCP integration                                 │
-│    "Detected Unity project. Configure Unity-MCP?"              │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ 3. If yes: Generate Unity-MCP config + docs link               │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ 4. User installs Unity-MCP in Unity Editor                     │
-│    → unity-mcp-cli install-plugin ./MyUnityProject             │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ 5. Forgewright Unity skills can now leverage Unity-MCP tools    │
-└─────────────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ MCP Server Generated
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tools:     6 active
+Resources: 3 active
+Prompts:   3 active
+Transport: stdio
+
+Manifest: .antigravity/mcp-manifest.json
 ```
+
+**Output:** Client configuration snippets generated.
+
+---
+
+### Phase 7: Project Profile Update
+
+**Goal:** Record MCP server generation in project profile.
+
+```bash
+#!/bin/bash
+# update-profile.sh
+
+PROFILE_FILE=".forgewright/project-profile.json"
+
+if [ -f "$PROFILE_FILE" ]; then
+    # Add MCP server info to profile
+    jq '.mcp_server = {
+      "generated": true,
+      "path": ".forgewright/mcp-server/",
+      "manifest_path": ".antigravity/mcp-manifest.json",
+      "tools_count": 6,
+      "resources_count": 3,
+      "prompts_count": 3,
+      "transport": "stdio",
+      "generated_at": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
+    }' "$PROFILE_FILE" > tmp.json && mv tmp.json "$PROFILE_FILE"
+    
+    echo "Profile updated"
+else
+    echo "Profile not found"
+fi
+```
+
+---
+
+## MCP Primitives Reference
+
+### Tools
+
+| Tool | Input | Description |
+|------|-------|-------------|
+| `project_query` | `{ query: string }` | Search codebase by concept |
+| `project_context` | `{ name: string }` | 360° view of symbol |
+| `project_impact` | `{ target: string, direction: "upstream" \| "downstream" }` | Blast radius analysis |
+| `project_navigate` | `{ path: string, line?: number }` | Navigate to file |
+| `project_search` | `{ pattern: string, includes?: string[] }` | Text search |
+| `project_git_status` | `{}` | Git status |
+
+### Resources
+
+| URI | Description |
+|-----|-------------|
+| `project://profile` | Project fingerprint (JSON) |
+| `project://architecture` | Architecture overview |
+| `project://conventions` | Coding conventions |
+
+### Prompts
+
+| Prompt | Arguments | Description |
+|--------|-----------|-------------|
+| `debug-issue` | `{ error: string, file?: string }` | Structured debugging |
+| `review-changes` | `{ scope?: string }` | Code review |
+| `plan-feature` | `{ feature: string }` | Feature planning |
+
+---
+
+## Unity Project Detection
+
+### Detection Criteria
+
+```bash
+# Check for Unity project
+if [ -d "Assets" ] && [ -f "ProjectSettings/ProjectVersion.txt" ]; then
+    echo "Unity project detected"
+fi
+```
+
+### Unity-Specific Tools
+
+| Tool | Description |
+|------|-------------|
+| `unity_scene_list` | List all scenes |
+| `unity_prefab_find` | Find prefabs by name |
+| `unity_script_find` | Find MonoBehaviour scripts |
+
+### Unity Configuration
+
+```json
+{
+  "unity": {
+    "detected": true,
+    "version": "5.5.0",
+    "mcp_tools": [
+      "unity_scene_list",
+      "unity_prefab_find",
+      "unity_script_find"
+    ]
+  }
+}
+```
+
+---
+
+## Graceful Degradation
+
+```typescript
+// Handle GitNexus unavailability
+async function withFallback<T>(
+  primary: () => Promise<T>,
+  fallback: T
+): Promise<T> {
+  try {
+    return await primary();
+  } catch (error) {
+    console.warn('Primary tool failed, using fallback');
+    return fallback;
+  }
+}
+
+// Usage
+const queryResults = await withFallback(
+  () => gitnexus_query({ query }),
+  { results: [], error: 'GitNexus unavailable' }
+);
+```
+
+---
+
+## Re-generation
+
+When project changes significantly:
+
+```bash
+#!/bin/bash
+# regenerate.sh
+
+echo "Regenerating MCP server..."
+
+# Backup current
+cp .forgewright/mcp-server/server.ts .forgewright/mcp-server/server.ts.bak
+
+# Re-run generation
+# (Regenerate server.ts based on updated project context)
+
+# Update manifest
+bash generate-manifest.sh
+
+# Client configs remain the same
+echo "Regeneration complete. Restart AI client to apply."
+```
+
+---
+
+## Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Submodule path in global config | Use canonical `~/.forgewright/mcp-server/` |
+| Missing path validation | Always validate paths for `..` and `.git` |
+| No manifest for workspace | Create `.antigravity/mcp-manifest.json` |
+| Forgetting npm install | Always run `npm install` after generation |
+
+---
+
+## Handoff Protocol
+
+| To | Provide | Format |
+|----|---------|--------|
+| Developer | Client config snippet | JSON |
+| DevOps | Server path, launch command | Shell |
+| Documentation | Architecture, tools list | Markdown |
+
+---
+
+## Execution Checklist
+
+- [ ] Prerequisites validated (GitNexus, profile, Node.js)
+- [ ] Server scaffold created
+- [ ] Server implementation complete
+- [ ] Dependencies installed
+- [ ] Workspace manifest generated
+- [ ] Client configs documented
+- [ ] Project profile updated
+- [ ] Integration tested
