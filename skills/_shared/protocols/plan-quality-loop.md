@@ -78,11 +78,11 @@ Not all skills need the same plan depth. Scale the plan to the task:
 |---|-----------|-------|---------|---------|----------|
 | 1 | **Completeness** — All requirements covered? | Missing major items | Partial coverage | All requirements addressed | + Edge cases covered |
 | 2 | **Specificity** — Concrete actions, not vague? | "Implement feature" | Some specifics | Clear files, functions, steps | + Line-level changes |
-| 3 | **Feasibility** — Executable with available tools? | Requires unavailable tech | Partially feasible | Fully executable | + Fallback paths defined |
+| 3 | **Feasibility** — Executable with available tools? | Requires unavailable tech | Partially feasible | Fully executable | + Fallback paths defined, verified by `scripts/asip-deterministic-check.sh` |
 | 4 | **Risk awareness** — What could go wrong? | No risks mentioned | 1-2 obvious risks | All major risks identified | + Mitigation per risk |
 | 5 | **Scope control** — Right-sized, not over-engineered? | Way too broad | Slightly overbuild | Right-sized | + Explicitly excludes out-of-scope |
 | 6 | **Dependency ordering** — Logical sequence? | Random order | Mostly ordered | Correct dependency graph | + Parallel opportunities noted |
-| 7 | **Testability** — How to verify success? | No verification | "Run tests" | Specific test commands/criteria | + Acceptance criteria linked |
+| 7 | **Testability** — How to verify success? | No verification | "Run tests" | Specific test commands/criteria | + Deterministic check passes (`bash scripts/asip-deterministic-check.sh`) |
 | 8 | **Impact assessment** — What existing code is affected? | Not mentioned | Files listed | Files + functions + risk | + Blast radius quantified |
 
 ## Threshold
@@ -93,6 +93,7 @@ planQuality:
   threshold: 9.0        # minimum score to proceed
   maxIterations: 3       # safety cap
   researchOnImprove: true  # search for reference cases
+  deterministicCheck: true  # run asip-deterministic-check.sh on Feasibility/Testability
 ```
 
 ## Scoring Output Format
@@ -119,8 +120,20 @@ After scoring, display concisely:
 
 **After every score, the evaluator MUST evaluate its own scoring.** This prevents lazy scoring, inflated scores, and inconsistent standards.
 
-**DETERMINISTIC VERIFICATION (MANDATORY FOR NON-TECH USERS):**
-Subjective LLM scoring is insufficient for non-technical users. Whenever scoring an **Execution Plan**, you MUST generate and execute a deterministic verification script (e.g., testing syntax, checking dependencies, or running a compilation dry-run) via the terminal before finalizing the score. If the deterministic dry-run fails, `Feasibility` and `Testability` scores drop to 0 automatically.
+**DETERMINISTIC VERIFICATION (MANDATORY):**
+Subjective LLM scoring is insufficient without objective checks. For any **Execution Plan**, run the deterministic checker before finalizing the score:
+
+```bash
+bash scripts/asip-deterministic-check.sh plan.md
+```
+
+| Exit code | Meaning | Auto-action |
+|-----------|---------|------------|
+| `0` | All checks pass | Proceed — Feasibility=1.25, Testability=1.25 |
+| `2` | Warnings only | Proceed — Feasibility=1.0, Testability=1.0 |
+| `1` | Critical failures | Block — Feasibility=0, Testability=0, score < threshold |
+
+If the script is unavailable, fall back to manual checks: verify referenced files exist, test commands are real, and acceptance criteria are concrete. Do not score Feasibility or Testability above 0.5 without verification.
 
 ### Self-Evaluation Checklist (5 checks)
 
@@ -233,6 +246,8 @@ When plan scores below threshold:
    ```
 
 5. Read back the improved skill + `plan-lessons.md` before re-planning.
+
+6. **Cross-link from Execution (v8.3):** Execution lessons may generate planning stubs in `plan-lessons.md` via the `forgewright-lesson-migrator.sh` cross-feedback. When re-planning, check `.forgewright/plan-lessons.md` for cross-linked entries from past execution failures. These are the "unexpected" planning gaps that execution revealed.
 
 ## Step 5: RESEARCH
 

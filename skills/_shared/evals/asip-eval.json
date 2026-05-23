@@ -1,0 +1,210 @@
+{
+  "name": "ASIP Self-Evolution Mechanism",
+  "version": "1.0.0",
+  "description": "Evaluates whether Forgewright's ASIP self-evolution mechanism triggers correctly: research gate enforcement, lesson persistence, session→skill migration, and cross-feedback loop.",
+  "testCases": [
+    {
+      "id": "asip-001",
+      "name": "Init script bootstraps all baseline files",
+      "category": "bootstrap",
+      "prompt": "Run: bash scripts/forgewright-evolution-init.sh --check",
+      "expected_behavior": "All infrastructure files present and scripts are executable",
+      "success_criteria": [
+        "asip-state.json exists and is valid JSON",
+        "asip-metrics.json exists and is valid JSON",
+        "plan-lessons.md exists and is non-empty",
+        "execution-lessons.md exists and is non-empty",
+        "all 3 scripts are executable",
+        "status output shows ALL SYSTEMS OK"
+      ],
+      "automatable": true,
+      "expected_exit": 0
+    },
+    {
+      "id": "asip-002",
+      "name": "Deterministic check: plan with valid files passes",
+      "category": "feasibility",
+      "prompt": "Run: bash scripts/asip-deterministic-check.sh skills/_shared/protocols/plan-quality-loop.md",
+      "expected_behavior": "Script detects the file exists and all referenced paths are valid",
+      "success_criteria": [
+        "Exit code 0 (PASS) or 2 (WARNINGS — acceptable for protocol docs)",
+        "Output mentions 'All referenced files exist' or similar",
+        "No [FAIL] lines for missing files"
+      ],
+      "automatable": true,
+      "expected_exit": "0 or 2"
+    },
+    {
+      "id": "asip-003",
+      "name": "Deterministic check: plan with missing files reports failures",
+      "category": "feasibility",
+      "prompt": "Run: echo '# Plan\n\n1. Edit skills/nonexistent-skill/SKILL.md\n2. Modify scripts/missing-script.sh' | bash scripts/asip-deterministic-check.sh /dev/stdin",
+      "expected_behavior": "Script detects non-existent files and reports FAIL",
+      "success_criteria": [
+        "Exit code 1 (FAIL) or 2 (WARNINGS)",
+        "Output mentions 'nonexistent-skill' or 'missing-script'",
+        "At least one [FAIL] or [WARN] for the missing files"
+      ],
+      "automatable": true,
+      "expected_exit": "1 or 2"
+    },
+    {
+      "id": "asip-004",
+      "name": "Deterministic check: testability passes when test commands exist",
+      "category": "testability",
+      "prompt": "Run: echo '# Plan\n\n1. Write tests using pytest\n2. Run: pytest tests/\n3. Acceptance: pytest exit code = 0' | bash scripts/asip-deterministic-check.sh /dev/stdin",
+      "expected_behavior": "Script detects test commands and acceptance criteria references",
+      "success_criteria": [
+        "Output mentions 'specific test command' found",
+        "Output mentions 'acceptance criteria' found",
+        "Exit code 0 or 2 (not 1)"
+      ],
+      "automatable": true,
+      "expected_exit": "0 or 2"
+    },
+    {
+      "id": "asip-005",
+      "name": "Deterministic check: testability fails when no test commands",
+      "category": "testability",
+      "prompt": "Run: echo '# Plan\n\n1. Implement feature\n2. Done' | bash scripts/asip-deterministic-check.sh /dev/stdin",
+      "expected_behavior": "Script detects missing test commands and issues a warning",
+      "success_criteria": [
+        "Exit code 1 or 2",
+        "Output contains warning about 'No specific test commands'",
+        "Output contains warning about 'No acceptance criteria'"
+      ],
+      "automatable": true,
+      "expected_exit": "1 or 2"
+    },
+    {
+      "id": "asip-006",
+      "name": "Lesson migrator: status shows empty state initially",
+      "category": "migration",
+      "prompt": "Run: bash scripts/forgewright-lesson-migrator.sh status",
+      "expected_behavior": "Shows migration state with zero migrated entries",
+      "success_criteria": [
+        "totalMigrated: 0",
+        "Shows lesson file sizes (non-zero lines)",
+        "No errors"
+      ],
+      "automatable": true,
+      "expected_exit": 0
+    },
+    {
+      "id": "asip-007",
+      "name": "Lesson migrator: migrate with no new entries is a no-op",
+      "category": "migration",
+      "prompt": "Run: bash scripts/forgewright-lesson-migrator.sh migrate",
+      "expected_behavior": "Reports no new lessons to migrate, exits cleanly",
+      "success_criteria": [
+        "Output says 'No new plan lessons' or 'No new execution lessons'",
+        "Exit code 0",
+        "No error messages"
+      ],
+      "automatable": true,
+      "expected_exit": 0
+    },
+    {
+      "id": "asip-008",
+      "name": "Lesson migrator: appends Planning Improvements section if missing",
+      "category": "migration",
+      "prompt": "Simulate adding a lesson entry to plan-lessons.md, then run migrate",
+      "expected_behavior": "Lesson migrator finds the entry and appends to target skill's Planning Improvements",
+      "success_criteria": [
+        "Migration state updates with migratedPlanEntries count",
+        "No duplicate entries on second run (idempotent)",
+        "Metrics totalMigrations increments"
+      ],
+      "automatable": true,
+      "expected_exit": 0,
+      "setup": "Append test entry to .forgewright/plan-lessons.md, record state",
+      "teardown": "Remove test entry from .forgewright/plan-lessons.md"
+    },
+    {
+      "id": "asip-009",
+      "name": "Session tracker: init and status work",
+      "category": "tracker",
+      "prompt": "Run: bash scripts/forgewright-session-tracker.sh init && bash scripts/forgewright-session-tracker.sh status",
+      "expected_behavior": "Initializes tracking state and shows zero failures",
+      "success_criteria": [
+        "plan_failures: 0",
+        "execution_failures: 0",
+        "research_gate_triggered: false"
+      ],
+      "automatable": true,
+      "expected_exit": 0
+    },
+    {
+      "id": "asip-010",
+      "name": "Session tracker: records plan failure and triggers gate at threshold",
+      "category": "tracker",
+      "prompt": "Run: bash scripts/forgewright-session-tracker.sh plan 7.5 && bash scripts/forgewright-session-tracker.sh plan 7.0 && bash scripts/forgewright-session-tracker.sh check",
+      "expected_behavior": "After 2 failures (both < 9.0), research gate triggers",
+      "success_criteria": [
+        "First plan: failures reset",
+        "After second plan: plan_failures increments",
+        "check shows RESEARCH_GATE_REQUIRED"
+      ],
+      "automatable": true,
+      "expected_exit": 0
+    },
+    {
+      "id": "asip-011",
+      "name": "Init script: update-metrics works",
+      "category": "metrics",
+      "prompt": "Run: bash scripts/forgewright-evolution-init.sh --update-metrics lesson_learned software-engineer 3",
+      "expected_behavior": "Increments lessonsLearned by 3 for software-engineer skill",
+      "success_criteria": [
+        "Output says 'Metrics updated: lesson_learned (+3)'",
+        "asip-metrics.json reflects incremented value",
+        "JSON is still valid after update"
+      ],
+      "automatable": true,
+      "expected_exit": 0
+    },
+    {
+      "id": "asip-012",
+      "name": "Init script: self-verify passes",
+      "category": "bootstrap",
+      "prompt": "Run: bash scripts/forgewright-evolution-init.sh --verify",
+      "expected_behavior": "All scripts have valid shell syntax",
+      "success_criteria": [
+        "Output: 'Shell syntax: valid'",
+        "Each referenced script: 'valid'",
+        "Output: 'Self-verification: all checks passed'"
+      ],
+      "automatable": true,
+      "expected_exit": 0
+    },
+    {
+      "id": "asip-013",
+      "name": "Cross-feedback: execution lesson generates planning stub",
+      "category": "feedback-loop",
+      "prompt": "Add an execution lesson with 'Planning Review Trigger' fields to execution-lessons.md, run migrate",
+      "expected_behavior": "Lesson migrator detects the planning review trigger and generates a stub in plan-lessons.md",
+      "success_criteria": [
+        "execution-lessons.md entry with planning gap is migrated",
+        "A new entry appears in plan-lessons.md referencing the execution lesson",
+        "The stub contains the planning gap description"
+      ],
+      "automatable": true,
+      "expected_exit": 0,
+      "setup": "Append test execution lesson with planning gap to .forgewright/execution-lessons.md",
+      "teardown": "Remove test entries from both lesson files"
+    },
+    {
+      "id": "asip-014",
+      "name": "Init script: idempotent (running twice doesn't corrupt state)",
+      "category": "bootstrap",
+      "prompt": "Run: bash scripts/forgewright-evolution-init.sh init twice",
+      "expected_behavior": "Second run reports 'already exists' for all files, state is unchanged",
+      "success_criteria": [
+        "All files report 'already exists' on second run",
+        "No 'Created' messages on second run",
+        "asip-state.json and asip-metrics.json are still valid JSON"
+      ],
+      "automatable": true,
+      "expected_exit": 0
+    }
+  ]
+}

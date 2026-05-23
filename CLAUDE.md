@@ -375,6 +375,12 @@ Before finishing ANY task, verify ALL of the following:
    - Set status to "completed" OR "interrupted"
    - Add completed_at timestamp
    - Add summary of what was done
+
+4. Migrate lessons to skill files (NEW v8.3):
+   bash scripts/forgewright-lesson-migrator.sh migrate
+   # Pushes .forgewright/plan-lessons.md and execution-lessons.md
+   # entries to the relevant SKILL.md Planning Improvements /
+   # Execution Learnings sections. Tracks state to avoid duplicates.
 ```
 
 **Why:** Ensures next session starts with fresh, accurate context.

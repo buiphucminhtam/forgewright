@@ -166,8 +166,21 @@ IF 2 attempts fail at the SAME problem:
 └── project-profile.json     # Aggregated knowledge
 
 skills/*/SKILL.md
-└── ## Planning Improvements    # Pre-execution lessons
-└── ## Execution Learnings       # Implementation lessons
+└── ## Planning Improvements    # Pre-execution lessons (from plan failures)
+└── ## Execution Learnings       # Implementation lessons (from execution failures)
+
+### Cross-Feedback Loop: Execution → Planning (NEW v8.3)
+
+Execution Learnings capture implementation blockers. Each execution lesson should also generate a **Planning Improvements review task** — the execution failure was predictable if the plan had been better. After migrating an execution lesson:
+
+1. In `.forgewright/execution-lessons.md`, append a **cross-link** at the bottom:
+   ```markdown
+   ### Planning Review Trigger
+   - **Planning Gap:** [Why the plan should have predicted this]
+   - **Planning Improvement Needed:** [What to add to Planning Improvements section]
+   ```
+2. The lesson migrator (`forgewright-lesson-migrator.sh`) extracts this and writes a stub entry to `.forgewright/plan-lessons.md` so the next Plan Quality Loop iteration can improve planning.
+3. This closes the missing link: implementation failures improve future plans, not just future implementations.
 ```
 
 ### Append to SKILL.md: Planning Improvements

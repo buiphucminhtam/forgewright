@@ -165,6 +165,11 @@ When solution worked, document it for future use:
 
 ### Append to relevant SKILL.md (Execution Learnings):
 
+> **Cross-Feedback (v8.3):** Also include the "Planning Review Trigger" section in the
+> lesson — it explains why the plan should have predicted this blocker. The lesson
+> migrator extracts this and generates a Planning Improvements stub, closing the
+> execution → planning feedback loop.
+
 ```markdown
 ## Execution Learnings
 
@@ -198,6 +203,9 @@ Example:
 ### Solution: [what worked]
 ### Key Insight: [1-sentence takeaway]
 ### Apply to: [what projects/tasks]
+### Planning Review Trigger:
+### - Planning Gap: [Why the plan should have predicted this]
+### - Planning Improvement: [What to add to Planning Improvements]
 ```
 
 ## Termination Rules

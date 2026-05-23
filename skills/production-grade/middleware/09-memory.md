@@ -19,12 +19,23 @@
 ```
 1. Mandatory memory add:
    python3 scripts/mem0-v2.py add "Session: [mode] mode, engagement: [level]" --category session
-   
+
 2. Optional additional stores:
    - Decisions: architecture choices, key rationale
    - Blockers: unresolved issues for next session
    - Architecture: tech stack, service decomposition
 ```
+
+### Lesson Migration Hook (ASIP v8.3)
+
+On session end, migrate lessons from session-level files to skill-level persistent storage:
+
+```bash
+# Part of session-end ritual (step 4)
+bash scripts/forgewright-lesson-migrator.sh migrate
+```
+
+This pushes new entries from `.forgewright/plan-lessons.md` and `.forgewright/execution-lessons.md` into the relevant `SKILL.md` `## Planning Improvements` / `## Execution Learnings` sections, avoiding duplicates via migration state tracking.
 
 ## Outputs
 
