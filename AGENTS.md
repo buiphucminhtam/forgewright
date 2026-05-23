@@ -111,7 +111,7 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 | "Review my code" | Review | Code Reviewer only |
 | "Write tests" | Test | QA Engineer only |
 | "Deploy / CI/CD" | Ship | DevOps → SRE |
-| "Design UI for..." | Design | UX Researcher → UI Designer |
+| "Design UI for..." | Design | UX Researcher → Interaction Designer → UI Designer |
 | "Build mobile app" | Mobile | Mobile Engineer (+ PM, Architect) |
 | "Help me think about..." | Explore | Polymath co-pilot |
 | "Deep research on..." | Research | NotebookLM Researcher + Polymath (grounded) |
@@ -259,6 +259,7 @@ All 56 skills are in the `skills/` directory:
 | Data Scientist | `skills/data-scientist/SKILL.md` |
 | Technical Writer | `skills/technical-writer/SKILL.md` |
 | UI Designer | `skills/ui-designer/SKILL.md` |
+| Interaction Designer | `skills/interaction-designer/SKILL.md` — Behavioral specs: state machines, micro-interactions, motion design |
 | Art Director | `skills/art-director/SKILL.md` — Vision-powered art direction for UI/UX and game assets |
 | Vision Review | `skills/vision-review/SKILL.md` — Claude vision quality gate for AI-generated art |
 | Mobile Engineer | `skills/mobile-engineer/SKILL.md` |

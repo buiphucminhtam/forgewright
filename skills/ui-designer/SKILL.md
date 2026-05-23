@@ -477,6 +477,248 @@ Define elevation system (sm, md, lg, xl) and corner radius scale.
 - `.forgewright/ui-designer/design-tokens.md` — human-readable token specs
 - `docs/design/design-tokens.json` — machine-readable tokens for frontend-engineer
 
+### Phase 2B — Design Token Architecture (Advanced)
+
+**Goal:** Structure design tokens in a 3-tier hierarchy that supports multi-brand theming and semantic reuse. This prevents hardcoded values in components and enables runtime theming.
+
+**IMPORTANT:** When MOTION_INTENSITY > 5, invoke the Interaction Designer skill for component-level animation specs. The Interaction Designer bridges UI Design (appearance) and Frontend Engineering (implementation) with precise behavioral specifications.
+
+#### The 3-Tier Token System
+
+Tokens are organized in 3 layers. **Components MUST reference semantic tokens, never primitives directly.**
+
+```markdown
+## Design Token Architecture
+
+### Tier 1: Primitives (Raw Values)
+
+Global raw values — no meaning attached. Only referenced by semantic tokens.
+
+```
+tokens/
+├── primitives/
+│   ├── color/
+│   │   ├── blue-50.json    # { "value": "#EFF6FF" }
+│   │   ├── blue-100.json
+│   │   ├── blue-200.json
+│   │   ├── ...
+│   │   └── blue-950.json
+│   ├── gray-50.json through gray-950.json
+│   ├── red-50.json through red-950.json
+│   ├── green-50.json through green-950.json
+│   └── semantic-color-palette.json  # Pre-validated WCAG pairs
+│   ├── spacing/
+│   │   ├── 1.json   # { "value": "4px" }
+│   │   ├── 2.json   # { "value": "8px" }
+│   │   ├── ...      # ...through 96
+│   │   └── 24.json  # { "value": "96px" }
+│   ├── typography/
+│   │   ├── font-size-12.json
+│   │   ├── font-size-14.json
+│   │   ├── font-weight-normal.json
+│   │   └── ...
+│   └── radius/
+│       ├── none.json    # { "value": "0px" }
+│       ├── sm.json     # { "value": "4px" }
+│       ├── md.json     # { "value": "8px" }
+│       ├── lg.json     # { "value": "16px" }
+│       └── full.json   # { "value": "9999px" }
+```
+
+### Tier 2: Semantic Tokens (The Theming Switchboard)
+
+**Semantic tokens carry meaning, not values.** They reference primitives and are the layer that components consume.
+
+```markdown
+## Semantic Tokens (Default Theme)
+
+### Color — Surfaces
+| Token | References | Resolves To |
+|-------|-----------|-------------|
+| `--color-background-default` | gray-50 | #F9FAFB |
+| `--color-background-subtle` | gray-100 | #F3F4F6 |
+| `--color-background-muted` | gray-200 | #E5E7EB |
+| `--color-text-primary` | gray-950 | #030712 |
+| `--color-text-secondary` | gray-500 | #6B7280 |
+| `--color-text-muted` | gray-400 | #9CA3AF |
+| `--color-text-inverse` | gray-50 | #F9FAFB |
+
+### Color — Actions
+| Token | References | Resolves To |
+|-------|-----------|-------------|
+| `--color-action-primary` | blue-600 | #2563EB |
+| `--color-action-primary-hover` | blue-700 | #1D4ED8 |
+| `--color-action-secondary` | gray-600 | #4B5563 |
+| `--color-action-destructive` | red-600 | #DC2626 |
+| `--color-on-action-primary` | gray-50 | #F9FAFB |
+
+### Color — Feedback
+| Token | References | Resolves To |
+|-------|-----------|-------------|
+| `--color-success` | green-600 | #16A34A |
+| `--color-warning` | amber-500 | #F59E0B |
+| `--color-error` | red-600 | #DC2626 |
+| `--color-info` | blue-500 | #3B82F6 |
+
+### Color — Borders & Dividers
+| Token | References | Resolves To |
+|-------|-----------|-------------|
+| `--color-border-default` | gray-200 | #E5E7EB |
+| `--color-border-strong` | gray-300 | #D1D5DB |
+| `--color-border-focus` | blue-500 | #3B82F6 |
+
+### Spacing
+| Token | Value | Use |
+|-------|-------|-----|
+| `--space-inset-1` | 4px | Tight icon spacing |
+| `--space-inset-2` | 8px | Inline element gaps |
+| `--space-inset-3` | 12px | Compact card padding |
+| `--space-inset-4` | 16px | Standard element gap |
+| `--space-stack-4` | 16px | Vertical stacking |
+| `--space-stack-8` | 32px | Section spacing |
+
+### Typography
+| Token | References | Use |
+|-------|-----------|-----|
+| `--text-body-sm` | font-size-14, line-height-5 | Secondary text, labels |
+| `--text-body-md` | font-size-16, line-height-6 | Body text (default) |
+| `--text-heading-sm` | font-size-18, font-weight-600, line-height-6 | Section headers |
+| `--text-heading-md` | font-size-24, font-weight-700, line-height-5 | Page titles |
+
+### Elevation
+| Token | References | Value |
+|-------|-----------|-------|
+| `--shadow-sm` | 0 1px 2px rgba(0,0,0,0.05) | Subtle lift |
+| `--shadow-md` | 0 4px 6px rgba(0,0,0,0.07) | Cards, dropdowns |
+| `--shadow-lg` | 0 10px 15px rgba(0,0,0,0.1) | Modals, popovers |
+
+### Border Radius
+| Token | References | Value |
+|-------|-----------|-------|
+| `--radius-sm` | 4px | Small elements (badges) |
+| `--radius-md` | 8px | Cards, buttons |
+| `--radius-lg` | 12px | Large cards, modals |
+| `--radius-full` | 9999px | Pills, avatars |
+```
+
+#### Dark Mode via Semantic Tokens
+
+Dark mode is implemented by **redefining semantic token values** — primitives stay constant.
+
+```markdown
+## Dark Mode (Same Semantic Names, Different Primitives)
+
+### Surfaces
+| Token | Light Mode | Dark Mode |
+|-------|------------|-----------|
+| `--color-background-default` | gray-50 | gray-950 |
+| `--color-background-subtle` | gray-100 | gray-900 |
+| `--color-text-primary` | gray-950 | gray-50 |
+| `--color-text-secondary` | gray-500 | gray-400 |
+
+### Implementation (CSS Custom Properties)
+```css
+:root {
+  --color-background-default: #F9FAFB;  /* Light */
+  --color-text-primary: #030712;
+}
+
+[data-theme="dark"] {
+  --color-background-default: #030712;  /* Dark */
+  --color-text-primary: #F9FAFB;
+}
+```
+```
+
+### Tier 3: Component Tokens (Override Per-Component)
+
+**Only add component tokens when you need a specific component to deviate from semantic defaults.**
+
+```markdown
+## Component Tokens (Optional Override Layer)
+
+Use when a specific component needs a different value than the semantic default.
+
+| Token | References | Default Semantic | Override For |
+|-------|-----------|-----------------|--------------|
+| `--button-primary-bg` | — | --color-action-primary | Button component only |
+| `--button-primary-padding-x` | — | --space-inset-4 | Button component only |
+| `--card-padding` | — | --space-inset-4 | Card component only |
+
+**Rule:** If ALL buttons should change, update `--color-action-primary`. Only use component tokens for isolated exceptions.
+```
+
+#### Multi-Brand Theming
+
+**Architecture:** Add brand modes at the **semantic layer** — primitives stay shared.
+
+```markdown
+## Multi-Brand Architecture
+
+### Brand Modes in Semantic Layer
+
+Each brand redefines semantic token values (not primitives).
+
+| Brand | Mode Switches | Strategy |
+|-------|--------------|----------|
+| **Brand A (Default)** | — | Use default semantic tokens |
+| **Brand B (Light)** | `--color-brand-primary` → red-600 | Override primary color only |
+| **Brand C (Dark)** | `--color-brand-primary` → purple-600 | Override primary color only |
+
+### CSS Implementation
+```css
+/* Brand A (default) */
+:root {
+  --color-brand-primary: #2563EB;  /* Blue */
+}
+
+/* Brand B */
+:root[data-brand="brand-b"] {
+  --color-brand-primary: #DC2626;  /* Red */
+}
+
+/* Brand C */
+:root[data-brand="brand-c"] {
+  --color-brand-primary: #7C3AED;  /* Purple */
+}
+```
+
+### Multi-Brand Token Output Structure
+```
+tokens/
+├── primitives/           # Shared across all brands
+├── semantic/             # Default theme (Brand A)
+│   ├── color.json
+│   ├── typography.json
+│   └── ...
+├── semantic-brand-b/     # Brand B overrides (only what changes)
+│   └── color.json
+├── semantic-brand-c/     # Brand C overrides (only what changes)
+│   └── color.json
+└── components/           # Component-level overrides (rare)
+```
+
+**Rule:** Brands should NOT duplicate the entire token tree. Only override what differs from the default.
+
+#### Token Migration Playbook
+
+When a design token changes (e.g., brand color pivot):
+
+1. **Rename in semantic layer** — update the reference, not the value
+2. **Search codebase** for hardcoded old values — convert to semantic token references
+3. **Deprecate old token** with a codemod
+4. **Remove after deprecation period** (1 release cycle minimum)
+
+```markdown
+## Deprecation Pattern
+```css
+/* Old token (deprecated in v2.0, removed in v3.0) */
+@deprecated --color-primary: use --color-action-primary instead;
+--color-primary: var(--color-action-primary);
+```
+```
+
+
 ---
 
 ### Phase 3 — Wireframes & User Flows
@@ -673,5 +915,199 @@ When the project needs a full brand system (not just a design system), produce t
 ├── voice-and-tone.md                  # Writing style guidelines
 ├── iconography.md                     # Icon design standards
 └── photography.md                     # Photo direction guide
+```
+
+## Mobile UX Patterns (v1.1)
+
+**Goal:** Catalog standard mobile UI patterns — navigation, gestures, layouts, and components that differ from desktop. Apply these when building mobile apps or responsive UIs.
+
+### Navigation Patterns
+
+#### Bottom Tab Bar (Primary Navigation)
+Use for apps with 3-5 core sections. Default for consumer apps.
+
+| Rule | Specification |
+|------|--------------|
+| **Items** | 3-5 items max (more gets cramped) |
+| **Icons** | Icons with labels preferred over icons-only |
+| **Current tab** | Visually distinct (highlighted icon/label) |
+| **Tap current tab** | Scroll to top or reset stack |
+| **Touch targets** | Minimum 44×44pt each |
+| **Position** | Bottom edge of screen |
+
+```markdown
+## Bottom Tab Bar Spec
+- 5 items max
+- Icon + label per item (label optional on small screens)
+- Active: primary color, inactive: muted color
+- Height: 56-64pt
+- Safe area padding on notched devices
+- iOS: UITabBar style, Android: Material BottomNavigation
+```
+
+#### Stack Navigation (Push/Pop)
+For hierarchical content within a tab.
+
+| Rule | Specification |
+|------|--------------|
+| **Back** | Back button (iOS) or swipe gesture (Android/nav bar) |
+| **Depth limit** | 3-4 levels max before users feel lost |
+| **Scroll position** | Preserve on return to list |
+| **Transitions** | Slide left/right (platform conventions) |
+
+#### Bottom Sheet
+Modal content sliding up from bottom edge. Thumb-friendly alternative to centered modals.
+
+| Rule | Specification |
+|------|--------------|
+| **Drag handle** | Always show drag handle at top (iOS standard) |
+| **Dismiss** | Swipe down OR tap backdrop |
+| **Close button** | Include X button (especially for forms) |
+| **Content** | Don't put critical actions ONLY in sheet |
+| **Depth** | Don't stack sheets on sheets |
+
+```swift
+// iOS implementation
+sheet.detents = [.medium(), .large()]
+sheet.prefersGrabberVisible = true
+sheet.prefersScrollingExpendsWhenScrolledToEdge = false
+```
+
+#### Floating Action Button (FAB)
+For primary action in a screen (not global navigation).
+
+| Rule | Specification |
+|------|--------------|
+| **Size** | 56×56pt minimum |
+| **Position** | Bottom-right, 16pt from edges, above tab bar |
+| **Use case** | One primary action per screen (add, create, compose) |
+| **Labels** | Optional extended FAB with label |
+| **Multiple FABs** | Use speed dial pattern |
+
+### Gesture Patterns
+
+#### Standard Touch Gestures
+
+| Gesture | Threshold | Use Case |
+|---------|-----------|----------|
+| **Tap** | — | Primary selection |
+| **Long-press** | 500ms | Context menu, preview |
+| **Swipe horizontal** | 8px | Navigate between pages, swipe actions |
+| **Swipe vertical** | 8px | Scroll content |
+| **Pull-to-refresh** | 80px pull | Refresh content |
+| **Swipe to dismiss** | 100px or velocity | Close modal, dismiss item |
+| **Pinch** | 1.5× scale | Zoom in/out |
+| **Double-tap** | — | Zoom toggle (map, images) |
+
+#### Pull-to-Refresh
+```markdown
+## Pull-to-Refresh Spec
+- Trigger threshold: ~80px pull distance
+- Visual: Spinner replaces arrow when threshold crossed
+- Return: Spring animation to snap back
+- Haptic: Light impact on trigger (optional)
+- iOS: UIRefreshControl
+- Android: SwipeRefreshLayout
+```
+
+#### Swipe Actions (List Items)
+```markdown
+## Swipe Action Spec
+- Swipe direction: Left-to-right OR right-to-left (consistent per list)
+- Action reveal threshold: ~40% of item width
+- Action buttons: 2-3 max per side
+- Destructive action: Red background
+- Secondary actions: Gray/blue backgrounds
+- iOS: UISwipeActionsConfiguration
+- Android: ItemTouchHelper
+```
+
+### Layout Patterns
+
+#### Card-Based Layout
+```markdown
+## Card Design Spec
+- Corner radius: 12-16pt
+- Shadow: subtle (elevation 2-4dp equivalent)
+- Padding: 16pt internal
+- Gap between cards: 12-16pt
+- Single-column on mobile (max-width: 100%)
+```
+
+#### Skeleton Loading
+```markdown
+## Skeleton Spec (Mobile)
+- Gray rectangles matching content layout
+- Shimmer animation: 1.5s linear infinite
+- Match actual content dimensions
+- Show skeleton immediately, max 100ms after load start
+- Graceful transition: fade out skeleton, fade in content (200ms)
+```
+
+#### Empty States
+```markdown
+## Empty State Spec
+- Illustration: 120-180pt tall, centered
+- Headline: 1-2 lines, 18-20pt, secondary color
+- Body text: 14-16pt, muted color
+- CTA button: Primary action to resolve empty state
+- Vertical centering: Centered in visible viewport area
+```
+
+### iOS vs Android Differences
+
+| Pattern | iOS | Android |
+|---------|-----|---------|
+| **Navigation** | UINavigationController (top bar) | Navigation component (top bar) |
+| **Back gesture** | Swipe from left edge | System back gesture |
+| **Bottom sheet** | UISheetPresentationController | BottomSheetBehavior |
+| **FAB** | Rarely used | Material Design FAB |
+| **Tab bar** | UITabBar | BottomNavigationView |
+| **Dialogs** | UIAlertController | Material AlertDialog |
+| **Loading** | Native UIActivityIndicator | Material progress indicators |
+| **Haptics** | Light/medium/heavy impact | HapticFeedback |
+
+### Responsive Breakpoints for Mobile
+
+```markdown
+## Mobile Responsive Spec
+
+### Breakpoints
+| Name | Width | Layout |
+|------|-------|--------|
+| Mobile portrait | < 428px | Single column, bottom nav |
+| Mobile landscape | 428-926px | Adaptive (may show dual column) |
+| Tablet | 926px+ | Desktop layout or adaptive |
+
+### Mobile-First Principles
+1. Design for smallest screen first
+2. Add complexity at larger breakpoints
+3. Never hide essential content on mobile
+4. Touch targets ≥ 44×44pt (iOS) / 48×48dp (Android)
+5. Thumb zone: Primary actions in bottom 60% of screen
+```
+
+### Micro-interactions (Mobile-Specific)
+
+```markdown
+## Mobile Micro-interaction Spec
+
+### Tap Feedback
+- Visual: Ripple (Android) or highlight (iOS) — 100ms
+- Haptic: Optional light tap on touch
+
+### Page Transitions
+- Push: Slide from right (300ms ease-out)
+- Pop: Slide to right (200ms ease-in)
+- Modal present: Slide from bottom (300ms)
+- Modal dismiss: Slide to bottom (200ms)
+
+### Bottom Sheet
+- Present: Spring animation (stiffness: 400, damping: 30)
+- Dismiss: Velocity-aware (fast swipe = fast dismiss)
+
+### List Item Swipe
+- Reveal: 200ms ease-out
+- Snap back: 200ms spring (stiffness: 500, damping: 25)
 ```
 

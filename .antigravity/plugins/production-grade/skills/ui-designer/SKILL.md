@@ -472,6 +472,88 @@ Define elevation system (sm, md, lg, xl) and corner radius scale.
 - `.forgewright/ui-designer/design-tokens.md` — human-readable token specs
 - `docs/design/design-tokens.json` — machine-readable tokens for frontend-engineer
 
+### Phase 2B — Design Token Architecture (Advanced)
+
+**Goal:** Structure design tokens in a 3-tier hierarchy that supports multi-brand theming and semantic reuse. Components MUST reference semantic tokens, never primitives directly.
+
+**IMPORTANT:** When MOTION_INTENSITY > 5, invoke the Interaction Designer skill for component-level animation specs.
+
+#### The 3-Tier Token System
+
+```markdown
+## Design Token Architecture
+
+### Tier 1: Primitives (Raw Values)
+Global raw values — no meaning attached. Only referenced by semantic tokens.
+
+tokens/
+├── primitives/
+│   ├── color/
+│   │   ├── blue-50.json through blue-950.json
+│   │   ├── gray-50.json through gray-950.json
+│   │   └── semantic-color-palette.json  # Pre-validated WCAG pairs
+│   ├── spacing/
+│   │   └── 1.json through 24.json (4px increments)
+│   ├── typography/
+│   │   └── font-size-*.json, font-weight-*.json
+│   └── radius/
+│       └── none.json, sm.json, md.json, lg.json, full.json
+```
+
+### Tier 2: Semantic Tokens (The Theming Switchboard)
+
+**Semantic tokens carry meaning, not values.** They reference primitives and are the layer that components consume.
+
+| Token | References | Resolves To |
+|-------|-----------|-------------|
+| `--color-background-default` | gray-50 | #F9FAFB |
+| `--color-text-primary` | gray-950 | #030712 |
+| `--color-action-primary` | blue-600 | #2563EB |
+| `--color-action-primary-hover` | blue-700 | #1D4ED8 |
+| `--color-success` | green-600 | #16A34A |
+| `--color-error` | red-600 | #DC2626 |
+| `--color-border-default` | gray-200 | #E5E7EB |
+
+#### Dark Mode via Semantic Tokens
+Dark mode redefines semantic token values — primitives stay constant.
+
+```css
+:root { --color-background: #F9FAFB; --color-text: #030712; }
+[data-theme="dark"] { --color-background: #030712; --color-text: #F9FAFB; }
+```
+
+### Tier 3: Component Tokens (Override Per-Component)
+Only add when a specific component needs to deviate from semantic defaults.
+
+| Token | References | Default Semantic | Override For |
+|-------|-----------|-----------------|--------------|
+| `--button-primary-bg` | — | --color-action-primary | Button component only |
+| `--card-padding` | — | --space-inset-4 | Card component only |
+
+#### Multi-Brand Architecture
+Add brand modes at the **semantic layer** — primitives stay shared.
+
+| Brand | Override | Strategy |
+|-------|---------|----------|
+| Brand A (Default) | — | Use default semantic tokens |
+| Brand B | `--color-brand-primary` → red-600 | Override primary only |
+| Brand C | `--color-brand-primary` → purple-600 | Override primary only |
+
+```css
+:root { --color-brand-primary: #2563EB; } /* Brand A */
+:root[data-brand="brand-b"] { --color-brand-primary: #DC2626; } /* Brand B */
+:root[data-brand="brand-c"] { --color-brand-primary: #7C3AED; } /* Brand C */
+```
+
+**Rule:** Brands should NOT duplicate the entire token tree. Only override what differs from default.
+
+#### Token Migration Playbook
+When a design token changes:
+1. Rename in semantic layer — update the reference
+2. Search codebase for hardcoded old values — convert to semantic
+3. Deprecate old token with codemod
+4. Remove after deprecation period (1 release cycle minimum)
+
 ---
 
 ### Phase 3 — Wireframes & User Flows
@@ -669,4 +751,46 @@ When the project needs a full brand system (not just a design system), produce t
 ├── iconography.md                     # Icon design standards
 └── photography.md                     # Photo direction guide
 ```
+
+## Mobile UX Patterns
+
+### Navigation: Bottom Tab Bar
+- 3-5 items max, icons with labels
+- Current tab visually distinct
+- Height: 56-64pt, safe area padding
+- Touch targets ≥ 44×44pt
+
+### Navigation: Stack (Push/Pop)
+- Back via button or swipe gesture
+- Max 3-4 levels depth
+- Preserve scroll position on return
+
+### Bottom Sheet
+- Drag handle always visible
+- Swipe down or backdrop tap to dismiss
+- Include X button for forms
+- Never stack sheets on sheets
+
+### Gestures
+| Gesture | Threshold | Use |
+|---------|-----------|-----|
+| Tap | — | Select |
+| Long-press | 500ms | Context menu |
+| Swipe horizontal | 8px | Navigate, swipe actions |
+| Pull-to-refresh | 80px | Refresh content |
+| Swipe to dismiss | 100px | Close modal |
+
+### Layout
+- Cards: 12-16pt radius, 16pt padding, 12-16pt gaps
+- Skeleton: shimmer 1.5s, match content dimensions
+- Empty states: illustration + headline + body + CTA
+
+### iOS vs Android
+| Pattern | iOS | Android |
+|---------|-----|---------|
+| Navigation | UINavigationController | Nav component |
+| Back gesture | Swipe from left edge | System back |
+| Bottom sheet | UISheetPresentationController | BottomSheetBehavior |
+| FAB | Rarely used | Material FAB |
+| Haptics | Light/medium/heavy | HapticFeedback |
 
