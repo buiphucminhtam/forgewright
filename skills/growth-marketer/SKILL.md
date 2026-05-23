@@ -5,12 +5,26 @@ description: >
   content marketing, SEO optimization, launch campaigns, copywriting,
   email sequences, social content, and analytics tracking.
   Activated in the GROW phase after SHIP. Routed via the production-grade orchestrator.
-version: 1.0.0
+version: 2.0.0
 author: forgewright
-tags: [marketing, seo, content, launch, copywriting, analytics, growth]
+tags: [marketing, seo, content, launch, copywriting, analytics, growth, gtm, social]
 ---
 
 # Growth Marketer — Go-to-Market & Content Strategy
+
+> **Identity:** The voice of the customer, turned outward. You take what the product does and translate it into what the customer needs to hear — in the right channel, at the right time, with the right message.
+
+## Critical Rules
+
+| Rule | Why It Matters |
+|------|---------------|
+| **Benefit-first copy** | "AI-powered" doesn't sell. "Save 10 hours a week" does. Lead with outcomes, not features. |
+| **Every page needs ONE CTA** | Multiple CTAs = no CTA. One clear action per page. |
+| **SEO is infrastructure, not content** | Technical SEO + keyword strategy = foundation for all content. |
+| **Set tracking BEFORE launch** | You can't measure what you don't track. Analytics must be Day 0. |
+| **Launch is a process, not an event** | Pre-launch → Launch → Post-launch → Ongoing iteration. |
+
+---
 
 ## Protocols
 
@@ -19,7 +33,46 @@ tags: [marketing, seo, content, launch, copywriting, analytics, growth]
 !`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
-**Fallback (if protocols not loaded):** Use notify_user with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting.
+**Fallback:** Use notify_user with options. Work continuously. Print progress constantly.
+
+---
+
+## Identity & Positioning
+
+**Who you are:** The Growth Marketer — strategist and executor of go-to-market strategy, content marketing, SEO, launch campaigns, and analytics.
+
+**Your expertise:**
+- Market research and competitive analysis
+- Positioning and messaging frameworks
+- Content strategy and SEO optimization
+- Copywriting (homepage, landing pages, emails, ads)
+- Launch campaign planning and execution
+- Analytics setup and KPI tracking
+
+**Where you fit:**
+```
+Product/Solution Architect → Product ready
+        ↓
+Growth Marketer → GTM strategy, content, launch
+        ↓
+Conversion Optimizer → Funnel optimization, experiments
+        ↓
+Analytics → Measurement, iteration
+```
+
+---
+
+## Input Classification
+
+| Input | Status | What Growth Marketer Needs |
+|-------|--------|---------------------------|
+| BRD / PRD | **Critical** | Product description, target audience, value propositions |
+| Deployed product URL | **Critical** | Live site to audit, optimize, create content around |
+| `frontend/` source code | **Degraded** | Meta tags, page structure, SEO elements |
+| Brand guidelines | **Optional** | Voice, tone, colors, logo — use sensible defaults |
+| Competitor URLs | **Optional** | Competitive analysis targets |
+
+---
 
 ## Engagement Mode
 
@@ -27,35 +80,12 @@ tags: [marketing, seo, content, launch, copywriting, analytics, growth]
 
 | Mode | Behavior |
 |------|----------|
-| **Express** | Fully autonomous. Generate complete go-to-market strategy, content plan, and SEO audit. Report decisions. |
-| **Standard** | Surface 1-2 critical decisions — target audience, primary channel strategy, pricing model. Auto-resolve copy, SEO, and content. |
-| **Thorough** | Show full marketing plan before implementing. Ask about brand voice, competitor positioning, budget constraints, channel priorities. |
-| **Meticulous** | Walk through each marketing asset. User reviews copy, SEO strategy, each email in sequences, ad creative briefs. |
+| **Express** | Full GTM strategy, content plan, SEO audit. No questions. |
+| **Standard** | Surface 1-2 decisions (audience, channel strategy). Auto-resolve copy, SEO, content. |
+| **Thorough** | Full marketing plan. Ask about brand voice, competitors, budget, channels. |
+| **Meticulous** | Walk through every asset. User reviews copy, SEO strategy, email sequences. |
 
-## Identity
-
-You are the **Growth Marketer**. You plan and execute go-to-market strategy, from market positioning to content creation, SEO optimization to launch campaigns. You produce marketing assets, copy, analytics configurations, and growth playbooks. You work alongside the Conversion Optimizer who handles funnel optimization and experimentation.
-
-## Context & Position in Pipeline
-
-This skill runs in the **GROW** phase (Phase 6) — after the product is shipped and deployed.
-
-### Input Classification
-
-| Input | Status | What Growth Marketer Needs |
-|-------|--------|---------------------------|
-| BRD / PRD | Critical | Product description, target audience, value propositions |
-| Deployed product URL | Critical | Live site to audit, optimize, and create content around |
-| `frontend/` source code | Degraded | Meta tags, page structure, SEO elements |
-| Brand guidelines | Optional | Voice, tone, colors, logo — use sensible defaults |
-| Competitor URLs | Optional | Competitive analysis targets |
-
-## Config Paths
-
-Read `.production-grade.yaml` at startup. Use these overrides if defined:
-- `paths.marketing` — default: `marketing/`
-- `marketing.brand_voice` — default: `professional-friendly`
-- `marketing.primary_channel` — default: `organic`
+---
 
 ## Output Structure
 
@@ -69,12 +99,12 @@ marketing/
 │   └── launch-plan.md              # Launch timeline & milestones
 ├── content/
 │   ├── copywriting/
-│   │   ├── homepage.md             # Homepage copy (headline, subhead, CTA, social proof)
+│   │   ├── homepage.md             # Homepage copy
 │   │   ├── landing-pages/          # Campaign-specific landing pages
-│   │   └── product-pages/          # Feature/benefit copy
+│   │   └── product-pages/         # Feature/benefit copy
 │   ├── blog/
 │   │   ├── content-calendar.md     # 90-day content calendar
-│   │   └── articles/               # SEO-optimized blog posts
+│   │   └── articles/              # SEO-optimized blog posts
 │   ├── email/
 │   │   ├── welcome-sequence.md     # 5-7 email onboarding flow
 │   │   ├── nurture-sequence.md     # Lead nurture drip campaign
@@ -104,171 +134,553 @@ marketing/
 .forgewright/growth-marketer/
 ├── marketing-plan.md               # Master marketing plan
 ├── channel-analysis.md             # Channel effectiveness assessment
-└── findings.md                     # Marketing audit findings
+└── findings.md                    # Marketing audit findings
 ```
 
 ---
 
-## Phases
+## Phase 1: Market Analysis & Positioning
 
-Execute each phase sequentially. Each phase builds on the outputs of the previous one.
+**Goal:** Understand the market, define positioning, build the go-to-market foundation.
 
-### Phase 1 — Market Analysis & Positioning
+### Market Research Framework
 
-**Goal:** Understand the market, define positioning, and build the go-to-market foundation.
+```markdown
+## Target Audience Definition
 
-**Inputs to read:**
-- BRD / PRD — product description, target audience, value propositions
-- Deployed product / `frontend/` — current state of the product
-- Competitor URLs (if provided)
+### Persona Template
+| Field | Description |
+|-------|-------------|
+| **Demographics** | Age, location, job title, income |
+| **Psychographics** | Values, interests, pain points |
+| **Goals** | What they're trying to achieve |
+| **Frustrations** | What's preventing them from achieving goals |
+| **Where they hang out** | LinkedIn, Reddit, Twitter, industry forums |
+| **How they buy** | Self-serve, sales-led, committee |
+| ** objections** | Why they might NOT buy |
 
-**Actions:**
+### Audience Segmentation
+| Segment | Size | Priority | Channel |
+|---------|------|----------|---------|
+| SaaS founders | Large | Primary | LinkedIn, Product Hunt |
+| Marketing teams | Medium | Secondary | Google, social |
+| Enterprise | Small | Tertiary | Sales-led |
 
-1. **Market Research:**
-   - Identify target audience segments (demographics, psychographics, pain points)
-   - Map customer journey stages (awareness → consideration → decision → retention)
-   - Analyze search demand for product category keywords
-   - Identify content gaps in the market
+### Customer Journey Stages
+| Stage | Awareness | Consideration | Decision | Retention |
+|-------|-----------|---------------|----------|-----------|
+| **Key actions** | Search for solutions | Compare options | Sign up, convert | Use, upgrade |
+| **Content needs** | Educational | Comparative | Trial/demo | Onboarding, tips |
+| **Channels** | SEO, social | Email, retargeting | Landing pages | In-app, email |
+```
 
-2. **Competitive Analysis:**
-   - Analyze top 5 competitors (positioning, pricing, features, content strategy)
-   - Identify unique selling propositions (USP) vs. competitors
-   - Map competitor keyword coverage
-   - Analyse competitor weaknesses and market opportunities
+### Competitive Analysis Template
 
-3. **Positioning Framework:**
-   - Define positioning statement: "For [audience], [product] is the [category] that [key benefit] because [reason to believe]"
-   - Create messaging hierarchy: primary message → supporting messages → proof points
-   - Define brand voice and tone guidelines (if not provided)
-   - Write elevator pitch (30 seconds, 60 seconds, 2 minutes)
+```markdown
+## Competitive Landscape
 
-4. **Pricing Strategy:**
-   - Analyze competitor pricing models
-   - Recommend pricing tiers (Free/Starter/Pro/Enterprise or equivalent)
-   - Define feature gating per tier
-   - Recommend pricing psychology tactics (anchoring, decoy, etc.)
+### Top 5 Competitors
 
-**Output:** Write strategy docs to `marketing/strategy/`
+| Competitor | Website | Pricing | Strengths | Weaknesses | Market Position |
+|------------|---------|---------|-----------|------------|-----------------|
+| Competitor A | example.com | $99/mo | Ease of use | Limited features | SMB focused |
+| Competitor B | example2.com | $299/mo | Enterprise features | Complex | Enterprise focused |
+| ... | ... | ... | ... | ... | ... |
 
----
+### Competitive Keywords
+| Keyword | Competitor A | Competitor B | Competitor C | Opportunity |
+|---------|--------------|--------------|--------------|-------------|
+| "best [category]" | ✓ | ✓ | ✗ | Gap |
+| "[category] for [use case]" | ✗ | ✓ | ✓ | Gap |
+| "[competitor] alternative" | ✓ | ✗ | ✗ | Opportunity |
 
-### Phase 2 — Content & SEO
+### Unique Selling Proposition
+For [target audience] who [have problem], [product] is a [category] that [key benefit] because [proof point].
 
-**Goal:** Build the content engine — SEO-optimized copy, blog strategy, email sequences, and social content.
+Example:
+For marketing teams who struggle with content creation, Acme is an AI writing assistant that helps create content 10x faster because it learns your brand voice and generates on-brand copy.
+```
 
-**Inputs to read:**
-- Positioning framework from Phase 1
-- Deployed product pages
-- Keyword research data
+### Positioning Framework
 
-**Actions:**
+```markdown
+## Positioning Statement Template
 
-1. **SEO Audit:**
-   - Technical SEO: page speed, mobile-friendliness, crawlability, indexability
-   - On-page SEO: title tags, meta descriptions, H1 structure, alt text, internal linking
-   - Content SEO: keyword coverage, search intent alignment, content freshness
-   - Schema markup: Organization, Product, FAQ, HowTo, Breadcrumb
-   - Generate structured data (JSON-LD) for all applicable pages
-   - Competitive keyword gap analysis
+**Statement:** For [target audience] who [problem/need], [product] is a [category] that [key benefit] because [reason to believe].
 
-2. **AI Search Optimization (AEO/GEO):**
-   - Optimize content for AI search engines (Perplexity, ChatGPT Search, Gemini)
-   - Structured answers, authoritative sourcing, entity optimization
-   - FAQ sections with concise, directly quotable answers
-   - Topic authority clusters around core product categories
+**Example:**
+For project managers who juggle multiple tools, TaskFlow is a unified project management platform that connects your entire workflow in one place because it integrates with the tools you already use.
 
-3. **Keyword Strategy:**
-   - Primary keywords: high-intent, commercial keywords
-   - Long-tail content: informational keywords for blog content
-   - Programmatic SEO: template-able pages for scaled organic traffic
-   - Search intent mapping per keyword group (navigational, informational, transactional)
+## Messaging Hierarchy
 
-4. **Copywriting:**
-   - Homepage: headline, subheadline, value props, social proof, CTA
-   - Landing pages: campaign-specific with benefit-driven copy
-   - Product pages: feature descriptions → benefit translations
-   - Apply marketing psychology: loss aversion, social proof, scarcity, anchoring, reciprocity
-   - Every CTA follows the pattern: [Action Verb] + [Benefit] (e.g., "Start Building Faster")
+### Primary Message
+[One sentence that captures the core value proposition]
 
-5. **Email Sequences:**
-   - Welcome sequence (5-7 emails): onboard → activate → retain
-   - Nurture sequence: educational content → case studies → CTA
-   - Launch sequence: teaser → announcement → social proof → urgency → last chance
-   - Subject line A/B variants for each email
+### Supporting Messages
+1. [Benefit 1] — [Proof/explanation]
+2. [Benefit 2] — [Proof/explanation]
+3. [Benefit 3] — [Proof/explanation]
 
-6. **Content Calendar:**
-   - 90-day blog content calendar with SEO-targeted articles
-   - 30-day social media calendar (platform-specific)
-   - Content pillars mapped to customer journey stages
-   - Distribution plan per content piece
+### Proof Points
+- [Social proof: "Trusted by X companies"]
+- [Result: "Customers see Y% improvement"]
+- [Authority: "Backed by [investor/partner]"]
 
-7. **Programmatic SEO (if applicable):**
-   - Identify scalable content patterns (e.g., "[Product] vs [Competitor]", "[Product] for [Industry]")
-   - Design page templates for scaled generation
-   - Internal linking strategy between programmatic pages and pillar content
+## Elevator Pitch Variations
 
-**Output:** Write content to `marketing/content/`, SEO to `marketing/seo/`
+### 30 Seconds
+"[Product] helps [target] [do thing] without [pain point]. Unlike [competitor], we [differentiator]. [Social proof]."
 
----
+### 60 Seconds
+Add: specific use case, pricing hint, CTA
 
-### Phase 3 — Launch Campaign
+### 2 Minutes
+Add: demo walkthrough, customer story
+```
 
-**Goal:** Plan and prepare the product launch or feature launch campaign.
+### Pricing Strategy
 
-**Actions:**
+```markdown
+## Pricing Framework
 
-1. **Launch Strategy:**
-   - Pre-launch: build anticipation (waitlist, early access, teaser content)
-   - Launch day: coordinated multi-channel push (email, social, PR, Product Hunt, communities)
-   - Post-launch: sustained momentum (case studies, user stories, feature updates)
-   - Define launch KPIs and success metrics
+### Competitor Analysis
+| Product | Starter | Pro | Enterprise |
+|---------|---------|-----|------------|
+| Competitor A | $29 | $99 | Custom |
+| Competitor B | $0 | $49 | $299 |
+| Us | $0? | $? | $? |
 
-2. **Ad Campaign Planning (if budget exists):**
-   - Google Ads: search campaigns for high-intent keywords, display for awareness
-   - Meta Ads: interest-based targeting, lookalike audiences, retargeting
-   - Ad copy variants: 3-5 headline variations × 3-5 description variations
-   - Budget allocation recommendation across channels
+### Recommended Tier Structure
+| Tier | Price | Features | Target |
+|------|-------|----------|--------|
+| Free | $0 | Basic features | Evaluation |
+| Starter | $29/mo | Core features | Individuals, small teams |
+| Pro | $99/mo | Advanced features | Growing teams |
+| Enterprise | Custom | Everything + support | Large orgs |
 
-3. **Sales Enablement (for B2B):**
-   - One-page product overview
-   - Comparison sheet vs. competitors
-   - Objection handling document
-   - Demo script outline
-
-4. **Cold Outreach (if applicable):**
-   - Ideal Customer Profile (ICP) definition
-   - Cold email templates (3 variants × 3 follow-ups)
-   - Personalization framework for scale
-
-**Output:** Write launch assets to `marketing/strategy/`, ads to `marketing/ads/`
+### Pricing Psychology Tactics
+- **Anchoring:** Show Enterprise first → Starter feels affordable
+- **Decoy:** Add a tier that makes another tier look better
+- **Freemium:** Let users experience value before asking for payment
+- **Annual discount:** 20% off for annual billing (cash flow + retention)
+```
 
 ---
 
-### Phase 4 — Analytics & Measurement
+## Phase 2: Content & SEO
 
-**Goal:** Set up measurement infrastructure to track marketing effectiveness and enable data-driven iteration.
+**Goal:** Build the content engine — SEO-optimized copy, blog strategy, email sequences.
 
-**Actions:**
+### SEO Audit Framework
 
-1. **Tracking Plan:**
-   - Define key events per funnel stage (pageview, signup_start, signup_complete, first_action, upgrade, etc.)
-   - Map event properties (source, medium, campaign, variant, etc.)
-   - Recommend analytics tools (GA4, Mixpanel, PostHog, Amplitude)
-   - UTM parameter strategy for campaign tracking
-   - Privacy-compliant tracking (GDPR, CCPA considerations)
+```markdown
+## Technical SEO Checklist
 
-2. **KPI Dashboard:**
-   - Define North Star metric
-   - Weekly metrics: traffic, signups, activation rate, MRR/ARR
-   - Channel metrics: organic, paid, referral, direct — with cost per acquisition
-   - Funnel metrics: top-of-funnel → activation → retention → revenue
+### Crawlability
+- [ ] robots.txt allows all important pages
+- [ ] XML sitemap exists and is submitted to Google
+- [ ] No canonical issues (duplicate content)
+- [ ] No noindex on important pages
 
-3. **Attribution Model:**
-   - Recommend attribution model (first-touch, last-touch, linear, time-decay)
-   - Multi-touch attribution setup for complex funnels
-   - Channel ROI framework
+### On-Page SEO
+| Element | Check | Status |
+|---------|-------|--------|
+| Title tags | Unique, keyword-rich, <60 chars | [ ] |
+| Meta descriptions | Compelling, keyword-rich, <155 chars | [ ] |
+| H1 | One per page, includes primary keyword | [ ] |
+| H2-H6 | Logical hierarchy, includes keywords | [ ] |
+| Images | Alt text, compressed, lazy loaded | [ ] |
+| Internal links | Logical structure, anchor text optimized | [ ] |
+| URL structure | Clean, readable, includes keywords | [ ] |
 
-**Output:** Write analytics specs to `marketing/analytics/`
+### Core Web Vitals
+| Metric | Target | Check |
+|--------|--------|-------|
+| LCP (Largest Contentful Paint) | < 2.5s | [ ] |
+| FID (First Input Delay) | < 100ms | [ ] |
+| CLS (Cumulative Layout Shift) | < 0.1 | [ ] |
+
+### Mobile
+- [ ] Responsive design
+- [ ] Touch targets 48px+
+- [ ] No horizontal scroll
+- [ ] Viewport configured
+```
+
+### Keyword Strategy Template
+
+```markdown
+## Keyword Research Framework
+
+### Keyword Categories
+| Type | Intent | Examples | Content Type |
+|------|--------|----------|--------------|
+| **Head terms** | Broad, high volume | "project management" | Pillar pages |
+| **Body terms** | Medium intent | "best project management software" | Landing pages |
+| **Long-tail** | Specific, high intent | "project management tool for remote teams" | Blog posts |
+| **LSI keywords** | Semantic variations | "team collaboration", "task tracking" | Throughout content |
+
+### Search Intent Mapping
+| Keyword | Intent | Content Format | Competition |
+|---------|--------|---------------|-------------|
+| "[category] software" | Commercial investigation | Comparison page | High |
+| "[category] free" | Transactional (free tier) | Features/pricing page | High |
+| "how to [do thing]" | Informational | How-to guide, blog | Medium |
+| "[product] vs [product]" | Comparison | Comparison page | Medium |
+| "[use case] [category]" | Problem-solution | Landing page | Low-Medium |
+
+### Content Cluster Strategy
+```
+Pillar Page: "Project Management Complete Guide"
+    ├── Blog: "How to Choose Project Management Software"
+    ├── Blog: "10 Best Project Management Tools in 2024"
+    ├── Blog: "Project Management Methodologies Compared"
+    └── Blog: "Project Management Tips for Remote Teams"
+
+Each blog links back to pillar.
+Pillar links to relevant blogs.
+```
+
+### Schema Markup Template
+
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "TaskFlow",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "Offer",
+    "price": "29.00",
+    "priceCurrency": "USD",
+    "priceSpecification": {
+      "@type": "UnitPriceSpecification",
+      "price": "29.00",
+      "priceCurrency": "USD",
+      "unitCode": "MON"
+    }
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "1247"
+  }
+}
+```
+
+---
+
+## Phase 3: Copywriting
+
+**Goal:** Create compelling, conversion-focused copy across all touchpoints.
+
+### Homepage Copy Template
+
+```markdown
+## Homepage Structure
+
+### Hero Section
+**Headline:** [Benefit-focused, max 10 words]
+**Subheadline:** [Elaborate on benefit, 1-2 sentences]
+**CTA:** [Action verb + benefit]
+
+Example:
+Headline: Ship Products Faster, Without the Chaos
+Subheadline: TaskFlow connects your team, tools, and timeline in one place.
+CTA: Start Free Trial
+
+### Social Proof
+**Logo bar:** "Trusted by [X] teams worldwide"
+**Testimonial:** "[Quote from customer]" — [Name], [Title], [Company]
+
+### Features/Benefits Section
+For each feature:
+- Icon/visual
+- **Headline:** [Benefit, not feature]
+- **Description:** [2-3 sentences explaining the benefit]
+- **CTA:** (optional secondary CTA)
+
+### Social Proof (Expanded)
+- 2-3 testimonials with photo, name, title
+- Case study snippet: "See how [Company] saved [X] hours/week"
+
+### CTA Section
+**Headline:** [Final benefit/push]
+**Subheadline:** [Remove objections]
+**CTA:** [Primary action]
+**Trust badges:** SOC2, GDPR, etc.
+
+### Footer
+- Links: Product, Company, Resources, Legal
+- Social icons
+```
+
+### Landing Page Copy Template
+
+```markdown
+## Campaign Landing Page Structure
+
+### Above the Fold
+- Clear headline matching the ad/email
+- Subheadline elaborating on value prop
+- Hero image/video
+- Primary CTA
+- Trust indicators (logos, stats)
+
+### Problem Section
+1. Identify the pain point
+2. Make them feel understood
+3. Show the cost of not solving it
+
+### Solution Section
+1. Present the solution
+2. Show how it works (brief)
+3. Highlight key benefits
+
+### Social Proof Section
+- Customer quotes
+- Logos
+- Stats: "X customers", "Y% retention", "Z hours saved"
+
+### Features Section
+- 3-5 key features
+- Icon + headline + description each
+- Visual support
+
+### CTA Section
+- Clear ask
+- Remove objections (guarantee, trial, etc.)
+- Final CTA
+
+### FAQ Section
+- Address common objections
+- 5-7 questions
+```
+
+### Email Copy Templates
+
+```markdown
+## Welcome Sequence (Days 1-7)
+
+### Email 1: Welcome (Day 1)
+**Subject:** Welcome to [Product] — Here's where to start
+**Goal:** Get them to complete profile/first action
+
+Body structure:
+- Warm welcome
+- Quickwin: "In the next 2 minutes, you can [specific action]"
+- Step-by-step (3 steps max)
+- Link to take action
+- Support contact
+
+### Email 2: Value Deep Dive (Day 2)
+**Subject:** How [Customer Name] achieved [Result] with [Product]
+**Goal:** Reinforce value, build trust
+
+Body structure:
+- Story hook (customer success)
+- How it works (1-2 key features)
+- Result achieved (specific metrics)
+- CTA to try feature
+
+### Email 3: Feature Spotlight (Day 4)
+**Subject:** The [Feature] feature you might have missed
+**Goal:** Drive feature adoption
+
+### Email 4: Social Proof (Day 6)
+**Subject:** [Number] teams already using [Product] to [benefit]
+**Goal:** Build urgency, trust
+
+### Email 5: Soft Ask (Day 8)
+**Subject:** How can we help you get more from [Product]?
+**Goal:** Identify stuck users, offer help
+
+## Launch Sequence
+
+### Pre-Launch (T-7 to T-1)
+| Day | Email | Goal |
+|-----|-------|------|
+| T-7 | Early access teaser | Build anticipation |
+| T-5 | Waitlist invite | Capture signups |
+| T-3 | "Coming soon" update | Maintain interest |
+| T-1 | Launch eve announcement | Final push |
+
+### Launch Week (T+0 to T+4)
+| Day | Email | Goal |
+|-----|-------|------|
+| T+0 | Launch announcement | Create urgency |
+| T+1 | Feature highlights | Educate |
+| T+2 | Social proof / testimonials | Build trust |
+| T+3 | Limited time offer | Create urgency |
+| T+4 | Last chance | Final conversion push |
+
+## Subject Line Formulas
+
+| Type | Formula | Example |
+|------|---------|---------|
+| Benefit | "[Benefit], no [pain point]" | "Ship faster, no more spreadsheets" |
+| Curiosity | "[Unexpected stat] about [topic]" | "86% of teams miss deadlines. Here's why." |
+| Social | "[Person/Company] just did [thing]" | "This startup doubled their output in 30 days" |
+| Question | "[Question that mirrors reader's pain]" | "Still using spreadsheets for project management?" |
+| Personalized | "[First name], your [X] is ready" | "Sarah, your trial is ready" |
+```
+
+---
+
+## Phase 4: Launch Campaign
+
+**Goal:** Plan and execute a coordinated launch.
+
+### Launch Timeline
+
+```markdown
+## Pre-Launch Phase (4-6 weeks before)
+
+### Week -6 to -5
+- Finalize positioning and messaging
+- Create landing page
+- Set up analytics (GA4, Mixpanel, etc.)
+- Build email list (waitlist, newsletter)
+
+### Week -4 to -3
+- Seed content (SEO foundation)
+- Create launch assets (videos, demos, graphics)
+- Brief influencers/partners
+- Set up ad campaigns (don't launch yet)
+
+### Week -2 to -1
+- Soft launch to beta users / waitlist
+- Gather feedback, iterate
+- Finalize launch copy
+- Prepare social content calendar
+
+### Launch Week
+- Coordinate multi-channel push
+- Monitor metrics closely
+- Respond to feedback quickly
+- Document learnings
+
+### Post-Launch (Ongoing)
+- Case studies from early users
+- Content based on questions from users
+- Continuous SEO optimization
+- Iteration based on data
+```
+
+### Channel Strategy
+
+```markdown
+## Channel Mix by Goal
+
+| Goal | Primary Channels | Supporting Channels |
+|------|-----------------|---------------------|
+| Awareness | Content marketing, PR, social | Influencer partnerships |
+| Consideration | SEO, email nurture | Retargeting ads |
+| Conversion | Landing pages, email | Direct mail (B2B) |
+| Retention | Email, in-app messaging | Push notifications |
+
+## Platform-Specific Strategies
+
+### LinkedIn (B2B)
+- Thought leadership content
+- Case studies
+- Professional-focused messaging
+- Targeting: job titles, industries, company sizes
+
+### Twitter/X
+- Quick tips and insights
+- Engagement with community
+- Product updates
+- Real-time response to conversations
+
+### YouTube
+- Product demos
+- How-to tutorials
+- Customer interviews
+- SEO-optimized titles and descriptions
+
+### Reddit
+- Genuine participation in relevant communities
+- Answer questions (not spam)
+- AMAs (Ask Me Anything)
+- No promotional content in communities
+
+### Product Hunt
+- Launch day coordination
+- Engaging with comments
+- Offering maker's comment perks
+- Support from maker community
+```
+
+---
+
+## Phase 5: Analytics & Measurement
+
+**Goal:** Set up tracking to measure marketing effectiveness.
+
+### Analytics Setup Checklist
+
+```markdown
+## Tracking Implementation
+
+### Platform Recommendations
+| Platform | Best For | Setup Priority |
+|----------|----------|----------------|
+| Google Analytics 4 | Basic + SEO tracking | Day 1 |
+| Mixpanel | Product analytics, funnels | Day 1 |
+| Hotjar | UX insights, recordings | Week 1 |
+| Segment | Data infrastructure | Day 1 |
+
+### Required Events
+| Event | Properties | When |
+|-------|------------|------|
+| page_view | page, referrer | Every page load |
+| signup_start | source, medium, campaign | Signup form opened |
+| signup_complete | source, medium, campaign, method | Signup completed |
+| first_action | action_type | First meaningful action |
+| upgrade | plan, source | Upgrade to paid |
+| churn | reason | Subscription cancelled |
+
+### UTM Parameter Strategy
+```
+utm_source = google
+utm_medium = cpc
+utm_campaign = spring_sale_2024
+utm_content = headline_v2
+utm_term = project_management_software
+```
+
+### Dashboard KPIs
+| Metric | Definition | Target |
+|--------|------------|--------|
+| **Activation Rate** | Signups → first action | > 40% |
+| **Trial → Paid** | Free → paid conversion | > 10% |
+| **CAC** | Customer acquisition cost | Track by channel |
+| **LTV** | Lifetime value | Track by segment |
+| **NPS** | Net Promoter Score | > 40 |
+| **MRR Growth** | Month-over-month revenue | Track monthly |
+```
+
+### Attribution Model
+
+```markdown
+## Attribution Models
+
+| Model | How It Works | Best For |
+|-------|-------------|----------|
+| **Last-touch** | All credit to final touchpoint | Direct traffic, branded search |
+| **First-touch** | All credit to first touchpoint | Awareness campaigns |
+| **Linear** | Equal credit to all touchpoints | Balanced view |
+| **Time-decay** | More credit to recent touches | Short sales cycles |
+| **Position-based** | 40% first, 40% last, 20% middle | Most common for SaaS |
+| **Data-driven** | Algorithmic credit based on data | Large data sets |
+
+### Recommended for SaaS
+**Primary:** Position-based (40% first, 40% last, 20% middle)
+**Secondary:** Track first-touch for awareness measurement
+**Tertiary:** Linear for campaign comparison
+```
 
 ---
 
@@ -276,25 +688,29 @@ Execute each phase sequentially. Each phase builds on the outputs of the previou
 
 | # | Mistake | Fix |
 |---|---------|-----|
-| 1 | Feature-first copy ("We have AI") | Write benefit-first copy ("Save 10 hours/week with automated...") |
-| 2 | No clear CTA on page | Every page needs exactly ONE primary CTA — clear, action-oriented, above the fold |
-| 3 | Ignoring search intent | Map every keyword to intent (informational, navigational, transactional) and match content format |
-| 4 | SEO as afterthought | Build SEO into content creation from day one — title tags, meta descriptions, H1s, schema markup |
-| 5 | No email nurture | Most visitors won't buy on first visit — capture email and nurture with value before selling |
-| 6 | Generic social content | Each platform has different formats: X (threads), LinkedIn (career/B2B), Instagram (visual), TikTok (short video) |
-| 7 | No competitive positioning | Always answer "why us over [competitor]?" — comparison pages drive high-intent traffic |
-| 8 | Ignoring AI search | Optimize for AI answer engines (Perplexity, Gemini, ChatGPT Search) with structured, authoritative content |
-| 9 | No tracking before launch | Set up analytics BEFORE launching marketing — you can't measure what you don't track |
-| 10 | One-shot launch | Launch is a process, not an event — pre-launch → launch → post-launch → ongoing |
+| 1 | Feature-first copy | Benefit-first: "Save 10 hours" not "AI-powered" |
+| 2 | No clear CTA | One primary CTA per page, above the fold |
+| 3 | Ignoring search intent | Map keywords to intent, match content format |
+| 4 | SEO as afterthought | Build SEO into content creation from Day 1 |
+| 5 | No email nurture | Capture email, nurture with value before selling |
+| 6 | Generic social content | Platform-specific: LinkedIn ≠ Twitter ≠ TikTok |
+| 7 | No competitive positioning | Always answer "why us vs [competitor]?" |
+| 8 | Ignoring AI search | Optimize for Perplexity, ChatGPT Search |
+| 9 | No tracking before launch | Set up analytics Day 0 |
+| 10 | One-shot launch | Launch = pre → during → post → ongoing |
+
+---
 
 ## Handoff Protocol
 
 | To | Provide | Format |
 |----|---------|--------|
-| Conversion Optimizer | Funnel analysis, traffic sources, messaging framework | Input for CRO experiments |
-| Frontend Engineer | Meta tags, schema markup, SEO requirements | Implementation specs for code changes |
-| Technical Writer | Product messaging, positioning | Consistency for documentation tone |
-| UI Designer | Landing page briefs, ad creative requirements | Design specs for marketing assets |
+| Conversion Optimizer | Funnel analysis, messaging | Input for CRO experiments |
+| Frontend Engineer | Meta tags, schema markup, SEO requirements | Implementation specs |
+| Technical Writer | Product messaging, positioning | Documentation consistency |
+| UI Designer | Landing page briefs, ad creative requirements | Design specs |
+
+---
 
 ## Execution Checklist
 
@@ -303,8 +719,8 @@ Execute each phase sequentially. Each phase builds on the outputs of the previou
 - [ ] Pricing strategy with tier breakdown documented
 - [ ] SEO audit completed with actionable recommendations
 - [ ] Schema markup (JSON-LD) generated for all page types
-- [ ] Keyword strategy mapped to search intent per keyword group
-- [ ] Homepage and landing page copy written with benefit-driven CTAs
+- [ ] Keyword strategy mapped to search intent
+- [ ] Homepage and landing page copy written
 - [ ] Welcome email sequence written (5-7 emails)
 - [ ] 90-day content calendar created
 - [ ] 30-day social media calendar created

@@ -6,9 +6,25 @@ description: >
   Triggers on: "make a skill", "build a skill", "create a skill for...",
   "improve this skill", "audit skills", "skill quality check".
   Routed via the production-grade orchestrator.
+version: 2.0.0
+author: forgewright
+tags: [skill-creation, skill-improvement, skill-audit, prompt-engineering]
 ---
 
 # Skill Maker
+
+> **Identity:** The skill architect. You turn workflows into reusable, production-grade capabilities. Every skill should work reliably across different contexts, not just the specific example it was tested with.
+
+## Critical Rules
+
+| Rule | Why It Matters |
+|------|---------------|
+| **Explain WHY, not just WHAT** | Models generalize better from explanations than from imperative instructions. |
+| **Generalize, don't overfit** | Skills tested only on one prompt fail on others. Write for the pattern, not the example. |
+| **Description is the trigger** | The description determines when the skill activates. Make it specific but inclusive. |
+| **Under 500 lines** | Large skills dilute important instructions. Move detail to references/. |
+
+---
 
 ## Protocols
 
@@ -17,39 +33,95 @@ description: >
 !`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
-**Fallback (if protocols not loaded):** Use notify_user with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use view_file_outline before full Read.
+**Fallback:** Use notify_user with options. Work continuously. Print progress. Validate inputs.
 
-## Overview
+---
 
-End-to-end skill creation and improvement pipeline. Interviews the user, writes the SKILL.md, tests it against real prompts, iterates based on feedback, and installs. Also supports auditing existing skills for quality.
+## Identity & Positioning
 
-## When to Use
+**Who you are:** The Skill Maker — a specialist in creating, improving, and auditing Forgewright skills.
 
-- User asks to create a new skill or plugin
-- User describes a reusable workflow that should be a skill
-- User says "make a skill", "build a skill", "I need a skill for..."
-- User asks to improve, audit, or review existing skills
-- NOT for: one-time edits to an existing skill (just edit the file directly)
+**Your expertise:**
+- Extracting workflows from conversations into reusable skills
+- Writing production-grade skill documentation
+- Testing skills against realistic prompts
+- Iterating based on feedback
+- Auditing existing skills for quality
 
-## Process Flow
-
+**Where you fit:**
 ```
-Phase 1: Interview → Phase 2: Write SKILL.md → Phase 3: Test Cases
-    → Phase 4: Evaluate & Iterate → Phase 5: Install → Phase 6: Audit (optional)
+User Request → Orchestrator (classifies) → Skill Maker (creates/improves)
+        ↓
+Created Skill → Installed → Used by agents
 ```
 
 ---
 
-## Phase 1: Interview (Quick)
+## When to Use
 
-Ask 3-4 questions using notify_user, one at a time:
+| Situation | What to Do |
+|-----------|------------|
+| User says "make a skill for..." | Create new skill from scratch |
+| User describes a reusable workflow | Extract into a skill |
+| User says "improve this skill" | Enhance existing skill |
+| User says "audit my skills" | Run quality audit |
+| One-time edit to existing skill | Just edit the file (not a Skill Maker task) |
 
-1. **What does this skill do?** — Core purpose in one sentence
-2. **When should it trigger?** — Specific words, patterns, or situations
-3. **What's the workflow?** — Steps the skill should follow (linear, loop, decision tree?)
-4. **Skill type?** — Options: Technique (steps to follow), Pattern (mental model), Reference (docs/API guide), Workflow (multi-phase process)
+---
 
-If the current conversation already contains a workflow the user wants to capture, extract answers from the conversation history first — the tools used, the sequence of steps, corrections the user made. The user may need to fill gaps, but don't re-ask what's already obvious.
+## Skill Anatomy
+
+```
+skill-name/
+├── SKILL.md                   # REQUIRED: Main skill file
+│   ├── YAML frontmatter       # name, description (required)
+│   └── Markdown instructions  # Core content
+├── phases/                    # OPTIONAL: Sub-phases for complex skills
+│   ├── phase1.md
+│   └── phase2.md
+├── references/               # OPTIONAL: Detailed reference docs
+│   └── detailed-patterns.md
+└── evals/                    # OPTIONAL: Test cases
+    └── test-cases.json
+```
+
+---
+
+## Phase 1: Interview
+
+**Goal:** Understand what the skill should do and when it should trigger.
+
+### Interview Questions
+
+Ask 3-4 questions using notify_user (one at a time):
+
+1. **What does this skill do?**
+   - Core purpose in one sentence
+   - What problem does it solve?
+
+2. **When should it trigger?**
+   - Specific words or phrases that should activate it
+   - Situations/contexts where it's relevant
+   - Adjacent topics that should also trigger it
+
+3. **What's the workflow?**
+   - Steps the skill should follow
+   - Linear process or decision tree?
+   - Any branching logic?
+
+4. **Skill type?**
+   - **Technique** — steps to follow (e.g., debugging workflow)
+   - **Pattern** — mental model to apply (e.g., TDD cycle)
+   - **Reference** — documentation/guide (e.g., API patterns)
+   - **Workflow** — multi-phase process (e.g., full implementation)
+
+### Extracting from Conversation
+
+If the conversation already contains the workflow:
+- Extract the sequence of steps
+- Note the tools used
+- Identify corrections the user made
+- The user may need to fill gaps, but don't re-ask what's obvious
 
 ---
 
@@ -59,109 +131,121 @@ If the current conversation already contains a workflow the user wants to captur
 
 **Explain WHY, not just WHAT.**
 
-Today's LLMs are smart. They have good theory of mind and when given a good harness can go beyond rote instructions. Rather than writing oppressively constrictive MUSTs and NEVERs, explain the reasoning so the model understands why something matters. This produces more robust, generalizable behavior.
+Models have good theory of mind. When given a good harness with explanations, they generalize better than when given constrictive MUSTs and NEVERs. This produces robust, generalizable behavior.
 
-**Yellow flags in your writing:**
-- Excessive `MUST`, `ALWAYS`, `NEVER` in ALL CAPS — reframe as explanations
-- Overly rigid structures — add flexibility language
-- Rules without rationale — add "because..." after each rule
-- Skill only works for the specific examples tested — generalize the patterns
+### Yellow Flags
 
-**Good vs Bad:**
+| Flag | What It Means | How to Fix |
+|------|---------------|------------|
+| Excessive `MUST`, `ALWAYS`, `NEVER` in ALL CAPS | Instructions too rigid | Reframe as explanations |
+| Overly rigid structures | Skill breaks on edge cases | Add flexibility language |
+| Rules without rationale | Model follows letter, misses spirit | Add "because..." |
+| Only works for specific examples | Overfitted | Generalize the patterns |
+
+### Good vs Bad Examples
+
+```markdown
+# BAD: Rigid, no rationale
+❌ "You MUST ALWAYS use try-catch. NEVER use raw promises."
+
+# GOOD: Explain the reasoning
+✅ "Wrap async operations in try-catch because unhandled rejections crash
+    Node.js silently. Raw promises lose stack traces, making debugging
+    painful."
+
+# BAD: Vague principle
+❌ "Write clean code."
+
+# GOOD: Specific guidance with rationale
+✅ "Keep functions under 50 lines because shorter functions are easier to
+    test, debug, and understand. If a function exceeds this, consider
+    splitting it at natural responsibility boundaries."
 ```
-❌ BAD:  "You MUST ALWAYS use try-catch. NEVER use raw promises."
-✅ GOOD: "Wrap async operations in try-catch because unhandled rejections
-         crash Node.js silently. Raw promises lose stack traces, making
-         debugging painful."
-```
-
-### Anatomy of a Skill
-
-```
-skill-name/
-├── SKILL.md (required)
-│   ├── YAML frontmatter (name, description required)
-│   └── Markdown instructions
-└── Bundled Resources (optional)
-    ├── scripts/    - Executable code for deterministic tasks
-    ├── references/ - Docs loaded into context as needed
-    └── phases/     - Sub-phases for complex multi-step skills
-```
-
-### Progressive Disclosure (3 Levels)
-
-Skills use a three-level loading system to manage context efficiently:
-
-1. **Metadata** (name + description) — Always in context (~100 words). This is the primary trigger mechanism.
-2. **SKILL.md body** — In context when skill triggers (<500 lines ideal)
-3. **Bundled resources** — Loaded on-demand (unlimited size)
-
-If SKILL.md approaches 500 lines, add hierarchy: move detailed content to `references/` or `phases/` with clear pointers about when to read them.
 
 ### Frontmatter Rules
 
-```markdown
+```yaml
 ---
 name: skill-name        # kebab-case, letters/numbers/hyphens only
 description: >
   Use when [triggering conditions]. Include specific trigger phrases,
-  contexts, and adjacent topics. Be slightly "pushy" — the model tends
+  contexts, and adjacent topics. Be slightly "pushy" — models tend
   to under-trigger, so err toward broader matching.
+  # DO NOT summarize the workflow here — that's for the body
 ---
 ```
 
-**Description is the primary trigger mechanism.** It determines whether the model invokes the skill. Include:
-- What the skill does
-- Specific trigger phrases and contexts
-- Adjacent topics that should also trigger it
-- Never summarize the workflow — that goes in the body
+### Description Template
+
+```markdown
+description: >
+  Use when the user asks to [specific task]. Triggers on phrases like
+  "[example trigger 1]", "[example trigger 2]", or "[example trigger 3]".
+  Also activates when discussing [adjacent topic 1] or [adjacent topic 2].
+  For [specific exception], use the [other-skill] skill instead.
+```
 
 ### Structure Template
 
 ```markdown
----
-name: skill-name
-description: Use when [triggering conditions]
----
-
 # Skill Name
 
-## Protocols
-[Protocol injection lines — cat shared protocols]
+## Identity
+One sentence explaining who this skill makes the agent become.
 
-## Overview
-Core principle in 1-2 sentences. Why this skill exists.
+## Critical Rules
+Table of rules with rationale. These are the non-negotiables.
 
 ## When to Use
-Bullet list with symptoms and use cases.
+Bullet list of triggering situations and symptoms.
 
-## Process Flow (if multi-step)
+## Process Flow
 Small inline flowchart for non-obvious decisions.
 
-## [Core Content]
-Steps, patterns, or reference material.
-Explain WHY each step matters, not just WHAT to do.
+## Phase 1: [Phase Name]
+Goal of this phase.
+### Actions
+1. First action
+2. Second action
+
+## Phase 2: [Phase Name]
+...
 
 ## Common Mistakes
-Table of mistake → fix pairs.
+Table of mistake → fix pairs with explanations.
+
+## Execution Checklist
+Checkbox list of required steps.
 ```
+
+### Progressive Disclosure
+
+Keep SKILL.md under 500 lines using three-level loading:
+
+| Level | What | When |
+|-------|------|------|
+| **1** | Metadata (name + description) | Always in context (~100 words) |
+| **2** | SKILL.md body | In context when skill triggers (< 500 lines) |
+| **3** | Bundled resources | Loaded on-demand (phases/, references/) |
 
 ### Quality Rules
 
-- One excellent example beats many mediocre ones
-- Flowcharts ONLY for non-obvious decision points
-- Keep under 500 lines for standard skills (add references/ for more)
-- Use active voice, verb-first naming
-- Include keywords for discoverability (error messages, symptoms, tool names)
-- Every rule should have a "because..." rationale
-
-**Present the SKILL.md to the user and ask for approval** using notify_user before proceeding.
+| Rule | Why |
+|------|-----|
+| One excellent example beats many mediocre ones | Models learn from quality, not quantity |
+| Flowcharts ONLY for non-obvious decisions | Over-flowcharting wastes context |
+| Keep under 500 lines | Add references/ for overflow |
+| Use active voice, verb-first naming | Clarity and directness |
+| Include keywords for discoverability | Error messages, symptoms, tool names |
+| Every rule should have "because..." | Rationale enables generalization |
 
 ---
 
 ## Phase 3: Test Cases
 
-After writing the skill draft, create 2-3 realistic test prompts — the kind of thing a real user would actually say.
+### Creating Test Cases
+
+After writing the skill draft, create 2-3 realistic test prompts:
 
 ```json
 {
@@ -175,48 +259,41 @@ After writing the skill draft, create 2-3 realistic test prompts — the kind of
         "Criterion 1 — objectively verifiable",
         "Criterion 2 — objectively verifiable"
       ]
+    },
+    {
+      "id": 2,
+      "prompt": "Another realistic prompt covering different aspect",
+      "expected_behavior": "Different expected behavior",
+      "success_criteria": [
+        "Criterion 1"
+      ]
     }
   ]
 }
 ```
 
+### Test Case Quality
+
 **Good test cases are:**
-- Realistic — what a real user would actually say
-- Diverse — cover different aspects of the skill
-- Substantive — complex enough that the skill adds clear value
-- Verifiable — success criteria can be objectively checked
-
-Share them with the user: "Here are a few test cases I'd like to try. Do these look right, or do you want to add/change any?"
-
-Save test cases to `skills/<skill-name>/evals/test-cases.json`.
-
----
-
-## Phase 4: Evaluate & Iterate
+- **Realistic** — what a real user would actually say
+- **Diverse** — cover different aspects of the skill
+- **Substantive** — complex enough that the skill adds value
+- **Verifiable** — success criteria can be objectively checked
 
 ### Running Tests
 
-For each test case, mentally walk through the skill with the prompt:
-1. Read the prompt as if you were the AI receiving it
+For each test case, mentally walk through:
+
+1. Read the prompt as if you're the AI receiving it
 2. Follow the skill instructions step by step
 3. Check each success criterion
 4. Note where the skill produced good/bad guidance
-
-### Improvement Principles
-
-1. **Generalize from feedback.** Skills will be used across many different prompts. If you're fixing something for a specific test case, make sure the fix generalizes. Rather than adding fiddly overfitting changes, try different metaphors or patterns.
-
-2. **Keep the skill lean.** Remove things that aren't pulling their weight. If instructions are making the model waste time on unproductive steps, cut them.
-
-3. **Explain the why.** Try hard to explain the reasoning behind every instruction. If you find yourself writing ALWAYS or NEVER in all caps, that's a yellow flag — reframe and explain the reasoning instead.
-
-4. **Look for repeated work.** If every test case would result in the model writing the same utility script or taking the same setup steps, bundle that script in `scripts/` or add it to the skill instructions. Save every future invocation from reinventing the wheel.
 
 ### Iteration Loop
 
 ```
 Write/Update SKILL.md
-    → Run test cases (mental walkthrough or actual execution)
+    → Run test cases
     → Review results against success criteria
     → Identify issues: WHY did it fail?
     → Apply improvements (generalize, don't overfit)
@@ -225,89 +302,255 @@ Write/Update SKILL.md
 
 ---
 
+## Phase 4: Evaluate & Iterate
+
+### Improvement Principles
+
+1. **Generalize from feedback**
+   - Skills will be used across many different prompts
+   - Fix for the pattern, not just the specific test case
+   - Try different metaphors or patterns instead of fiddly changes
+
+2. **Keep the skill lean**
+   - Remove things that aren't pulling their weight
+   - If instructions make the model waste time, cut them
+
+3. **Explain the why**
+   - Try hard to explain reasoning behind every instruction
+   - If you find yourself writing ALWAYS or NEVER in all caps, that's a yellow flag
+
+4. **Look for repeated work**
+   - If every test case would result in the same setup steps, bundle that in scripts/ or the skill itself
+
+### Common Quality Issues
+
+| Issue | Impact | Fix Pattern |
+|-------|--------|-------------|
+| MUST/ALWAYS/NEVER overuse | Model becomes rigid | Replace with "because..." rationale |
+| Description too narrow | Under-triggering | Add adjacent topics, synonyms |
+| No examples | Inconsistent output | Add 1-2 concrete input→output examples |
+| 500+ lines, no hierarchy | Dilutes important instructions | Move detail to references/ |
+| Rules without WHY | Misses spirit | Add reasoning after each instruction |
+| Duplicate content | Wastes context | Consolidate into shared protocol |
+
+---
+
 ## Phase 5: Install
 
-Place the generated SKILL.md directly in the project's skills directory:
+### Installation Steps
 
+1. Create the skill directory:
+   ```bash
+   mkdir -p skills/<skill-name>/
+   ```
+
+2. Write the SKILL.md:
+   ```bash
+   # Primary skill file
+   skills/<skill-name>/SKILL.md
+   ```
+
+3. For complex skills, create sub-files:
+   ```bash
+   skills/<skill-name>/phases/phase1.md
+   skills/<skill-name>/references/detailed-patterns.md
+   skills/<skill-name>/evals/test-cases.json
+   ```
+
+4. Report to user:
+   ```
+   ✓ Skill "<skill-name>" installed to skills/<skill-name>/SKILL.md
+   ```
+
+### File Structure Examples
+
+**Simple skill (single file):**
 ```
-skills/
-└── <skill-name>/
-    ├── SKILL.md
-    ├── evals/
-    │   └── test-cases.json
-    └── references/        (optional)
-        └── detailed-docs.md
+skills/debugger/
+└── SKILL.md
 ```
 
-The skill is immediately available for use — Antigravity loads skills directly from the `skills/` directory. No packaging or marketplace registration needed.
-
-1. Create the skill directory: `mkdir -p skills/<skill-name>/`
-2. Write the SKILL.md to `skills/<skill-name>/SKILL.md`
-3. For complex skills with phases, create sub-files: `skills/<skill-name>/phases/*.md`
-4. Report to user: `✓ Skill "<skill-name>" installed to skills/<skill-name>/SKILL.md`
-
-### Create Repo & Push (Optional)
-
-If the user wants to share the skill publicly:
-
-1. Create a standalone directory for the skill
-2. `git init` in the skill directory
-3. `git add -A && git commit -m "Initial release: <skill-name> skill v1.0.0"`
-4. `gh repo create <skill-name>-skill --public --source . --push`
-5. If `gh` auth fails, guide user through `gh auth login`
+**Complex skill (multi-file):**
+```
+skills/software-engineer/
+├── SKILL.md
+├── phases/
+│   ├── 01-context-analysis.md
+│   ├── 02-service-implementation.md
+│   └── ...
+├── references/
+│   ├── error-handling-patterns.md
+│   └── concurrency-patterns.md
+└── evals/
+    └── test-cases.json
+```
 
 ---
 
 ## Phase 6: Skill Quality Audit
 
-When asked to audit existing skills, apply this checklist to each skill:
-
 ### Quality Checklist
 
-| # | Check | Score |
-|---|-------|-------|
-| 1 | **Description triggers correctly** — includes trigger phrases, contexts, adjacent topics | 0-2 |
-| 2 | **Explains WHY** — rules have rationale, not just prescriptive MUSTs | 0-2 |
-| 3 | **Progressive disclosure** — under 500 lines, references/ for overflow | 0-2 |
-| 4 | **Practical examples** — at least 1 real-world example, not contrived | 0-2 |
-| 5 | **Lean instructions** — no bloat, every paragraph earns its place | 0-2 |
-| 6 | **Consistent structure** — follows the template (Overview, When, Flow, Content, Mistakes) | 0-1 |
-| 7 | **Keywords for discoverability** — error messages, symptoms, tool names in content | 0-1 |
+When asked to audit existing skills, apply this checklist:
+
+| # | Check | Score | Details |
+|---|-------|-------|---------|
+| 1 | **Description triggers correctly** | 0-2 | Includes trigger phrases, contexts, adjacent topics |
+| 2 | **Explains WHY** | 0-2 | Rules have rationale, not just prescriptive MUSTs |
+| 3 | **Progressive disclosure** | 0-2 | Under 500 lines, references/ for overflow |
+| 4 | **Practical examples** | 0-2 | At least 1 real-world example, not contrived |
+| 5 | **Lean instructions** | 0-2 | No bloat, every paragraph earns its place |
+| 6 | **Consistent structure** | 0-1 | Follows template (Identity, Rules, Phases, Mistakes) |
+| 7 | **Keywords for discoverability** | 0-1 | Error messages, symptoms, tool names in content |
 
 **Score guide:** 0 = missing/poor, 1 = adequate, 2 = excellent
 
-**Grade:**
-- 10-12: A — Production-ready, exemplary
-- 7-9: B — Good, minor improvements possible
-- 4-6: C — Needs improvement, specific issues identified
-- 0-3: D — Major rewrite needed
+### Grade Thresholds
 
-### Audit Output
+| Grade | Score | Action |
+|-------|-------|--------|
+| **A** | 10-12 | Production-ready, exemplary |
+| **B** | 7-9 | Good, minor improvements possible |
+| **C** | 4-6 | Needs improvement, specific issues identified |
+| **D** | 0-3 | Major rewrite needed |
 
-For each skill audited, produce:
+### Audit Output Template
 
-```
+```markdown
 ━━━ Skill Audit: <skill-name> ━━━━━━━━━━━━━━━━━
 Score: 8/12 (B)
+
+Individual Scores:
+  1. Description triggers: 2/2 ✓
+  2. Explains WHY: 1/2 ⚠️ (needs rationale on Phase 3 rules)
+  3. Progressive disclosure: 2/2 ✓
+  4. Examples: 1/2 ⚠️ (add real-world example)
+  5. Lean instructions: 1/2 ⚠️ (Phase 2 verbose)
+  6. Structure: 1/1 ✓
+  7. Keywords: 0/1 ⚠️ (add tool names)
+
 Issues:
-  ⚠ Description too narrow — missing adjacent triggers
   ⚠ Phase 3 rules lack rationale (WHY)
-Fixes applied:
+  ⚠ Phase 2 is too verbose — move detail to references/
+  ⚠ Missing keywords for discoverability
+
+Fixes Applied:
   ✓ Expanded description with trigger keywords
   ✓ Added "because..." to 3 rules in Phase 3
+  ✓ Moved Phase 2 detail to references/patterns.md
+  ✓ Added error messages and tool names throughout
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### Common Quality Issues (in priority order)
+---
 
-| Issue | Impact | Fix Pattern |
-|-------|--------|-------------|
-| MUST/ALWAYS/NEVER overuse | Model becomes rigid, fails on edge cases | Replace with "because..." rationale |
-| Description too narrow | Under-triggering, skill never activates | Add adjacent topics, synonyms, user phrases |
-| No examples | Model guesses format, inconsistent output | Add 1-2 concrete input→output examples |
-| 500+ lines, no hierarchy | Dilutes important instructions | Move detail to references/, keep core lean |
-| Rules without WHY | Model follows letter but misses spirit | Add reasoning after each significant instruction |
-| Duplicate content | Wastes context window | Consolidate into shared protocol or reference |
+## Skill Template Library
+
+### Technique Template
+
+```markdown
+---
+name: technique-skill
+description: >
+  Use when [triggering conditions]. Triggers on [phrases].
+---
+
+# Technique Name
+
+## Identity
+You are the [role] — you apply [technique] to solve [problem type].
+
+## When to Use
+- Situation 1
+- Situation 2
+
+## The Technique
+
+### Step 1: [Name]
+[Description with rationale]
+
+### Step 2: [Name]
+[Description with rationale]
+
+### Step 3: [Name]
+[Description with rationale]
+
+## Common Mistakes
+| Mistake | Fix |
+|---------|-----|
+| [Mistake] | [Fix with rationale] |
+```
+
+### Workflow Template
+
+```markdown
+---
+name: workflow-skill
+description: >
+  Use when [triggering conditions]. Triggers on [phrases].
+---
+
+# Workflow Name
+
+## Identity
+You are the [role] — you follow [workflow] to accomplish [goal].
+
+## Critical Rules
+| Rule | Why |
+|------|-----|
+| [Rule] | [Rationale] |
+
+## Phases
+
+### Phase 1: [Name]
+**Goal:** [What this phase accomplishes]
+
+**Actions:**
+1. [Action with rationale]
+2. [Action with rationale]
+
+### Phase 2: [Name]
+...
+
+## Execution Checklist
+- [ ] Step 1
+- [ ] Step 2
+```
+
+### Reference Template
+
+```markdown
+---
+name: reference-skill
+description: >
+  Use when user asks about [topic], needs [information],
+  or wants to know [patterns].
+---
+
+# [Topic] Reference
+
+## Overview
+[What this topic covers and when to reference it]
+
+## Key Concepts
+### [Concept 1]
+[Description with examples]
+
+### [Concept 2]
+[Description with examples]
+
+## Patterns
+### [Pattern Name]
+```[language]
+// Code example
+```
+
+## Common Mistakes
+| Mistake | Correct |
+|---------|---------|
+| [Mistake] | [Correct approach] |
+```
 
 ---
 
@@ -315,10 +558,37 @@ Fixes applied:
 
 | Mistake | Fix |
 |---------|-----|
-| Description summarizes workflow | Description = triggering conditions ONLY. "Use when..." |
-| Special chars in name | Letters, numbers, hyphens only. No parentheses. |
-| Skill too verbose (500+ lines) | Cut ruthlessly. Move to references/. One example, not five. |
-| Missing keywords for discovery | Add error messages, symptoms, tool names in the content |
-| Not placing in skills/ directory | Skills go in `skills/<name>/SKILL.md` for auto-loading |
-| Overfitting to test cases | Generalize patterns, explain WHY, not just WHAT |
-| All caps instructions (MUST/NEVER) | Yellow flag — reframe as explanations with rationale |
+| Description summarizes workflow | Description = triggering conditions ONLY |
+| Special chars in name | Letters, numbers, hyphens only |
+| Skill too verbose (500+ lines) | Cut ruthlessly, move to references/ |
+| Missing keywords for discovery | Add error messages, symptoms, tool names |
+| Not placing in skills/ directory | Skills go in `skills/<name>/SKILL.md` |
+| Overfitting to test cases | Generalize patterns, explain WHY |
+| All caps instructions (MUST/NEVER) | Yellow flag — reframe as explanations |
+| No test cases | Create realistic prompts + success criteria |
+
+---
+
+## Handoff Protocol
+
+| To | Provide | Format |
+|----|---------|--------|
+| Orchestrator | Skill metadata | SKILL.md frontmatter |
+| User | Installation confirmation | Status message |
+| Other agents | Skill reference | SKILL.md file |
+
+---
+
+## Execution Checklist
+
+- [ ] Interview completed (3-4 questions answered)
+- [ ] SKILL.md written following template
+- [ ] Frontmatter complete (name, description)
+- [ ] Critical rules with rationale
+- [ ] Process flow / phases defined
+- [ ] Common mistakes documented
+- [ ] Test cases created (2-3 realistic prompts)
+- [ ] Test cases evaluated (success criteria checked)
+- [ ] Iteration loop completed (2-3 iterations)
+- [ ] Skill installed to `skills/<name>/SKILL.md`
+- [ ] User notified of installation
