@@ -94,12 +94,19 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
    bash <forgewright>/.antigravity/plugins/production-grade/scripts/forgewright-mcp-setup.sh
    ```
 
-   This single command:
-   - Analyzes the project (ForgeNexus index)
-   - Generates the MCP server
-   - Creates the workspace manifest
-   - Updates global config (Cursor/Claude)
-   - Verifies installation
+   This single command sets up Forgewright MCP for **ALL three platforms simultaneously**:
+   - **Cursor**: `~/.cursor/mcp.json`
+   - **Claude Code**: `~/.claude/settings.json` (mcpServers key)
+   - **Antigravity**: MCP workspace isolation via `~/.cursor/projects/<hash>/mcps/`
+
+   To set up individual platforms:
+   ```bash
+   bash forgewright/scripts/forgewright-mcp-setup.sh --cursor       # Cursor only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --claude-code # Claude Code only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity  # Antigravity only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --check       # Status check
+   bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose    # Full diagnostics
+   ```
 
 3. After setup, yield a brief message:
    `ℹ MCP server ready for this workspace. Restart your AI client to activate.`

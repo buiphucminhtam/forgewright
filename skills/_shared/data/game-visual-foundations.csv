@@ -1,0 +1,101 @@
+No,Category,Subcategory,Rule,Constraint,Why,Reference,Game_Style,Severity
+1,Camera,Isometric,Always lock camera angle before batch generation,Side-view 2D / 3/4 top-down isometric / First-person 60° FOV,Prevents perspective mismatch across assets,Camera angle is the first constraint to define,All,High
+2,Camera,Isometric,Match tile size consistently,64x64px or 128x128px,Prevents tiny doors and giant barrels in same scene,Tile size defines scale for all props and characters,2D,High
+3,Camera,Isometric,Character height = N tiles,4 tiles for medium chars,Scale consistency prevents visual confusion,Character must read clearly at intended display size,2D,High
+4,Camera,FirstPerson,Set FOV before generation,60° standard / 90° wide-angle / 45° telephoto,FOV affects perceived scale of environment,FOV changes depth perception dramatically,3D,High
+5,Camera,FirstPerson,Lock camera height,1.7m human / 1.2m child / Eye level of character,Prevents inconsistent eye-level across scenes,Camera height defines player's POV,3D,Medium
+6,Palette,Colors,Limit primary palette to 6-8 colors,Primary, Secondary, Accent, Background, Text, Muted, Border + 2 game-specific,AI struggles with 10+ colors — style drifts,Hard cap on palette size prevents inconsistency,All,High
+7,Palette,Colors,Generate palette before any asset generation,Create palette JSON first,Reference-less generation leads to color drift,Palette is the foundation of visual consistency,All,High
+8,Palette,Colors,Use off-black not pure black,#09090b zinc-950 instead of #000000,Pure black looks harsh on screens — off-blacks feel natural,Pure black is an AI tell,All,Medium
+9,Palette,Harmony,Validate color harmony with 60-30-10 rule,60% dominant / 30% secondary / 10% accent,Industry-standard ratio creates balanced palettes,60-30-10 distributes visual weight,All,High
+10,Lighting,Direction,Lock light direction before batch,Top-left 45° primary / Fill from bottom-right,Inconsistent lighting = pasted-on objects feel,Lighting direction is as identity-defining as color,All,High
+11,Lighting,Direction,Use warm key + cool fill for moody scenes,Key: 3200K warm / Fill: 5600K cool,Creates depth and atmosphere without harsh shadows,Cool fill prevents muddy shadows,3D,High
+12,Lighting,Hardness,Set shadow hardness per material type,Hard for metal / Soft for organic / Medium for stone,Materials have distinct shadow characteristics,Shadow style defines material identity,All,High
+13,Lighting,Ambient,Define ambient color and intensity,Low ambient (10-20%) with tint,Too much ambient flattens depth,Ambient establishes baseline color cast,3D,High
+14,Lighting,RimLight,Use rim light on characters for silhouette separation,Color: complementary to key light,Separates character from background without shadow complexity,Rim light is cheap depth cue,All,Medium
+15,Material,Grass,Flat shading with subtle noise texture,No specular, low detail variation,Grass is distant and ambient — high detail is wasted,Flat shading at game scale reads clearly,2D,High
+16,Material,Stone,Matte with edge highlighting,No reflection, edge contrast,Stoic and heavy — reflections break the material,Edge detection style for stylized stone,All,Medium
+17,Material,Metal,Reflective with environment tint + rim light,Specular highlights match environment color,Metal reads as metal through reflection and rim,Metal is defined by what it reflects,All,High
+18,Material,Organic,Flesh: subsurface scattering hint on edges,Warm undertone bleeding into shadow,Organic materials glow from within — dead flat looks fake,Subsurface hint at edges reads as alive,All,Medium
+19,Material,Fabric,Cloth: no reflections, fabric texture pattern,Soft matte with weave pattern visible at macro,Fabric absorbs light — reflections look like wet cloth,Fabric weave pattern at macro scale,All,Medium
+20,Material,Water,Transparent with Fresnel effect + caustics hint,Alpha gradient with rim opacity,Water is defined by transparency and light play,Water reads through refraction and rim,All,High
+21,Material,Glass,Transparent with environment reflection + chromatic aberration,Specular + transmission + IOR 1.5,Glass bends light — pure transparency looks like air,Refraction + reflection = glass identity,All,High
+22,Edges,Border,Define border style per game type,Transparent border for tiles / Contour outline for chars / No outline for 3D,Seam handling and style coherence,Borders define asset integration style,All,High
+23,Edges,Border,Match border thickness across batch,1px for 64px tiles / 2px for 128px tiles,Border inconsistency breaks visual rhythm,Thickness = tile_size / 64px ratio,2D,High
+24,Edges,Seam,Handle tile seams invisibly,Edges must wrap seamlessly (toroidal UV),Visible seams break immersion in tile maps,Test by placing 3x3 tile grid,2D,High
+25,Edges,Contour,For character outlines: use contrast separation not line art,Color shift or value shift between adjacent elements,Outlines look hand-drawn and cheap at scale,Contrast separation reads as clean,All,Medium
+26,Anatomy,Proportions,Lock head-to-body ratio before character batch,8-head for heroic / 6-head for realistic / 4-head for chibi,Proportion mismatch breaks visual consistency across characters,Head ratio is the primary character style cue,All,High
+27,Anatomy,Proportions,Scale facial features to head size,Eye = head_width/5 / Nose = head_width/8,Faces must read at intended display size,Facial feature ratios define species and emotion,All,High
+28,Anatomy,Proportions,Limit detail to readable-at-scale level,No detail smaller than 2px at final render size,Detail beyond readability is wasted rendering budget,Detail budget = display pixel / 2,All,High
+29,Anatomy,Clothing,Clothing reads as silhouette first,Silhouette must be readable at 16x16,Silhouette is the primary read at gameplay distance,Detail is for close-up cutscenes only,All,Medium
+30,Anatomy,Fingers,Maximum 4 visible fingers on game characters,5 fingers look child-like or weird at small scale,4-finger stylized hands read cleaner at scale,4 fingers is the industry standard,All,High
+31,Anatomy,Hands,Open palm = 4 finger-widths maximum,Thumb as separate element,Finger crowding at small scales breaks anatomy,Open hand width = 4 finger widths,All,Medium
+32,Anatomy,Perspective,Match perspective grid for environment,One-point for corridors / Two-point for corners / Three-point for hero shots,Perspective mismatch between assets breaks scene,Environment uses same vanishing points as camera,All,High
+33,Animation,FrameRate,Lock frame rate before animation batch,8fps for pixel art / 12fps for casual / 24fps for fluid,Frame rate defines the animation budget and feel,Frame rate is the first animation constraint,All,High
+34,Animation,FrameRate,Character animation frame count must be divisible by 2,Idle: 2-4 / Walk: 4-8 / Attack: 4-6,Odd frames break loop symmetry,Even frames = perfect loops,2D,High
+35,Animation,KeyFrames,Use keyframe pacing: slow-in slow-out,Anticipation frame before action / Follow-through after,Linear animation reads as robotic,Ease-in-out creates organic motion,All,High
+36,Animation,Anticipation,Every attack action needs anticipation frame,1 frame of wind-down before impact,Anticipation is what makes action readable,No anticipation = impact unreadable,All,High
+37,Animation,Impact,Impact frames: hold 2x normal duration,2-frame hold at peak impact,Hold creates impact weight and power,No hold = weak impact,All,High
+38,Animation,Loop,Idle and walk cycles must loop seamlessly,First frame = last frame OR positions match,Visible loop seam breaks immersion,Test by viewing loop 3x consecutively,2D,High
+39,Format,Resolution,Match output resolution to target platform,Mobile: 72dpi / Web: 72dpi / Print: 300dpi,Wrong DPI = blurry or tiny output,Resolution = use case × platform,All,High
+40,Format,Resolution,For pixel art: never upscale with smoothing,Use nearest-neighbor only,Anti-aliasing destroys pixel art aesthetic,Nearest-neighbor preserves pixels,2D,High
+41,Format,Resolution,For 3D: match texture resolution to poly count,2K textures for hero assets / 1K for props / 512 for background,Texture budget = poly budget × 2K,Over-res textures on low-poly = wasted VRAM,3D,High
+42,Format,Alpha,Use alpha channel for transparency,PNG-32 for UI / TGA for game,Premultiplied alpha preferred for engine import,Premultiplied = no halos at edges,All,High
+43,Format,Naming,Enforce naming convention,asset-type_name_variant_wxh.png,Naming inconsistency breaks asset management,Naming = first automation step,All,High
+44,Format,Naming,Include size in filename for sprites,char-goblin_idle_4x4.png (4 tiles wide × 4 tiles tall),Size in filename = instant scalability info,Name carries pipeline data,2D,High
+45,Format,Layer,Organize layers logically before export,Background / Character / Foreground / Effects,Layer confusion breaks engine import,Consistent layer hierarchy,All,Medium
+46,Format,Compression,Use platform-appropriate compression,Web: WebP / Game: PNG / Mobile: ASTC / PC: BC7,Compression choice affects quality and load time,Match compression to target platform,All,High
+47,Batch,Sequence,Generate reference batch first (8-16 assets),Review 8-16 before scaling,Early errors compound in large batches,First batch = quality validation,All,High
+48,Batch,Sequence,Score every asset on perspective,Palette,Scale,Silhouette,Engine,Score 1-5 on each dimension — reject below 4 on perspective or scale,Early expensive problems,Scoring rubric prevents drift,All,High
+49,Batch,Sequence,Document successful parameters for next batch,Canvas size,Camera angle,Palette family,Shadow direction,Template becomes the rule,Successful params = reusable rules,All,High
+50,Batch,Sequence,Test assets in-engine before full batch,Don't trust standalone screenshots,Engine lighting changes everything,Preview in target engine before committing,All,High
+51,AITells,Style,Purple and blue neon glow is the universal AI aesthetic,Never generate with neon glow,AI defaults to purple/blue neon — it reads as fake,Purple glow = instant AI tell,All,High
+52,AITells,Style,Gradient text and buttons are AI defaults,Avoid gradient fills — use solid colors with depth cues,Gradients are the most common AI pattern,Flat color + shadow = cleaner than gradient,All,High
+53,AITells,Style,Generic proportions are AI safe defaults,8-head heroic for everyone / Same face syndrome,AI generates "average" which = generic,Define unique proportion ranges per character,All,High
+54,AITells,Style,AI over-uses warm ambient lighting,Mix cool and warm zones — avoid all-warm scenes,Cool shadows create depth, warm areas create focus,All-ambient scenes look flat and fake,All,Medium
+55,AITells,Style,Skin tones cluster around beige/peach defaults,Define specific warm, cool, and fantasy skin palettes,AI uses safe average skin tones,Range: pale blue-white to deep brown with undertones,All,Medium
+56,AITells,UI,3 equal-width columns of cards = AI default layout,Use asymmetric grids: 2-column, bento, masonry,AI default to 3-column grid,Asymmetric layout = human designer feel,UI,High
+57,AITells,UI,Centered hero section = AI default landing page,Use split-screen: 60/40 text/media,Centered hero over dark image is overused,Asymmetric hero = editorial quality,UI,High
+58,AITells,UI,Inter font as default = AI generation,Use: Geist, Satoshi, Outfit, Cabinet Grotesk,AI defaults to Inter,Unique font = premium human feel,UI,High
+59,AITells,UI,Circular spinner loading indicator = AI default,Use skeleton loaders matching actual content layout,Circular spinners are the laziest loading pattern,Skeleton matching layout = polished feel,UI,High
+60,AITells,UI,Pure black #000000 backgrounds = AI default,Use #09090b zinc-950 or #1a1a1a,Pure black looks harsh,Pure black = budget/default AI feel,UI,High
+61,AITells,UI,Fake round numbers (99.99%, $9.99) = AI default,Use organic messy numbers: 47.2%, $23.47,AI uses predictable clean numbers,Organic numbers = real-world feel,UI,Medium
+62,AITells,UI,Generic company names (Acme, Nexus, SmartFlow) = AI default,Use contextual invented names,AI generates generic placeholder brands,Contextual name = premium feel,UI,Medium
+63,AITells,UI,Startup buzzwords in copy (Elevate, Seamless, Unleash) = AI,Use specific concrete verbs and metrics,AI over-uses startup clichés,"Ship 40% faster" vs "Seamless workflow",UI,High
+64,AITells,UI,Outer glow box-shadow = AI default styling,Use inner borders or tinted shadows matching background hue,Outer glows look cheap and pasted,Inner shadows = refined feel,UI,High
+65,AITells,UI,Default shadcn/ui without customization = AI default,Customize radii, colors, shadows to match project,Default shadcn = template feel,Customized shadcn = project feel,UI,Medium
+66,AITells,UI,Gradient text headers = overused AI pattern,Use weight, color, and size hierarchy instead,Gradient headers read as "trying to look premium",Bold + hierarchy = confident feel,UI,Medium
+67,AITells,UI,Broken Unsplash random URLs in sample data,Use picsum.photos/seed/{id} or SVG avatars,Unsplash random URLs 404 frequently,Stable seed-based URLs = reliable feel,UI,High
+68,AITells,Character,5-finger hands = AI safe default,Maximum 4 visible fingers,AI over-renders hands — 5 fingers look weird at scale,4-finger stylized hands read better,All,High
+69,AITells,Character,Same face syndrome across NPCs,Define distinct face shape ranges per character type,AI defaults to attractive average,Unique face shapes per archetype,All,High
+70,AITells,Character,Anatomy errors (extra fingers, asymmetric face, broken joints),Reference anatomy sheet before generation,AI generates plausible-but-wrong anatomy,Anatomy sheet = mandatory reference,All,High
+71,AITells,Character,Overly smooth skin textures,Use painterly or stylized skin (no pore detail at game scale),AI renders photorealistic skin that looks out of place,Painterly skin = game-ready,All,Medium
+72,AITells,Character,Perfect symmetry in faces and poses,Break symmetry: pose offset, asymmetric features,AI is biased toward symmetry,Symmetry break = dynamic feel,All,Medium
+73,AITells,Scene,Perfect grass / uniform tree placement,Use variation: height jitter, color noise, rotation variance,AI places elements with mathematical uniformity,Variation = natural/organic feel,All,High
+74,AITells,Scene,Uniform cloud/haze density,Use gradient fog: dense at ground, clear at horizon,AI defaults to uniform atmospheric effects,Gradient fog = cinematic depth,3D,Medium
+75,AITells,Scene,Over-detailed environment at distance,Match LOD detail to camera distance,AI renders everything at hero detail,Distance-based detail = performance + realism,3D,High
+76,AITells,Scene,Glass materials too clean / too reflective,Add fingerprint smudges, dust, slight tint variation,AI glass is pristine = fake,Grime and imperfection = lived-in feel,3D,Medium
+77,AITells,Scene,Plastic-perfect materials,Use wear patterns, micro-scratches, color variation,AI materials are too clean,Wear = history and character,3D,Medium
+78,Performance,PolyCount,Set polygon budget per asset type before generation,Character hero: 50K / NPC: 10K / Prop: 2K / Background: 500,Polygon budget = performance budget,Over-poly = frame drops,3D,High
+79,Performance,TextureSize,Match texture resolution to display size,Icon: 64x64 / UI: 256x256 / Character: 2048x2048,Texture budget = VRAM budget,Over-texture = wasted memory,All,High
+80,Performance,DrawCalls,Merge static props into atlases,Single atlas for all static props (max 2048x2048),Draw calls = CPU bottleneck,Atlas merge = draw call reduction,3D,High
+81,Performance,Shaders,Limit shader complexity per platform,Mobile: simple PBR / PC: full PBR + AO,Platform capability defines shader complexity,Shader = visual quality / performance tradeoff,3D,High
+82,Performance,Sprite,Use sprite atlases for 2D,One atlas per animation state (idle, walk, attack),Atlas = draw call reduction,Separate files = separate draw calls,2D,High
+83,Performance,Particle,Cap particle count per effect,Mobile: 100 / PC: 500 / Cutscene: 1000,Particles = GPU load,Particle budget = visual richness / performance,All,High
+84,Performance,LOD,Generate LOD chain for all 3D assets,3 LOD levels: 100% / 50% / 25% polys,Distance culling with LOD = performance,Missing LOD = distant pop-in,3D,High
+85,Performance,Compression,Use platform-native compression,ASTC for iOS / BC7 for PC / DXT5 for Android,Compression = load time and size,Match compression to platform decoder,All,High
+86,Accessibility,ColorBlind,Validate palette with color blindness simulators,Protanopia, Deuteranopia, Tritanopia checks,10% of men are color blind — red-green is most common,Color blind safe = inclusive design,All,High
+87,Accessibility,Contrast,WCAG AA minimum for UI: 4.5:1 for text,Text must read on all backgrounds,Contrast failure = inaccessible UI,UI,High
+88,Accessibility,Motion,Respect prefers-reduced-motion,No looping animations for accessibility users,Motion sensitivity affects 35% of population,All animations must have reduced-motion mode,All,High
+89,Accessibility,Iconography,Icons must have text labels or clear affordance,Don't rely on color or shape alone,Screen reader and cognitive accessibility,Color-shape independence = universal,UI,High
+90,Accessibility,Scale,Support 200% UI scale minimum,No hard-coded pixel values,Zoom support for low vision users,Relative units = zoom-ready,UI,High
+91,Pipeline,Versioning,Every major generation creates a new version,Increment version in filename,No overwriting — rollback possible,Version = audit trail,All,High
+92,Pipeline,Approval,3-tier approval: Concept → Draft → Final,Each stage has checklist + named reviewer,Formal approval = accountability,Approval prevents scope creep,All,High
+93,Pipeline,Rejection,Reject below threshold on any dimension,Min 4/5 on perspective and scale,Low scores get expensive in engine,Threshold = quality bar,All,High
+94,Pipeline,Documentation,Turn successful generations into rules,Write down: canvas, angle, palette, shadow, export,Acceptance checklist from experience,Documentation = prevents relearning,All,High
+95,Pipeline,Cleanup,Clean exports before engine integration,Remove metadata, convert profiles, flatten layers,Dirty exports cause import errors,Standardized export pipeline,All,High
+96,Pipeline,Metadata,Embed asset metadata in filename and/or sidecar JSON,Type, version, author, palette used,Metadata = asset intelligence,Metadata = searchable asset library,All,Medium
+97,Pipeline,Backup,Keep originals before any optimization or compression,Original quality preserved for re-export,Lossy compression is permanent,Originals = future flexibility,All,Medium
+98,Pipeline,Reference,Build reference board before starting production,3-5 reference images per asset type,Reference = alignment tool,Reference board = shared vision,All,High
+99,Pipeline,TestInEngine,Test in target engine before batch commitment,Engine lighting/view changes everything,Screenies ≠ engine reality,Preview in engine = confident commitment,All,High
+100,Pipeline,Feedback,Build feedback loop: generation → review → refine → template,Each iteration improves the template,Template improvement = compounding quality,Template = institutional knowledge,All,High

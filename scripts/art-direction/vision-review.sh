@@ -1,0 +1,632 @@
+#!/usr/bin/env bash
+# =============================================================================
+# vision-review.sh — Claude Vision-Powered Art Quality Gate
+# =============================================================================
+# Usage:
+#   vision-review.sh review <image-path> [--style-guide <json-path>]
+#   vision-review.sh batch <glob-pattern> [--report]
+#   vision-review.sh score <image-path> --dimensions <csv-of-dims>
+#
+# Requires: claude ( Anthropic CLI with vision support )
+# =============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FORGEWRIGHT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ASSET_TYPE="${ASSET_TYPE:-ui}"  # ui | game-2d | game-3d
+PROJECT_STYLE_GUIDE="${PROJECT_STYLE_GUIDE:-"$FORGEWRIGHT_DIR/.forgewright/style-guide.json"}"
+SCORES_DIR="${FORGEWRIGHT_DIR}/.forgewright/art-reviews"
+
+# ---- helpers ----------------------------------------------------------------
+
+log()  { printf "[vision-review] %s\n" "$*"; }
+warn() { printf "[vision-review] WARNING: %s\n" "$*" >&2; }
+die()  { printf "[vision-review] ERROR: %s\n" "$*" >&2; exit 1; }
+
+need() { command -v "$1" &>/dev/null || die "Required: $1 (not found in PATH)"; }
+
+# Load style guide if exists
+load_style_guide() {
+    if [[ -f "$PROJECT_STYLE_GUIDE" ]]; then
+        log "Loading style guide: $PROJECT_STYLE_GUIDE"
+        cat "$PROJECT_STYLE_GUIDE"
+    else
+        log "No style guide found at $PROJECT_STYLE_GUIDE — using general design principles"
+        echo "{}"
+    fi
+}
+
+# Build review prompt for UI assets
+build_ui_prompt() {
+    local image_path="$1"
+    local style_guide="$2"
+
+    cat <<'PROMPT'
+You are an expert Art Director reviewing a UI/UX design.
+
+## Review Context:
+- Project type: [from style guide or general web app]
+- Target platform: [from style guide or responsive web]
+- Intended use: UI screen / component / landing page
+
+## Project Style Guide:
+STYLE_GUIDE_PLACEHOLDER
+
+## Review Task:
+Analyze the provided image against ALL criteria below. Be specific and honest.
+Rate each dimension 1-10 where:
+- 1-3: Major issues, reject or major revision needed
+- 4-6: Acceptable but needs improvement
+- 7-8: Good quality, minor refinements only
+- 9-10: Excellent, production-ready
+
+### Dimensions to Rate:
+
+1. **Color Harmony** (weight 15%): Does it use a cohesive palette? Are color combinations harmonious? Is contrast adequate (4.5:1 for text)?
+2. **Style Consistency** (weight 15%): Does it feel cohesive or does it look like mixed styles? Is the design language consistent?
+3. **Readability** (weight 20%): Is text clear and legible? Is hierarchy obvious? Are interactive elements clearly actionable? WCAG AA compliant?
+4. **AI Tells** (weight 20%): Any of these AI clichés?
+   - Purple/blue neon glow effects
+   - 3 equal columns of cards
+   - Centered hero section with gradient text
+   - Generic font (Inter as default)
+   - Circular spinner loading indicator
+   - Pure black #000000 backgrounds
+   - Fake round numbers (99.99%, $9.99)
+   - Generic placeholder names (John Doe, Acme Corp, SmartFlow)
+   - Default shadcn/ui without customization
+   - AI buzzwords in copy (Elevate, Seamless, Unleash, Next-Gen)
+   - Outer glow box-shadows
+   - Broken/placeholder image URLs
+   - Gradient text headers
+5. **Composition** (weight 15%): Is the layout balanced? Is spacing consistent? Does it follow a grid? Is the visual rhythm pleasing?
+6. **Technical Quality** (weight 15%): Are edges clean? Is resolution appropriate? Any artifacts, compression issues, or broken elements?
+
+### Verdict Thresholds:
+- 8.0-10.0 = APPROVE (ready for production)
+- 6.0-7.9 = REVISE (address issues, re-review)
+- 4.0-5.9 = REVISE (address HIGH+ issues)
+- 0.0-3.9 = REJECT (regenerate with different approach)
+
+**Critical rule:** ANY dimension scored 1-3 = automatic REJECT regardless of total score.
+
+### Output Format:
+Return a JSON object with this exact structure:
+
+```json
+{
+  "image": "FILENAME_ONLY",
+  "scores": {
+    "color_harmony": 0-10,
+    "style_consistency": 0-10,
+    "readability": 0-10,
+    "ai_tells": 0-10,
+    "composition": 0-10,
+    "technical": 0-10
+  },
+  "weighted_score": 0.0-10.0,
+  "verdict": "APPROVE|REVISE|REJECT",
+  "issues": [
+    {
+      "dimension": "dimension_name",
+      "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+      "issue": "Specific description of the problem",
+      "evidence": "What you observed",
+      "fix": "Specific actionable fix",
+      "effort": "QUICK|MEDIUM|SIGNIFICANT"
+    }
+  ],
+  "strengths": ["strength 1", "strength 2"],
+  "regeneration_hints": ["hint 1", "hint 2"],
+  "summary": "2-3 sentence assessment for a non-designer"
+}
+```
+
+IMPORTANT: Return ONLY the JSON. No markdown, no explanation, no code fences.
+PROMPT
+}
+
+# Build review prompt for game 2D assets
+build_game2d_prompt() {
+    local image_path="$1"
+    local style_guide="$2"
+
+    cat <<'PROMPT'
+You are an expert Game Art Director reviewing a 2D game asset.
+
+## Review Context:
+- Asset type: character / sprite / background / tile / icon / UI element
+- Project type: [from style guide or general 2D game]
+- Intended use: [from style guide or gameplay display]
+
+## Project Style Guide:
+STYLE_GUIDE_PLACEHOLDER
+
+## Review Task:
+Analyze the provided image against ALL criteria below. Be specific and honest.
+Rate each dimension 1-10 where:
+- 1-3: Major issues, reject or major revision needed
+- 4-6: Acceptable but needs improvement
+- 7-8: Good quality, minor refinements only
+- 9-10: Excellent, production-ready
+
+### Dimensions to Rate:
+
+1. **Palette Adherence** (weight 15%): Are ALL colors from a limited palette (6-8 max)? Any colors outside the defined palette?
+2. **Anatomy** (weight 15%): Are proportions correct (head-to-body ratio)? Are hands/faces/limbs anatomically plausible? Any extra fingers (should be max 4 visible)? No broken joints or deformities?
+3. **Style Consistency** (weight 15%): Does it match the intended art style (pixel art / hand-drawn / vector / painted)? Is the linework/style cohesive?
+4. **AI Tells** (weight 15%): Any AI clichés?
+   - Perfect symmetrical faces
+   - Too-perfect anatomy (no stylistic personality)
+   - Same face syndrome (if multiple characters)
+   - Uniform element placement
+   - Overly smooth/photorealistic skin in stylized game
+   - Generic proportions (8-head heroic for everyone)
+5. **Silhouette** (weight 15%): Is the shape readable at small scale (16x16)? Does the silhouette stand out from the background? Is the form clear?
+6. **Engine Readiness** (weight 25%): Correct resolution for intended display size? Transparent background (if needed)? Proper file format? Clean edges, no artifacts?
+
+### Game-Specific Checks:
+- Pixel art: are pixels crisp (no anti-aliasing)? Is the palette strictly adhered to?
+- Hand-drawn: is the linework consistent in weight? Does it feel organic?
+- Background: does the perspective match the game camera? Is depth suggested correctly?
+- Character: is the pose readable? Is the character ID legible in silhouette?
+
+### Verdict Thresholds:
+- 8.0-10.0 = APPROVE (ready for production)
+- 6.0-7.9 = REVISE (address issues, re-review)
+- 4.0-5.9 = REVISE (address HIGH+ issues)
+- 0.0-3.9 = REJECT (regenerate)
+
+**Critical rule:** ANY dimension scored 1-3 = automatic REJECT regardless of total score.
+
+### Output Format:
+Return a JSON object with this exact structure:
+
+```json
+{
+  "image": "FILENAME_ONLY",
+  "scores": {
+    "palette_adherence": 0-10,
+    "anatomy": 0-10,
+    "style_consistency": 0-10,
+    "ai_tells": 0-10,
+    "silhouette": 0-10,
+    "engine_readiness": 0-10
+  },
+  "weighted_score": 0.0-10.0,
+  "verdict": "APPROVE|REVISE|REJECT",
+  "issues": [
+    {
+      "dimension": "dimension_name",
+      "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+      "issue": "Specific description of the problem",
+      "evidence": "What you observed",
+      "fix": "Specific actionable fix",
+      "effort": "QUICK|MEDIUM|SIGNIFICANT"
+    }
+  ],
+  "strengths": ["strength 1", "strength 2"],
+  "regeneration_hints": ["hint 1", "hint 2"],
+  "summary": "2-3 sentence assessment for a game developer"
+}
+```
+
+IMPORTANT: Return ONLY the JSON. No markdown, no explanation, no code fences.
+PROMPT
+}
+
+# Build review prompt for game 3D assets
+build_game3d_prompt() {
+    local image_path="$1"
+    local style_guide="$2"
+
+    cat <<'PROMPT'
+You are an expert Game Art Director reviewing a 3D game asset.
+
+## Review Context:
+- Asset type: character / environment / prop / lighting scene
+- Project type: [from style guide or general 3D game]
+- Intended use: [from style guide or gameplay display]
+
+## Project Style Guide:
+STYLE_GUIDE_PLACEHOLDER
+
+## Review Task:
+Analyze the provided image against ALL criteria below. Be specific and honest.
+Rate each dimension 1-10 where:
+- 1-3: Major issues, reject or major revision needed
+- 4-6: Acceptable but needs improvement
+- 7-8: Good quality, minor refinements only
+- 9-10: Excellent, production-ready
+
+### Dimensions to Rate:
+
+1. **Lighting Consistency** (weight 20%): Does the lighting direction match the scene setup? Are shadows soft/hard correctly? Is rim lighting appropriate? Is ambient color consistent?
+2. **Material Accuracy** (weight 20%): Do materials look correct for their type?
+   - Metal: reflective with environment tint
+   - Grass/foliage: matte, flat shading
+   - Stone: matte with edge highlighting
+   - Fabric: soft matte, no reflections
+   - Glass: transparent with refraction
+   - Organic: subtle subsurface on edges
+3. **Perspective** (weight 15%): Does it match the intended camera angle (isometric, first-person, top-down)? Correct FOV? No perspective distortion?
+4. **Scale** (weight 15%): Are relative sizes correct? Door human-scale? Props proportional to characters? No tiny/giant anomalies?
+5. **Technical Quality** (weight 15%): Appropriate polygon density? Clean topology? No texture stretching? No z-fighting or clipping?
+6. **AI Tells** (weight 15%): Any AI material artifacts?
+   - Too-clean / plastic-perfect surfaces
+   - Uniform texture patterns without variation
+   - Perfect symmetry (no wear or imperfection)
+   - All-warm or all-cool lighting
+   - Missing fingerprints/grime on touched surfaces
+
+### Verdict Thresholds:
+- 8.0-10.0 = APPROVE
+- 6.0-7.9 = REVISE
+- 4.0-5.9 = REVISE
+- 0.0-3.9 = REJECT
+
+**Critical rule:** ANY dimension scored 1-3 = automatic REJECT.
+
+### Output Format:
+Return JSON only:
+
+```json
+{
+  "image": "FILENAME_ONLY",
+  "scores": {
+    "lighting_consistency": 0-10,
+    "material_accuracy": 0-10,
+    "perspective": 0-10,
+    "scale": 0-10,
+    "technical_quality": 0-10,
+    "ai_tells": 0-10
+  },
+  "weighted_score": 0.0-10.0,
+  "verdict": "APPROVE|REVISE|REJECT",
+  "issues": [...],
+  "strengths": [...],
+  "regeneration_hints": [...],
+  "summary": "..."
+}
+```
+PROMPT
+}
+
+# Run Claude review on a single image
+review_image() {
+    local image_path="$1"
+    local style_guide_path="${2:-}"
+    local asset_type="${3:-$ASSET_TYPE}"
+
+    need "claude"
+
+    if [[ ! -f "$image_path" ]]; then
+        die "Image not found: $image_path"
+    fi
+
+    local image_name
+    image_name="$(basename "$image_path")"
+
+    log "Reviewing: $image_name (type: $asset_type)"
+
+    local style_guide_json
+    style_guide_json="$(load_style_guide)"
+
+    local prompt_builder="build_${asset_type}_prompt"
+    local prompt
+    prompt="$("$prompt_builder" "$image_path" "$style_guide_json" | \
+        sed "s|STYLE_GUIDE_PLACEHOLDER|$style_guide_json|g")"
+
+    # Run Claude with vision
+    local result
+    result=$(claude -p "$prompt" --image "$image_path" 2>/dev/null | \
+        sed -n '/^{/,/^}$/p' || true)
+
+    if [[ -z "$result" ]]; then
+        warn "Claude returned no JSON — check if claude CLI supports images"
+        die "Review failed for $image_name"
+    fi
+
+    # Validate JSON
+    if ! echo "$result" | python3 -c "import json,sys; json.load(sys.stdin)" 2>/dev/null; then
+        warn "Claude returned invalid JSON — attempting cleanup"
+        # Try to extract JSON from response
+        result=$(echo "$result" | sed -n '/{/,/}/p' | head -1)
+        if ! echo "$result" | python3 -c "import json,sys; json.load(sys.stdin)" 2>/dev/null; then
+            die "Could not parse Claude response as JSON"
+        fi
+    fi
+
+    echo "$result"
+}
+
+# Calculate weighted score from dimension scores
+calc_weighted_score() {
+    local asset_type="$1"
+    local scores_json="$2"
+
+    python3 - <<'PYEOF'
+import json, sys
+
+data = json.loads(sys.stdin.read())
+scores = data.get("scores", {})
+
+weights = {
+    "ui": {
+        "color_harmony": 0.15,
+        "style_consistency": 0.15,
+        "readability": 0.20,
+        "ai_tells": 0.20,
+        "composition": 0.15,
+        "technical": 0.15,
+    },
+    "game-2d": {
+        "palette_adherence": 0.15,
+        "anatomy": 0.15,
+        "style_consistency": 0.15,
+        "ai_tells": 0.15,
+        "silhouette": 0.15,
+        "engine_readiness": 0.25,
+    },
+    "game-3d": {
+        "lighting_consistency": 0.20,
+        "material_accuracy": 0.20,
+        "perspective": 0.15,
+        "scale": 0.15,
+        "technical_quality": 0.15,
+        "ai_tells": 0.15,
+    }
+}
+
+w = weights.get("ui", {})  # default
+if scores:
+    # Detect asset type from available keys
+    if "palette_adherence" in scores:
+        w = weights["game-2d"]
+    elif "lighting_consistency" in scores:
+        w = weights["game-3d"]
+    else:
+        w = weights["ui"]
+
+total = 0.0
+for dim, weight in w.items():
+    total += scores.get(dim, 0) * weight
+
+data["weighted_score"] = round(total, 1)
+
+# Verdict
+if total >= 8.0:
+    data["verdict"] = "APPROVE"
+elif total >= 6.0:
+    data["verdict"] = "REVISE"
+else:
+    data["verdict"] = "REJECT"
+
+# Any 1-3 = auto reject
+for dim, score in scores.items():
+    if score <= 3:
+        data["verdict"] = "REJECT"
+        break
+
+print(json.dumps(data, indent=2))
+PYEOF
+}
+
+# Print human-readable report
+print_report() {
+    local json="$1"
+    local image_name="$2"
+
+    python3 - <<'PYEOF'
+import json, sys, os
+
+data = json.loads(sys.stdin.read())
+scores = data.get("scores", {})
+verdict = data.get("verdict", "UNKNOWN")
+weighted = data.get("weighted_score", 0.0)
+issues = data.get("issues", [])
+strengths = data.get("strengths", [])
+hints = data.get("regeneration_hints", [])
+summary = data.get("summary", "")
+
+# Color codes
+GREEN = "\033[0;32m"
+YELLOW = "\033[0;33m"
+RED = "\033[0;31m"
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+vcolor = GREEN if verdict == "APPROVE" else (YELLOW if verdict == "REVISE" else RED)
+
+print(f"\n{'='*70}")
+print(f"{BOLD}VISION REVIEW REPORT — {os.path.basename(data.get('image', 'unknown'))}{RESET}")
+print(f"{'='*70}")
+
+print(f"\n{BOLD}VERDICT: {vcolor}{verdict}{RESET}  |  Score: {BOLD}{weighted}/10{RESET}")
+
+print(f"\n{BOLD}Scores:{RESET}")
+for dim, score in scores.items():
+    bar = "█" * int(score) + "░" * (10 - int(score))
+    color = GREEN if score >= 8 else (YELLOW if score >= 6 else RED)
+    print(f"  {dim:<25} {color}{bar}{RESET} {score}/10")
+
+if issues:
+    print(f"\n{BOLD}Issues ({len(issues)}):{RESET}")
+    for issue in issues:
+        sev = issue.get("severity", "MEDIUM")
+        sev_color = RED if sev in ("CRITICAL", "HIGH") else (YELLOW if sev == "MEDIUM" else "")
+        print(f"  [{sev_color}{sev:<8}{RESET}] {issue.get('issue', '')}")
+        print(f"    → {issue.get('fix', 'No fix suggested')}")
+        print(f"    Effort: {issue.get('effort', 'UNKNOWN')}")
+
+if strengths:
+    print(f"\n{BOLD}Strengths:{RESET}")
+    for s in strengths:
+        print(f"  ✓ {s}")
+
+if hints:
+    print(f"\n{BOLD}Regeneration Hints:{RESET}")
+    for h in hints:
+        print(f"  • {h}")
+
+if summary:
+    print(f"\n{BOLD}Summary:{RESET}")
+    print(f"  {summary}")
+
+print(f"\n{'='*70}")
+PYEOF
+}
+
+# Save report to file
+save_report() {
+    local json="$1"
+    local image_path="$2"
+    mkdir -p "$SCORES_DIR"
+    local report_file="$SCORES_DIR/$(basename "$image_path").review.json"
+    echo "$json" | python3 -m json.tool > "$report_file" 2>/dev/null || echo "$json" > "$report_file"
+    log "Report saved: $report_file"
+}
+
+# ---- commands ----------------------------------------------------------------
+
+cmd_review() {
+    local image_path="${1:-}"
+    local style_guide="${2:-}"
+    local asset_type="${ASSET_TYPE:-ui}"
+
+    if [[ -z "$image_path" ]]; then
+        die "Usage: vision-review.sh review <image-path> [--style-guide <path>] [--type ui|game-2d|game-3d]"
+    fi
+
+    if [[ ! -f "$image_path" ]]; then
+        die "Image not found: $image_path"
+    fi
+
+    local result
+    result=$(review_image "$image_path" "$style_guide" "$asset_type")
+    result=$(echo "$result" | calc_weighted_score "$asset_type" "$(echo "$result" | calc_weighted_score dummy)")
+
+    print_report "$(echo "$result")" "$image_path"
+    save_report "$result" "$image_path"
+}
+
+cmd_batch() {
+    local glob_pattern="${1:-}"
+    local report_mode="${2:-}"
+
+    if [[ -z "$glob_pattern" ]]; then
+        die "Usage: vision-review.sh batch <glob-pattern> [--report]"
+    fi
+
+    mkdir -p "$SCORES_DIR/batch-$(date +%Y%m%d-%H%M%S)"
+    local batch_dir="$SCORES_DIR/batch-$(date +%Y%m%d-%H%M%S)"
+    local approve=0 revise=0 reject=0 total=0
+
+    for img in $glob_pattern; do
+        [[ -f "$img" ]] || continue
+        total=$((total + 1))
+
+        log "--- Batch item $total: $(basename "$img") ---"
+        local result
+        result=$(review_image "$img" "" "$ASSET_TYPE")
+
+        echo "$result" | calc_weighted_score "$ASSET_TYPE" >/dev/null 2>&1
+        result=$(echo "$result" | calc_weighted_score "$ASSET_TYPE")
+
+        local verdict
+        verdict=$(echo "$result" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('verdict','UNKNOWN'))" 2>/dev/null || echo "UNKNOWN")
+
+        case "$verdict" in
+            APPROVE) approve=$((approve + 1)) ;;
+            REVISE)  revise=$((revise + 1)) ;;
+            REJECT)  reject=$((reject + 1)) ;;
+        esac
+
+        # Save individual report
+        echo "$result" > "$batch_dir/$(basename "$img").review.json"
+
+        # Print summary line
+        local score
+        score=$(echo "$result" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('weighted_score',0))" 2>/dev/null || echo "N/A")
+        log "[$verdict] $(basename "$img") — Score: $score/10"
+    done
+
+    # Summary
+    log "--- Batch Summary ---"
+    log "Total: $total | APPROVE: $approve | REVISE: $revise | REJECT: $reject"
+
+    # Generate batch report
+    if [[ "$report_mode" == "--report" ]] || [[ "$report_mode" == "report" ]]; then
+        local batch_report="$batch_dir/batch-summary.json"
+        python3 - <<PYEOF
+import json
+report = {
+    "batch_dir": "$batch_dir",
+    "total": $total,
+    "approve": $approve,
+    "revise": $revise,
+    "reject": $reject,
+    "approval_rate": round($approve / $total * 100, 1) if $total > 0 else 0,
+    "timestamp": "$(date -Iseconds)"
+}
+with open("$batch_report", "w") as f:
+    json.dump(report, f, indent=2)
+print(json.dumps(report, indent=2))
+PYEOF
+        log "Batch report: $batch_report"
+    fi
+}
+
+# ---- main --------------------------------------------------------------------
+
+main() {
+    local cmd="${1:-}"
+    shift || true
+
+    mkdir -p "$SCORES_DIR"
+
+    case "$cmd" in
+        review)
+            cmd_review "$@"
+            ;;
+        batch)
+            cmd_batch "$@"
+            ;;
+        ""|help|-h|--help)
+            cat <<'EOF'
+vision-review.sh — Claude Vision-Powered Art Quality Gate
+
+Usage:
+  vision-review.sh review <image-path> [--style-guide <json>] [--type ui|game-2d|game-3d]
+  vision-review.sh batch <glob-pattern> [--report]
+  vision-review.sh help
+
+Examples:
+  # Review a UI mockup
+  vision-review.sh review screenshot.png
+
+  # Review with style guide
+  vision-review.sh review screenshot.png --style-guide ./my-style.json
+
+  # Review game 2D asset
+  ASSET_TYPE=game-2d vision-review.sh review character-sprite.png
+
+  # Batch review all assets in folder
+  vision-review.sh batch "./assets/*.png" --report
+
+Environment:
+  ASSET_TYPE          Asset type: ui (default), game-2d, game-3d
+  PROJECT_STYLE_GUIDE Path to style guide JSON (default: .forgewright/style-guide.json)
+
+Output:
+  Reports saved to .forgewright/art-reviews/
+EOF
+            ;;
+        *)
+            die "Unknown command: $cmd. Use 'help' for usage."
+            ;;
+    esac
+}
+
+main "$@"

@@ -160,12 +160,21 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
    bash <forgewright>/.antigravity/plugins/production-grade/scripts/forgewright-mcp-setup.sh
    ```
 
-   This single command:
-   - Analyzes the project (GitNexus index via `gitnexus analyze`)
-   - Generates the MCP server
-   - Creates the workspace manifest
-   - Updates global config (Cursor/Claude)
-   - Verifies installation
+   This single command sets up Forgewright MCP for **ALL three platforms simultaneously**:
+   - **Cursor**: `~/.cursor/mcp.json`
+   - **Claude Code**: `~/.claude/settings.json` (mcpServers key)
+   - **Antigravity**: MCP workspace isolation via `~/.cursor/projects/<hash>/mcps/`
+
+   The script auto-detects which platforms are available and configures them all with identical settings — the same MCP server path, the same launchers, the same workspace detection logic.
+
+   To set up individual platforms:
+   ```bash
+   bash forgewright/scripts/forgewright-mcp-setup.sh --cursor       # Cursor only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --claude-code # Claude Code only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity  # Antigravity only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --check       # Status check
+   bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose     # Full diagnostics
+   ```
 
 3. **GitNexus Setup** (if not already done):
    ```bash
@@ -184,21 +193,21 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 - No more "which script should I run?" confusion
 - Works consistently across all project types (submodule, standalone, worktree)
 
-### ⚠️ CRITICAL: Immutable Global MCP Configuration
+### Universal MCP Setup — One Server, All Platforms
 
-**The global MCP configuration (`~/.cursor/mcp.json` or equivalent) is the SINGLE SOURCE OF TRUTH for Forgewright MCP settings.**
+**The canonical MCP server lives at:** `.forgewright/mcp-server/server.ts`
 
-When Forgewright is installed as a **submodule** in any project:
-- **DO NOT modify** `~/.cursor/mcp.json` or global MCP settings
-- **DO NOT generate** local `.cursor/mcp.json` in the project
-- **DO NOT adjust** the `forgewright` server path to point to a project's local `.forgewright/mcp-server/`
-- The global MCP path **MUST always point to** the canonical Forgewright installation
+**The setup script (`forgewright-mcp-setup.sh`) configures ALL platforms to reference this single canonical server:**
 
-**Why:** The global MCP config controls Forgewright's behavior across ALL projects. If a submodule's setup script modifies the global config to point to its local MCP server, it breaks cross-project consistency and corrupts the global installation.
+| Platform | Config File | What gets updated |
+|----------|-------------|-------------------|
+| **Cursor** | `~/.cursor/mcp.json` | `forgewright` + `gitnexus` entries |
+| **Claude Code** | `~/.claude/settings.json` | `mcpServers.forgewright` + `mcpServers.gitnexus` |
+| **Antigravity** | `~/.cursor/projects/<hash>/mcps/` | MCP workspace isolation |
 
-**If a project's `.forgewright/mcp-server/` needs to differ from global:**
-- Use environment variables (`FORGEWRIGHT_WORKSPACE`, `FORGEWRIGHT_DIR`) to pass project context
-- Never modify the global MCP server path
+**Why this works:** All three platforms use `npx tsx` with the same absolute path to the canonical server. The server auto-detects workspace from `FORGEWRIGHT_WORKSPACE` env var or git root, so it works correctly from any project.
+
+**The old warning (local submodule servers) is DEPRECATED.** The new approach generates ONE canonical server and all platforms reference it. This ensures consistency across all three AI clients.
 
 ## Auto-Update Check
 
@@ -240,6 +249,8 @@ All 56 skills are in the `skills/` directory:
 | Data Scientist | `skills/data-scientist/SKILL.md` |
 | Technical Writer | `skills/technical-writer/SKILL.md` |
 | UI Designer | `skills/ui-designer/SKILL.md` |
+| Art Director | `skills/art-director/SKILL.md` — Vision-powered art direction for UI/UX and game assets |
+| Vision Review | `skills/vision-review/SKILL.md` — Claude vision quality gate for AI-generated art |
 | Mobile Engineer | `skills/mobile-engineer/SKILL.md` |
 | Mobile Tester | `skills/mobile-tester/SKILL.md` |
 | API Designer | `skills/api-designer/SKILL.md` |
@@ -346,7 +357,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (16341 symbols, 24506 relationships, 256 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (16259 symbols, 24424 relationships, 256 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

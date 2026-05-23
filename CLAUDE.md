@@ -302,43 +302,31 @@ See `skills/` directory for full list:
 
 ## MCP Setup (Level 4)
 
-### ⚠️ CRITICAL: Immutable Global Configuration
+### Universal MCP Setup — One Server, All Platforms
 
-**The global MCP configuration (`~/.cursor/mcp.json` or equivalent) is the SINGLE SOURCE OF TRUTH for Forgewright MCP settings.**
+**The canonical MCP server lives at:** `.forgewright/mcp-server/server.ts`
 
-When Forgewright is installed as a **submodule** in any project:
-- **DO NOT modify** `~/.cursor/mcp.json` or global MCP settings
-- **DO NOT generate** local `.cursor/mcp.json` in the project
-- **DO NOT adjust** the `forgewright` server path to point to a project's local `.forgewright/mcp-server/`
-- The global MCP path **MUST always point to** the canonical Forgewright installation
+**The setup script (`forgewright-mcp-setup.sh`) configures ALL platforms to reference this single canonical server:**
 
-**Why:** The global MCP config controls Forgewright's behavior across ALL projects. If a submodule's setup script modifies the global config to point to its local MCP server, it breaks cross-project consistency and corrupts the global installation.
+| Platform | Config File | What gets updated |
+|----------|-------------|-------------------|
+| **Cursor** | `~/.cursor/mcp.json` | `forgewright` + `gitnexus` entries |
+| **Claude Code** | `~/.claude/settings.json` | `mcpServers.forgewright` + `mcpServers.gitnexus` |
+| **Antigravity** | `~/.cursor/projects/<hash>/mcps/` | MCP workspace isolation |
 
-**If a project's `.forgewright/mcp-server/` needs to differ from global:**
-- Use environment variables (`FORGEWRIGHT_WORKSPACE`, `FORGEWRIGHT_DIR`) to pass project context
-- Never modify the global MCP server path
+**Why this works:** All three platforms use `npx tsx` with the same absolute path to the canonical server. The server auto-detects workspace from `FORGEWRIGHT_WORKSPACE` env var or git root, so it works correctly from any project.
 
-When the user needs to set up or check MCP for a project, run:
-
+**Setup commands:**
 ```bash
-bash <forgewright>/scripts/forgewright-mcp-setup.sh
-```
+# Setup all platforms at once
+bash scripts/forgewright-mcp-setup.sh
 
-**Single command does everything:**
-1. Detect forgewright location (standalone, submodule, or Antigravity plugin)
-2. Generate/verify MCP server
-3. Create workspace manifest
-4. Update global config (Claude Desktop or Cursor)
-5. Verify installation
-
-**Quick status check:**
-```bash
-bash scripts/forgewright-mcp-setup.sh --check
-```
-
-**Diagnose problems:**
-```bash
-bash scripts/forgewright-mcp-setup.sh --diagnose
+# Individual platforms
+bash scripts/forgewright-mcp-setup.sh --cursor       # Cursor only
+bash scripts/forgewright-mcp-setup.sh --claude-code  # Claude Code only
+bash scripts/forgewright-mcp-setup.sh --antigravity  # Antigravity only
+bash scripts/forgewright-mcp-setup.sh --check        # Status check
+bash scripts/forgewright-mcp-setup.sh --diagnose     # Full diagnostics
 ```
 
 ## Self-Check
@@ -617,7 +605,7 @@ Goals survive context resets:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (16341 symbols, 24506 relationships, 256 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (16259 symbols, 24424 relationships, 256 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
