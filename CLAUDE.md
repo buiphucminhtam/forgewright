@@ -645,3 +645,39 @@ This project is indexed by GitNexus as **forgewright** (16259 symbols, 24424 rel
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+<!-- mcp:start -->
+# MCP Setup — Canonical Server Rule
+
+## CRITICAL: One Canonical MCP Server, All Platforms
+
+**Forgewright maintains exactly ONE canonical MCP server at:**
+```
+~/.forgewright/mcp-server/server.ts
+```
+
+**ALL global configs (Cursor, Claude Code) MUST point to this path — NEVER to a submodule path.**
+
+| Platform | Config | Path Written |
+|----------|--------|--------------|
+| Cursor | `~/.cursor/mcp.json` | `~/.forgewright/mcp-server/server.ts` |
+| Claude Code | `~/.claude/settings.json` | `~/.forgewright/mcp-server/server.ts` |
+
+**Why:** The global MCP config is the single source of truth shared across ALL projects. If a submodule's setup script writes its own path (e.g., `/project/submodule/forgewright/...`) into the global config, it breaks every other project.
+
+**The rule:**
+- **NEVER** write a submodule Forgewright path into `~/.cursor/mcp.json` or `~/.claude/settings.json`
+- **ALWAYS** run `forgewright-mcp-setup.sh` from the canonical Forgewright installation to update global configs
+- Submodule projects generate a `.antigravity/mcp-manifest.json` that describes the project context — but the server they use is always `~/.forgewright/mcp-server/`
+
+**Setup command:**
+```bash
+bash /Users/buiphucminhtam/GitHub/forgewright/scripts/forgewright-mcp-setup.sh
+```
+
+**Quick check:**
+```bash
+bash /Users/buiphucminhtam/GitHub/forgewright/scripts/forgewright-mcp-setup.sh --check
+```
+
+<!-- mcp:end -->

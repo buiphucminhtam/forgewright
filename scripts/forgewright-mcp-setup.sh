@@ -270,6 +270,41 @@ EOF
     fi
 }
 
+# ─── Canonical MCP Server ─────────────────────────────────────────────────────
+# The canonical MCP server lives at ~/.forgewright/mcp-server/
+# ALL global configs (Cursor, Claude Code) MUST point here — NEVER a submodule path.
+# Submodule projects get their own .antigravity/mcp-manifest.json but the server
+# they reference is always the canonical ~/.forgewright/mcp-server/server.ts.
+
+CANONICAL_SERVER_DIR="$HOME/.forgewright/mcp-server"
+CANONICAL_SERVER_TS="$CANONICAL_SERVER_DIR/server.ts"
+
+sync_canonical_server() {
+    local src_dir="${FORGEWRIGHT_DIR}/.forgewright/mcp-server"
+    if [[ ! -d "$src_dir" ]]; then
+        log_error "Source MCP server not found: $src_dir"
+        return 1
+    fi
+
+    log_step "Syncing MCP server to canonical location..."
+    mkdir -p "$CANONICAL_SERVER_DIR"
+
+    # Sync files (preserve node_modules if already installed)
+    if [[ ! -d "$CANONICAL_SERVER_DIR/node_modules" ]] || [[ -d "$src_dir/node_modules" ]] && [[ -z "$(ls -A "$CANONICAL_SERVER_DIR/node_modules" 2>/dev/null)" ]]; then
+        rsync -a --exclude='node_modules' "$src_dir/" "$CANONICAL_SERVER_DIR/" 2>/dev/null || cp -r "$src_dir/"* "$CANONICAL_SERVER_DIR/" 2>/dev/null
+    else
+        rsync -a --exclude='node_modules' "$src_dir/" "$CANONICAL_SERVER_DIR/" 2>/dev/null || cp -r "$src_dir/"* "$CANONICAL_SERVER_DIR/" 2>/dev/null
+    fi
+
+    # Ensure node_modules is usable (reinstall if broken)
+    if [[ ! -f "$CANONICAL_SERVER_DIR/node_modules/.bin/tsx" ]]; then
+        log_info "  Reinstalling dependencies..."
+        (cd "$CANONICAL_SERVER_DIR" && npm install --silent 2>&1 | tail -2) || true
+    fi
+
+    log_ok "Canonical MCP server synced → $CANONICAL_SERVER_DIR"
+}
+
 # ─── Platform: Cursor ──────────────────────────────────────────────────────────
 
 CURSOR_CONFIG=""
@@ -277,6 +312,13 @@ CURSOR_CONFIG=""
 setup_cursor() {
     CURSOR_CONFIG="$HOME/.cursor/mcp.json"
     log_step "Setting up Cursor MCP..."
+
+    # CRITICAL: Always use CANONICAL path for global config, never submodule path
+    if [[ ! -f "$CANONICAL_SERVER_TS" ]]; then
+        log_error "Canonical MCP server not found: $CANONICAL_SERVER_TS"
+        log_info "  Run setup from the canonical forgewright installation first."
+        return 1
+    fi
 
     mkdir -p "$(dirname "$CURSOR_CONFIG")"
 
@@ -292,6 +334,7 @@ setup_cursor() {
     fi
 
     # Build new config with all servers
+    # NOTE: Uses CANONICAL_SERVER_TS — not $FORGEWRIGHT_DIR
     local new_config
     new_config=$(node -e "
 var fs = require('fs');
@@ -304,12 +347,12 @@ try {
 }
 if (!cfg.mcpServers) cfg.mcpServers = {};
 
-// forgewright MCP server (via tsx)
+// forgewright MCP server — CANONICAL PATH (do not change to submodule path)
 cfg.mcpServers['forgewright'] = {
     command: 'npx',
-    args: ['tsx', '$FORGEWRIGHT_DIR/.forgewright/mcp-server/server.ts'],
+    args: ['tsx', '$CANONICAL_SERVER_TS'],
     env: {
-        FORGEWRIGHT_WORKSPACE: '${PROJECT_ROOT}'
+        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
     }
 };
 
@@ -335,7 +378,7 @@ console.log(JSON.stringify(cfg, null, 2));
 
     echo "$new_config" > "$CURSOR_CONFIG"
     log_ok "Updated $CURSOR_CONFIG"
-    log_info "  forgewright → npx tsx (mcp-server/server.ts)"
+    log_info "  forgewright → npx tsx (CANONICAL: ~/.forgewright/mcp-server/)"
     log_info "  gitnexus    → /opt/homebrew/bin/gitnexus"
 }
 
@@ -346,6 +389,13 @@ CLAUDE_CODE_CONFIG=""
 setup_claude_code() {
     CLAUDE_CODE_CONFIG="$HOME/.claude/settings.json"
     log_step "Setting up Claude Code MCP..."
+
+    # CRITICAL: Always use CANONICAL path for global config, never submodule path
+    if [[ ! -f "$CANONICAL_SERVER_TS" ]]; then
+        log_error "Canonical MCP server not found: $CANONICAL_SERVER_TS"
+        log_info "  Run setup from the canonical forgewright installation first."
+        return 1
+    fi
 
     mkdir -p "$(dirname "$CLAUDE_CODE_CONFIG")"
 
@@ -361,6 +411,7 @@ setup_claude_code() {
     fi
 
     # Add MCP servers to existing config
+    # NOTE: Uses CANONICAL_SERVER_TS — not $FORGEWRIGHT_DIR
     local new_config
     new_config=$(node -e "
 var fs = require('fs');
@@ -373,10 +424,10 @@ try {
 }
 if (!cfg.mcpServers) cfg.mcpServers = {};
 
-// forgewright MCP server
+// forgewright MCP server — CANONICAL PATH (do not change to submodule path)
 cfg.mcpServers['forgewright'] = {
     command: 'npx',
-    args: ['tsx', '$FORGEWRIGHT_DIR/.forgewright/mcp-server/server.ts'],
+    args: ['tsx', '$CANONICAL_SERVER_TS'],
     env: {
         FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
     }
@@ -396,7 +447,7 @@ console.log(JSON.stringify(cfg, null, 2));
 
     echo "$new_config" > "$CLAUDE_CODE_CONFIG"
     log_ok "Updated $CLAUDE_CODE_CONFIG"
-    log_info "  forgewright → npx tsx (mcp-server/server.ts)"
+    log_info "  forgewright → npx tsx (CANONICAL: ~/.forgewright/mcp-server/)"
     log_info "  gitnexus    → /opt/homebrew/bin/gitnexus"
 }
 
@@ -438,22 +489,14 @@ setup_antigravity() {
     ANTIGRAVITY_CONFIG="$ag_server_dir"
     log_ok "Found Antigravity server: $ag_server_dir"
 
-    # The Antigravity server uses tool descriptor files — we need to update the
-    # server.ts path in the SERVER_METADATA or ensure the MCP server is generated.
-    # The main MCP server lives at:
-    #   ~/.cursor/projects/<hash>/mcps/user-forgewright/
-    #
-    # The server should auto-detect workspace. Let's update the MCP server
-    # generator to also generate a launcher for Antigravity.
-
-    # Check if there's a launcher script in the server dir
+    # The Antigravity launcher also uses CANONICAL_SERVER_TS
     local launcher="${ag_server_dir}/launcher.sh"
     if [[ ! -f "$launcher" ]]; then
-        # Create launcher that uses the forgewright MCP server
+        # Create launcher that uses the CANONICAL MCP server (never a submodule path)
         cat > "$launcher" <<LAUNCHER_EOF
 #!/usr/bin/env bash
 # Antigravity Forgewright MCP Launcher
-# Auto-detects workspace from git root or env
+# Uses CANONICAL server at ~/.forgewright/mcp-server/ (never a submodule path)
 set -euo pipefail
 
 # Auto-detect workspace
@@ -470,16 +513,10 @@ fi
 export FORGEWRIGHT_WORKSPACE="\$WORKSPACE"
 export FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR"
 
-exec npx tsx "$FORGEWRIGHT_DIR/.forgewright/mcp-server/server.ts"
+exec npx tsx "$CANONICAL_SERVER_TS"
 LAUNCHER_EOF
         chmod +x "$launcher"
         log_ok "Created Antigravity launcher: $launcher"
-    fi
-
-    # Also update the descriptor files to point to the new server
-    local server_ts="${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts"
-    if [[ -f "$server_ts" ]]; then
-        log_ok "MCP server source: $server_ts"
     fi
 
     log_ok "Antigravity MCP setup complete"
@@ -790,9 +827,10 @@ main() {
                 skip_mcp_generate=true
             fi
 
-            # Generate MCP server (once)
+            # Sync canonical MCP server first (MUST be done before platform setup)
             if [[ "$skip_mcp_generate" == "false" ]]; then
                 setup_mcp_server
+                sync_canonical_server
                 echo ""
                 verify_manifest || true
                 echo ""
@@ -800,6 +838,9 @@ main() {
                 echo ""
             else
                 log_ok "MCP server already exists (use --force to re-generate)"
+                # Still sync canonical server even when skipping generate
+                sync_canonical_server
+                echo ""
             fi
 
             # Setup platforms

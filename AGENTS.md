@@ -193,21 +193,31 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 - No more "which script should I run?" confusion
 - Works consistently across all project types (submodule, standalone, worktree)
 
-### Universal MCP Setup — One Server, All Platforms
+### Universal MCP Setup — Canonical Server Rule
 
-**The canonical MCP server lives at:** `.forgewright/mcp-server/server.ts`
+**The canonical MCP server lives at:** `~/.forgewright/mcp-server/server.ts`
 
-**The setup script (`forgewright-mcp-setup.sh`) configures ALL platforms to reference this single canonical server:**
+**CRITICAL — One Server, All Platforms:**
+- The global MCP configs (`~/.cursor/mcp.json`, `~/.claude/settings.json`) are **SHARED across ALL projects**
+- They MUST always point to `~/.forgewright/mcp-server/server.ts`
+- **NEVER** write a submodule Forgewright path (e.g., `/project/submodule/forgewright/.forgewright/mcp-server/`) into global configs
+- **ALWAYS** run `forgewright-mcp-setup.sh` from the canonical Forgewright installation to update global configs
 
-| Platform | Config File | What gets updated |
-|----------|-------------|-------------------|
-| **Cursor** | `~/.cursor/mcp.json` | `forgewright` + `gitnexus` entries |
+**Setup script (`forgewright-mcp-setup.sh`) behavior:**
+1. Syncs the MCP server from forgewright source → `~/.forgewright/mcp-server/`
+2. Writes `~/.cursor/mcp.json` pointing to canonical server
+3. Writes `~/.claude/settings.json` pointing to canonical server
+4. Submodule projects get `.antigravity/mcp-manifest.json` (project context only)
+
+**Platform configuration targets:**
+
+| Platform | Config File | Entry |
+|----------|-------------|-------|
+| **Cursor** | `~/.cursor/mcp.json` | `forgewright` + `gitnexus` |
 | **Claude Code** | `~/.claude/settings.json` | `mcpServers.forgewright` + `mcpServers.gitnexus` |
 | **Antigravity** | `~/.cursor/projects/<hash>/mcps/` | MCP workspace isolation |
 
-**Why this works:** All three platforms use `npx tsx` with the same absolute path to the canonical server. The server auto-detects workspace from `FORGEWRIGHT_WORKSPACE` env var or git root, so it works correctly from any project.
-
-**The old warning (local submodule servers) is DEPRECATED.** The new approach generates ONE canonical server and all platforms reference it. This ensures consistency across all three AI clients.
+**Why this works:** All platforms use `npx tsx` with the same absolute path to the canonical server at `~/.forgewright/mcp-server/`. The server auto-detects workspace from `FORGEWRIGHT_WORKSPACE` env var or git root, so it works correctly from any project regardless of where forgewright itself is installed.
 
 ## Auto-Update Check
 
