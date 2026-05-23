@@ -1754,6 +1754,738 @@ After EVERY skill completes (in any mode — Full Build, Feature, Harden, etc.),
 
 **For greenfield projects:** Level 2 is auto-satisfied (no baseline).
 
+### Detailed Quality Gate Levels
+
+#### Level 1: Build Quality
+
+| Check | Pass | Fail |
+|-------|------|------|
+| Code compiles | No errors | Any compilation error |
+| TypeScript/ESLint | No errors | Any lint error |
+| Dependencies resolved | All installed | Missing dependencies |
+| Basic syntax | Valid | Syntax errors |
+
+**Scoring:**
+- All pass (4/4): 25 points
+- Minor warnings only: 20 points
+- 1-2 minor errors: 10 points
+- 3+ errors or any major error: 0 points
+
+#### Level 2: Regression Quality (Brownfield Only)
+
+| Check | Pass | Fail |
+|-------|------|------|
+| Existing tests pass | 100% of baseline | Any test failure |
+| No protected path changes | None detected | Changes to protected paths |
+| No breaking API changes | Contracts preserved | Breaking changes |
+| No data loss | Data integrity preserved | Data corruption |
+
+**Scoring:**
+- All pass (4/4): 25 points
+- 3/4: 20 points
+- 2/4: 10 points
+- 1/4 or less: 0 points
+
+#### Level 3: Standards Quality
+
+| Check | Pass | Fail |
+|-------|------|------|
+| Naming conventions | Matches project | Violations |
+| Error handling | All edge cases | Silent failures |
+| Logging | Appropriate level | Missing/verbose |
+| Security | No vulnerabilities | Any security issue |
+| Documentation | Code documented | Missing docs |
+
+**Scoring:**
+- All pass (5/5): 25 points
+- 4/5: 22 points
+- 3/5: 15 points
+- 2/5: 8 points
+- 1/5 or less: 0 points
+
+#### Level 4: Traceability Quality
+
+| Check | Pass | Fail |
+|-------|------|------|
+| BRD coverage | 100% of requirements | Gaps found |
+| Acceptance criteria met | All verified | Missing criteria |
+| Test coverage | ≥ 80% | Below threshold |
+| No orphaned code | All code used | Dead code |
+| Dependencies tracked | All noted | Unknown deps |
+
+**Scoring:**
+- All pass (5/5): 25 points
+- 4/5: 22 points
+- 3/5: 15 points
+- 2/5: 8 points
+- 1/5 or less: 0 points
+
+### Quality Score Thresholds
+
+| Score | Grade | Action |
+|-------|-------|--------|
+| 95-100 | A+ | Exceptional, may have minor polish |
+| 90-94 | A | Production ready |
+| 85-89 | B+ | Good, minor improvements suggested |
+| 80-84 | B | Acceptable, improvements needed |
+| 70-79 | C | Below standard, significant improvements needed |
+| 60-69 | D | Poor, major rework required |
+| 0-59 | F | Unacceptable, must not proceed |
+
+**Threshold configuration in `.production-grade.yaml`:**
+```yaml
+quality:
+  block_score: 60   # Score below this = STOP
+  minimum_score: 90 # Score below this = WARN at gate
+  excellent_score: 95 # Score at or above = special recognition
+```
+
+### Session Handoff Protocol
+
+When context reaches 80% capacity or session needs to transfer:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ SESSION HANDOFF PROTOCOL │
+├─────────────────────────────────────────────────────────────────────┤
+│ │
+│ 1. GENERATE handoff document at .forgewright/handover-[date].md │
+│ │
+│ 2. INCLUDE in handoff: │
+│ - Goals accomplished │
+│ - What was done │
+│ - Key decisions made │
+│ - Blockers / open questions │
+│ - Next steps │
+│ │
+│ 3. START fresh session with only: │
+│ - Handover document │
+│ - Project brief │
+│ - Current task context │
+│ │
+│ 4. VERIFY handoff completeness: │
+│ - Can the new session resume without asking user to re-explain? │
+│ - Are all decisions documented? │
+│ - Are blockers clearly stated? │
+│ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**When to trigger handoff:**
+- Context at ≥ 80% capacity
+- Session exceeds 2 hours
+- User takes a break and returns
+- Multi-day project continuation
+
+### Token Budget Management
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ TOKEN BUDGET MANAGEMENT │
+├─────────────────────────────────────────────────────────────────────┤
+│ │
+│ Threshold Monitoring: │
+│ - 70% context → Begin aggressive compaction │
+│ - 80% context → Trigger checkpoint + handoff preparation │
+│ - 95% context → HALT and generate handoff │
+│ │
+│ Compaction Strategy: │
+│ - Replace verbose logs with summaries │
+│ - Remove redundant context │
+│ - Keep only essential decisions │
+│ - Archive intermediate artifacts │
+│ │
+│ Preservation Priority: │
+│ 1. Current task state │
+│ 2. Key architectural decisions │
+│ 3. Unresolved blockers │
+│ 4. Recent learnings │
+│ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Memory Integration Best Practices
+
+**Persistent Memory (ChromaDB + sentence-transformers):**
+- Store architectural decisions: `mem0-v2.py add "ARCH: [details]"`
+- Store project context: `mem0-v2.py add "PROJECT: [name]"`
+- Store technical learnings: `mem0-v2.py add "LESSON: [insight]"`
+
+**Session Memory (localStorage):**
+- Current task progress
+- Recently modified files
+- User preferences
+
+**Cross-Session Continuity:**
+- Project profile loaded at session start
+- Previous session learnings available
+- Long-term context preserved
+
+### Error Recovery Patterns
+
+| Error Type | Detection | Recovery |
+|-----------|-----------|----------|
+| Compilation failure | Build step fails | Read error, fix syntax, retry |
+| Test failure | QA step fails | Identify test, fix code, re-run |
+| Missing dependency | npm install fails | Install dependency, retry |
+| File conflict | Merge fails | Manual resolution, re-merge |
+| API contract violation | Integration fails | Update contract, sync teams |
+| Security vulnerability | Scan finds CVE | Apply patch or workaround |
+
+**Retry Limits:**
+- Compilation errors: 3 retries
+- Test failures: 3 retries (with fixes)
+- Missing deps: 2 retries
+- Merge conflicts: escalate to user
+- Security issues: 1 attempt, then escalate
+
+### Logging Standards
+
+Every skill execution should log:
+
+```markdown
+## Skill Execution Log
+
+**Skill:** [name]
+**Started:** [timestamp]
+**Ended:** [timestamp]
+**Duration:** [X] minutes
+
+**Actions Taken:**
+- [List of major actions]
+
+**Files Created:**
+- [List]
+
+**Files Modified:**
+- [List]
+
+**Decisions Made:**
+- [List with rationale]
+
+**Blockers Encountered:**
+- [List]
+
+**Quality Score:** [X]/100
+**Passed Quality Gate:** [Yes/No]
+
+**Handoff Notes:**
+- [Any context needed for next session]
+```
+
+### Metrics Collection
+
+Track these metrics per pipeline execution:
+
+```json
+{
+  "session_id": "uuid",
+  "timestamp": "ISO8601",
+  "mode": "full-build|feature|...",
+  "engagement": "express|standard|thorough|meticulous",
+  "execution": "sequential|parallel",
+  "duration_minutes": 0,
+  "skills_invoked": ["skill1", "skill2"],
+  "tasks_completed": 0,
+  "tasks_total": 0,
+  "quality_scores": {
+    "build": 0,
+    "harden": 0,
+    "overall": 0
+  },
+  "gates_approved": 0,
+  "gates_rejected": 0,
+  "errors_encountered": 0,
+  "retry_count": 0,
+  "user_approvals": 0
+}
+```
+
+### Performance Benchmarks
+
+| Metric | Target | Warning | Critical |
+|--------|--------|---------|----------|
+| Context utilization | < 70% | 70-80% | > 80% |
+| Task duration | < 30 min | 30-60 min | > 60 min |
+| Error rate | < 5% | 5-15% | > 15% |
+| Retry rate | < 10% | 10-20% | > 20% |
+| Quality score | > 90 | 80-90 | < 80 |
+
+### Dependency Injection Pattern
+
+For skills that need shared services:
+
+```typescript
+// Service container
+interface ServiceContainer {
+  logger: LoggerService;
+  memory: MemoryService;
+  config: ConfigService;
+  metrics: MetricsService;
+}
+
+// Inject via constructor
+class SoftwareEngineerSkill {
+  constructor(private services: ServiceContainer) {}
+
+  execute(context: SkillContext): SkillResult {
+    this.services.logger.info('Starting software engineer skill');
+    // ... implementation
+  }
+}
+```
+
+### Configuration Schema
+
+`.production-grade.yaml` full schema:
+
+```yaml
+# Project metadata
+project:
+  name: "My Project"
+  version: "0.1.0"
+  description: "Project description"
+
+# Feature flags
+features:
+  frontend: true        # Enable frontend development
+  mobile: false        # Enable mobile development
+  ai_ml: false         # Enable AI/ML features
+  skip_define_ba: false # Skip BA in DEFINE phase
+
+# Path overrides
+paths:
+  backend: "services"
+  frontend: "frontend"
+  tests: "tests"
+  docs: "docs"
+  infrastructure: "infrastructure"
+
+# Quality thresholds
+quality:
+  block_score: 60
+  minimum_score: 90
+  excellent_score: 95
+  coverage_threshold: 80
+
+# Pipeline settings
+pipeline:
+  engagement: "standard"  # express|standard|thorough|meticulous
+  execution: "parallel"    # sequential|parallel
+  max_workers: 4
+
+# Review settings
+review:
+  mode: "lean"           # full|lean|solo
+  auto_review: true
+
+# Coding level (1-10)
+codingLevel: 8
+
+# Brownfield settings
+brownfield:
+  protected_paths:
+    - "config/production/*"
+    - "scripts/deploy.sh"
+  baseline_branch: "main"
+
+# Game-specific (for Game Build mode)
+game:
+  engine: "unity"         # unity|unreal|godot|phaser|three
+  platform: "web"        # web|ios|android|steam
+  target_fps: 60
+  mobile_fps: 30
+
+# AI/ML settings
+ai:
+  model: "gpt-4"
+  temperature: 0.7
+  max_tokens: 4000
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `FORGEWRIGHT_WORKSPACE` | Project workspace path | Current directory |
+| `FORGEWRIGHT_SKIP_MEMORY` | Skip memory initialization | 0 |
+| `FORGEWRIGHT_LOCAL_MEMORY` | Use local memory | 1 |
+| `FORGEWRIGHT_DEBUG` | Enable debug logging | 0 |
+| `FORGEWRIGHT_MAX_RETRIES` | Max retry attempts | 3 |
+| `FORGEWRIGHT_TIMEOUT` | Skill timeout (seconds) | 600 |
+
+### Emergency Procedures
+
+**When pipeline encounters critical failure:**
+
+1. **Assess scope:** Isolate the failure point
+2. **Preserve state:** Save all progress to handoff document
+3. **Evaluate options:**
+   - Retry with fixes
+   - Skip failed task
+   - Abort and escalate
+4. **Communicate:** Report to user with options
+5. **Decide:** User selects course of action
+
+**Escalation criteria:**
+- Security vulnerability discovered
+- Data corruption risk
+- Budget/time overrun > 50%
+- Unresolvable blocker after 3 attempts
+
+### Cross-Skill Communication Protocol
+
+Skills communicate through structured artifacts:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ ARTIFACT CONTRACT │
+├─────────────────────────────────────────────────────────────────────┤
+│ │
+│ Each skill writes artifacts to: │
+│ .forgewright/<skill-name>/<artifact-name>.json │
+│ │
+│ Artifact structure: │
+│ { │
+│   "version": "1.0", │
+│   "skill": "skill-name", │
+│   "timestamp": "ISO8601", │
+│   "data": { ... skill-specific data ... } │
+│ } │
+│ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Standard artifacts:**
+
+| Artifact | From | To | Content |
+|----------|------|-----|---------|
+| `brd.json` | PM | Architect, BE, FE | User stories, acceptance criteria |
+| `architecture.json` | Architect | BE, FE, DevOps | Services, API contracts, data models |
+| `api-contracts.json` | Architect | BE, FE | Endpoint definitions, request/response schemas |
+| `test-plan.json` | QA | QA | Test cases, coverage targets |
+| `security-report.json` | Security | Security | Vulnerabilities, severity, recommendations |
+| `quality-report.json` | Review | Review | Code quality findings, patterns |
+| `delivery.json` | Any skill | Orchestrator | Task completion status |
+
+### Skill Invocation Patterns
+
+**Sequential pattern** (skills run one after another):
+```
+Skill A → Artifact A → Skill B → Artifact B → Skill C
+```
+
+**Parallel pattern** (skills run simultaneously):
+```
+┌─────────────┐
+│ Artifact A   │
+└─────────────┘
+       │
+   ┌───┴───┐
+   ▼       ▼
+┌───────┐ ┌───────┐
+│Skill A│ │Skill B│
+└───┬───┘ └───┬───┘
+    │         │
+    ▼         ▼
+┌───────┐ ┌───────┐
+│Artifact│ │Artifact│
+│   A   │ │   B   │
+└───┬───┘ └───┬───┘
+    │         │
+    └────┬────┘
+         ▼
+    ┌────────┐
+    │Merge   │
+    │Arbiter │
+    └────────┘
+```
+
+**Sequential with feedback:**
+```
+Skill A → Artifact A → Skill B → Test B → [Fail] → Skill B fix → Artifact B updated
+                                            ↓
+                                          [Pass]
+                                            ↓
+                                       Skill C
+```
+
+### Skill Health Monitoring
+
+Track skill performance over time:
+
+```json
+{
+  "skill_health": {
+    "software-engineer": {
+      "invocations": 15,
+      "avg_duration_minutes": 25,
+      "success_rate": 0.93,
+      "avg_quality_score": 88,
+      "last_failure": {
+        "timestamp": "2026-05-20",
+        "reason": "Timeout on large service",
+        "resolution": "Increased timeout, split service"
+      }
+    }
+  }
+}
+```
+
+**Health thresholds:**
+- Success rate < 80%: Investigate skill
+- Avg quality < 70%: Update skill guidance
+- Avg duration > 60 min: Optimize skill
+
+### Test Pyramid Implementation
+
+```
+                    ▲
+                   /█\      E2E: 5-10 tests
+                  / █ \     - Critical user flows
+                 /  █  \   - Login, purchase, core loop
+                /────█────\
+               /     █     \  Integration: 15-20 tests
+              /      █      \ - Service interactions
+             /───────█────────\ - Database operations
+            /        █         \ Unit: 50-100 tests
+           /         █          \ - Pure functions
+          /──────────█───────────\ - Formula calculations
+```
+
+**Unit test coverage targets:**
+- Business logic: 90%
+- Utility functions: 95%
+- State machines: 85%
+- Formatters/validators: 100%
+
+**Integration test coverage:**
+- API endpoints: 80%
+- Database operations: 70%
+- Message queues: 60%
+- External services (mocked): 90%
+
+**E2E test coverage:**
+- Critical paths: 100%
+- Happy path: 100%
+- Error recovery: 50%
+- Edge cases: 30%
+
+### Continuous Integration Template
+
+```yaml
+# .github/workflows/forgewright.yml
+name: Forgewright Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Run e2e tests
+        run: npm run test:e2e
+
+      - name: Check coverage
+        run: npm run test:coverage
+
+      - name: Security scan
+        run: npm audit --audit-level=high
+
+  build:
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: npm run build
+
+      - name: Docker build
+        run: docker build -t app:${{ github.sha }} .
+
+  deploy-staging:
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to staging
+        run: ./scripts/deploy.sh staging
+
+  deploy-production:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to production
+        run: ./scripts/deploy.sh production
+```
+
+### Deployment Checklist
+
+Before any deployment:
+
+- [ ] All tests passing
+- [ ] Security scan clean
+- [ ] Code review approved
+- [ ] Documentation updated
+- [ ] Rollback plan ready
+- [ ] Monitoring configured
+- [ ] Runbooks updated
+- [ ] Stakeholders notified
+
+### Monitoring & Observability
+
+**Metrics to track:**
+
+| Category | Metrics |
+|----------|---------|
+| **Business** | DAU, MAU, retention, conversion rate, revenue |
+| **Performance** | Response time, throughput, error rate |
+| **Reliability** | Availability, MTTR, MTBF |
+| **Quality** | Test coverage, bug count, tech debt |
+
+**Alert thresholds:**
+
+| Alert | Threshold | Severity |
+|-------|-----------|----------|
+| Error rate | > 1% | Warning |
+| Error rate | > 5% | Critical |
+| Response time | > 500ms p95 | Warning |
+| Response time | > 2000ms p95 | Critical |
+| Availability | < 99.9% | Critical |
+| CPU | > 80% | Warning |
+| Memory | > 90% | Critical |
+
+### Knowledge Transfer Protocol
+
+When transitioning between sessions:
+
+```
+1. EXECUTIVE SUMMARY (3 sentences)
+   - What was the goal?
+   - What was accomplished?
+   - What remains?
+
+2. TECHNICAL STATE
+   - Architecture decisions (key ones)
+   - Current blockers
+   - Next actions
+
+3. FILE INVENTORY
+   - Created/modified files
+   - Their purposes
+
+4. TESTING STATUS
+   - Tests passing/failing
+   - Coverage percentage
+
+5. OPEN QUESTIONS
+   - Decisions pending
+   - Ambiguities unresolved
+
+6. CONTEXT FOR CONTINUATION
+   - Exact command to resume
+   - Files to examine first
+```
+
+### Skill Catalog
+
+Complete list of 57 skills organized by category:
+
+**Orchestration & Meta:**
+1. Orchestrator (production-grade)
+2. Polymath
+3. Parallel Dispatch
+4. Memory Manager
+5. Skill Maker
+6. MCP Generator
+
+**Engineering:**
+7. Business Analyst
+8. Product Manager
+9. Solution Architect
+10. Software Engineer
+11. Frontend Engineer
+12. QA Engineer
+13. Security Engineer
+14. Code Reviewer
+15. DevOps
+16. SRE
+17. Data Scientist
+18. Technical Writer
+19. UI Designer
+20. Interaction Designer
+21. Art Director
+22. Vision Review
+23. Mobile Engineer
+24. Mobile Tester
+25. API Designer
+26. Database Engineer
+27. Debugger
+28. Prompt Engineer
+29. Prompt Optimizer
+30. AI Engineer
+31. Accessibility Engineer
+32. Performance Engineer
+33. UX Researcher
+34. Data Engineer
+35. XLSX Engineer
+36. Project Manager
+
+**Game Development:**
+37. Game Designer
+38. Unity Engineer
+39. Unreal Engineer
+40. Godot Engineer
+41. Godot Multiplayer
+42. Roblox Engineer
+43. Phaser 3 Engineer
+44. Three.js Engineer
+45. Level Designer
+46. Narrative Designer
+47. Technical Artist
+48. Game Audio Engineer
+49. Game Asset & VFX
+50. Unity Shader Artist
+51. Unity Multiplayer
+52. Unreal Technical Artist
+53. Unreal Multiplayer
+54. XR Engineer
+
+**Growth & Marketing:**
+55. Growth Marketer
+56. Conversion Optimizer
+
+**Workflow:**
+57. Goal-Driven
+
 ### Session Lifecycle Hooks
 
 Call these hooks at the appropriate lifecycle points:

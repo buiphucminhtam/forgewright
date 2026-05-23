@@ -1,17 +1,16 @@
 ---
 name: threejs-engineer
 description: >
-  [production-grade internal] Builds 3D web games and interactive experiences with Three.js —
-  ECS architecture, WebGPU/WebGL rendering, physics integration (Rapier/cannon-es),
-  performance optimization, and post-processing.
-  Implements gameplay systems from Game Designer specs.
-  Routed via the production-grade orchestrator (Game Build mode).
-version: 1.0.0
+  [production-grade internal] Builds 3D web experiences with Three.js — scene setup, camera systems,
+  lighting, materials, geometry, animation, post-processing, and performance optimization.
+  Creates interactive 3D visualizations and games.
+  Routed via the production-grade orchestrator (Web/3D mode).
+version: 2.0.0
 author: forgewright
-tags: [threejs, 3d, webgpu, webgl, web-game, typescript, javascript, ecs, game-development, rapier, cannon-es]
+tags: [threejs, three.js, 3d, webgl, web-3d, 3d-graphics, webxr, visualization, game-development]
 ---
 
-# Three.js Engineer — 3D Web Game Architecture Specialist
+# Three.js Engineer — 3D Web Specialist
 
 ## Protocols
 
@@ -23,890 +22,1106 @@ tags: [threejs, 3d, webgpu, webgl, web-game, typescript, javascript, ecs, game-d
 !`cat skills/_shared/protocols/quality-gate.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/task-validator.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
-!`cat .forgewright/codebase-context.md 2>/dev/null || true`
 
-**Fallback (if protocols not loaded):** Use notify_user with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly.
-
-## Aesthetic Foundation
-
-3D web game aesthetics must be deliberate — the browser is a constrained canvas. This skill references **Forgewright Game Visual Foundations** (`skills/_shared/game-visual-foundations.md`) for:
-
-- **3D lighting aesthetics** (color temperature, emotional lighting, PBR semantics)
-- **3D composition** (camera placement, leading lines, visual hierarchy in 3D space)
-- **Post-processing philosophy** (what effects reinforce vs. substitute artistic intent)
-- **Style selection** (low-poly, stylized, realistic — trade-offs and when to use each)
-- **Shape language in 3D** (form psychology, silhouette for character readability)
-
-## Engagement Mode
-
-!`cat .forgewright/settings.md 2>/dev/null || echo "No settings — using Standard"`
-
-| Mode | Behavior |
-|------|---------|
-| **Express** | Fully autonomous. WebGPU-first, ECS architecture, Rapier physics. Generate all systems. |
-| **Standard** | Surface 2-3 decisions — physics library (Rapier/cannon-es), render pipeline (WebGPU/WebGL), input system. |
-| **Thorough** | Show full architecture before implementing. Ask about target platform (desktop/mobile/VR), physics complexity, multi-player needs. |
-| **Meticulous** | Walk through each ECS system. User reviews component schemas, system execution order, shader configs individually. |
-
-## Brownfield Awareness
-
-If `.forgewright/codebase-context.md` exists and mode is `brownfield`:
-- **READ existing Three.js project** — detect renderer type, physics library, existing ECS setup
-- **MATCH existing patterns** — if they use Object3D hierarchy, don't force ECS. Migrate gradually.
-- **ADD alongside existing systems** — don't restructure their scene graph
-- **Reuse existing utilities** — extend shaders, materials, helpers already in place
+**Fallback:** Work continuously. Print progress constantly.
 
 ## Identity
 
-You are the **Three.js 3D Web Game Engineer Specialist**. You build production-quality 3D web games and interactive experiences using Three.js with ECS architecture, WebGPU rendering, and physics integration. You enforce clean separation between data (components), logic (systems), and rendering (Three.js scene graph). You prevent God Objects, memory leaks, and performance bottlenecks through disciplined resource management and draw-call optimization.
+You are the **Three.js Engineer** — a 3D web specialist who builds interactive web experiences using Three.js. You handle scene architecture, rendering optimization, and interactive 3D visualizations.
 
-## Context & Position in Pipeline
+**Your superpower:** Turning abstract data or concepts into compelling 3D experiences that run smoothly in any browser.
 
-This skill runs AFTER the Game Designer (GDD + mechanic specs) in Game Build mode. It implements all gameplay systems in Three.js.
-
-### Input Classification
-
-| Input | Status | What Three.js Engineer Needs |
-|-------|--------|----------------------------|
-| `.forgewright/game-designer/` | Critical | GDD, mechanic specs, state machines, balance tables, 3D interaction design |
-| `.forgewright/game-designer/mechanics/` | Critical | Per-mechanic specs with timing, physics interactions, camera design |
-| `.forgewright/game-designer/economy/` | Degraded | Economy design for game data |
-| `skills/game-asset-vfx/SKILL.md` | Degraded | VFX patterns, visual feedback spec |
-| `skills/game-audio-engineer/SKILL.md` | Degraded | Spatial audio integration |
-
-## Config Paths
-
-Read `.production-grade.yaml` at startup. Use these overrides if defined:
-- `paths.game` — default: `src/` at project root
-- `game.engine` — must be `threejs` for this skill to activate
-- `game.render_api` — default: `webgpu` (options: `webgpu`, `webgl2`, `webgl`)
-- `game.physics` — default: `rapier` (options: `rapier`, `cannon-es`, `custom`)
-- `game.target_platforms` — default: `[web]` (can include `mobile`, `vr`)
+**You do NOT design game mechanics** — you build the 3D rendering and interaction systems.
 
 ## Critical Rules
 
-### ECS Architecture (MANDATORY for games > 5 entities)
+### WebGL Constraints
 
-Three.js is NOT a game engine — it is a 3D rendering library. Building games directly on its Object3D hierarchy creates God Objects and tangled logic. You MUST use **ECS** (Entity Component System):
+- **Always consider mobile** — WebGL performance varies dramatically
+- **Budget your draw calls** — Target < 100 draw calls for mobile, < 500 for desktop
+- **Use object pooling** — Never create/destroy objects in the render loop
+- **LOD everything** — Level of detail for distant objects
 
-```
-ECS Architecture:
-  Entity    = unique integer ID (no logic, no data)
-  Component = pure data (Position, Velocity, Health, MeshRef, RigidBody)
-  System    = pure logic operating on components (MovementSystem, CombatSystem)
+### Scene Architecture
 
-Benefits:
-  - Composition over inheritance (add Health to anything)
-  - Systems are testable without Three.js
-  - Data-driven entity creation
-  - Clean render loop: run Systems → update Three.js scene graph
-```
+- **Separate update from render** — Game logic in update, rendering in render loop
+- **Use Object3D groups** — Organize scenes hierarchically
+- **Dispose properly** — Every geometry/material must be disposed when removed
+- **Use shared materials** — One material, many meshes when possible
 
-### WebGPU-First Rendering
+### Performance Budgets
 
-- **Use `WebGPURenderer`** from Three.js r171+ — it has automatic WebGL2 fallback
-- Falls back gracefully if WebGPU unavailable — no separate code paths needed
-- Use `renderer.setAnimationLoop()` instead of `requestAnimationFrame`
-
-### Physics Integration
-
-| Library | Strengths | Best For |
-|---------|-----------|---------|
-| **Rapier** (via `@react-three/rapier` or `rapier3d-compat`) | WASM-based, fast, stable | Production games, complex physics |
-| **cannon-es** | Pure JS, lightweight | Simple physics, no WASM needed |
-| **Custom** | Full control | No physics needed (puzzle, platformer with raycasting) |
-
-### Performance — The Non-Negotiable Rules
-
-1. **Draw calls < 100/frame** — use `InstancedMesh` for repeated objects (bullets, debris, particles)
-2. **Explicit disposal** — `geometry.dispose()`, `material.dispose()`, `texture.dispose()` — Three.js won't GC for you
-3. **Monitor `renderer.info`** — track calls, triangles, memory in dev
-4. **LOD for complex meshes** — `LOD` levels for distance-based detail
-5. **Frustum culling** — enabled by default, don't disable unless you have a reason
-6. **Texture compression** — KTX2 with Basis Universal for textures, Draco for geometry
-7. **No object creation in game loop** — pre-allocate vectors, colors, matrices
+| Metric | Mobile Target | Desktop Target |
+|--------|--------------|---------------|
+| Draw calls | < 100 | < 500 |
+| Triangles | < 50K | < 500K |
+| Materials | < 20 | < 50 |
+| Lights | < 2 | < 8 |
+| Shadow maps | 1 (1024px) | 2 (2048px) |
+| Post-processing | None or light | Selective |
+| Target FPS | 30 | 60 |
 
 ### Anti-Pattern Watchlist
 
-- ❌ Building game logic inside `Object3D` subclasses — use ECS Systems instead
-- ❌ `new THREE.Vector3()` inside `update()` — reuse existing instances
-- ❌ Forgetting to `.dispose()` — memory leaks accumulate and crash the browser
-- ❌ `renderer.forceContextRestore()` on context loss — handle `webglcontextlost` gracefully
-- ❌ Loading huge GLTF models without Draco + KTX2 compression
-- ❌ Using complex colliders (MeshCollider) when simple shapes suffice
-- ❌ > 100 individual draw calls — batch or instance them
-- ❌ `scene.add()` inside the game loop — pre-build scene graph at startup
+| # | Anti-Pattern | Why It Fails | Solution |
+|---|-------------|---------------|----------|
+| 1 | Creating objects in render loop | GC spikes, FPS drops | Pool, reuse |
+| 2 | Not disposing materials/geometries | Memory leaks | Proper disposal |
+| 3 | Too many lights | Shadow map overhead | Baked lighting |
+| 4 | High-poly meshes everywhere | Mobile GPU can't handle | LOD, instancing |
+| 5 | No texture optimization | Memory bloat | Compressed textures |
+| 6 | Not handling resize | Broken on mobile | Window resize handler |
+| 7 | Forgetting device pixel ratio | Blurry on retina | `renderer.setPixelRatio` |
+| 8 | No fallbacks for WebGL | Crashes on old devices | Feature detection |
+| 9 | Not using instancing | Too many draw calls | InstancedMesh |
+| 10 | Heavy post-processing | Mobile crashes | Skip on mobile |
 
-## Output Structure
+## Project Structure
 
 ```
 src/
-├── main.ts                          # Entry point — renderer init, ECS world bootstrap
+├── main.ts                    # Entry point
 ├── core/
-│   ├── ecs/
-│   │   ├── World.ts                # ECS world — entities, components, systems
-│   │   ├── Entity.ts               # Entity factory (returns unique integer ID)
-│   │   ├── Component.ts            # Component base types
-│   │   └── System.ts              # System base class with optional priority
-│   ├── renderer/
-│   │   ├── GameRenderer.ts         # Renderer setup (WebGPU/WebGL), resize handling
-│   │   ├── CameraManager.ts       # PerspectiveCamera, orbit/first-person controls
-│   │   └── PostProcessing.ts      # EffectComposer with passes
-│   ├── physics/
-│   │   ├── PhysicsWorld.ts         # Rapier/cannon-es integration
-│   │   └── PhysicsComponents.ts   # RigidBody, Collider components
-│   ├── input/
-│   │   └── InputManager.ts        # Keyboard/mouse/touch abstracted input
-│   └── GameLoop.ts                # RAF/renderer.setAnimationLoop orchestrator
-├── components/
-│   ├── core/
-│   │   ├── Transform.ts           # position, rotation, scale (synced to Object3D)
-│   │   ├── MeshRef.ts            # references a Three.js mesh in the scene
-│   │   └── Health.ts              # HP, maxHP, alive/dead state
-│   ├── gameplay/
-│   │   ├── PlayerControlled.ts   # Marks entity as player-controlled
-│   │   ├── AIControlled.ts       # Marks entity as AI-controlled
-│   │   ├── CombatStats.ts        # ATK, DEF, speed from balance tables
-│   │   ├── Inventory.ts          # Item slots, equipped items
-│   │   └── Spawnable.ts          # For pooled entity spawning
-│   └── physics/
-│       ├── RigidBody.ts           # Rapier/cannon-es rigid body ref
-│       └── Collider.ts            # shape, isTrigger, collision group
+│   ├── SceneManager.ts       # Scene lifecycle
+│   ├── CameraController.ts   # Camera systems
+│   ├── InputManager.ts       # Mouse/touch/keyboard
+│   └── RenderLoop.ts         # Animation loop
+├── objects/
+│   ├── GameObject.ts         # Base 3D object
+│   ├── Player.ts             # Player controller
+│   └── Environment.ts        # Scene environment
 ├── systems/
-│   ├── core/
-│   │   ├── MovementSystem.ts      # Apply velocity to Transform
-│   │   ├── RenderSyncSystem.ts   # Sync Transform to Three.js Object3D
-│   │   ├── CleanupSystem.ts       # Remove dead entities, dispose meshes
-│   │   └── LifetimeSystem.ts     # Auto-destroy entities after TTL
-│   ├── gameplay/
-│   │   ├── PlayerInputSystem.ts  # Read InputManager, apply to PlayerControlled
-│   │   ├── AIStateSystem.ts      # FSM for AI entities
-│   │   ├── CombatSystem.ts       # Damage calculation, hit detection
-│   │   ├── HealthSystem.ts       # Apply damage, check death
-│   │   ├── SpawnSystem.ts        # Pooled entity spawning from queues
-│   │   └── ProgressionSystem.ts  # XP, level up, unlocks
-│   └── physics/
-│       ├── PhysicsStepSystem.ts   # Step physics world each frame
-│       └── CollisionSystem.ts     # Collision events → game events
-├── entities/
-│   ├── Player.ts                  # Factory: create player entity with all components
-│   ├── Enemy.ts                   # Factory: create enemy with AI
-│   ├── Projectile.ts              # Factory: pooled projectiles
-│   └── Destructible.ts            # Factory: destructible objects
-├── game/
-│   ├── GameState.ts              # Score, level, game phase (menu/playing/paused/gameover)
-│   ├── LevelManager.ts           # Level loading, wave spawning
-│   └── SaveManager.ts            # localStorage persistence
-├── ui/
-│   ├── HUD.ts                    # DOM overlay for HUD (HP bar, score, minimap)
-│   └── UIManager.ts             # Toggle HUD visibility, update values
-├── shaders/
-│   ├── dissolve.glsl             # Custom dissolve shader
-│   ├── outline.glsl              # Outline effect for selection
-│   └── glow.glsl                 # Glow/emission shader
+│   ├── LightingSystem.ts    # Light management
+│   ├── PhysicsSystem.ts     # Simple physics
+│   └── AnimationSystem.ts    # Animation management
+├── materials/
+│   ├── PBRMaterial.ts       # PBR material factory
+│   └── EnvironmentMap.ts    # HDR environment
+├── postprocessing/
+│   └── EffectsComposer.ts   # Post-processing setup
 └── utils/
-    ├── ObjectPool.ts             # Generic mesh/object pool
-    ├── AssetLoader.ts           # GLTFLoader + Draco + KTX2 setup
-    └── Profiler.ts              # renderer.info wrapper + FPS counter
-
-assets/
-├── models/                        # GLTF/GLB (Draco-compressed)
-├── textures/                      # KTX2 (Basis Universal compression)
-├── audio/                         # Spatial audio files
-└── shaders/                       # GLSL shader files
-
-.forgewright/threejs-engineer/
-├── architecture.md                # ECS decisions, system execution order
-├── physics-config.md             # Rapier/cannon-es world configuration
-├── performance-notes.md          # Draw call budgets, LOD setup, profiling
-└── shader-reference.md          # Custom shader usage guide
+    ├── ObjectPool.ts        # Object pooling
+    ├── GeometryUtils.ts     # Geometry helpers
+    └── MathUtils.ts         # Math helpers
 ```
 
----
+## Phase 1 — Core Architecture
 
-## Phases
+### Step 1.1: Project Setup
 
-### Phase 1 — Project Scaffolding & ECS Core
+```bash
+npm init -y
+npm install three vite typescript @types/three
+```
 
-**Goal:** Set up the TypeScript project, Three.js renderer, and ECS architecture foundation.
-
-**Actions:**
-
-1. **Project setup:**
-   ```bash
-   npm init -y
-   npm install three @types/three vite typescript @types/node
-   npm install rapier3d-compat   # WASM physics, auto-loads
-   # OR
-   npm install cannon-es @types/cannon-es
-   ```
-
-2. **Renderer initialization** (`src/core/renderer/GameRenderer.ts`):
-   ```typescript
-   // WebGPU-first, auto-fallback to WebGL2
-   import * as THREE from 'three';
-   import { WebGPURenderer } from 'three/webgpu';
-
-   export class GameRenderer {
-       public renderer: THREE.WebGLRenderer | THREE.WebGPURenderer;
-       public scene: THREE.Scene;
-       public camera: THREE.PerspectiveCamera;
-
-       constructor(container: HTMLElement) {
-           this.scene = new THREE.Scene();
-
-           // Try WebGPU first (r171+), fall back to WebGL2
-           try {
-               this.renderer = new WebGPURenderer({
-                   antialias: true,
-                   powerPreference: 'high-performance',
-               });
-               console.log('WebGPU renderer initialized');
-           } catch {
-               this.renderer = new THREE.WebGLRenderer({
-                   antialias: true,
-                   powerPreference: 'high-performance',
-               });
-               console.log('WebGL2 renderer (WebGPU unavailable)');
-           }
-
-           this.renderer.setPixelRatio(
-               Math.min(window.devicePixelRatio, 2)  // Cap at 2x for performance
-           );
-           this.renderer.setSize(window.innerWidth, window.innerHeight);
-           this.renderer.shadowMap.enabled = true;
-           this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-           container.appendChild(this.renderer.domElement);
-
-           this.camera = new THREE.PerspectiveCamera(
-               75, window.innerWidth / window.innerHeight, 0.1, 1000
-           );
-           this.camera.position.set(0, 5, 10);
-           this.camera.lookAt(0, 0, 0);
-
-           // Handle context loss — save state, restore on restore
-           this.renderer.domElement.addEventListener(
-               'webglcontextlost', e => e.preventDefault(), false
-           );
-           this.renderer.domElement.addEventListener(
-               'webglcontextrestored', () => this.onContextRestored(), false
-           );
-
-           window.addEventListener('resize', () => this.onResize());
-       }
-
-       private onResize(): void {
-           this.camera.aspect = window.innerWidth / window.innerHeight;
-           this.camera.updateProjectionMatrix();
-           this.renderer.setSize(window.innerWidth, window.innerHeight);
-       }
-
-       private onContextRestored(): void {
-           console.warn('WebGL context restored — reinitialize resources');
-           // Re-upload all textures, geometries, materials
-       }
-
-       render(): void {
-           this.renderer.render(this.scene, this.camera);
-       }
-
-       dispose(): void {
-           this.renderer.dispose();
-           this.scene.traverse(obj => {
-               if (obj instanceof THREE.Mesh) {
-                   obj.geometry.dispose();
-                   if (Array.isArray(obj.material)) {
-                       obj.material.forEach(m => m.dispose());
-                   } else {
-                       obj.material.dispose();
-                   }
-               }
-           });
-       }
-   }
-   ```
-
-3. **ECS World** (`src/core/ecs/World.ts`):
-   ```typescript
-   // Clean ECS implementation — entities are integers, components are arrays
-   export type Entity = number;
-   export type ComponentType = string;
-
-   export class World {
-       private nextEntity: Entity = 0;
-       private components: Map<ComponentType, Map<Entity, unknown>> = new Map();
-       private systems: System[] = [];
-       private entities: Set<Entity> = new Set();
-
-       createEntity(): Entity {
-           const entity = this.nextEntity++;
-           this.entities.add(entity);
-           return entity;
-       }
-
-       removeEntity(entity: Entity): void {
-           this.entities.delete(entity);
-           for (const [, cmap] of this.components) {
-               cmap.delete(entity);
-           }
-       }
-
-       addComponent<T>(entity: Entity, type: ComponentType, data: T): void {
-           if (!this.components.has(type)) {
-               this.components.set(type, new Map());
-           }
-           this.components.get(type)!.set(entity, data);
-       }
-
-       getComponent<T>(entity: Entity, type: ComponentType): T | undefined {
-           return this.components.get(type)?.get(entity) as T | undefined;
-       }
-
-       hasComponent(entity: Entity, type: ComponentType): boolean {
-           return this.components.get(type)?.has(entity) ?? false;
-       }
-
-       getEntitiesWithComponents(...types: ComponentType[]): Entity[] {
-           return Array.from(this.entities).filter(e =>
-               types.every(t => this.hasComponent(e, t))
-           );
-       }
-
-       addSystem(system: System, priority = 0): void {
-           system.world = this;
-           this.systems.push(system);
-           this.systems.sort((a, b) => a.priority - b.priority);
-       }
-
-       update(delta: number): void {
-           for (const system of this.systems) {
-               system.update(delta);
-           }
-       }
-
-       dispose(): void {
-           for (const [type, cmap] of this.components) {
-               for (const [entity] of cmap) {
-                   this.removeEntity(entity);
-               }
-           }
-           this.components.clear();
-           this.systems = [];
-       }
-   }
-   ```
-
-4. **Core Components**:
-   ```typescript
-   // src/components/core/Transform.ts
-   export interface TransformData {
-       position: THREE.Vector3;
-       rotation: THREE.Euler;
-       scale: THREE.Vector3;
-   }
-
-   // src/components/core/MeshRef.ts
-   export interface MeshRefData {
-       mesh: THREE.Object3D;
-       disposeOnRemove: boolean;
-   }
-
-   // src/components/gameplay/Health.ts
-   export interface HealthData {
-       current: number;
-       max: number;
-       invulnerableUntil: number;
-   }
-   ```
-
-5. **RenderSyncSystem** — the bridge between ECS and Three.js:
-   ```typescript
-   // src/systems/core/RenderSyncSystem.ts
-   export class RenderSyncSystem implements System {
-       world!: World;
-       priority = 1000;  // Run after all game logic systems
-
-       update(_delta: number): void {
-           const entities = this.world.getEntitiesWithComponents('Transform', 'MeshRef');
-
-           for (const entity of entities) {
-               const transform = this.world.getComponent<TransformData>('Transform', entity)!;
-               const meshRef = this.world.getComponent<MeshRefData>('MeshRef', entity)!;
-
-               meshRef.mesh.position.copy(transform.position);
-               meshRef.mesh.rotation.copy(transform.rotation);
-               meshRef.mesh.scale.copy(transform.scale);
-           }
-       }
-   }
-   ```
-
-6. **Asset Loader** — GLTF + Draco + KTX2:
-   ```typescript
-   // src/utils/AssetLoader.ts
-   import * as THREE from 'three';
-   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-   import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-   import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
-
-   export class AssetLoader {
-       private gltfLoader: GLTFLoader;
-       private textureLoader = new THREE.TextureLoader();
-
-       constructor(renderer: THREE.WebGLRenderer) {
-           this.gltfLoader = new GLTFLoader();
-
-           // Draco for geometry compression
-           const draco = new DRACOLoader();
-           draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-           this.gltfLoader.setDRACOLoader(draco);
-
-           // KTX2 for texture compression
-           const ktx2 = new KTX2Loader();
-           ktx2.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/');
-           ktx2.detectSupport(renderer);
-           this.gltfLoader.setKTX2Loader(ktx2);
-       }
-
-       async loadGLTF<T = unknown>(url: string): Promise<T> {
-           return new Promise((resolve, reject) => {
-               this.gltfLoader.load(url, resolve, undefined, reject);
-           });
-       }
-   }
-   ```
-
-**Output:** Project scaffold at `src/`, ECS core at `src/core/ecs/`
-
----
-
-### Phase 2 — Physics & Input Systems
-
-**Goal:** Set up physics world and input management.
-
-**Actions:**
-
-1. **Rapier Physics World**:
-   ```typescript
-   // src/core/physics/PhysicsWorld.ts
-   import * as THREE from 'three';
-   import { RAPIER } from '@dimforge/rapier3d-compat';
-
-   export class PhysicsWorld {
-       world: RAPIER.World;
-       private rigidBodies: Map<Entity, RAPIER.RigidBody> = new Map();
-       private meshes: Map<Entity, THREE.Object3D> = new Map();
-
-       constructor() {
-           this.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
-       }
-
-       addRigidBody(
-           entity: Entity,
-           body: RAPIER.RigidBody,
-           mesh: THREE.Object3D
-       ): void {
-           this.rigidBodies.set(entity, body);
-           this.meshes.set(entity, mesh);
-       }
-
-       step(delta: number): void {
-           this.world.step();
-           // Sync rigid body transforms to meshes
-           for (const [entity, body] of this.rigidBodies) {
-               const mesh = this.meshes.get(entity);
-               if (!mesh) continue;
-               const t = body.translation();
-               const r = body.rotation();
-               mesh.position.set(t.x, t.y, t.z);
-               mesh.quaternion.set(r.x, r.y, r.z, r.w);
-           }
-       }
-   }
-   ```
-
-2. **Input Manager** — abstracted keyboard/mouse/touch:
-   ```typescript
-   // src/core/input/InputManager.ts
-   export interface InputState {
-       moveForward: boolean;
-       moveBackward: boolean;
-       moveLeft: boolean;
-       moveRight: boolean;
-       jump: boolean;
-       sprint: boolean;
-       attack: boolean;
-       mouseDelta: { x: number; y: number };
-   }
-
-   export class InputManager {
-       state: InputState = {
-           moveForward: false, moveBackward: false,
-           moveLeft: false, moveRight: false,
-           jump: false, sprint: false, attack: false,
-           mouseDelta: { x: 0, y: 0 },
-       };
-
-       private keys = new Set<string>();
-       private mouseButtons = new Set<number>();
-
-       constructor() {
-           window.addEventListener('keydown', e => this.keys.add(e.code));
-           window.addEventListener('keyup', e => this.keys.delete(e.code));
-           window.addEventListener('mousedown', e => this.mouseButtons.add(e.button));
-           window.addEventListener('mouseup', e => this.mouseButtons.delete(e.button));
-           window.addEventListener('mousemove', e => {
-               this.state.mouseDelta.x = e.movementX;
-               this.state.mouseDelta.y = e.movementY;
-           });
-       }
-
-       poll(): InputState {
-           this.state.moveForward = this.keys.has('KeyW') || this.keys.has('ArrowUp');
-           this.state.moveBackward = this.keys.has('KeyS') || this.keys.has('ArrowDown');
-           this.state.moveLeft = this.keys.has('KeyA') || this.keys.has('ArrowLeft');
-           this.state.moveRight = this.keys.has('KeyD') || this.keys.has('ArrowRight');
-           this.state.jump = this.keys.has('Space');
-           this.state.sprint = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
-           this.state.attack = this.keys.has('KeyE') || this.mouseButtons.has(0);
-           return this.state;
-       }
-
-       resetMouseDelta(): void {
-           this.state.mouseDelta = { x: 0, y: 0 };
-       }
-   }
-   ```
-
-**Output:** Physics and input systems at `src/core/`
-
----
-
-### Phase 3 — Gameplay Systems & Entity Factories
-
-**Goal:** Implement gameplay systems from Game Designer specs.
-
-**Actions:**
-
-1. **Movement System**:
-   ```typescript
-   // src/systems/gameplay/MovementSystem.ts
-   export class MovementSystem implements System {
-       world!: World;
-       priority = 100;
-       private tmpVec = new THREE.Vector3();
-
-       update(_delta: number): void {
-           const entities = this.world.getEntitiesWithComponents(
-               'Transform', 'RigidBody', 'PlayerControlled'
-           );
-
-           for (const entity of entities) {
-               const input = this.world.getComponent<InputState>('Input', entity);
-               if (!input) continue;
-
-               const transform = this.world.getComponent<TransformData>('Transform', entity)!;
-               const body = this.world.getComponent<RigidBodyData>('RigidBody', entity)!;
-
-               // Movement from Game Designer mechanic spec
-               const speed = 5.0;
-               const sprintMultiplier = input.sprint ? 1.5 : 1.0;
-
-               this.tmpVec.set(0, 0, 0);
-               if (input.moveForward) this.tmpVec.z -= 1;
-               if (input.moveBackward) this.tmpVec.z += 1;
-               if (input.moveLeft) this.tmpVec.x -= 1;
-               if (input.moveRight) this.tmpVec.x += 1;
-
-               if (this.tmpVec.lengthSq() > 0) {
-                   this.tmpVec.normalize().multiplyScalar(speed * sprintMultiplier);
-                   // Apply to physics body
-               }
-           }
-       }
-   }
-   ```
-
-2. **Combat System** — damage calculation from Game Designer:
-   ```typescript
-   // src/systems/gameplay/CombatSystem.ts
-   // Formula from game-designer/economy/balance-tables.md
-   // damage = (ATK * skill_multiplier - DEF * 0.5) * (1 + crit_damage * crit_chance)
-
-   export class CombatSystem implements System {
-       world!: World;
-       priority = 200;
-
-       calculateDamage(
-           attackerATK: number,
-           defenderDEF: number,
-           skillMultiplier: number,
-           isCrit: boolean
-       ): number {
-           const base = attackerATK * skillMultiplier;
-           const reduction = defenderDEF * 0.5;
-           const net = Math.max(1, base - reduction);
-           return Math.floor(net * (isCrit ? 2 : 1));
-       }
-   }
-   ```
-
-3. **Entity Factories**:
-   ```typescript
-   // src/entities/Player.ts
-   export function createPlayer(world: World, renderer: GameRenderer): Entity {
-       const entity = world.createEntity();
-
-       // Mesh
-       const geometry = new THREE.CapsuleGeometry(0.5, 1);
-       const material = new THREE.MeshStandardMaterial({ color: 0x00d4ff });
-       const mesh = new THREE.Mesh(geometry, material);
-       mesh.castShadow = true;
-       renderer.scene.add(mesh);
-
-       world.addComponent(entity, 'Transform', { position: new THREE.Vector3(0, 2, 0), rotation: new THREE.Euler(), scale: new THREE.Vector3(1, 1, 1) });
-       world.addComponent(entity, 'MeshRef', { mesh, disposeOnRemove: true });
-       world.addComponent(entity, 'PlayerControlled', {});
-       world.addComponent(entity, 'Health', { current: 100, max: 100, invulnerableUntil: 0 });
-       world.addComponent(entity, 'CombatStats', { ATK: 25, DEF: 10, speed: 5 });
-
-       return entity;
-   }
-   ```
-
-4. **Object Pooling** for projectiles:
-   ```typescript
-   // src/utils/ObjectPool.ts
-   export class ObjectPool<T> {
-       private available: T[] = [];
-       private active: Set<T> = new Set();
-       private createFn: () => T;
-       private resetFn: (obj: T) => void;
-
-       constructor(createFn: () => T, resetFn: (obj: T) => void, initialSize = 10) {
-           this.createFn = createFn;
-           this.resetFn = resetFn;
-           for (let i = 0; i < initialSize; i++) this.available.push(createFn());
-       }
-
-       acquire(): T | undefined {
-           const obj = this.available.pop() ?? this.createFn();
-           this.active.add(obj);
-           return obj;
-       }
-
-       release(obj: T): void {
-           this.active.delete(obj);
-           this.resetFn(obj);
-           this.available.push(obj);
-       }
-   }
-   ```
-
-**Output:** Gameplay systems at `src/systems/gameplay/`, entities at `src/entities/`
-
----
-
-### Phase 4 — UI & Visual Polish
-
-**Goal:** Build DOM-based HUD and integrate VFX patterns.
-
-**Actions:**
-
-1. **DOM HUD overlay** — HTML overlay for performance (not Three.js HTML labels):
-   ```typescript
-   // src/ui/HUD.ts
-   export class HUD {
-       private hpBar: HTMLElement;
-       private scoreEl: HTMLElement;
-
-       constructor() {
-           this.hpBar = document.getElementById('hp-bar')!;
-           this.scoreEl = document.getElementById('score')!;
-           GameEvents.on('health_changed', (hp: number, max: number) => {
-               this.hpBar.style.width = `${(hp / max) * 100}%`;
-           });
-           GameEvents.on('score_changed', (score: number) => {
-               this.scoreEl.textContent = score.toString();
-           });
-       }
-   }
-   ```
-
-2. **Post-processing** with `pmndrs/postprocessing`:
-   ```typescript
-   // src/core/renderer/PostProcessing.ts
-   import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-   import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-   import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-   import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
-
-   export class PostProcessing {
-       composer: EffectComposer;
-
-       constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
-           this.composer = new EffectComposer(renderer);
-           this.composer.addPass(new RenderPass(scene, camera));
-
-           const bloom = new UnrealBloomPass(
-               new THREE.Vector2(window.innerWidth, window.innerHeight),
-               0.5, 0.4, 0.85
-           );
-           this.composer.addPass(bloom);
-       }
-
-       render(): void {
-           this.composer.render();
-       }
-   }
-   ```
-
-3. **Profiling integration**:
-   ```typescript
-   // src/utils/Profiler.ts
-   import * as THREE from 'three';
-
-   export class Profiler {
-       constructor(private renderer: THREE.WebGPURenderer | THREE.WebGLRenderer) {}
-
-       log(): void {
-           const info = this.renderer.info;
-           console.log(`Draw calls: ${info.render.calls} | Triangles: ${info.render.triangles} | FPS: ${THREE.Clock.getDelta()}`);
-       }
-   }
-   ```
-
-**Output:** UI at `src/ui/`, post-processing at `src/core/renderer/`
-
----
-
-### Phase 5 — Performance Optimization
-
-**Goal:** Optimize for < 100 draw calls/frame, proper memory management.
-
-**Actions:**
-
-1. **InstancedMesh** for repeated objects:
-   ```typescript
-   // Bullets, debris, particles — use InstancedMesh, not individual meshes
-   const bulletGeometry = new THREE.SphereGeometry(0.05);
-   const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-   const bulletMesh = new THREE.InstancedMesh(bulletGeometry, bulletMaterial, 200);
-   bulletMesh.count = 0;  // Only render active bullets
-   ```
-
-2. **LOD setup**:
-   ```typescript
-   const lod = new THREE.LOD();
-   lod.addLevel(highDetailMesh, 0);
-   lod.addLevel(mediumDetailMesh, 50);
-   lod.addLevel(lowDetailMesh, 100);
-   ```
-
-3. **Memory management audit**:
-   - Every Mesh → geometry + material + textures all must be disposed
-   - Textures are the biggest memory consumers — KTX2 compression is essential
-   - `renderer.info` monitoring in dev mode
-
-**Output:** Performance optimizations documented in `performance-notes.md`
-
----
-
-## Testing Integration
-
-### Test Approach (from `game-test-protocol.md`)
-
-Three.js testing uses **ECS system extraction + Vitest**:
-
-1. **Extract systems** to pure TypeScript classes — testable without Three.js
-2. **Component tests** — pure data manipulation, no rendering
-3. **E2E tests** — Playwright for browser-based gameplay flows
+### Step 1.2: Basic Three.js App
 
 ```typescript
-// TEST: CombatSystem — pure logic, no Three.js
-// tests/systems/CombatSystem.test.ts
-describe('CombatSystem', () => {
-    it('damage formula matches GDD specification', () => {
-        // (50 * 1.5 - 20 * 0.5) * 2 = 60
-        const damage = calculateDamage(50, 20, 1.5, true);
-        expect(damage).toBe(60);
-    });
+// src/main.ts
+import * as THREE from 'three';
 
-    it('minimum damage is 1', () => {
-        const damage = calculateDamage(5, 100, 1.0, false);
-        expect(damage).toBe(1);
-    });
-});
+class App {
+    private canvas: HTMLCanvasElement;
+    private renderer!: THREE.WebGLRenderer;
+    private scene!: THREE.Scene;
+    private camera!: THREE.PerspectiveCamera;
+    private animationId: number = 0;
 
-// TEST: ECS World
-// tests/ecs/World.test.ts
-describe('World', () => {
-    it('should return entities with required components', () => {
-        const world = new World();
-        const e = world.createEntity();
-        world.addComponent(e, 'Health', { current: 100, max: 100 });
-        world.addComponent(e, 'Transform', { position: new THREE.Vector3() });
+    constructor() {
+        this.canvas = this.createCanvas();
+        this.initRenderer();
+        this.initScene();
+        this.initCamera();
+        this.addObjects();
+        this.addEventListeners();
+        this.animate();
+    }
 
-        const found = world.getEntitiesWithComponents('Health', 'Transform');
-        expect(found).toContain(e);
-    });
-});
+    private createCanvas(): HTMLCanvasElement {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'three-canvas';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        document.body.appendChild(canvas);
+        return canvas;
+    }
+
+    private initRenderer(): void {
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: this.canvas,
+            antialias: true,
+            alpha: true,
+        });
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.2;
+    }
+
+    private initScene(): void {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x0a0a0a);
+        this.scene.fog = new THREE.Fog(0x0a0a0a, 10, 50);
+    }
+
+    private initCamera(): void {
+        this.camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        this.camera.position.set(0, 5, 10);
+        this.camera.lookAt(0, 0, 0);
+    }
+
+    private addObjects(): void {
+        // Ground plane
+        const groundGeometry = new THREE.PlaneGeometry(50, 50);
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.8,
+            metalness: 0.2,
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        this.scene.add(ground);
+
+        // Ambient light
+        const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+        this.scene.add(ambient);
+
+        // Directional light (sun)
+        const sun = new THREE.DirectionalLight(0xffffff, 1);
+        sun.position.set(10, 20, 10);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 2048;
+        sun.shadow.mapSize.height = 2048;
+        sun.shadow.camera.near = 0.5;
+        sun.shadow.camera.far = 50;
+        sun.shadow.camera.left = -20;
+        sun.shadow.camera.right = 20;
+        sun.shadow.camera.top = 20;
+        sun.shadow.camera.bottom = -20;
+        this.scene.add(sun);
+    }
+
+    private addEventListeners(): void {
+        window.addEventListener('resize', this.onResize.bind(this));
+    }
+
+    private onResize(): void {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    private animate = (): void => {
+        this.animationId = requestAnimationFrame(this.animate);
+        this.renderer.render(this.scene, this.camera);
+    };
+
+    public dispose(): void {
+        cancelAnimationFrame(this.animationId);
+        this.renderer.dispose();
+        this.scene.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.geometry.dispose();
+                if (Array.isArray(object.material)) {
+                    object.material.forEach((m) => m.dispose());
+                } else {
+                    object.material.dispose();
+                }
+            }
+        });
+    }
+}
+
+// Initialize
+const app = new App();
+
+// Cleanup on unload
+window.addEventListener('beforeunload', () => app.dispose());
 ```
 
-**Test command:** `npm test` (Vitest) + `npx playwright test` (E2E)
+## Phase 2 — Camera Systems
 
-**Coverage targets (from `game-test-protocol.md`):**
-- Core Systems: 90%+
-- Combat Formulas: 100% (exact GDD formula validation)
-- Performance Benchmarks: < 100 draw calls enforced in CI
+### Step 2.1: Orbit Controls
 
----
+```typescript
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+export class CameraController {
+    private controls: OrbitControls;
+
+    constructor(
+        private camera: THREE.PerspectiveCamera,
+        private domElement: HTMLElement
+    ) {
+        this.controls = new OrbitControls(camera, domElement);
+        this.configure();
+    }
+
+    private configure(): void {
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.controls.minDistance = 5;
+        this.controls.maxDistance = 50;
+        this.controls.maxPolarAngle = Math.PI / 2 - 0.1; // Don't go below ground
+        this.controls.enablePan = true;
+        this.controls.panSpeed = 0.5;
+        this.controls.rotateSpeed = 0.5;
+    }
+
+    public update(): void {
+        this.controls.update();
+    }
+
+    public setTarget(target: THREE.Vector3): void {
+        this.controls.target.copy(target);
+    }
+
+    public reset(): void {
+        this.controls.reset();
+    }
+
+    public dispose(): void {
+        this.controls.dispose();
+    }
+}
+```
+
+### Step 2.2: Follow Camera
+
+```typescript
+export class FollowCamera {
+    private offset: THREE.Vector3;
+    private lookAtOffset: THREE.Vector3;
+
+    constructor(
+        private camera: THREE.PerspectiveCamera,
+        private target: THREE.Object3D,
+        offset = new THREE.Vector3(0, 5, 10),
+        lookAtOffset = new THREE.Vector3(0, 0, 0)
+    ) {
+        this.offset = offset;
+        this.lookAtOffset = lookAtOffset;
+    }
+
+    public update(): void {
+        // Calculate desired camera position
+        const targetPosition = this.target.position.clone();
+        const desiredPosition = targetPosition.clone().add(this.offset);
+
+        // Smooth camera movement
+        this.camera.position.lerp(desiredPosition, 0.1);
+
+        // Look at target
+        const lookAt = targetPosition.clone().add(this.lookAtOffset);
+        this.camera.lookAt(lookAt);
+    }
+
+    public setOffset(offset: THREE.Vector3): void {
+        this.offset.copy(offset);
+    }
+}
+```
+
+### Step 2.3: First Person Camera
+
+```typescript
+export class FirstPersonCamera {
+    private euler: THREE.Euler;
+    private velocity: THREE.Vector3;
+    private direction: THREE.Vector3;
+
+    constructor(
+        private camera: THREE.PerspectiveCamera,
+        private domElement: HTMLElement
+    ) {
+        this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        this.velocity = new THREE.Vector3();
+        this.direction = new THREE.Vector3();
+        this.setupEventListeners();
+    }
+
+    private setupEventListeners(): void {
+        this.domElement.addEventListener('click', () => {
+            this.domElement.requestPointerLock();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === this.domElement) {
+                this.euler.setFromQuaternion(this.camera.quaternion);
+                this.euler.y -= e.movementX * 0.002;
+                this.euler.x -= e.movementY * 0.002;
+                this.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.euler.x));
+                this.camera.quaternion.setFromEuler(this.euler);
+            }
+        });
+    }
+
+    public update(keys: Record<string, boolean>, delta: number): void {
+        const speed = 10;
+        const friction = 0.9;
+
+        this.direction.set(0, 0, 0);
+
+        if (keys['KeyW']) this.direction.z -= 1;
+        if (keys['KeyS']) this.direction.z += 1;
+        if (keys['KeyA']) this.direction.x -= 1;
+        if (keys['KeyD']) this.direction.x += 1;
+
+        this.direction.normalize();
+        this.direction.applyQuaternion(this.camera.quaternion);
+        this.direction.y = 0;
+        this.direction.normalize();
+
+        this.velocity.add(this.direction.multiplyScalar(speed * delta));
+        this.velocity.multiplyScalar(friction);
+
+        this.camera.position.add(this.velocity);
+    }
+}
+```
+
+## Phase 3 — Materials & Lighting
+
+### Step 3.1: PBR Material Factory
+
+```typescript
+export interface MaterialConfig {
+    color?: number;
+    metalness?: number;
+    roughness?: number;
+    emissive?: number;
+    emissiveIntensity?: number;
+    opacity?: number;
+    transparent?: boolean;
+    map?: THREE.Texture;
+    normalMap?: THREE.Texture;
+    roughnessMap?: THREE.Texture;
+    metalnessMap?: THREE.Texture;
+    aoMap?: THREE.Texture;
+    envMap?: THREE.Texture;
+    envMapIntensity?: number;
+}
+
+export class MaterialFactory {
+    static createPBR(config: MaterialConfig = {}): THREE.MeshStandardMaterial {
+        const material = new THREE.MeshStandardMaterial({
+            color: config.color ?? 0xffffff,
+            metalness: config.metalness ?? 0.5,
+            roughness: config.roughness ?? 0.5,
+            emissive: config.emissive ?? 0x000000,
+            emissiveIntensity: config.emissiveIntensity ?? 0,
+            transparent: config.transparent ?? false,
+            opacity: config.opacity ?? 1,
+        });
+
+        if (config.map) material.map = config.map;
+        if (config.normalMap) material.normalMap = config.normalMap;
+        if (config.roughnessMap) material.roughnessMap = config.roughnessMap;
+        if (config.metalnessMap) material.metalnessMap = config.metalnessMap;
+        if (config.aoMap) material.aoMap = config.aoMap;
+        if (config.envMap) {
+            material.envMap = config.envMap;
+            material.envMapIntensity = config.envMapIntensity ?? 1;
+        }
+
+        material.needsUpdate = true;
+        return material;
+    }
+
+    static createGlass(): THREE.MeshPhysicalMaterial {
+        return new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            metalness: 0,
+            roughness: 0,
+            transmission: 0.9,
+            thickness: 0.5,
+            ior: 1.5,
+            transparent: true,
+        });
+    }
+
+    static createMetal(): THREE.MeshStandardMaterial {
+        return new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            metalness: 1,
+            roughness: 0.2,
+            envMapIntensity: 1,
+        });
+    }
+
+    static createPlastic(): THREE.MeshStandardMaterial {
+        return new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            metalness: 0,
+            roughness: 0.5,
+        });
+    }
+}
+```
+
+### Step 3.2: Lighting System
+
+```typescript
+export class LightingSystem {
+    private lights: THREE.Light[] = [];
+    private ambient!: THREE.AmbientLight;
+    private sun!: THREE.DirectionalLight;
+
+    constructor(private scene: THREE.Scene) {
+        this.setup();
+    }
+
+    private setup(): void {
+        // Ambient
+        this.ambient = new THREE.AmbientLight(0xffffff, 0.3);
+        this.scene.add(this.ambient);
+
+        // Main directional light
+        this.sun = new THREE.DirectionalLight(0xffffff, 1);
+        this.sun.position.set(10, 20, 10);
+        this.sun.castShadow = true;
+        this.sun.shadow.mapSize.width = 2048;
+        this.sun.shadow.mapSize.height = 2048;
+        this.sun.shadow.camera.near = 0.5;
+        this.sun.shadow.camera.far = 100;
+        this.sun.shadow.camera.left = -30;
+        this.sun.shadow.camera.right = 30;
+        this.sun.shadow.camera.top = 30;
+        this.sun.shadow.camera.bottom = -30;
+        this.sun.shadow.bias = -0.0001;
+        this.scene.add(this.sun);
+
+        // Hemisphere light for natural sky/ground colors
+        const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362412, 0.5);
+        this.scene.add(hemi);
+    }
+
+    public addPointLight(
+        position: THREE.Vector3,
+        color: number = 0xffffff,
+        intensity: number = 1,
+        distance: number = 10
+    ): THREE.PointLight {
+        const light = new THREE.PointLight(color, intensity, distance);
+        light.position.copy(position);
+        this.scene.add(light);
+        this.lights.push(light);
+        return light;
+    }
+
+    public addSpotLight(
+        position: THREE.Vector3,
+        target: THREE.Vector3,
+        config: { angle?: number; penumbra?: number; intensity?: number } = {}
+    ): THREE.SpotLight {
+        const light = new THREE.SpotLight(
+            0xffffff,
+            config.intensity ?? 1,
+            20,
+            config.angle ?? Math.PI / 6,
+            config.penumbra ?? 0.3
+        );
+        light.position.copy(position);
+        light.target.position.copy(target);
+        light.castShadow = true;
+        light.shadow.mapSize.width = 1024;
+        light.shadow.mapSize.height = 1024;
+        this.scene.add(light);
+        this.scene.add(light.target);
+        this.lights.push(light);
+        return light;
+    }
+
+    public setAmbientIntensity(intensity: number): void {
+        this.ambient.intensity = intensity;
+    }
+
+    public dispose(): void {
+        this.lights.forEach((light) => {
+            this.scene.remove(light);
+            light.dispose();
+        });
+        this.lights = [];
+    }
+}
+```
+
+### Step 3.3: Environment Map
+
+```typescript
+export class EnvironmentManager {
+    private pmremGenerator!: THREE.PMREMGenerator;
+    private envMap!: THREE.Texture;
+
+    constructor(private renderer: THREE.WebGLRenderer) {
+        this.pmremGenerator = new THREE.PMREMGenerator(renderer);
+        this.pmremGenerator.compileEquirectangularShader();
+    }
+
+    public loadFromURL(url: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            new THREE.HDRCubeTextureLoader().load(
+                url,
+                (texture) => {
+                    this.envMap = this.pmremGenerator.fromCubemap(texture).texture;
+                    texture.dispose();
+                    resolve();
+                },
+                undefined,
+                reject
+            );
+        });
+    }
+
+    public loadFromPath(path: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.RGBELoader();
+            loader.load(
+                path,
+                (texture) => {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    this.envMap = this.pmremGenerator.fromEquirectangular(texture).texture;
+                    texture.dispose();
+                    resolve();
+                },
+                undefined,
+                reject
+            );
+        });
+    }
+
+    public getEnvMap(): THREE.Texture | undefined {
+        return this.envMap;
+    }
+
+    public dispose(): void {
+        if (this.envMap) this.envMap.dispose();
+        this.pmremGenerator.dispose();
+    }
+}
+```
+
+## Phase 4 — Object Systems
+
+### Step 4.1: Game Object Base
+
+```typescript
+export class GameObject extends THREE.Object3D {
+    public uuid: string;
+    public tags: Set<string> = new Set();
+
+    constructor() {
+        super();
+        this.uuid = crypto.randomUUID();
+    }
+
+    public addTag(tag: string): void {
+        this.tags.add(tag);
+    }
+
+    public hasTag(tag: string): boolean {
+        return this.tags.has(tag);
+    }
+
+    public removeTag(tag: string): void {
+        this.tags.delete(tag);
+    }
+
+    public update(_delta: number): void {
+        // Override in subclasses
+    }
+
+    public dispose(): void {
+        this.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.geometry.dispose();
+                if (Array.isArray(child.material)) {
+                    child.material.forEach((m) => m.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+        });
+        this.clear();
+    }
+}
+```
+
+### Step 4.2: Object Pool
+
+```typescript
+export class ObjectPool<T extends GameObject> {
+    private available: T[] = [];
+    private inUse: Set<T> = new Set();
+    private factory: () => T;
+    private resetFn: (obj: T) => void;
+
+    constructor(factory: () => T, reset: (obj: T) => void, initialSize = 10) {
+        this.factory = factory;
+        this.resetFn = reset;
+        this.prewarm(initialSize);
+    }
+
+    public acquire(): T {
+        let obj: T;
+
+        if (this.available.length > 0) {
+            obj = this.available.pop()!;
+        } else {
+            obj = this.factory();
+        }
+
+        obj.visible = true;
+        obj.active = true;
+        this.inUse.add(obj);
+        return obj;
+    }
+
+    public release(obj: T): void {
+        if (!this.inUse.has(obj)) return;
+
+        obj.active = false;
+        obj.visible = false;
+        this.resetFn(obj);
+        this.inUse.delete(obj);
+        this.available.push(obj);
+    }
+
+    public prewarm(count: number): void {
+        for (let i = 0; i < count; i++) {
+            const obj = this.factory();
+            obj.visible = false;
+            obj.active = false;
+            this.available.push(obj);
+        }
+    }
+
+    public releaseAll(): void {
+        for (const obj of this.inUse) {
+            this.release(obj);
+        }
+    }
+
+    public getActiveCount(): number {
+        return this.inUse.size;
+    }
+
+    public dispose(): void {
+        for (const obj of [...this.available, ...this.inUse]) {
+            obj.dispose();
+        }
+        this.available = [];
+        this.inUse.clear();
+    }
+}
+```
+
+### Step 4.3: Instanced Objects
+
+```typescript
+export class InstancedObjects {
+    private mesh!: THREE.InstancedMesh;
+    private count: number;
+    private index = 0;
+    private matrix: THREE.Matrix4;
+    private position: THREE.Vector3;
+    private quaternion: THREE.Quaternion;
+    private scale: THREE.Vector3;
+
+    constructor(
+        private scene: THREE.Scene,
+        geometry: THREE.BufferGeometry,
+        material: THREE.Material,
+        maxCount: number
+    ) {
+        this.count = maxCount;
+        this.matrix = new THREE.Matrix4();
+        this.position = new THREE.Vector3();
+        this.quaternion = new THREE.Quaternion();
+        this.scale = new THREE.Vector3(1, 1, 1);
+
+        this.mesh = new THREE.InstancedMesh(geometry, material, maxCount);
+        this.mesh.count = 0;
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
+        this.scene.add(this.mesh);
+    }
+
+    public addInstance(position: THREE.Vector3, scale = 1): number {
+        if (this.index >= this.count) {
+            console.warn('InstancedMesh full');
+            return -1;
+        }
+
+        const i = this.index++;
+        this.matrix.compose(position, this.quaternion, this.scale.setScalar(scale));
+        this.mesh.setMatrixAt(i, this.matrix);
+        this.mesh.count = this.index;
+        this.mesh.instanceMatrix.needsUpdate = true;
+
+        return i;
+    }
+
+    public updateInstance(index: number, position: THREE.Vector3, scale?: number): void {
+        if (scale !== undefined) this.scale.setScalar(scale);
+        this.matrix.compose(position, this.quaternion, this.scale);
+        this.mesh.setMatrixAt(index, this.matrix);
+        this.mesh.instanceMatrix.needsUpdate = true;
+    }
+
+    public dispose(): void {
+        this.scene.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        if (this.mesh.material instanceof THREE.Material) {
+            this.mesh.material.dispose();
+        }
+    }
+}
+```
+
+## Phase 5 — Post-Processing
+
+### Step 5.1: Effects Composer Setup
+
+```typescript
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+
+export class PostProcessing {
+    private composer!: EffectComposer;
+
+    constructor(
+        private renderer: THREE.WebGLRenderer,
+        private scene: THREE.Scene,
+        private camera: THREE.PerspectiveCamera
+    ) {
+        this.setup();
+    }
+
+    private setup(): void {
+        this.composer = new EffectComposer(this.renderer);
+
+        // Base render pass
+        const renderPass = new RenderPass(this.scene, this.camera);
+        this.composer.addPass(renderPass);
+
+        // Bloom (only on desktop)
+        if (!this.isMobile()) {
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                0.5,  // strength
+                0.4,  // radius
+                0.85  // threshold
+            );
+            this.composer.addPass(bloomPass);
+        }
+    }
+
+    private isMobile(): boolean {
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+               window.innerWidth < 768;
+    }
+
+    public render(): void {
+        this.composer.render();
+    }
+
+    public dispose(): void {
+        this.composer.dispose();
+    }
+}
+```
+
+### Step 5.2: Custom Shader Pass
+
+```typescript
+// Vignette shader
+const VignetteShader = {
+    uniforms: {
+        tDiffuse: { value: null },
+        intensity: { value: 0.5 },
+        smoothness: { value: 0.5 },
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float intensity;
+        uniform float smoothness;
+        varying vec2 vUv;
+
+        void main() {
+            vec4 color = texture2D(tDiffuse, vUv);
+            vec2 center = vec2(0.5);
+            float dist = distance(vUv, center);
+            float vignette = smoothstep(0.8, 0.8 - smoothness, dist * (intensity + smoothness));
+            color.rgb *= vignette;
+            gl_FragColor = color;
+        }
+    `,
+};
+
+// Usage
+const vignettePass = new ShaderPass(VignetteShader);
+vignettePass.uniforms.intensity.value = 0.4;
+composer.addPass(vignettePass);
+```
+
+## Phase 6 — Interaction & Animation
+
+### Step 6.1: Raycaster Interaction
+
+```typescript
+export class InteractionSystem {
+    private raycaster: THREE.Raycaster;
+    private mouse: THREE.Vector2;
+    private intersected: THREE.Object3D[] = [];
+
+    constructor(
+        private camera: THREE.PerspectiveCamera,
+        private domElement: HTMLElement
+    ) {
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        this.setupEventListeners();
+    }
+
+    private setupEventListeners(): void {
+        this.domElement.addEventListener('mousemove', this.onMouseMove.bind(this));
+        this.domElement.addEventListener('click', this.onClick.bind(this));
+    }
+
+    private updateMouse(event: MouseEvent): void {
+        const rect = this.domElement.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    private onMouseMove(event: MouseEvent): void {
+        this.updateMouse(event);
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(this.intersected, true);
+
+        if (intersects.length > 0) {
+            this.domElement.style.cursor = 'pointer';
+        } else {
+            this.domElement.style.cursor = 'default';
+        }
+    }
+
+    private onClick(event: MouseEvent): void {
+        this.updateMouse(event);
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(this.intersected, true);
+
+        if (intersects.length > 0) {
+            const object = intersects[0].object;
+            this.domElement.dispatchEvent(
+                new CustomEvent('object-clicked', { detail: { object } })
+            );
+        }
+    }
+
+    public setTargets(objects: THREE.Object3D[]): void {
+        this.intersected = objects;
+    }
+
+    public addTarget(object: THREE.Object3D): void {
+        this.intersected.push(object);
+    }
+
+    public removeTarget(object: THREE.Object3D): void {
+        const index = this.intersected.indexOf(object);
+        if (index > -1) this.intersected.splice(index, 1);
+    }
+}
+```
+
+### Step 6.2: Animation System
+
+```typescript
+export class AnimationManager {
+    private mixer!: THREE.AnimationMixer;
+    private actions: Map<string, THREE.AnimationAction> = new Map();
+
+    constructor(object: THREE.Object3D) {
+        this.mixer = new THREE.AnimationMixer(object);
+    }
+
+    public loadAnimation(clips: THREE.AnimationClip[]): void {
+        clips.forEach((clip) => {
+            const action = this.mixer.clipAction(clip);
+            this.actions.set(clip.name, action);
+        });
+    }
+
+    public play(name: string, loop = true): void {
+        const action = this.actions.get(name);
+        if (!action) return;
+
+        action.reset();
+        action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+        action.play();
+    }
+
+    public crossFade(from: string, to: string, duration = 0.3): void {
+        const fromAction = this.actions.get(from);
+        const toAction = this.actions.get(to);
+
+        if (!fromAction || !toAction) return;
+
+        fromAction.crossFadeTo(toAction, duration, true);
+        toAction.play();
+    }
+
+    public update(delta: number): void {
+        this.mixer.update(delta);
+    }
+
+    public dispose(): void {
+        this.mixer.stopAllAction();
+        this.mixer.uncacheRoot(this.mixer.getRoot());
+    }
+}
+```
+
+### Step 6.3: GSAP Integration
+
+```typescript
+import gsap from 'gsap';
+
+// Animate object position
+gsap.to(mesh.position, {
+    x: 10,
+    y: 5,
+    z: -5,
+    duration: 1,
+    ease: 'power2.out',
+    onComplete: () => console.log('Animation complete'),
+});
+
+// Animate scale (punch effect)
+gsap.to(mesh.scale, {
+    x: 1.2,
+    y: 1.2,
+    z: 1.2,
+    duration: 0.1,
+    ease: 'power2.out',
+    yoyo: true,
+    repeat: 1,
+});
+
+// Camera fly-through
+gsap.to(camera.position, {
+    x: targetPosition.x,
+    y: targetPosition.y,
+    z: targetPosition.z,
+    duration: 2,
+    ease: 'power3.inOut',
+    onUpdate: () => camera.lookAt(lookAtTarget),
+});
+
+// Rotation
+gsap.to(mesh.rotation, {
+    y: Math.PI * 2,
+    duration: 2,
+    ease: 'none',
+    repeat: -1,
+});
+```
 
 ## Common Mistakes
 
-| # | Mistake | Why It Fails | What to Do Instead |
-|---|---------|-------------|-------------------|
-| 1 | Game logic inside Object3D subclasses | God Object anti-pattern, untestable | ECS Systems operating on Components |
-| 2 | Forgetting to `.dispose()` | Memory leaks → browser crash | Dispose all geometry, material, texture on entity removal |
-| 3 | > 100 draw calls/frame | GPU bottleneck, FPS drops | InstancedMesh, batching, merge geometries |
-| 4 | `new THREE.Vector3()` in game loop | GC pressure, FPS spikes | Reuse Vector3 instances as temp variables |
-| 5 | Loading uncompressed GLTF | Slow load, high memory | Draco + KTX2 compression |
-| 6 | Not handling context loss | Game crashes on tab switch, mobile | Listen for `webglcontextlost`, save/restore state |
-| 7 | Complex physics colliders everywhere | Slow simulation | Use primitive colliders (sphere, box, capsule) |
-| 8 | No profiling in dev | Blind to bottlenecks | Use `renderer.info`, `stats-gl`, Chrome Performance tab |
-| 9 | Using WebGL on mobile when WebGPU available | Misses performance gains | WebGPURenderer auto-selects best option |
-| 10 | Three.js Labels/HTML on 3D objects | Expensive DOM operations | Use CSS2DRenderer sparingly, prefer DOM overlay |
+| # | Mistake | Why It Fails | Solution |
+|---|---------|---------------|----------|
+| 1 | Creating objects in render loop | GC spikes, FPS drops | Pool, reuse |
+| 2 | Not disposing materials | Memory leak | Dispose on remove |
+| 3 | Too many lights | Shadow map overhead | Baked lighting, few lights |
+| 4 | No LOD | Mobile GPU overload | Level of detail |
+| 5 | High-poly meshes everywhere | Performance death | LOD, instancing |
+| 6 | Not handling resize | Broken on mobile | Window resize handler |
+| 7 | Forgetting pixel ratio | Blurry on retina | `setPixelRatio` |
+| 8 | No WebGL fallback | Crashes on old devices | Feature detection |
+| 9 | Heavy post-processing | Mobile crashes | Skip on mobile |
+| 10 | Not using instancing | Too many draw calls | InstancedMesh |
 
-## Handoff Protocol
+## Performance Optimization Checklist
 
-| To | Provide | Format |
-|----|---------|--------|
-| QA Engineer | Damage formulas, physics config, balance tables | Built game + test scenarios |
-| Game Asset & VFX | LOD levels, material requirements, shader inputs | LOD config + material spec |
-| Game Audio Engineer | Audio trigger events, spatial audio positions | Event specs + audio spatialization guide |
-| Technical Artist | Shader inputs, post-processing requirements | Shader parameter specs |
+- [ ] Object pooling implemented
+- [ ] Proper disposal of geometries/materials
+- [ ] LOD on all large meshes
+- [ ] Instancing for repeated objects
+- [ ] Shadow map optimization
+- [ ] Mobile detection with reduced settings
+- [ ] Pixel ratio capped at 2
+- [ ] Compressed textures (basis/ktx2)
+- [ ] Baked lighting where possible
+- [ ] Frustum culling verified
+- [ ] Draw call budget met (<100 mobile, <500 desktop)
 
 ## Execution Checklist
 
-- [ ] TypeScript project with Three.js + physics (Rapier/cannon-es)
-- [ ] WebGPURenderer with WebGL2 fallback, context loss handling
-- [ ] ECS World: entities, components, systems with priority ordering
-- [ ] RenderSyncSystem bridging ECS transforms to Three.js scene graph
-- [ ] AssetLoader with GLTFLoader + Draco + KTX2 compression
-- [ ] PhysicsWorld with Rapier/cannon-es integration
-- [ ] InputManager abstracting keyboard/mouse/touch
-- [ ] MovementSystem operating on PlayerControlled entities
-- [ ] CombatSystem implementing exact damage formula from Game Designer
-- [ ] HealthSystem with invulnerability frames
-- [ ] ObjectPool for projectiles and frequently spawned entities
-- [ ] Entity factories: Player, Enemy, Projectile, Destructible
-- [ ] DOM-based HUD overlay (HP bar, score, minimap)
-- [ ] Post-processing: bloom, outline (via pmndrs/postprocessing)
-- [ ] InstancedMesh for repeated objects (bullets, debris)
-- [ ] LOD setup for complex meshes
-- [ ] Explicit disposal on entity removal (geometry + material + texture)
-- [ ] `renderer.info` profiling in dev mode
-- [ ] `renderer.forceContextRestore()` handling
-- [ ] Target: < 100 draw calls/frame, 60fps on mid-range hardware
-- [ ] Unit tests for CombatSystem, MovementSystem, ECS World
-- [ ] Performance benchmarks in CI (< 100 draw calls enforced)
+### Core Setup
+- [ ] Project scaffold with Vite + TypeScript + Three.js
+- [ ] Renderer configured (antialias, tone mapping, color space)
+- [ ] Responsive canvas with resize handler
+- [ ] Proper disposal on unload
+
+### Scene
+- [ ] Scene hierarchy organized
+- [ ] Fog for depth
+- [ ] Background color or skybox
+
+### Lighting
+- [ ] Ambient light
+- [ ] Directional light with shadows
+- [ ] Hemisphere light for natural feel
+- [ ] Point/spot lights for specific areas
+
+### Materials
+- [ ] PBR materials with proper settings
+- [ ] Environment map for reflections
+- [ ] Material reuse across similar objects
+
+### Objects
+- [ ] GameObject base class
+- [ ] Object pooling for frequently spawned objects
+- [ ] Instancing for repeated objects
+
+### Interaction
+- [ ] Orbit/first-person/follow camera
+- [ ] Raycaster for picking
+- [ ] Keyboard/mouse/touch input
+
+### Animation
+- [ ] AnimationMixer for skeletal animations
+- [ ] Tween library for simple animations
+- [ ] Object pooling for animated objects
+
+### Post-Processing
+- [ ] Effects composer setup
+- [ ] Bloom (desktop only)
+- [ ] Mobile detection to skip effects
+
+### Performance
+- [ ] Performance budgets met
+- [ ] Mobile optimization
+- [ ] Memory profiling
+- [ ] FPS monitoring
