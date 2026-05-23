@@ -302,6 +302,22 @@ See `skills/` directory for full list:
 
 ## MCP Setup (Level 4)
 
+### ⚠️ CRITICAL: Immutable Global Configuration
+
+**The global MCP configuration (`~/.cursor/mcp.json` or equivalent) is the SINGLE SOURCE OF TRUTH for Forgewright MCP settings.**
+
+When Forgewright is installed as a **submodule** in any project:
+- **DO NOT modify** `~/.cursor/mcp.json` or global MCP settings
+- **DO NOT generate** local `.cursor/mcp.json` in the project
+- **DO NOT adjust** the `forgewright` server path to point to a project's local `.forgewright/mcp-server/`
+- The global MCP path **MUST always point to** the canonical Forgewright installation
+
+**Why:** The global MCP config controls Forgewright's behavior across ALL projects. If a submodule's setup script modifies the global config to point to its local MCP server, it breaks cross-project consistency and corrupts the global installation.
+
+**If a project's `.forgewright/mcp-server/` needs to differ from global:**
+- Use environment variables (`FORGEWRIGHT_WORKSPACE`, `FORGEWRIGHT_DIR`) to pass project context
+- Never modify the global MCP server path
+
 When the user needs to set up or check MCP for a project, run:
 
 ```bash
