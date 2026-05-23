@@ -391,6 +391,69 @@ All games have access to these shared libraries via `@shared/lib/`:
 | 12 | Using emoji as game sprites | Renders differently per platform, looks amateur | Generate proper sprite textures with multiple graphics calls |
 | 13 | Flat solid color backgrounds | Screams "placeholder" to players | Use gradient backgrounds + ambient floating particles |
 | 14 | No loading screen or splash | No professional first impression | Create Boot scene with brand logo + animated progress bar |
+| 15 | Ignoring accessibility | Excludes 15-20% of potential players | Design accessibility in from the start |
+
+## Accessibility Requirements
+
+> **CRITICAL (v2.0+)**: All games MUST include accessibility requirements in GDD. Modern players expect inclusive design.
+
+### Required Accessibility Features
+
+| Category | Feature | Required Level |
+|----------|---------|----------------|
+| **Visual** | Colorblind modes | All 3 types (protanopia, deuteranopia, tritanopia) |
+| **Visual** | Subtitle system | Full customization (size, color, background) |
+| **Visual** | UI scaling | Minimum 1.5x support |
+| **Motor** | Controller remapping | Full rebinding |
+| **Motor** | Aim assist options | Adjustable strength |
+| **Motor** | Toggle vs hold | Toggle options for all hold actions |
+| **Motor** | One-hand control | Alternative schemes |
+| **Cognitive** | Difficulty modifiers | Adjustable without shame |
+| **Cognitive** | Skip puzzles | Optional skip for required sequences |
+| **Audio** | Separate volume controls | Music, SFX, speech independent |
+| **Audio** | Visual audio cues | Icon-based indicators for sounds |
+
+### Accessibility-First Design Principles
+
+1. **Never rely on color alone** — Use shapes + color + icons
+2. **All speech must be captioned** — Including radio, phone, ambient dialogue
+3. **Provide audio-visual redundancy** — Every important sound has visual indicator
+4. **Input flexibility** — Single-switch compatible where possible
+5. **Difficulty without shame** — "Assistance" not "Easy Mode"
+
+### Accessibility Section Template
+
+```markdown
+## Accessibility Requirements
+
+### Visual Accessibility
+- [ ] Colorblind support (protanopia, deuteranopia, tritanopia)
+- [ ] High contrast mode
+- [ ] UI text scaling (1.5x - 2x)
+- [ ] Screen shake intensity control
+- [ ] Reduce motion option
+
+### Hearing Accessibility
+- [ ] Full subtitle system with speaker ID
+- [ ] Environmental audio captions
+- [ ] Separate volume controls (Music/SFX/Speech)
+- [ ] Visual indicators for audio cues
+- [ ] No audio-only puzzle solutions
+
+### Motor Accessibility
+- [ ] Full controller remapping
+- [ ] Adjustable aim assist
+- [ ] Toggle mode for hold actions
+- [ ] One-hand control scheme
+- [ ] No simultaneous button requirements
+
+### Cognitive Accessibility
+- [ ] Adjustable difficulty settings
+- [ ] Skip puzzle option
+- [ ] Hint system
+- [ ] Simplified UI option
+- [ ] Tutorial replay
+```
 
 ## Handoff Protocol
 
@@ -429,3 +492,8 @@ All games have access to these shared libraries via `@shared/lib/`:
 - [ ] **Typography** — custom font specified (Outfit from Google Fonts recommended)
 - [ ] **Background design** — gradient + ambient particles or grid pattern
 - [ ] **Shared libraries** used: audio-manager, vfx-helpers, ui-helpers
+- [ ] **Accessibility requirements** documented (all 4 categories: visual, hearing, motor, cognitive)
+- [ ] **Colorblind-safe palette** specified (never color-alone indicators)
+- [ ] **Subtitle system** designed (speaker ID, customization options)
+- [ ] **Motor accessibility** options specified (remapping, toggle, one-hand)
+- [ ] **Difficulty modifiers** without shame framing
