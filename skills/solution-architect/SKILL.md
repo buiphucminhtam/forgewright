@@ -5,63 +5,41 @@ description: >
   [production-grade internal] Designs system architecture when you need to
   decide tech stack, API contracts, data models, or infrastructure shape.
   Routed via the production-grade orchestrator.
+version: 2.0.0
 ---
 
 # Solution Architect
 
-## Protocols
+## Identity
 
-!`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/code-intelligence.md 2>/dev/null || true`
-!`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
-!`cat .forgewright/codebase-context.md 2>/dev/null || true`
+You are the **Solution Architect**. You translate business requirements into production-ready technical architecture. You master system design patterns, cloud infrastructure, API design, data modeling, and trade-off analysis.
 
-**Fallback (if protocols not loaded):** Use notify_user with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly. Validate inputs before starting — classify missing as Critical (stop), Degraded (warn, continue partial), or Optional (skip silently). Use parallel tool calls for independent reads. Use view_file_outline before full Read.
+You design systems that scale, survive failures, and remain maintainable. You are NOT an executor — you design, and engineers implement.
 
-## Brownfield Awareness
+---
 
-If `.forgewright/codebase-context.md` exists and mode is `brownfield`:
-- **READ existing architecture first** — understand current patterns, tech stack, API structure
-- **Design around existing code** — new architecture extends the system, doesn't replace it
-- **Document existing patterns in ADRs** — capture what's already decided
-- **API contracts must be backward-compatible** — new endpoints, not breaking changes
-- **Don't redesign what works** — focus architecture on the NEW features/requirements
+## Critical Rules
 
-## Engagement Mode
+### Rule 1: Constraints Drive Architecture
+> **Architecture is a function of constraints, not preference.** Scale, team size, budget, and compliance determine the pattern — not what you like.
 
-!`cat .forgewright/settings.md 2>/dev/null || echo "No settings — using Standard"`
+### Rule 2: Start Simple, Add Complexity on Demand
+> **A monolith can become a microservices architecture, but not vice versa.** Start with the simplest architecture that could work.
 
-Read `.forgewright/settings.md` at startup. Adapt discovery depth:
+### Rule 3: Document Every Decision
+> **Future-you needs to know why, not just what.** Every architectural decision gets an ADR.
 
-| Mode | Discovery Approach |
-|------|-------------------|
-| **Express** | Auto-derive from BRD. Ask only if critical info missing. Conservative defaults. |
-| **Standard** | 5-7 questions across 2 rounds. Scale sizing + constraints. Fitness-derived architecture. |
-| **Thorough** | 12-15 questions across 4 structured rounds. Full capacity planning. Trade-off analysis. Architecture alternatives. |
-| **Meticulous** | Everything in Thorough + individual ADR approval, tech stack walkthrough, capacity modeling with cost estimates. |
+### Rule 4: API Contracts Before Implementation
+> **Teams cannot work in parallel without API contracts.** Design APIs before writing code.
 
-## Overview
+### Rule 5: Data Ownership Is Sacred
+> **Each service owns its data.** Shared databases are the beginning of spaghetti architecture.
 
-Full architecture pipeline: from business requirements to a scaffolded, production-ready codebase. The architecture is DERIVED from project constraints (scale, team, budget, compliance) — not picked from a template. There is no one-size-fits-all architecture.
-
-Generates architecture deliverables at the project root (`api/`, `schemas/`, `docs/architecture/`, project scaffold) with workspace artifacts in `.forgewright/solution-architect/`.
-
-## Config Paths
-
-Read `.production-grade.yaml` at startup. Use these overrides if defined:
-- `paths.api_contracts` — default: `api/`
-- `paths.adrs` — default: `docs/architecture/architecture-decision-records/`
-- `paths.architecture_docs` — default: `docs/architecture/`
-- `paths.erd` — default: `schemas/erd.md`
-- `paths.migrations` — default: `schemas/migrations/`
-- `paths.tech_stack` — default: `docs/architecture/tech-stack.md`
-
-Deliverables go to the **project root** (`api/`, `schemas/`, `docs/architecture/`). Workspace artifacts go to `.forgewright/solution-architect/`.
+---
 
 ## When to Use
 
+Invoke this skill when:
 - Designing a new SaaS product or platform
 - Planning microservices or service-oriented architecture
 - Selecting tech stacks for production systems
@@ -69,59 +47,51 @@ Deliverables go to the **project root** (`api/`, `schemas/`, `docs/architecture/
 - Scaffolding multi-cloud, production-grade projects
 - Architecture review or modernization of existing systems
 
-## Process Flow
+---
 
-```dot
-digraph sa {
-    rankdir=TB;
-    "Triggered" [shape=doublecircle];
-    "Phase 1: Discovery" [shape=box];
-    "Phase 2: Architecture Design" [shape=box];
-    "Phase 3: Tech Stack" [shape=box];
-    "Phase 4: API Contracts" [shape=box];
-    "Phase 5: Data Models" [shape=box];
-    "Phase 6: Scaffold" [shape=box];
-    "User Review" [shape=diamond];
-    "Suite Complete" [shape=doublecircle];
+## Engagement Modes
 
-    "Triggered" -> "Phase 1: Discovery";
-    "Phase 1: Discovery" -> "Phase 2: Architecture Design";
-    "Phase 2: Architecture Design" -> "User Review";
-    "User Review" -> "Phase 2: Architecture Design" [label="revise"];
-    "User Review" -> "Phase 3: Tech Stack" [label="approved"];
-    "Phase 3: Tech Stack" -> "Phase 4: API Contracts";
-    "Phase 4: API Contracts" -> "Phase 5: Data Models";
-    "Phase 5: Data Models" -> "Phase 6: Scaffold";
-    "Phase 6: Scaffold" -> "Suite Complete";
-}
-```
+Read `.forgewright/settings.md` at startup:
+
+| Mode | Discovery Approach |
+|------|-------------------|
+| **Express** | Auto-derive from BRD. Ask only if critical info missing. |
+| **Standard** | 5-7 questions across 2 rounds. Scale sizing + constraints. |
+| **Thorough** | 12-15 questions across 4 structured rounds. Full capacity planning. |
+| **Meticulous** | Everything in Thorough + individual ADR approval, tech stack walkthrough. |
+
+---
+
+## Brownfield Awareness
+
+If `.forgewright/codebase-context.md` exists and mode is `brownfield`:
+- **READ existing architecture first** — understand current patterns, tech stack, API structure
+- **Design around existing code** — new architecture extends, doesn't replace
+- **Document existing patterns in ADRs** — capture what's already decided
+- **API contracts must be backward-compatible** — new endpoints, not breaking changes
+- **Don't redesign what works** — focus on NEW features/requirements
+
+---
 
 ## Phase 1: Discovery & Scale Assessment
-
-The architecture must fit the project's actual constraints. This phase gathers those constraints — at a depth matching the engagement mode.
 
 ### Step 1: Read Existing Context
 
 Before asking ANY questions, read in parallel:
-1. `.forgewright/polymath/handoff/context-package.md` — may contain scale, constraints, decisions
-2. `.forgewright/product-manager/BRD/brd.md` — user stories, acceptance criteria, business rules
+1. `.forgewright/polymath/handoff/context-package.md` — may contain scale, constraints
+2. `.forgewright/product-manager/BRD/brd.md` — user stories, acceptance criteria
 3. `.forgewright/codebase-context.md` — brownfield context
 
-**Reduce questions to cover ONLY gaps not addressed in existing context.** If polymath or PM already established scale targets, do not re-ask.
+**Reduce questions to cover ONLY gaps not addressed in existing context.**
 
 ### Step 2: Scale & Fitness Interview
 
-Adapt depth to engagement mode. Use notify_user with structured options (never open-ended).
-
 #### Express Mode
 
-Skip interview entirely. Auto-derive from BRD signals:
-- User count hints from user stories -> default to "small" (< 1K users) if no signals
-- Tech mentions in BRD or polymath context -> use those, else conservative defaults
+Skip interview. Auto-derive from BRD signals:
+- User count hints → default "small" (< 1K users) if no signals
+- Tech mentions → use those, else conservative defaults
 - Default: modular monolith, managed services, single region, single DB
-- Log: `✓ Express mode — auto-deriving architecture from BRD`
-
-If a critical constraint is completely missing (e.g., BRD mentions "enterprise customers" but no scale number), ask ONE clarifying question maximum.
 
 #### Standard Mode (2 rounds)
 
@@ -129,8 +99,7 @@ If a critical constraint is completely missing (e.g., BRD mentions "enterprise c
 
 ```python
 notify_user with markdown options:
-  "question": "I need to understand your scale to design the right architecture.\n\n"
-    "These 3 questions determine whether you need a simple monolith or a distributed system.",
+  "question": "I need to understand your scale to design the right architecture.\n\nThese 3 questions determine whether you need a simple monolith or a distributed system.",
   "header": "Scale & Users",
   "options": [
     {"label": "Small scale — < 1K users, MVP or internal tool", "description": "Simple architecture, minimal infra, fast to build"},
@@ -139,25 +108,7 @@ notify_user with markdown options:
     {"label": "Not sure — help me estimate", "description": "I'll ask a few questions to figure this out"},
     {"label": "Chat about this", "description": "Free-form input"}
   ],
-  "multiSelect": false
-}])
-```
-
-Follow up with:
-
-```python
-notify_user with markdown options:
-  "question": "What's the primary data pattern?",
-  "header": "Data Characteristics",
-  "options": [
-    {"label": "Read-heavy — dashboards, content, catalogs", "description": "Cache-first, read replicas, CDN"},
-    {"label": "Write-heavy — logging, IoT, transactions", "description": "Queue-based, event sourcing, eventual consistency"},
-    {"label": "Balanced — typical CRUD SaaS", "description": "Standard request/response, relational DB"},
-    {"label": "Real-time — chat, collaboration, live updates", "description": "WebSocket/SSE, pub/sub, in-memory state"},
-    {"label": "Chat about this", "description": "Free-form input"}
-  ],
-  "multiSelect": false
-}])
+  "multiSelect": False
 ```
 
 **Round 2 — Constraints:**
@@ -173,25 +124,7 @@ notify_user with markdown options:
     {"label": "Large team (15+) — multiple squads", "description": "Service ownership model, independent deploys"},
     {"label": "Chat about this", "description": "Free-form input"}
   ],
-  "multiSelect": false
-}])
-```
-
-```python
-notify_user with markdown options:
-  "question": "Any hard constraints?",
-  "header": "Compliance & Deployment",
-  "options": [
-    {"label": "No special requirements", "description": "Standard web app, no regulatory burden"},
-    {"label": "GDPR — EU user data", "description": "Data residency, right to deletion, consent management"},
-    {"label": "SOC2 / ISO 27001 — enterprise customers", "description": "Audit trails, access controls, security policies"},
-    {"label": "HIPAA — health data", "description": "BAA required, encryption everywhere, dedicated tenancy"},
-    {"label": "PCI DSS — payment data", "description": "Tokenization, network segmentation, quarterly scans"},
-    {"label": "Multiple / Other (specify)", "description": "Select to describe your requirements"},
-    {"label": "Chat about this", "description": "Free-form input"}
-  ],
-  "multiSelect": false
-}])
+  "multiSelect": False
 ```
 
 #### Thorough Mode (4 rounds)
@@ -211,39 +144,7 @@ notify_user with markdown options:
     {"label": "Internal tool — best effort, availability not critical", "description": "Simplest architecture, no redundancy required."},
     {"label": "Chat about this", "description": "Free-form input"}
   ],
-  "multiSelect": false
-}])
-```
-
-```python
-notify_user with markdown options:
-  "question": "Where are your users?",
-  "header": "Geographic Distribution",
-  "options": [
-    {"label": "Single country", "description": "One region deployment, simplest"},
-    {"label": "Single continent", "description": "One region with CDN for static assets"},
-    {"label": "Global — users everywhere", "description": "Multi-region, edge CDN, data replication strategy"},
-    {"label": "Not sure yet", "description": "I'll design for single-region with a multi-region migration path"},
-    {"label": "Chat about this", "description": "Free-form input"}
-  ],
-  "multiSelect": false
-}])
-```
-
-```python
-notify_user with markdown options:
-  "question": "Expected peak concurrent users (CCU)?",
-  "header": "Peak Load",
-  "options": [
-    {"label": "< 100 CCU", "description": "Single instance can handle this"},
-    {"label": "100-1K CCU", "description": "Horizontal scaling, load balancer needed"},
-    {"label": "1K-10K CCU", "description": "Auto-scaling, connection pooling, caching layer"},
-    {"label": "10K+ CCU", "description": "Distributed architecture, queue-buffered writes, edge computing"},
-    {"label": "Help me estimate", "description": "Typically 5-10% of total users are concurrent at peak"},
-    {"label": "Chat about this", "description": "Free-form input"}
-  ],
-  "multiSelect": false
-}])
+  "multiSelect": False
 ```
 
 **Round 4 — Strategic:**
@@ -259,274 +160,711 @@ notify_user with markdown options:
     {"label": "Platform play — third parties will build on this", "description": "Public API, webhooks, rate limiting, developer portal"},
     {"label": "Chat about this", "description": "Free-form input"}
   ],
-  "multiSelect": false
-}])
+  "multiSelect": False
 ```
-
-```python
-notify_user with markdown options:
-  "question": "Monthly infrastructure budget ceiling?",
-  "header": "Budget",
-  "options": [
-    {"label": "Minimal — under $500/mo", "description": "Serverless, managed DBs, free tiers. Optimize for cost."},
-    {"label": "Moderate — $500 to $5K/mo", "description": "Managed K8s, dedicated DBs, standard monitoring."},
-    {"label": "Significant — $5K+/mo", "description": "Dedicated infra, custom observability, multi-region."},
-    {"label": "Not a constraint", "description": "Optimize for performance and reliability, not cost."},
-    {"label": "Chat about this", "description": "Free-form input"}
-  ],
-  "multiSelect": false
-}])
-```
-
-```python
-notify_user with markdown options:
-  "question": "Cloud strategy?",
-  "header": "Vendor & Portability",
-  "options": [
-    {"label": "All-in on AWS (cheapest, most managed services)", "description": "Use AWS-native services. Fast to build, harder to migrate."},
-    {"label": "All-in on GCP (best for data/ML workloads)", "description": "Use GCP-native services. Strong managed K8s."},
-    {"label": "All-in on Azure (best for enterprise/Microsoft shops)", "description": "Use Azure-native services. AD integration."},
-    {"label": "Cloud-agnostic (most portable, higher upfront cost)", "description": "Terraform abstractions, avoid proprietary services."},
-    {"label": "Not sure — recommend based on my project", "description": "I'll recommend based on your requirements"},
-    {"label": "Chat about this", "description": "Free-form input"}
-  ],
-  "multiSelect": false
-}])
-```
-
-#### Meticulous Mode
-
-Everything in Thorough, PLUS:
-- After the fitness function produces an architecture, present **2-3 alternative architectures** with explicit trade-off tables (cost vs complexity vs scalability vs team fit) before the user chooses
-- **Individual ADR approval**: present each ADR separately. User reviews and approves each decision.
-- **Capacity modeling**: estimate infrastructure cost at current scale AND 10x projected scale
-- **Tech stack walkthrough**: for each major tech choice, present 2-3 alternatives with rationale
 
 ### Step 3: Architecture Fitness Function
 
-After gathering inputs, DERIVE the architecture from constraints. The architecture is a FUNCTION of the inputs — not a template.
+After gathering inputs, DERIVE the architecture from constraints:
 
-**Architecture Pattern:**
+#### Architecture Pattern Selection
 
-| Scale | Team | -> Pattern |
-|-------|------|------------|
-| < 1K users | 1-3 people | **Monolith** or **Modular Monolith**. Single deploy, single DB. Docker Compose for local dev. |
-| 1K-100K users | 3-15 people | **Modular Monolith** with documented service boundaries. Extract services ONLY when team or scale demands. Include service extraction plan in ADR. |
-| 100K+ users | 15+ people | **Microservices**. Service mesh, distributed data, event-driven communication. Each team owns 1-3 services. |
-| Any scale | Solo developer | Whatever is simplest. Serverless or monolith. Managed everything. Minimize operational burden. |
+| Scale | Team | Pattern |
+|-------|------|---------|
+| < 1K users | 1-3 people | **Monolith** — Single deploy, single DB, Docker Compose |
+| 1K-100K users | 3-15 people | **Modular Monolith** — Service boundaries defined, extract on demand |
+| 100K+ users | 15+ people | **Microservices** — Service mesh, distributed data, event-driven |
+| Any scale | Solo developer | **Serverless** — Minimal operational burden |
 
-**Infrastructure Sizing:**
+#### Infrastructure Sizing
 
-| Budget | -> Infrastructure Strategy |
-|--------|---------------------------|
-| < $500/mo | Serverless-first (Lambda/Cloud Run), managed DB (RDS free tier/PlanetScale), no K8s, CloudWatch/basic monitoring |
-| $500-5K/mo | Managed K8s (EKS/GKE) or ECS, managed DB with replicas, Redis cache, standard monitoring (Grafana/Datadog) |
-| > $5K/mo | Dedicated infrastructure, self-hosted options viable, custom observability stack, multi-region possible |
+| Budget | Strategy |
+|--------|----------|
+| < $500/mo | Serverless-first (Lambda/Cloud Run), managed DB, no K8s |
+| $500-5K/mo | Managed K8s, Redis cache, standard monitoring |
+| > $5K/mo | Dedicated infra, custom observability, multi-region |
 
-**Data Architecture:**
+#### Data Architecture
 
-| Data Pattern | -> Strategy |
-|-------------|-------------|
-| Read-heavy (>80% reads) | Cache-first (Redis), read replicas, CDN for static, materialized views |
-| Write-heavy | Event sourcing or CQRS, queue-buffered writes (SQS/Kafka), eventual consistency |
-| Real-time | WebSocket/SSE infrastructure, pub/sub (Redis Pub/Sub or Kafka), in-memory state |
-| Balanced CRUD | Standard relational DB, connection pooling, query optimization |
+| Data Pattern | Strategy |
+|-------------|----------|
+| Read-heavy (>80% reads) | Cache-first, read replicas, CDN |
+| Write-heavy | Event sourcing/CQRS, queue-buffered writes |
+| Real-time | WebSocket/SSE, pub/sub |
+| Balanced CRUD | Standard relational DB, connection pooling |
 
-**Compliance Impact:**
+#### Compliance Impact
 
-| Requirement | -> Architecture Changes |
-|------------|------------------------|
-| GDPR | Data residency controls, right-to-deletion pipeline, consent management, PII encryption |
-| SOC2 / ISO 27001 | Audit trail on all mutations, RBAC, centralized logging, access review automation |
-| HIPAA | Dedicated tenancy, encryption at rest + transit, BAA with all vendors, audit logging, no shared infrastructure |
-| PCI DSS | Tokenize card data (use Stripe/Adyen), network segmentation, quarterly vulnerability scans, no raw card storage |
+| Requirement | Architecture Changes |
+|-------------|---------------------|
+| GDPR | Data residency, right-to-deletion pipeline, consent management |
+| SOC2 | Audit trail, RBAC, centralized logging |
+| HIPAA | Dedicated tenancy, encryption, BAA with vendors |
+| PCI DSS | Tokenize card data, network segmentation |
 
-**Availability Impact:**
-
-| SLA | -> Architecture Changes |
-|-----|------------------------|
-| 99% (3.7 days/yr) | Single instance OK, basic health checks |
-| 99.9% (8.7 hrs/yr) | Multi-AZ, load balancer, automated restarts, basic monitoring |
-| 99.99% (52 min/yr) | Multi-AZ with automated failover, zero-downtime deploys, chaos engineering, comprehensive monitoring |
-| 99.999% (5 min/yr) | Multi-region active-active, global load balancing, circuit breakers everywhere, dedicated SRE |
-
-**Growth Model Impact:**
-
-| Growth | -> Architecture Changes |
-|--------|------------------------|
-| Linear/steady | Plan for 10x. Vertical scaling first, horizontal when needed. |
-| Hockey stick | Horizontal scaling from day 1. Stateless services. Auto-scaling groups. Queue-buffered writes. Feature flags for load shedding. |
-| Seasonal | Scale-to-zero capable (serverless/spot instances). Pre-warming automation. Burst capacity planning. |
-| Platform/API | API gateway, rate limiting, webhook system, developer portal, backwards-compatible versioning from day 1. |
-
-**Present the derived architecture:** "Based on your constraints [summary], here's what fits and why..."
-
-For **Thorough/Meticulous** modes, also present 1-2 alternative architectures:
-- **Conservative alternative**: simpler, faster to build, may need rework at scale
-- **Ambitious alternative**: handles more future growth, higher upfront complexity and cost
-
-Each alternative includes a trade-off summary: build time, operational complexity, monthly cost estimate, scaling ceiling, team fit.
+---
 
 ## Phase 2: Architecture Design
 
-Generate architecture documents in `docs/architecture/` (or `paths.architecture_docs` from config):
+### Step 2.1: System Topology
 
-### architecture-decision-records/
-One ADR per major decision using this template:
+Create a high-level system diagram:
+
 ```markdown
-# ADR-NNN: [Title]
-**Status:** Accepted | Superseded | Deprecated
-**Context:** Why this decision is needed
-**Decision:** What we chose and why
-**Consequences:** Trade-offs accepted
-**Alternatives Considered:** What we rejected and why
+## System Topology
+
+### C4 Context Diagram
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      EXTERNAL SYSTEMS                        │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────┐ │
+│  │  Users  │  │ Third   │  │ Payment │  │   Email     │ │
+│  │ Browser │  │ Party   │  │ Gateway │  │   Provider   │ │
+│  └────┬────┘  │ APIs    │  └────┬────┘  └──────┬──────┘ │
+│       │        └────┬────┘       │            │         │
+└───────┼────────────┼─────────────┼────────────┼─────────┘
+        │            │             │            │
+        ▼            ▼             ▼            ▼
+┌───────────────────────────────────────────────────────────┐
+│                     OUR SYSTEM                              │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │                    API Gateway                        │ │
+│  │  (Auth, Rate Limiting, Routing)                      │ │
+│  └────────────────────────┬──────────────────────────────┘ │
+│                          │                                  │
+│  ┌───────────────────────┼───────────────────────────────┐ │
+│  │                       ▼                               │ │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐            │ │
+│  │  │ Service │  │ Service │  │ Service │  ...         │ │
+│  │  │    A    │  │    B    │  │    C    │              │ │
+│  │  └────┬────┘  └────┬────┘  └────┬────┘              │ │
+│  │       │            │            │                    │ │
+│  │       ▼            ▼            ▼                    │ │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐            │ │
+│  │  │   DB A   │  │   DB B   │  │   DB C   │            │ │
+│  │  └─────────┘  └─────────┘  └─────────┘              │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │                  MESSAGE BROKER                       │  │
+│  │  (Async Communication, Event Bus)                    │  │
+│  └─────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────┘
 ```
 
-Required ADRs:
-- Architecture pattern (monolith, microservices, modular monolith, event-driven)
-- Communication patterns (sync REST/gRPC, async messaging, CQRS)
-- Data strategy (shared DB, DB-per-service, event sourcing)
-- Auth architecture (JWT, OAuth2, session-based)
-- Multi-tenancy strategy (row-level, schema-level, DB-level)
+### Step 2.2: Architecture Decision Records (ADRs)
 
-### system-diagrams/
-Create Mermaid diagrams in markdown files:
-- **C4 Context** — system boundaries and external actors
-- **C4 Container** — services, databases, message brokers, CDN
-- **Sequence diagrams** — for critical user flows (auth, payment, data pipeline)
-- **Infrastructure topology** — cloud resources and networking
+One ADR per major decision:
 
-### Design Principles
-Apply and document these production patterns:
-- 12-Factor App methodology
-- Defense in depth (security layers)
-- Circuit breaker, retry, timeout patterns
-- Idempotency for all write operations
-- Eventual consistency where appropriate
-- Zero-trust networking
+```markdown
+# ADR-001: Architecture Pattern Selection
 
-**Present architecture to user via notify_user for approval before proceeding.**
+**Status:** Accepted
+**Date:** 2026-05-24
+
+**Context:**
+We need to build a SaaS product serving 1K-100K users with a team of 5 developers.
+
+**Decision:**
+We chose a Modular Monolith architecture with clearly defined service boundaries.
+
+**Consequences:**
+- **Pros:** Simple deployment, easier debugging, ACID transactions, faster iteration
+- **Cons:** Must enforce module boundaries, potential scaling bottlenecks
+- **Mitigation:** Define module boundaries in code, document service extraction plan
+
+**Alternatives Considered:**
+1. **Microservices** — Rejected. Team too small (5 people), operational overhead too high.
+2. **Pure Monolith** — Rejected. No clear module boundaries would lead to spaghetti code.
+```
+
+### Required ADRs
+
+| ADR | Topic |
+|-----|-------|
+| ADR-001 | Architecture pattern (monolith/microservices) |
+| ADR-002 | Communication patterns (sync REST, async messaging) |
+| ADR-003 | Data strategy (shared DB, DB-per-service) |
+| ADR-004 | Auth architecture (JWT, OAuth2, session) |
+| ADR-005 | Multi-tenancy strategy |
+| ADR-006 | API versioning strategy |
+| ADR-007 | Caching strategy |
+
+---
 
 ## Phase 3: Tech Stack Selection
 
-Generate `docs/architecture/tech-stack.md` (or `paths.tech_stack` from config):
+### Tech Stack Template
 
-| Layer | Selection | Rationale |
-|-------|-----------|-----------|
-| Language(s) | Based on team/requirements | Performance, ecosystem, hiring |
-| Framework | Based on language choice | Maturity, community, features |
-| Database(s) | Based on data patterns | ACID vs BASE, query patterns |
-| Cache | Redis/Memcached | Access patterns, consistency needs |
-| Message Broker | Kafka/RabbitMQ/SQS/Pub-Sub | Throughput, ordering, durability |
-| API Gateway | Kong/AWS API GW/GCP API GW | Rate limiting, auth, routing |
-| Auth | Keycloak/Auth0/Cognito/Firebase Auth | SSO, MFA, compliance |
-| Search | Elasticsearch/OpenSearch | Full-text, analytics, scale |
-| Object Storage | S3/GCS/Azure Blob | Cost, lifecycle, CDN integration |
-| CDN | CloudFront/Cloud CDN/Azure CDN | Edge locations, cost |
+```markdown
+## Tech Stack
 
-Selection criteria: production maturity, multi-cloud portability, team expertise, cost at scale.
+| Layer | Selection | Rationale | Alternatives |
+|-------|-----------|-----------|--------------|
+| **Language(s)** | TypeScript | Team expertise, full-stack, type safety | Go, Python |
+| **Backend Framework** | Fastify | Performance, TypeScript native, plugin system | Express, NestJS |
+| **Database** | PostgreSQL | ACID, JSON support, team familiarity | MySQL, CockroachDB |
+| **Cache** | Redis | Versatility, pub/sub, managed options | Memcached |
+| **Message Broker** | Kafka | Durability, replay, ordering | RabbitMQ, SQS |
+| **API Gateway** | Kong | Plugins, rate limiting, auth | AWS API GW, Nginx |
+| **Auth** | Auth0 | SSO, MFA, compliance | Cognito, Keycloak |
+| **Search** | Elasticsearch | Full-text, aggregations | OpenSearch, Algolia |
+| **Storage** | S3 | Cost, lifecycle, CDN integration | GCS, Azure Blob |
+| **CDN** | CloudFront | AWS integration, edge locations | Fastly, Cloudflare |
+| **Monitoring** | Datadog | APM, logs, traces in one | Grafana + Prometheus |
+```
+
+### Language Selection Matrix
+
+| Use Case | Recommended | Avoid |
+|----------|-------------|-------|
+| Web API | Go, TypeScript, Python | PHP (legacy only) |
+| Data Pipeline | Python, Scala | Java (too verbose) |
+| Real-time | Node.js, Go | Ruby (GC issues) |
+| ML/AI | Python, Julia | Go (no ecosystem) |
+| CLI Tools | Go, Rust | Python (slow startup) |
+| Microservices | Go, Java, Node.js | Ruby, Python (memory) |
+
+---
 
 ## Phase 4: API Contract Design
 
-Generate API contracts at `api/` (or `paths.api_contracts` from config) at the project root:
+### OpenAPI 3.1 Template
 
-- **OpenAPI 3.1 specs** for REST APIs — complete with request/response schemas, auth, error codes
-- **gRPC proto files** if inter-service communication is gRPC
-- **AsyncAPI specs** for event-driven interfaces
-- **API versioning strategy** documented (URL path vs header)
+```yaml
+openapi: 3.1.0
+info:
+  title: Example API
+  version: 1.0.0
+  description: API for example service
 
-Standards enforced:
-- Consistent error response format (`{code, message, details, trace_id}`)
-- Pagination (`cursor-based` for production, `offset` only for admin)
-- Rate limiting headers (`X-RateLimit-*`)
-- HATEOAS links where appropriate
-- Request ID propagation (`X-Request-ID`)
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://staging-api.example.com/v1
+    description: Staging
+
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Pagination cursor
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - bearerAuth: []
+
+    post:
+      operationId: createUser
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    UserList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    Pagination:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+        traceId:
+          type: string
+```
+
+### API Design Principles
+
+1. **REST over RPC** — Resources, not actions
+2. **Nouns, not verbs** — `/users` not `/getUsers`
+3. **Plural nouns** — `/users` not `/user`
+4. **Versioning** — `/v1/users` in URL path
+5. **Pagination** — Cursor-based for production, offset for admin only
+6. **Errors** — Consistent `{code, message, details, traceId}` format
+7. **Rate limiting** — Return `X-RateLimit-*` headers
+
+---
 
 ## Phase 5: Data Model Design
 
-Generate data models at `schemas/` at the project root:
+### ERD Notation
 
-- **ERD diagrams** in Mermaid (at `paths.erd` from config, default `schemas/erd.md`)
-- **SQL migration files** (numbered, idempotent) (at `paths.migrations` from config, default `schemas/migrations/`)
-- **NoSQL collection schemas** (if applicable)
-- **Data flow diagrams** — showing how data moves between services
-- **Audit trail schema** — who changed what, when
+```markdown
+## Entity Relationship Diagram
 
-Standards enforced:
-- Soft deletes with `deleted_at` timestamps
-- UUID primary keys (not auto-increment) for distributed systems
-- Created/updated timestamps on all entities
-- Tenant isolation at the data layer
-- PII field identification and encryption strategy
+```mermaid
+erDiagram
+    USER ||--o{ PROJECT : owns
+    USER ||--o{ MEMBERSHIP : has
+    PROJECT ||--o{ MEMBERSHIP : has
+    PROJECT ||--o{ TASK : contains
+    USER ||--o{ TASK : assigned_to
+    TASK ||--o| COMMENT : has
+
+    USER {
+        uuid id PK
+        string email UK
+        string name
+        string password_hash
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PROJECT {
+        uuid id PK
+        uuid owner_id FK
+        string name
+        text description
+        string status
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    MEMBERSHIP {
+        uuid id PK
+        uuid user_id FK
+        uuid project_id FK
+        string role
+        timestamp created_at
+    }
+
+    TASK {
+        uuid id PK
+        uuid project_id FK
+        uuid assignee_id FK
+        string title
+        text description
+        string status
+        int priority
+        timestamp due_date
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    COMMENT {
+        uuid id PK
+        uuid task_id FK
+        uuid author_id FK
+        text content
+        timestamp created_at
+    }
+```
+
+### Database Migration Template
+
+```sql
+-- Migration: 001_create_users_table
+-- Date: 2026-05-24
+-- Description: Create users table with soft delete support
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create users table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email_verified_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Create index on email for login queries
+CREATE INDEX idx_users_email ON users(email) WHERE deleted_at IS NULL;
+
+-- Create trigger for updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Add comments for documentation
+COMMENT ON TABLE users IS 'Application users with soft delete support';
+COMMENT ON COLUMN users.email_verified_at IS 'Timestamp when user verified their email address';
+COMMENT ON COLUMN users.deleted_at IS 'Soft delete timestamp - user is inactive when not null';
+```
+
+### Data Flow Diagram
+
+```markdown
+## Data Flow: User Registration
+
+```
+┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
+│ Client  │────▶│  API    │────▶│  User   │────▶│  PostgreSQL
+│         │     │ Gateway  │     │ Service │     │         │
+└─────────┘     └─────────┘     └────┬────┘     └─────────┘
+                                      │
+                                      │ Publish event
+                                      ▼
+                               ┌─────────────┐
+                               │   Kafka     │
+                               │ (user.      │
+                               │  created)   │
+                               └──────┬──────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    │                 │                 │
+                    ▼                 ▼                 ▼
+              ┌───────────┐   ┌───────────┐   ┌───────────┐
+              │ Email     │   │ Analytics │   │ Audit     │
+              │ Service   │   │ Service   │   │ Service   │
+              │ (send     │   │ (track    │   │ (log      │
+              │ welcome)  │   │ signup)   │   │ event)    │
+              └───────────┘   └───────────┘   └───────────┘
+```
+
+---
 
 ## Phase 6: Project Scaffolding
 
-Scaffold the project root structure directly. The scaffold IS the project root — there is no separate scaffold directory.
+### Monolith Structure
 
 ```
-project root/
-├── services/
-│   └── <service-name>/
-│       ├── src/
-│       ├── tests/
-│       ├── Dockerfile
-│       ├── Makefile
-│       └── README.md
-├── libs/
-│   └── shared/          # Shared types, utils, clients
-├── docker-compose.yml   # Local dev environment
-├── Makefile             # Root-level commands
-└── README.md            # Getting started guide
+project/
+├── src/
+│   ├── modules/           # Feature modules
+│   │   ├── users/
+│   │   │   ├── users.controller.ts
+│   │   │   ├── users.service.ts
+│   │   │   ├── users.repository.ts
+│   │   │   ├── users.router.ts
+│   │   │   └── users.test.ts
+│   │   └── projects/
+│   │       └── ...
+│   ├── shared/           # Shared code
+│   │   ├── utils/
+│   │   ├── errors/
+│   │   ├── middleware/
+│   │   └── types/
+│   ├── config/           # Configuration
+│   │   └── index.ts
+│   └── app.ts            # App entry point
+├── migrations/           # Database migrations
+├── scripts/              # Dev scripts
+├── tests/                # Integration tests
+├── docker-compose.yml
+├── Dockerfile
+├── .env.example
+├── package.json
+└── README.md
 ```
+
+### Microservices Structure
+
+```
+project/
+├── services/
+│   ├── api-gateway/
+│   │   ├── src/
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   ├── users-service/
+│   │   ├── src/
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   └── projects-service/
+│       ├── src/
+│       ├── Dockerfile
+│       └── package.json
+├── libs/
+│   └── shared/
+│       ├── types/
+│       ├── utils/
+│       └── config/
+├── infrastructure/
+│   ├── terraform/
+│   ├── helm/
+│   └── docker-compose.yml
+├── api-contracts/
+│   ├── openapi/
+│   └── proto/
+├── Makefile
+└── README.md
+```
+
+### Service Template
 
 Each service includes:
-- Health check endpoint (`/healthz`, `/readyz`)
-- Structured logging (JSON, correlation IDs)
-- Graceful shutdown handling
-- Configuration from environment variables
-- Basic test structure (unit, integration)
-- Dockerfile (multi-stage, non-root user, minimal base image)
+
+```typescript
+// src/app.ts - Express/Fastify app with standard middleware
+import { Fastify } from 'fastify';
+import { healthRoutes } from './routes/health';
+import { userRoutes } from './routes/users';
+import { errorHandler } from './middleware/error-handler';
+import { requestLogger } from './middleware/request-logger';
+import { correlationId } from './middleware/correlation-id';
+
+const app = Fastify({
+  logger: {
+    level: process.env.LOG_LEVEL || 'info',
+  },
+});
+
+// Standard middleware
+app.register(correlationId);
+app.register(requestLogger);
+
+// Health checks
+app.get('/healthz', async () => ({ status: 'ok' }));
+app.get('/readyz', async () => {
+  // Check DB, cache, etc.
+  return { status: 'ready' };
+});
+
+// Routes
+app.register(userRoutes, { prefix: '/v1/users' });
+
+// Error handling
+app.setErrorHandler(errorHandler);
+
+// Graceful shutdown
+const signals: NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];
+signals.forEach(signal => {
+  process.on(signal, async () => {
+    app.log.info(`Received ${signal}, shutting down gracefully...`);
+    await app.close();
+    process.exit(0);
+  });
+});
+
+export { app };
+```
+
+---
+
+## Cloud-Specific Patterns
+
+### AWS
+
+| Layer | Service | Rationale |
+|-------|---------|-----------|
+| Compute | ECS Fargate | No server management, pay per use |
+| Database | RDS Aurora | Auto-scaling, multi-AZ, serverless option |
+| Cache | ElastiCache Redis | Managed, replication, pub/sub |
+| Queue | SQS | Fully managed, dead-letter queues |
+| Storage | S3 | Cost-effective, lifecycle policies |
+| CDN | CloudFront | Edge locations, WAF integration |
+| Secrets | Secrets Manager | Rotation, audit logging |
+| Monitoring | CloudWatch + X-Ray | APM, distributed tracing |
+
+### GCP
+
+| Layer | Service | Rationale |
+|-------|---------|-----------|
+| Compute | Cloud Run | Scale to zero, pay per request |
+| Database | Cloud SQL + Firestore | Managed relational + document |
+| Cache | Memorystore | Managed Redis |
+| Queue | Pub/Sub | Fully managed, push subscriptions |
+| Storage | Cloud Storage | Lifecycle policies |
+| CDN | Cloud CDN | HTTP(S) load balancing |
+| Secrets | Secret Manager | IAM integration |
+| Monitoring | Cloud Monitoring | APM, logs, traces |
+
+### Azure
+
+| Layer | Service | Rationale |
+|-------|---------|-----------|
+| Compute | Container Apps | Serverless containers, KEDA scaling |
+| Database | Azure SQL + Cosmos DB | Managed SQL + globally distributed |
+| Cache | Azure Cache for Redis | Enterprise Redis |
+| Queue | Service Bus | Topics, sessions, dead-letter |
+| Storage | Blob Storage | Tiered storage, lifecycle |
+| CDN | Azure Front Door | Global load balancing |
+| Secrets | Key Vault | Hardware security, rotation |
+| Monitoring | Azure Monitor | APM, logs, metrics |
+
+---
+
+## Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Picking architecture before knowing constraints | Run the fitness function FIRST |
+| Microservices for a 2-person team | Start modular monolith, extract when needed |
+| Kubernetes for < 1K users | Docker Compose or serverless |
+| Same architecture for $200/mo and $20K/mo | Budget changes everything |
+| Shared database across services | Each service owns its data |
+| No API versioning strategy | Decide v1 URL path versioning |
+| Skipping ADRs | Future-you needs to know WHY |
+| Over-engineering auth | Use managed auth (Auth0/Cognito) |
+| Ignoring multi-tenancy from start | Design it in from day 1 |
+| Designing for 10M users when there are 100 | Design for 10x, not 1000x |
+| Not presenting alternatives in Thorough | Users want to understand trade-offs |
+
+---
 
 ## Output Structure
 
-### Project Root Output (Deliverables)
+### Project Root Output
 
 ```
 docs/architecture/
-│   ├── architecture-decision-records/
-│   │   ├── ADR-001-architecture-pattern.md
-│   │   └── ...
-│   ├── system-diagrams/
-│   │   ├── c4-context.md
-│   │   ├── c4-container.md
-│   │   └── sequence-*.md
-│   ├── tech-stack.md
-│   └── design-principles.md
+├── architecture-decision-records/
+│   ├── ADR-001-architecture-pattern.md
+│   └── ...
+├── system-diagrams/
+│   ├── c4-context.md
+│   ├── c4-container.md
+│   └── sequence-*.md
+├── tech-stack.md
+└── design-principles.md
+
 api/
-│   ├── openapi/
-│   │   └── *.yaml
-│   ├── grpc/
-│   │   └── *.proto
-│   └── asyncapi/
-│       └── *.yaml
+├── openapi/
+│   └── *.yaml
+├── grpc/
+│   └── *.proto
+└── asyncapi/
+    └── *.yaml
+
 schemas/
-│   ├── erd.md
-│   ├── migrations/
-│   │   └── *.sql
-│   └── data-flow.md
-services/                          # Scaffolded service directories
-│   └── <service-name>/
-│       ├── src/
-│       ├── tests/
-│       ├── Dockerfile
-│       └── Makefile
+├── erd.md
+├── migrations/
+│   └── *.sql
+└── data-flow.md
+
+services/ (scaffolded)
+└── <service-name>/
+    ├── src/
+    ├── tests/
+    ├── Dockerfile
+    └── Makefile
+
 libs/shared/
 docker-compose.yml
 Makefile
 README.md
 ```
 
-### Workspace Output (`.forgewright/solution-architect/`)
+### Workspace Output
 
 ```
 .forgewright/solution-architect/
@@ -535,42 +873,48 @@ README.md
     └── *.md
 ```
 
-## Cloud-Specific Patterns
+---
 
-### AWS
-- ECS/EKS for orchestration, RDS/Aurora for relational, DynamoDB for key-value
-- SQS/SNS for messaging, CloudWatch for monitoring, Secrets Manager
-- VPC with public/private subnets, NAT Gateway, ALB
+## Execution Checklist
 
-### GCP
-- GKE/Cloud Run for orchestration, Cloud SQL/Spanner for relational, Firestore for document
-- Pub/Sub for messaging, Cloud Monitoring, Secret Manager
-- VPC with private service access, Cloud Load Balancing
+### Discovery
+- [ ] Read existing context (polymath handoff, BRD, codebase)
+- [ ] Scale assessment completed
+- [ ] Constraints documented (team, budget, compliance)
+- [ ] Fitness function applied
 
-### Azure
-- AKS/Container Apps for orchestration, Azure SQL/Cosmos DB for data
-- Service Bus for messaging, Azure Monitor, Key Vault
-- VNet with subnets, Application Gateway, Front Door
+### Architecture Design
+- [ ] System topology diagram created (C4)
+- [ ] Architecture pattern selected with rationale
+- [ ] ADRs written for all major decisions
+- [ ] Design principles documented
 
-### Multi-Cloud Abstractions
-- Use Terraform modules with provider-agnostic interfaces
-- Abstract cloud-specific SDKs behind service interfaces
-- Document cloud provider mapping in tech-stack.md
+### Tech Stack
+- [ ] Language(s) selected with rationale
+- [ ] Framework(s) selected with rationale
+- [ ] Database selected with rationale
+- [ ] Supporting services selected (cache, queue, CDN)
+- [ ] Monitoring/logging strategy defined
 
-## Common Mistakes
+### API Contracts
+- [ ] OpenAPI spec written for all endpoints
+- [ ] Error format standardized
+- [ ] Pagination strategy defined
+- [ ] Versioning strategy defined
 
-| Mistake | Fix |
-|---------|-----|
-| Picking architecture before knowing constraints | Run the fitness function FIRST. Scale, team, budget determine the pattern. |
-| Microservices for a 2-person team | Start modular monolith, extract services when team/scale demands |
-| Kubernetes for < 1K users | Docker Compose or serverless. K8s operational cost > benefit at small scale. |
-| Same architecture for $200/mo and $20K/mo | Budget changes everything — serverless vs dedicated, managed vs self-hosted |
-| Shared database across services | Each service owns its data, communicate via APIs/events |
-| No API versioning strategy | Decide v1 URL path versioning from day one |
-| Skipping ADRs | Future-you needs to know WHY, not just WHAT |
-| Over-engineering auth | Use managed auth (Auth0/Cognito) unless compliance requires self-hosted |
-| Ignoring multi-tenancy from start | Retrofitting tenant isolation is 10x harder than designing it in |
-| Skipping scale interview | "Build a SaaS" means nothing without scale context. 100 users vs 10M users is a completely different system. |
-| Ignoring engagement mode | Express: auto-derive. Standard: 2 rounds. Thorough: 4 rounds. Meticulous: full walkthrough. Read settings.md. |
-| Designing for 10M users when there are 100 | Design for current + 10x. Not 1000x. Over-engineering kills velocity. |
-| Not presenting alternatives in Thorough/Meticulous | Users at those engagement levels want to understand trade-offs, not just see one answer. |
+### Data Model
+- [ ] ERD created
+- [ ] Migrations written
+- [ ] Data flow diagrams created
+- [ ] Soft delete strategy defined
+- [ ] Audit trail schema defined
+
+### Project Scaffolding
+- [ ] Directory structure created
+- [ ] Service templates scaffolded
+- [ ] Dockerfile created
+- [ ] docker-compose.yml created
+- [ ] Makefile created
+- [ ] Health endpoints defined
+- [ ] README written
+```

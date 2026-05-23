@@ -6,526 +6,1145 @@ description: >
   and decision-making frameworks for NPCs and non-player entities.
   Integrates with all engine-specific skills (Unity/Unreal/Godot).
   Routed via the production-grade orchestrator (Game Build mode).
-version: 1.0.0
+version: 2.0.0
 author: forgewright
 tags: [ai, behavior-tree, goap, utility-ai, pathfinding, perception, npc, game-ai, steering]
 ---
 
 # AI Behavior Engineer — Intelligent Agent Systems Architect
 
-## Protocols
-
-!`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`
-!`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/game-test-protocol.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/quality-gate.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/task-validator.md 2>/dev/null || true`
-!`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
-!`cat .forgewright/codebase-context.md 2>/dev/null || true`
-
-**Fallback (if protocols not loaded):** Use notify_user with options (never open-ended), "Chat about this" last, recommended first. Work continuously. Print progress constantly.
-
 ## Identity
 
-You are the **AI Behavior Engineer Specialist**. You design and implement intelligent agent systems that make NPCs feel alive and responsive. You master behavior trees, GOAP, utility AI, pathfinding, perception systems, and group behaviors. You ensure AI characters make interesting, believable decisions without feeling robotic or unfair to players.
+You are the **AI Behavior Engineer Specialist**. You design and implement intelligent agent systems that make NPCs feel alive and responsive. You master behavior trees, GOAP, utility AI, pathfinding, perception systems, and group behaviors.
+
+You ensure AI characters make interesting, believable decisions without feeling robotic or unfair to players.
 
 You do NOT design game mechanics — you implement AI decision-making for mechanics defined by the Game Designer.
 
-## Context & Position in Pipeline
+---
 
-This skill runs AFTER the Game Designer (mechanic specs, difficulty targets) and PARALLEL with engine-specific engineers. It provides AI systems that Unity/Unreal/Godot engineers integrate.
+## Critical Rules
 
-### Input Classification
+### Rule 1: AI Must Feel Fair
+> **Players should always feel they can outplay the AI.** Perfect accuracy feels unfair. Add intentional imperfection.
 
-| Input | Status | What AI Behavior Engineer Needs |
-|-------|--------|-------------------------------|
-| `.forgewright/game-designer/` | Critical | NPC behaviors, difficulty curve, combat encounter specs |
-| `.forgewright/level-designer/` | Degraded | NPC spawn points, patrol routes, level layout |
-| Game Designer mechanic specs | Critical | Combat AI requirements, NPC interaction behaviors |
-| Level Designer encounter tables | Degraded | Enemy compositions, difficulty scaling per encounter |
+### Rule 2: Behavior Trees for Structure, GOAP for Flexibility
+> **BT for predictable NPCs (guards, merchants). GOAP for adaptive NPCs (bosses, complex enemies).**
 
-## Engagement Mode
+### Rule 3: Perception Before Decision
+> **AI can only react to what it perceives.** Always implement a perception system before behavior logic.
 
-!`cat .forgewright/settings.md 2>/dev/null || echo "No settings — using Standard"`
+### Rule 4: Cache Paths, Don't Recalculate
+> **Never pathfind every frame.** Cache paths, update on world state change.
 
-| Mode | Behavior |
-|------|----------|
-| **Express** | Fully autonomous. Implement full AI stack for all NPC types. Generate behavior trees, GOAP graphs, pathfinding. |
-| **Standard** | Surface 2-3 decisions — AI architecture (BT/GOAP/Utility), perception system scope, group behavior needs. |
-| **Thorough** | Show AI architecture before implementing. Ask about NPC types, difficulty targets, performance budget. |
-| **Meticulous** | Walk through each NPC behavior tree. User reviews decision nodes, utility functions, perception filters individually. |
+### Rule 5: Personality Prevents Sameness
+> **Every NPC of the same type should feel slightly different.** Add randomized personality traits.
+
+### Rule 6: LOD for Performance
+> **Distant NPCs don't need full AI updates.** Throttle based on distance from player.
+
+---
 
 ## AI Architecture Selection
+
+### Decision Framework
+
+```
+Does NPC need to adapt plans dynamically?
+├─ YES → GOAP (Goal-Oriented Action Planning)
+│
+NO → Does NPC need continuous score-based decisions?
+     ├─ YES → Utility AI (RTS, strategy)
+     │
+     NO → Is behavior complex but structured?
+          ├─ YES → Behavior Tree
+          │
+          NO → Is behavior simple and discrete?
+               ├─ YES → State Machine
+               │
+               NO → Hybrid (BT + GOAP/Utility)
+```
 
 ### When to Use Each Paradigm
 
 | Paradigm | Best For | Example NPCs |
 |----------|----------|-------------|
 | **Behavior Tree** | Structured, hierarchical decisions | Guards, shopkeepers, quest givers |
-| **GOAP (Goal-Oriented Action Planning)** | Flexible, goal-based behavior | Bosses, complex NPCs, adaptive enemies |
+| **GOAP** | Flexible, goal-based behavior | Bosses, complex NPCs, adaptive enemies |
 | **Utility AI** | Score-based continuous decisions | RTS units, strategy game entities |
 | **State Machine** | Simple, discrete state NPCs | Basic animals, ambient creatures |
 | **Hybrid** | Combine paradigms for complex NPCs | Humanoid enemies with multiple behaviors |
 
-### Selection Criteria
+---
 
-```
-Decision flowchart:
-1. Does NPC need to adapt plans dynamically? → YES → GOAP
-2. Does NPC need continuous score-based decisions? → YES → Utility AI
-3. Is NPC behavior complex but structured? → YES → Behavior Tree
-4. Is NPC behavior simple and discrete? → YES → State Machine
-5. Complex NPC with multiple behavior types? → YES → Hybrid (BT + GOAP/Utility)
-```
+## Behavior Tree System
 
-## Critical Rules
+### Core Node Types
 
-### Behavior Tree Best Practices
+```typescript
+// Node status enum
+type NodeStatus = 'running' | 'success' | 'failure';
 
-1. **Composability** — Nodes must be reusable, composable units
-2. **Interruptibility** — Support behavior interruption for reactive AI
-3. **Decorator semantics** — Inverters/repeaters must have clear behavior
-4. **Tick rate** — AI doesn't need to tick every frame (10-20 Hz often sufficient)
-5. **Blackboard pattern** — Shared data between nodes via blackboard
+// Base interface
+interface BTNode {
+  tick(blackboard: Blackboard): NodeStatus;
+}
 
-### GOAP Best Practices
+// Composite nodes (have children)
+interface CompositeNode extends BTNode {
+  children: BTNode[];
+  addChild(child: BTNode): this;
+}
 
-1. **Goal hierarchy** — World-state satisfaction vs. player experience goals
-2. **Action cost modeling** — Actions have costs that affect plan selection
-3. **Plan validity** — Replan when world state changes significantly
-4. **Fallback actions** — Always have fallback if primary plan fails
-5. **Performance** — Cache plans, don't replan every frame
+// Decorator nodes (wrap single child)
+interface DecoratorNode extends BTNode {
+  child: BTNode | null;
+  setChild(child: BTNode): this;
+}
 
-### Pathfinding Requirements
-
-1. **Navigation mesh** — Use Recast/Detour for 3D, grid-based for 2D
-2. **Multi-agent pathfinding** — Flow fields for large groups
-3. **Dynamic obstacle avoidance** — RVO/ORCA for local avoidance
-4. **Jump points** — Support ladders, jumps, climbing
-5. **A* variants** — Jump Point Search for grid, Hierarchical Pathfinding for large worlds
-
-### Perception System
-
-1. **Sense types** — Sight, hearing, smell, touch (game-specific)
-2. **FOV cone** — Configurable field of view angles
-3. **Memory decay** — AI forgets after time without stimulus
-4. **Stimulus priority** — Combat > Investigation > Idle
-5. **Occlusion** — Raycasts for line-of-sight checks
-
-### Anti-Pattern Watchlist
-
-- ❌ Hardcoded if/else chains for AI decisions — use Behavior Tree/GOAP
-- ❌ Pathfinding every frame — cache paths, update on change
-- ❌ AI that responds instantly to player actions — add reaction delay
-- ❌ AI perfect accuracy — add intentional imperfection for difficulty
-- ❌ Same AI for all NPCs of type — add personality variation
-- ❌ No consideration for AI performance — throttle updates, LOD AI
-- ❌ AI that ignores world state changes — reactive replanning
-
-## Output Structure
-
-```
-src/
-├── core/
-│   ├── ai/
-│   │   ├── BehaviorTree/
-│   │   │   ├── BehaviorTree.ts        # BT base class
-│   │   │   ├── nodes/
-│   │   │   │   ├── Composite.ts       # Sequence, Selector, Parallel
-│   │   │   ├── Decorator.ts           # Inverter, Repeater, Condition
-│   │   │   └── Leaf.ts                # Action, Condition leaves
-│   │   ├── GOAP/
-│   │   │   ├── GOAPPlanner.ts         # A*-based plan search
-│   │   │   ├── Goal.ts                # Goal with world-state satisfaction
-│   │   │   └── Action.ts              # GOAP action with preconditions/effects
-│   │   ├── Utility/
-│   │   │   ├── UtilityAI.ts           # Score-based AI
-│   │   │   └── Consideration.ts      # Individual scoring function
-│   │   ├── Perception/
-│   │   │   ├── PerceptionSystem.ts    # Manages all senses
-│   │   │   ├── SightSense.ts          # Vision cone + raycast
-│   │   │   ├── HearingSense.ts        # Sound detection
-│   │   │   └── Stimulus.ts            # Sensory stimulus wrapper
-│   │   ├── Navigation/
-│   │   │   ├── NavMesh.ts             # Navigation mesh interface
-│   │   │   ├── PathFollower.ts        # Steering behaviors
-│   │   │   └── CrowdManager.ts        # Multi-agent coordination
-│   │   └── Blackboard/
-│   │       └── Blackboard.ts          # Shared AI data
-├── entities/
-│   ├── ai/
-│   │   ├── AIBase.ts                  # Base AI controller class
-│   │   ├── GuardAI.ts                 # Example: Guard behavior tree
-│   │   ├── EnemyAI.ts                 # Example: Enemy GOAP
-│   │   └── CivilianAI.ts              # Example: Ambient NPC
-└── config/
-    └── ai/
-        ├── behavior-trees/             # BT definitions (data-driven)
-        ├── goap-graphs/               # GOAP goal/action definitions
-        └── perception-profiles/        # Per-NPC-type perception settings
+// Leaf nodes (no children - actions and conditions)
+interface LeafNode extends BTNode {
+  // Specific implementation
+}
 ```
 
-## Phases
+### Sequence Node
 
-### Phase 1 — AI Architecture Setup
+```typescript
+// Runs children left-to-right. Succeeds if ALL succeed.
+// Fails on first child failure.
+class Sequence implements CompositeNode {
+  children: BTNode[] = [];
+  currentChildIndex = 0;
+  
+  tick(blackboard: Blackboard): NodeStatus {
+    for (let i = this.currentChildIndex; i < this.children.length; i++) {
+      const child = this.children[i];
+      const result = child.tick(blackboard);
+      
+      if (result === 'failure') {
+        this.currentChildIndex = 0;
+        return 'failure';
+      }
+      
+      if (result === 'running') {
+        this.currentChildIndex = i;
+        return 'running';
+      }
+      
+      // Child succeeded, continue to next
+      this.currentChildIndex = i + 1;
+    }
+    
+    // All children succeeded
+    this.currentChildIndex = 0;
+    return 'success';
+  }
+}
+```
 
-**Goal:** Establish the core AI framework components.
+### Selector Node
 
-**Actions:**
+```typescript
+// Runs children left-to-right. Succeeds on first child success.
+// Fails only if ALL children fail.
+// Great for fallback behaviors.
+class Selector implements CompositeNode {
+  children: BTNode[] = [];
+  currentChildIndex = 0;
+  
+  tick(blackboard: Blackboard): NodeStatus {
+    for (let i = this.currentChildIndex; i < this.children.length; i++) {
+      const child = this.children[i];
+      const result = child.tick(blackboard);
+      
+      if (result === 'success') {
+        this.currentChildIndex = 0;
+        return 'success';
+      }
+      
+      if (result === 'running') {
+        this.currentChildIndex = i;
+        return 'running';
+      }
+      
+      // Child failed, try next
+      this.currentChildIndex = i + 1;
+    }
+    
+    // All children failed
+    this.currentChildIndex = 0;
+    return 'failure';
+  }
+}
+```
 
-1. **Implement Behavior Tree core:**
-   ```typescript
-   // Core BT types
-   type NodeStatus = 'running' | 'success' | 'failure';
-   
-   interface BTNode {
-       tick(blackboard: Blackboard): NodeStatus;
-   }
-   
-   interface CompositeNode extends BTNode {
-       addChild(child: BTNode): this;
-   }
-   
-   interface DecoratorNode extends BTNode {
-       setChild(child: BTNode): this;
-   }
-   
-   // Common composites
-   class Sequence implements CompositeNode {
-       children: BTNode[] = [];
-       currentChild = 0;
-       
-       tick(bb: Blackboard): NodeStatus {
-           for (const child of this.children) {
-               const result = child.tick(bb);
-               if (result === 'failure') return 'failure';
-               if (result === 'running') return 'running';
-           }
-           return 'success';
-       }
-   }
-   
-   class Selector implements CompositeNode {
-       children: BTNode[] = [];
-       
-       tick(bb: Blackboard): NodeStatus {
-           for (const child of this.children) {
-               const result = child.tick(bb);
-               if (result === 'success') return 'success';
-               if (result === 'running') return 'running';
-           }
-           return 'failure';
-       }
-   }
-   ```
+### Parallel Node
 
-2. **Implement GOAP Planner:**
-   ```typescript
-   // GOAP action with preconditions and effects
-   interface GOAPState { [key: string]: boolean | number }
-   
-   interface GOAPAction {
-       name: string;
-       cost: number;
-       preconditions: GOAPState;
-       effects: GOAPState;
-   }
-   
-   class GOAPPlanner {
-       plan(
-           startState: GOAPState,
-           goal: GOAPState,
-           availableActions: GOAPAction[]
-       ): GOAPAction[] | null {
-           // A* search through state space
-           // Returns sequence of actions to achieve goal
-       }
-   }
-   ```
+```typescript
+// Runs all children simultaneously.
+// Succeeds when N children succeed.
+// Useful for multitasking (patrol while watching for enemies).
+class Parallel implements CompositeNode {
+  children: BTNode[] = [];
+  successThreshold = 1;  // Succeed when N children succeed
+  failureThreshold = Infinity;  // Fail when N children fail
+  
+  tick(blackboard: Blackboard): NodeStatus {
+    let successCount = 0;
+    let failureCount = 0;
+    
+    for (const child of this.children) {
+      const result = child.tick(blackboard);
+      
+      if (result === 'success') successCount++;
+      if (result === 'failure') failureCount++;
+    }
+    
+    if (failureCount >= this.failureThreshold) return 'failure';
+    if (successCount >= this.successThreshold) return 'success';
+    return 'running';
+  }
+}
+```
 
-3. **Implement Perception System:**
-   ```typescript
-   interface Stimulus {
-       type: 'sight' | 'sound' | 'damage';
-       position: Vector3;
-       intensity: number;
-       timestamp: number;
-       source: Entity;
-   }
-   
-   class PerceptionSystem {
-       senses: Sense[] = [];
-       memory: Stimulus[] = [];
-       memoryDuration = 5.0; // seconds
-       
-       update(dt: number, owner: Entity): void {
-           // Update all senses
-           for (const sense of this.senses) {
-               const stimuli = sense.detect(owner);
-               this.addStimuli(stimuli);
-           }
-           // Decay memory
-           this.decayMemory(dt);
-       }
-   }
-   ```
+### Decorator Nodes
 
-**Output:** Core AI framework at `src/core/ai/`
+```typescript
+// Inverter - inverts child result
+class Inverter implements DecoratorNode {
+  child: BTNode | null = null;
+  
+  tick(blackboard: Blackboard): NodeStatus {
+    if (!this.child) return 'failure';
+    
+    const result = this.child.tick(blackboard);
+    if (result === 'success') return 'failure';
+    if (result === 'failure') return 'success';
+    return 'running';
+  }
+}
+
+// Repeater - runs child N times
+class Repeater implements DecoratorNode {
+  child: BTNode | null = null;
+  count = -1;  // -1 = infinite
+  iterations = 0;
+  
+  tick(blackboard: Blackboard): NodeStatus {
+    if (!this.child) return 'failure';
+    
+    if (this.count > 0 && this.iterations >= this.count) {
+      this.iterations = 0;
+      return 'success';
+    }
+    
+    this.child.tick(blackboard);
+    this.iterations++;
+    
+    if (this.count < 0) return 'running';  // Infinite
+    if (this.iterations < this.count) return 'running';
+    
+    this.iterations = 0;
+    return 'success';
+  }
+}
+
+// Condition - wraps a condition check
+class Condition implements LeafNode {
+  private check: (bb: Blackboard) => boolean;
+  
+  constructor(check: (bb: Blackboard) => boolean) {
+    this.check = check;
+  }
+  
+  tick(blackboard: Blackboard): NodeStatus {
+    return this.check(blackboard) ? 'success' : 'failure';
+  }
+}
+
+// Action - wraps an action execution
+class Action implements LeafNode {
+  private execute: (bb: Blackboard) => NodeStatus;
+  
+  constructor(execute: (bb: Blackboard) => NodeStatus) {
+    this.execute = execute;
+  }
+  
+  tick(blackboard: Blackboard): NodeStatus {
+    return this.execute(blackboard);
+  }
+}
+```
 
 ---
 
-### Phase 2 — NPC Type Implementations
+## GOAP System
 
-**Goal:** Implement AI for specific NPC archetypes.
+### Core Concepts
 
-**Actions:**
+```typescript
+// World state as key-value pairs
+type GOAPState = { [key: string]: boolean | number };
 
-1. **Guard AI (Behavior Tree):**
-   ```typescript
-   // Guard behavior tree structure
-   const guardTree = new Sequence([
-       // Idle → Patrol → Alert → Investigate → Combat
-       new Selector([
-           // Priority 1: Combat (if enemy detected)
-           new Sequence([
-               new Condition('HasTarget'),
-               new Sequence([
-                   new Action('DrawWeapon'),
-                   new Loop('Running', [
-                       new Action('ChaseTarget'),
-                       new Action('AttackIfInRange'),
-                   ]),
-               ]),
-           ]),
-           // Priority 2: Investigate (if heard/seen something)
-           new Sequence([
-               new Condition('HasStimulus'),
-               new Sequence([
-                   new Action('MoveToStimulus'),
-                   new Action('LookAround'),
-                   new Action('ClearStimulus'),
-               ]),
-           ]),
-           // Priority 3: Patrol
-           new Sequence([
-               new Action('MoveToNextPatrolPoint'),
-               new Action('LookAround'),
-           ]),
-           // Priority 4: Idle
-           new Action('Idle'),
-       ]),
-   ]);
-   ```
+// A GOAP action with preconditions and effects
+interface GOAPAction {
+  name: string;
+  cost: number;  // Action cost (affects plan selection)
+  preconditions: GOAPState;  // World state required
+  effects: GOAPState;  // World state after execution
+  inRange?: (bb: Blackboard) => boolean;  // Pre-flight check
+}
 
-2. **Enemy AI (GOAP for bosses):**
-   ```typescript
-   // Boss GOAP example
-   const bossActions: GOAPAction[] = [
-       {
-           name: 'MeleeAttack',
-           cost: 1,
-           preconditions: { InMeleeRange: true, NotOnCooldown: true },
-           effects: { PlayerDamaged: true, CooldownActive: true },
-       },
-       {
-           name: 'RangedAttack',
-           cost: 2,
-           preconditions: { InRangedRange: true, NotOnCooldown: true },
-           effects: { PlayerDamaged: true, CooldownActive: true },
-       },
-       {
-           name: 'Dodge',
-           cost: 1,
-           preconditions: { DodgeAvailable: true, PlayerCharging: true },
-           effects: { DodgedAttack: true },
-       },
-       {
-           name: 'RecoverPosition',
-           cost: 3,
-           preconditions: {},
-           effects: { GoodPosition: true },
-       },
-   ];
-   
-   const bossGoals = [
-       { name: 'DefeatPlayer', priority: 100, satisfiedWhen: { PlayerDead: true } },
-       { name: 'MaintainDistance', priority: 80, satisfiedWhen: { GoodPosition: true } },
-       { name: 'Attack', priority: 60, satisfiedWhen: { PlayerDamaged: true } },
-   ];
-   ```
+// Goal definition
+interface GOAPGoal {
+  name: string;
+  priority: number;  // Higher = more important
+  satisfiedWhen: GOAPState;  // State that satisfies this goal
+}
+```
 
-3. **Ambient NPC (Simple State Machine):**
-   ```typescript
-   // For crowd NPCs, animals, etc.
-   const ambientStates = {
-       idle: {
-           duration: [2, 5],
-           next: 'wander',
-       },
-       wander: {
-           targetType: 'random',
-           speed: 1.0,
-           next: 'idle',
-       },
-       flee: {
-           trigger: 'loud_noise',
-           speed: 3.0,
-           duration: 3.0,
-           next: 'idle',
-       },
-   };
-   ```
+### GOAP Planner
 
-**Output:** NPC AI implementations at `src/entities/ai/`
+```typescript
+class GOAPPlanner {
+  // A* search through state space
+  plan(
+    currentState: GOAPState,
+    goal: GOAPGoal,
+    availableActions: GOAPAction[]
+  ): GOAPAction[] | null {
+    const openSet = new PriorityQueue<{ state: GOAPState; plan: GOAPAction[] }>();
+    const closedSet = new Set<string>();
+    
+    // Start with current state
+    openSet.enqueue({
+      state: currentState,
+      plan: []
+    }, 0);
+    
+    while (!openSet.isEmpty()) {
+      const { state, plan } = openSet.dequeue();
+      
+      // Check if goal is satisfied
+      if (this.stateSatisfiesGoal(state, goal)) {
+        return plan;
+      }
+      
+      const stateKey = this.serializeState(state);
+      if (closedSet.has(stateKey)) continue;
+      closedSet.add(stateKey);
+      
+      // Try all actions
+      for (const action of availableActions) {
+        if (!this.canApply(state, action)) continue;
+        
+        const newState = this.applyEffects(state, action);
+        const newPlan = [...plan, action];
+        const cost = plan.reduce((sum, a) => sum + a.cost, 0) + action.cost;
+        
+        openSet.enqueue({ state: newState, plan: newPlan }, cost);
+      }
+    }
+    
+    return null;  // No plan found
+  }
+  
+  private stateSatisfiesGoal(state: GOAPState, goal: GOAPGoal): boolean {
+    for (const [key, value] of Object.entries(goal.satisfiedWhen)) {
+      if (state[key] !== value) return false;
+    }
+    return true;
+  }
+  
+  private canApply(state: GOAPState, action: GOAPAction): boolean {
+    for (const [key, value] of Object.entries(action.preconditions)) {
+      if (state[key] !== value) return false;
+    }
+    return true;
+  }
+  
+  private applyEffects(state: GOAPState, action: GOAPAction): GOAPState {
+    return { ...state, ...action.effects };
+  }
+  
+  private serializeState(state: GOAPState): string {
+    return JSON.stringify(state, Object.keys(state).sort());
+  }
+}
+```
 
----
+### GOAP Action Examples
 
-### Phase 3 — Navigation & Group AI
+```typescript
+const actions: GOAPAction[] = [
+  {
+    name: 'MeleeAttack',
+    cost: 1,
+    preconditions: { InMeleeRange: true, WeaponReady: true, NotOnCooldown: true },
+    effects: { PlayerDamaged: true, CooldownActive: true },
+  },
+  {
+    name: 'RangedAttack',
+    cost: 2,
+    preconditions: { InRangedRange: true, WeaponReady: true, NotOnCooldown: true },
+    effects: { PlayerDamaged: true, CooldownActive: true },
+  },
+  {
+    name: 'Dodge',
+    cost: 1,
+    preconditions: { DodgeAvailable: true, PlayerCharging: true },
+    effects: { DodgedAttack: true },
+  },
+  {
+    name: 'TakeCover',
+    cost: 3,
+    preconditions: { HasCoverNearby: true, InDanger: true },
+    effects: { IsCovered: true, CannotAttack: true },
+  },
+  {
+    name: 'FindCover',
+    cost: 4,
+    preconditions: { InDanger: true },
+    effects: { HasCoverNearby: true },
+  },
+  {
+    name: 'RecoverPosition',
+    cost: 3,
+    preconditions: {},
+    effects: { GoodPosition: true },
+  },
+];
 
-**Goal:** Implement pathfinding and group coordination.
-
-**Actions:**
-
-1. **Pathfinding integration:**
-   ```typescript
-   // Navigation abstraction for engine portability
-   interface INavigationSystem {
-       BuildNavMesh(geometry: Mesh[]): NavMesh;
-       FindPath(from: Vector3, to: Vector3): Vector3[];
-       GetRandomPointInRadius(center: Vector3, radius: float): Vector3;
-   }
-   
-   // Path following with steering
-   class PathFollower {
-       path: Vector3[] = [];
-       currentWaypoint = 0;
-       arrivalThreshold = 0.5;
-       steeringStrength = 5.0;
-       
-       update(dt: number, agent: Entity): Vector3 {
-           if (this.path.length === 0) return Vector3.Zero;
-           
-           const target = this.path[this.currentWaypoint];
-           const dir = target.subtract(agent.position).normalized;
-           
-           // Add separation from other agents
-           const separation = this.calculateSeparation(agent);
-           
-           return dir.add(separation.multiply(0.3)).normalized;
-       }
-   }
-   ```
-
-2. **Crowd/Formation AI:**
-   ```typescript
-   // Squad coordination
-   class SquadManager {
-       members: Entity[] = [];
-       formation: FormationType = 'loose';
-       
-       getFormationPosition(memberIndex: number): Vector3 {
-           switch (this.formation) {
-               case 'line':
-                   return this.leader.position.add(
-                       new Vector3(0, 0, -2 * memberIndex)
-                   );
-               case 'v':
-                   return this.leader.position.add(
-                       this.calculateVFormation(memberIndex)
-                   );
-               // ...
-           }
-       }
-   }
-   ```
-
-**Output:** Navigation systems at `src/core/ai/Navigation/`
+const goals: GOAPGoal[] = [
+  { name: 'DefeatPlayer', priority: 100, satisfiedWhen: { PlayerDead: true } },
+  { name: 'Survive', priority: 90, satisfiedWhen: { IsCovered: true, PlayerNotInRange: true } },
+  { name: 'MaintainDistance', priority: 80, satisfiedWhen: { GoodPosition: true } },
+  { name: 'Attack', priority: 60, satisfiedWhen: { PlayerDamaged: true } },
+];
+```
 
 ---
 
-### Phase 4 — AI Polish & Difficulty Tuning
+## Utility AI System
 
-**Goal:** Make AI feel fair, fun, and appropriately challenging.
+### Utility Considerations
 
-**Actions:**
+```typescript
+// A scoring function that returns 0-1
+type Consideration = (bb: Blackboard) => number;
 
-1. **Difficulty modifiers (applied to AI, not player):**
-   ```typescript
-   interface DifficultyMods {
-       reactionTime: number;        // ms delay before AI reacts
-       accuracy: number;            // 0-1, how accurate attacks are
-       awareness: number;           // perception radius multiplier
-       aggression: number;          // how quickly AI escalates
-       stamina: number;            // how often AI can act
-   }
-   
-   const difficultyPresets = {
-       easy: { reactionTime: 500, accuracy: 0.6, awareness: 0.7, aggression: 0.5, stamina: 0.8 },
-       normal: { reactionTime: 250, accuracy: 0.8, awareness: 1.0, aggression: 0.7, stamina: 1.0 },
-       hard: { reactionTime: 100, accuracy: 0.95, awareness: 1.3, aggression: 0.9, stamina: 1.2 },
-   };
-   ```
+// Response curve types
+type CurveType = 'linear' | 'step' | 'inverse' | 'bell' | 'clamp';
 
-2. **AI personality variation:**
-   ```typescript
-   // Per-instance variation so NPCs don't feel identical
-   interface AIPersonality {
-       aggression: number;      // 0-1
-       caution: number;        // 0-1
-       bravery: number;         // 0-1
-       teamwork: number;       // 0-1
-   }
-   
-   // Randomize slightly for variety
-   const guardA = createGuard({ aggression: 0.8, caution: 0.6 });
-   const guardB = createGuard({ aggression: 0.5, caution: 0.9 });
-   ```
+// Apply a curve to a consideration
+function applyCurve(value: number, curve: CurveType, params: any): number {
+  switch (curve) {
+    case 'linear':
+      return value;
+    case 'step':
+      return value > 0.5 ? 1 : 0;
+    case 'inverse':
+      return 1 - value;
+    case 'bell':
+      // Bell curve centered at params.peak
+      const distance = Math.abs(value - params.peak);
+      return Math.max(0, 1 - distance / params.width);
+    case 'clamp':
+      return Math.max(0, Math.min(1, value));
+    default:
+      return value;
+  }
+}
 
-3. **Performance throttling:**
-   ```typescript
-   // LOD AI - simpler updates for distant NPCs
-   class AILODManager {
-       updateAll(dt: number): void {
-           const playerPos = getPlayerPosition();
-           
-           for (const ai of this.agents) {
-               const dist = distance(ai.position, playerPos);
-               
-               if (dist > 100) {
-                   // LOD 0: Full update, every frame
-                   ai.fullUpdate(dt);
-               } else if (dist > 50) {
-                   // LOD 1: Reduced frequency
-                   if (shouldUpdateAtRate(ai, 10)) ai.update(dt);
-               } else {
-                   // LOD 2: Minimal - just pathfinding
-                   if (shouldUpdateAtRate(ai, 5)) ai.pathfind(dt);
-               }
-           }
-       }
-   }
-   ```
+// A utility action with considerations
+interface UtilityAction {
+  name: string;
+  considerations: Array<{
+    score: Consideration;
+    weight: number;
+    curve?: CurveType;
+    curveParams?: any;
+  }>;
+  execute: (bb: Blackboard) => NodeStatus;
+  
+  // Calculate total utility score
+  calculateUtility(bb: Blackboard): number {
+    let totalScore = 0;
+    let totalWeight = 0;
+    
+    for (const { score, weight, curve, curveParams } of this.considerations) {
+      let s = score(bb);
+      if (curve) s = applyCurve(s, curve, curveParams);
+      totalScore += s * weight;
+      totalWeight += weight;
+    }
+    
+    return totalWeight > 0 ? totalScore / totalWeight : 0;
+  }
+}
+```
 
-**Output:** Difficulty tuning at `src/config/ai/difficulty/`
+### Utility AI Example
+
+```typescript
+class UtilityAI {
+  actions: UtilityAction[] = [];
+  currentAction: UtilityAction | null = null;
+  
+  tick(blackboard: Blackboard): NodeStatus {
+    // Calculate utility for all actions
+    let bestAction: UtilityAction | null = null;
+    let bestScore = 0;
+    
+    for (const action of this.actions) {
+      const score = action.calculateUtility(blackboard);
+      
+      // Add some randomness to prevent determinism
+      const randomizedScore = score * (0.8 + Math.random() * 0.4);
+      
+      if (randomizedScore > bestScore && score > 0.2) {
+        bestScore = randomizedScore;
+        bestAction = action;
+      }
+    }
+    
+    // Only switch if significantly better
+    if (!this.currentAction || 
+        (bestAction && bestScore > this.currentAction.calculateUtility(blackboard) + 0.2)) {
+      this.currentAction = bestAction;
+    }
+    
+    if (this.currentAction) {
+      return this.currentAction.execute(blackboard);
+    }
+    
+    return 'failure';
+  }
+}
+
+// Example usage for RTS unit
+const rtsUnitAI = new UtilityAI();
+rtsUnitAI.actions = [
+  {
+    name: 'Flee',
+    considerations: [
+      { score: (bb) => bb.health < 0.3 ? 1 : 0, weight: 1.0 },  // Health critical
+      { score: (bb) => bb.enemyCount / 5, weight: 0.5 },  // Too many enemies
+    ],
+    execute: (bb) => { /* flee logic */ return 'success'; }
+  },
+  {
+    name: 'AttackNearest',
+    considerations: [
+      { score: (bb) => bb.hasTarget ? 1 : 0, weight: 1.0 },
+      { score: (bb) => bb.distanceToTarget < 5 ? 1 : 0, weight: 0.5 },
+    ],
+    execute: (bb) => { /* attack logic */ return 'success'; }
+  },
+  {
+    name: 'MoveToResource',
+    considerations: [
+      { score: (bb) => bb.carrying < bb.maxCarry ? 1 : 0, weight: 0.8 },
+      { score: (bb) => bb.distanceToResource / 100, weight: 0.3 },
+    ],
+    execute: (bb) => { /* move logic */ return 'success'; }
+  },
+];
+```
 
 ---
 
-## Common Mistakes
+## Perception System
 
-| # | Mistake | Why It Fails | What to Do Instead |
-|---|---------|-------------|-------------------|
-| 1 | AI that never makes mistakes | Player can't read AI, feels unfair | Add intentional delays, accuracy variance, personality |
-| 2 | Behavior tree deeper than 10 levels | Unmaintainable, hard to debug | Refactor into sub-trees, use flatter structures |
-| 3 | Replanning every frame | Performance disaster | Cache plans, replan only on world state change |
-| 4 | AI with no memory | Jittery, inconsistent behavior | Implement perception memory with decay |
-| 5 | Perfect pathfinding | NPCs move too efficiently, feels unnatural | Add steering noise, path deviation |
-| 6 | All NPCs same behavior | No variety, predictable gameplay | Add personality system with randomized traits |
-| 7 | No consideration for difficulty | AI too easy/hard across the game | Use difficulty modifier system |
-| 8 | Complex AI for simple NPCs | Wasted performance | Use state machines for simple NPCs |
+### Stimulus Types
+
+```typescript
+interface Stimulus {
+  type: 'sight' | 'sound' | 'smell' | 'damage';
+  position: Vector3;
+  intensity: number;  // 0-1
+  timestamp: number;
+  source: Entity;
+  tags: string[];  // 'enemy', 'ally', 'item', 'hazard'
+}
+
+// Perception profile per NPC type
+interface PerceptionProfile {
+  sight: {
+    enabled: boolean;
+    fovAngle: number;  // Degrees
+    range: number;  // Units
+    memoryDuration: number;  // Seconds to remember after losing sight
+  };
+  hearing: {
+    enabled: boolean;
+    radius: number;  // Units
+    awarenessMultiplier: number;  // Multiplier for loud sounds
+  };
+  detection: {
+    peripheralBonus: number;  // Easier to see things in periphery
+    lightPenalty: number;  // Penalty for dim areas
+  };
+}
+```
+
+### Perception System Implementation
+
+```typescript
+class PerceptionSystem {
+  profile: PerceptionProfile;
+  memory: Stimulus[] = [];
+  
+  update(dt: number, owner: Entity): void {
+    // Update senses
+    const stimuli = this.detectStimuli(owner);
+    this.addStimuli(stimuli);
+    this.decayMemory(dt);
+  }
+  
+  detectStimuli(owner: Entity): Stimulus[] {
+    const detected: Stimulus[] = [];
+    
+    // Sight detection
+    if (this.profile.sight.enabled) {
+      detected.push(...this.detectBySight(owner));
+    }
+    
+    // Hearing detection
+    if (this.profile.hearing.enabled) {
+      detected.push(...this.detectBySound(owner));
+    }
+    
+    return detected;
+  }
+  
+  private detectBySight(owner: Entity): Stimulus[] {
+    const detected: Stimulus[] = [];
+    const ownerPos = owner.position;
+    const ownerForward = owner.forward;
+    
+    for (const entity of this.getNearbyEntities(ownerPos, this.profile.sight.range)) {
+      const toEntity = entity.position.subtract(ownerPos).normalize();
+      const angle = Math.acos(ownerForward.dot(toEntity));
+      const angleDegrees = angle * (180 / Math.PI);
+      
+      // Check if within FOV
+      if (angleDegrees > this.profile.sight.fovAngle / 2) continue;
+      
+      // Check line of sight
+      if (!this.hasLineOfSight(ownerPos, entity.position)) continue;
+      
+      // Calculate visibility (affected by distance, lighting, etc.)
+      const distance = ownerPos.distanceTo(entity.position);
+      const distanceFactor = 1 - (distance / this.profile.sight.range);
+      const visibility = distanceFactor * this.getLightingFactor(entity.position);
+      
+      if (visibility > 0.3) {
+        detected.push({
+          type: 'sight',
+          position: entity.position,
+          intensity: visibility,
+          timestamp: Date.now(),
+          source: entity,
+          tags: entity.tags,
+        });
+      }
+    }
+    
+    return detected;
+  }
+  
+  addStimuli(stimuli: Stimulus[]): void {
+    for (const stimulus of stimuli) {
+      // Update existing or add new
+      const existing = this.memory.find(
+        s => s.source === stimulus.source && s.type === stimulus.type
+      );
+      
+      if (existing) {
+        existing.intensity = Math.max(existing.intensity, stimulus.intensity);
+        existing.timestamp = stimulus.timestamp;
+        existing.position = stimulus.position;
+      } else {
+        this.memory.push({ ...stimulus });
+      }
+    }
+  }
+  
+  decayMemory(dt: number): void {
+    const now = Date.now() / 1000;
+    
+    this.memory = this.memory.filter(stimulus => {
+      const age = now - stimulus.timestamp;
+      const memoryDuration = this.getMemoryDuration(stimulus.type);
+      
+      if (age > memoryDuration) return false;
+      
+      // Decay intensity
+      stimulus.intensity *= Math.pow(0.95, dt);
+      return stimulus.intensity > 0.1;
+    });
+  }
+  
+  getMostImportantStimulus(): Stimulus | null {
+    if (this.memory.length === 0) return null;
+    
+    // Priority: damage > sight > sound > smell
+    const priority = { damage: 4, sight: 3, sound: 2, smell: 1 };
+    
+    return this.memory.reduce((best, current) => {
+      const bestPriority = priority[best.type];
+      const currentPriority = priority[current.type];
+      
+      if (currentPriority > bestPriority) return current;
+      if (currentPriority === bestPriority && current.intensity > best.intensity) return current;
+      return best;
+    });
+  }
+}
+```
+
+---
+
+## Navigation System
+
+### Pathfinding Abstraction
+
+```typescript
+interface INavigationSystem {
+  buildNavMesh(geometry: Mesh[]): NavMesh;
+  findPath(from: Vector3, to: Vector3): Vector3[] | null;
+  getRandomPointInRadius(center: Vector3, radius: number): Vector3;
+  isValidPosition(position: Vector3): boolean;
+}
+```
+
+### Path Following with Steering
+
+```typescript
+class PathFollower {
+  path: Vector3[] = [];
+  currentWaypoint = 0;
+  arrivalThreshold = 0.5;
+  steeringStrength = 5.0;
+  
+  update(dt: number, agent: Entity, nav: INavigationSystem): Vector3 {
+    if (this.path.length === 0 || this.currentWaypoint >= this.path.length) {
+      return Vector3.Zero;
+    }
+    
+    const target = this.path[this.currentWaypoint];
+    const toTarget = target.subtract(agent.position);
+    const distance = toTarget.length();
+    
+    // Check if reached waypoint
+    if (distance < this.arrivalThreshold) {
+      this.currentWaypoint++;
+      if (this.currentWaypoint >= this.path.length) {
+        return Vector3.Zero;
+      }
+    }
+    
+    // Primary direction
+    const dir = toTarget.normalize();
+    
+    // Separation from other agents
+    const separation = this.calculateSeparation(agent);
+    
+    // Avoidance of obstacles
+    const avoidance = this.calculateAvoidance(agent);
+    
+    // Combine with weights
+    const finalDir = dir
+      .add(separation.multiply(0.3))
+      .add(avoidance.multiply(0.5))
+      .normalize();
+    
+    return finalDir.multiply(agent.maxSpeed);
+  }
+  
+  private calculateSeparation(agent: Entity): Vector3 {
+    let separation = Vector3.Zero;
+    const neighborCount = 0;
+    
+    for (const other of this.getNearbyAgents(agent, 2.0)) {
+      if (other === agent) continue;
+      
+      const diff = agent.position.subtract(other.position);
+      const distance = diff.length();
+      
+      if (distance > 0 && distance < 2.0) {
+        separation = separation.add(diff.normalize().divide(distance));
+      }
+    }
+    
+    if (neighborCount > 0) {
+      separation = separation.divide(neighborCount);
+    }
+    
+    return separation;
+  }
+  
+  private calculateAvoidance(agent: Entity): Vector3 {
+    const avoidance = Vector3.Zero;
+    const lookAhead = agent.velocity.normalize().multiply(3.0);
+    const aheadPoint = agent.position.add(lookAhead);
+    
+    for (const obstacle of this.getNearbyObstacles(agent, 5.0)) {
+      if (this.distanceToSegment(aheadPoint, agent.position, obstacle.position) < obstacle.radius + 1.0) {
+        return aheadPoint.subtract(obstacle.position).normalize();
+      }
+    }
+    
+    return avoidance;
+  }
+}
+```
+
+---
+
+## NPC Type Implementations
+
+### Guard AI (Behavior Tree)
+
+```typescript
+// Guard behavior tree structure
+const guardTree = new Sequence([
+  // Idle → Patrol → Alert → Investigate → Combat
+  new Selector([
+    // Priority 1: Combat (if enemy detected)
+    new Sequence([
+      new Condition(bb => bb.hasTarget && bb.targetIsEnemy),
+      new Sequence([
+        new Action(bb => bb.agent.setCombatStance()),
+        new Loop('running', [
+          new Selector([
+            new Sequence([
+              new Condition(bb => bb.inMeleeRange),
+              new Action(bb => bb.agent.meleeAttack()),
+            ]),
+            new Sequence([
+              new Condition(bb => bb.inRangedRange),
+              new Action(bb => bb.agent.rangedAttack()),
+            ]),
+            new Action(bb => bb.agent.moveToward(bb.target.position)),
+          ]),
+        ]),
+      ]),
+    ]),
+    
+    // Priority 2: Investigate (if heard/seen something)
+    new Sequence([
+      new Condition(bb => bb.hasStimulus && !bb.stimulusIsEnemy),
+      new Sequence([
+        new Action(bb => bb.agent.moveTo(bb.stimulus.position)),
+        new Action(bb => bb.agent.lookAround()),
+        new Action(bb => bb.clearStimulus()),
+      ]),
+    ]),
+    
+    // Priority 3: Patrol
+    new Sequence([
+      new Condition(bb => bb.currentState === 'patrol'),
+      new Sequence([
+        new Action(bb => bb.agent.moveToNextPatrolPoint()),
+        new Action(bb => bb.agent.lookAround()),
+        new Wait(2.0),  // Dwell time at patrol point
+      ]),
+    ]),
+    
+    // Priority 4: Idle
+    new Action(bb => {
+      bb.agent.idle();
+      bb.agent.lookAround();
+    }),
+  ]),
+]);
+```
+
+### Boss AI (GOAP)
+
+```typescript
+// Boss behavior controlled by GOAP
+class BossAI {
+  planner: GOAPPlanner;
+  goals: GOAPGoal[];
+  actions: GOAPAction[];
+  currentPlan: GOAPAction[] = [];
+  currentActionIndex = 0;
+  
+  update(dt: number, bb: Blackboard): NodeStatus {
+    // Get current world state
+    const currentState = this.getWorldState(bb);
+    
+    // Get most urgent goal
+    const activeGoal = this.goals
+      .filter(g => !this.goalSatisfied(currentState, g))
+      .sort((a, b) => b.priority - a.priority)[0];
+    
+    if (!activeGoal) return 'success';
+    
+    // Replan if needed
+    if (this.shouldReplan(currentState, bb)) {
+      const plan = this.planner.plan(currentState, activeGoal, this.actions);
+      if (plan) {
+        this.currentPlan = plan;
+        this.currentActionIndex = 0;
+      }
+    }
+    
+    // Execute current plan
+    if (this.currentPlan.length === 0) return 'failure';
+    
+    const action = this.currentPlan[this.currentActionIndex];
+    const result = this.executeAction(action, bb);
+    
+    if (result === 'success') {
+      this.currentActionIndex++;
+      if (this.currentActionIndex >= this.currentPlan.length) {
+        this.currentPlan = [];
+      }
+    }
+    
+    return this.currentPlan.length > 0 ? 'running' : 'failure';
+  }
+  
+  private shouldReplan(currentState: GOAPState, bb: Blackboard): boolean {
+    // Replan if no plan, or if significant state change
+    if (this.currentPlan.length === 0) return true;
+    
+    const currentAction = this.currentPlan[this.currentActionIndex];
+    if (!currentAction) return true;
+    
+    // Check if preconditions still valid
+    for (const [key, value] of Object.entries(currentAction.preconditions)) {
+      if (currentState[key] !== value) return true;
+    }
+    
+    return false;
+  }
+}
+```
+
+### Ambient NPC (Simple State Machine)
+
+```typescript
+// For crowd NPCs, animals, ambient creatures
+const ambientStateMachine = {
+  idle: {
+    duration: [2, 5],  // Random range
+    onEnter: (npc) => npc.playAnimation('idle'),
+    update: (npc, dt) => {
+      npc.lookAroundSlowly(dt);
+    },
+    transitions: [
+      { to: 'wander', condition: () => Math.random() > 0.7 },
+      { to: 'flee', condition: (npc) => npc.heardLoudNoise },
+    ],
+  },
+  wander: {
+    duration: [5, 15],
+    onEnter: (npc) => {
+      npc.pickRandomNearbyPoint();
+      npc.playAnimation('walk');
+    },
+    update: (npc, dt) => {
+      npc.moveTowardTarget(dt);
+    },
+    transitions: [
+      { to: 'idle', condition: (npc) => npc.reachedTarget },
+      { to: 'flee', condition: (npc) => npc.heardLoudNoise },
+    ],
+  },
+  flee: {
+    duration: [2, 4],
+    onEnter: (npc) => {
+      npc.playAnimation('run');
+      npc.moveAwayFrom(npc.lastThreatPosition);
+    },
+    update: (npc, dt) => {
+      if (npc.distanceFromThreat > 20) {
+        npc.fleeTimer -= dt;
+      }
+    },
+    transitions: [
+      { to: 'idle', condition: (npc) => npc.fleeTimer <= 0 },
+    ],
+  },
+};
+```
+
+---
+
+## Difficulty Tuning
+
+### Difficulty Modifier System
+
+```typescript
+interface DifficultyMods {
+  reactionTime: number;        // ms delay before AI reacts
+  accuracy: number;           // 0-1, how accurate attacks are
+  awareness: number;          // perception radius multiplier
+  aggression: number;         // how quickly AI escalates
+  stamina: number;           // how often AI can act
+  damageDealt: number;       // damage multiplier
+  damageTaken: number;        // incoming damage multiplier
+}
+
+const difficultyPresets = {
+  easy: { 
+    reactionTime: 500, 
+    accuracy: 0.6, 
+    awareness: 0.7, 
+    aggression: 0.5, 
+    stamina: 0.8,
+    damageDealt: 0.8,
+    damageTaken: 1.2,
+  },
+  normal: { 
+    reactionTime: 250, 
+    accuracy: 0.8, 
+    awareness: 1.0, 
+    aggression: 0.7, 
+    stamina: 1.0,
+    damageDealt: 1.0,
+    damageTaken: 1.0,
+  },
+  hard: { 
+    reactionTime: 100, 
+    accuracy: 0.95, 
+    awareness: 1.3, 
+    aggression: 0.9, 
+    stamina: 1.2,
+    damageDealt: 1.2,
+    damageTaken: 0.8,
+  },
+  nightmare: { 
+    reactionTime: 50, 
+    accuracy: 0.99, 
+    awareness: 1.5, 
+    aggression: 1.0, 
+    stamina: 1.5,
+    damageDealt: 1.5,
+    damageTaken: 0.5,
+  },
+};
+```
+
+### AI Personality Variation
+
+```typescript
+interface AIPersonality {
+  aggression: number;      // 0-1, tendency to attack
+  caution: number;         // 0-1, tendency to retreat
+  bravery: number;         // 0-1, willingness to fight at disadvantage
+  teamwork: number;       // 0-1, tendency to coordinate with allies
+  patience: number;        // 0-1, willingness to wait for opportunities
+}
+
+// Randomize for variety
+function generatePersonality(variation: number = 0.2): AIPersonality {
+  const randomize = (base: number) => 
+    Math.max(0, Math.min(1, base + (Math.random() - 0.5) * variation));
+  
+  return {
+    aggression: randomize(0.5),
+    caution: randomize(0.5),
+    bravery: randomize(0.5),
+    teamwork: randomize(0.5),
+    patience: randomize(0.5),
+  };
+}
+
+// Apply personality to behavior
+function modifyBehaviorWithPersonality(
+  action: UtilityAction,
+  personality: AIPersonality
+): UtilityAction {
+  return {
+    ...action,
+    considerations: action.considerations.map(c => ({
+      ...c,
+      weight: c.weight * (c === action.considerations[0] ? personality.aggression : 1),
+    })),
+  };
+}
+```
+
+---
+
+## AI LOD System
+
+```typescript
+class AILODManager {
+  agents: AIController[] = [];
+  
+  updateAll(dt: number): void {
+    const playerPos = getPlayerPosition();
+    
+    for (const ai of this.agents) {
+      const distance = distance(ai.position, playerPos);
+      
+      if (distance > 100) {
+        // LOD 0: Full update, every frame (close NPCs)
+        ai.fullUpdate(dt);
+      } else if (distance > 50) {
+        // LOD 1: Reduced frequency (medium distance)
+        if (this.shouldUpdateAtRate(ai, 10)) {
+          ai.perception.update(dt, ai.entity);
+          ai.behaviorTree.tick(ai.blackboard);
+        }
+        // Always update pathfinding
+        if (this.shouldUpdateAtRate(ai, 5)) {
+          ai.pathFollower.update(dt, ai.entity, ai.navigation);
+        }
+      } else {
+        // LOD 2: Minimal - just pathfinding (far NPCs)
+        if (this.shouldUpdateAtRate(ai, 5)) {
+          ai.pathFollower.update(dt, ai.entity, ai.navigation);
+        }
+      }
+    }
+  }
+  
+  private updateTimers: Map<AIController, number> = new Map();
+  
+  private shouldUpdateAtRate(ai: AIController, hz: number): boolean {
+    const now = Date.now();
+    const lastUpdate = this.updateTimers.get(ai) || 0;
+    const interval = 1000 / hz;
+    
+    if (now - lastUpdate >= interval) {
+      this.updateTimers.set(ai, now);
+      return true;
+    }
+    
+    return false;
+  }
+}
+```
+
+---
+
+## Common Mistakes & Prevention
+
+| # | Mistake | Why It Fails | Prevention |
+|---|---------|-------------|------------|
+| 1 | AI that never makes mistakes | Player can't read AI, feels unfair | Add reaction delays, accuracy variance |
+| 2 | BT deeper than 10 levels | Unmaintainable, hard to debug | Refactor into sub-trees |
+| 3 | Replanning every frame | Performance disaster | Cache plans, replan on state change |
+| 4 | AI with no memory | Jittery, inconsistent behavior | Implement perception with decay |
+| 5 | Perfect pathfinding | NPCs move too efficiently | Add steering noise, deviation |
+| 6 | All NPCs same behavior | No variety, predictable | Add personality system |
+| 7 | No difficulty tuning | Too easy/hard across game | Use modifier system |
+| 8 | Complex AI for simple NPCs | Wasted performance | State machine for simple NPCs |
 | 9 | AI ignoring obstacles | Gets stuck, breaks immersion | Raycast + pathfinding integration |
-| 10 | No fallback behavior | AI dead-ends and does nothing | Always have idle/default fallback |
+| 10 | No fallback behavior | AI dead-ends | Always have idle/default fallback |
+| 11 | Same path for all NPCs | Predictable patrol routes | Add variation to paths |
+| 12 | No debug visualization | Hard to tune and debug | Add AI state display |
+
+---
 
 ## Handoff Protocol
 
@@ -537,22 +1156,41 @@ src/
 | Game Designer | AI behavior documentation | Review of AI decision-making |
 | QA Engineer | AI test scenarios, difficulty presets | Test matrix for AI behavior |
 
+---
+
 ## Execution Checklist
 
+### Core Framework
 - [ ] Core AI framework (BT/GOAP/Utility) implemented
 - [ ] Behavior Tree node library (Composites, Decorators, Leaves)
 - [ ] GOAP Planner with A* search
+- [ ] Utility AI with consideration curves
+
+### Perception
 - [ ] Perception System (Sight, Hearing, Memory)
+- [ ] Stimulus priority handling
+- [ ] Memory decay implementation
+
+### Navigation
 - [ ] Navigation abstraction layer (NavMesh integration)
 - [ ] Path following with steering behaviors
+- [ ] Separation and avoidance
+
+### NPC Types
 - [ ] Guard AI (Patrol, Alert, Investigate, Combat)
 - [ ] Enemy AI with adaptive behavior (GOAP)
 - [ ] Boss AI with phase-based GOAP
 - [ ] Ambient NPC AI (State Machine)
 - [ ] Crowd/Formation AI (Squad coordination)
+
+### Tuning & Polish
 - [ ] Difficulty modifier system
 - [ ] AI personality variation system
 - [ ] AI LOD (Level of Detail) throttling
 - [ ] AI debug visualization tools
+
+### Testing
 - [ ] Unit tests for BT execution, GOAP planning, Perception
 - [ ] AI behavior documented per NPC type
+- [ ] Test scenarios for each difficulty level
+```
