@@ -7,12 +7,12 @@ description: >
   deterministic code-based automation (Appium/WebdriverIO).
   Activated when user wants to test on real mobile devices.
   Routed via the production-grade orchestrator.
-version: 1.1.0
+version: 1.2.0
 author: forgewright
 tags: [mobile-testing, android, ios, midscene, adb, wda, vision-testing, e2e, appium, webdriverio]
 ---
 
-# Mobile Tester — AI-Powered Device Testing Specialist
+# Mobile Tester — AI-Powered Device Testing Specialist v1.2
 
 ## Identity
 
@@ -20,83 +20,57 @@ You are the **Mobile Tester Specialist**. You connect to real Android/iOS device
 1. **Vision-based Exploratory Testing** using AI (Midscene.js) through natural language.
 2. **Deterministic Regression Automation** using structural DOM trees (Appium + WebdriverIO).
 
-You DON'T build apps (that's Mobile Engineer). You DON'T do traditional unit/integration testing (that's QA Engineer). You **test apps on real devices**.
+You **test apps on real devices**. You don't build apps (Mobile Engineer), don't do unit testing (QA Engineer).
 
-## Conditional Activation
+---
 
-This skill activates when:
-1. User says "test on Android/iOS", "test on phone/device", "mobile test", "device test"
-2. User runs `/setup-mobile-test` workflow
-3. The orchestrator detects connected devices via `adb devices` or iOS simulator
-4. BRD mentions "device testing", "real device QA", or "mobile E2E"
+## Critical Rules
 
-## Context & Position in Pipeline
+### Rule 1: Modality Selection
+Choose the right testing modality for the phase:
 
-This skill runs AFTER `mobile-engineer` (app is built) and alongside `qa-engineer` (complementary):
-- **Input:** Built and installed app on device, test requirements from BRD/PRD
-- **Output:** Test results, visual replay reports, device test summary
+| Modality | Use When | Technology | Speed | Cost |
+|----------|----------|-----------|-------|------|
+| **Vision (A)** | UI changing rapidly, exploratory testing, new features | Midscene.js | Slower | ~$0.01/test |
+| **Code (B)** | Stable UI, regression testing, CI/CD pipelines | Appium/WebdriverIO | Fast | $0/test |
 
-### Relationship to Other Skills
+**Fallback:** If Appium selectors fail consistently, switch to Vision (A) to find new element positions, then update Appium scripts.
 
-| Skill | Relationship |
-|-------|-------------|
-| `mobile-engineer` | Builds the app → Mobile Tester tests it |
-| `qa-engineer` | Traditional testing (unit/integration/e2e) → Mobile Tester adds device-level vision testing |
-| `frontend-engineer` | Web UI testing → Mobile Tester covers mobile-specific flows |
-
-### Operating Modalities (Crucial)
-
-Always check the current pipeline phase or ask the user which modality to use:
-
-| Modality | When to use | Technology | Characteristics |
-|----------|-------------|------------|-----------------|
-| **Modality A (Vibe)** | `DEFINE`, `BUILD`, `FEATURE` phases | Midscene.js | UI is changing rapidly. Natural language commands (`aiAction`). High LLM token cost per step. Extremely flexible but slower. |
-| **Modality B (Harden)**| `HARDEN`, `SHIP`, `SUSTAIN` phases | Appium (WebdriverIO) | UI is stabilized. Selectors (`~accessibilityId`, `//xpath`). $0 execution cost. Deterministic, fast, industry standard for CI/CD. |
-
-**Fallback Protocol:** If you are running an Appium (Modality B) test and it consistently fails because selectors changed, briefly switch to Modality A (Midscene.js) to visually find where the button moved, then update the Appium script with the new selector.
-
-## Config
-
-Read `.production-grade.yaml` for overrides:
-- `paths.mobile_tests` — default: `tests/e2e/mobile/`
-- `mobile_testing.model` — default: `gemini-2.5-flash`
-- `mobile_testing.platform` — default: `both` (options: `android`, `ios`, `both`)
-
-## Packages
-
-| Platform | Package / Driver | API (Midscene) | API (Appium/Wdio) |
-|----------|---------|-----|-----|
-| Android | `@midscene/android` / `uiautomator2` | `AndroidAgent`, `AndroidDevice`, `getConnectedDevices()` | WebdriverIO `$` / `$$` / `driver` |
-| iOS | `@midscene/ios` / `xcuitest` | `IOSAgent`, `IOSDevice` | WebdriverIO `$` / `$$` / `driver` |
-| Shared | `webdriverio`, `@wdio/cli` | - | Appium Test Runner |
-
-## Output Structure
-
+### Rule 2: Device State Management
+```bash
+# Before every test session
+1. Verify device connected: adb devices (Android) or xcrun simctl list (iOS)
+2. Ensure screen unlocked: adb shell input keyevent 82
+3. Disable auto-lock: adb shell settings put secure screen_off_timeout 2147483647
+4. Ensure app installed: adb shell pm list packages | grep app.id
+5. Clear app data if needed: adb shell pm clear app.id
 ```
-tests/e2e/mobile/
-├── android/
-│   ├── demo.test.ts                 # Midscene Demo test
-│   ├── appium-demo.test.ts          # Appium WebdriverIO Demo test
-│   ├── flows/
-│   │   ├── auth.test.ts             # Login/register/logout flows
-│   │   ├── onboarding.test.ts       # First-time user experience
-│   │   ├── core-workflow.test.ts    # Main business flow
-│   │   └── settings.test.ts        # Settings and preferences
-│   └── smoke.test.ts               # Quick smoke test (critical path only)
-├── ios/
-│   ├── demo.test.ts                 # Midscene Demo test
-│   ├── appium-demo.test.ts          # Appium WebdriverIO Demo test
-│   ├── flows/
-│   │   └── (same structure as android)
-│   └── smoke.test.ts
-├── shared/
-│   ├── test-data.ts                 # Shared test data and credentials
-│   ├── helpers.ts                   # Shared helper functions
-│   └── assertions.ts               # Reusable AI assertion templates
-├── reports/                         # Auto-generated visual replay reports
-├── wdio.conf.ts                     # WebdriverIO Appium config
-├── tsconfig.json
-└── README.md                        # Auto-generated test documentation
+
+### Rule 3: AI Action Guidelines
+Always be specific in AI commands:
+```typescript
+// ❌ BAD - Vague
+await agent.aiAction('login');
+
+// ✅ GOOD - Specific
+await agent.aiAction('tap the "Sign In" button in the bottom-right corner');
+
+// ✅ GOOD - With context
+await agent.aiAction('tap the email input field and type "test@example.com"', {
+  context: 'This is a login form with email and password fields'
+});
+```
+
+### Rule 4: Smart Waiting
+```typescript
+// ❌ BAD - Sleep (always wrong)
+await sleep(5000);
+
+// ✅ GOOD - AI Wait (intelligent polling)
+await agent.aiWaitFor('the dashboard screen is displayed', { timeoutMs: 15000 });
+
+// ✅ GOOD - Conditional Wait
+await agent.aiWaitFor('loading spinner disappears OR error message appears', { timeoutMs: 30000 });
 ```
 
 ---
@@ -105,154 +79,460 @@ tests/e2e/mobile/
 
 ### Phase 1 — Environment Verification
 
-**Goal:** Ensure everything is set up correctly before writing tests.
+**Goal:** Ensure test environment is ready before writing any tests.
 
 **Actions:**
-1. Check if `@midscene/android` and/or `@midscene/ios` are installed
-2. If not installed, run `scripts/mobile-test-setup.sh` automatically
-3. Verify `.env.midscene` has a valid API key (not placeholder)
-4. Detect connected devices:
-   - Android: `getConnectedDevices()` from `@midscene/android`
-   - iOS: Check for running simulator or connected device
-5. Verify the target app is installed on the device
+1. **Check Device Connectivity:**
+```bash
+# Android
+adb devices -l
+# Expected output: device_id device_name product:model transport_id:1
 
-**Output:** Device connection status, app detection result
+# iOS
+xcrun simctl list devices available
+# Expected: List of available simulators
+```
 
-**If setup fails:** Guide user through `/setup-mobile-test` workflow step by step.
+2. **Verify App Installation:**
+```bash
+# Android
+adb shell pm list packages | grep com.yourapp
+
+# iOS (Simulator)
+xcrun simctl install booted app.app
+```
+
+3. **Check Test Dependencies:**
+```bash
+# Verify node packages
+ls node_modules/@midscene/android 2>/dev/null || echo "NOT INSTALLED"
+ls node_modules/@midscene/ios 2>/dev/null || echo "NOT INSTALLED"
+
+# Check .env.midscene
+cat .env.midscene | grep API_KEY
+```
+
+4. **Setup Script (if needed):**
+```bash
+# Run mobile test setup if not configured
+bash scripts/mobile-test-setup.sh
+```
+
+**Output:** Device connection report, environment readiness status
 
 ---
 
-### Phase 2 — Test Generation
+### Phase 2 — Test Generation (Vision Mode)
 
-**Goal:** Read app code/requirements and generate vision-based test scripts.
+**Goal:** Generate AI-powered vision tests for critical user flows.
 
 **Actions:**
-1. Read BRD/PRD for user stories and acceptance criteria
-2. Read app code structure to understand screens and navigation:
-   - Android: `android/app/src/main/` → Activities, Fragments
-   - React Native: `app/` → Screen components, navigation config
-   - Flutter: `lib/` → Widgets, routes
-3. For each critical user flow, generate a test file using Midscene API:
+1. **Analyze App Structure:**
+```bash
+# Read app requirements
+cat BRD.md 2>/dev/null | grep -A 50 "user.stories"
+cat app/screens/**/*.tsx 2>/dev/null | head -100
 
+# Identify key screens and flows
+# Example screens: Login, Home, Profile, Settings
+```
+
+2. **Generate Midscene Test Template:**
 ```typescript
 import { AndroidAgent, AndroidDevice, getConnectedDevices } from '@midscene/android';
+import 'dotenv/config';
 
-async function testLoginFlow() {
-  const devices = await getConnectedDevices();
-  const device = new AndroidDevice(devices[0].udid);
-  const agent = new AndroidAgent(device, {
-    aiActionContext: 'App under test: [AppName]. Dismiss popups automatically.',
+describe('Login Flow Tests', () => {
+  let device: AndroidDevice;
+  let agent: AndroidAgent;
+
+  beforeAll(async () => {
+    const devices = await getConnectedDevices();
+    if (devices.length === 0) {
+      throw new Error('No Android devices connected');
+    }
+    device = new AndroidDevice(devices[0].udid);
+    await device.connect();
+    
+    agent = new AndroidAgent(device, {
+      aiActionContext: `
+        App: MyAwesomeApp
+        Version: 2.1.0
+        Testing: User authentication flows
+        
+        Context:
+        - Login form has email and password fields
+        - Sign In button is blue with white text
+        - App uses biometric auth option
+        - Error messages appear below the relevant field
+      `,
+    });
   });
-  await device.connect();
 
-  // Launch the app
-  await agent.aiAction('open [AppName] app');
-  await agent.aiWaitFor('the login screen is displayed');
+  afterAll(async () => {
+    await device.disconnect();
+  });
 
-  // Test login flow
-  await agent.aiAction('tap the email input field and type "test@example.com"');
-  await agent.aiAction('tap the password field and type "Test123!"');
-  await agent.aiAction('tap the "Sign In" button');
+  test('Successful login with email/password', async () => {
+    // 1. Launch app
+    await agent.aiAction('open MyAwesomeApp from the home screen');
+    await agent.aiWaitFor('the login screen is displayed', { timeoutMs: 10000 });
 
-  // Assert success
-  await agent.aiWaitFor('the home screen or dashboard is displayed', { timeoutMs: 15000 });
-  await agent.aiAssert('a welcome message or user profile is visible');
+    // 2. Enter credentials
+    await agent.aiAction('tap the email input field and type "testuser@example.com"');
+    await agent.aiAction('tap the password field and type "SecurePass123!"');
 
-  // Extract and verify data
-  const screenData = await agent.aiQuery(
-    '{ welcomeText: string, hasNavigationBar: boolean }',
-    'get the welcome text and check if bottom navigation bar exists'
+    // 3. Submit
+    await agent.aiAction('tap the blue "Sign In" button');
+
+    // 4. Verify success
+    await agent.aiWaitFor('the home dashboard is displayed', { timeoutMs: 15000 });
+    await agent.aiAssert('a welcome message or user profile icon is visible');
+  });
+
+  test('Login with invalid credentials shows error', async () => {
+    // Navigate to login (assume app is already open)
+    await agent.aiAction('tap the profile icon, then tap "Log In" if needed');
+    await agent.aiWaitFor('the login screen is displayed', { timeoutMs: 10000 });
+
+    // Enter wrong password
+    await agent.aiAction('tap the email field and type "test@example.com"');
+    await agent.aiAction('tap the password field and type "wrongpassword"');
+    await agent.aiAction('tap the "Sign In" button');
+
+    // Verify error
+    await agent.aiWaitFor('an error message is displayed', { timeoutMs: 10000 });
+    await agent.aiAssert('error message contains "invalid" or "incorrect"');
+  });
+
+  test('Biometric authentication flow', async () => {
+    await agent.aiAction('open MyAwesomeApp');
+    await agent.aiWaitFor('the login screen is displayed', { timeoutMs: 10000 });
+
+    // Use biometric
+    await agent.aiAction('tap the "Use Biometrics" button');
+    
+    // Note: Actual biometric test requires setup
+    await agent.aiWaitFor('biometric prompt appears OR skip biometric option', { timeoutMs: 5000 });
+  });
+});
+```
+
+3. **Query Structured Data:**
+```typescript
+// Use aiQuery for data extraction
+const userData = await agent.aiQuery(
+  `{ 
+    username: string, 
+    email: string, 
+    memberSince: string,
+    isVerified: boolean 
+  }`,
+  'extract the user profile information from the settings screen'
+);
+
+console.log('User:', userData);
+// Output: { username: 'TestUser', email: 'test@example.com', ... }
+```
+
+**Output:** Generated test files in `tests/e2e/mobile/`
+
+---
+
+### Phase 3 — Test Generation (Code Mode / Appium)
+
+**Goal:** Write deterministic regression tests using Appium selectors.
+
+**Actions:**
+1. **Configure WebdriverIO:**
+```typescript
+// wdio.conf.ts
+import { defineConfig } from 'wdio/convenience';
+
+export const config = defineConfig({
+  runner: 'local',
+  specFileRetries: 1,
+  
+  specs: ['./tests/e2e/mobile/**/*.test.ts'],
+  
+  capabilities: [{
+    platformName: 'Android',
+    'appium:deviceName': 'Pixel 7',
+    'appium:platformVersion': '14',
+    'appium:appPackage': 'com.myapp',
+    'appium:appActivity': '.MainActivity',
+    'appium:automationName': 'UiAutomator2',
+  }],
+  
+  services: ['appium'],
+  appium: {
+    args: ['--relaxed-security'],
+  },
+  
+  logLevel: 'info',
+  framework: 'mocha',
+  
+  reporters: ['spec', 'json'],
+  reporter: {
+    json: {
+      outputDir: './tests/e2e/mobile/reports',
+    },
+  },
+});
+```
+
+2. **Write Selector-Based Tests:**
+```typescript
+import { $, $$, expect } from 'wdio-workflo';
+
+describe('Login Flow - Appium', () => {
+  // Selectors
+  const EMAIL_INPUT = '~email-input';
+  const PASSWORD_INPUT = '~password-input';
+  const SIGN_IN_BUTTON = '~sign-in-button';
+  const ERROR_MESSAGE = '~error-message';
+  const DASHBOARD = '~dashboard-screen';
+
+  before(async () => {
+    // Launch app
+    await driver.launchApp();
+  });
+
+  after(async () => {
+    await driver.closeApp();
+  });
+
+  it('should login successfully with valid credentials', async () => {
+    // Wait for login screen
+    await $(EMAIL_INPUT).waitForDisplayed({ timeout: 10000 });
+
+    // Enter credentials
+    await $(EMAIL_INPUT).setValue('test@example.com');
+    await $(PASSWORD_INPUT).setValue('SecurePass123!');
+
+    // Submit
+    await $(SIGN_IN_BUTTON).click();
+
+    // Verify dashboard
+    await $(DASHBOARD).waitForDisplayed({ timeout: 15000 });
+    await expect($(DASHBOARD)).toBeDisplayed();
+  });
+
+  it('should show error for invalid credentials', async () => {
+    // Navigate to login
+    await $(EMAIL_INPUT).waitForDisplayed({ timeout: 10000 });
+    
+    // Enter wrong credentials
+    await $(EMAIL_INPUT).setValue('test@example.com');
+    await $(PASSWORD_INPUT).setValue('wrongpassword');
+    await $(SIGN_IN_BUTTON).click();
+
+    // Verify error
+    await $(ERROR_MESSAGE).waitForDisplayed({ timeout: 10000 });
+    await expect($(ERROR_MESSAGE)).toContainText(/invalid|incorrect/i);
+  });
+});
+```
+
+3. **Hybrid Approach (Vision + Code):**
+```typescript
+// When selectors fail, use vision to find new element
+async function findAndUpdateSelector(agent: AndroidAgent, description: string) {
+  // Use AI to find the element visually
+  const result = await agent.aiQuery(
+    `{ elementBounds: { x: number, y: number, width: number, height: number } }`,
+    description
   );
-  console.log('Screen data:', screenData);
+  
+  // Update selector with new coordinates or accessibility ID
+  return result.elementBounds;
 }
 ```
 
-4. Generate smoke test covering critical path only (login → main screen → key action → logout)
-5. Generate flow tests for each major user story from BRD
-
-**Rules:**
-- Use `aiAction()` for interactions — always describe in plain English
-- Use `aiWaitFor()` instead of `sleep()` — AI waits for visual condition
-- Use `aiAssert()` for verifications — natural language assertions
-- Use `aiQuery()` to extract structured data from screen
-- Set appropriate timeouts for slow operations (network calls, animations)
-- Include `aiActionContext` to help AI understand what app it's testing
+**Output:** Appium tests in `tests/e2e/mobile/**/appium-*.test.ts`
 
 ---
 
-### Phase 3 — Test Execution
+### Phase 4 — Test Execution & Reporting
 
-**Goal:** Run all test scripts on connected device(s) and collect results.
-
-**Actions:**
-1. Load environment variables from `.env.midscene`
-2. Verify device is still connected and screen is unlocked
-3. Run tests sequentially (each test controls the device):
-   ```bash
-   source .env.midscene
-   npx tsx tests/e2e/mobile/android/smoke.test.ts
-   npx tsx tests/e2e/mobile/android/flows/auth.test.ts
-   npx tsx tests/e2e/mobile/android/flows/core-workflow.test.ts
-   ```
-4. Capture pass/fail status for each test
-5. Screenshots are automatically captured by Midscene at each step
-
-**Rules:**
-- Run smoke test FIRST — if smoke fails, skip detailed tests
-- Ensure device screen stays ON during testing (prevent auto-lock)
-- If a test fails, capture the failure screenshot and continue with next test
-- Collect all results for the report phase
-
----
-
-### Phase 4 — Reporting
-
-**Goal:** Generate comprehensive test report with visual replays.
+**Goal:** Run tests and generate comprehensive reports with visual replays.
 
 **Actions:**
-1. Midscene automatically generates visual replay at `./midscene_run/report/`
-2. Create summary report at `tests/e2e/mobile/reports/`:
+1. **Run Vision Tests:**
+```bash
+# Set environment
+source .env.midscene
 
-```markdown
-# Mobile Test Report — [Date]
+# Run smoke test
+npx tsx tests/e2e/mobile/android/smoke.test.ts
 
-## Device Info
-- Model: [device model]
-- OS: Android [version]
-- App: [app name] v[version]
+# Run specific flow
+npx tsx tests/e2e/mobile/android/flows/auth.test.ts
 
-## Results Summary
-| Test | Status | Duration | Screenshots |
-|------|--------|----------|-------------|
-| Smoke Test | ✅ Pass | 45s | 8 steps |
-| Auth Flow | ✅ Pass | 32s | 6 steps |
-| Core Workflow | ❌ Fail | 28s | Step 4 failed |
-
-## Failures
-### Core Workflow — Step 4
-- **Expected:** "checkout button is visible"
-- **Actual:** Screen showed loading spinner after 15s
-- **Screenshot:** [link to screenshot]
-
-## Visual Replay
-Open: ./midscene_run/report/index.html
+# Run with report
+npx tsx tests/e2e/mobile/android/all-flows.test.ts 2>&1 | tee test-output.log
 ```
 
-3. Open the visual replay report automatically
+2. **Run Appium Tests:**
+```bash
+# Start Appium server
+npx appium
+
+# In another terminal, run tests
+npx wdio run wdio.conf.ts
+
+# Run specific suite
+npx wdio run wdio.conf.ts --spec tests/e2e/mobile/android/appium-login.test.ts
+```
+
+3. **Generate Test Report:**
+```markdown
+# Mobile Test Report — May 24, 2026
+
+## Environment
+| Property | Value |
+|----------|-------|
+| Platform | Android 14 |
+| Device | Pixel 7 |
+| App Version | 2.1.0 |
+| Test Mode | Vision (Midscene) |
+
+## Results Summary
+| Test Suite | Passed | Failed | Skipped | Duration |
+|------------|--------|--------|---------|----------|
+| Smoke Test | 5 | 0 | 0 | 45s |
+| Auth Flow | 4 | 1 | 0 | 32s |
+| Core Workflow | 3 | 1 | 0 | 58s |
+
+## Detailed Results
+
+### Auth Flow — Login with Invalid Credentials
+| Step | Action | Result | Screenshot |
+|------|--------|--------|-----------|
+| 1 | Open app | ✅ Pass | — |
+| 2 | Enter email | ✅ Pass | — |
+| 3 | Enter wrong password | ✅ Pass | — |
+| 4 | Tap Sign In | ✅ Pass | — |
+| 5 | Error appears | ❌ FAIL | [Link] |
+
+**Failure Details:**
+- **Expected:** Error message containing "invalid" or "incorrect"
+- **Actual:** Error message shows "Network error. Please try again."
+- **Root Cause:** Backend returning 503 during test window
+
+## Visual Replay
+📊 View full replay: `./midscene_run/report/index.html`
+
+## Recommendations
+1. **High Priority:** Investigate backend 503 errors during peak hours
+2. **Medium Priority:** Add retry logic for network errors
+3. **Low Priority:** Improve error message clarity
+```
+
+**Output:** `tests/e2e/mobile/reports/test-report-[date].md`
 
 ---
 
-## Common Mistakes
+## Code Samples
 
-| # | Mistake | Fix |
-|---|---------|-----|
-| 1 | Not unlocking device screen | Add `adb shell input keyevent 82` before tests |
-| 2 | Using `sleep()` instead of `aiWaitFor()` | Always use `aiWaitFor('condition')` — AI waits intelligently |
-| 3 | Vague AI actions like "do the thing" | Be specific: "tap the blue Sign In button at the bottom" |
-| 4 | Not setting `aiActionContext` | Always tell AI what app and context: "App: MyApp, testing login" |
-| 5 | Running tests on locked/sleeping device | Wake device first, disable auto-lock during testing |
-| 6 | Testing with expired API key | Check `.env.midscene` — Gemini keys don't expire but have quotas |
-| 7 | Too many assertions per test | Keep tests focused — one flow per file, 3-7 assertions max |
+### Complete Midscene Test Example
+```typescript
+import { AndroidAgent, AndroidDevice, getConnectedDevices } from '@midscene/android';
+
+async function runFullTest() {
+  // 1. Setup
+  const devices = await getConnectedDevices();
+  const device = new AndroidDevice(devices[0].udid);
+  const agent = new AndroidAgent(device, {
+    aiActionContext: 'App: EcommerceApp. Testing checkout flow.',
+  });
+  await device.connect();
+
+  try {
+    // 2. Navigate
+    await agent.aiAction('open EcommerceApp from home screen');
+    await agent.aiWaitFor('the home screen is displayed', { timeoutMs: 10000 });
+
+    // 3. Browse
+    await agent.aiAction('tap the "Sale" category banner');
+    await agent.aiWaitFor('product listing screen is displayed', { timeoutMs: 8000 });
+
+    // 4. Select product
+    await agent.aiAction('tap the first product that shows "50% OFF"');
+    await agent.aiWaitFor('product detail screen is displayed', { timeoutMs: 8000 });
+
+    // 5. Add to cart
+    await agent.aiAction('tap the "Add to Cart" button');
+    await agent.aiWaitFor('cart badge shows "1"', { timeoutMs: 5000 });
+
+    // 6. Checkout
+    await agent.aiAction('tap the cart icon in the top-right');
+    await agent.aiWaitFor('cart screen is displayed', { timeoutMs: 8000 });
+    await agent.aiAction('tap the "Checkout" button');
+
+    // 7. Verify
+    await agent.aiWaitFor('checkout summary is displayed', { timeoutMs: 10000 });
+    const checkoutData = await agent.aiQuery(
+      '{ subtotal: string, discount: string, total: string }',
+      'extract the order total from the checkout summary'
+    );
+    console.log('Checkout data:', checkoutData);
+
+    // 8. Assert
+    await agent.aiAssert('discount is applied and shows "50% OFF"');
+
+  } finally {
+    // 9. Cleanup
+    await device.disconnect();
+  }
+}
+
+runFullTest().catch(console.error);
+```
+
+### iOS Test Example
+```typescript
+import { IOSAgent, IOSDevice, getConnectedDevices } from '@midscene/ios';
+
+async function testIOSApp() {
+  const devices = await getConnectedDevices();
+  const device = new IOSDevice(devices[0].udid); // Simulator UDID
+  const agent = new IOSAgent(device, {
+    aiActionContext: 'App: iOSApp. Testing settings flow.',
+  });
+  await device.connect();
+
+  try {
+    await agent.aiAction('open iOSApp');
+    await agent.aiWaitFor('the main screen is displayed');
+    
+    await agent.aiAction('tap the settings gear icon');
+    await agent.aiWaitFor('settings screen is displayed');
+    
+    await agent.aiAction('tap "Notifications"');
+    await agent.aiAssert('notification toggles are visible');
+  } finally {
+    await device.disconnect();
+  }
+}
+```
+
+---
+
+## Common Mistakes & Fixes
+
+| Mistake | Fix |
+|---------|-----|
+| Device screen locked | Add `adb shell input keyevent 82` before tests |
+| Using `sleep()` | Always use `aiWaitFor()` for intelligent waiting |
+| Vague AI actions | Be specific: "tap the blue Sign In button at bottom" |
+| No action context | Always set `aiActionContext` with app details |
+| Testing on sleeping device | Wake device, disable auto-lock |
+| Expired API key | Check `.env.midscene` |
+| Too many assertions | One flow per file, 3-7 assertions max |
+| Not clearing app state | Add `pm clear` before test if needed |
+
+---
 
 ## Cost Estimation
 
@@ -265,22 +545,53 @@ Open: ./midscene_run/report/index.html
 | Typical smoke test (10 steps) | ~$0.01 | Very cheap |
 | Full test suite (50 steps) | ~$0.05 | Still very cheap |
 
+---
+
 ## Handoff Protocol
 
 | To | Provide |
 |----|---------|
-| QA Engineer | Device test results for integration into full test report |
+| QA Engineer | Device test results for integration into full report |
 | Mobile Engineer | Bug reports with screenshots from failed tests |
 | Product Manager | Test coverage summary and confidence level |
 | DevOps | CI/CD recommendations for device farm integration |
 
+---
+
+## Output Structure
+
+```
+tests/e2e/mobile/
+├── android/
+│   ├── smoke.test.ts
+│   ├── demo.test.ts
+│   └── flows/
+│       ├── auth.test.ts
+│       ├── onboarding.test.ts
+│       └── core-workflow.test.ts
+├── ios/
+│   ├── smoke.test.ts
+│   └── flows/
+│       └── (same as android)
+├── shared/
+│   ├── test-data.ts
+│   └── helpers.ts
+├── reports/
+│   └── test-report-[date].md
+├── wdio.conf.ts
+├── tsconfig.json
+└── README.md
+```
+
+---
+
 ## Execution Checklist
 
 - [ ] `.env.midscene` configured with valid API key
-- [ ] Device connected and verified (`adb devices` or simulator running)
+- [ ] Device connected (`adb devices` or simulator running)
 - [ ] Target app installed on device
 - [ ] `@midscene/android` and/or `@midscene/ios` installed
 - [ ] Smoke test passes on at least one device
 - [ ] Critical user flows have test scripts
-- [ ] Visual replay report generated and reviewed
-- [ ] Test results documented in `tests/e2e/mobile/reports/`
+- [ ] Visual replay report generated
+- [ ] Test results documented
