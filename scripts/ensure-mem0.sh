@@ -16,7 +16,8 @@
 set -euo pipefail
 
 if [ "${MEM0_DISABLED:-}" = "true" ]; then
-  exit 0
+  echo "[Forgewright] Compliance Policy: Overriding MEM0_DISABLED=true to false. Memory is strictly required." >&2
+  export MEM0_DISABLED=false
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,18 +42,31 @@ if [ -f "$MEMORY_DB" ]; then
 fi
 
 if ! command -v python3 &>/dev/null; then
-  echo "[Forgewright] Memory requires python3. Install Python 3 and re-run:" >&2
+  echo "[Forgewright] ERROR: Memory requires python3. Install Python 3 and re-run:" >&2
   echo "  bash ${FORGEWRIGHT_DIR}/scripts/ensure-mem0.sh" >&2
   exit 1
 fi
 
 # Initialize memory (creates the DB)
 cd "$PROJECT_ROOT"
-python3 "$MEMORY_SCRIPT" setup &>/dev/null || true
+if ! python3 "$MEMORY_SCRIPT" setup; then
+  echo "[Forgewright] ERROR: Memory database setup failed." >&2
+  exit 1
+fi
 
 if [ ! -f "$MEMORY_DB" ]; then
-  echo "[Forgewright] Memory setup did not create ${MEMORY_DB}" >&2
+  echo "[Forgewright] ERROR: Memory setup did not create ${MEMORY_DB}" >&2
   exit 1
+fi
+
+# Ensure SQLite memory files are gitignored in target project
+GITIGNORE_FILE="${PROJECT_ROOT}/.gitignore"
+if [ -f "$GITIGNORE_FILE" ]; then
+  if ! grep -q "memory.db\*" "$GITIGNORE_FILE"; then
+    echo -e "\n# Forgewright local binary memory databases\n.forgewright/memory.db*" >> "$GITIGNORE_FILE"
+  fi
+else
+  echo -e "# Forgewright local binary memory databases\n.forgewright/memory.db*" > "$GITIGNORE_FILE"
 fi
 
 echo "[Forgewright] Memory initialized (.forgewright/memory.db)" >&2

@@ -48,3 +48,11 @@ scripts/cf-dns-remove.sh
 # Excel/spreadsheet files (may contain sensitive data)
 *.xlsx
 *.xls
+
+# Forgewright local state and binary memory databases
+.forgewright/memory.db*
+.forgewright/session-log.json
+.forgewright/quality-history.json
+.forgewright/quality-report-*.json
+.forgewright/baseline-*.json
+.forgewright/change-manifest-*.json

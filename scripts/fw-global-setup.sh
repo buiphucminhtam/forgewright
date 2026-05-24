@@ -336,7 +336,7 @@ cfg.mcpServers['forgewright'] = {
     command: 'npx',
     args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
     env: {
-        FORGEWRIGHT_WORKSPACE: '${workspaceFolder}'
+        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
     }
 };
 
@@ -387,7 +387,7 @@ cfg.mcpServers['forgewright'] = {
     command: 'npx',
     args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
     env: {
-        FORGEWRIGHT_WORKSPACE: '${workspaceFolder}'
+        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
     }
 };
 
@@ -411,7 +411,7 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 cfg.mcpServers['forgewright'] = {
     command: 'npx',
     args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
-    env: { FORGEWRIGHT_WORKSPACE: '${workspaceFolder}' }
+    env: { FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}' }
 };
 fs.writeFileSync('${path}', JSON.stringify(cfg, null, 2));
 "

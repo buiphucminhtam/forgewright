@@ -45,6 +45,6 @@ This pushes new entries from `.forgewright/plan-lessons.md` and `.forgewright/ex
 
 ## Failure Handling
 
-- If mem0-v2 unavailable → LOG warning, continue (non-blocking)
-- Check `MEM0_DISABLED` env var
-- System uses SQLite (built-in) — no external dependencies
+- If mem0-v2 unavailable/fails → ABORT execution immediately with a fatal error. Memory is a non-negotiable hard constraint.
+- Overrides via `MEM0_DISABLED` or `FORGEWRIGHT_SKIP_MEM0` are strictly BLOCKED. The system will automatically override these flags, print a compliance warning, and force-enable the full memory mechanism.
+- System uses SQLite (built-in) — no external dependencies.

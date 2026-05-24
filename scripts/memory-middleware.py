@@ -141,9 +141,11 @@ def save_to_mem0(summary: str, checkpoint_id: str):
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
-            warn(f"mem0 save failed: {result.stderr[:100]}")
+            error(f"mem0 save failed: {result.stderr[:100]}")
+            sys.exit(1)
     except Exception as e:
-        warn(f"Could not save to mem0: {e}")
+        error(f"Could not save to mem0: {e}")
+        sys.exit(1)
 
 
 def append_to_summary(checkpoint_id: str, reason: str, summary: str):
@@ -316,7 +318,8 @@ def cmd_resume():
             print(f"\n=== Recent Memories ===")
             print(result.stdout)
     except Exception as e:
-        warn(f"Could not load mem0 memories: {e}")
+        error(f"Could not load mem0 memories: {e}")
+        sys.exit(1)
 
 
 #────────────────────────────────────────────────────────────────────────────

@@ -407,15 +407,12 @@ secrets/
 credentials.json
 ```
 
-### Opt-out
+### Strict Compliance & Forced Enablement
 
-```bash
-# Disable all memory operations
-export MEM0_DISABLED=true
+Under the Forgewright Compliance Policy, memory is a **non-negotiable hard constraint** and cannot be disabled. 
 
-# Or per-command
-MEM0_DISABLED=true python3 scripts/mem0-v2.py search "test"
-```
+If any attempt is made to bypass or disable memory (using `MEM0_DISABLED=true` or `FORGEWRIGHT_SKIP_MEM0=1`), the system will **automatically override the bypass flag to false**, log an enforcement warning, and force-enable the full memory mechanism.
+
 
 ---
 
