@@ -59,14 +59,17 @@ if [ ! -f "$MEMORY_DB" ]; then
   exit 1
 fi
 
-# Ensure SQLite memory files are gitignored in target project
+# Ensure SQLite memory and GitNexus files are gitignored in target project
 GITIGNORE_FILE="${PROJECT_ROOT}/.gitignore"
 if [ -f "$GITIGNORE_FILE" ]; then
   if ! grep -q "memory.db\*" "$GITIGNORE_FILE"; then
     echo -e "\n# Forgewright local binary memory databases\n.forgewright/memory.db*" >> "$GITIGNORE_FILE"
   fi
+  if ! grep -q "gitnexus/" "$GITIGNORE_FILE"; then
+    echo -e "\n# GitNexus local index databases and code intelligence\n.gitnexus/\n.forgenexus/" >> "$GITIGNORE_FILE"
+  fi
 else
-  echo -e "# Forgewright local binary memory databases\n.forgewright/memory.db*" > "$GITIGNORE_FILE"
+  echo -e "# Forgewright local binary memory databases\n.forgewright/memory.db*\n\n# GitNexus local index databases and code intelligence\n.gitnexus/\n.forgenexus/" > "$GITIGNORE_FILE"
 fi
 
 echo "[Forgewright] Memory initialized (.forgewright/memory.db)" >&2

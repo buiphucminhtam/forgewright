@@ -264,23 +264,27 @@ update_gitignore() {
         touch "$gitignore_file"
     fi
 
-    # Check if .forgewright/ memory.db* is already ignored
-    if grep -q "memory.db\*" "$gitignore_file" 2>/dev/null; then
-        log_ok ".forgewright/ memory databases already ignored in target project's .gitignore"
-        return
+    # Append Forgewright if not present
+    if ! grep -q "memory.db\*" "$gitignore_file" 2>/dev/null; then
+        echo "" >> "$gitignore_file"
+        echo "# Forgewright local state and binary memory databases" >> "$gitignore_file"
+        echo ".forgewright/memory.db*" >> "$gitignore_file"
+        echo ".forgewright/session-log.json" >> "$gitignore_file"
+        echo ".forgewright/quality-history.json" >> "$gitignore_file"
+        echo ".forgewright/quality-report-*.json" >> "$gitignore_file"
+        echo ".forgewright/baseline-*.json" >> "$gitignore_file"
+        echo ".forgewright/change-manifest-*.json" >> "$gitignore_file"
+        log_ok "Added Forgewright local state and memory files to target project's .gitignore"
     fi
 
-    # Append to .gitignore
-    echo "" >> "$gitignore_file"
-    echo "# Forgewright local state and binary memory databases" >> "$gitignore_file"
-    echo ".forgewright/memory.db*" >> "$gitignore_file"
-    echo ".forgewright/session-log.json" >> "$gitignore_file"
-    echo ".forgewright/quality-history.json" >> "$gitignore_file"
-    echo ".forgewright/quality-report-*.json" >> "$gitignore_file"
-    echo ".forgewright/baseline-*.json" >> "$gitignore_file"
-    echo ".forgewright/change-manifest-*.json" >> "$gitignore_file"
-    
-    log_ok "Added Forgewright local state and memory files to target project's .gitignore"
+    # Append GitNexus if not present
+    if ! grep -q "gitnexus/" "$gitignore_file" 2>/dev/null; then
+        echo "" >> "$gitignore_file"
+        echo "# GitNexus local index databases and code intelligence" >> "$gitignore_file"
+        echo ".gitnexus/" >> "$gitignore_file"
+        echo ".forgenexus/" >> "$gitignore_file"
+        log_ok "Added GitNexus local state and database files to target project's .gitignore"
+    fi
 }
 
 main() {
