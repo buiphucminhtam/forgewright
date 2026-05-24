@@ -14,7 +14,7 @@ description: First-time setup of Forgewright as a git submodule in your project
 
 1. Add Forgewright as a git submodule:
 ```bash
-git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .antigravity/plugins/production-grade
+git submodule add -b main https://github.com/buiphucminhtam/forgewright.git forgewright
 ```
 
 2. Initialize the submodule:
@@ -22,20 +22,26 @@ git submodule add -b main https://github.com/buiphucminhtam/forgewright.git .ant
 git submodule update --init --recursive
 ```
 
-3. Verify installation — check that SKILL.md exists:
+3. Copy config files to project root:
 ```bash
-cat .antigravity/plugins/production-grade/skills/production-grade/SKILL.md | head -5
+cp forgewright/AGENTS.md .
+cp forgewright/CLAUDE.md .
 ```
 
-4. Check the installed version:
+4. Verify installation — check that SKILL.md exists:
 ```bash
-cat .antigravity/plugins/production-grade/VERSION
+cat forgewright/skills/production-grade/SKILL.md | head -5
 ```
 
-5. Stage and commit:
+5. Check the installed version:
 ```bash
-git add .gitmodules .antigravity/
-git commit -m "feat: add Forgewright production-grade plugin"
+cat forgewright/VERSION
+```
+
+6. Stage and commit:
+```bash
+git add .gitmodules forgewright AGENTS.md CLAUDE.md
+git commit -m "feat: add Forgewright"
 ```
 
 ## After Setup

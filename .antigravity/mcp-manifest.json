@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "workspace": "/Users/buiphucminhtam/GitHub/forgewright",
+  "forgewright": {
+    "version": "8.0.0",
+    "canonical": "/Users/buiphucminhtam/.forgewright",
+    "server": "/Users/buiphucminhtam/.forgewright/mcp-server/server.ts",
+    "mcp_server": "/Users/buiphucminhtam/.cursor/projects/Users-buiphucminhtam-GitHub-forgewright/mcps/user-forgewright"
+  },
+  "antigravity": "/Users/buiphucminhtam/.cursor/projects/Users-buiphucminhtam-GitHub-forgewright/mcps/user-forgewright",
+  "generated_at": "2026-05-24T06:48:00Z",
+  "migration": "canonical-global"
+}

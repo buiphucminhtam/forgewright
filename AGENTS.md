@@ -218,7 +218,7 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
    bash scripts/forgewright-mcp-setup.sh
 
    # For Antigravity plugin users (universal, works from any project):
-   bash <forgewright>/.antigravity/plugins/production-grade/scripts/forgewright-mcp-setup.sh
+   bash <forgewright>/scripts/forgewright-mcp-setup.sh
    ```
 
    This single command sets up Forgewright MCP for **ALL three platforms simultaneously**:

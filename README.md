@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
   <img src="https://img.shields.io/badge/version-8.6.0-blue?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-58-brightgreen?style=flat-square" alt="Skills" />
+  <img src="https://img.shields.io/badge/skills-56-brightgreen?style=flat-square" alt="Skills" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
   </a>
@@ -129,17 +129,17 @@ brew install node
 ### One-Command Setup
 
 ```bash
-# 1. Go to your project
-cd /path/to/your/project
-
-# 2. Clone Forgewright
+# 1. Clone Forgewright (if not already)
 git clone https://github.com/buiphucminhtam/forgewright.git
+cd forgewright
 
-# 3. Copy config files
-cp forgewright/AGENTS.md .
-cp forgewright/CLAUDE.md .
+# 2. Copy config files to your project root
+#    (For FORGEWRIGHT ITSELF, these files are already at the root)
+#    For OTHER projects:
+cp forgewright/AGENTS.md /path/to/your/project/
+cp forgewright/CLAUDE.md /path/to/your/project/
 
-# 4. Open in your IDE
+# 3. Open in your IDE
 cursor .          # or: code . / claude
 ```
 
@@ -226,11 +226,11 @@ Level 4 gives you **ForgeWright skills** and **GitNexus code intelligence** with
 ```bash
 cd /path/to/your-project
 
-# Option A: Clone as submodule (recommended)
+# Option A: Clone as submodule (recommended for project-level integration)
 git submodule add -b main https://github.com/buiphucminhtam/forgewright.git forgewright
 git submodule update --init --recursive
 
-# Option B: Clone directly (for non-git projects)
+# Option B: Clone directly (for non-git projects or standalone use)
 git clone https://github.com/buiphucminhtam/forgewright.git
 ```
 
@@ -246,7 +246,6 @@ cp forgewright/CLAUDE.md .
 ```bash
 cd forgewright
 npm install --legacy-peer-deps
-npm run build:forgenexus
 ```
 
 #### Step 4: Setup MCP (New Method)

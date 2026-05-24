@@ -96,7 +96,7 @@ IF running in Antigravity (Claude Code):
       Log: "✓ MCP manifest found — workspace isolation active"
       IF .forgewright/mcp-server/server.ts exists:
         Log: "  └── forgewright-mcp-server: ready"
-      IF .antigravity/plugins/production-grade/forgenexus/ exists:
+      IF forgenexus/ exists:
         Log: "  └── forgenexus: ready"
       # MCP server spawning is handled by forgewright-mcp-launcher.sh
       # (configured once in claude_desktop_config.json)

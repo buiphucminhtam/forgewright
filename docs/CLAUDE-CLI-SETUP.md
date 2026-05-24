@@ -74,15 +74,14 @@ Chọn cấp độ phù hợp với nhu cầu của bạn:
 
 ```bash
 # 1. Thêm submodule
-git submodule add -b main https://github.com/buiphucminhtam/forgewright.git \
-  .antigravity/plugins/production-grade
+git submodule add -b main https://github.com/buiphucminhtam/forgewright.git forgewright
 
 # 2. Copy 2 file bắt buộc vào thư mục gốc project
-cp .antigravity/plugins/production-grade/AGENTS.md .
-cp .antigravity/plugins/production-grade/CLAUDE.md .
+cp forgewright/AGENTS.md .
+cp forgewright/CLAUDE.md .
 
 # 3. Commit
-git add .gitmodules .antigravity AGENTS.md CLAUDE.md
+git add .gitmodules forgewright AGENTS.md CLAUDE.md
 git commit -m "feat: add forgewright"
 
 # 4. Khởi tạo submodule
@@ -182,10 +181,10 @@ Khởi tạo bộ nhớ:
 
 ```bash
 # Từ thư mục project của bạn
-python3 .antigravity/plugins/production-grade/scripts/mem0-cli.py setup
+python3 forgewright/scripts/mem0-cli.py setup
 
 # Hoặc dùng script helper:
-bash .antigravity/plugins/production-grade/scripts/ensure-mem0.sh "$(pwd)"
+bash forgewright/scripts/ensure-mem0.sh "$(pwd)"
 ```
 
 **Kết quả:** File `.forgewright/memory.jsonl` được tạo.
@@ -203,7 +202,7 @@ Tạo MCP server tùy chỉnh theo project:
 
 ```bash
 # Từ thư mục project của bạn
-bash .antigravity/plugins/production-grade/scripts/mcp-generate.sh
+bash forgewright/scripts/mcp-generate.sh
 ```
 
 Script này:
@@ -257,7 +256,7 @@ Khởi động lại Claude CLI.
 Chạy script xác minh:
 
 ```bash
-bash .antigravity/plugins/production-grade/scripts/forge-validate.sh
+bash forgewright/scripts/forge-validate.sh
 ```
 
 Hoặc kiểm tra thủ công:
@@ -266,10 +265,9 @@ Hoặc kiểm tra thủ công:
 echo "=== Forgewright Verification ==="
 echo "CLAUDE.md:       $([ -f CLAUDE.md ] && echo 'OK' || echo 'MISSING')"
 echo "AGENTS.md:       $([ -f AGENTS.md ] && echo 'OK' || echo 'MISSING')"
-echo "Skills count:    $(ls .antigravity/plugins/production-grade/skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')"
-echo "ForgeNexus:      $([ -d .forgewright/mcp-server ] && echo 'OK' || echo 'MISSING')"
+echo "Skills count:    $(ls forgewright/skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')"
+echo "MCP:             $([ -d forgewright/.forgewright/mcp-server ] && echo 'OK' || echo 'MISSING')"
 echo "Memory:          $([ -f .forgewright/memory.jsonl ] && echo 'OK' || echo 'MISSING')"
-echo "Forgenexus CLI:  $(command -v forgenexus >/dev/null && echo 'OK' || echo 'MISSING (use npx forgenexus)')"
 ```
 
 ---
@@ -293,16 +291,12 @@ echo "Forgenexus CLI:  $(command -v forgenexus >/dev/null && echo 'OK' || echo '
 
 ```bash
 # Từ thư mục project
-cd .antigravity/plugins/production-grade
+cd forgewright
 git pull origin main
-
-# Cập nhật submodule reference
-cd ../../
-git submodule update --remote --merge
 
 # Commit thay đổi
 git add .
-git commit -m "chore: update forgewright"
+git commit -m "chore: update forgewright submodule"
 ```
 
 ---
@@ -353,7 +347,7 @@ forgenexus group query my-team "authentication"
 
 ```bash
 # Auto-reindex sau mỗi commit
-cp .antigravity/plugins/production-grade/.claude/hooks/post-tool-use.ts ~/.claude/hooks/
+cp forgewright/.claude/hooks/post-tool-use.ts ~/.claude/hooks/
 ```
 
 ---

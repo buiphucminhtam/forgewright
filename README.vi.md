@@ -836,21 +836,20 @@ flowchart TD
 **Bước 1:** Mở Terminal, chạy từ thư mục gốc dự án của bạn:
 
 ```bash
-git submodule add -b main https://github.com/buiphucminhtam/forgewright.git \
-  .antigravity/plugins/production-grade
+git submodule add -b main https://github.com/buiphucminhtam/forgewright.git forgewright
 ```
 
 **Bước 2:** Copy 2 file cần thiết:
 
 ```bash
-cp .antigravity/plugins/production-grade/AGENTS.md .
-cp .antigravity/plugins/production-grade/CLAUDE.md .
+cp forgewright/AGENTS.md .
+cp forgewright/CLAUDE.md .
 ```
 
 **Bước 3:** Commit:
 
 ```bash
-git add .gitmodules .antigravity AGENTS.md CLAUDE.md
+git add .gitmodules forgewright AGENTS.md CLAUDE.md
 git commit -m "feat: add forgewright"
 ```
 
@@ -892,7 +891,7 @@ python3 --version
 Sau đó:
 
 ```bash
-bash .antigravity/plugins/production-grade/scripts/ensure-mem0.sh "$(pwd)"
+bash forgewright/scripts/ensure-mem0.sh "$(pwd)"
 ```
 
 ### Cách 4: Cài MCP server (Level 4)
@@ -900,7 +899,7 @@ bash .antigravity/plugins/production-grade/scripts/ensure-mem0.sh "$(pwd)"
 Chạy 1 lệnh:
 
 ```bash
-bash .antigravity/plugins/production-grade/scripts/mcp-generate.sh
+bash forgewright/scripts/mcp-generate.sh
 ```
 
 Sau đó khởi động lại Cursor/VS Code.
@@ -909,9 +908,8 @@ Sau đó khởi động lại Cursor/VS Code.
 
 ```bash
 echo "=== Kiểm tra ==="
-echo "Skills: $(ls .antigravity/plugins/production-grade/skills/ -1 2>/dev/null | wc -l | tr -d ' ')"
-echo "ForgeNexus: $([ -f .antigravity/plugins/production-grade/forgenexus/dist/cli/index.js ] && echo 'OK' || echo 'MISSING')"
-echo "MCP: $([ -d .forgewright/mcp-server ] && echo 'OK' || echo 'MISSING')"
+echo "Skills: $(ls forgewright/skills/ -1 2>/dev/null | wc -l | tr -d ' ')"
+echo "MCP: $([ -d forgewright/.forgewright/mcp-server ] && echo 'OK' || echo 'MISSING')"
 echo "Memory: $([ -f .forgewright/memory.jsonl ] && echo 'OK' || echo 'MISSING')"
 ```
 
