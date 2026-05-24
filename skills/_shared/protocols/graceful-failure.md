@@ -13,6 +13,71 @@ A clear, well-documented failure is MORE VALUABLE than a half-broken success. Us
 - When an approach has been tried and failed
 - When user's request is ambiguous, impossible, or requires information the agent doesn't have
 
+## Evidence-Based Retry
+
+**The core change:** Every retry MUST be driven by new evidence, not gut feeling.
+
+### The Problem
+
+Models retry based on what "feels right" — changing approaches randomly, hoping something sticks. This wastes tokens and produces garbage. The fix: **every retry decision is grounded in what the failure evidence tells us**.
+
+### Evidence-Based Retry Loop
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ ACTION FAILED                                                       │
+├─────────────────────────────────────────────────────────────────────┤
+│ 1. GATHER failure evidence                                          │
+│    - What exactly did the error say? (copy the exact error)       │
+│    - What was the state before the action?                         │
+│    - What does the code/docs say about this?                        │
+│                                                                     │
+│ 2. FORM HYPOTHESIS (grounded in evidence)                          │
+│    - H1: [most likely cause based on error + code]                │
+│    - H2: [alternative cause based on evidence]                     │
+│    - H3: [ignore — no evidence supports it]                       │
+│                                                                     │
+│ 3. VERIFY hypothesis with NEW evidence                              │
+│    - Read the file that failed                                     │
+│    - Run the command that errored                                  │
+│    - Check logs/configs for proof                                  │
+│                                                                     │
+│ 4. ACT on confirmed hypothesis only                                 │
+│    - Hypothesis CONFIRMED → fix the cause                          │
+│    - Hypothesis DENIED → update, try H2                            │
+│    - All hypotheses DENIED → escalate to user                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Failure Evidence Checklist
+
+Before ANY retry, answer these with **specific evidence**:
+
+```
+1. ERROR: What exact error message or exception?
+   → Copy-paste the error text.
+
+2. HYPOTHESIS: What do I think caused this?
+   → [State it. "I believe the auth token is expired because..."]
+
+3. EVIDENCE FOR HYPOTHESIS:
+   → What code/file/config proves this hypothesis?
+   → If none → I don't know. Ask user. Don't retry blindly.
+
+4. FIX: What specific change addresses the confirmed hypothesis?
+   → Not "try a different approach" — "change X because evidence shows Y"
+```
+
+### Anti-Guessing Rules
+
+| ❌ Don't say | ✅ Say instead |
+|------------|---------------|
+| "Let me try a different approach" | "Hypothesis H1 (timeout) not confirmed. H2 (missing env var) has evidence in .env:17 — testing." |
+| "Maybe it's a config issue" | "Found `PORT=undefined` in runtime config. Hypothesis: missing env causes crash. Testing fix." |
+| "I'll assume X is the problem" | "I don't have evidence for X. Before retrying, I need to read [specific file] to verify." |
+| "Let's see if this works" | "Action: `grep -r 'auth' src/` → 4 matches found. Next: read each to verify JWT usage." |
+
+
 ## Retry Limits
 
 ### Action-Level Retries

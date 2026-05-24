@@ -25,6 +25,42 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+## ⚠️ EVIDENCE-FIRST THINKING (Anti-Hallucination)
+
+**Every assumption is a landmine. Declare it. Verify it. Or die on it.**
+
+Modern models hallucinate confidently. The solution is not to try harder to be correct — it is to **never act on unverified assumptions**.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ EVIDENCE-FIRST THINKING                                            │
+├─────────────────────────────────────────────────────────────────────┤
+│ BEFORE acting on ANY assumption:                                    │
+│ 1. STATE the assumption explicitly                                  │
+│ 2. GATHER evidence — read the file, run the command, check the DB│
+│ 3. VERIFY — does the evidence confirm or deny the assumption?       │
+│ 4. THEN act — with the evidence, not the assumption                │
+│                                                                     │
+│ ❌ "The API is at /api/users — let me add the endpoint"           │
+│ ✅ "I ASSUME the API is at /api/users."  READ routes.ts           │
+│    → Evidence: base path is /v1/users. VERIFIED. Proceeding."     │
+│                                                                     │
+│ NEVER guess then implement. Guess → VERIFY → then implement.        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Decision rules:**
+- If evidence **confirms** assumption → safe to proceed
+- If evidence **denies** assumption → correct the assumption, update plan
+- If evidence is **absent** → STOP. State "I don't know." Ask. Don't fabricate.
+- If evidence is **insufficient** → state uncertainty, flag as assumption, proceed with caution
+
+**Evidence hierarchy (strongest first):**
+1. Direct code/DB reading (`Read` tool on actual files)
+2. Command output (run `ls`, `grep`, `test` commands)
+3. User confirmation (ask the person who knows)
+4. Project documentation (README, comments)
+5. Inference from context (use sparingly, flag as inference)
 ## Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
 
 ## Step 0 — Request Interpretation (MANDATORY)
@@ -605,7 +641,7 @@ Goals survive context resets:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (16259 symbols, 24424 relationships, 256 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (19066 symbols, 27220 relationships, 256 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

@@ -205,6 +205,27 @@ Append to session log:
 
 ## When Done
 
+## Assumption Declaration Checkpoint
+
+Before closing the interpretation, **declare every assumption** that the plan rests on.
+
+**Evidence-First rule:** Any assumption about project structure, technology choices, or requirements that wasn't explicitly confirmed by the user or verified against project files MUST be flagged.
+
+**Add to the structured request:**
+
+```
+### Assumptions Declared
+| # | Assumption | Evidence | Status |
+|---|-----------|----------|--------|
+| 1 | Auth is JWT-based | ❌ UNVERIFIED — need to check project | ⚠️ |
+| 2 | Database is PostgreSQL | ❌ UNVERIFIED — need to check .env | ⚠️ |
+| 3 | User wants REST API | ✅ CONFIRMED — user said "build an API" | ✅ |
+```
+
+**Why this matters:** An assumption checkpoint surfaces landmines BEFORE planning begins. It forces the model to say "I don't know" instead of guessing and proceeding.
+
+**Rule:** An assumption with ⚠️ status means the downstream skill MUST verify before acting on it. If the skill encounters evidence that contradicts the assumption, it must STOP and correct, not proceed.
+
 Once the structured request is produced:
 1. Write to `.forgewright/subagent-context/INTERPRETED_REQUEST.md`
 2. Proceed to invoke the appropriate pipeline mode

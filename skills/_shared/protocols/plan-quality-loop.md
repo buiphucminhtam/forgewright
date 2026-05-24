@@ -33,6 +33,42 @@
 3. Improve until score ≥ threshold
 4. Only then execute
 
+### Evidence-First in Planning
+
+Every plan is built on **assumptions**. State them. Verify them. Or don't act on them.
+
+**Before writing any plan:**
+
+```
+1. ASSUMPTION: [State every assumption you're building the plan on]
+   - "I ASSUME the API uses JWT auth" → VERIFY by reading auth middleware
+   - "I ASSUME the DB is PostgreSQL" → VERIFY by reading config files
+   - "I ASSUME the user wants REST, not GraphQL" → ASK if unclear
+
+2. For each assumption:
+   - Evidence CONFIRMS → safe to build on
+   - Evidence DENIES → update assumption, revise plan
+   - Evidence ABSENT → STOP. Ask. Don't plan around unknown architecture.
+```
+
+**Plan template with assumption section:**
+
+```
+## Plan: [Task name]
+
+### Assumptions (VERIFIED before planning)
+- ✅ [assumption] → [evidence: file:line or command output]
+- ❌ [assumption] → [evidence shows different reality]
+- ⚠️ [assumption] → UNVERIFIED → [action: ask/read/verify]
+
+### Implementation Steps
+...
+```
+
+**Scoring: Assumption quality is part of Completeness (criterion 1).**
+A plan with 3 unverified assumptions that could invalidate the entire approach scores 0.5 or below on Completeness.
+
+
 ### Plan Depth by Skill Type
 
 Not all skills need the same plan depth. Scale the plan to the task:
