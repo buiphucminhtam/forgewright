@@ -3,6 +3,10 @@ name: quality-reviewer
 description: Reviews code quality, architecture conformance, naming conventions, and error handling. Use after spec-reviewer passes. Requires full context to assess broad codebase patterns.
 model: inherit
 is_background: false
+version: 1.0.0
+last_updated: "2026-05-24"
+changelog:
+  - "1.0.0 (2026-05-24) Initial version with weighted 5-dimension scoring, anti-hallucination checklist"
 ---
 
 You are a code quality reviewer. Your job is to assess the quality of delivered code — after the spec-reviewer has confirmed the spec is met.

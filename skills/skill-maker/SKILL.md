@@ -554,7 +554,67 @@ description: >
 
 ---
 
-## Common Mistakes
+## Cursor Rule Creation (Bonus)
+
+Forgewright also supports Cursor rules (project-level AI guidance). Use this when the user wants to create a Cursor rule in addition to or instead of a Forgewright skill.
+
+### When to Create a Cursor Rule
+
+| Use Case | Tool |
+|----------|------|
+| Project-level code conventions (naming, patterns) | Cursor Rule in `.cursor/rules/` |
+| Multi-skill workflow orchestration | Forgewright Skill in `skills/` |
+| File-specific conventions (e.g. "all .ts files must have X") | Cursor Rule with file scope |
+| Standalone agent behavior (reviewer, auditor, verifier) | Cursor Agent Skill in `.cursor/agents/` |
+
+### Cursor Rule Anatomy
+
+```
+.cursor/rules/
+├── RULES.md          # Index of all rules
+├── <rule-name>.md    # Individual rule file
+└── references/       # Optional: reference docs
+```
+
+**Rule file frontmatter:**
+```yaml
+---
+name: rule-name
+scope: "*.ts, src/**"    # File pattern (glob)
+version: "1.0.0"
+created: "2026-05-24"
+updated: "2026-05-24"
+---
+```
+
+### Rule vs Agent Skill
+
+| Aspect | Cursor Rule | Cursor Agent Skill |
+|--------|-------------|-------------------|
+| File location | `.cursor/rules/` | `.cursor/agents/` |
+| Format | Markdown with frontmatter | Markdown with YAML frontmatter + body |
+| Trigger | File pattern matching | Manual invocation |
+| Scope | File-specific conventions | Complete agent behaviors |
+| Example | "TypeScript naming convention" | "security-auditor agent" |
+
+### Creating a Cursor Rule
+
+1. **Interview** — Same as skill creation, but focus on file scope and conventions
+2. **Choose template** — Use `templates/cursor/rule.md.hbs` or `templates/cursor/file-rule.hbs`
+3. **Generate** — Fill template with interview results
+4. **Install** — Write to `.cursor/rules/<name>.md`
+5. **Index** — Add entry to `.cursor/rules/RULES.md`
+
+### Interview Questions for Cursor Rules
+
+1. **What file pattern should trigger this rule?** (e.g., `*.ts`, `src/**/*.md`)
+2. **What conventions must this rule enforce?** (naming, structure, imports)
+3. **What examples should guide the AI?** (good vs bad code)
+4. **Should this be a file-rule or a general rule?** (see templates above)
+
+---
+
+## Common Mistakes (Skills + Rules)
 
 | Mistake | Fix |
 |---------|-----|
@@ -566,6 +626,9 @@ description: >
 | Overfitting to test cases | Generalize patterns, explain WHY |
 | All caps instructions (MUST/NEVER) | Yellow flag — reframe as explanations |
 | No test cases | Create realistic prompts + success criteria |
+| Cursor rule without RULES.md index | Always add entry to `.cursor/rules/RULES.md` |
+| Confusing Rule with Agent Skill | Rules = conventions; Agents = behaviors |
+| Rule scope too broad | Narrow patterns over `**/*.ts` |
 
 ---
 

@@ -72,7 +72,7 @@ When committing changes, verify:
 - [ ] Add to Troubleshooting
 
 ### New Skill?
-- [ ] Add to Skills table (56 Skills → 57 Skills)
+- [ ] Add to Skills table (56 Skills)
 - [ ] Update skills count in badge
 - [ ] Add example usage
 - [ ] Document in "What Can You Do" table
