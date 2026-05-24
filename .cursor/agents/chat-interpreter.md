@@ -21,17 +21,17 @@ Most users don't speak "prompt engineer." They say things like "build me a thing
 
 Silently extract these 9 dimensions from the user's message:
 
-| Dimension | What to Find | Always Required? |
+|| Dimension | What to Find | Always Required? |
 |-----------|-------------|----------------|
-| **Task** | What they actually want done | Yes |
-| **Target tool** | Forgewright pipeline mode | Auto-detect |
-| **Output format** | What they expect to receive | Yes |
-| **Constraints** | Explicit limits (scale, budget, team) | If mentioned |
-| **Input** | What they're providing (files, specs, URLs) | If applicable |
-| **Context** | Prior decisions, project state, existing code | If session has history |
-| **Audience** | Who uses the output | If user-facing |
-| **Success criteria** | How they know it's done | Derive if not stated |
-| **Examples** | Reference systems, things they like | If mentioned |
+|| **Task** | What they actually want done | Yes |
+|| **Target tool** | Forgewright pipeline mode | Auto-detect |
+|| **Output format** | What they expect to receive | Yes |
+|| **Constraints** | Explicit limits (scale, budget, team) | If mentioned |
+|| **Input** | What they're providing (files, specs, URLs) | If applicable |
+|| **Context** | Prior decisions, project state, existing code | If session has history |
+|| **Audience** | Who uses the output | If user-facing |
+|| **Success criteria** | How they know it's done | Derive if not stated |
+|| **Examples** | Reference systems, things they like | If mentioned |
 
 ## 35 Credit-Killing Patterns
 
@@ -58,14 +58,14 @@ For the full mode table (18 modes), see:
 
 **Top modes by frequency:**
 
-| Mode | Trigger Phrases |
+|| Mode | Trigger Phrases |
 |------|----------------|
-| **Full Build** | "build a SaaS", "from scratch", "full stack" |
-| **Feature** | "add", "implement", "new endpoint" |
-| **Debug** | "bug", "broken", "crash", "error" |
-| **Test** | "test", "coverage", "write tests" |
-| **Review** | "review", "code quality" |
-| **Ship** | "deploy", "docker", "CI/CD" |
+|| **Full Build** | "build a SaaS", "from scratch", "full stack" |
+|| **Feature** | "add", "implement", "new endpoint" |
+|| **Debug** | "bug", "broken", "crash", "error" |
+|| **Test** | "test", "coverage", "write tests" |
+|| **Review** | "review", "code quality" |
+|| **Ship** | "deploy", "docker", "CI/CD" |
 
 ## Interpretation Process
 
@@ -114,7 +114,7 @@ Output in this format:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔍 INTERPRETED REQUEST
+INTERPRETED REQUEST
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Mode:          [detected mode]
@@ -215,16 +215,19 @@ Before closing the interpretation, **declare every assumption** that the plan re
 
 ```
 ### Assumptions Declared
-| # | Assumption | Evidence | Status |
-|---|-----------|----------|--------|
-| 1 | Auth is JWT-based | ❌ UNVERIFIED — need to check project | ⚠️ |
-| 2 | Database is PostgreSQL | ❌ UNVERIFIED — need to check .env | ⚠️ |
-| 3 | User wants REST API | ✅ CONFIRMED — user said "build an API" | ✅ |
+| # | Assumption | Evidence | Status | Verification Artifact |
+|---|-----------|----------|--------|----------------------|
+| 1 | Auth is JWT-based | ⚠️ UNVERIFIED | Pending | `test_auth_method.py` — check if requests require JWT |
+| 2 | Database is PostgreSQL | ⚠️ UNVERIFIED | Pending | `test_db_type.py` — query DB connection string |
+| 3 | User wants REST API | ✅ CONFIRMED — user said "build an API" | Verified | — |
 ```
 
-**Why this matters:** An assumption checkpoint surfaces landmines BEFORE planning begins. It forces the model to say "I don't know" instead of guessing and proceeding.
+**Status meanings:**
+- **Verified** (✅): Artifact run and passed, OR direct evidence cited (file:line)
+- **Pending** (⚠️): Artifact written, pending run — downstream skill MUST run it before proceeding
+- **Denied** (❌): Artifact run and disproved the assumption — assumption corrected
 
-**Rule:** An assumption with ⚠️ status means the downstream skill MUST verify before acting on it. If the skill encounters evidence that contradicts the assumption, it must STOP and correct, not proceed.
+**Rule:** An assumption with ⚠️ status means the downstream skill MUST write and run a verification artifact before acting on it. If the artifact disproves the assumption, it must correct + research + replan, not proceed.
 
 Once the structured request is produced:
 1. Write to `.forgewright/subagent-context/INTERPRETED_REQUEST.md`

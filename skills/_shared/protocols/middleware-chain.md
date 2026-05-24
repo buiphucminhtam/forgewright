@@ -28,8 +28,9 @@ User Request
 │  ⑦ BrownfieldSafety Regression + protected paths   │
 │  ⑧ TaskTracking    Update todos, emit events        │
 │  ⑨ Memory          Async fact extraction + store     │
-│  ⑩ GracefulFailure Retry logic, stuck detection     │
-│  ⑪ ASIP            Mandatory research + skill self-improvement │
+│  ⑩ GracefulFailure Stuck detection, retry limits     │
+│  ⑪ ASIP            ⭐ CANONICAL self-improvement   │
+│                      (write test → research → skill) │
 │  ⑫ CircuitBreaker Fault isolation + state machine  │
 │                                                     │
 └─────────────────────────────────────────────────────┘
@@ -59,8 +60,8 @@ Result / Next Skill
 | ⑦ | **BrownfieldSafety** | brownfield-safety.md | `after_skill()` | Regression check, protected path enforcement, change manifest |
 | ⑧ | **TaskTracking** | session-lifecycle.md §Hooks | `after_skill()` | Emit SKILL_COMPLETED event, update task.md |
 | ⑨ | **Memory** | memory-manager.md §Hooks + session-lifecycle §Per-request | `after_skill()` **and** `turn_close()` | After each skill: extract decisions/blockers → local_memory. **After each completed user request:** mandatory Turn-Close `add` (session + optional decisions/architecture/blockers) — not optional unless `LOCAL_MEMORY_DISABLED` / `FORGEWRIGHT_SKIP_MEMORY` |
-| ⑩ | **GracefulFailure** | graceful-failure.md | `on_error()` | Detect stuck states, manage retry counts, trigger exit |
-| ⑪ | **ASIP** | self-improving-loop.md | `after_skill()` + `on_error()` | Mandatory 2-failure-then-research loop. Track attempts, trigger research gate, update skills |
+| ⑩ | **GracefulFailure** | graceful-failure.md | `on_error()` | Detect stuck states, manage retry counts, graceful exit. Delegates to ASIP after 2+ failures. |
+| ⑪ | **ASIP** | self-improving-loop.md | `after_skill()` + `on_error()` | **CANONICAL self-improvement loop.** 2+ failures → write verification artifact → run → research (NotebookLM/WebSearch) → update skills. Single source of truth for all self-improvement. |
 | ⑫ | **CircuitBreaker** | circuit-breaker.md | `after_skill()` | Update circuit state, transition based on outcome |
 
 ## Execution Rules

@@ -25,6 +25,9 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+<!-- NOTE: Evidence-First section is duplicated in AGENTS.md (for Antigravity).
+     Source of truth: CLAUDE.md. Changes here must be mirrored to AGENTS.md manually. -->
+
 ## ⚠️ EVIDENCE-FIRST THINKING (Anti-Hallucination)
 
 **Every assumption is a landmine. Declare it. Verify it. Or die on it.**
@@ -52,15 +55,36 @@ Modern models hallucinate confidently. The solution is not to try harder to be c
 **Decision rules:**
 - If evidence **confirms** assumption → safe to proceed
 - If evidence **denies** assumption → correct the assumption, update plan
-- If evidence is **absent** → STOP. State "I don't know." Ask. Don't fabricate.
+- If evidence is **absent** → WRITE VERIFICATION ARTIFACT. Run it.
+  → Artifact **passes** → assumption confirmed, proceed
+  → Artifact **fails** → assumption wrong, correct + research + replan
+  → Cannot write artifact → escalate to user (rare: pure preference/taste only)
 - If evidence is **insufficient** → state uncertainty, flag as assumption, proceed with caution
 
+**Verification Artifacts (autonomous evidence gathering):**
+When evidence is absent, write a test or script instead of stopping to ask the user. This preserves autonomous flow while ensuring every assumption is empirically verified.
+
+```
+ASSUMPTION: "API uses JWT auth"
+  ↓ (evidence absent)
+WRITE: test_api_auth.py — check if requests require JWT
+RUN:  pytest test_api_auth.py
+  ├── PASS → Assumption confirmed. Proceed.
+  └── FAIL → Assumption wrong. Research → Replan → new test → verify.
+```
+
 **Evidence hierarchy (strongest first):**
-1. Direct code/DB reading (`Read` tool on actual files)
-2. Command output (run `ls`, `grep`, `test` commands)
-3. User confirmation (ask the person who knows)
-4. Project documentation (README, comments)
-5. Inference from context (use sparingly, flag as inference)
+1. Verification artifact output (test/script that ran and produced output)
+2. Direct code/DB reading (`Read` tool on actual files)
+3. Command output (run `ls`, `grep`, `test` commands)
+4. User confirmation (ask the person who knows — only when artifact impossible)
+5. Project documentation (README, comments)
+6. Inference from context (use sparingly, flag as inference)
+
+**⚠️ Evidence-first + Goal-driven compatibility:**
+Evidence-first does NOT conflict with goal-driven autonomous mode. The loop is:
+`assumption → write artifact → run → pass/fail → (if fail) research → replan → new artifact`
+This never requires user input — it only escalates when no artifact can be written.
 ## Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
 
 ## Step 0 — Request Interpretation (MANDATORY)
@@ -373,13 +397,16 @@ Before finishing ANY task, verify ALL of the following:
 |---|-------|-----------------|
 | 1 | ✅ Request interpreted? | Go back to Step 0 |
 | 2 | ✅ Plan scored ≥ 9.0? | Improve plan first |
-| 3 | ✅ Code changed? | → Run QA tests |
-| 4 | ✅ Tests written? | Write tests (mandatory) |
-| 5 | ✅ Tests passed? | Fix issues first |
-| 6 | ✅ Scope respected? | Flag scope creep |
-| 7 | ✅ User approval? | Wait for approval (if gate) |
-| 8 | ✅ Turn-Close memory saved? | Save before ending turn |
-| 9 | ✅ Memory Bank updated? | Update progress.md at session end |
+| 3 | ✅ Assumptions declared? | Write verification artifacts for each assumption |
+| 4 | ✅ Verification artifacts run? | Run artifacts → get pass/fail evidence before proceeding |
+| 5 | ✅ Code changed? | → Run QA tests |
+| 6 | ✅ Tests written? | Write tests (mandatory) |
+| 7 | ✅ Tests passed? | Fix issues first |
+| 8 | ✅ Scope respected? | Flag scope creep |
+| 9 | ✅ User approval? | Wait for approval (if gate) |
+| 10 | ✅ Turn-Close memory saved? | Save before ending turn |
+| 11 | ✅ Memory Bank updated? | Update progress.md at session end |
+| 12 | ✅ Skill self-improved? | Run lesson migrator → check if skills evolved |
 
 ## Session-End Ritual (NEW v8.0)
 
@@ -400,14 +427,22 @@ Before finishing ANY task, verify ALL of the following:
    - Add completed_at timestamp
    - Add summary of what was done
 
-4. Migrate lessons to skill files (NEW v8.3):
+4. Migrate lessons to skill files + skill update check:
    bash scripts/forgewright-lesson-migrator.sh migrate
-   # Pushes .forgewright/plan-lessons.md and execution-lessons.md
-   # entries to the relevant SKILL.md Planning Improvements /
-   # Execution Learnings sections. Tracks state to avoid duplicates.
+
+   # For every failed assumption this session:
+   # a. Was it a test/script failure? → execution lesson
+   # b. Was it a plan failure? → planning lesson
+   # c. Was research done? → append to relevant SKILL.md
+   #    - Plan failed → SKILL.md → Planning Improvements
+   #    - Execution failed → SKILL.md → Execution Learnings
+
+   # Check: any new planning improvements in SKILL.md files?
+   # Log to .forgewright/asip-metrics.json:
+   #   sessionsWithEvolution += 1 (if any new entries added)
 ```
 
-**Why:** Ensures next session starts with fresh, accurate context.
+**Why:** Each failed assumption is now a verified test/script failure. The migrator preserves these as lessons. Over time, every project makes the skills smarter — the system learns from every mistake, not just the current one.
 
 **⚠️ MANDATORY RULE:**
 ```
@@ -594,6 +629,23 @@ Forgewright: "✓ Goal set. Working toward: Migrate auth to JWT until all tests 
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+**Handling unknowns during autonomous execution:**
+
+When encountering an assumption with no evidence during autonomous mode:
+```
+Unknown encountered
+  ↓
+WRITE: verification artifact (test/script)
+RUN
+  ├── PASS → assumption confirmed → continue autonomously
+  └── FAIL → assumption wrong → RESEARCH → REPLAN → new artifact → verify
+               ↑
+               Only path that could yield a user prompt:
+               "Cannot write verification artifact" → PAUSED state
+               → report blocker → wait for user guidance
+```
+This preserves full autonomy — user is only interrupted when no artifact can be written (pure preference/taste cases).
 
 ### Goal Commands
 

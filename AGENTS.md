@@ -31,6 +31,9 @@ Forgewright is an adaptive orchestrator with **56 AI skills** that covers the en
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+<!-- NOTE: Evidence-First section is duplicated in CLAUDE.md (for Claude Code).
+     Source of truth: CLAUDE.md. Changes here must be mirrored from CLAUDE.md manually. -->
+
 ## ⚠️ EVIDENCE-FIRST THINKING (Anti-Hallucination)
 
 **Every assumption is a landmine. Declare it. Verify it. Or die on it.**
@@ -58,15 +61,36 @@ Modern models hallucinate confidently. The solution is not to try harder to be c
 **Decision rules:**
 - If evidence **confirms** assumption → safe to proceed
 - If evidence **denies** assumption → correct the assumption, update plan
-- If evidence is **absent** → STOP. State "I don't know." Ask. Don't fabricate.
+- If evidence is **absent** → WRITE VERIFICATION ARTIFACT. Run it.
+  → Artifact **passes** → assumption confirmed, proceed
+  → Artifact **fails** → assumption wrong, correct + research + replan
+  → Cannot write artifact → escalate to user (rare: pure preference/taste only)
 - If evidence is **insufficient** → state uncertainty, flag as assumption, proceed with caution
 
+**Verification Artifacts (autonomous evidence gathering):**
+When evidence is absent, write a test or script instead of stopping to ask the user. This preserves autonomous flow while ensuring every assumption is empirically verified.
+
+```
+ASSUMPTION: "API uses JWT auth"
+  ↓ (evidence absent)
+WRITE: test_api_auth.py — check if requests require JWT
+RUN:  pytest test_api_auth.py
+  ├── PASS → Assumption confirmed. Proceed.
+  └── FAIL → Assumption wrong. Research → Replan → new test → verify.
+```
+
 **Evidence hierarchy (strongest first):**
-1. Direct code/DB reading (`Read` tool on actual files)
-2. Command output (run `ls`, `grep`, `test` commands)
-3. User confirmation (ask the person who knows)
-4. Project documentation (README, comments)
-5. Inference from context (use sparingly, flag as inference)
+1. Verification artifact output (test/script that ran and produced output)
+2. Direct code/DB reading (`Read` tool on actual files)
+3. Command output (run `ls`, `grep`, `test` commands)
+4. User confirmation (ask the person who knows — only when artifact impossible)
+5. Project documentation (README, comments)
+6. Inference from context (use sparingly, flag as inference)
+
+**⚠️ Evidence-first + Goal-driven compatibility:**
+Evidence-first does NOT conflict with goal-driven autonomous mode. The loop is:
+`assumption → write artifact → run → pass/fail → (if fail) research → replan → new artifact`
+This never requires user input — it only escalates when no artifact can be written.
 
 ## How to Use (For Every New Chat)
 

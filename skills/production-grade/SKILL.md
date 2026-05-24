@@ -315,42 +315,16 @@ All skills MUST follow the sensitive file protection protocol:
 
 ## Execution Blocker Loop
 
-**ANY time a blocker is encountered during implementation, MUST run this loop BEFORE asking user:**
+> **DEPRECATED — Use ASIP (Adaptive Self-Improving Loop) instead.**
+>
+> The canonical execution blocker loop is now in `self-improving-loop.md` (ASIP Phase 2).
+> This section is kept for reference only.
 
-!`cat skills/_shared/protocols/execution-blocker-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: assess → research (web/codebase/docs) → synthesize → attempt → verify → improve skill. Max 3 cycles."`
+~~**ANY time a blocker is encountered during implementation, MUST run this loop BEFORE asking user:**~~
 
-**⚠️ NEVER give up after 1 failed attempt. ALWAYS research first.**
+~~!`cat skills/_shared/protocols/execution-blocker-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: assess → research (web/codebase/docs) → synthesize → attempt → verify → improve skill. Max 3 cycles."`~~
 
-### ⚠️ ASIP Enforcement for Execution Blockers
-
-**After 2 consecutive failed execution attempts:**
-1. **TRIGGER MANDATORY RESEARCH GATE** — Cannot skip
-2. **Record attempt:** `bash scripts/forgewright-session-tracker.sh exec failure`
-3. **Check if gate needed:** `bash scripts/forgewright-session-tracker.sh check`
-4. Categorize: Technical/Architectural/Tooling/External
-5. **Research Priority Order:**
-   ```
-   a) CHECK NotebookLM availability:
-      nlm --version 2>/dev/null || echo "NOT_AVAILABLE"
-      └─ If NOT_AVAILABLE → SKIP to (b)
-   
-   b) TRY NotebookLM CLI (if available):
-      nlm notebook create "[Project] - [Skill] - [Topic]"
-      nlm research start "[topic]" --mode deep
-   
-   c) FALLBACK to Web Search (always available):
-      WebSearch: "[error message]"
-      WebSearch: "[technology] troubleshooting"
-   ```
-6. SYNTHESIZE findings into 1-3 actionable insights
-7. Update skill SKILL.md (Execution Learnings section)
-8. Append to `.forgewright/execution-lessons.md`
-9. Retry with updated skill
-10. If still fails → ESCALATE to user
-
-**⚠️ NEVER give up after 1 failed attempt. ALWAYS research first.**
-
-**This is NON-NEGOTIABLE. The system will not proceed until research is complete.**
+See **ASIP (Adaptive Self-Improving Loop)** below for the canonical execution blocker loop.
 
 ## Adaptive Self-Improving Loop (ASIP)
 

@@ -1,82 +1,30 @@
 # Graceful Failure Protocol
 
-**Prevents skills from wasting tokens on impossible tasks and ensures failures are informative. Applies to ALL skills. Inspired by Page Agent's ReAct loop design: "It is ok to fail. Trying too hard can be harmful."**
+> **Purpose:** Prevents skills from looping on impossible tasks. Provides stuck detection, retry limits, graceful exit, and failure classification.
+>
+> **⚠️ The self-improvement / research loop is handled by ASIP (self-improving-loop.md). Graceful Failure is for detection and exit — not for research or skill updates.**
 
 ## Core Principle
 
-A clear, well-documented failure is MORE VALUABLE than a half-broken success. Users prefer an honest report of what went wrong over an agent that silently loops, burns tokens, and produces garbage output.
+A clear, well-documented failure is MORE VALUABLE than a half-broken success. Users prefer an honest report over an agent that silently loops, burns tokens, and produces garbage output.
 
 ## When to Apply
 
 - After any action that doesn't produce the expected result
 - When a skill is stuck in a loop (same action, no progress)
 - When an approach has been tried and failed
-- When user's request is ambiguous, impossible, or requires information the agent doesn't have
+- When a skill hits retry limits
 
-## Evidence-Based Retry
+## Anti-Guessing Rules
 
-**The core change:** Every retry MUST be driven by new evidence, not gut feeling.
-
-### The Problem
-
-Models retry based on what "feels right" — changing approaches randomly, hoping something sticks. This wastes tokens and produces garbage. The fix: **every retry decision is grounded in what the failure evidence tells us**.
-
-### Evidence-Based Retry Loop
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ ACTION FAILED                                                       │
-├─────────────────────────────────────────────────────────────────────┤
-│ 1. GATHER failure evidence                                          │
-│    - What exactly did the error say? (copy the exact error)       │
-│    - What was the state before the action?                         │
-│    - What does the code/docs say about this?                        │
-│                                                                     │
-│ 2. FORM HYPOTHESIS (grounded in evidence)                          │
-│    - H1: [most likely cause based on error + code]                │
-│    - H2: [alternative cause based on evidence]                     │
-│    - H3: [ignore — no evidence supports it]                       │
-│                                                                     │
-│ 3. VERIFY hypothesis with NEW evidence                              │
-│    - Read the file that failed                                     │
-│    - Run the command that errored                                  │
-│    - Check logs/configs for proof                                  │
-│                                                                     │
-│ 4. ACT on confirmed hypothesis only                                 │
-│    - Hypothesis CONFIRMED → fix the cause                          │
-│    - Hypothesis DENIED → update, try H2                            │
-│    - All hypotheses DENIED → escalate to user                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Failure Evidence Checklist
-
-Before ANY retry, answer these with **specific evidence**:
-
-```
-1. ERROR: What exact error message or exception?
-   → Copy-paste the error text.
-
-2. HYPOTHESIS: What do I think caused this?
-   → [State it. "I believe the auth token is expired because..."]
-
-3. EVIDENCE FOR HYPOTHESIS:
-   → What code/file/config proves this hypothesis?
-   → If none → I don't know. Ask user. Don't retry blindly.
-
-4. FIX: What specific change addresses the confirmed hypothesis?
-   → Not "try a different approach" — "change X because evidence shows Y"
-```
-
-### Anti-Guessing Rules
+These universal rules apply to ALL skill execution:
 
 | ❌ Don't say | ✅ Say instead |
 |------------|---------------|
-| "Let me try a different approach" | "Hypothesis H1 (timeout) not confirmed. H2 (missing env var) has evidence in .env:17 — testing." |
-| "Maybe it's a config issue" | "Found `PORT=undefined` in runtime config. Hypothesis: missing env causes crash. Testing fix." |
-| "I'll assume X is the problem" | "I don't have evidence for X. Before retrying, I need to read [specific file] to verify." |
-| "Let's see if this works" | "Action: `grep -r 'auth' src/` → 4 matches found. Next: read each to verify JWT usage." |
-
+| "Let me try a different approach" | "Hypothesis H1 disproved by test output. H2 confirmed by `grep` result. Implementing fix." |
+| "Maybe it's a config issue" | "Test output: `PORT=undefined`. Fix: add default in config.ts:14." |
+| "I'll assume X is the problem" | "No evidence for X. Writing `test_cause_x.py` to verify." |
+| "Let's see if this works" | "Artifact written. Running. Output will tell us." |
 
 ## Retry Limits
 
@@ -89,7 +37,8 @@ Retry 1: Same action, check for typos/errors in parameters
 Retry 2: Adjust approach (different selector, different file, different command)
 Retry 3: Last attempt with alternative strategy
 
-After 3 retries → STOP this action. Mark as FAILED. Move to next step or escalate.
+After 3 retries → STOP this action. Mark as FAILED.
+If attempt count >= 2 → delegate to ASIP (self-improving-loop.md) for research gate.
 ```
 
 ### Approach-Level Retries
@@ -100,19 +49,19 @@ Max approach changes per goal: 2
 Approach 1: Primary technique (most likely to work)
 Approach 2: Alternative technique (different angle)
 
-After 2 approach changes → STOP. Report to user with findings.
+After 2 approach changes → delegate to ASIP → if research fails → STOP. Report to user.
 ```
 
-### Investigation Cycles (for multi-step skills like Debugger)
+### Investigation Cycles (multi-step skills like Debugger)
 
 ```
 Max investigation cycles without new evidence: 3
 
 Cycle 1: Investigate → gather evidence
 Cycle 2: Investigate further → must find NEW evidence
-Cycle 3: Final attempt → if no new evidence → STOP
+Cycle 3: Final attempt → if no new evidence → STOP → escalate
 
-After 3 cycles with no progress → escalate to user.
+After 3 cycles with no progress → delegate to ASIP → escalate to user.
 ```
 
 ## Stuck Detection
@@ -129,26 +78,24 @@ A skill is **stuck** when ANY of these patterns are detected:
 
 ## Human Partner Signals
 
-> **Inspired by [Superpowers](https://github.com/obra/superpowers) systematic debugging methodology**
+> Inspired by [Superpowers](https://github.com/obra/superpowers) systematic debugging methodology
 
-**Watch for these redirections from the user — they indicate the agent is off-track.** These signals should be treated as a STOP command, equivalent to stuck detection.
+Watch for these redirections from the user — treat as STOP commands:
 
 | User Signal | What It Means | Required Action |
-|-------------|---------------|-----------------|
-| "Is that not happening?" | Agent assumed without verifying | STOP. Verify the assumption with evidence before proceeding. |
+|-------------|---------------|----------------|
+| "Is that not happening?" | Agent assumed without verifying | STOP. Verify assumption with evidence. |
 | "Will it show us...?" | Agent skipped evidence gathering | Add diagnostic output. Don't proceed without data. |
-| "Stop guessing" | Agent is proposing fixes without understanding | STOP. Return to root cause investigation. |
-| "Ultrathink this" | Agent is treating symptoms, not fundamentals | Step back. Reconsider the problem from first principles. |
-| "We're stuck?" (frustrated) | Agent's approach isn't working | STOP current approach. Try a completely different strategy. |
-| "That's not what I asked" | Agent misunderstood the goal | Clarify the goal before taking any further action. |
-| "You already tried that" | Agent is in a loop | STOP immediately. Acknowledge the loop. Change approach entirely. |
-| *Any sign of frustration or impatience* | Agent is not being systematic enough | Acknowledge. Slow down. Show evidence trail. Ask what the user needs. |
-
-**When ANY of these signals appear:** Treat as if stuck detection triggered. Follow the Graceful Exit Format below.
+| "Stop guessing" | Agent proposing fixes without understanding | STOP. Return to root cause. |
+| "Ultrathink this" | Agent treating symptoms, not fundamentals | Step back. First principles. |
+| "We're stuck?" (frustrated) | Approach isn't working | STOP. Try completely different strategy. |
+| "That's not what I asked" | Agent misunderstood the goal | Clarify before acting. |
+| "You already tried that" | Agent in a loop | STOP. Change approach entirely. |
+| *Any sign of frustration* | Not systematic enough | Acknowledge. Slow down. Show evidence trail. |
 
 ## Graceful Exit Format
 
-When a skill must fail, it MUST produce a structured failure report:
+When a skill must fail, produce a structured report:
 
 ```markdown
 ## ❌ Task Failed: [task description]
@@ -165,9 +112,9 @@ When a skill must fail, it MUST produce a structured failure report:
 [Any useful information gathered during the attempt]
 
 ### Recommended user actions
-1. [Most likely fix — e.g., "Provide specific file path instead of wildcard"]
-2. [Alternative approach — e.g., "Try running locally first to reproduce"]
-3. [Escalation — e.g., "This may require manual investigation of X"]
+1. [Most likely fix]
+2. [Alternative approach]
+3. [Escalation if needed]
 ```
 
 ## Failure Categories
@@ -175,19 +122,24 @@ When a skill must fail, it MUST produce a structured failure report:
 | Category | Behavior | Example |
 |----------|----------|---------|
 | **User error** | Report clearly, suggest correction. Do NOT retry. | "Request references a file that doesn't exist." |
-| **Environment issue** | **FOR NON-TECH USERS (Autonomous Sandbox):** DO NOT notify the user. You MUST enter a Self-Healing Loop. You have a budget of 5 self-healing attempts. If 5 attempts fail, you MUST perform an Auto-Rollback (`git reset`) and generate a non-technical Escrow Report instead of showing a stack trace. | "Build fails due to missing dependency — try npm install." |
-| **Knowledge gap** | Ask user for specific information. Do NOT guess. | "Cannot determine correct API endpoint — please specify." |
+| **Environment issue** | **FOR NON-TECH USERS (Autonomous Sandbox):** DO NOT notify the user. Enter a Self-Healing Loop. Budget: 5 attempts. If all fail → Auto-Rollback + Escrow Report. | "Build fails due to missing dependency — try npm install." |
+| **Knowledge gap** | Write verification artifact. If artifact impossible → escalate to user. | "Cannot determine correct API endpoint — write test to verify." |
 | **Impossible request** | Explain why impossible. Suggest alternative. | "Cannot delete production DB in review mode — use migration instead." |
-| **Scope exceeded** | Report what was completed, what remains. | "Completed 3 of 5 services. Service D requires credentials not available." |
+| **Scope exceeded** | Report what was completed, what remains. | "Completed 3 of 5 services. Service D requires credentials." |
 
 ## Integration with Existing Protocols
 
-- **circuit-breaker.md:** Circuit Breaker complements Graceful Failure by providing a stateful, system-wide mechanism to stop requests to failing components. Graceful Failure handles individual action retries; Circuit Breaker handles systemic failures. When a circuit opens → Graceful Failure sees a "circuit open" error → skips retry, logs the event, and moves to next task.
+- **ASIP (self-improving-loop.md):** Graceful Failure handles stuck detection and retry limits. ASIP handles the research gate (2+ failures) and skill self-improvement. After 2 failed attempts, Graceful Failure delegates to ASIP for mandatory research.
 
-- **quality-gate.md:** Quality Gate runs AFTER skill success. Graceful Failure runs DURING skill execution when things go wrong. On failure → skip quality gate, write failure report instead.
+- **circuit-breaker.md:** Circuit Breaker provides stateful, system-wide mechanism for failing components. Graceful Failure handles individual action retries; Circuit Breaker handles systemic failures.
+
+- **quality-gate.md:** Quality Gate runs AFTER skill success. Graceful Failure runs DURING skill execution. On failure → skip quality gate, write failure report.
+
 - **session-lifecycle.md:** Session hooks (`ERROR`) capture failures for cross-session tracking.
-- **input-validation.md:** Input validation catches issues BEFORE execution. Graceful Failure catches issues DURING execution. They are complementary.
-- **brownfield-safety.md:** If a failure occurs during brownfield changes → trigger safety rollback before reporting failure.
+
+- **input-validation.md:** Input validation catches issues BEFORE execution. Graceful Failure catches issues DURING execution.
+
+- **brownfield-safety.md:** Failure during brownfield changes → trigger safety rollback before reporting failure.
 
 ## Skill Implementation
 
@@ -199,7 +151,7 @@ Every skill MUST include in its Protocols section:
 
 And follow these rules:
 
-1. **Before each multi-step phase:** Set a progress checkpoint. If the phase produces no advancement after the retry limits above, exit gracefully.
-2. **On error:** Classify the error (user error, environment, knowledge gap, impossible, scope exceeded) and respond accordingly.
+1. **Before each multi-step phase:** Set a progress checkpoint. If no advancement after retry limits, exit gracefully.
+2. **On error:** Classify the error and respond accordingly. After 2 failed attempts → delegate to ASIP for research gate.
 3. **On success but wrong result:** Count as a failed attempt toward retry limits.
-4. **Always preserve partial results:** Even if the overall task fails, save any useful outputs (partial code, discovered information, evidence gathered).
+4. **Always preserve partial results:** Even if the overall task fails, save useful outputs.
