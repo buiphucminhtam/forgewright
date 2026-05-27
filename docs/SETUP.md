@@ -263,26 +263,6 @@ Nếu cần config thủ công, launcher vẫn phải dùng canonical server:
 
 ---
 
-### Manual Config
-
-If needed, add to your Antigravity config:
-
-```json
-{
-  "mcpServers": {
-    "forgewright-workspace": {
-      "command": "bash",
-      "args": ["/path/to/forgewright/scripts/forgewright-mcp-launcher.sh"],
-      "env": {
-        "FORGEWRIGHT_WORKSPACE": "${workspaceFolder}"
-      }
-    }
-  }
-}
-```
-
----
-
 ## Multi-IDE Setup (Cursor + Claude + Antigravity)
 
 If you use multiple AI IDEs with the same project, here's how it works:
