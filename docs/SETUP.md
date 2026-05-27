@@ -169,34 +169,101 @@ bash forgewright/scripts/fw-mcp.sh check
 
 ---
 
-### Antigravity
+### Antigravity CLI
 
-Antigravity has native ForgeWright support. Setup is automatic.
+Antigravity CLI cũng dùng **canonical MCP server** tại `~/.forgewright/mcp-server/server.ts`. Không có server riêng cho Antigravity.
+
+#### Canonical Server Rule
+
+```
+~/.forgewright/mcp-server/server.ts  ← CANONICAL (duy nhất, shared)
+│
+├── ~/.cursor/mcp.json              → Cursor points here
+├── ~/.claude/settings.json        → Claude Code points here
+└── ~/.cursor/projects/<hash>/mcps/user-forgewright/  → Antigravity reads manifest for CONTEXT, uses canonical server
+```
+
+**Điểm quan trọng:**
+- `.antigravity/mcp-manifest.json` chỉ chứa **project context** (workspace path, forgewright path) — nó KHÔNG chứa server code riêng
+- Antigravity launcher sử dụng `~/.forgewright/mcp-server/server.ts` — canonical server
+- Manifest/isolation theo project chỉ để Antigravity biết workspace hiện tại, không override global server path
 
 #### Automated Setup
 
 ```bash
 cd /path/to/project
-bash forgewright/scripts/fw-mcp.sh setup
+bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity
 ```
 
-This creates `.antigravity/mcp-manifest.json` which Antigravity reads automatically.
+Hoặc setup tất cả platforms cùng lúc:
+
+```bash
+bash forgewright/scripts/forgewright-mcp-setup.sh
+```
 
 #### How It Works
 
 ```
 Antigravity reads .antigravity/mcp-manifest.json
                     ↓
-        Lists available MCP servers
+        Reads workspace path + forgewright path (CONTEXT ONLY)
                     ↓
         Starts forgewright-mcp-launcher.sh
                     ↓
-        Launcher detects current workspace
+        Launcher uses ~/.forgewright/mcp-server/server.ts (CANONICAL)
                     ↓
-        MCP server starts with correct context
+        MCP server starts with correct workspace context
 ```
 
-#### Manual Config
+#### Verify Antigravity Setup
+
+```bash
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
+```
+
+Expected output:
+```
+━━━ MCP Status (All Platforms) ━━━
+  ➜ Project: /path/to/project
+
+  ✓ Cursor: ~/.cursor/mcp.json
+    forgewright: CONFIGURED
+    gitnexus: CONFIGURED
+
+  ✓ Claude Code: ~/.claude/settings.json
+    forgewright: CONFIGURED
+    gitnexus: CONFIGURED
+
+  ➜ Antigravity:
+    ✓ Server: ~/.cursor/projects/<hash>/mcps/user-forgewright/
+    ✓ forgewright: CONFIGURED
+
+  ✓ Manifest: /path/to/project/.antigravity/mcp-manifest.json
+```
+
+#### Manual Config (if needed)
+
+Nếu cần config thủ công, launcher vẫn phải dùng canonical server:
+
+```json
+{
+  "mcpServers": {
+    "forgewright": {
+      "command": "bash",
+      "args": ["/path/to/forgewright/scripts/forgewright-mcp-launcher.sh"],
+      "env": {
+        "FORGEWRIGHT_WORKSPACE": "${workspaceFolder}"
+      }
+    }
+  }
+}
+```
+
+**⚠️ Never point Antigravity to a submodule Forgewright path.** Luôn dùng canonical server hoặc launcher đã được setup script configure đúng.
+
+---
+
+### Manual Config
 
 If needed, add to your Antigravity config:
 

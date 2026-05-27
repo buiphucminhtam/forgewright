@@ -10,10 +10,10 @@
 # 1. Go to your project
 cd /path/to/project
 
-# 2. Run setup (one command)
-bash forgewright/scripts/fw-mcp.sh setup
+# 2. Run setup (one command — sets up Cursor + Claude + Antigravity)
+bash forgewright/scripts/forgewright-mcp-setup.sh
 
-# 3. Restart your IDE
+# 3. Restart your IDE (all platforms)
 # Done!
 ```
 
@@ -30,62 +30,111 @@ cd ~/Projects/my-app
 ### 2. Run the Setup
 
 ```bash
-bash forgewright/scripts/fw-mcp.sh setup
+bash forgewright/scripts/forgewright-mcp-setup.sh
 ```
 
 Expected output:
 ```
-⚡ ForgeWright MCP Setup v2.0.0
+⚡ Forgewright Universal MCP Setup
 
-  ➜ Checking prerequisites...
-  ✓ Node.js v20.0.0
-  ✓ npm 10.0.0
+  Forgewright: /path/to/forgewright
+  Project:     /path/to/project
+  Platforms:   Cursor + Claude Code + Antigravity
 
-  ➜ Detected IDE: cursor
-  ✓ Directories created
-  ✓ Manifest created
-  ✓ Launcher created
-  ✓ Config updated
+  ➜ Generating MCP server...
+  ✓ MCP server generated
+  ➜ Syncing MCP server to canonical location...
+  ✓ Canonical MCP server synced → ~/.forgewright/mcp-server/
+  ➜ Setting up Cursor MCP...
+  ✓ Updated ~/.cursor/mcp.json
+  ➜ Setting up Claude Code MCP...
+  ✓ Updated ~/.claude/settings.json
+  ➜ Setting up Antigravity MCP...
+  ✓ Antigravity MCP setup complete
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ✓ MCP Setup Complete
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ Universal MCP Setup Complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Next steps:
-    1. Restart your AI IDE (Cursor/Claude)
-    2. Verify: bash fw-mcp.sh check
+  Configured for:
+    ✓ Cursor (~/.cursor/mcp.json)
+    ✓ Claude Code (~/.claude/settings.json)
+    ✓ Antigravity (MCP workspace)
+
+  Next: Restart your AI clients to activate MCP servers
+        Verify: bash forgewright/scripts/forgewright-mcp-setup.sh --check
 ```
 
-### 3. Restart Your IDE
+### 3. Restart All AI Clients
 
-Close and reopen Cursor or Claude Desktop.
+```
+1. Quit Cursor completely (Cmd+Q)
+2. Quit Claude Desktop completely
+3. Restart Antigravity (if running)
+```
 
-### 4. Verify (Optional)
+### 4. Verify (All 3 Platforms)
 
 ```bash
-bash forgewright/scripts/fw-mcp.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
+```
+
+Expected output:
+```
+━━━ MCP Status (All Platforms) ━━━
+  ➜ Project: /path/to/project
+
+  ✓ Cursor: ~/.cursor/mcp.json
+    forgewright: CONFIGURED
+    gitnexus: CONFIGURED
+
+  ✓ Claude Code: ~/.claude/settings.json
+    forgewright: CONFIGURED
+    gitnexus: CONFIGURED
+
+  ➜ Antigravity:
+    ✓ Server: ~/.cursor/projects/<hash>/mcps/user-forgewright/
+    forgewright: CONFIGURED
+
+  ✓ Manifest: /path/to/project/.antigravity/mcp-manifest.json
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ---
 
 ## For Experts
 
-### Silent Setup
+### Setup Individual Platform
 
 ```bash
-bash forgewright/scripts/fw-mcp.sh setup --force
+# Cursor only
+bash forgewright/scripts/forgewright-mcp-setup.sh --cursor
+
+# Claude Code only
+bash forgewright/scripts/forgewright-mcp-setup.sh --claude-code
+
+# Antigravity only
+bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity
 ```
 
 ### Check Status
 
 ```bash
-bash forgewright/scripts/fw-mcp.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
 ```
 
-### Just ForgeNexus
+### Force Re-setup
 
 ```bash
-bash forgewright/scripts/forgenexus-setup.sh
+bash forgewright/scripts/forgewright-mcp-setup.sh --force
+```
+
+### Just GitNexus
+
+```bash
+npm install -g gitnexus
+gitnexus setup
 ```
 
 ---
@@ -93,8 +142,19 @@ bash forgewright/scripts/forgenexus-setup.sh
 ## Uninstall
 
 ```bash
-bash fw-mcp.sh uninstall
+bash forgewright/scripts/forgewright-mcp-setup.sh --uninstall
 ```
+
+---
+
+## Verify Checklist
+
+After setup, confirm all 3 platforms are configured:
+
+- [ ] **Cursor**: Restart Cursor, check MCP tools appear
+- [ ] **Claude Code**: Restart Claude, check MCP tools appear
+- [ ] **Antigravity**: Restart Antigravity, check MCP tools appear
+- [ ] **Script check**: `bash forgewright/scripts/forgewright-mcp-setup.sh --check` shows all ✓
 
 ---
 

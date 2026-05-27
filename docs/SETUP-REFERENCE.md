@@ -220,7 +220,36 @@ Launcher for ForgeNexus code intelligence.
 
 ### Antigravity
 
-Antigravity reads `.antigravity/mcp-manifest.json` automatically. No manual config needed.
+**Config Location:** `~/.cursor/projects/<hash>/mcps/user-forgewright/`
+
+Antigravity uses the **canonical MCP server** at `~/.forgewright/mcp-server/server.ts`. The per-project manifest (`.antigravity/mcp-manifest.json`) provides workspace context only — it does NOT contain a separate server.
+
+#### Canonical Server Rule
+
+```
+~/.forgewright/mcp-server/server.ts  ← CANONICAL (single source of truth)
+│
+├── ~/.cursor/mcp.json              → Cursor
+├── ~/.claude/settings.json        → Claude Code
+└── Antigravity project workspace   → Manifest provides context, server is canonical
+```
+
+**Key points:**
+- `.antigravity/mcp-manifest.json` stores project metadata (workspace, forgewright path) — NOT server code
+- Antigravity launcher `~/.cursor/projects/<hash>/mcps/user-forgewright/launcher.sh` uses the canonical server
+- Never point Antigravity to a submodule Forgewright path
+
+#### Setup Command
+
+```bash
+bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity
+```
+
+#### Verify
+
+```bash
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
+```
 
 ---
 
