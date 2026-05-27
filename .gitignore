@@ -10,6 +10,9 @@
 # Node modules (all of them)
 node_modules/
 
+# Antigravity CLI local project config
+.antigravitycli/
+
 # ForgeNexus / legacy auto-generated Claude Code files — Antigravity uses its own protocols
 .claude/
 CLAUDE.md

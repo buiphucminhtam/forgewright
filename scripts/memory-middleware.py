@@ -7,21 +7,25 @@ Works with Claude Code, Cursor, VS Code, JetBrains, etc.
 
 Triggers:
   - Every N messages (configurable)
-  - Token threshold reached
+  - Token threshold reached (WARN: 80%, CRITICAL: 95%)
   - Before long operations
   - Manual trigger
 
 Usage:
   python3 memory-middleware.py tick          # Increment message count
   python3 memory-middleware.py checkpoint   # Force save
-  python3 memory-middleware.py resume       # Load context
-  python3 memory-middleware.py status      # Show status
-  python3 memory-middleware.py daemon      # Run as background daemon
+  python3 memory-middleware.py resume       # Load context + handover
+  python3 memory-middleware.py status       # Show status
+  python3 memory-middleware.py handover     # Generate handover document
+  python3 memory-middleware.py start        # Initialize session
+  python3 memory-middleware.py daemon       # Run as background daemon
 
 Environment Variables:
   MEMORY_CHECKPOINT_INTERVAL: Messages between checkpoints (default: 3)
-  MEMORY_TOKEN_THRESHOLD: Context % to trigger checkpoint (default: 70)
+  MEMORY_TOKEN_THRESHOLD_WARN: Warning threshold % (default: 80)
+  MEMORY_TOKEN_THRESHOLD_CRITICAL: Critical threshold % (default: 95)
   MEMORY_DB_DIR: Session storage directory
+  FORGEWRIGHT_WORKSPACE: Override workspace root detection
 """
 
 import argparse
@@ -38,12 +42,72 @@ from typing import Optional
 #────────────────────────────────────────────────────────────────────────────
 
 HOME = Path.home()
+
+
+def _resolve_workspace_root() -> Path:
+    """Resolve canonical workspace root using git."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            return Path(result.stdout.strip())
+    except Exception:
+        pass
+    cwd = Path.cwd()
+    if ".git" in (cwd / ".git").read_text() if (cwd / ".git").exists() else False:
+        return cwd
+    return cwd
+
+
+WORKSPACE_ROOT = Path(os.environ.get("FORGEWRIGHT_WORKSPACE", str(_resolve_workspace_root())))
 MEMORY_DB_DIR = Path(os.environ.get("MEMORY_DB_DIR", f"{HOME}/.forgewright/sessions"))
 SESSION_FILE = MEMORY_DB_DIR / "current-session.json"
-SUMMARY_FILE = Path(".forgewright/subagent-context/CONVERSATION_SUMMARY.md")
+
+# Canonical absolute paths for workspace-relative files
+SUMMARY_FILE = WORKSPACE_ROOT / ".forgewright" / "subagent-context" / "CONVERSATION_SUMMARY.md"
+HANDOVER_DIR = MEMORY_DB_DIR.parent / "memory-bank"
+HANDOVER_FILE = HANDOVER_DIR / "HANDOVER.md"
+
+# session-log.json path resolution
+# Resolution: FORGEWRIGHT_SESSION_LOG env > ~/.forgewright/session-log.json > .forgewright/session-log.json
+FORGEWRIGHT_SESSION_LOG = os.environ.get("FORGEWRIGHT_SESSION_LOG", "")
+
+
+def get_session_log_path() -> Path:
+    """Resolve session-log.json location with env override.
+
+    Resolution order:
+      1. FORGEWRIGHT_SESSION_LOG env var (highest priority)
+      2. ~/.forgewright/session-log.json (home-relative, if exists)
+      3. .forgewright/session-log.json (repo-relative, DEFAULT)
+    """
+    if FORGEWRIGHT_SESSION_LOG:
+        return Path(FORGEWRIGHT_SESSION_LOG)
+
+    home_path = HOME / ".forgewright" / "session-log.json"
+    repo_path = WORKSPACE_ROOT / ".forgewright" / "session-log.json"
+
+    # Prefer home if it exists, otherwise repo (default)
+    if home_path.exists():
+        return home_path
+    return repo_path
+
+
+SESSION_LOG = get_session_log_path()
+
+# activeContext.md path
+ACTIVE_CONTEXT_FILE = HANDOVER_DIR / "activeContext.md"
+
+# Simulated token usage (0-100 scale)
+# In production, this would be estimated from actual context usage
+_simulated_token_pct = 0
 
 CHECKPOINT_INTERVAL = int(os.environ.get("MEMORY_CHECKPOINT_INTERVAL", "3"))
-TOKEN_THRESHOLD = int(os.environ.get("MEMORY_TOKEN_THRESHOLD", "70"))
+# Token thresholds: WARN at 80%, CRITICAL at 95%
+TOKEN_THRESHOLD_WARN = int(os.environ.get("MEMORY_TOKEN_THRESHOLD_WARN", "80"))
+TOKEN_THRESHOLD_CRITICAL = int(os.environ.get("MEMORY_TOKEN_THRESHOLD_CRITICAL", "95"))
 
 
 #────────────────────────────────────────────────────────────────────────────
@@ -89,10 +153,33 @@ def get_project_name() -> str:
     return "local-project"
 
 
+# Track last checkpoint time to prevent rapid double-checkpoints
+_last_checkpoint_time: Optional[datetime] = None
+_CHECKPOINT_COOLDOWN_SECONDS = 5
+
+
+def _atomic_write_json(filepath: Path, data: dict) -> None:
+    """Write JSON atomically using temp file + rename."""
+    tmp = filepath.with_suffix(".tmp")
+    try:
+        tmp.write_text(json.dumps(data, indent=2))
+        tmp.rename(filepath)
+    except OSError as e:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+        raise IOError(f"Failed to write {filepath}: {e}") from e
+
+
 def init_session() -> dict:
-    """Initialize new session."""
-    MEMORY_DB_DIR.mkdir(parents=True, exist_ok=True)
-    SUMMARY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    """Initialize new session with idempotent directory creation."""
+    try:
+        MEMORY_DB_DIR.mkdir(parents=True, exist_ok=True)
+        SUMMARY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise RuntimeError(f"Cannot create session directories: {e}") from e
 
     session = {
         "session_id": f"session-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}",
@@ -103,9 +190,7 @@ def init_session() -> dict:
         "checkpoints": [],
     }
 
-    with open(SESSION_FILE, "w") as f:
-        json.dump(session, f, indent=2)
-
+    _atomic_write_json(SESSION_FILE, session)
     log(f"Session started: {session['session_id']}")
     return session
 
@@ -113,52 +198,458 @@ def init_session() -> dict:
 def load_session() -> dict:
     """Load current session or create new one."""
     if SESSION_FILE.exists():
-        with open(SESSION_FILE) as f:
-            return json.load(f)
+        try:
+            with open(SESSION_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            warn(f"Session file corrupted ({e}), creating new session")
+            corrupt_backup = SESSION_FILE.with_suffix(".json.corrupt")
+            try:
+                SESSION_FILE.rename(corrupt_backup)
+            except OSError:
+                pass
     return init_session()
 
 
 def save_session(session: dict):
-    """Save session to file."""
-    with open(SESSION_FILE, "w") as f:
-        json.dump(session, f, indent=2)
+    """Save session to file atomically."""
+    _atomic_write_json(SESSION_FILE, session)
 
 
 #────────────────────────────────────────────────────────────────────────────
+# Token Threshold Hooks (NEW v8.1)
+#────────────────────────────────────────────────────────────────────────────
+
+def get_simulated_token_pct() -> int:
+    """Get simulated token percentage for testing."""
+    return _simulated_token_pct
+
+
+def set_simulated_token_pct(pct: int):
+    """Set simulated token percentage for testing."""
+    global _simulated_token_pct
+    _simulated_token_pct = max(0, min(100, pct))
+
+
+def check_token_threshold() -> tuple[bool, bool]:
+    """
+    Check if token threshold is reached.
+    Returns: (should_warn, should_handover)
+    - should_warn: True if >= WARN threshold (80%)
+    - should_handover: True if >= CRITICAL threshold (95%)
+    """
+    pct = get_simulated_token_pct()
+    should_warn = pct >= TOKEN_THRESHOLD_WARN
+    should_handover = pct >= TOKEN_THRESHOLD_CRITICAL
+    return should_warn, should_handover
+
+
+def log_token_warning():
+    """Log warning about token usage."""
+    pct = get_simulated_token_pct()
+    log(f"⧖ Token usage at {pct}% — consider checkpoint", Colors.YELLOW)
+
+
+#────────────────────────────────────────────────────────────────────────────
+# Handover Generation (NEW v8.1)
+#────────────────────────────────────────────────────────────────────────────
+
+def generate_handover(goals: str = "", next_steps: str = "", decisions: str = "", blockers: str = "") -> Optional[str]:
+    """
+    Generate a handover document from current session state.
+    Returns the path to the generated handover file, or None on failure.
+    """
+    try:
+        session = load_session()
+    except Exception as e:
+        warn(f"Could not load session for handover: {e}")
+        session = {"session_id": "unknown", "project": "unknown", "checkpoints": [], "message_count": 0, "last_checkpoint_at": "N/A"}
+
+    try:
+        HANDOVER_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        error(f"Cannot create handover directory: {e}")
+        return None
+
+    previous_handover = load_handover()
+
+    timestamp = datetime.now(timezone.utc)
+    date_str = timestamp.strftime("%Y%m%d-%H%M%S")
+
+    completed_items = []
+    for cp in session.get("checkpoints", [])[-5:]:
+        completed_items.append(f"- {cp.get('summary', cp.get('reason', 'checkpoint'))}")
+
+    content = f"""# Handover Document — {session.get('session_id', 'unknown')}
+
+**Generated**: {timestamp.isoformat()}Z
+**Version**: 1.0
+**Project**: {session.get('project', 'unknown')}
+
+## Session Goals
+{goals or '_Not specified_'}
+
+## Completed Work
+{chr(10).join(completed_items) if completed_items else '_No checkpoints yet_'}
+
+## Key Decisions
+{decisions or previous_handover.get('decisions', '_None recorded_') if previous_handover else '_None recorded_'}
+
+## Blockers & Open Questions
+{blockers or previous_handover.get('blockers', '_None_') if previous_handover else '_None_'}
+
+## Next Steps
+{next_steps or previous_handover.get('next_steps', '_Not specified_') if previous_handover else '_Not specified_'}
+
+## Recent Context
+Total checkpoints: {len(session.get('checkpoints', []))}
+Last checkpoint: {session.get('last_checkpoint_at', 'N/A')}
+Messages since checkpoint: {session.get('message_count', 0)}
+"""
+
+    try:
+        handover_path = HANDOVER_DIR / f"handover-{date_str}.md"
+        handover_path.write_text(content)
+        HANDOVER_FILE.write_text(content)
+        log(f"Handover generated: {handover_path}")
+        return str(handover_path)
+    except OSError as e:
+        error(f"Failed to write handover file: {e}")
+        return None
+
+
+def load_handover() -> Optional[dict]:
+    """
+    Load the most recent handover document.
+    Returns dict with parsed content or None if not found.
+    """
+    # Try HANDOVER.md first
+    if HANDOVER_FILE.exists():
+        try:
+            content = HANDOVER_FILE.read_text()
+            return _parse_handover_content(content)
+        except OSError as e:
+            warn(f"Could not read HANDOVER.md: {e}")
+
+    # Fallback: find most recent timestamped handover
+    if HANDOVER_DIR.exists():
+        try:
+            handovers = sorted(HANDOVER_DIR.glob("handover-*.md"), reverse=True)
+            if handovers:
+                try:
+                    content = handovers[0].read_text()
+                    return _parse_handover_content(content)
+                except OSError as e:
+                    warn(f"Could not read {handovers[0]}: {e}")
+        except OSError as e:
+            warn(f"Could not list handover directory: {e}")
+
+    return None
+
+
+def _parse_handover_content(content: str) -> dict:
+    """Parse handover markdown into structured dict."""
+    result = {
+        "decisions": [],
+        "blockers": [],
+        "next_steps": [],
+        "raw": content
+    }
+
+    current_section = None
+    for line in content.split("\n"):
+        line_lower = line.lower().strip()
+
+        if line_lower.startswith("## session goals"):
+            current_section = "goals"
+            continue
+        elif line_lower.startswith("## completed work"):
+            current_section = "completed"
+            continue
+        elif line_lower.startswith("## key decisions"):
+            current_section = "decisions"
+            continue
+        elif line_lower.startswith("## blockers"):
+            current_section = "blockers"
+            continue
+        elif line_lower.startswith("## next steps"):
+            current_section = "next_steps"
+            continue
+
+        if current_section == "decisions" and line.strip().startswith("-"):
+            result["decisions"].append(line.strip())
+        elif current_section == "blockers" and line.strip().startswith("-"):
+            result["blockers"].append(line.strip())
+        elif current_section == "next_steps" and line.strip().startswith("-"):
+            result["next_steps"].append(line.strip())
+
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# session-log.json Management (SAVE/Resume)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def ensure_session_log() -> dict:
+    """Ensure session-log.json exists with valid structure. Returns the log dict."""
+    SESSION_LOG.parent.mkdir(parents=True, exist_ok=True)
+
+    if not SESSION_LOG.exists():
+        log_data = {"sessions": []}
+        with open(SESSION_LOG, "w") as f:
+            json.dump(log_data, f, indent=2)
+
+    try:
+        with open(SESSION_LOG) as f:
+            data = json.load(f)
+        if "sessions" not in data:
+            data = {"sessions": []}
+            with open(SESSION_LOG, "w") as f:
+                json.dump(data, f, indent=2)
+        return data
+    except (json.JSONDecodeError, IOError) as e:
+        warn(f"Session log corrupted ({e}), resetting")
+        log_data = {"sessions": []}
+        with open(SESSION_LOG, "w") as f:
+            json.dump(log_data, f, indent=2)
+        return log_data
+
+
+def _mark_sessions_interrupted(log_data: dict):
+    """Mark any in_progress sessions as interrupted."""
+    now = datetime.now(timezone.utc).isoformat() + "Z"
+    for session in log_data.get("sessions", []):
+        if session.get("status") == "in_progress":
+            session["status"] = "interrupted"
+            session["interrupted_at"] = now
+
+
+def start_session(mode: str = "unknown", request: str = "", current_phase: str = None) -> dict:
+    """Start a new session in session-log.json. Returns the new session entry."""
+    log_data = ensure_session_log()
+    _mark_sessions_interrupted(log_data)
+
+    ts = datetime.now(timezone.utc).isoformat() + "Z"
+    session_id = f"session-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}"
+
+    new_session = {
+        "session_id": session_id,
+        "project": get_project_name(),
+        "started_at": ts,
+        "last_update": ts,
+        "status": "in_progress",
+        "mode": mode,
+        "request": request,
+        "current_phase": current_phase,
+        "completed_phases": [],
+        "tasks": {},
+        "gates": {},
+        "errors": [],
+        "events": [],
+        "quality_scores": [],
+        "files_changed": 0,
+        "summary": None,
+        "next_steps": [],
+        "metadata": {
+            "ide": _detect_ide(),
+            "context_pct": 0,
+            "last_message_at": ts
+        }
+    }
+
+    log_data["sessions"].append(new_session)
+
+    with open(SESSION_LOG, "w") as f:
+        json.dump(log_data, f, indent=2)
+
+    log(f"Session started: {session_id} ({mode})")
+    return new_session
+
+
+def get_current_session() -> dict | None:
+    """Get the most recent in_progress session, or None if none exists."""
+    log_data = ensure_session_log()
+    for session in reversed(log_data.get("sessions", [])):
+        if session.get("status") == "in_progress":
+            return session
+    return None
+
+
+def get_last_session() -> dict | None:
+    """Get the most recent session regardless of status."""
+    log_data = ensure_session_log()
+    sessions = log_data.get("sessions", [])
+    return sessions[-1] if sessions else None
+
+
+def update_session(**kwargs) -> dict | None:
+    """Update the current session with given fields. Returns updated session or None."""
+    log_data = ensure_session_log()
+    session = None
+    for s in reversed(log_data.get("sessions", [])):
+        if s.get("status") == "in_progress":
+            session = s
+            break
+    if not session:
+        return None
+
+    for key, value in kwargs.items():
+        if key in ("current_phase", "mode", "request", "summary", "files_changed"):
+            session[key] = value
+
+    session["last_update"] = datetime.now(timezone.utc).isoformat() + "Z"
+
+    log_data["sessions"] = [s for s in log_data["sessions"] if s["session_id"] != session["session_id"]]
+    log_data["sessions"].append(session)
+
+    with open(SESSION_LOG, "w") as f:
+        json.dump(log_data, f, indent=2)
+
+    return session
+
+
+def add_task(task_id: str, status: str, summary: str = "") -> dict | None:
+    """Add or update a task in the current session. Returns the task entry."""
+    log_data = ensure_session_log()
+    session = None
+    for s in reversed(log_data.get("sessions", [])):
+        if s.get("status") == "in_progress":
+            session = s
+            break
+    if not session:
+        return None
+
+    ts = datetime.now(timezone.utc).isoformat() + "Z"
+    task = {"status": status, "summary": summary, "updated_at": ts}
+    session["tasks"][task_id] = task
+    session["last_update"] = ts
+
+    with open(SESSION_LOG, "w") as f:
+        json.dump(log_data, f, indent=2)
+
+    log(f"Task {task_id}: {status} — {summary}")
+    return task
+
+
+def add_event(event_type: str, **kwargs) -> dict | None:
+    """Add an event to the current session. Returns the event entry."""
+    log_data = ensure_session_log()
+    session = None
+    for s in reversed(log_data.get("sessions", [])):
+        if s.get("status") == "in_progress":
+            session = s
+            break
+    if not session:
+        return None
+
+    event = {"type": event_type, "timestamp": datetime.now(timezone.utc).isoformat() + "Z", **kwargs}
+    session.setdefault("events", []).append(event)
+    session["last_update"] = datetime.now(timezone.utc).isoformat() + "Z"
+
+    with open(SESSION_LOG, "w") as f:
+        json.dump(log_data, f, indent=2)
+
+    return event
+
+
+def end_session(summary: str = "", next_steps: list = None) -> dict | None:
+    """Mark current session as completed. Returns the finished session."""
+    log_data = ensure_session_log()
+    session = None
+    for s in reversed(log_data.get("sessions", [])):
+        if s.get("status") == "in_progress":
+            session = s
+            break
+    if not session:
+        warn("No active session to end")
+        return None
+
+    ts = datetime.now(timezone.utc).isoformat() + "Z"
+    session["status"] = "completed"
+    session["completed_at"] = ts
+    session["last_update"] = ts
+    session["summary"] = summary
+    if next_steps:
+        session["next_steps"] = next_steps
+
+    start = datetime.fromisoformat(session["started_at"].replace("Z", "+00:00"))
+    end = datetime.now(timezone.utc)
+    duration_min = int((end - start).total_seconds() / 60)
+    session["duration_minutes"] = duration_min
+
+    with open(SESSION_LOG, "w") as f:
+        json.dump(log_data, f, indent=2)
+
+    log(f"Session {session['session_id']} completed ({duration_min} min)")
+
+    update_active_context()
+    return session
+
+
+def _detect_ide() -> str:
+    """Detect the current IDE from environment."""
+    if os.environ.get("CURSOR"):
+        return "cursor"
+    if os.environ.get("CLAUDE_DESKTOP"):
+        return "claude-code"
+    if os.environ.get("VSCODE"):
+        return "vscode"
+    return "unknown"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Memory Operations
-#────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
-def save_to_mem0(summary: str, checkpoint_id: str):
-    """Save checkpoint to mem0-v2."""
+def save_to_mem0(summary: str, checkpoint_id: str) -> bool:
+    """Save checkpoint to mem0-v2. Returns True on success, False on failure."""
     try:
         script_dir = Path(__file__).parent
+        mem0_script = script_dir / "mem0-v2.py"
+        if not mem0_script.exists():
+            warn(f"mem0-v2.py not found at {mem0_script}, skipping mem0 save")
+            return False
         cmd = [
             "python3",
-            str(script_dir / "mem0-v2.py"),
+            str(mem0_script),
             "add",
             f"CHECKPOINT: [{checkpoint_id}] | {summary}",
             "--category", "session"
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
-            error(f"mem0 save failed: {result.stderr[:100]}")
-            sys.exit(1)
+            error(f"mem0 save failed: {result.stderr[:200]}")
+            return False
+        return True
+    except subprocess.TimeoutExpired:
+        warn("mem0 save timed out, continuing without mem0 update")
+        return False
     except Exception as e:
-        error(f"Could not save to mem0: {e}")
-        sys.exit(1)
+        warn(f"Could not save to mem0: {e}")
+        return False
 
 
 def append_to_summary(checkpoint_id: str, reason: str, summary: str):
     """Append to conversation summary file."""
-    if not SUMMARY_FILE.exists():
-        SUMMARY_FILE.parent.mkdir(parents=True, exist_ok=True)
-        SUMMARY_FILE.write_text("# Conversation Summary\n\n## Session Log\n\n")
-        SUMMARY_FILE.write_text("| Timestamp | Checkpoint | Reason | Summary |\n")
-        SUMMARY_FILE.write_text("|-----------|------------|--------|---------|\n")
-
+    SUMMARY_FILE.parent.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).isoformat() + "Z"
-    with open(SUMMARY_FILE, "a") as f:
-        f.write(f"| {timestamp} | {checkpoint_id} | {reason} | {summary} |\n")
+
+    # Build the line
+    new_line = f"| {timestamp} | {checkpoint_id} | {reason} | {summary} |\n"
+
+    if not SUMMARY_FILE.exists():
+        header = "| Timestamp | Checkpoint | Reason | Summary |\n|-----------|------------|--------|----------|\n"
+        try:
+            SUMMARY_FILE.write_text("# Conversation Summary\n\n## Session Log\n\n" + header + new_line)
+        except OSError as e:
+            warn(f"Could not create summary file: {e}")
+        return
+
+    try:
+        with open(SUMMARY_FILE, "a") as f:
+            f.write(new_line)
+    except OSError as e:
+        warn(f"Could not append to summary file: {e}")
 
 
 def update_memory_bank_progress(summary: str):
@@ -187,6 +678,96 @@ def update_memory_bank_progress(summary: str):
         warn(f"Could not update Memory Bank: {e}")
 
 
+def update_active_context():
+    """Update activeContext.md from session state.
+
+    Triggered on every checkpoint + at session end.
+    Generates structured markdown with current work, checkpoints, open tasks, blockers.
+    """
+    ACTIVE_CONTEXT_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    session = load_session()
+    session_log = ensure_session_log()
+    current_session = None
+    for s in reversed(session_log.get("sessions", [])):
+        if s.get("status") == "in_progress":
+            current_session = s
+            break
+
+    now = datetime.now(timezone.utc).isoformat() + "Z"
+    checkpoints = session.get("checkpoints", [])
+    last_cp = checkpoints[-1] if checkpoints else None
+
+    # Build open tasks list
+    open_tasks = []
+    completed_tasks = []
+    if current_session:
+        for task_id, task in current_session.get("tasks", {}).items():
+            if task.get("status") != "completed":
+                open_tasks.append(f"- [ ] {task_id}: {task.get('summary', '')}")
+            else:
+                completed_tasks.append(f"- [x] {task_id}: {task.get('summary', '')}")
+
+    # Build blockers/errors
+    blockers = []
+    if current_session:
+        for event in current_session.get("events", []):
+            if event.get("type") in ("SKILL_FAILED", "ERROR"):
+                blockers.append(f"- {event.get('type')}: {event.get('details', event.get('error_type', 'unknown'))}")
+
+    content = f"""# Active Context
+
+**Updated**: {now}
+**Session**: {session.get('session_id', 'N/A')}
+**Status**: {current_session.get('status', 'N/A') if current_session else session.get('status', 'N/A')}
+**Phase**: {current_session.get('current_phase', 'N/A') if current_session else 'N/A'}
+
+## Current Work
+{current_session.get('request', '_No active request_') if current_session else '_No active session_'}
+
+## Last Checkpoint
+"""
+    if last_cp:
+        content += f"""- **ID**: {last_cp.get('id', 'N/A')}
+- **At**: {last_cp.get('at', 'N/A')}
+- **Summary**: {last_cp.get('summary', 'N/A')}
+
+"""
+    else:
+        content += "- _No checkpoints yet_\n\n"
+
+    content += "## Open Tasks\n"
+    if open_tasks:
+        content += "\n".join(open_tasks) + "\n"
+    else:
+        content += "_No open tasks_\n"
+
+    if completed_tasks:
+        content += "\n## Completed Tasks\n"
+        content += "\n".join(completed_tasks) + "\n"
+
+    if blockers:
+        content += "\n## Blockers\n"
+        content += "\n".join(blockers) + "\n"
+
+    content += f"""
+## Decisions
+<!-- Add key decisions made during this session -->
+
+## Next Steps
+<!-- Add planned next steps -->
+
+---
+*Auto-generated by memory-middleware.py — do not edit manually*
+"""
+
+    try:
+        ACTIVE_CONTEXT_FILE.write_text(content)
+        log(f"Active context updated: {ACTIVE_CONTEXT_FILE}")
+    except OSError as e:
+        warn(f"Could not update activeContext.md: {e}")
+
+
 def generate_summary(reason: str) -> str:
     """Generate checkpoint summary from git status."""
     try:
@@ -207,34 +788,43 @@ def generate_summary(reason: str) -> str:
 # Checkpoint Operations
 #────────────────────────────────────────────────────────────────────────────
 
-def do_checkpoint(reason: str = "manual"):
-    """Create memory checkpoint."""
-    session = load_session()
-    checkpoint_id = f"cp-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+def do_checkpoint(reason: str = "manual") -> Optional[str]:
+    """Create memory checkpoint with idempotency protection."""
+    global _last_checkpoint_time
+    now = datetime.now(timezone.utc)
 
-    # Generate summary
+    # Idempotency: skip if checkpoint happened recently
+    if _last_checkpoint_time:
+        elapsed = (now - _last_checkpoint_time).total_seconds()
+        if elapsed < _CHECKPOINT_COOLDOWN_SECONDS:
+            log(f"Checkpoint skipped: cooldown active ({elapsed:.1f}s < {_CHECKPOINT_COOLDOWN_SECONDS}s)")
+            return None
+
+    session = load_session()
+    checkpoint_id = f"cp-{now.strftime('%Y%m%d-%H%M%S')}"
+
     summary = generate_summary(reason)
 
-    # Save to mem0
+    # Non-blocking mem0 save
     save_to_mem0(summary, checkpoint_id)
 
-    # Update Memory Bank (NEW v8.0)
     update_memory_bank_progress(summary)
 
-    # Update session
     session["message_count"] = 0
-    session["last_checkpoint_at"] = datetime.now(timezone.utc).isoformat() + "Z"
+    session["last_checkpoint_at"] = now.isoformat() + "Z"
     session["checkpoints"].append({
         "id": checkpoint_id,
         "reason": reason,
-        "at": datetime.now(timezone.utc).isoformat() + "Z",
+        "at": now.isoformat() + "Z",
         "summary": summary,
     })
     save_session(session)
 
-    # Update summary file
     append_to_summary(checkpoint_id, reason, summary)
 
+    update_active_context()
+
+    _last_checkpoint_time = now
     log(f"Checkpoint created: {checkpoint_id} (reason: {reason})")
     return checkpoint_id
 
@@ -246,6 +836,15 @@ def increment_message():
     save_session(session)
 
     msg_count = session["message_count"]
+
+    # Check token thresholds
+    should_warn, should_handover_flag = check_token_threshold()
+    if should_handover_flag:
+        log("⧖ Token threshold CRITICAL — generating handover", Colors.RED)
+        generate_handover(next_steps="Continue from handover")
+        do_checkpoint("token_critical")
+    elif should_warn:
+        log_token_warning()
 
     # Check interval trigger
     if msg_count % CHECKPOINT_INTERVAL == 0:
@@ -276,10 +875,9 @@ def cmd_checkpoint():
 
 
 def cmd_status():
-    """Show session status."""
+    """Show session status including session-log.json."""
     if not SESSION_FILE.exists():
-        print("No active session. Run 'start' to initialize.")
-        return
+        print("No memory session. Run 'start' to initialize.")
 
     session = load_session()
     print(f"=== Memory Session Status ===")
@@ -290,6 +888,23 @@ def cmd_status():
     print(f"Last checkpoint: {session['last_checkpoint_at']}")
     print(f"Total checkpoints: {len(session['checkpoints'])}")
     print(f"Checkpoint interval: every {CHECKPOINT_INTERVAL} messages")
+    print(f"Token warn threshold: {TOKEN_THRESHOLD_WARN}%")
+    print(f"Token critical threshold: {TOKEN_THRESHOLD_CRITICAL}%")
+
+    print(f"\n=== session-log.json Status ===")
+    print(f"Path: {SESSION_LOG}")
+    current_session = get_current_session()
+    if current_session:
+        print(f"Status: {current_session['status']}")
+        print(f"Mode: {current_session['mode']}")
+        print(f"Phase: {current_session.get('current_phase', 'N/A')}")
+        print(f"Tasks: {len(current_session.get('tasks', {}))}")
+        print(f"Events: {len(current_session.get('events', []))}")
+    else:
+        print("Status: No active session in session-log.json")
+        last = get_last_session()
+        if last:
+            print(f"Last session: {last.get('session_id', '?')} ({last.get('status', '?')})")
 
 
 def cmd_resume():
@@ -299,6 +914,14 @@ def cmd_resume():
     session = load_session()
     print(f"\nSession: {session['session_id']}")
     print(f"Project: {session['project']}")
+
+    # Load handover document
+    handover = load_handover()
+    if handover:
+        print(f"\n=== Handover Document Found ===")
+        print(handover.get("raw", "Could not parse handover"))
+    else:
+        print(f"\n(No handover document found)")
 
     # Load summary file
     if SUMMARY_FILE.exists():
@@ -310,16 +933,37 @@ def cmd_resume():
     # Search mem0 for recent
     try:
         script_dir = Path(__file__).parent
-        result = subprocess.run(
-            ["python3", str(script_dir / "mem0-v2.py"), "list", "--category", "session", "--limit", "5"],
-            capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            print(f"\n=== Recent Memories ===")
-            print(result.stdout)
+        mem0_script = script_dir / "mem0-v2.py"
+        if mem0_script.exists():
+            result = subprocess.run(
+                ["python3", str(mem0_script), "list", "--category", "session", "--limit", "5"],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode == 0:
+                print(f"\n=== Recent Memories ===")
+                print(result.stdout)
+        else:
+            print(f"\n(mem0-v2.py not found, skipping memory list)")
     except Exception as e:
-        error(f"Could not load mem0 memories: {e}")
-        sys.exit(1)
+        warn(f"Could not load mem0 memories: {e}")
+
+
+def cmd_handover():
+    """Generate a handover document with optional goals and next_steps."""
+    import sys
+    goals = ""
+    next_steps = ""
+
+    if len(sys.argv) > 2:
+        goals = sys.argv[2]
+    if len(sys.argv) > 3:
+        next_steps = sys.argv[3]
+
+    path = generate_handover(goals=goals, next_steps=next_steps)
+    if path:
+        print(f"Handover document generated: {path}")
+    else:
+        print("Failed to generate handover document.")
 
 
 #────────────────────────────────────────────────────────────────────────────
@@ -327,9 +971,17 @@ def cmd_resume():
 #────────────────────────────────────────────────────────────────────────────
 
 def main():
+    # Support both flat commands and 'session-log' subcommand
     parser = argparse.ArgumentParser(description="Forgewright Memory Middleware")
+
+    # Check if first arg is 'session-log' for subcommand mode
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "session-log":
+        _main_session_log()
+        return
+
     parser.add_argument("command", nargs="?", default="status",
-                        choices=["start", "tick", "checkpoint", "status", "resume", "daemon"])
+                        choices=["start", "tick", "checkpoint", "status", "resume", "daemon", "handover"])
     args = parser.parse_args()
 
     if args.command == "daemon":
@@ -342,9 +994,109 @@ def main():
         "checkpoint": cmd_checkpoint,
         "status": cmd_status,
         "resume": cmd_resume,
+        "handover": cmd_handover,
     }
 
     commands[args.command]()
+
+
+def _main_session_log():
+    """Handle session-log subcommand."""
+    import sys
+    sub_args = sys.argv[2:] if len(sys.argv) > 2 else []
+
+    if not sub_args or sub_args[0] == "help":
+        print("""session-log - Manage session-log.json
+
+Usage:
+  python3 memory-middleware.py session-log create         Create/reset session-log.json
+  python3 memory-middleware.py session-log start <mode> <request>  Start a new session
+  python3 memory-middleware.py session-log status         Show current session state
+  python3 memory-middleware.py session-log task <id> <status> <summary>  Add/update task
+  python3 memory-middleware.py session-log phase <name>         Mark phase complete
+  python3 memory-middleware.py session-log end [summary]        End current session
+  python3 memory-middleware.py session-log list               List all sessions
+  python3 memory-middleware.py session-log resume              Show interrupted sessions
+""")
+        return
+
+    cmd = sub_args[0]
+
+    if cmd == "create":
+        ensure_session_log()
+        print(f"✓ session-log.json ready at: {SESSION_LOG}")
+
+    elif cmd == "start":
+        mode = sub_args[1] if len(sub_args) > 1 else "unknown"
+        request = sub_args[2] if len(sub_args) > 2 else ""
+        session = start_session(mode=mode, request=request)
+        print(f"✓ Session started: {session['session_id']}")
+        print(f"  Mode: {session['mode']}")
+        print(f"  Request: {session['request']}")
+        print(f"  File: {SESSION_LOG}")
+
+    elif cmd == "status":
+        session = get_current_session()
+        if session:
+            print(f"""━━━ Session Status ━━━━━━━━━━━━━━━━━━━━━━
+  ID:      {session['session_id']}
+  Status:  {session['status']}
+  Mode:    {session['mode']}
+  Phase:   {session.get('current_phase', 'N/A')}
+  Tasks:   {len(session.get('tasks', {}))} tracked
+  File:    {SESSION_LOG}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━""")
+        else:
+            print("No active session.")
+
+    elif cmd == "task":
+        if len(sub_args) < 3:
+            print("Usage: session-log task <id> <status> <summary>")
+            sys.exit(1)
+        add_task(sub_args[1], sub_args[2], " ".join(sub_args[3:]) if len(sub_args) > 3 else "")
+
+    elif cmd == "phase":
+        if len(sub_args) < 2:
+            print("Usage: session-log phase <name>")
+            sys.exit(1)
+        update_session(current_phase=sub_args[1])
+        print(f"✓ Phase updated: {sub_args[1]}")
+
+    elif cmd == "end":
+        summary = sub_args[1] if len(sub_args) > 1 else ""
+        session = end_session(summary=summary)
+        if session:
+            print(f"✓ Session ended: {session['session_id']} ({session.get('duration_minutes', 0)} min)")
+
+    elif cmd == "list":
+        log_data = ensure_session_log()
+        sessions = log_data.get("sessions", [])
+        if not sessions:
+            print("No sessions recorded.")
+            return
+        print(f"━━━ Sessions ({len(sessions)}) ━━━━━━━━━━━━━━━━━━━━━━")
+        for s in sessions[-10:]:
+            icon = {"completed": "✓", "interrupted": "⚠", "in_progress": "⧖"}.get(s.get("status", ""), "?")
+            print(f"  {icon} {s['session_id']} | {s.get('mode', '?')} | {s['status']} | {s.get('current_phase', 'N/A')}")
+
+    elif cmd == "resume":
+        log_data = ensure_session_log()
+        interrupted = [s for s in log_data.get("sessions", []) if s.get("status") in ("interrupted", "in_progress")]
+        if not interrupted:
+            print("No interrupted sessions.")
+            return
+        for s in interrupted:
+            print(f"""⚠ Interrupted session found:
+  ID:      {s['session_id']}
+  Mode:    {s.get('mode', '?')}
+  Phase:   {s.get('current_phase', 'N/A')}
+  Started: {s.get('started_at', '?')}
+  Request: {s.get('request', '?')}
+""")
+
+    else:
+        print(f"Unknown session-log command: {cmd}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

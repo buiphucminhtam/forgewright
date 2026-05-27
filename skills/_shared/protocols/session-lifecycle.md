@@ -113,6 +113,81 @@ ELSE:
   Log: "✓ Per-project MCP config (.cursor/mcp.json)"
 ```
 
+### Step 0.6 — Session Health Check (SAVE/Resume v8.2)
+
+```
+1. Check session-log.json:
+   IF exists AND last_session.status == "in_progress":
+     # Session was not properly ended - context was lost
+     → Log: "⚠ Previous session was not properly ended"
+     → Mark as "interrupted" in session-log.json
+
+   IF last_session.last_update exists:
+     age_hours = now - last_session.last_update
+     IF age_hours > 24:
+       Log: "⚠ Session is stale (>24h old) — marking as interrupted"
+       → Update status to "interrupted"
+       → Add interrupted_reason: "Session health check - stale data"
+
+2. Check Memory Bank freshness:
+   IF .forgewright/memory-bank/progress.md exists:
+     Read last_updated from header
+     IF last_updated > 7 days:
+       Log: "⚠ Memory Bank may be stale — update at session end"
+
+3. Check activeContext.md:
+   IF .forgewright/memory-bank/activeContext.md exists:
+     → Load and inject into context
+     → Log: "✓ Active context loaded — resuming from [checkpoint]"
+```
+
+### Step 3.7 — Token Monitoring (SAVE/Resume v8.2)
+
+```
+1. Check token usage (simulated or estimated):
+   python3 scripts/memory-middleware.py tick
+
+2. Token threshold checks:
+   MEMORY_TOKEN_THRESHOLD_WARN=80     # Warning threshold
+   MEMORY_TOKEN_THRESHOLD_CRITICAL=95 # Handover threshold
+
+   IF token_pct >= 95:
+     Log: "⧖ Context critical — triggering handover"
+     → Run: python3 scripts/memory-middleware.py handover
+     → Mark session as interrupted
+     → User hands off to next session
+     → Exit autonomous mode
+
+   ELIF token_pct >= 80:
+     Log: "⧖ Token usage at X% — consider checkpoint"
+     → Suggest: python3 scripts/memory-middleware.py checkpoint
+
+3. At session end:
+   → Update activeContext.md with current state
+   → Save final checkpoint
+   → Generate HANDOVER.md if needed
+```
+
+### Step 3.8 — Handover Loading (SAVE/Resume v8.2)
+
+```
+IF .forgewright/memory-bank/HANDOVER.md exists:
+  Read it → inject into context
+  Log: "✓ Handover loaded — session can resume from [checkpoint]"
+
+  Inject handover sections:
+  - Session Goals: What was being worked on
+  - Completed Work: Recent checkpoints/summaries
+  - Open Tasks: Incomplete tasks from session-log.json
+  - Blockers: Open blockers or questions
+  - Next Steps: What to continue with
+
+IF .forgewright/memory-bank/handover-*.md exists (but not HANDOVER.md):
+  Find most recent timestamped handover
+  Read it → inject into context
+  Log: "✓ Handover loaded (timestamped version)"
+```
+
 ### Step 4 — Detect Manual Changes
 
 ```
@@ -202,6 +277,68 @@ Example: 67% [lean] | BUILD > Auth > Login > OAuth
 - Read from `production/session-state/active.md` on every turn
 - Display status line in CLI output
 
+## Subagent Handover Protocol (NEW v8.1)
+
+When a subagent completes or context approaches limits, generate a handover document to ensure continuity.
+
+### When to Generate Handover
+
+| Trigger | Condition | Action |
+|---------|-----------|--------|
+| Token warning | Token % >= 80% | Log warning, suggest checkpoint |
+| Token critical | Token % >= 95% | Auto-generate handover |
+| Manual | User/subagent requests | `python3 memory-middleware.py handover` |
+| Subagent complete | Worker finishes task | Generate handover with task summary |
+
+### Handover Document Structure
+
+```markdown
+# Handover Document — {session_id}
+
+**Generated**: {timestamp}
+**Version**: 1.0
+**Project**: {project_name}
+
+## Session Goals
+{what was being worked on}
+
+## Completed Work
+{- checkpoint 1}
+{- checkpoint 2}
+
+## Key Decisions
+{- decision 1}
+
+## Blockers & Open Questions
+{blocker or question list}
+
+## Next Steps
+{what to continue with}
+```
+
+### Handover Generation Flow
+
+```
+1. Load current session state from current-session.json
+2. Extract recent checkpoints (last 5)
+3. Parse any previous handover for context continuity
+4. Generate new handover document
+5. Write to:
+   - .forgewright/memory-bank/handover-{timestamp}.md
+   - .forgewright/memory-bank/HANDOVER.md (latest alias)
+6. Return path to generated file
+```
+
+### Handover Loading Flow
+
+```
+1. Check for .forgewright/memory-bank/HANDOVER.md
+2. If not found, find most recent handover-*.md
+3. Parse markdown into structured dict
+4. Inject key sections into prompt context
+5. Log: "✓ Handover loaded — [N] decisions, [M] blockers"
+```
+
 ## Turn-Start Memory Retrieval (Within-Session Continuity)
 
 **When:** Before answering each user request within a session. Runs **before** orchestrator processes the new request.
@@ -216,6 +353,26 @@ Example: 67% [lean] | BUILD > Auth > Login > OAuth
 IF .forgewright/subagent-context/CONVERSATION_SUMMARY.md exists:
   Read it → inject into context
   Log: "✓ Conversation summary loaded — [N] exchanges summarized"
+```
+
+### Step T1.5 — Load Handover Document (NEW)
+
+```
+IF .forgewright/memory-bank/HANDOVER.md exists:
+  Read it → inject into context
+  Log: "✓ Handover loaded — session can resume from [checkpoint]"
+
+  Inject handover sections:
+  - Session Goals: What was being worked on
+  - Completed Work: Recent checkpoints/summaries
+  - Key Decisions: Architectural choices made
+  - Blockers: Open blockers or questions
+  - Next Steps: What to continue with
+
+IF .forgewright/memory-bank/handover-*.md exists (but not HANDOVER.md):
+  Find most recent timestamped handover
+  Read it → inject into context
+  Log: "✓ Handover loaded (timestamped version)"
 ```
 
 ### Step T2 — Retrieve Recent Turns
@@ -249,11 +406,23 @@ IF .forgewright/subagent-context/PIPELINE_SUMMARY.md exists:
 
 ```
 Log: "✓ Turn-Start context loaded:
+  - activeContext.md: [loaded/skipped/none]
+  - Handover document: [loaded/skipped/none]
   - Conversation summary: [loaded/skipped]
+  - session-log.json: [N] sessions, status: [in_progress/interrupted/completed]
   - Recent turns: [N] items
   - BA scope: [loaded/skipped]
   - Pipeline context: [loaded/skipped]"
 ```
+
+**SAVE/Resume Integration (v8.2):**
+
+| Source | When Loaded | Purpose |
+|--------|-------------|---------|
+| `activeContext.md` | Every turn-start | Current work summary, open tasks, blockers |
+| `HANDOVER.md` | Every turn-start (if exists) | Session goals, decisions, next steps |
+| `session-log.json` | Every turn-start | Phase, tasks, events for resume |
+| `CONVERSATION_SUMMARY.md` | Every turn-start | Recent exchange summaries |
 
 **Integration:** The orchestrator (production-grade/SKILL.md) calls these steps before processing each user request. This is distinct from Session Start (Step 0.5) which runs only once per session.
 

@@ -408,7 +408,7 @@ Before finishing ANY task, verify ALL of the following:
 | 11 | ✅ Memory Bank updated? | Update progress.md at session end |
 | 12 | ✅ Skill self-improved? | Run lesson migrator → check if skills evolved |
 
-## Session-End Ritual (NEW v8.0)
+## Session-End Ritual (NEW v8.2)
 
 **Before closing any session, ALWAYS run:**
 
@@ -418,14 +418,16 @@ Before finishing ANY task, verify ALL of the following:
    - Add blockers/open questions
    - Update last_updated timestamp
 
-2. Update activeContext.md:
-   - Summarize current state
-   - Note next steps
+2. Update session state (automated):
+   python3 scripts/memory-middleware.py session-log end "[summary]"
+   # → Sets status to "completed"
+   # → Adds completed_at timestamp
+   # → Updates activeContext.md automatically
 
-3. Update session-log.json:
-   - Set status to "completed" OR "interrupted"
-   - Add completed_at timestamp
-   - Add summary of what was done
+3. Generate handover if needed:
+   python3 scripts/memory-middleware.py handover
+   # → Creates HANDOVER.md for next session
+   # → Includes goals, tasks, blockers, next steps
 
 4. Migrate lessons to skill files + skill update check:
    bash scripts/forgewright-lesson-migrator.sh migrate
@@ -441,6 +443,17 @@ Before finishing ANY task, verify ALL of the following:
    # Log to .forgewright/asip-metrics.json:
    #   sessionsWithEvolution += 1 (if any new entries added)
 ```
+
+**SAVE/Resume Commands:**
+
+| Command | Purpose |
+|---------|---------|
+| `python3 scripts/memory-middleware.py session-log create` | Initialize session-log.json |
+| `python3 scripts/memory-middleware.py session-log start <mode> <request>` | Start new session |
+| `python3 scripts/memory-middleware.py session-log task <id> <status> <summary>` | Track tasks |
+| `python3 scripts/memory-middleware.py session-log end [summary]` | End session |
+| `python3 scripts/memory-middleware.py handover` | Generate handover doc |
+| `python3 scripts/memory-middleware.py status` | Show full status |
 
 **Why:** Each failed assumption is now a verified test/script failure. The migrator preserves these as lessons. Over time, every project makes the skills smarter — the system learns from every mistake, not just the current one.
 
@@ -492,27 +505,45 @@ Memory checkpoint runs automatically when:
 
 | Trigger | Threshold | Action |
 |---------|-----------|--------|
-| Message count | Every N messages | Auto-checkpoint |
-| Token budget | ≥ 70% context | Force checkpoint |
+| Message count | Every N messages (default: 3) | Auto-checkpoint |
+| Token budget | ≥ 80% context | Log warning, suggest checkpoint |
+| Token budget | ≥ 95% context | Auto-generate handover + checkpoint |
 | File write | After code changes | Optional save |
 | Long task | > 30 seconds | Context freeze |
+
+**Token Thresholds (v8.2):**
+
+```bash
+# Warning threshold (80%) - suggest checkpoint
+MEMORY_TOKEN_THRESHOLD_WARN=80  # default
+
+# Critical threshold (95%) - auto-handover
+MEMORY_TOKEN_THRESHOLD_CRITICAL=95  # default
+```
 
 ### Usage (Manual Override)
 
 ```bash
 # Start session tracking
 python3 scripts/memory-middleware.py start
-# or
-bash scripts/memory-session.sh start
 
 # Force checkpoint
 python3 scripts/memory-middleware.py checkpoint
 
-# Check status
+# Check status (shows session-log.json + token thresholds)
 python3 scripts/memory-middleware.py status
 
 # Resume from last checkpoint
 python3 scripts/memory-middleware.py resume
+
+# Generate handover document
+python3 scripts/memory-middleware.py handover
+
+# Manage session-log.json
+python3 scripts/memory-middleware.py session-log create
+python3 scripts/memory-middleware.py session-log start <mode> <request>
+python3 scripts/memory-middleware.py session-log task <id> <status> <summary>
+python3 scripts/memory-middleware.py session-log end [summary]
 ```
 
 ### IDE Integration

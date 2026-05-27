@@ -291,6 +291,28 @@ Remote version: compare with https://github.com/buiphucminhtam/forgewright
 
 If a newer version exists, mention it briefly: *"Forgewright update available (vX.X.X → vY.Y.Y). Run `/update` to upgrade."*
 
+## In-Repo Hooks Configuration
+
+Forgewright provides in-repo hook configurations for Claude Code in `.claude/hooks.yml`. This allows team-wide consistency without requiring global configuration.
+
+**Setup:**
+```bash
+# Option 1: Symlink (recommended)
+ln -sf "$(pwd)/.claude/hooks.yml" ~/.claude/hooks.yml
+
+# Option 2: Copy
+cp .claude/hooks.yml ~/.claude/hooks.yml
+```
+
+**Current hooks:**
+- `memory-tick`: Automatically increments message count and checks token thresholds after each tool use
+- `token-check`: Placeholder for pre-tool token usage checks
+
+**Benefits:**
+- Hooks are version-controlled with the project
+- New team members get hooks automatically
+- Changes propagate via git
+
 ## Skills Directory
 
 All 56 skills are in the `skills/` directory:
@@ -386,6 +408,8 @@ All 56 skills are in the `skills/` directory:
 | Paperclip Integration Protocol | `skills/_shared/protocols/paperclip-integration.md` |
 | Worktree Manager | `scripts/worktree-manager.sh` |
 | Memory CLI | `scripts/mem0-v2.py` |
+| Memory Middleware | `scripts/memory-middleware.py` |
+| Memory Handover Verification | `scripts/verify-memory-handover.sh` |
 | Mobile Test Setup | `scripts/mobile-test-setup.sh` |
 
 ## Configuration
