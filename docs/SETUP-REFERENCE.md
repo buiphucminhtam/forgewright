@@ -81,7 +81,7 @@ project/
 ```
 forgewright/
 ├── scripts/
-│   ├── fw-mcp.sh                    # Unified MCP manager
+│   ├── forgewright-mcp-setup.sh                    # Unified MCP manager
 │   ├── forgenexus-setup.sh          # ForgeNexus installer
 │   ├── forgewright-mcp-launcher.sh   # FW MCP launcher
 │   ├── forgenexus-mcp-launcher.sh   # FNX MCP launcher
@@ -320,14 +320,14 @@ codex mcp list
 |----------|--------|--------|
 | `FORGEWRIGHT_DEBUG` | 0, 1 | Enable debug output in launcher |
 | `FORGENEXUS_DEBUG` | 0, 1 | Enable ForgeNexus debug |
-| `FW_MCP_VERBOSE` | 0, 1 | Verbose output for fw-mcp.sh |
+| `FW_MCP_VERBOSE` | 0, 1 | Verbose output for forgewright-mcp-setup.sh |
 | `FNX_VERBOSE` | 0, 1 | Verbose output for forgenexus-setup.sh |
 
 ---
 
 ## Exit Codes
 
-### fw-mcp.sh
+### forgewright-mcp-setup.sh
 
 | Code | Meaning |
 |------|---------|
@@ -401,23 +401,23 @@ set -- "item1" "item2"
 
 ```bash
 # Test help
-bash fw-mcp.sh --help
+bash forgewright-mcp-setup.sh --help
 
 # Test check
-bash fw-mcp.sh check
+bash forgewright-mcp-setup.sh check
 
 # Test diagnose
-bash fw-mcp.sh diagnose
+bash forgewright-mcp-setup.sh diagnose
 
 # Test wizard (non-interactive)
-echo "" | bash fw-mcp.sh wizard
+echo "" | bash forgewright-mcp-setup.sh wizard
 ```
 
 ### ShellCheck
 
 ```bash
 # Check scripts
-shellcheck scripts/fw-mcp.sh
+shellcheck scripts/forgewright-mcp-setup.sh
 shellcheck scripts/forgenexus-setup.sh
 shellcheck scripts/forgewright-mcp-launcher.sh
 shellcheck scripts/forgenexus-mcp-launcher.sh
@@ -432,10 +432,10 @@ cd /tmp/fw-test
 git init
 
 # Run setup
-bash /path/to/forgewright/scripts/fw-mcp.sh setup
+bash /path/to/forgewright/scripts/forgewright-mcp-setup.sh setup
 
 # Verify
-bash /path/to/forgewright/scripts/fw-mcp.sh check
+bash /path/to/forgewright/scripts/forgewright-mcp-setup.sh check
 
 # Clean up
 cd /
@@ -452,14 +452,14 @@ rm -rf /tmp/fw-test
 |-------|-------|-----|
 | `command not found: node` | Node.js not installed | Install from nodejs.org |
 | `launcher not found` | Wrong path | Re-run setup |
-| `workspace mismatch` | Manifest stale | `fw-mcp.sh setup --force` |
+| `workspace mismatch` | Manifest stale | `forgewright-mcp-setup.sh setup --force` |
 | `npm install failed` | Network/proxy | Check npm config |
 
 ### Debug Commands
 
 ```bash
 # Verbose output
-FW_MCP_VERBOSE=1 bash fw-mcp.sh diagnose
+FW_MCP_VERBOSE=1 bash forgewright-mcp-setup.sh diagnose
 
 # Debug launcher
 FORGEWRIGHT_DEBUG=1 bash scripts/forgewright-mcp-launcher.sh

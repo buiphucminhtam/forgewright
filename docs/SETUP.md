@@ -25,16 +25,16 @@
 cd /path/to/your/project
 
 # Run the setup wizard
-bash forgewright/scripts/fw-mcp.sh wizard
+bash forgewright/scripts/forgewright-mcp-setup.sh wizard
 
 # Or use quick setup (all defaults)
-bash forgewright/scripts/fw-mcp.sh setup
+bash forgewright/scripts/forgewright-mcp-setup.sh setup
 ```
 
 ### Verify Installation
 
 ```bash
-bash forgewright/scripts/fw-mcp.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh check
 ```
 
 Expected output:
@@ -75,7 +75,7 @@ git --version     # Should show 2.x+
 ```bash
 # From your project directory
 cd /path/to/project
-bash forgewright/scripts/fw-mcp.sh setup
+bash forgewright/scripts/forgewright-mcp-setup.sh setup
 ```
 
 This automatically:
@@ -111,7 +111,7 @@ gitnexus setup
 #### Verify Cursor Setup
 
 ```bash
-bash forgewright/scripts/fw-mcp.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh check
 ```
 
 Look for:
@@ -129,7 +129,7 @@ Look for:
 
 ```bash
 cd /path/to/project
-bash forgewright/scripts/fw-mcp.sh setup
+bash forgewright/scripts/forgewright-mcp-setup.sh setup
 ```
 
 #### Option 2: Manual Setup
@@ -164,7 +164,7 @@ gitnexus setup
 #### Verify Claude Setup
 
 ```bash
-bash forgewright/scripts/fw-mcp.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh check
 ```
 
 ---
@@ -349,7 +349,7 @@ Project/
 
 ```bash
 cd /path/to/project
-bash forgewright/scripts/fw-mcp.sh setup
+bash forgewright/scripts/forgewright-mcp-setup.sh setup
 ```
 
 This creates the shared files:
@@ -373,8 +373,8 @@ Each IDE will automatically detect the workspace and load the correct context.
 
 | IDE | Config Location | Auto-Detection |
 |-----|---------------|-----------------|
-| **Cursor** | `~/.cursor/mcp.json` | Updated by `fw-mcp.sh` |
-| **Claude Desktop** | `~/.config/Claude/...` | Updated by `fw-mcp.sh` |
+| **Cursor** | `~/.cursor/mcp.json` | Updated by `forgewright-mcp-setup.sh` |
+| **Claude Desktop** | `~/.config/Claude/...` | Updated by `forgewright-mcp-setup.sh` |
 | **Antigravity** | `.antigravity/` | Reads manifest automatically |
 
 ### Workspace Detection Per IDE
@@ -424,39 +424,42 @@ When you switch from one IDE to another:
 
 ```bash
 # Check which IDEs are configured
-bash forgewright/scripts/fw-mcp.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh check
 
 # Run diagnostics for detailed view
-bash forgewright/scripts/fw-mcp.sh diagnose
+bash forgewright/scripts/forgewright-mcp-setup.sh diagnose
 ```
 
 ---
 
 ## Commands Reference
 
-### fw-mcp.sh
+### forgewright-mcp-setup.sh
 
-Unified MCP manager for ForgeWright.
+Unified MCP setup for Cursor + Claude Code + Antigravity + OpenAI Codex CLI.
 
 ```bash
-# Setup
-bash fw-mcp.sh setup              # Full setup
-bash fw-mcp.sh setup --force       # Force re-setup
+# Setup all platforms
+bash forgewright/scripts/forgewright-mcp-setup.sh
 
-# Status
-bash fw-mcp.sh check               # Check installation
-bash fw-mcp.sh diagnose            # Detailed diagnostics
+# Setup individual platform
+bash forgewright/scripts/forgewright-mcp-setup.sh --cursor
+bash forgewright/scripts/forgewright-mcp-setup.sh --claude-code
+bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity
+bash forgewright/scripts/forgewright-mcp-setup.sh --codex
 
-# Management
-bash fw-mcp.sh uninstall           # Remove MCP
-bash fw-mcp.sh wizard             # Interactive wizard
+# Force re-generate MCP server
+bash forgewright/scripts/forgewright-mcp-setup.sh --force
 
-# GitNexus
-bash fw-mcp.sh gitnexus            # Setup GitNexus (recommended)
+# Status & diagnostics
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
+bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose
+
+# Remove MCP setup from all platforms
+bash forgewright/scripts/forgewright-mcp-setup.sh --uninstall
 
 # Help
-bash fw-mcp.sh --help
-bash fw-mcp.sh --version
+bash forgewright/scripts/forgewright-mcp-setup.sh --help
 ```
 
 ### GitNexus CLI
@@ -494,10 +497,10 @@ gitnexus list
 
 ```bash
 # Enable verbose output
-FW_MCP_VERBOSE=1 bash fw-mcp.sh diagnose
+FW_MCP_VERBOSE=1 bash forgewright-mcp-setup.sh diagnose
 
 # Or use --verbose flag
-bash fw-mcp.sh diagnose --verbose
+bash forgewright-mcp-setup.sh diagnose --verbose
 ```
 
 ---
@@ -512,12 +515,12 @@ bash fw-mcp.sh diagnose --verbose
 
 1. Check status:
    ```bash
-   bash fw-mcp.sh check
+   bash forgewright-mcp-setup.sh check
    ```
 
 2. Run diagnostics:
    ```bash
-   bash fw-mcp.sh diagnose
+   bash forgewright-mcp-setup.sh diagnose
    ```
 
 3. Restart IDE
@@ -533,13 +536,13 @@ bash fw-mcp.sh diagnose --verbose
 1. Set workspace explicitly:
    ```bash
    export FORGEWRIGHT_WORKSPACE=/path/to/project
-   bash fw-mcp.sh check
+   bash forgewright-mcp-setup.sh check
    ```
 
 2. Run from project directory:
    ```bash
    cd /path/to/project
-   bash fw-mcp.sh check
+   bash forgewright-mcp-setup.sh check
    ```
 
 ### GitNexus Index Stale
@@ -558,7 +561,7 @@ gitnexus analyze --force
 
 **Solution:** Re-run setup:
 ```bash
-bash fw-mcp.sh setup --force
+bash forgewright-mcp-setup.sh setup --force
 ```
 
 ### npm Install Failures
@@ -608,7 +611,7 @@ gitnexus setup
 ```bash
 cd forgewright
 git pull origin main
-bash scripts/fw-mcp.sh setup --force
+bash scripts/forgewright-mcp-setup.sh setup --force
 ```
 
 ### Q: Multiple projects - do I need separate configs?
@@ -623,7 +626,7 @@ bash scripts/fw-mcp.sh setup --force
 
 **A:**
 ```bash
-bash fw-mcp.sh uninstall
+bash forgewright-mcp-setup.sh uninstall
 ```
 
 ### Q: Can I use ForgeWright with multiple IDEs simultaneously?
@@ -632,7 +635,7 @@ bash fw-mcp.sh uninstall
 
 ```bash
 # Setup once
-bash forgewright/scripts/fw-mcp.sh setup
+bash forgewright/scripts/forgewright-mcp-setup.sh setup
 
 # Restart all IDEs (Cursor + Claude Desktop + Antigravity)
 # They all share the same:

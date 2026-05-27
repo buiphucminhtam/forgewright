@@ -15,7 +15,7 @@
     }
   },
   "notes": {
-    "installation": "Run 'fw-mcp.sh setup' from your project to auto-generate this config",
+    "installation": "Run 'forgewright-mcp-setup.sh setup' from your project to auto-generate this config",
     "workspace": "Launchers auto-detect workspace from git root or FORGEWRIGHT_WORKSPACE env var",
     "restart": "Restart Claude Desktop after modifying this file"
   }

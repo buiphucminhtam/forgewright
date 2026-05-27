@@ -926,7 +926,7 @@ bash scripts/fw-global-setup.sh --force
 | Change | Description |
 |--------|-------------|
 | **GitNexus Migration** | ForgeNexus → GitNexus (38K+ stars, npm install) |
-| **fw-mcp.sh v3.0.0** | Unified setup script with `gitnexus` command |
+| **forgewright-mcp-setup.sh v3.0.0** | Unified setup script with `forgewright` + `gitnexus` MCP |
 | **Single-command Setup** | `gitnexus setup` replaces multi-step ForgeNexus setup |
 | **Multi-repo Support** | New `gitnexus group` for cross-repo analysis |
 
@@ -936,7 +936,7 @@ bash scripts/fw-global-setup.sh --force
 |-----|-----|
 | `npx forgenexus analyze` | `gitnexus analyze` |
 | `forgenexus_*` MCP tools | `gitnexus_*` MCP tools |
-| `fw-mcp.sh forgenexus` | `fw-mcp.sh gitnexus` |
+| `fw-mcp.sh forgenexus` | `gitnexus setup` (GitNexus) + `forgewright-mcp-setup.sh` (ForgeWright) |
 
 **Migration:**
 

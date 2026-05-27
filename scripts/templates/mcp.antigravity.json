@@ -21,7 +21,7 @@
     }
   },
   "notes": {
-    "installation": "Run 'fw-mcp.sh setup' from your project to auto-generate this config",
+    "installation": "Run 'forgewright-mcp-setup.sh setup' from your project to auto-generate this config",
     "workspace": "Antigravity sets workspaceFolder env var automatically",
     "restart": "Restart Antigravity after modifying this file",
     "multi_project": "One config works for ALL projects with Antigravity"
