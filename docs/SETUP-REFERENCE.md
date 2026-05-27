@@ -1,6 +1,6 @@
 # MCP Setup Technical Reference
 
-> Detailed technical documentation for ForgeWright MCP setup.
+> Detailed technical documentation for ForgeWright MCP setup across Cursor, Claude Code, Antigravity, and OpenAI Codex CLI.
 
 ## Table of Contents
 
@@ -249,6 +249,55 @@ bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity
 
 ```bash
 bash forgewright/scripts/forgewright-mcp-setup.sh --check
+```
+
+### OpenAI Codex CLI
+
+**Config Location:** `~/.codex/config.toml`
+
+OpenAI Codex CLI uses the **canonical MCP server** at `~/.forgewright/mcp-server/server.ts`. Codex uses TOML config format.
+
+#### Canonical Server Rule
+
+```
+~/.forgewright/mcp-server/server.ts  ← CANONICAL (single source of truth)
+│
+├── ~/.cursor/mcp.json              → Cursor
+├── ~/.claude/settings.json        → Claude Code
+└── ~/.codex/config.toml            → OpenAI Codex CLI (TOML)
+```
+
+#### Config Format
+
+```toml
+[mcp_servers.forgewright]
+enabled = true
+transport = { type = "stdio" }
+command = "npx"
+args = ["tsx", "~/.forgewright/mcp-server/server.ts"]
+env = { FORGEWRIGHT_WORKSPACE = "$PROJECT_ROOT" }
+
+[mcp_servers.gitnexus]
+enabled = true
+transport = { type = "stdio" }
+command = "gitnexus"
+args = ["mcp"]
+```
+
+**Note:** Codex CLI only supports **STDIO transport** for local MCP servers. Remote HTTP/SSE servers are not yet supported.
+
+#### Setup Command
+
+```bash
+bash forgewright/scripts/forgewright-mcp-setup.sh --codex
+```
+
+#### Verify
+
+```bash
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
+# or native
+codex mcp list
 ```
 
 ---

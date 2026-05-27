@@ -10,7 +10,7 @@
 # 1. Go to your project
 cd /path/to/project
 
-# 2. Run setup (one command — sets up Cursor + Claude + Antigravity)
+# 2. Run setup (one command — sets up Cursor + Claude + Antigravity + Codex CLI)
 bash forgewright/scripts/forgewright-mcp-setup.sh
 
 # 3. Restart your IDE (all platforms)
@@ -51,6 +51,8 @@ Expected output:
   ✓ Updated ~/.claude/settings.json
   ➜ Setting up Antigravity MCP...
   ✓ Antigravity MCP setup complete
+  ➜ Setting up OpenAI Codex CLI MCP...
+  ✓ Updated ~/.codex/config.toml
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ✓ Universal MCP Setup Complete
@@ -60,6 +62,7 @@ Expected output:
     ✓ Cursor (~/.cursor/mcp.json)
     ✓ Claude Code (~/.claude/settings.json)
     ✓ Antigravity (MCP workspace)
+    ✓ OpenAI Codex CLI (~/.codex/config.toml)
 
   Next: Restart your AI clients to activate MCP servers
         Verify: bash forgewright/scripts/forgewright-mcp-setup.sh --check
@@ -70,7 +73,8 @@ Expected output:
 ```
 1. Quit Cursor completely (Cmd+Q)
 2. Quit Claude Desktop completely
-3. Restart Antigravity (if running)
+3. Quit Codex CLI
+4. Restart Antigravity (if running)
 ```
 
 ### 4. Verify (All 3 Platforms)
@@ -98,6 +102,10 @@ Expected output:
 
   ✓ Manifest: /path/to/project/.antigravity/mcp-manifest.json
 
+  ✓ Codex CLI: ~/.codex/config.toml
+    forgewright: CONFIGURED
+    gitnexus: CONFIGURED
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -116,6 +124,9 @@ bash forgewright/scripts/forgewright-mcp-setup.sh --claude-code
 
 # Antigravity only
 bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity
+
+# OpenAI Codex CLI only
+bash forgewright/scripts/forgewright-mcp-setup.sh --codex
 ```
 
 ### Check Status
@@ -149,11 +160,12 @@ bash forgewright/scripts/forgewright-mcp-setup.sh --uninstall
 
 ## Verify Checklist
 
-After setup, confirm all 3 platforms are configured:
+After setup, confirm all 4 platforms are configured:
 
 - [ ] **Cursor**: Restart Cursor, check MCP tools appear
 - [ ] **Claude Code**: Restart Claude, check MCP tools appear
 - [ ] **Antigravity**: Restart Antigravity, check MCP tools appear
+- [ ] **OpenAI Codex CLI**: Restart Codex, run `codex mcp list` to verify
 - [ ] **Script check**: `bash forgewright/scripts/forgewright-mcp-setup.sh --check` shows all ✓
 
 ---

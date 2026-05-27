@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity)
+# forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity + Codex)
 #
-# Single command to set up Forgewright MCP for ALL three AI clients simultaneously.
-# Works for Cursor, Claude Code, and Antigravity plugins.
+# Single command to set up Forgewright MCP for ALL AI clients simultaneously.
+# Works for Cursor, Claude Code, Antigravity, and OpenAI Codex CLI.
 #
 # USAGE:
 #   bash forgewright/scripts/forgewright-mcp-setup.sh
@@ -13,6 +13,7 @@
 #   --cursor      Setup Cursor only
 #   --claude-code Setup Claude Code only
 #   --antigravity Setup Antigravity only
+#   --codex       Setup OpenAI Codex CLI only
 #   --all         Setup all platforms (default)
 #   --force       Re-generate even if already set up
 #   --uninstall   Remove MCP setup from all platforms
@@ -23,6 +24,7 @@
 #   Cursor:       ~/.cursor/mcp.json
 #   Claude Code:  ~/.claude/settings.json
 #   Antigravity:  ~/.cursor/projects/<hash>/mcps/<server>/tools/*.json
+#   Codex CLI:    ~/.codex/config.toml
 # =============================================================================
 
 set -euo pipefail
@@ -130,10 +132,11 @@ USAGE:
   forgewright-mcp-setup.sh [OPTIONS]
 
 OPTIONS:
-  --all         Setup all platforms (Cursor + Claude Code + Antigravity) [DEFAULT]
+  --all         Setup all platforms (Cursor + Claude Code + Antigravity + Codex) [DEFAULT]
   --cursor      Setup Cursor MCP only
   --claude-code Setup Claude Code MCP only
   --antigravity Setup Antigravity MCP only
+  --codex       Setup OpenAI Codex CLI MCP only
   --check       Check MCP status across all platforms
   --force       Re-generate even if already set up
   --uninstall   Remove MCP setup from all platforms
@@ -144,6 +147,7 @@ PLATFORMS:
   Cursor        ~/.cursor/mcp.json
   Claude Code   ~/.claude/settings.json  (mcpServers key)
   Antigravity   ~/.cursor/projects/<hash>/mcps/user-forgewright/
+  Codex CLI     ~/.codex/config.toml
 
 EXAMPLES:
   # Setup all platforms
@@ -157,6 +161,9 @@ EXAMPLES:
 
   # Setup Antigravity only
   forgewright-mcp-setup.sh --antigravity
+
+  # Setup OpenAI Codex CLI only
+  forgewright-mcp-setup.sh --codex
 EOF
 }
 
@@ -200,6 +207,7 @@ detect_platforms() {
     PLATFORM_CURSOR="false"
     PLATFORM_CLAUDE_CODE="false"
     PLATFORM_ANTIGRAVITY="false"
+    PLATFORM_CODEX="false"
 
     # Cursor: ~/.cursor/mcp.json exists and is readable
     if [[ -f "$cursor_config" ]] && grep -q "cursor" "$cursor_config" 2>/dev/null; then
@@ -222,6 +230,13 @@ detect_platforms() {
         if [[ "$ag_count" -gt 0 ]]; then
             PLATFORM_ANTIGRAVITY="true"
         fi
+    fi
+
+    # Codex CLI: ~/.codex/config.toml exists
+    if [[ -f "$HOME/.codex/config.toml" ]]; then
+        PLATFORM_CODEX="true"
+    elif command -v codex &>/dev/null; then
+        PLATFORM_CODEX="true"
     fi
 }
 
@@ -524,6 +539,97 @@ LAUNCHER_EOF
     log_info "  Workspace: auto-detected from git root"
 }
 
+# ─── Platform: OpenAI Codex CLI ─────────────────────────────────────────────
+
+CODEX_CONFIG=""
+
+setup_codex() {
+    CODEX_CONFIG="$HOME/.codex/config.toml"
+    log_step "Setting up OpenAI Codex CLI MCP..."
+
+    # Check if Codex CLI is installed
+    if ! command -v codex &>/dev/null; then
+        log_warn "Codex CLI not found in PATH"
+        log_info "  Install: https://openai.com/index/openai-codex"
+        log_info "  Or: npm install -g @openai/codex"
+        return 0
+    fi
+
+    # CRITICAL: Always use CANONICAL path for global config, never submodule path
+    if [[ ! -f "$CANONICAL_SERVER_TS" ]]; then
+        log_error "Canonical MCP server not found: $CANONICAL_SERVER_TS"
+        log_info "  Run setup from the canonical forgewright installation first."
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$CODEX_CONFIG")"
+
+    # Backup existing config
+    if [[ -f "$CODEX_CONFIG" ]]; then
+        cp "$CODEX_CONFIG" "${CODEX_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
+    fi
+
+    # Determine gitnexus binary path
+    local gitnexus_path="gitnexus"
+    if [[ -x "/opt/homebrew/bin/gitnexus" ]]; then
+        gitnexus_path="/opt/homebrew/bin/gitnexus"
+    elif [[ -x "$HOME/.local/bin/gitnexus" ]]; then
+        gitnexus_path="$HOME/.local/bin/gitnexus"
+    fi
+
+    # Read existing config
+    local existing=""
+    if [[ -f "$CODEX_CONFIG" ]]; then
+        existing=$(cat "$CODEX_CONFIG")
+    fi
+
+    # Build new config, merging forgewright/gitnexus sections
+    {
+        # Output existing content up to (but not including) any existing mcp_servers.forgewright section
+        if [[ -n "$existing" ]]; then
+            local skip_section=""
+            local prev_line=""
+            while IFS= read -r line || [[ -n "$line" ]]; do
+                # Detect start of [mcp_servers.forgewright] or [mcp_servers.gitnexus]
+                if [[ "$line" =~ ^\[mcp_servers\.(forgewright|gitnexus)\] ]]; then
+                    skip_section="true"
+                    continue
+                fi
+                # Detect start of next top-level section while skipping
+                if [[ -n "$skip_section" ]]; then
+                    if [[ "$line" =~ ^\[.*\] ]]; then
+                        skip_section=""
+                        echo "$line"
+                    fi
+                    continue
+                fi
+                echo "$line"
+            done <<< "$existing"
+        fi
+
+        # Append forgewright section (always, no duplicate check needed)
+        echo ""
+        echo "[mcp_servers.forgewright]"
+        echo 'enabled = true'
+        echo 'transport = { type = "stdio" }'
+        echo 'command = "npx"'
+        echo "args = [\"tsx\", \"$CANONICAL_SERVER_TS\"]"
+        echo "env = { FORGEWRIGHT_WORKSPACE = \"$PROJECT_ROOT\" }"
+
+        # Append gitnexus section
+        echo ""
+        echo "[mcp_servers.gitnexus]"
+        echo 'enabled = true'
+        echo 'transport = { type = "stdio" }'
+        echo "command = \"$gitnexus_path\""
+        echo 'args = ["mcp"]'
+    } > "$CODEX_CONFIG"
+
+    log_ok "Updated $CODEX_CONFIG"
+    log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
+    log_info "  gitnexus    → $gitnexus_path"
+}
+
 # ─── Verify Manifest ────────────────────────────────────────────────────────────
 
 verify_manifest() {
@@ -664,6 +770,25 @@ cmd_check() {
     fi
     echo ""
 
+    # Codex CLI
+    CODEX_CONFIG="$HOME/.codex/config.toml"
+    if [[ -f "$CODEX_CONFIG" ]]; then
+        log_ok "Codex CLI: $CODEX_CONFIG"
+        if grep -q '^\[mcp_servers\.forgewright\]' "$CODEX_CONFIG" 2>/dev/null; then
+            log_ok "  forgewright: CONFIGURED"
+        else
+            log_warn "  forgewright: NOT configured"
+        fi
+        if grep -q '^\[mcp_servers\.gitnexus\]' "$CODEX_CONFIG" 2>/dev/null; then
+            log_ok "  gitnexus: CONFIGURED"
+        else
+            log_warn "  gitnexus: NOT configured"
+        fi
+    else
+        log_warn "Codex CLI: NOT FOUND (~/.codex/config.toml)"
+    fi
+    echo ""
+
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
@@ -738,6 +863,30 @@ fs.writeFileSync('$CLAUDE_CODE_CONFIG', JSON.stringify(cfg, null, 2));
     rm -rf "${PROJECT_ROOT}/.forgewright/mcp-server"
     rm -rf "${PROJECT_ROOT}/.antigravity/mcp-manifest.json"
 
+    # Remove from Codex CLI
+    local codex_config="$HOME/.codex/config.toml"
+    if [[ -f "$codex_config" ]]; then
+        # Remove forgewright and gitnexus sections from TOML
+        local tmp
+        tmp=$(mktemp)
+        local skip_section=""
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" =~ ^\[mcp_servers\.(forgewright|gitnexus)\] ]]; then
+                skip_section="true"
+                continue
+            fi
+            if [[ -n "$skip_section" ]]; then
+                if [[ "$line" =~ ^\[.*\] ]]; then
+                    skip_section=""
+                fi
+                continue
+            fi
+            echo "$line"
+        done < "$codex_config" > "$tmp"
+        mv "$tmp" "$codex_config"
+        log_ok "Removed from Codex CLI"
+    fi
+
     log_ok "Uninstall complete. Restart your AI clients."
 }
 
@@ -746,6 +895,8 @@ fs.writeFileSync('$CLAUDE_CODE_CONFIG', JSON.stringify(cfg, null, 2));
 declare PLATFORM_CURSOR="false"
 declare PLATFORM_CLAUDE_CODE="false"
 declare PLATFORM_ANTIGRAVITY="false"
+declare PLATFORM_CODEX="false"
+declare CODEX_CONFIG=""
 
 main() {
     local mode="install"
@@ -759,6 +910,7 @@ main() {
             --cursor)        mode="cursor-only"; shift ;;
             --claude-code)   mode="claude-code-only"; shift ;;
             --antigravity)   mode="antigravity-only"; shift ;;
+            --codex)         mode="codex-only"; shift ;;
             --check)         mode="check"; shift ;;
             --force)         force=true; shift ;;
             --uninstall)     mode="uninstall"; shift ;;
@@ -793,7 +945,7 @@ main() {
     echo ""
     echo "  Forgewright: $FORGEWRIGHT_DIR"
     echo "  Project:     $PROJECT_ROOT"
-    echo "  Platforms:   Cursor + Claude Code + Antigravity"
+    echo "  Platforms:   Cursor + Claude Code + Antigravity + Codex CLI"
     echo ""
 
     case "$mode" in
@@ -806,20 +958,21 @@ main() {
         uninstall)
             cmd_uninstall
             ;;
-        install|cursor-only|claude-code-only|antigravity-only)
+        install|cursor-only|claude-code-only|antigravity-only|codex-only)
             # Check prerequisites for install modes
             [[ "$mode" == "install" ]] && check_prerequisites
 
             # Determine which platforms to setup
-            local do_cursor=false do_claude=false do_antigravity=false
+            local do_cursor=false do_claude=false do_antigravity=false do_codex=false
 
             case "$mode" in
                 install)
-                    do_cursor=true; do_claude=true; do_antigravity=true
+                    do_cursor=true; do_claude=true; do_antigravity=true; do_codex=true
                     ;;
                 cursor-only)       do_cursor=true ;;
                 claude-code-only)  do_claude=true ;;
                 antigravity-only)  do_antigravity=true ;;
+                codex-only)        do_codex=true ;;
             esac
 
             # Skip MCP server regen if already exists and not forced
@@ -859,6 +1012,11 @@ main() {
                 echo ""
             fi
 
+            if [[ "$do_codex" == "true" ]]; then
+                setup_codex
+                echo ""
+            fi
+
             verify_installation
             echo ""
 
@@ -870,6 +1028,7 @@ main() {
             [[ "$do_cursor" == "true" ]] && echo "    ✓ Cursor (~/.cursor/mcp.json)"
             [[ "$do_claude" == "true" ]] && echo "    ✓ Claude Code (~/.claude/settings.json)"
             [[ "$do_antigravity" == "true" ]] && echo "    ✓ Antigravity (MCP workspace)"
+            [[ "$do_codex" == "true" ]] && echo "    ✓ OpenAI Codex CLI (~/.codex/config.toml)"
             echo ""
             echo "  Next: Restart your AI clients to activate MCP servers"
             echo "        Verify: bash ${BASH_SOURCE[0]} --check"

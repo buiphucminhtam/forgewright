@@ -263,7 +263,68 @@ Nếu cần config thủ công, launcher vẫn phải dùng canonical server:
 
 ---
 
-## Multi-IDE Setup (Cursor + Claude + Antigravity)
+### OpenAI Codex CLI
+
+Codex CLI cũng dùng **canonical MCP server** tại `~/.forgewright/mcp-server/server.ts`. Config file: `~/.codex/config.toml` (TOML format).
+
+#### Canonical Server Rule
+
+```
+~/.forgewright/mcp-server/server.ts  ← CANONICAL (duy nhất, shared)
+│
+├── ~/.cursor/mcp.json              → Cursor
+├── ~/.claude/settings.json        → Claude Code
+├── ~/.codex/config.toml           → OpenAI Codex CLI
+└── Antigravity project workspace   → Manifest provides context, server là canonical
+```
+
+#### Setup Command
+
+```bash
+# Codex CLI only
+bash forgewright/scripts/forgewright-mcp-setup.sh --codex
+```
+
+Hoặc setup tất cả platforms cùng lúc:
+
+```bash
+bash forgewright/scripts/forgewright-mcp-setup.sh
+```
+
+#### Verify Codex Setup
+
+```bash
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
+```
+
+Hoặc dùng Codex CLI native:
+
+```bash
+codex mcp list
+codex mcp get forgewright
+```
+
+Expected output trong config:
+```toml
+[mcp_servers.forgewright]
+enabled = true
+transport = { type = "stdio" }
+command = "npx"
+args = ["tsx", "~/.forgewright/mcp-server/server.ts"]
+env = { FORGEWRIGHT_WORKSPACE = "$PROJECT_ROOT" }
+
+[mcp_servers.gitnexus]
+enabled = true
+transport = { type = "stdio" }
+command = "gitnexus"
+args = ["mcp"]
+```
+
+**Lưu ý:** Codex CLI chỉ hỗ trợ **STDIO transport** cho local servers. Remote MCP servers (HTTP/SSE) chưa được hỗ trợ.
+
+---
+
+## Multi-IDE Setup (Cursor + Claude + Antigravity + Codex)
 
 If you use multiple AI IDEs with the same project, here's how it works:
 
@@ -276,8 +337,10 @@ Project/
 └── .gitnexus/                       # GitNexus code graph (index)
 
 ~/.cursor/mcp.json                   # Cursor MCP config
-~/Library/.../claude_desktop_config.json  # Claude Desktop MCP config
+~/.claude/settings.json             # Claude Code MCP config
+~/.codex/config.toml                 # OpenAI Codex CLI MCP config
 ~/.gitnexus/                         # GitNexus registry
+~/.forgewright/mcp-server/           # CANONICAL MCP server (shared by all)
 ```
 
 ### Setup Steps

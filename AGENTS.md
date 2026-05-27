@@ -221,10 +221,11 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
    bash <forgewright>/scripts/forgewright-mcp-setup.sh
    ```
 
-   This single command sets up Forgewright MCP for **ALL three platforms simultaneously**:
+   This single command sets up Forgewright MCP for **ALL four platforms simultaneously**:
    - **Cursor**: `~/.cursor/mcp.json`
    - **Claude Code**: `~/.claude/settings.json` (mcpServers key)
    - **Antigravity**: MCP workspace isolation via `~/.cursor/projects/<hash>/mcps/`
+   - **OpenAI Codex CLI**: `~/.codex/config.toml` (TOML format)
 
    The script auto-detects which platforms are available and configures them all with identical settings — the same MCP server path, the same launchers, the same workspace detection logic.
 
@@ -233,6 +234,7 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
    bash forgewright/scripts/forgewright-mcp-setup.sh --cursor       # Cursor only
    bash forgewright/scripts/forgewright-mcp-setup.sh --claude-code # Claude Code only
    bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity  # Antigravity only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --codex        # OpenAI Codex CLI only
    bash forgewright/scripts/forgewright-mcp-setup.sh --check       # Status check
    bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose     # Full diagnostics
    ```
@@ -259,7 +261,7 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 **The canonical MCP server lives at:** `~/.forgewright/mcp-server/server.ts`
 
 **CRITICAL — One Server, All Platforms:**
-- The global MCP configs (`~/.cursor/mcp.json`, `~/.claude/settings.json`) are **SHARED across ALL projects**
+- The global MCP configs (`~/.cursor/mcp.json`, `~/.claude/settings.json`, `~/.codex/config.toml`) are **SHARED across ALL projects**
 - They MUST always point to `~/.forgewright/mcp-server/server.ts`
 - **NEVER** write a submodule Forgewright path (e.g., `/project/submodule/forgewright/.forgewright/mcp-server/`) into global configs
 - **ALWAYS** run `forgewright-mcp-setup.sh` from the canonical Forgewright installation to update global configs
@@ -268,7 +270,8 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 1. Syncs the MCP server from forgewright source → `~/.forgewright/mcp-server/`
 2. Writes `~/.cursor/mcp.json` pointing to canonical server
 3. Writes `~/.claude/settings.json` pointing to canonical server
-4. Submodule projects get `.antigravity/mcp-manifest.json` (project context only)
+4. Writes `~/.codex/config.toml` pointing to canonical server (TOML format)
+5. Submodule projects get `.antigravity/mcp-manifest.json` (project context only)
 
 **Platform configuration targets:**
 
@@ -277,6 +280,7 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 | **Cursor** | `~/.cursor/mcp.json` | `forgewright` + `gitnexus` |
 | **Claude Code** | `~/.claude/settings.json` | `mcpServers.forgewright` + `mcpServers.gitnexus` |
 | **Antigravity** | `~/.cursor/projects/<hash>/mcps/` | MCP workspace isolation |
+| **OpenAI Codex** | `~/.codex/config.toml` | `forgewright` + `gitnexus` (TOML) |
 
 **Why this works:** All platforms use `npx tsx` with the same absolute path to the canonical server at `~/.forgewright/mcp-server/`. The server auto-detects workspace from `FORGEWRIGHT_WORKSPACE` env var or git root, so it works correctly from any project regardless of where forgewright itself is installed.
 
