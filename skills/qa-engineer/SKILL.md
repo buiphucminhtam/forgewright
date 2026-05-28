@@ -815,3 +815,60 @@ jobs:
 - [ ] Performance benchmarks pass
 - [ ] Mobile testing complete
 - [ ] QA sign-off obtained
+
+## Comment Checker (NEW — OmO Feature)
+
+**Purpose:** Reject AI-generated comment slop — obvious statements, self-documenting comments, incomplete TODOs.
+
+**When to run:** After code generation, as part of quality gate. Part of the `harden` phase.
+
+**How to use:**
+
+```bash
+# Check a single file
+node scripts/comment-checker/check.ts src/auth.ts
+
+# Check a directory
+node scripts/comment-checker/check.ts src/
+
+# Output JSON for automation
+node scripts/comment-checker/check.ts src/ --json --strict
+
+# Auto-fix obvious slop
+node scripts/comment-checker/autofix.ts src/ --dry-run  # Preview
+node scripts/comment-checker/autofix.ts src/             # Apply
+```
+
+**Rules:**
+
+| ID | Type | Description | Example |
+|----|------|-------------|---------|
+| `obvious-action` | reject | Describes obvious action from code | `// Increment counter` |
+| `self-documenting` | reject | Restates element name | `// This function validates input` |
+| `todo-without-meta` | reject | TODO without assignee + deadline | `// TODO: Fix later` |
+| `stale-comment` | flag | Outdated/deprecated indicator | `// deprecated` |
+| `business-context` | accept | Business rationale | `// GDPR requires explicit consent` |
+
+**Integration with QA workflow:**
+
+```
+After code generation:
+1. Run unit tests
+2. Run linter
+3. Run Comment Checker
+4. If errors → fix comments before proceeding
+5. If warnings → review and fix or accept
+```
+
+**Quality gate integration:**
+
+```bash
+# Add to CI/CD pipeline after tests pass
+node scripts/comment-checker/check.ts src/ --strict
+if [ $? -ne 0 ]; then
+  echo "Comment slop detected. Run: node scripts/comment-checker/autofix.ts src/"
+  exit 1
+fi
+```
+
+**Note:** Comment Checker is a quality tool, not a style enforcer. The goal is eliminating slop, not mandating perfect comments. Leave legitimate comments that explain non-obvious decisions, business rules, and regulatory requirements.

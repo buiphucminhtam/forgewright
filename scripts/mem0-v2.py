@@ -82,6 +82,35 @@ CATEGORY_WEIGHTS = {
     "ingested": 2,
 }
 
+AUTO_TAG_PATTERNS = [
+    # Auth/Security
+    (r"\b(auth|jwt|oauth|token|credential|password|passphrase|secret|api[_-]?key)\b", "auth"),
+    # Architecture/Design
+    (r"\b(architecture|design|pattern|schema|model|structure|layer|component|module|interface)\b", "architecture"),
+    # Database
+    (r"\b(sql|database|db|postgres|mysql|mongodb|migration|query|index|table|schema)\b", "database"),
+    # Performance
+    (r"\b(performance|speed|optimize|cache|benchmark|profiling|latency|throughput)\b", "performance"),
+    # API/Integration
+    (r"\b(api|rest|graphql|webhook|endpoint|http|request|response|integration)\b", "api"),
+    # Security
+    (r"\b(security|vulnerable|exploit|injection|xss|csrf|encryption|hash|encrypt)\b", "security"),
+    # Testing
+    (r"\b(test|spec|coverage|unittest|pytest|jest|qa|verification|validation)\b", "testing"),
+    # DevOps/Infra
+    (r"\b(deploy|docker|kubernetes|ci|cd|pipeline|terraform|infrastructure|cloud|aws|gcp)\b", "devops"),
+    # Memory/Learning
+    (r"\b(memory|checkpoint|retrieval|context|session|conversation|history)\b", "memory"),
+    # Planning/Process
+    (r"\b(plan|scoring|quality|protocol|process|workflow|pipeline|gate|approval)\b", "process"),
+    # UI/Frontend
+    (r"\b(ui|ux|frontend|react|vue|component|style|animation|responsive)\b", "frontend"),
+    # Game
+    (r"\b(unity|unreal|godot|game|sprite|physics|animation|level|scene)\b", "game"),
+    # AI/ML
+    (r"\b(llm|rag|embedding|vector|notebooklm|nlp|model|train|inference)\b", "ai"),
+]
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,6 +140,19 @@ def redact_secrets(text):
     for pattern in REDACT_PATTERNS:
         text = re.sub(pattern, "[REDACTED]", text)
     return text
+
+
+def auto_extract_tags(text: str) -> list:
+    """
+    Extract semantic tags from text content using pattern matching.
+    Returns list of unique tags found in the text.
+    """
+    found_tags = set()
+    text_lower = text.lower()
+    for pattern, tag in AUTO_TAG_PATTERNS:
+        if re.search(pattern, text_lower):
+            found_tags.add(tag)
+    return sorted(found_tags)
 
 
 def make_hash(text):
@@ -460,22 +502,35 @@ class MemoryDB:
             conn.close()
 
     def search(self, query: str, limit: int = 5) -> list:
-        """Backward-compatible search (Layer 1 + Layer 2)."""
-        index_results = self.memory_index(query, limit=limit)
-        if not index_results['results']:
+        """
+        Backward-compatible search (Layer 1 + Layer 2).
+        Splits multi-word queries into individual terms for better matching.
+        """
+        # Split query into terms for better matching
+        terms = re.sub(r'[^\w\s]', ' ', query).split()
+        terms = [t.strip() for t in terms if len(t.strip()) >= 2]
+        if not terms:
             return []
 
-        # Upgrade to Layer 2 for top matches
-        top_ids = [r['id'] for r in index_results['results'][:limit]]
+        # Build LIKE conditions for each term
+        conditions = " OR ".join(["(title LIKE ? OR content LIKE ?)" for _ in terms])
+        params = [f'%{t}%' for t in terms] * 2  # Each term appears twice (title + content)
+
         conn = self.get_connection()
         try:
-            placeholders = ','.join('?' * len(top_ids))
             cursor = conn.execute(f"""
-                SELECT id, type, title, content, symbol, file_path
+                SELECT id, type, title, content, symbol, file_path,
+                       importance, access_count, created_at
                 FROM observations
-                WHERE id IN ({placeholders}) AND archived = 0
-                ORDER BY importance DESC, access_count DESC
-            """, top_ids)
+                WHERE archived = 0
+                  AND ({conditions})
+                ORDER BY
+                    (importance * 0.3) +
+                    (MIN(access_count, 5) * 0.3) +
+                    (CASE WHEN created_at > datetime('now', '-7 days') THEN 0.4 ELSE 0 END)
+                DESC
+                LIMIT ?
+            """, (*params, limit))
 
             results = []
             for row in cursor:
@@ -762,12 +817,13 @@ def cmd_index(args):
 
 def cmd_add(args):
     if len(args) < 1:
-        print("Usage: mem0-v2.py add <text> [--category <cat>] [--title <title>] [--tags <tag1,tag2>]")
+        print("Usage: mem0-v2.py add <text> [--category <cat>] [--title <title>] [--tags <tag1,tag2>] [--importance <1-10>]")
         return
     text = args[0]
     category = "general"
     title = None
     tags = None
+    importance = 5
     for i, a in enumerate(args[1:], 1):
         if a == "--category" and i + 1 < len(args):
             category = args[i + 1]
@@ -775,14 +831,21 @@ def cmd_add(args):
             title = args[i + 1]
         if a == "--tags" and i + 1 < len(args):
             tags = args[i + 1].split(',')
+        if a == "--importance" and i + 1 < len(args):
+            importance = max(1, min(10, int(args[i + 1])))
+
+    # Auto-extract tags if none provided
+    if tags is None:
+        tags = auto_extract_tags(text)
 
     db = get_db()
-    entry = db.add(text, category=category, title=title, tags=tags)
+    entry = db.add(text, category=category, title=title, tags=tags, importance=importance)
     if entry:
         if entry.get('duplicate'):
             print(f"ℹ️  Memory already exists [id={entry['id']}]")
         else:
-            print(f"✅ Memory added [id={entry['id']}] ({category})")
+            tag_info = f" tags:{','.join(tags)}" if tags else ""
+            print(f"✅ Memory added [id={entry['id']}] ({category}, importance={importance}{tag_info})")
     else:
         print("❌ Failed to add memory")
 

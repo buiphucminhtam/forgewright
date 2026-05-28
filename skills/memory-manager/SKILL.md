@@ -71,11 +71,38 @@ tags: [memory, sqlite, fts5, persistence, knowledge-base, context]
 
 ## When to Use Memory
 
+### Step 0.5 — Memory Retrieval (MANDATORY on every request)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Step 0.5 — MEMORY RETRIEVAL (MANDATORY)                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  Run BEFORE interpreting the user's request:                       │
+│                                                                      │
+│  1. Extract keywords from the user's request (nouns, verbs)        │
+│  2. Run: bash scripts/memory-retrieve.sh "<request>"              │
+│     OR:  python3 scripts/mem0-v2.py search "<keywords>" --limit 3│
+│  3. Also run: bash scripts/memory-suggest.sh "<request>"        │
+│  3. If relevant memories found:                                    │
+│     → Inject as MEMORY BLOCK at top of context                   │
+│     → Note: "Found N relevant memories from previous sessions"     │
+│  4. Also load:                                                    │
+│     - .forgewright/subagent-context/CONVERSATION_SUMMARY.md        │
+│     - .forgewright/memory-bank/activeContext.md                    │
+│     - .forgewright/business-analyst/handoff/ba-package.md (if exists)│
+│  5. Log: "✓ Memory retrieval done — N memories loaded"           │
+│                                                                      │
+│  Max tokens: 500 (configurable via MEM0_MAX_TOKENS)             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Evidence-first note:** Every assumption about project history should be verified against mem0 before acting. If mem0 has a memory about a previous decision, cite it. If it contradicts the assumption, update the assumption.
+
 ### Session Lifecycle Hooks
 
 | Hook | Trigger | Action |
 |------|---------|--------|
-| **SESSION_START** | Pipeline begins | Search project context + request keywords |
+| **SESSION_START** | Pipeline begins | Run Step 0.5 — search project context + request keywords |
 | **TURN_CLOSE** | After every user request | Store request/done/open summary |
 | **PHASE_COMPLETE** | After DEFINE/BUILD/HARDEN/SHIP | Store phase completion summary |
 | **GATE_DECISION** | After Gate 1/2/3 | Store gate decision and feedback |

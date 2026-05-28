@@ -1032,3 +1032,68 @@ async function handleCreateOrder(req: Request, res: Response) {
 - [ ] Circuit breakers configured for external calls
 - [ ] Tenant isolation verified in all queries
 - [ ] No hardcoded secrets (all from env vars)
+
+## Hashline Edit Validation (NEW — OmO Feature)
+
+**Purpose:** Reliable file editing with content-hash validation. Every line read returns `LINE#HASH` for stable editing. Edits referencing an outdated hash are rejected before any corruption.
+
+**Problem solved:** Stale-line errors — when a file changes between read and edit, the agent edits the wrong content. Grok Code success rate improved **6.7% → 68.3%** with hashline editing.
+
+### How Hashline Works
+
+1. **Read** — `hashline_read` returns each line as `LINE#HASH| content`
+2. **Edit** — Use `LINE#HASH` reference instead of raw line number
+3. **Validate** — If file changed, hash won't match → edit rejected with diff
+
+### Usage
+
+```typescript
+// Read file (returns hashline format)
+import { readHashlineSync, formatHashlineContent } from './scripts/hashline/hashline.ts';
+
+const file = readHashlineSync('src/auth.ts');
+console.log(formatHashlineContent(file));
+// Output:
+// 22#sZVsGc| import { createHash } from 'crypto';
+// 33#KjLpQ2| const user = await db.query('SELECT * FROM users');
+// 44#MnRvWx| if (!user) throw new Error('Not found');
+```
+
+### When to Use Hashline
+
+- **Multi-step edits** — file may change between reads
+- **Long tasks** — context window may refresh
+- **Collaborative environments** — files may change externally
+- **Critical edits** — when edit reliability matters
+
+### MCP Tools (when registered)
+
+```typescript
+// hashline_read
+{ tool: "hashline_read", args: { path: "src/auth.ts" } }
+// Returns: LINE#HASH| content format
+
+// hashline_edit
+{ tool: "hashline_edit", args: {
+  path: "src/auth.ts",
+  ref: "44#MnRvWx",        // LINE#HASH from read
+  newContent: "if (!user) throw new AuthError('AUTH_USER_NOT_FOUND');"
+}}
+// Returns: { success: true } or { success: false, error: "HASH_MISMATCH", diff: {...} }
+```
+
+### Fallback
+
+If hashline tools unavailable, use standard line-number editing. Hashline is additive — it enhances reliability without breaking existing workflows.
+
+### Setup
+
+Hashline tools are in `scripts/hashline/`. To enable as MCP tools, register them in the MCP server config.
+
+```bash
+# Read with hashline
+node scripts/hashline/hashline.ts read src/auth.ts
+
+# Apply edit with hashline
+node scripts/hashline/hashline.ts edit src/auth.ts 44#MnRvWx "new content"
+```

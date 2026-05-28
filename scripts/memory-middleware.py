@@ -31,8 +31,9 @@ Environment Variables:
 import argparse
 import json
 import os
-import sys
+import re
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -572,7 +573,10 @@ def end_session(summary: str = "", next_steps: list = None) -> dict | None:
     if next_steps:
         session["next_steps"] = next_steps
 
-    start = datetime.fromisoformat(session["started_at"].replace("Z", "+00:00"))
+    start_str = session["started_at"]
+    start_str = start_str.replace("Z", "+00:00").rstrip("Z")
+    start_str = re.sub(r"(\+\d{2}:\d{2})\+\d{2}:\d{2}$", r"\1", start_str)
+    start = datetime.fromisoformat(start_str)
     end = datetime.now(timezone.utc)
     duration_min = int((end - start).total_seconds() / 60)
     session["duration_minutes"] = duration_min
@@ -583,6 +587,7 @@ def end_session(summary: str = "", next_steps: list = None) -> dict | None:
     log(f"Session {session['session_id']} completed ({duration_min} min)")
 
     update_active_context()
+    auto_ingest_session_decisions(session)
     return session
 
 
@@ -600,6 +605,70 @@ def _detect_ide() -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Memory Operations
 # ─────────────────────────────────────────────────────────────────────────────
+
+def auto_ingest_session_decisions(session: dict) -> int:
+    """
+    Auto-ingest key decisions from completed session into mem0.
+    Returns number of decisions ingested.
+    """
+    ingested = 0
+    try:
+        script_dir = Path(__file__).parent
+        mem0_script = script_dir / "mem0-v2.py"
+        if not mem0_script.exists():
+            return 0
+
+        session_id = session.get("session_id", "")
+        mode = session.get("mode", "unknown")
+        summary = session.get("summary", "")
+        tasks = session.get("tasks", {})
+        next_steps = session.get("next_steps", [])
+
+        # Ingest session summary as a session memory
+        if summary:
+            cmd = [
+                "python3", str(mem0_script), "add",
+                f"SESSION: [{session_id}] | Mode: {mode} | Summary: {summary}",
+                "--category", "session",
+                "--importance", "6"
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if r.returncode == 0:
+                ingested += 1
+
+        # Ingest completed tasks
+        completed = [(tid, t) for tid, t in tasks.items() if t.get("status") == "completed"]
+        for tid, task in completed:
+            cmd = [
+                "python3", str(mem0_script), "add",
+                f"SESSION_TASK: [{session_id}] T{tid} completed: {task.get('summary', '')}",
+                "--category", "tasks",
+                "--importance", "5"
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if r.returncode == 0:
+                ingested += 1
+
+        # Ingest next steps
+        if next_steps:
+            for step in next_steps[:5]:  # Max 5 steps
+                cmd = [
+                    "python3", str(mem0_script), "add",
+                    f"SESSION_NEXT: [{session_id}] {step}",
+                    "--category", "tasks",
+                    "--importance", "4"
+                ]
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                if r.returncode == 0:
+                    ingested += 1
+
+        if ingested > 0:
+            log(f"Auto-ingested {ingested} decisions from session {session_id}")
+        return ingested
+    except Exception as e:
+        warn(f"Could not auto-ingest session decisions: {e}")
+        return 0
+
 
 def save_to_mem0(summary: str, checkpoint_id: str) -> bool:
     """Save checkpoint to mem0-v2. Returns True on success, False on failure."""
@@ -769,7 +838,43 @@ def update_active_context():
 
 
 def generate_summary(reason: str) -> str:
-    """Generate checkpoint summary from git status."""
+    """
+    Generate rich checkpoint summary using checkpoint-extract.sh.
+    Extracts semantic context: intent, file categories, decision context.
+    Falls back to simple git diff if extraction fails.
+    """
+    script_dir = Path(__file__).parent
+    extract_script = script_dir / "checkpoint-extract.sh"
+
+    if extract_script.exists():
+        try:
+            result = subprocess.run(
+                ["bash", str(extract_script), "--reason", reason],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                import json
+                data = json.loads(result.stdout)
+                intent = data.get("intent", "modified")
+                intent_detail = data.get("intent_detail", "")
+                file_counts = data.get("file_counts", {})
+                total = data.get("total_files_changed", 0)
+                summary_parts = [f"intent:{intent}"]
+                if intent_detail:
+                    summary_parts.append(intent_detail)
+                if file_counts:
+                    cats = []
+                    for cat, count in file_counts.items():
+                        if count > 0:
+                            cats.append(f"{count}{cat}")
+                    if cats:
+                        summary_parts.append(f"files:{','.join(cats)}")
+                summary_parts.append(f"total:{total}")
+                return " | ".join(summary_parts)
+        except Exception:
+            pass
+
+    # Fallback: simple git status
     try:
         result = subprocess.run(
             ["git", "status", "--short"],
@@ -857,24 +962,25 @@ def increment_message():
 # Commands
 #────────────────────────────────────────────────────────────────────────────
 
-def cmd_start():
+def cmd_start(args=None):
     """Initialize session tracking."""
     init_session()
     log("Memory middleware ready")
     log(f"Checkpoint interval: every {CHECKPOINT_INTERVAL} messages")
 
 
-def cmd_tick():
+def cmd_tick(args=None):
     """Called after each user message (hook)."""
     increment_message()
 
 
-def cmd_checkpoint():
-    """Force checkpoint."""
-    do_checkpoint("manual")
+def cmd_checkpoint(args):
+    """Force checkpoint with optional reason."""
+    reason = args.reason or "manual"
+    do_checkpoint(reason)
 
 
-def cmd_status():
+def cmd_status(args=None):
     """Show session status including session-log.json."""
     if not SESSION_FILE.exists():
         print("No memory session. Run 'start' to initialize.")
@@ -906,8 +1012,29 @@ def cmd_status():
         if last:
             print(f"Last session: {last.get('session_id', '?')} ({last.get('status', '?')})")
 
+    # Show mem0 stats
+    print(f"\n=== mem0 Memory Stats ===")
+    try:
+        script_dir = Path(__file__).parent
+        mem0_script = script_dir / "mem0-v2.py"
+        if mem0_script.exists():
+            result = subprocess.run(
+                ["python3", str(mem0_script), "stats"],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode == 0:
+                for line in result.stdout.strip().split("\n"):
+                    if line.strip():
+                        print(f"  {line}")
+            else:
+                print("  (could not load mem0 stats)")
+        else:
+            print("  (mem0-v2.py not found)")
+    except Exception:
+        print("  (mem0 unavailable)")
 
-def cmd_resume():
+
+def cmd_resume(args=None):
     """Resume session - load context."""
     log("Resuming session...")
 
@@ -948,15 +1075,15 @@ def cmd_resume():
         warn(f"Could not load mem0 memories: {e}")
 
 
-def cmd_handover():
+def cmd_handover(args=None):
     """Generate a handover document with optional goals and next_steps."""
     import sys
     goals = ""
     next_steps = ""
 
-    if len(sys.argv) > 2:
+    if args and len(sys.argv) > 2:
         goals = sys.argv[2]
-    if len(sys.argv) > 3:
+    if args and len(sys.argv) > 3:
         next_steps = sys.argv[3]
 
     path = generate_handover(goals=goals, next_steps=next_steps)
@@ -982,6 +1109,8 @@ def main():
 
     parser.add_argument("command", nargs="?", default="status",
                         choices=["start", "tick", "checkpoint", "status", "resume", "daemon", "handover"])
+    parser.add_argument("--reason", dest="reason", default=None,
+                        help="Checkpoint reason (used with checkpoint command)")
     args = parser.parse_args()
 
     if args.command == "daemon":
@@ -997,7 +1126,7 @@ def main():
         "handover": cmd_handover,
     }
 
-    commands[args.command]()
+    commands[args.command](args)
 
 
 def _main_session_log():

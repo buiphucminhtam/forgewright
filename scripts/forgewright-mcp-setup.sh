@@ -703,6 +703,58 @@ verify_installation() {
     log_info "Passed: $passed/$checks checks"
 }
 
+# ─── Built-in Research MCPs ───────────────────────────────────────────────
+
+install_builtin_mcps() {
+    echo ""
+    log_step "Checking built-in research MCPs..."
+    echo ""
+
+    local mcp_count=0
+
+    # Exa Web Search
+    echo -n "  Exa (web search): "
+    if command -v npx &>/dev/null && npx --yes @exa/search-mcp-server --help &>/dev/null 2>&1; then
+        echo -e "${GREEN}available${NC}"
+        ((mcp_count++))
+    else
+        echo -e "${YELLOW}not installed (optional)${NC}"
+    fi
+
+    # Context7 Docs
+    echo -n "  Context7 (official docs): "
+    if command -v npx &>/dev/null && npx --yes @context7/mcp-server --help &>/dev/null 2>&1; then
+        echo -e "${GREEN}available${NC}"
+        ((mcp_count++))
+    else
+        echo -e "${YELLOW}not installed (optional)${NC}"
+    fi
+
+    # Grep.app GitHub Search
+    echo -n "  Grep.app (GitHub code search): "
+    if command -v npx &>/dev/null && npx --yes @grepapp/mcp-server --help &>/dev/null 2>&1; then
+        echo -e "${GREEN}available${NC}"
+        ((mcp_count++))
+    else
+        echo -e "${YELLOW}not installed (optional)${NC}"
+    fi
+
+    echo ""
+    if [[ $mcp_count -gt 0 ]]; then
+        log_ok "$mcp_count built-in MCP(s) available"
+        echo ""
+        echo "  Usage:"
+        echo "    npx @exa/search-mcp-server          # Web search"
+        echo "    npx @context7/mcp-server             # Official docs"
+        echo "    npx @grepapp/mcp-server             # GitHub search"
+    else
+        log_info "No built-in MCPs installed. To add:"
+        echo "    npm install -g @exa/search-mcp-server"
+        echo "    npm install -g @context7/mcp-server"
+        echo "    npm install -g @grepapp/mcp-server"
+    fi
+}
+
 # ─── Check Command ──────────────────────────────────────────────────────────────
 
 cmd_check() {
@@ -788,6 +840,9 @@ cmd_check() {
         log_warn "Codex CLI: NOT FOUND (~/.codex/config.toml)"
     fi
     echo ""
+
+    # Built-in research MCPs
+    install_builtin_mcps
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
@@ -1016,6 +1071,10 @@ main() {
                 setup_codex
                 echo ""
             fi
+
+            # Built-in research MCPs (non-blocking check)
+            install_builtin_mcps
+            echo ""
 
             verify_installation
             echo ""

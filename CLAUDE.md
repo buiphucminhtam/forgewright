@@ -93,31 +93,38 @@ This never requires user input — it only escalates when no artifact can be wri
 
 Before ANY skill execution, interpret the user's request:
 
-### 0.5 — Load Conversation Memory (MANDATORY)
+### 0.5 — Memory Retrieval (MANDATORY)
 
-**⚠️ DO NOT SKIP THIS STEP. EVER. This prevents context loss when model hits context limit.**
+**⚠️ DO NOT SKIP THIS STEP. EVER. This is the missing retrieval loop.**
 
-Run BEFORE processing the user's request. This ensures continuity across context windows:
+Every model call is stateless — it has no memory of previous sessions. This step restores continuity.
 
 ```
-# Step 1: Load conversation summary from previous turns
-IF .forgewright/subagent-context/CONVERSATION_SUMMARY.md exists:
-  Read it → inject into context
-  Log: "✓ Conversation summary loaded"
-
-# Step 2: Search for relevant recent memories
-IF LOCAL_MEMORY_DISABLED != true AND FORGEWRIGHT_SKIP_MEMORY != 1:
-  python3 scripts/mem0-v2.py search "conversation recent" --limit 3
-  python3 scripts/mem0-v2.py list --category session --limit 3
-  Log: "✓ Recent turns loaded"
-
-# Step 3: Load BA scope if exists
-IF .forgewright/business-analyst/handoff/ba-package.md exists:
-  Read key sections → inject scope summary
-  Log: "✓ BA scope context loaded"
+┌─────────────────────────────────────────────────────────────────────┐
+│ Step 0.5 — MEMORY RETRIEVAL (MANDATORY)                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Run BEFORE interpreting the user's request:                        │
+│                                                                      │
+│  1. Extract keywords from the user's request (nouns, verbs)        │
+│  2. Run: bash scripts/memory-retrieve.sh "<request>"              │
+│     OR: python3 scripts/mem0-v2.py search "<keywords>" --limit 3 │
+│  3. Also run: bash scripts/memory-suggest.sh "<request>"        │
+│  4. If relevant memories found:                                    │
+│     → Inject as MEMORY BLOCK at top of context                    │
+│     → Note: "Found N relevant memories from previous sessions"     │
+│  5. Also load:                                                    │
+│     - .forgewright/subagent-context/CONVERSATION_SUMMARY.md       │
+│     - .forgewright/memory-bank/activeContext.md                   │
+│     - .forgewright/business-analyst/handoff/ba-package.md (if exists)│
+│  6. Log: "✓ Memory retrieval done — N memories loaded"             │
+│                                                                      │
+│  Max tokens: 500 (configurable via MEM0_MAX_TOKENS)               │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Why mandatory?** Without this, conversation facts from Turn N are lost in Turn N+1 when context resets. The model "forgets" what was just discussed.
+**Evidence-first note:** Every assumption about project history should be verified against mem0 before acting. If mem0 has a memory about a previous decision, cite it. If it contradicts the assumption, update the assumption.
 
 **Token budget:** Max 500 tokens for memory injection.
 
@@ -395,6 +402,7 @@ Before finishing ANY task, verify ALL of the following:
 
 | # | Check | Action if Failed |
 |---|-------|-----------------|
+| 0 | ✅ IntentGate analysis done? | If mode reclassified, note Intent vs Literal shift |
 | 1 | ✅ Request interpreted? | Go back to Step 0 |
 | 2 | ✅ Plan scored ≥ 9.0? | Improve plan first |
 | 3 | ✅ Assumptions declared? | Write verification artifacts for each assumption |
@@ -724,7 +732,7 @@ Goals survive context resets:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (19187 symbols, 27440 relationships, 267 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (19487 symbols, 27848 relationships, 269 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

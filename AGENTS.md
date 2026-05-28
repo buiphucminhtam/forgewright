@@ -101,7 +101,32 @@ This never requires user input — it only escalates when no artifact can be wri
    - Detects vague/confusing requests and asks clarifying questions (MAX 3)
    - Generates a structured request with clear scope and success criteria
    - **DO NOT SKIP THIS STEP** — if the request is unclear, ask before proceeding
-2. **STEP 1 — Classify the request** into one of 24 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze**, **Prompt**, **Autonomous**)
+
+2. **STEP 0.5 — Memory Retrieval (MANDATORY)**: Every model call is stateless — restore continuity first.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Step 0.5 — MEMORY RETRIEVAL (MANDATORY)                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  Run BEFORE interpreting the user's request:                       │
+│                                                                      │
+│  1. Extract keywords from the user's request (nouns, verbs)        │
+│  2. Run: bash scripts/memory-retrieve.sh "<request>"              │
+│     OR: python3 scripts/mem0-v2.py search "<keywords>" --limit 3 │
+│  3. Also run: bash scripts/memory-suggest.sh "<request>"        │
+│  4. If relevant memories found:                                    │
+│     → Inject as MEMORY BLOCK at top of context                   │
+│     → Note: "Found N relevant memories from previous sessions"     │
+│  5. Also load:                                                    │
+│     - .forgewright/subagent-context/CONVERSATION_SUMMARY.md        │
+│     - .forgewright/memory-bank/activeContext.md                    │
+│     - .forgewright/business-analyst/handoff/ba-package.md (if exists)│
+│  6. Log: "✓ Memory retrieval done — N memories loaded"           │
+│  Max tokens: 500 (configurable via MEM0_MAX_TOKENS)             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+3. **STEP 1 — Classify the request** into one of 24 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze**, **Prompt**, **Autonomous**)
 3. **STEP 2 — PLAN FIRST, ALWAYS** — Before ANY skill does ANY work, it MUST create a plan, score it (8 criteria, threshold ≥ 9.0/10), and improve until passing. See `skills/_shared/protocols/plan-quality-loop.md`
 4. **STEP 3 — Execute the pipeline** as defined in the orchestrator
 
@@ -457,7 +482,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (19187 symbols, 27440 relationships, 267 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (19487 symbols, 27848 relationships, 269 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

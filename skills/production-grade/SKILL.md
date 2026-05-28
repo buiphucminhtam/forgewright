@@ -126,6 +126,35 @@ Before ANY skill execution, interpret the user's request:
    - No scope boundary → ask what's in/out
    - No file path → ask for location
 
+### IntentGate — Explicit Intent Analysis (NEW Step 0.2)
+
+**Purpose:** Before classifying into modes, verify we understand the user's TRUE goal. This prevents literal misinterpretation — user says "fix the login" but actually wants OAuth added.
+
+**Trigger:** Runs AFTER vague pattern scanning, BEFORE clarification questions.
+
+**Three reflection questions — answer them YOURSELF as the agent:**
+
+```
+INTENTGATE ANALYSIS:
+After scanning for vague patterns, ask yourself:
+1. "What is the USER'S GOAL behind this request?" (not the literal action)
+2. "What does success look like to the USER?" (what would they consider done?)
+3. "What would the USER consider a complete fix/implementation?"
+
+If the literal interpretation differs from the Intent Analysis:
+→ Highlight the discrepancy in the structured request
+→ If HIGH confidence: proceed with Intent, note mode reclassification
+→ If MEDIUM/LOW confidence: ask 1 clarifying question to confirm intent
+```
+
+**Rules:**
+- IntentGate is 3 reflection questions MAX — answer them yourself, do NOT ask the user
+- Only ask the user if the intent is genuinely ambiguous (MEDIUM/LOW confidence)
+- IntentGate adds 0 token overhead if confidence is HIGH — it's internal reflection
+- If mode reclassified based on Intent Analysis, note it explicitly
+
+**Output:** Append Intent Analysis to the structured request below.
+
 3. **Clarification Rules:**
    - **MAX 3 clarifying questions** — pick the 3 most critical
    - **If HIGH confidence**: Skip clarification, generate structured request
@@ -145,6 +174,13 @@ Before ANY skill execution, interpret the user's request:
 
    What you want:
      [1-sentence clear description]
+
+   Intent Analysis (Step 0.2):
+   - User's true goal: [1-sentence — what they actually want, not what they said]
+   - Success definition: [from the USER's perspective]
+   - Intent vs Literal: [if different from what they said, note it here]
+     ✗ Literal: [what they literally said]
+     ✓ Intent: [what they actually need]
 
    Key decisions made:
      [Defaults applied with reasoning]
@@ -1263,9 +1299,12 @@ Run AFTER update check, BEFORE mode classification. Follows `skills/_shared/prot
    - If first session → continue normally
 
 3. **Load memory context (required for Persistent power level — Step 0.2):**
-   - Run `python3 <path-to-forgewright>/scripts/mem0-v2.py search "<project-name> <user-request-keywords>" --limit 5` (or `./scripts/mem0-v2.py` when the project is the Forgewright repo)
-   - If the store is empty or search returns nothing → run `python3 ... mem0-v2.py search "<project-name>"` again to verify setup
-   - Also read `.forgewright/code-conventions.md` if it exists for extra conventions
+   - Run `bash <path-to-forgewright>/scripts/memory-retrieve.sh "<user-request>"` OR
+   - Run `python3 <path-to-forgewright>/scripts/mem0-v2.py search "<project-name> <user-request-keywords>" --limit 5`
+   - Also load:
+     - `.forgewright/subagent-context/CONVERSATION_SUMMARY.md`
+     - `.forgewright/memory-bank/activeContext.md`
+     - `.forgewright/business-analyst/handoff/ba-package.md` (if exists)
 
 4. **Detect manual changes:**
    - If git available → check commits since last session
