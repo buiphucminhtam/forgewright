@@ -7,8 +7,8 @@
   <a href="https://github.com/buiphucminhtam/forgewright/network/members">
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
-  <img src="https://img.shields.io/badge/version-8.6.0-blue?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-56-brightgreen?style=flat-square" alt="Skills" />
+  <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/skills-67-brightgreen?style=flat-square" alt="Skills" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
   </a>
@@ -252,13 +252,13 @@ npm install --legacy-peer-deps
 
 ```bash
 # One-command global setup (works for ALL projects)
-bash scripts/fw-global-setup.sh
+bash scripts/forgewright-mcp-setup.sh
 
 # Check status
-bash scripts/fw-global-setup.sh --check
+bash scripts/forgewright-mcp-setup.sh --check
 
 # Diagnose issues
-bash scripts/fw-global-setup.sh --diagnose
+bash scripts/forgewright-mcp-setup.sh --diagnose
 ```
 
 #### Step 4: Setup GitNexus (Code Intelligence)
@@ -285,7 +285,7 @@ Restart Cursor or Claude Desktop to load the MCP servers.
 
 ```bash
 # From forgewright directory
-bash scripts/fw-global-setup.sh --check
+bash scripts/forgewright-mcp-setup.sh --check
 
 # Check GitNexus
 gitnexus status
@@ -302,7 +302,7 @@ If you already have an old `.cursor/mcp.json` or legacy MCP config:
 cp ~/.cursor/mcp.json ~/.cursor/mcp.json.bak.$(date +%Y%m%d)
 
 # 2. Run new setup (auto-detects and updates global config)
-bash scripts/fw-global-setup.sh --force
+bash scripts/forgewright-mcp-setup.sh --force
 
 # 3. Restart your IDE
 ```
@@ -353,7 +353,7 @@ git pull origin main
 git submodule update --init --recursive
 
 # Re-setup MCP
-bash scripts/fw-global-setup.sh --force
+bash scripts/forgewright-mcp-setup.sh --force
 ```
 
 ---
@@ -588,7 +588,7 @@ Use the Token Tracker skill for AI-powered analysis:
 
 ---
 
-## 58 Skills, 24 Modes
+## 67 Skills, 24 Modes
 
 ```mermaid
 flowchart TD
@@ -645,7 +645,7 @@ bash scripts/forge-validate.sh
 
 > **v8.5.0 UPDATE:** ForgeNexus has been migrated to **GitNexus** — the recommended code intelligence tool. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.
 
-This project is indexed by GitNexus as **forgewright** (16,112 nodes, 23,551 edges, 322 clusters, 250 flows).
+This project is indexed by GitNexus as **forgewright** (19,487 nodes, 27,848 edges, 339 clusters, 269 flows).
 
 ### Why GitNexus?
 
@@ -726,15 +726,15 @@ See [`docs/SETUP-GITNEXUS.md`](docs/SETUP-GITNEXUS.md) for full documentation.
 
 ## Parallel Dispatch — Multi-Agent Execution
 
-Run multiple AI agents simultaneously for parallel task execution.
+Run multiple AI agents simultaneously for parallel task execution using git worktrees.
 
 ```bash
 # Dispatch parallel worktrees
-npx forgenexus dispatch --parallel 4 --task "build,test,deploy"
+bash scripts/worktree-manager.sh --parallel 4 "build,test,deploy"
 
 # Or use MiniMax for faster parallel execution
 export MINIMAX_API_KEY="your-key"
-npx forgenexus dispatch --provider minimax --parallel 8
+# MiniMax provides cheap/fast tokens for parallel workers
 ```
 
 ### MiniMax Integration
@@ -798,16 +798,16 @@ Ready-to-use workflows for common tasks.
 
 ```bash
 # AI Feature Build
-npx forgenexus workflow ai-feature-build
+npx gitnexus workflow ai-feature-build
 
 # Security Audit
-npx forgenexus workflow security-audit
+npx gitnexus workflow security-audit
 
 # Deep Research
-npx forgenexus workflow deep-research
+npx gitnexus workflow deep-research
 
 # SaaS MVP
-npx forgenexus workflow ship-saas-mvp
+npx gitnexus workflow ship-saas-mvp
 ```
 
 | Workflow | Use Case |
@@ -828,13 +828,19 @@ Forgewright remembers everything across sessions.
 
 ```bash
 # Check memory status
-npx forgenexus memory status
+python3 scripts/mem0-v2.py stats
+
+# Search memories
+python3 scripts/mem0-v2.py search "auth decisions"
 
 # Save decision
-npx forgenexus memory save "auth: use JWT refresh tokens"
+python3 scripts/mem0-v2.py add "auth: use JWT refresh tokens" --category decisions
 
-# Recall context
-npx forgenexus memory recall "auth decisions"
+# Auto-index conventions
+bash scripts/convention-indexer.sh
+
+# Memory hygiene (clean up)
+bash scripts/memory-hygiene.sh --dry-run
 ```
 
 | Memory Type | Location | Purpose |
@@ -871,9 +877,9 @@ npm install -g gitnexus
 gitnexus setup
 ```
 
-**Q: What's new in v8.5.0?**
+**Q: What's new in v8.7.0?**
 
-A:** Major migration from ForgeNexus to GitNexus:
+A:** Memory System v2 — retrieval loop, rich checkpoints, auto-tagging, convention indexer, memory hygiene. See [Changelog](#v870-may-2026--memory-system-v2).
 - GitNexus provides 38K+ stars, npm installation, auto-setup for all editors
 - Single `gitnexus setup` command replaces multi-step ForgeNexus setup
 - 16 MCP tools with improved performance
@@ -881,9 +887,9 @@ A:** Major migration from ForgeNexus to GitNexus:
 
 See [`docs/SETUP-GITNEXUS.md`](docs/SETUP-GITNEXUS.md) for full migration guide.
 
-**Q: What's the difference between forgewright and forgenexus MCP?**
+**Q: What's the difference between forgewright and gitnexus MCP?**
 
-A:** `forgewright` provides ForgeWright skills, memory, and orchestrator tools. `gitnexus` (formerly forgenexus) provides code intelligence.
+A:** `forgewright` provides ForgeWright skills, memory, and orchestrator tools. `gitnexus` provides code intelligence (context, impact analysis, detect changes).
 
 Both work together. You typically need both.
 
@@ -893,7 +899,7 @@ Both work together. You typically need both.
 
 | Problem | Fix |
 |---------|-----|
-| MCP not working after setup | Restart IDE; re-run `bash scripts/fw-global-setup.sh --force` |
+| MCP not working after setup | Restart IDE; re-run `bash scripts/forgewright-mcp-setup.sh --force` |
 | `MCP server not found` | Edit `~/.cursor/mcp.json` manually (see MCP Configuration Format above) |
 | `tsx` not found | Install tsx: `npm install -g tsx` |
 | Skills not found | Check AGENTS.md + CLAUDE.md copied |
@@ -902,7 +908,7 @@ Both work together. You typically need both.
 
 ```bash
 # Quick diagnostics
-bash scripts/fw-global-setup.sh --diagnose
+bash scripts/forgewright-mcp-setup.sh --diagnose
 
 # Check GitNexus
 gitnexus status
@@ -912,12 +918,38 @@ gitnexus analyze --force
 FORGEWRIGHT_DEBUG=1 bash ~/.config/forgewright/global-launcher.sh
 
 # Update ForgeWright
-bash scripts/fw-global-setup.sh --force
+bash scripts/forgewright-mcp-setup.sh --force
 ```
 
 ---
 
 ## Changelog
+
+### v8.7.0 (May 2026) — Memory System v2
+
+**Major Changes:**
+
+| Change | Description |
+|--------|-------------|
+| **Step 0.5 Memory Retrieval Loop** | Every session loads conversation summary + recent memories before processing requests |
+| **Rich Checkpoints** | `checkpoint-extract.sh` captures semantic context (intent, file categories, commit history) |
+| **Auto-Tagging** | `mem0-v2.py` auto-tags with 14 categories (auth, database, architecture, etc.) |
+| **Convention Indexer** | `convention-indexer.sh` indexes 20 coding conventions into mem0 decisions |
+| **Memory Hygiene** | `memory-hygiene.sh` — GC, duplicate detection, old session cleanup |
+| **MCP Setup v3.0** | `forgewright-mcp-setup.sh` now installs builtin MCPs (exa, context7, grep.app) |
+
+**Bug Fixes:**
+
+| Bug | File | Fix |
+|-----|------|-----|
+| `--reason` flag captured literal "provided" | `checkpoint-extract.sh` | Fixed to capture actual value |
+| `ValueError: Invalid isoformat string` | `memory-middleware.py` | Fixed double timezone suffix `+00:00+00:00` |
+| `import re` buried in function | `memory-middleware.py` | Moved to top-level |
+| Multi-word search searched literal string | `mem0-v2.py` | Fixed to OR-split keywords |
+
+**Tests:** 80/92 (86%) across 7 test suites + Python unittest for mem0-v2.py
+
+**GitNexus:** Index fresh (19,487 nodes, 27,848 edges, 339 clusters) — all memory system files: **LOW risk**
 
 ### v8.5.0 (May 2026) — GitNexus Migration
 

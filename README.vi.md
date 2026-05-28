@@ -483,11 +483,11 @@ flowchart TD
     style TAG fill:#1e8449,stroke:#2ecc71,color:#fff
 ```
 
-### ForgeNexus Analyze Pipeline (phân tích code)
+### GitNexus Analyze Pipeline (phân tích code)
 
 ```mermaid
 flowchart LR
-    ANAME["npx forgenexus analyze"]
+    ANAME["gitnexus analyze"]
 
     subgraph SCAN["① Scanner"]
         S1["glob file discovery"]
@@ -554,12 +554,12 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    CLI["forgenexus group CLI"]
+    CLI["gitnexus group CLI"]
     MCP["MCP Tools<br/>8 group tools"]
     GROUPS[("Groups<br/>data/groups.ts")]
     REGISTRY[("Registry DB<br/>KuzuDB")]
     CONTRACTS[("Contracts<br/>Cross-repo API<br/>signatures")]
-    REPOS[("Indexed Repos<br/>via forgenexus analyze")]
+    REPOS[("Indexed Repos<br/>via gitnexus analyze")]
 
     CLI --> |"group create"| GROUPS
     CLI --> |"group list"| GROUPS
@@ -647,8 +647,8 @@ flowchart TD
 
     subgraph POST_HOOK["post-tool-use.ts"]
         G1{"git commit<br/>detected?"}
-        G2["Find forgenexus root<br/>detect last commit"]
-        G3["Spawn incremental<br/>forgenexus analyze"]
+        G2["Find gitnexus root<br/>detect last commit"]
+        G3["Spawn incremental<br/>gitnexus analyze"]
         G4["Success → log<br/>Failure → warn"]
     end
 
@@ -874,7 +874,7 @@ node --version
 Sau đó:
 
 ```bash
-npx --yes forgenexus analyze "$(pwd)"
+npm install -g gitnexus && gitnexus analyze "$(pwd)"
 ```
 
 Đợi 1-2 phút (lần đầu). Xong!
@@ -988,10 +988,10 @@ bash scripts/forge-validate.sh --json
 
 | Vấn đề | Cách xử lý |
 |---------|------------|
-| `forgenexus: command not found` | Dùng `npx forgenexus` thay vì `forgenexus` |
+| `gitnexus: command not found` | Chạy `npm install -g gitnexus && gitnexus setup` |
 | `npm install` bị lỗi trong submodule | Kiểm tra `node --version` (cần 18+) |
 | Không thấy MCP tools | Khởi động lại Cursor/VS Code sau khi đổi config |
-| Index cũ | Chạy `npx forgenexus analyze "$(pwd)"` |
+| Index cũ | Chạy `gitnexus analyze "$(pwd)"` để cập nhật |
 | Submodule chưa khởi tạo | `git submodule update --init --recursive` |
 | `realpath` không tìm thấy (macOS) | `brew install coreutils` |
 | `python3` không tìm thấy | Cài Python 3.8+ cho tính năng memory |

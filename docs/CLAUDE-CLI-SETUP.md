@@ -276,10 +276,10 @@ echo "Memory:          $([ -f .forgewright/memory.jsonl ] && echo 'OK' || echo '
 
 | Vấn Đề | Giải Pháp |
 |--------|-----------|
-| `forgenexus: command not found` | Dùng `npx forgenexus` thay vì `forgenexus` |
+| `forgenexus: command not found` | Dùng `gitnexus analyze` thay vì `forgenexus` |
 | `npm install` thất bại trong submodule | Kiểm tra `node --version` (cần 18+) |
 | Không thấy MCP tools | Khởi động lại Claude CLI sau khi đổi config |
-| Index cũ | Chạy `npx forgenexus analyze "$(pwd)"` để cập nhật |
+| Index cũ | Chạy `gitnexus analyze analyze "$(pwd)"` để cập nhật |
 | Submodule chưa khởi tạo | `git submodule update --init --recursive` |
 | `realpath` không tìm thấy (macOS) | `brew install coreutils` |
 | `python3` không tìm thấy | Cài Python 3.8+ cho tính năng memory |

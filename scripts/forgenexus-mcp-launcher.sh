@@ -206,14 +206,14 @@ main() {
     # Step 2: Find ForgeNexus
     forgenexus="$(find_forgenexus "$workspace")" || {
         log_error "ForgeNexus not found in workspace: $workspace"
-        log_info "To fix: Run 'npx forgenexus setup' in the project directory"
+        log_info "To fix: Run 'gitnexus setup \&\& gitnexus analyze' in the project directory"
         exit 1
     }
 
     # Step 3: Check for index
     if ! has_index "$workspace" "$forgenexus"; then
         log_error "ForgeNexus index not found in workspace: $workspace"
-        log_info "To fix: Run 'npx forgenexus analyze' in the project directory"
+        log_info "To fix: Run 'gitnexus analyze' in the project directory"
         exit 1
     fi
 

@@ -303,8 +303,8 @@ main() {
     echo -e "  2. Type '${CYAN}/forgewright${NC}' in Cursor chat to activate the skill"
     echo -e "  3. Say '${CYAN}Build a production-grade SaaS for [your idea]${NC}'"
     echo ""
-    echo -e "  ${BOLD}For ForgeNexus code intelligence:${NC}"
-    echo -e "  Run ${CYAN}npx forgenexus analyze${NC} in this project anytime."
+    echo -e "  ${BOLD}For GitNexus code intelligence:${NC}"
+    echo -e "  Run ${CYAN}gitnexus analyze${NC} in this project anytime."
     echo ""
 }
 

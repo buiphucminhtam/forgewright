@@ -27,7 +27,7 @@
 ```
 Setup:   Xóa .forgewright/mcp-server/mcp-config.json (nếu có)
 Request:  "Build a React app"
-Expect:   Tự động chạy npx forgenexus analyze + mcp-generate.sh
+Expect:   Tự động chạy gitnexus analyze
          Thông báo: "ℹ Auto-initialized ForgeNexus index..."
          Không làm gì khác trước khi init xong
 Status:   ⬜

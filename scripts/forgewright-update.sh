@@ -5,9 +5,7 @@
 # WHAT THIS DOES:
 #   1. Pull latest changes from GitHub
 #   2. Update submodules
-#   3. Rebuild ForgeNexus if needed
-#   4. Migrate database if needed (SQLite → KuzuDB)
-#   5. Re-index codebases
+#   3. Re-index codebases with GitNexus
 #
 # USAGE:
 #   bash forgewright-update.sh              # Update ForgeWright
@@ -179,10 +177,10 @@ reindex_project() {
 
     info "Re-indexing project: $project_root"
 
-    cd "${FORGEWRIGHT_DIR}/forgenexus"
+    cd "${FORGEWRIGHT_DIR}"
 
-    # Force re-index
-    npx forgenexus analyze --force "$project_root" 2>&1 | tail -20
+    # Force re-index with gitnexus
+    gitnexus analyze --force "$project_root" 2>&1 | tail -20
 
     success "Re-index complete"
 

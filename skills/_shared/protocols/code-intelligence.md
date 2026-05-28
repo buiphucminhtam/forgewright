@@ -1,19 +1,19 @@
 # Code Intelligence Protocol
 
-**Gives skills deep codebase awareness via knowledge graph analysis. Powered by [ForgeNexus](https://github.com/abhigyanpatwari/ForgeNexus) — indexes AST relationships, call chains, and functional communities.**
+**Gives skills deep codebase awareness via knowledge graph analysis. Powered by [GitNexus](https://github.com/gitnexus/GitNexus) — indexes AST relationships, call chains, and functional communities.**
 
 ## When Available
 
 Code Intelligence is available when ALL of these are true:
-- `forgenexus` CLI is installed (`command -v forgenexus`)
-- Project has been indexed (`.forgenexus/` directory exists)
+- `gitnexus` CLI is installed (`command -v gitnexus`)
+- Project has been indexed (`.gitnexus/` directory exists)
 - `project-profile.json` has `code_intelligence.indexed == true`
 
 **If NOT available:** All skills MUST fall back to traditional analysis (grep, find, view_file_outline). Code Intelligence is an **enhancement**, never a hard dependency.
 
 ## Available MCP Tools
 
-When Code Intelligence is active, 7 tools are available via the `forgenexus` MCP server:
+When Code Intelligence is active, 7 tools are available via the `gitnexus` MCP server:
 
 | Tool | Purpose | When to Use |
 |------|---------|-------------|
@@ -91,7 +91,7 @@ IF MCP tool call fails:
     4. Continue pipeline — NEVER block on CI failure
 
 IF index is stale (>24h old):
-    1. Suggest re-indexing: "forgenexus analyze"
+    1. Suggest re-indexing: "gitnexus analyze"
     2. Use existing index anyway (stale > nothing)
     3. Flag in output: "⚠ Code Intelligence index may be stale"
 ```
@@ -111,11 +111,11 @@ ForgeNexus auto-reindexes at two lifecycle points — **no user action required:
 ### At Session Start (Step 3.5)
 
 ```
-IF .forgenexus/ exists:
+IF .gitnexus/ exists:
   commits_since_last_index = git rev-list --count HEAD ^<last_indexed_commit>
   
   IF commits_since > 0 OR index_age > 1 hour:
-    Run: npx forgenexus analyze 2>/dev/null
+    Run: gitnexus analyze 2>/dev/null
     Log result (success or fallback to stale)
   ELSE:
     Use existing fresh index
@@ -124,8 +124,8 @@ IF .forgenexus/ exists:
 ### At Session End (Step 5)
 
 ```
-IF .forgenexus/ exists:
-  Run: npx forgenexus analyze 2>/dev/null
+IF .gitnexus/ exists:
+  Run: gitnexus analyze 2>/dev/null
   This ensures NEXT session starts with fresh index
 ```
 
@@ -138,7 +138,7 @@ IF .forgenexus/ exists:
 
 ### Fail-Safe
 
-If `npx forgenexus analyze` fails at any point:
+If `gitnexus analyze` fails at any point:
 1. Log warning — do NOT block pipeline
 2. Use stale index (stale > nothing)
 3. Add `⚠ stale` badge to any Code Intelligence output
@@ -149,44 +149,43 @@ If `npx forgenexus analyze` fails at any point:
 ## Manual Re-indexing
 
 In addition to auto-reindex, manual re-indexing may be needed:
-- **After major refactoring** — run `forgenexus analyze --force`
-- **After adding new files/services** — run `forgenexus analyze` (incremental)
-- **Stale index warning** — run `forgenexus analyze`
+- **After major refactoring** — run `gitnexus analyze --force`
+- **After adding new files/services** — run `gitnexus analyze` (incremental)
+- **Stale index warning** — run `gitnexus analyze`
 - **Auto-reindex (IDE)** — PostToolUse hooks reindex after commits
 
 ## LLM Configuration (Optional)
 
-ForgeNexus core features (analyze, impact, context, query, detect_changes) work **without any LLM**. LLM is only needed for:
-- `forgenexus analyze --skills` — auto-generate community SKILL.md files
-- `forgenexus wiki` — auto-generate documentation
+GitNexus core features (analyze, impact, context, query, detect_changes) work **without any LLM**. LLM is only needed for:
+- `gitnexus wiki` — auto-generate documentation
 
 ### Supported Providers
 
-ForgeNexus uses OpenAI-compatible API format. Configure via environment variables:
+GitNexus uses OpenAI-compatible API format. Configure via environment variables:
 
 **MiniMax (Recommended — cost-effective):**
 ```bash
-export FORGENEXUS_LLM_PROVIDER=openai-compatible
-export FORGENEXUS_LLM_BASE_URL=https://api.minimaxi.chat/v1
-export FORGENEXUS_LLM_API_KEY=your-minimax-api-key
-export FORGENEXUS_LLM_MODEL=MiniMax-Text-01
+export GITNEXUS_LLM_PROVIDER=openai-compatible
+export GITNEXUS_LLM_BASE_URL=https://api.minimaxi.chat/v1
+export GITNEXUS_LLM_API_KEY=your-minimax-api-key
+export GITNEXUS_LLM_MODEL=MiniMax-Text-01
 ```
 
 **Google Gemini:**
 ```bash
-export FORGENEXUS_LLM_PROVIDER=openai-compatible
-export FORGENEXUS_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
-export FORGENEXUS_LLM_API_KEY=your-google-ai-studio-key
-export FORGENEXUS_LLM_MODEL=gemini-2.0-flash
+export GITNEXUS_LLM_PROVIDER=openai-compatible
+export GITNEXUS_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export GITNEXUS_LLM_API_KEY=your-google-ai-studio-key
+export GITNEXUS_LLM_MODEL=gemini-2.0-flash
 ```
 
 **OpenAI:**
 ```bash
-export FORGENEXUS_LLM_API_KEY=your-openai-key
-export FORGENEXUS_LLM_MODEL=gpt-4o-mini
+export GITNEXUS_LLM_API_KEY=your-openai-key
+export GITNEXUS_LLM_MODEL=gpt-4o-mini
 ```
 
-> **Tip:** Add these exports to your `~/.zshrc` (macOS) or `~/.bashrc` (Linux) to persist across sessions. The LLM config is **entirely optional** — if not set, only `--skills` and `wiki` features will be unavailable. All MCP tools work without LLM.
+> **Tip:** Add these exports to your `~/.zshrc` (macOS) or `~/.bashrc` (Linux) to persist across sessions. The LLM config is **entirely optional** — if not set, only `wiki` features will be unavailable. All MCP tools work without LLM.
 
 ## Integration with Existing Protocols
 

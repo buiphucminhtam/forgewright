@@ -127,8 +127,8 @@ jobs:
          │                             │
          ▼                             ▼
 ┌──────────────────────────────────────────────────────────┐
-│               ForgeNexus Analyze                          │
-│               npx forgenexus analyze --incremental       │
+│               GitNexus Analyze                          │
+│               gitnexus analyze --incremental       │
 └──────────────────────────┬───────────────────────────────┘
                          │
                          ▼

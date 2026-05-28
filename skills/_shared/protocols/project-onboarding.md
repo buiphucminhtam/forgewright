@@ -45,41 +45,41 @@ find_by_name(".editorconfig"), find_by_name("biome.json")
 
 ## Phase 1.5 — Code Intelligence (Optional Enhancement)
 
-Build a knowledge graph of the codebase for deep structural analysis. Powered by [ForgeNexus](https://github.com/abhigyanpatwari/ForgeNexus).
+Build a knowledge graph of the codebase for deep structural analysis. Powered by [GitNexus](https://github.com/abhigyanpatwari/GitNexus).
 
-**Auto-skip if:** project has <10 source files, OR `.forgenexus/` exists and is <24h old.
+**Auto-skip if:** project has <10 source files, OR `.gitnexus/` exists and is <24h old.
 
 ```
 1. Check CLI:
-   command -v forgenexus || npx forgenexus --version
+   command -v gitnexus || npx gitnexus --version
 
    → If NOT found: PAUSE and notify user (see below)
    → If found: proceed to step 2
 
 2. Index codebase:
-   forgenexus analyze              # Build knowledge graph (AST → relationships → clusters)
-   forgenexus analyze --skills     # Generate per-community SKILL.md files
+   gitnexus analyze              # Build knowledge graph (AST → relationships → clusters)
+   gitnexus analyze --skills     # Generate per-community SKILL.md files
 
 3. Verify index:
-   - Check .forgenexus/ directory created
+   - Check .gitnexus/ directory created
    - Count symbols, relationships, communities from index
 
 4. Populate profile:
    code_intelligence: {
      indexed: true,
-     engine: "forgenexus",
+     engine: "gitnexus",
      symbols_count: N,
      relationships_count: N,
      communities_count: N,
      processes_count: N,
-     index_path: ".forgenexus/",
+     index_path: ".gitnexus/",
      indexed_at: "ISO-8601",
      mcp_available: true,
      skills_generated: ["community-a", "community-b", ...]
    }
 ```
 
-### When ForgeNexus is NOT installed — User Notification
+### When GitNexus is NOT installed — User Notification
 
 Do NOT silently skip. Pause and present a clear explanation using notify_user:
 
@@ -96,7 +96,7 @@ notify_user:
    • Debug nhanh hơn — trace ngược chuỗi gọi để tìm root cause
 
    Cài đặt rất đơn giản (yêu cầu Node.js):
-   npm install -g forgenexus
+   npm install -g gitnexus
 
    Bạn muốn làm gì?"
   Options:
@@ -107,8 +107,8 @@ notify_user:
 ```
 
 **If user selects "Tôi sẽ cài ngay":**
-- Wait for user to run `npm install -g forgenexus`
-- Verify: `command -v forgenexus` → if found, proceed to step 2
+- Wait for user to run `npm install -g gitnexus`
+- Verify: `command -v gitnexus` → if found, proceed to step 2
 - If still not found, guide troubleshooting (PATH issues, permissions)
 
 **If user selects "Bỏ qua":**
@@ -123,10 +123,10 @@ notify_user:
   Windows: Download from https://nodejs.org (LTS version)
   Linux:   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt install -y nodejs
   ```
-- After Node.js installed, guide: `npm install -g forgenexus`
+- After Node.js installed, guide: `npm install -g gitnexus`
 - Then proceed to step 2
 
-**Error handling:** If `forgenexus analyze` fails (timeout, parse error, etc.), mark as `code_intelligence.indexed = false` — never fail onboarding because of Code Intelligence. Log the error for debugging.
+**Error handling:** If `gitnexus analyze` fails (timeout, parse error, etc.), mark as `code_intelligence.indexed = false` — never fail onboarding because of Code Intelligence. Log the error for debugging.
 
 **Output:** Populate `code_intelligence` section of project profile. See `code-intelligence.md` protocol for usage by downstream skills.
 
@@ -140,7 +140,7 @@ Generates a project-specific MCP server that exposes codebase intelligence to an
 1. Check prerequisites:
    - code_intelligence.indexed == true (from Phase 1.5)
    - Node.js available (command -v node)
-   → If Code Intelligence not indexed: SKIP — MCP requires ForgeNexus data
+   → If Code Intelligence not indexed: SKIP — MCP requires GitNexus data
    → If Node.js missing: SKIP with note to user
 
 2. Generate MCP server:
