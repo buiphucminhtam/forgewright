@@ -1,0 +1,46 @@
+# VERSION — Skill Version Template
+# Copy this file to your skill directory and update the values
+
+version: "1.0.0"
+released: "2026-05-29"
+author: "forgewright"
+
+# Semantic Version Changelog
+# Format: "VERSION: Description"
+changelog:
+  - "1.0.0: Initial release"
+  # Add new entries at the top
+  # - "1.1.0: Added new feature"
+  # - "1.1.1: Fixed bug in handler"
+
+# Breaking changes that require user migration
+breakingChanges: []
+  # - version: "2.0.0"
+  #   removed: "old-parameter"
+  #   replacement: "new-parameter"
+  #   migration: "Update your config to use new-parameter"
+
+# Deprecations (with scheduled removal)
+deprecations: []
+  # - version: "1.5.0"
+  #   deprecated: "old-feature"
+  #   replacement: "new-feature"
+  #   removalVersion: "2.0.0"
+  #   warning: "old-feature is deprecated, use new-feature instead"
+
+# Dependency requirements
+dependencies:
+  orchestrator: ">=8.7.0"
+  protocol: ">=1.0.0"
+  # Add other skill dependencies
+  # related-skill: ">=1.0.0"
+
+# For consolidated skills (v9.0+)
+consolidation:
+  # Uncomment if this is a consolidated skill
+  # consolidated_from:
+  #   - old-skill-1
+  #   - old-skill-2
+  # deprecated_aliases:
+  #   - old-skill-1
+  #   - old-skill-2

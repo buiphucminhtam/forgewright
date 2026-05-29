@@ -32,8 +32,9 @@ Forgewright is an adaptive orchestrator with **56 AI skills** that covers the en
 ```
 
 <!-- NOTE: Evidence-First section is duplicated in CLAUDE.md (for Claude Code).
-     Source of truth: CLAUDE.md. Changes here must be mirrored from CLAUDE.md manually. -->
+     Source of truth: skills/_shared/protocols/evidence-first.md -->
 
+<!-- source: skills/_shared/protocols/evidence-first.md -->
 ## ⚠️ EVIDENCE-FIRST THINKING (Anti-Hallucination)
 
 **Every assumption is a landmine. Declare it. Verify it. Or die on it.**
@@ -482,7 +483,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (19487 symbols, 27848 relationships, 269 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (19491 symbols, 27856 relationships, 269 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

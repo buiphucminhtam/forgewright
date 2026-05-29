@@ -201,6 +201,114 @@ If the literal interpretation differs from the Intent Analysis:
 
 Read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` (from chat-interpreter Step -1) for the authoritative request analysis. The chat-interpreter has already performed 9-dimension extraction and mode detection.
 
+## Enhanced Mode Classification with Fuzzy Matching (v8.7+)
+
+### Confidence Scoring System
+
+Every mode classification returns a confidence score (0.0 - 1.0):
+
+```
+┌─ Mode Classification ─────────────────────────────────────┐
+│                                                            │
+│  Detected: Feature                                         │
+│  Confidence: 0.87                                          │
+│                                                            │
+│  Evidence:                                                 │
+│  • "add login" → feature keyword match                    │
+│  • "implement" → strong signal                            │
+│  • No full-stack indicators → no Full Build               │
+│                                                            │
+│  Secondary candidates:                                      │
+│  • Full Build (0.23) — mentions "system"                  │
+│  • AI Build (0.15) — mentions "smart"                    │
+│                                                            │
+│  Status: ✅ Proceeding with Feature mode                   │
+└────────────────────────────────────────────────────────────┘
+```
+
+### Trigger Matching
+
+| Match Type | Confidence | Example |
+|-----------|------------|---------|
+| **Exact match** | 0.95-1.0 | "build a SaaS" → Full Build |
+| **Fuzzy match** | 0.7-0.94 | "make a web app" → Full Build (0.85) |
+| **Weak signal** | 0.4-0.69 | "help me" → Explore (0.45) |
+| **No match** | < 0.4 | Fallback chain invoked |
+
+### Fuzzy Trigger Patterns
+
+```yaml
+classification:
+  primary:
+    trigger: "build a SaaS"
+    mode: "Full Build"
+    confidence: 0.95
+    keywords: ["build", "saas", "full stack", "from scratch", "greenfield"]
+
+  fuzzy:
+    - trigger: "build"
+      mode: "Full Build"
+      threshold: 0.7
+      synonyms: ["create", "make", "develop", "construct"]
+
+    - trigger: "game"
+      mode: "Game Build"
+      threshold: 0.75
+      engine_keywords: ["unity", "unreal", "godot", "roblox", "phaser", "threejs"]
+
+    - trigger: "mobile"
+      mode: "Mobile"
+      threshold: 0.7
+      keywords: ["ios", "android", "react native", "flutter"]
+
+  fallback:
+    - mode: "Explore"
+      confidence: 0.3
+      reason: "Ambiguous request"
+    - mode: "Feature"
+      confidence: 0.4
+      reason: "Default for additions"
+    - mode: "Full Build"
+      confidence: 0.35
+      reason: "Catch-all for builds"
+```
+
+### Fuzzy Matching Rules
+
+1. **Keyword extraction** — Extract key terms from request
+2. **Stemming** — Match "building" to "build"
+3. **Synonym expansion** — Match "create" to "build"
+4. **Partial matching** — "unity" matches "Unity3D"
+5. **Context weighting** — "game" near "mobile" → Game Build (higher)
+
+### Fallback Chain
+
+When no match exceeds the threshold:
+
+```
+Fallback sequence:
+1. Polymath (Explore) — Help clarify intent
+2. Feature — Default for additions
+3. Full Build — Catch-all for builds
+4. Custom — Let user pick mode
+```
+
+### Configuration
+
+```yaml
+# In .production-grade.yaml
+skillRouting:
+  fuzzyMatching:
+    enabled: true
+    minConfidence: 0.7
+    synonymExpansion: true
+    stemmingEnabled: true
+  fallbackChain:
+    - Explore
+    - Feature
+    - Full Build
+```
+
 If `confidence: HIGH` → use the detected mode directly, skip the classification table.
 If `confidence: MEDIUM` → present 2 most likely modes to the user.
 If `confidence: LOW` → present 3 most likely modes to the user.

@@ -1,0 +1,136 @@
+# Forgewright Production Configuration
+# This file configures Forgewright behavior for this project.
+# Place this file at the project root or in .forgewright/config.yaml
+
+# ============================================================
+# Plan Quality Loop Configuration
+# ============================================================
+planQuality:
+  # Minimum score to proceed with implementation (0-10)
+  threshold: 9.0
+  
+  # Maximum iterations before forcing decision
+  maxIterations: 3
+  
+  # Run deterministic checks for Feasibility/Testability
+  deterministicCheck: true
+  
+  # Fast-path optimization for simple requests
+  fastPath:
+    # Enable fast-path to skip full scoring for simple requests
+    enabled: true
+    
+    # Maximum estimated steps to qualify for fast-path
+    # Requests with steps <= this value skip full scoring
+    maxSteps: 5
+    
+    # Maximum complexity score (1-10) to qualify for fast-path
+    # Complexity 1-3: Simple, well-defined tasks
+    # Complexity 4-5: Moderate, some uncertainty
+    # Complexity 6+: Complex, multi-component tasks
+    maxComplexity: 3
+    
+    # Always run deterministic checks even in fast-path
+    requireDeterministic: true
+
+# ============================================================
+# Skill Routing Configuration
+# ============================================================
+skillRouting:
+  # Enable fuzzy matching for mode detection
+  fuzzyMatching:
+    enabled: true
+    # Minimum confidence threshold (0.0-1.0)
+    minConfidence: 0.7
+  
+  # Fallback chain when primary mode fails
+  fallbackChain:
+    - Explore
+    - Feature
+    - Full Build
+
+# ============================================================
+# Memory Configuration
+# ============================================================
+memory:
+  # Memory retrieval settings
+  retrieval:
+    maxTokens: 500
+    topResults: 3
+  
+  # Auto-save checkpoints
+  checkpoint:
+    messageThreshold: 5
+    tokenWarning: 80
+    tokenCritical: 95
+
+# ============================================================
+# ASIP (Adaptive Skill Improvement Protocol)
+# ============================================================
+asip:
+  # Session evolution tracking
+  evolution:
+    enabled: true
+    threshold: 3  # Min lessons to count as evolution
+  
+  # Trigger ASIP on plan failures
+  triggerOnFailure: true
+
+# ============================================================
+# Guardrail Configuration
+# ============================================================
+guardrail:
+  # Enable guardrail checks
+  enabled: true
+  
+  # Dry-run mode (review only, no changes)
+  mode: "live"  # Options: live, dry_run
+  
+  # Protected paths (never modify)
+  protectedPaths:
+    - .git/
+    - node_modules/
+    - vendor/
+
+# ============================================================
+# Skill Versioning
+# ============================================================
+skillVersioning:
+  # Enable version tracking for skills
+  enabled: true
+  
+  # Auto-backup before changes
+  autoBackup: true
+  
+  # Backup directory
+  backupDir: .forgewright/backups/skills
+
+# ============================================================
+# Documentation Configuration
+# ============================================================
+docs:
+  # Auto-generate skill catalog
+  autoGenerateCatalog: true
+  
+  # Documentation directory
+  docsDir: docs
+
+# ============================================================
+# Performance Monitoring
+# ============================================================
+performance:
+  # Track execution metrics
+  enabled: false
+  
+  # Metrics directory
+  metricsDir: .forgewright/metrics
+
+# ============================================================
+# Example: Disabling Fast-Path for a Project
+# ============================================================
+# Uncomment the following to disable fast-path globally:
+#
+# planQuality:
+#   fastPath:
+#     enabled: false
+#     reason: "Our team prefers full scoring for consistency"

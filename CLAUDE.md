@@ -28,6 +28,7 @@
 <!-- NOTE: Evidence-First section is duplicated in AGENTS.md (for Antigravity).
      Source of truth: CLAUDE.md. Changes here must be mirrored to AGENTS.md manually. -->
 
+<!-- source: skills/_shared/protocols/evidence-first.md -->
 ## ⚠️ EVIDENCE-FIRST THINKING (Anti-Hallucination)
 
 **Every assumption is a landmine. Declare it. Verify it. Or die on it.**
@@ -85,8 +86,10 @@ RUN:  pytest test_api_auth.py
 Evidence-first does NOT conflict with goal-driven autonomous mode. The loop is:
 `assumption → write artifact → run → pass/fail → (if fail) research → replan → new artifact`
 This never requires user input — it only escalates when no artifact can be written.
+<!-- source: skills/_shared/protocols/pipeline.md -->
 ## Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
 
+<!-- source: skills/_shared/protocols/pipeline.md -->
 ## Step 0 — Request Interpretation (MANDATORY)
 
 **⚠️ DO NOT SKIP THIS STEP. EVER.**
@@ -231,6 +234,7 @@ After interpretation, classify into one of 24 modes:
 | **Prompt** | "improve prompts", "prompt engineering" |
 | **Custom** | Doesn't fit above |
 
+<!-- source: skills/_shared/protocols/plan-quality-loop.md -->
 ## Step 2 — Plan First, Always
 
 **⚠️ MANDATORY: Plan Quality Loop with Research Gate**
@@ -396,6 +400,7 @@ bash scripts/forgewright-mcp-setup.sh --check        # Status check
 bash scripts/forgewright-mcp-setup.sh --diagnose     # Full diagnostics
 ```
 
+<!-- source: skills/_shared/protocols/self-check.md -->
 ## Self-Check
 
 Before finishing ANY task, verify ALL of the following:
@@ -732,7 +737,7 @@ Goals survive context resets:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (19487 symbols, 27848 relationships, 269 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (19491 symbols, 27856 relationships, 269 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
