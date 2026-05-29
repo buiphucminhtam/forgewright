@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgewright — Adaptive AI Orchestrator with 70 Skills</title>
+    <meta name="description" content="Forgewright is an adaptive AI orchestrator with 70 skills covering the full software development lifecycle. Build SaaS, games, XR, AI/ML, and more.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --bg-card-hover: #22222e;
+            --bg-gradient: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #1a1a2e 100%);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --accent-bg: rgba(99, 102, 241, 0.1);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.6);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .nav-logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-cta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-hover);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: var(--accent-bg);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 120px 0 80px;
+            background: var(--bg-gradient);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--accent-bg);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--accent-light);
+            margin-bottom: 24px;
+        }
+
+        .hero-badge svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 50%, var(--accent-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-light);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-actions .btn {
+            padding: 14px 28px;
+            font-size: 1rem;
+        }
+
+        .hero-code {
+            margin-top: 48px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: inline-block;
+        }
+
+        .hero-code .prompt {
+            color: var(--success);
+        }
+
+        .hero-code .command {
+            color: var(--accent-light);
+        }
+
+        /* Pipeline Section */
+        .pipeline {
+            padding: 100px 0;
+            background: var(--bg-secondary);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 2.75rem);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pipeline-node {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px 24px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .pipeline-node:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+        }
+
+        .pipeline-node-number {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pipeline-node-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 8px;
+            color: var(--accent-light);
+        }
+
+        .pipeline-node-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .pipeline-arrow {
+            color: var(--text-muted);
+            font-size: 1.5rem;
+        }
+
+        /* Modes Grid */
+        .modes {
+            padding: 100px 0;
+        }
+
+        .modes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .mode-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: all 0.3s;
+            cursor: default;
+        }
+
+        .mode-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+        }
+
+        .mode-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-bg);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            color: var(--accent-light);
+        }
+
+        .mode-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .mode-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .mode-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Skills Section */
+        .skills {
+            padding: 100px 0;
+            background: var(--bg-secondary);
+        }
+
+        .skills-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+        }
+
+        .skill-tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .skill-tab:hover {
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        .skill-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .skills-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .skills-grid.active {
+            display: grid;
+        }
+
+        .skill-tag {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .skill-tag:hover {
+            background: var(--accent-bg);
+            border-color: var(--accent);
+            color: var(--accent-light);
+        }
+
+        /* New Features */
+        .features {
+            padding: 100px 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.15);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+            color: white;
+        }
+
+        .feature-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .feature-tag {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            background: var(--accent-bg);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        .feature-desc {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .feature-code {
+            margin-top: 16px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            overflow-x: auto;
+        }
+
+        /* GitNexus Callout */
+        .gitnexus {
+            padding: 100px 0;
+            background: linear-gradient(135deg, #1a1a24 0%, #12121a 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gitnexus::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(34, 197, 94, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .gitnexus-content {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .gitnexus-info h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .gitnexus-info h2 span {
+            color: #22c55e;
+        }
+
+        .gitnexus-info p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            line-height: 1.7;
+        }
+
+        .gitnexus-stats {
+            display: flex;
+            gap: 32px;
+            margin-bottom: 24px;
+        }
+
+        .gitnexus-stat {
+            text-align: center;
+        }
+
+        .gitnexus-stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #22c55e;
+        }
+
+        .gitnexus-stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .gitnexus-features {
+            list-style: none;
+        }
+
+        .gitnexus-features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            color: var(--text-secondary);
+        }
+
+        .gitnexus-features li svg {
+            width: 20px;
+            height: 20px;
+            color: #22c55e;
+            flex-shrink: 0;
+        }
+
+        .gitnexus-visual {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 32px;
+        }
+
+        .gitnexus-demo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+        }
+
+        .gitnexus-demo .keyword {
+            color: #c084fc;
+        }
+
+        .gitnexus-demo .function {
+            color: #60a5fa;
+        }
+
+        .gitnexus-demo .string {
+            color: #22c55e;
+        }
+
+        .gitnexus-demo .comment {
+            color: var(--text-muted);
+        }
+
+        .gitnexus-demo .property {
+            color: #fbbf24;
+        }
+
+        /* Quick Start */
+        .quickstart {
+            padding: 100px 0;
+        }
+
+        .quickstart-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: start;
+        }
+
+        .install-block {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .install-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .install-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .install-title svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .install-copy {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .install-copy:hover {
+            background: var(--accent-bg);
+            color: var(--accent);
+        }
+
+        .install-code {
+            padding: 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        .install-code .prompt {
+            color: var(--success);
+        }
+
+        .install-code .command {
+            color: var(--accent-light);
+        }
+
+        .install-code .comment {
+            color: var(--text-muted);
+        }
+
+        .setup-options h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .setup-option {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+        }
+
+        .setup-option:hover {
+            border-color: var(--accent);
+        }
+
+        .setup-option h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setup-option h4 svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent-light);
+        }
+
+        .setup-option p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Social Proof */
+        .social-proof {
+            padding: 80px 0;
+            background: var(--bg-secondary);
+        }
+
+        .proof-grid {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            flex-wrap: wrap;
+        }
+
+        .proof-item {
+            text-align: center;
+        }
+
+        .proof-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .proof-label {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 0 40px;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .footer-logo svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .footer-license {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 16px;
+        }
+
+        .footer-social a {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .footer-social a:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .footer-social svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        .mobile-menu-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .hero h1 {
+                font-size: 2.25rem;
+            }
+
+            .hero-stats {
+                gap: 32px;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            .pipeline-flow {
+                flex-direction: column;
+            }
+
+            .pipeline-arrow {
+                transform: rotate(90deg);
+            }
+
+            .modes-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .gitnexus-content,
+            .quickstart-content {
+                grid-template-columns: 1fr;
+            }
+
+            .gitnexus-visual {
+                order: -1;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .footer-left {
+                flex-direction: column;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-inner">
+            <a href="#" class="nav-logo">
+                <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="32" height="32" rx="8" fill="url(#logo-gradient)"/>
+                    <path d="M10 16L14 12L18 16L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10 20L14 16L18 20L22 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+                    <defs>
+                        <linearGradient id="logo-gradient" x1="0" y1="0" x2="32" y2="32">
+                            <stop stop-color="#6366f1"/>
+                            <stop offset="1" stop-color="#818cf8"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                Forgewright
+            </a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#modes">Modes</a></li>
+                <li><a href="#skills">Skills</a></li>
+                <li><a href="#gitnexus">GitNexus</a></li>
+                <li><a href="https://github.com/buiphucminhtam/forgewright/blob/main/README.md" target="_blank">Docs</a></li>
+            </ul>
+            <div class="nav-cta">
+                <a href="https://github.com/buiphucminhtam/forgewright" class="btn btn-secondary" target="_blank">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    GitHub
+                </a>
+                <a href="#quickstart" class="btn btn-primary">Get Started</a>
+            </div>
+            <button class="mobile-menu-btn" aria-label="Menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    v9.0 — Now with 70 AI Skills
+                </div>
+                <h1>The Adaptive AI Orchestrator for Modern Development</h1>
+                <p class="hero-subtitle">
+                    From a single code review to a full SaaS build, Unity game, or XR experience — 
+                    Forgewright routes to the right skills automatically. 70 skills. 24 modes. One pipeline.
+                </p>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <div class="stat-value">70</div>
+                        <div class="stat-label">AI Skills</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">24</div>
+                        <div class="stat-label">Execution Modes</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">40+</div>
+                        <div class="stat-label">Shared Protocols</div>
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <a href="#quickstart" class="btn btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        Get Started
+                    </a>
+                    <a href="https://github.com/buiphucminhtam/forgewright" class="btn btn-secondary" target="_blank">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                        Star on GitHub
+                    </a>
+                </div>
+                <div class="hero-code">
+                    <span class="prompt">$</span> <span class="command">curl -sO raw.githubusercontent.com/buiphucminhtam/forgewright/main/setup.sh && chmod +x setup.sh && ./setup.sh install</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pipeline Section -->
+    <section class="pipeline" id="pipeline">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">The Pipeline</div>
+                <h2 class="section-title">Six-Phase Production Workflow</h2>
+                <p class="section-desc">Every task flows through our battle-tested pipeline with quality gates at each phase.</p>
+            </div>
+            <div class="pipeline-flow">
+                <div class="pipeline-step">
+                    <div class="pipeline-node">
+                        <span class="pipeline-node-number">1</span>
+                        <svg class="pipeline-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <div class="pipeline-node-label">INTERPRET</div>
+                    </div>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <div class="pipeline-node">
+                        <span class="pipeline-node-number">2</span>
+                        <svg class="pipeline-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                        <div class="pipeline-node-label">DEFINE</div>
+                    </div>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <div class="pipeline-node">
+                        <span class="pipeline-node-number">3</span>
+                        <svg class="pipeline-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                        <div class="pipeline-node-label">BUILD</div>
+                    </div>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <div class="pipeline-node">
+                        <span class="pipeline-node-number">4</span>
+                        <svg class="pipeline-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                        <div class="pipeline-node-label">HARDEN</div>
+                    </div>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <div class="pipeline-node">
+                        <span class="pipeline-node-number">5</span>
+                        <svg class="pipeline-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+                        <div class="pipeline-node-label">SHIP</div>
+                    </div>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <div class="pipeline-node">
+                        <span class="pipeline-node-number">6</span>
+                        <svg class="pipeline-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/><path d="m15 5 3 3"/></svg>
+                        <div class="pipeline-node-label">SUSTAIN</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modes Grid -->
+    <section class="modes" id="modes">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Execution Modes</div>
+                <h2 class="section-title">24 Modes for Every Development Need</h2>
+                <p class="section-desc">From full-stack builds to security audits, Forgewright automatically routes to the right skill combination.</p>
+            </div>
+            <div class="modes-grid">
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                    </div>
+                    <div class="mode-name">Full Build</div>
+                    <div class="mode-desc">All skills, 6 phases, 3 quality gates for complete projects from scratch.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    </div>
+                    <div class="mode-name">Feature</div>
+                    <div class="mode-desc">BA → PM → Architect → BE/FE → QA pipeline for adding new capabilities.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                    </div>
+                    <div class="mode-name">Review</div>
+                    <div class="mode-desc">Code Reviewer with quality scoring, pattern detection, and improvement suggestions.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    </div>
+                    <div class="mode-name">Test</div>
+                    <div class="mode-desc">QA Engineer with technique assessment and comprehensive test coverage.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+                    </div>
+                    <div class="mode-name">Ship</div>
+                    <div class="mode-desc">DevOps → SRE production deployment with monitoring and rollback.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </div>
+                    <div class="mode-name">Design</div>
+                    <div class="mode-desc">UX Researcher → UI Designer workflow for beautiful, usable interfaces.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                    </div>
+                    <div class="mode-name">Mobile</div>
+                    <div class="mode-desc">BA → Mobile Engineer + PM, Architect for iOS, Android, React Native.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </div>
+                    <div class="mode-name">Explore</div>
+                    <div class="mode-desc">Polymath creative co-pilot for brainstorming and architectural exploration.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    </div>
+                    <div class="mode-name">Research</div>
+                    <div class="mode-desc">Polymath + NotebookLM MCP for deep, grounded technical research.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+                    </div>
+                    <div class="mode-name">Game Build</div>
+                    <div class="mode-desc">Unity · Unreal · Godot · Roblox · Phaser · Three.js full pipeline.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                    <div class="mode-name">XR Build</div>
+                    <div class="mode-desc">XR Engineer + game pipeline for VR/AR/MR experiences.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="6"/></svg>
+                    </div>
+                    <div class="mode-name">AI Build</div>
+                    <div class="mode-desc">AI + Prompt + Data Engineer pipeline for LLM features and RAG.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
+                    </div>
+                    <div class="mode-name">Marketing</div>
+                    <div class="mode-desc">Growth Marketer → CRO for launch strategies and conversion.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    </div>
+                    <div class="mode-name">Debug</div>
+                    <div class="mode-desc">ReAct reasoning debugger for systematic problem solving.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </div>
+                    <div class="mode-name">Optimize</div>
+                    <div class="mode-desc">Performance Engineer + SRE for speed and efficiency improvements.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    </div>
+                    <div class="mode-name">Analyze</div>
+                    <div class="mode-desc">Business Analyst with 6W1H framework for requirements elicitation.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                    </div>
+                    <div class="mode-name">Mobile Test</div>
+                    <div class="mode-desc">AI vision on real devices for automated mobile testing.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </div>
+                    <div class="mode-name">Grow</div>
+                    <div class="mode-desc">Conversion Optimizer pipeline for A/B testing and metrics.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                    </div>
+                    <div class="mode-name">Architect</div>
+                    <div class="mode-desc">Solution Architect for system design and API architecture.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                    </div>
+                    <div class="mode-name">Document</div>
+                    <div class="mode-desc">Technical Writer for comprehensive documentation.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <div class="mode-name">Harden</div>
+                    <div class="mode-desc">Security audit + hardening for production safety.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                    </div>
+                    <div class="mode-name">Prompt</div>
+                    <div class="mode-desc">Prompt Engineer optimization for better AI outputs.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                    </div>
+                    <div class="mode-name">Autonomous</div>
+                    <div class="mode-desc">Self-healing E2E workflow for continuous autonomous operation.</div>
+                </div>
+                <div class="mode-card">
+                    <div class="mode-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    </div>
+                    <div class="mode-name">Migrate</div>
+                    <div class="mode-desc">Database/schema migration with rollback support.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Skills Section -->
+    <section class="skills" id="skills">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Skills Catalog</div>
+                <h2 class="section-title">70 Skills Across 9 Divisions</h2>
+                <p class="section-desc">Each skill is a specialized AI agent with domain expertise and battle-tested workflows.</p>
+            </div>
+            <div class="skills-tabs">
+                <button class="skill-tab active" data-tab="orchestrator">Orchestrator & Meta</button>
+                <button class="skill-tab" data-tab="engineering">Core Engineering</button>
+                <button class="skill-tab" data-tab="game-xr">Game & XR</button>
+                <button class="skill-tab" data-tab="quality">Quality & Testing</button>
+                <button class="skill-tab" data-tab="security">Security & Ops</button>
+                <button class="skill-tab" data-tab="design">Design & Research</button>
+                <button class="skill-tab" data-tab="growth">Growth & Marketing</button>
+                <button class="skill-tab" data-tab="management">Management</button>
+                <button class="skill-tab" data-tab="data">Data Acquisition</button>
+            </div>
+            <div class="skills-grid active" id="orchestrator">
+                <span class="skill-tag">production-grade</span>
+                <span class="skill-tag">polymath</span>
+                <span class="skill-tag">parallel-dispatch</span>
+                <span class="skill-tag">memory-manager</span>
+                <span class="skill-tag">skill-maker</span>
+                <span class="skill-tag">mcp-generator</span>
+            </div>
+            <div class="skills-grid" id="engineering">
+                <span class="skill-tag">software-engineer</span>
+                <span class="skill-tag">frontend-engineer</span>
+                <span class="skill-tag">mobile-engineer</span>
+                <span class="skill-tag">solution-architect</span>
+                <span class="skill-tag">api-designer</span>
+                <span class="skill-tag">database-engineer</span>
+                <span class="skill-tag">data-engineer</span>
+                <span class="skill-tag">ai-engineer</span>
+                <span class="skill-tag">prompt-engineer</span>
+                <span class="skill-tag">debugger</span>
+                <span class="skill-tag">performance-engineer</span>
+                <span class="skill-tag">accessibility-engineer</span>
+                <span class="skill-tag">xlsx-engineer</span>
+            </div>
+            <div class="skills-grid" id="game-xr">
+                <span class="skill-tag">unity-engineer</span>
+                <span class="skill-tag">unity-multiplayer</span>
+                <span class="skill-tag">unity-shader-artist</span>
+                <span class="skill-tag">unreal-engineer</span>
+                <span class="skill-tag">unreal-multiplayer</span>
+                <span class="skill-tag">unreal-technical-artist</span>
+                <span class="skill-tag">godot-engineer</span>
+                <span class="skill-tag">godot-multiplayer</span>
+                <span class="skill-tag">roblox-engineer</span>
+                <span class="skill-tag">game-designer</span>
+                <span class="skill-tag">level-designer</span>
+                <span class="skill-tag">narrative-designer</span>
+                <span class="skill-tag">technical-artist</span>
+                <span class="skill-tag">game-audio-engineer</span>
+                <span class="skill-tag">xr-engineer</span>
+            </div>
+            <div class="skills-grid" id="quality">
+                <span class="skill-tag">qa-engineer</span>
+                <span class="skill-tag">code-reviewer</span>
+                <span class="skill-tag">mobile-tester</span>
+                <span class="skill-tag">code-quality-engineer</span>
+                <span class="skill-tag">fullstack-engineer</span>
+                <span class="skill-tag">game-engineer</span>
+                <span class="skill-tag">autonomous-testing</span>
+                <span class="skill-tag">_test</span>
+            </div>
+            <div class="skills-grid" id="security">
+                <span class="skill-tag">security-engineer</span>
+                <span class="skill-tag">devops</span>
+                <span class="skill-tag">sre</span>
+                <span class="skill-tag">data-scientist</span>
+            </div>
+            <div class="skills-grid" id="design">
+                <span class="skill-tag">ui-designer</span>
+                <span class="skill-tag">ux-researcher</span>
+                <span class="skill-tag">technical-writer</span>
+                <span class="skill-tag">business-analyst</span>
+                <span class="skill-tag">art-director</span>
+                <span class="skill-tag">interaction-designer</span>
+            </div>
+            <div class="skills-grid" id="growth">
+                <span class="skill-tag">growth-marketer</span>
+                <span class="skill-tag">conversion-optimizer</span>
+            </div>
+            <div class="skills-grid" id="management">
+                <span class="skill-tag">project-manager</span>
+                <span class="skill-tag">product-manager</span>
+            </div>
+            <div class="skills-grid" id="data">
+                <span class="skill-tag">web-scraper</span>
+                <span class="skill-tag">notebooklm-researcher</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">New in v9.0</div>
+                <h2 class="section-title">Powerful New Capabilities</h2>
+                <p class="section-desc">Major upgrades to make Forgewright smarter, more reliable, and easier to maintain.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                        </div>
+                        <div>
+                            <div class="feature-title">Skill Health Check</div>
+                            <div class="feature-tag">Diagnostics</div>
+                        </div>
+                    </div>
+                    <p class="feature-desc">Validate all 70 skills automatically. Catch broken skills before they break your workflow.</p>
+                    <div class="feature-code">bash scripts/skill-health.sh check</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg>
+                        </div>
+                        <div>
+                            <div class="feature-title">Dependency Graph</div>
+                            <div class="feature-tag">Visualization</div>
+                        </div>
+                    </div>
+                    <p class="feature-desc">Detect cycles, generate DOT/Mermaid exports, visualize skill relationships.</p>
+                    <div class="feature-code">bash scripts/dep-graph.sh</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                        </div>
+                        <div>
+                            <div class="feature-title">Skill Versioning</div>
+                            <div class="feature-tag">Version Control</div>
+                        </div>
+                    </div>
+                    <p class="feature-desc">Rollback skills to previous versions. Maintain stability across updates.</p>
+                    <div class="feature-code">bash scripts/skill-rollback.sh</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                        </div>
+                        <div>
+                            <div class="feature-title">Session Tracker</div>
+                            <div class="feature-tag">Analytics</div>
+                        </div>
+                    </div>
+                    <p class="feature-desc">Track consecutive plan failures, trigger Research Gate automatically.</p>
+                    <div class="feature-code">bash scripts/forgewright-session-tracker.sh</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                        </div>
+                        <div>
+                            <div class="feature-title">Evidence-First Thinking</div>
+                            <div class="feature-tag">Anti-Hallucination</div>
+                        </div>
+                    </div>
+                    <p class="feature-desc">Verify assumptions before acting. Write verification artifacts for every claim.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                        </div>
+                        <div>
+                            <div class="feature-title">GitNexus Integration</div>
+                            <div class="feature-tag">Code Intelligence</div>
+                        </div>
+                    </div>
+                    <p class="feature-desc">38K+ GitHub stars. Impact analysis, context, detect changes, safe rename.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="6"/></svg>
+                        </div>
+                        <div>
+                            <div class="feature-title">Memory System v2</div>
+                            <div class="feature-tag">Persistence</div>
+                        </div>
+                    </div>
+                    <p class="feature-desc">Retrieval loop, rich checkpoints, auto-tagging, convention indexer, memory hygiene.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        </div>
+                        <div>
+                            <div class="feature-title">Multica Hub</div>
+                            <div class="feature-tag">Dashboard</div>
+                        </div>
+                    </div>
+                    <p class="feature-desc">Unified multi-project dashboard. Manage all your projects from one place.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- GitNexus Section -->
+    <section class="gitnexus" id="gitnexus">
+        <div class="container">
+            <div class="gitnexus-content">
+                <div class="gitnexus-info">
+                    <h2>Code Intelligence Powered by <span>GitNexus</span></h2>
+                    <p>Forgewright ships with GitNexus integration — the code intelligence engine with 38K+ GitHub stars. Understand your codebase, assess impact, and navigate safely.</p>
+                    <div class="gitnexus-stats">
+                        <div class="gitnexus-stat">
+                            <div class="gitnexus-stat-value">38K+</div>
+                            <div class="gitnexus-stat-label">GitHub Stars</div>
+                        </div>
+                        <div class="gitnexus-stat">
+                            <div class="gitnexus-stat-value">20K+</div>
+                            <div class="gitnexus-stat-label">Symbols</div>
+                        </div>
+                        <div class="gitnexus-stat">
+                            <div class="gitnexus-stat-value">28K+</div>
+                            <div class="gitnexus-stat-label">Relationships</div>
+                        </div>
+                    </div>
+                    <ul class="gitnexus-features">
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                            Impact analysis before every edit
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                            Safe rename with call graph awareness
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                            Context-aware code exploration
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                            Change detection before commit
+                        </li>
+                    </ul>
+                </div>
+                <div class="gitnexus-visual">
+                    <div class="gitnexus-demo">
+                        <span class="comment">// Impact analysis before editing</span><br>
+                        <span class="keyword">await</span> <span class="function">gitnexus_impact</span>({<br>
+                        &nbsp;&nbsp;<span class="property">target</span>: <span class="string">"fetchData"</span>,<br>
+                        &nbsp;&nbsp;<span class="property">direction</span>: <span class="string">"upstream"</span><br>
+                        });<br><br>
+                        <span class="comment">// → Blast radius: 3 callers</span><br>
+                        <span class="comment">// → Risk: MEDIUM</span><br>
+                        <span class="comment">// → Affected: API routes</span><br><br>
+                        <span class="keyword">await</span> <span class="function">gitnexus_detect_changes</span>();<br><br>
+                        <span class="comment">// → Only expected symbols modified</span><br>
+                        <span class="comment">// → Safe to commit</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section class="quickstart" id="quickstart">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Quick Start</div>
+                <h2 class="section-title">Get Running in Minutes</h2>
+                <p class="section-desc">Three ways to integrate Forgewright into your workflow.</p>
+            </div>
+            <div class="quickstart-content">
+                <div>
+                    <div class="install-block">
+                        <div class="install-header">
+                            <div class="install-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 9l5-5 5 5"/></svg>
+                                Terminal
+                            </div>
+                            <button class="install-copy" onclick="copyInstall()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                        <div class="install-code">
+                            <span class="prompt">$</span> <span class="command">curl -sO https://raw.githubusercontent.com/buiphucminhtam/forgewright/main/setup.sh</span><br>
+                            <span class="prompt">$</span> <span class="command">chmod +x setup.sh && ./setup.sh install</span><br><br>
+                            <span class="comment"># Then add to your project:</span><br>
+                            <span class="prompt">$</span> <span class="command">./forgewright/setup.sh init</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="setup-options">
+                    <h3>Setup Options</h3>
+                    <div class="setup-option">
+                        <h4>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                            Git Submodule
+                        </h4>
+                        <p>Add as a submodule for team-wide consistency. Perfect for shared projects.</p>
+                    </div>
+                    <div class="setup-option">
+                        <h4>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                            Standalone
+                        </h4>
+                        <p>Use Forgewright as the main project. Best for solo developers or dedicated setups.</p>
+                    </div>
+                    <div class="setup-option">
+                        <h4>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+                            MCP Server
+                        </h4>
+                        <p>Connect via MCP for IDE integration with Cursor, Claude Code, and more.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof -->
+    <section class="social-proof">
+        <div class="container">
+            <div class="proof-grid">
+                <div class="proof-item">
+                    <div class="proof-value">38K+</div>
+                    <div class="proof-label">GitHub Stars</div>
+                </div>
+                <div class="proof-item">
+                    <div class="proof-value">70</div>
+                    <div class="proof-label">AI Skills</div>
+                </div>
+                <div class="proof-item">
+                    <div class="proof-value">24</div>
+                    <div class="proof-label">Execution Modes</div>
+                </div>
+                <div class="proof-item">
+                    <div class="proof-value">MIT</div>
+                    <div class="proof-label">License</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <div class="footer-logo">
+                        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="32" height="32" rx="8" fill="url(#footer-logo-gradient)"/>
+                            <path d="M10 16L14 12L18 16L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10 20L14 16L18 20L22 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+                            <defs>
+                                <linearGradient id="footer-logo-gradient" x1="0" y1="0" x2="32" y2="32">
+                                    <stop stop-color="#6366f1"/>
+                                    <stop offset="1" stop-color="#818cf8"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        Forgewright
+                    </div>
+                    <div class="footer-license">MIT License — Open Source Forever</div>
+                </div>
+                <ul class="footer-links">
+                    <li><a href="https://github.com/buiphucminhtam/forgewright" target="_blank">GitHub</a></li>
+                    <li><a href="https://github.com/buiphucminhtam/forgewright/blob/main/README.md" target="_blank">Documentation</a></li>
+                    <li><a href="https://github.com/buiphucminhtam/forgewright/issues" target="_blank">Issues</a></li>
+                    <li><a href="https://github.com/buiphucminhtam/forgewright/discussions" target="_blank">Discussions</a></li>
+                </ul>
+                <div class="footer-social">
+                    <a href="https://github.com/buiphucminhtam/forgewright" target="_blank" aria-label="GitHub">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Skills tabs
+        document.querySelectorAll('.skill-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.skill-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.skills-grid').forEach(g => g.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Copy install command
+        function copyInstall() {
+            const code = `curl -sO https://raw.githubusercontent.com/buiphucminhtam/forgewright/main/setup.sh && chmod +x setup.sh && ./setup.sh install`;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.install-copy');
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>';
+                setTimeout(() => {
+                    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                }, 2000);
+            });
+        }
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.mode-card, .feature-card, .skill-tag').forEach(el => {
+            el.style.opacity = '0';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
