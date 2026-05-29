@@ -146,7 +146,7 @@ memory:
 |-------|----------|
 | All modes explained | [Mode Reference](mode-reference.md) |
 | All skills catalog | [Skill Catalog](skill-catalog.md) |
-| Architecture deep-dive | [Architecture](architecture.md) |
+| Architecture deep-dive | [Architecture Overview](architecture.md) |
 | Game development | [Game Build Guide](game-build-gates.md) |
 | Mobile development | [Mobile Engineer Skill](../skills/mobile-engineer/SKILL.md) |
 

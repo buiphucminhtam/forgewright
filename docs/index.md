@@ -1,15 +1,15 @@
 # Forgewright Documentation
 
-> **Central documentation index for Forgewright v8.7+**
+> **Central documentation index for Forgewright**
 
-Welcome to Forgewright — an adaptive orchestrator with 56+ AI skills covering the full software development lifecycle.
+Welcome to Forgewright — an adaptive orchestrator with 70 AI skills covering the full software development lifecycle.
 
 ## Quick Navigation
 
 | Getting Started | Core Concepts | Reference |
 |-----------------|---------------|-----------|
 | [Quickstart Guide](quickstart.md) | [Mode Reference](mode-reference.md) | [Skill Catalog](skill-catalog.md) |
-| [Architecture Overview](architecture.md) | [Pipeline Reference](pipeline-reference.md) | [Protocol Reference](protocol-reference.md) |
+| [Setup Guide](SETUP.md) | [Pipeline Reference](pipeline-reference.md) | [Protocol Reference](protocol-reference.md) |
 
 ## By Category
 
@@ -22,25 +22,24 @@ Welcome to Forgewright — an adaptive orchestrator with 56+ AI skills covering 
 - **[Mode Reference](mode-reference.md)** — 24 execution modes explained
 - **[Skill Catalog](skill-catalog.md)** — All skills with descriptions and use cases
 - **[Pipeline Reference](pipeline-reference.md)** — INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
+- **[Protocol Reference](protocol-reference.md)** — 40+ shared protocols indexed
 
 ### Architecture
 - **[Architecture Overview](architecture.md)** — System design and component interactions
-- **[Protocol Reference](protocol-reference.md)** — 40+ shared protocols indexed
 
 ### Migration & Troubleshooting
 - **[Migration Guide](migration/v8-to-v9.md)** — Upgrade from v8 to v9
 - **[Breaking Changes](migration/breaking-changes.md)** — What's changed in v9
 - **[Common Issues](troubleshooting/common-issues.md)** — Solutions to frequent problems
-- **[Debugging Guide](troubleshooting/debugging.md)** — Debug Forgewright issues
 
-## What's New in v8.7
+## What's New
 
 | Feature | Description |
 |---------|-------------|
-| **Skill Consolidation** | Reduced from 70 to 55 skills for easier learning |
-| **Fast-Path Scoring** | Simple requests skip full plan quality scoring |
-| **Fuzzy Mode Detection** | Better routing for vague requests |
-| **Skill Versioning** | Version control for skills with rollback capability |
+| **Skill Health Check** | `bash scripts/skill-health.sh check` — validates all 70 skills |
+| **Dependency Graph** | `bash scripts/dep-graph.sh` — detects cycles, generates DOT/Mermaid exports |
+| **Skill Versioning** | `bash scripts/skill-rollback.sh` — rollback skills to previous versions |
+| **Session Tracker** | `bash scripts/forgewright-session-tracker.sh` — tracks consecutive plan failures |
 
 ## By Role
 
@@ -57,7 +56,6 @@ Welcome to Forgewright — an adaptive orchestrator with 56+ AI skills covering 
 ### For DevOps
 1. Read the [Setup Guide](SETUP.md)
 2. Configure via [Setup Reference](SETUP-REFERENCE.md)
-3. Check [CI/CD Integration](CI-CD.md)
 
 ## Search
 
@@ -77,7 +75,7 @@ See the [Technical Writer skill](../skills/technical-writer/SKILL.md) for docume
 
 ## Version
 
-Current version: **8.7.0**
+Current version: **9.0**
 Last updated: 2026-05-29
 
 ---
