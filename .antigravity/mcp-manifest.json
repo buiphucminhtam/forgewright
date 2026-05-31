@@ -1,13 +1,34 @@
 {
-  "version": "1.0",
+  "manifest_version": "1.0",
   "workspace": "/Users/buiphucminhtam/GitHub/forgewright",
   "forgewright": {
     "version": "8.0.0",
     "canonical": "/Users/buiphucminhtam/.forgewright",
-    "server": "/Users/buiphucminhtam/.forgewright/mcp-server/server.ts",
-    "mcp_server": "/Users/buiphucminhtam/.cursor/projects/Users-buiphucminhtam-GitHub-forgewright/mcps/user-forgewright"
+    "server": "/Users/buiphucminhtam/.forgewright/mcp-server/server.ts"
   },
-  "antigravity": "/Users/buiphucminhtam/.cursor/projects/Users-buiphucminhtam-GitHub-forgewright/mcps/user-forgewright",
-  "generated_at": "2026-05-24T06:48:00Z",
-  "migration": "canonical-global"
+  "servers": [
+    {
+      "name": "forgewright",
+      "type": "forgewright-mcp-server",
+      "path": "/Users/buiphucminhtam/.forgewright/mcp-server/server.ts",
+      "auto_start": true
+    },
+    {
+      "name": "gitnexus",
+      "type": "gitnexus",
+      "command": "gitnexus",
+      "args": ["mcp"],
+      "auto_start": true
+    }
+  ],
+  "settings": {
+    "mcp_compatibility": "loose",
+    "workspace_detection": "git-root"
+  },
+  "platforms": {
+    "cursor": "/Users/buiphucminhtam/.cursor/mcp.json",
+    "claude_code": "/Users/buiphucminhtam/.claude/settings.json",
+    "antigravity": "/Users/buiphucminhtam/.cursor/projects/var-folders-nn-d2n-r53w5ddhd04y11f8yr0000gn-T-faf158ee-b029-4da1-9140-e85b3c2cca91/mcps/user-forgewright"
+  },
+  "generated_at": "2026-05-30T05:24:15Z"
 }

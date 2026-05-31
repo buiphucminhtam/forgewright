@@ -265,6 +265,30 @@ CREATE INDEX IF NOT EXISTS idx_obs_epoch ON observations(created_at_epoch DESC);
 CREATE INDEX IF NOT EXISTS idx_obs_archived ON observations(archived);
 CREATE INDEX IF NOT EXISTS idx_links_source ON observation_links(source_id);
 CREATE INDEX IF NOT EXISTS idx_links_target ON observation_links(target_id);
+
+-- Flux Nodes (Layer 2 dynamic graph memory)
+CREATE TABLE IF NOT EXISTS flux_nodes (
+    id TEXT PRIMARY KEY,
+    layer TEXT CHECK(layer IN ('semantic', 'episodic', 'procedural')),
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    pes_score REAL DEFAULT 0.0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Flux Edges
+CREATE TABLE IF NOT EXISTS flux_edges (
+    source_id TEXT REFERENCES flux_nodes(id) ON DELETE CASCADE,
+    target_id TEXT REFERENCES flux_nodes(id) ON DELETE CASCADE,
+    weight REAL DEFAULT 1.0,
+    edge_type TEXT NOT NULL DEFAULT 'relates_to',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (source_id, target_id, edge_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_flux_node_layer ON flux_nodes(layer);
+CREATE INDEX IF NOT EXISTS idx_flux_edges_source ON flux_edges(source_id);
+CREATE INDEX IF NOT EXISTS idx_flux_edges_target ON flux_edges(target_id);
 """
 
 
@@ -626,9 +650,20 @@ class MemoryDB:
             for row in cursor:
                 by_type[row['type']] = row['cnt']
 
+            # Graph Layer Stats (TSK-09)
+            node_count = conn.execute("SELECT COUNT(*) as cnt FROM flux_nodes").fetchone()['cnt']
+            edge_count = conn.execute("SELECT COUNT(*) as cnt FROM flux_edges").fetchone()['cnt']
+            by_layer = {}
+            layer_cursor = conn.execute("SELECT layer, COUNT(*) as cnt FROM flux_nodes GROUP BY layer")
+            for row in layer_cursor:
+                by_layer[row['layer']] = row['cnt']
+
             return {
                 'total': total,
                 'by_type': by_type,
+                'graph_nodes': node_count,
+                'graph_edges': edge_count,
+                'graph_by_layer': by_layer,
                 'size_bytes': self.size_bytes(),
                 'tokens_estimate': self.size_bytes() // 4
             }
@@ -761,6 +796,130 @@ class MemoryDB:
             return {'migrated': migrated, 'skipped': skipped}
         finally:
             conn.close()
+
+    # ── Layer 2: Relational Graph APIs (FluxMem Integration) ──────────────────
+
+    def add_node(self, node_id: str, layer: str, title: str, content: str, pes_score: float = 0.0) -> bool:
+        """Add or update a node in the L2 cognitive graph."""
+        conn = self.get_connection()
+        try:
+            conn.execute("""
+                INSERT INTO flux_nodes (id, layer, title, content, pes_score)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    layer = excluded.layer,
+                    title = excluded.title,
+                    content = excluded.content,
+                    pes_score = excluded.pes_score
+            """, (node_id, layer, title, content, pes_score))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error adding graph node: {e}", file=sys.stderr)
+            return False
+        finally:
+            conn.close()
+
+    def add_edge(self, source_id: str, target_id: str, weight: float = 1.0, edge_type: str = "relates_to") -> bool:
+        """Add or update an edge in the L2 cognitive graph."""
+        conn = self.get_connection()
+        try:
+            conn.execute("""
+                INSERT INTO flux_edges (source_id, target_id, weight, edge_type, updated_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
+                ON CONFLICT(source_id, target_id, edge_type) DO UPDATE SET
+                    weight = excluded.weight,
+                    updated_at = datetime('now')
+            """, (source_id, target_id, weight, edge_type))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error adding graph edge: {e}", file=sys.stderr)
+            return False
+        finally:
+            conn.close()
+
+    def decay_edge(self, source_id: str, target_id: str, edge_type: str = "relates_to", factor: float = 0.5) -> bool:
+        """Decay the weight of an edge (used on failure paths)."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.execute("""
+                SELECT weight FROM flux_edges
+                WHERE source_id = ? AND target_id = ? AND edge_type = ?
+            """, (source_id, target_id, edge_type))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            new_weight = max(0.1, round(row['weight'] * factor, 2))
+            conn.execute("""
+                UPDATE flux_edges
+                SET weight = ?, updated_at = datetime('now')
+                WHERE source_id = ? AND target_id = ? AND edge_type = ?
+            """, (new_weight, source_id, target_id, edge_type))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error decaying edge: {e}", file=sys.stderr)
+            return False
+        finally:
+            conn.close()
+
+    def reinforce_edge(self, source_id: str, target_id: str, edge_type: str = "relates_to", factor: float = 1.2) -> bool:
+        """Reinforce the weight of an edge (used on success paths)."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.execute("""
+                SELECT weight FROM flux_edges
+                WHERE source_id = ? AND target_id = ? AND edge_type = ?
+            """, (source_id, target_id, edge_type))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            new_weight = min(5.0, round(row['weight'] * factor, 2))
+            conn.execute("""
+                UPDATE flux_edges
+                SET weight = ?, updated_at = datetime('now')
+                WHERE source_id = ? AND target_id = ? AND edge_type = ?
+            """, (new_weight, source_id, target_id, edge_type))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error reinforcing edge: {e}", file=sys.stderr)
+            return False
+        finally:
+            conn.close()
+
+    def get_neighbors(self, node_id: str, limit: int = 10) -> list:
+        """Retrieve active neighbors of a node with weights."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.execute("""
+                SELECT n.id, n.layer, n.title, n.content, n.pes_score, e.weight, e.edge_type
+                FROM flux_edges e
+                JOIN flux_nodes n ON n.id = e.target_id
+                WHERE e.source_id = ?
+                ORDER BY e.weight DESC
+                LIMIT ?
+            """, (node_id, limit))
+            
+            results = []
+            for row in cursor:
+                results.append({
+                    'id': row['id'],
+                    'layer': row['layer'],
+                    'title': row['title'],
+                    'content': row['content'],
+                    'pes_score': row['pes_score'],
+                    'weight': row['weight'],
+                    'edge_type': row['edge_type']
+                })
+            return results
+        except sqlite3.Error as e:
+            print(f"Error getting neighbors: {e}", file=sys.stderr)
+            return []
+        finally:
+            conn.close()
+
 
 
 # ── Commands ─────────────────────────────────────────────────────────────────
@@ -915,6 +1074,15 @@ def cmd_stats(args):
             weight = CATEGORY_WEIGHTS.get(cat, 3)
             print(f"    {cat}: {count} (weight: {weight})")
 
+    # Display Graph Stats (TSK-09)
+    print("\n🌐 Cognitive Graph Stats (L2 Memory):")
+    print(f"  Graph Nodes: {stats.get('graph_nodes', 0)}")
+    print(f"  Graph Edges: {stats.get('graph_edges', 0)}")
+    if stats.get('graph_by_layer'):
+        print("  By Layer:")
+        for layer, count in sorted(stats['graph_by_layer'].items(), key=lambda x: -x[1]):
+            print(f"    {layer}: {count}")
+
 
 def cmd_gc(args):
     max_o = None
@@ -960,6 +1128,110 @@ def cmd_setup(args):
     print(f"   GC: value-weighted | Max: {MAX_OBS_DEFAULT}")
 
 
+def cmd_graph_add_node(args):
+    if len(args) < 4:
+        print("Usage: mem0-v2.py graph-add-node <id> <layer> <title> <content> [--pes <score>]")
+        return
+    node_id = args[0]
+    layer = args[1]
+    title = args[2]
+    content = args[3]
+    pes_score = 0.0
+    for i, a in enumerate(args[4:], 4):
+        if a == "--pes" and i + 1 < len(args):
+            pes_score = float(args[i + 1])
+    
+    db = get_db()
+    if db.add_node(node_id, layer, title, content, pes_score):
+        print(f"✅ Node added [id={node_id}] (layer={layer})")
+    else:
+        print("❌ Failed to add graph node")
+
+
+def cmd_graph_link(args):
+    if len(args) < 2:
+        print("Usage: mem0-v2.py graph-link <source_id> <target_id> [--weight <W>] [--type <type>]")
+        return
+    source_id = args[0]
+    target_id = args[1]
+    weight = 1.0
+    edge_type = "relates_to"
+    for i, a in enumerate(args[2:], 2):
+        if a == "--weight" and i + 1 < len(args):
+            weight = float(args[i + 1])
+        if a == "--type" and i + 1 < len(args):
+            edge_type = args[i + 1]
+            
+    db = get_db()
+    if db.add_edge(source_id, target_id, weight, edge_type):
+        print(f"✅ Edge linked [source={source_id}] ──({edge_type}, weight={weight})──► [target={target_id}]")
+    else:
+        print("❌ Failed to link edge")
+
+
+def cmd_graph_decay(args):
+    if len(args) < 2:
+        print("Usage: mem0-v2.py graph-decay <source_id> <target_id> [--type <type>] [--factor <F>]")
+        return
+    source_id = args[0]
+    target_id = args[1]
+    edge_type = "relates_to"
+    factor = 0.5
+    for i, a in enumerate(args[2:], 2):
+        if a == "--type" and i + 1 < len(args):
+            edge_type = args[i + 1]
+        if a == "--factor" and i + 1 < len(args):
+            factor = float(args[i + 1])
+            
+    db = get_db()
+    if db.decay_edge(source_id, target_id, edge_type, factor):
+        print(f"✅ Edge decayed [source={source_id}] ──({edge_type})──► [target={target_id}]")
+    else:
+        print("❌ Failed to decay edge")
+
+
+def cmd_graph_reinforce(args):
+    if len(args) < 2:
+        print("Usage: mem0-v2.py graph-reinforce <source_id> <target_id> [--type <type>] [--factor <F>]")
+        return
+    source_id = args[0]
+    target_id = args[1]
+    edge_type = "relates_to"
+    factor = 1.2
+    for i, a in enumerate(args[2:], 2):
+        if a == "--type" and i + 1 < len(args):
+            edge_type = args[i + 1]
+        if a == "--factor" and i + 1 < len(args):
+            factor = float(args[i + 1])
+            
+    db = get_db()
+    if db.reinforce_edge(source_id, target_id, edge_type, factor):
+        print(f"✅ Edge reinforced [source={source_id}] ──({edge_type})──► [target={target_id}]")
+    else:
+        print("❌ Failed to reinforce edge")
+
+
+def cmd_graph_neighbors(args):
+    if len(args) < 1:
+        print("Usage: mem0-v2.py graph-neighbors <node_id> [--limit N]")
+        return
+    node_id = args[0]
+    limit = 10
+    for i, a in enumerate(args[1:], 1):
+        if a == "--limit" and i + 1 < len(args):
+            limit = int(args[i + 1])
+            
+    db = get_db()
+    results = db.get_neighbors(node_id, limit)
+    if not results:
+        print("No neighbors found.")
+        return
+    print(f"Graph Neighbors for [{node_id}]:")
+    for r in results:
+        pes_info = f" (PES={r['pes_score']})" if r['pes_score'] > 0 else ""
+        print(f"  ──({r['edge_type']}, weight={r['weight']})──► [{r['id']}] {r['layer']}{pes_info}: {r['title'][:80]}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 COMMANDS = {
@@ -973,6 +1245,11 @@ COMMANDS = {
     "gc": cmd_gc,
     "migrate": cmd_migrate,
     "setup": cmd_setup,
+    "graph-add-node": cmd_graph_add_node,
+    "graph-link": cmd_graph_link,
+    "graph-decay": cmd_graph_decay,
+    "graph-reinforce": cmd_graph_reinforce,
+    "graph-neighbors": cmd_graph_neighbors,
 }
 
 

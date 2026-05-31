@@ -6,7 +6,14 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MANIFEST_PATH="$PROJECT_DIR/.forgewright/mcp-manifest.json"
+
+# Check .antigravity/mcp-manifest.json first, fallback to .forgewright/mcp-manifest.json
+if [ -f "$PROJECT_DIR/.antigravity/mcp-manifest.json" ]; then
+    MANIFEST_PATH="$PROJECT_DIR/.antigravity/mcp-manifest.json"
+else
+    MANIFEST_PATH="$PROJECT_DIR/.forgewright/mcp-manifest.json"
+fi
+
 SCHEMA_PATH="$PROJECT_DIR/.forgewright/schemas/mcp-manifest.schema.json"
 
 # Colors

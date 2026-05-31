@@ -186,14 +186,14 @@ check_prerequisites() {
     fi
     log_ok "Node.js $(node -v)"
 
-    # Check for MCP server generation script
+    # Check for MCP server generation script (optional)
     local script_dir
     script_dir="$(dirname "${BASH_SOURCE[0]}")"
-    if [[ ! -f "${script_dir}/mcp-generate.sh" ]]; then
-        log_error "MCP generation script not found: ${script_dir}/mcp-generate.sh"
-        exit 1
+    if [[ -f "${script_dir}/mcp-generate.sh" ]]; then
+        log_ok "MCP generation script found"
+    else
+        log_warn "MCP generation script not found (will use existing server.ts)"
     fi
-    log_ok "MCP generation script found"
     log_ok "Forgewright found at $FORGEWRIGHT_DIR"
 }
 
@@ -247,28 +247,57 @@ setup_mcp_server() {
     local script_dir
     script_dir="$(dirname "${BASH_SOURCE[0]}")"
 
-    if FORGEWRIGHT_DIR_OVERRIDE="$FORGEWRIGHT_DIR" PROJECT_ROOT_OVERRIDE="$PROJECT_ROOT" \
-        bash "${script_dir}/mcp-generate.sh"; then
-        log_ok "MCP server generated"
+    if [[ -f "${script_dir}/mcp-generate.sh" ]]; then
+        if FORGEWRIGHT_DIR_OVERRIDE="$FORGEWRIGHT_DIR" PROJECT_ROOT_OVERRIDE="$PROJECT_ROOT" \
+            bash "${script_dir}/mcp-generate.sh"; then
+            log_ok "MCP server generated"
+        else
+            log_error "Failed to generate MCP server"
+            exit 1
+        fi
     else
-        log_error "Failed to generate MCP server"
-        exit 1
+        log_warn "mcp-generate.sh not found, skipping regeneration (using existing server.ts)"
     fi
 
     # Generate manifest
     local manifest="${PROJECT_ROOT}/.antigravity/mcp-manifest.json"
+    local fw_version
+    fw_version=$(cat "${FORGEWRIGHT_DIR}/VERSION" 2>/dev/null || echo "8.0.0")
     mkdir -p "$(dirname "$manifest")"
     cat > "$manifest" <<EOF
 {
-  "forgewright_version": "1.0.0",
-  "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "manifest_version": "1.0",
   "workspace": "${PROJECT_ROOT}",
-  "forgewright_path": "${FORGEWRIGHT_DIR}",
+  "forgewright": {
+    "version": "${fw_version}",
+    "canonical": "${HOME}/.forgewright",
+    "server": "${CANONICAL_SERVER_TS}"
+  },
+  "servers": [
+    {
+      "name": "forgewright",
+      "type": "forgewright-mcp-server",
+      "path": "${CANONICAL_SERVER_TS}",
+      "auto_start": true
+    },
+    {
+      "name": "gitnexus",
+      "type": "gitnexus",
+      "command": "gitnexus",
+      "args": ["mcp"],
+      "auto_start": true
+    }
+  ],
+  "settings": {
+    "mcp_compatibility": "loose",
+    "workspace_detection": "git-root"
+  },
   "platforms": {
     "cursor": "${CURSOR_CONFIG}",
     "claude_code": "${CLAUDE_CODE_CONFIG}",
     "antigravity": "${ANTIGRAVITY_CONFIG}"
-  }
+  },
+  "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
     log_ok "Manifest generated at $manifest"

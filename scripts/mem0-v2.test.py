@@ -424,6 +424,59 @@ def run_tests():
     finally:
         cleanup_db(db)
 
+    # Relational Graph tests (FluxMem Integration)
+    print("\nTesting Layer 2 Relational Graph (FluxMem)...")
+    db = create_fresh_db()
+    try:
+        # 1. Test add_node
+        n1_ok = db.add_node("node-1", "semantic", "Memory Schema", "Content about memory schema")
+        n2_ok = db.add_node("node-2", "episodic", "Schema Migration Run", "Trace of schema migration execution", pes_score=0.0)
+        n3_ok = db.add_node("node-3", "procedural", "Optimal Setup Flow", "Best steps for db setup", pes_score=0.85)
+        assert n1_ok and n2_ok and n3_ok
+        test("add_node adds semantic, episodic, procedural nodes", lambda: None)
+        
+        # 2. Test add_edge
+        e1_ok = db.add_edge("node-1", "node-2", weight=1.0, edge_type="relates_to")
+        e2_ok = db.add_edge("node-2", "node-3", weight=2.0, edge_type="solves")
+        assert e1_ok and e2_ok
+        test("add_edge creates connects with weights", lambda: None)
+        
+        # 3. Test get_neighbors
+        neighbors = db.get_neighbors("node-2")
+        assert len(neighbors) == 1
+        assert neighbors[0]['id'] == "node-3"
+        assert neighbors[0]['weight'] == 2.0
+        assert neighbors[0]['edge_type'] == "solves"
+        test("get_neighbors retrieves weighted target edges", lambda: None)
+        
+        # 4. Test decay_edge
+        decay_ok = db.decay_edge("node-2", "node-3", edge_type="solves", factor=0.5)
+        assert decay_ok
+        neighbors_after_decay = db.get_neighbors("node-2")
+        assert neighbors_after_decay[0]['weight'] == 1.0  # 2.0 * 0.5 = 1.0
+        test("decay_edge decreases weight correctly", lambda: None)
+        
+        # 5. Test reinforce_edge
+        reinforce_ok = db.reinforce_edge("node-2", "node-3", edge_type="solves", factor=1.2)
+        assert reinforce_ok
+        neighbors_after_re = db.get_neighbors("node-2")
+        assert neighbors_after_re[0]['weight'] == 1.2  # 1.0 * 1.2 = 1.2
+        test("reinforce_edge increases weight correctly", lambda: None)
+        
+        # 6. Test stats
+        stats = db.stats()
+        assert stats['graph_nodes'] == 3
+        assert stats['graph_edges'] == 2
+        assert stats['graph_by_layer']['semantic'] == 1
+        assert stats['graph_by_layer']['episodic'] == 1
+        assert stats['graph_by_layer']['procedural'] == 1
+        test("stats reports correct graph metrics", lambda: None)
+        
+    except Exception as e:
+        test("relational graph functionalities", lambda: _raise(e))
+    finally:
+        cleanup_db(db)
+
     # Summary
     print("\n" + "=" * 50)
     if failed == 0:
