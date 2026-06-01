@@ -106,7 +106,7 @@ IF index is stale (>24h old):
 
 ## Auto-Reindex (Session Lifecycle Integration)
 
-ForgeNexus auto-reindexes at two lifecycle points — **no user action required:**
+ForgeNexus auto-reindexes at three lifecycle points — **no user action required:**
 
 ### At Session Start (Step 3.5)
 
@@ -129,12 +129,21 @@ IF .gitnexus/ exists:
   This ensures NEXT session starts with fresh index
 ```
 
-### Why Both?
+### Immediately Post-Commit / Post-Push (Background Hook)
+
+```
+IF git commit or git push has successfully run:
+  Run: npx gitnexus analyze (as a background task)
+  This ensures real-time symbol updates without blocking the agent or waiting for session end
+```
+
+### Why these hooks?
 
 | Hook | Purpose |
 |------|----------|
 | Session Start | Catches manual changes user made between sessions (hotfixes, other tools) |
 | Session End | Catches all changes made BY this session (new files, refactors) |
+| Post-Commit/Push | Immediate updates after code mutations, keeping the graph hot and fresh in real-time |
 
 ### Fail-Safe
 
