@@ -114,6 +114,12 @@ Success criteria:
 
 Missing (will be handled by PM):
  [Max 3 items]
+
+Plan Quality & Self-Improvement Loop (MANDATORY Step 2):
+- Initial Plan Score: [Score/10]
+- Optimization Iterations: [N times (0 if score >= 9.0 on first try)]
+- Research Gate Triggered: [Yes/No (and what was researched if Yes)]
+- Final Plan Score: [Score/10 - Must be >= 9.0]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

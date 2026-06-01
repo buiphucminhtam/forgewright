@@ -62,6 +62,12 @@ In cascade failures, the first error is usually the root cause. Subsequent error
 
 **Look for the FIRST error in logs, not the LAST.**
 
+### Rule 5: The Iceberg Law (The Triage Safeguard)
+
+> **NEVER ASSUME A BUG IS SIMPLE ON SURFACE BEHAVIOR.**
+
+Every bug that is not strictly static (HTML typos, CSS margin fixes, hardcoded asset path fixes) MUST be treated as a potential systemic issue. You must run the Iceberg Assessment before attempting any quick bypasses.
+
 ---
 
 ## Phases
@@ -80,6 +86,25 @@ In cascade failures, the first error is usually the root cause. Subsequent error
 | **P1 — Critical** | Core feature broken, no workaround | Hours |
 | **P2 — Major** | Feature broken, workaround exists | Sprint |
 | **P3 — Minor** | Cosmetic, edge case | Backlog |
+
+#### 1.1.1 Iceberg Assessment (Triage Safeguard)
+
+Before downgrading a bug to "P3/Simple Bypass" mode, you MUST explicitly answer the following 3 questions:
+1. **Is it Static or Dynamic?**
+   - *Static:* Typo in static text, minor CSS layout tweaks, purely visual changes. (Safe to bypass).
+   - *Dynamic:* The wrong number, status, state, or value generated dynamically via code logic, databases, or API calls. (**NEVER bypass**).
+2. **Are there Cascade Symptoms?**
+   - Scan recent logs for minor warnings occurring at similar timestamps. If any unrelated warning exists, assume a systemic issue (**NEVER bypass**).
+3. **Does it touch Sensitive Domains?**
+   - Does this bug touch: Authentication/Auth, Financials/Billing, State Management, Database mutations, or Security boundaries? (**NEVER bypass**).
+
+#### 1.1.2 Auto-escalation Protocol
+
+If you initiated a "Simple Bypass" fix, but during implementation you discover that the root cause requires updating dynamic logic, API interfaces, or database mutations:
+1. **IMMEDIATELY HALT** implementation.
+2. **Revert** any temporary changes.
+3. **Escalate** the bug to a higher severity (P1/P2).
+4. **Restart** from **Phase 1 & 2** (Triage & Hypothesis Generation) to investigate the systemic root cause properly.
 
 #### 1.2 Collect Symptoms
 

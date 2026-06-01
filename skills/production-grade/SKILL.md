@@ -194,6 +194,12 @@ If the literal interpretation differs from the Intent Analysis:
 
    Missing (will be handled by PM):
      [Max 3 items]
+
+   Plan Quality & Self-Improvement Loop (MANDATORY Step 2):
+   - Initial Plan Score: [Score/10]
+   - Optimization Iterations: [N times (0 if score >= 9.0 on first try)]
+   - Research Gate Triggered: [Yes/No (and what was researched if Yes)]
+   - Final Plan Score: [Score/10 - Must be >= 9.0]
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
 
@@ -906,13 +912,14 @@ Execute selected skills in dependency order. If user picks conflicting skills, r
 Systematic bug investigation. Single skill (+ optional fix).
 
 1. Read `skills/debugger/SKILL.md` and follow its instructions
-2. Debugger triages, generates hypotheses, investigates, finds root cause
-3. Present root cause and proposed fix
-4. If user approves fix → apply fix + regression test
-5. If fix touches backend code → Software Engineer applies it
-6. If fix touches frontend code → Frontend Engineer applies it
+2. Debugger performs triage using the **MANDATORY Iceberg Assessment** (Static vs Dynamic, Cascade Failure Scanning, Sensitive Domains check).
+3. If classified as dynamic or suspicious, proceeds with full hypothesis-driven investigation to find root cause. If a simple/static bypass is aborted due to underlying dynamic complexity, triggers the **Auto-escalation Protocol**.
+4. Present root cause and proposed fix
+5. If user approves fix → apply fix + regression test
+6. If fix touches backend code → Software Engineer applies it
+7. If fix touches frontend code → Frontend Engineer applies it
 
-**1 gate:** After root cause identified (step 3), before applying fix.
+**1 gate:** After root cause identified (step 4), before applying fix.
 
 ### AI Build Mode
 
