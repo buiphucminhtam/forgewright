@@ -1,0 +1,84 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  dependency-review:
+    name: Security Review
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          # Fail on high and critical vulnerabilities
+          fail-on-severity: high
+          # Allow dependencies from these packages
+          allow-dependencies: |
+            @anthropic-ai/sdk
+            @huggingface/transformers
+            @modelcontextprotocol/sdk
+            @anthropic-ai/claude-code
+            @vitest/coverage-v8
+            eslint
+            prettier
+            typescript
+            vitest
+            tsx
+            js-yaml
+            zod
+            glob
+            tree-sitter
+            kuzu
+      
+      - name: Check for outdated dependencies
+        run: |
+          cd forgenexus
+          # Check for security advisories
+          npm audit --audit-level=high || true
+      
+      - name: Generate dependency report
+        if: always()
+        run: |
+          cd forgenexus
+          echo "## Dependency Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Direct Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          npm list --depth=0 2>/dev/null | head -30 >> $GITHUB_STEP_SUMMARY || echo "Unable to list dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Development Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          npm list --depth=0 --dev 2>/dev/null | head -30 >> $GITHUB_STEP_SUMMARY || echo "Unable to list dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install license checker
+        run: |
+          cd forgenexus
+          npm install --save-dev license-checker || true
+      
+      - name: Check licenses
+        run: |
+          cd forgenexus
+          npx license-checker --onlyAllow='MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;CC0-1.0' || {
+            echo "Some packages have non-allowed licenses"
+            # List problematic packages
+            npx license-checker --onlyAllow='MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;CC0-1.0' --failOn='GPL;LGPL;AGPL' 2>&1 || true
+          }

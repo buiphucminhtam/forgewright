@@ -7,6 +7,8 @@
 import type { ConfidenceResult } from '../agents/types.js';
 import { checkStaleness, warnIfStale } from '../data/freshness.js';
 import { calculateConfidence } from '../agents/confidence.js';
+import { featureFlags } from '../config/feature-flags.js';
+import { globalMetrics, printMetrics } from '../telemetry/metrics.js';
 
 // ============================================================================
 // Types
@@ -17,6 +19,9 @@ export interface ImpactOptions {
   file?: string;
   showGraph?: boolean;
   verify?: boolean;
+  noVerify?: boolean;
+  strict?: boolean;
+  verbose?: boolean;
   freshness?: 'warn' | 'error' | 'ignore';
 }
 
@@ -59,7 +64,15 @@ export async function analyzeImpact(
   options: ImpactOptions = {}
 ): Promise<ImpactResult> {
   const warnings: string[] = [];
-  
+
+  // Apply feature flags from options
+  if (options.noVerify) {
+    featureFlags.set({ noVerify: true });
+  }
+  if (options.strict) {
+    featureFlags.set({ strict: true });
+  }
+
   // Check freshness
   const freshness = checkStaleness({
     repoPath: '.',
@@ -97,9 +110,13 @@ export async function analyzeImpact(
     })),
   });
 
+  // Record metrics
+  globalMetrics.recordConfidence(confidence.score);
+  globalMetrics.recordImpactAnalysis();
+
   // Verify if enabled
   let verification;
-  if (options.verify) {
+  if (options.verify && featureFlags.shouldVerify()) {
     verification = await verifyImpact(symbol, impact);
     
     if (!verification.verified) {
@@ -221,8 +238,16 @@ Options:
   --file, -f         Show only this file
   --graph, -g        Show dependency graph
   --verify, -v        Enable verification
+  --no-verify         Skip verification (rollback)
+  --strict, -s       Fail on low confidence
   --freshness <mode>  Freshness check: warn (default), error, ignore
+  --verbose           Show metrics summary
   --help, -h          Show this help
+
+Environment Variables:
+  FORGE_VERIFY=0     Disable verification
+  FORGE_STRICT=1     Enable strict mode
+  FORCE_NO_VERIFY=1  Bypass all verification
     `);
     return;
   }
@@ -237,12 +262,17 @@ Options:
 
   const result = await analyzeImpact(symbol, {
     verify: options.verify,
+    noVerify: options.noVerify,
+    strict: options.strict,
     freshness: options.freshness,
     showGraph: options.showGraph,
   });
 
+  // Record query metric
+  globalMetrics.recordQuery();
+
   // Output
-  console.log('\n📊 Impact Analysis\n');
+  console.log('\n Impact Analysis\n');
   console.log('='.repeat(50));
   console.log(`Symbol: ${result.symbol}`);
   console.log(`Type: ${result.type}`);
@@ -276,6 +306,11 @@ Options:
     result.verification.issues.forEach(i => console.log(`  ${i}`));
   }
 
+  // Print metrics summary if verbose
+  if (options.verbose) {
+    console.log('\n' + printMetrics());
+  }
+
   console.log('');
 }
 
@@ -300,6 +335,12 @@ function parseArgs(args: string[]): ImpactOptions & { help: boolean } {
       options.showGraph = true;
     } else if (arg === '--verify' || arg === '-v') {
       options.verify = true;
+    } else if (arg === '--no-verify') {
+      options.noVerify = true;
+    } else if (arg === '--strict' || arg === '-s') {
+      options.strict = true;
+    } else if (arg === '--verbose') {
+      options.verbose = true;
     } else if (arg === '--freshness') {
       const mode = args[++i] as 'warn' | 'error' | 'ignore';
       if (['warn', 'error', 'ignore'].includes(mode)) {

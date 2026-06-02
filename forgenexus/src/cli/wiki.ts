@@ -13,6 +13,8 @@ import type {
 import { checkStaleness } from '../data/freshness.js';
 import { calculateConfidence } from '../agents/confidence.js';
 import { createRetriever, createInMemoryStore } from '../rag/retriever.js';
+import { featureFlags } from '../config/feature-flags.js';
+import { globalMetrics, printMetrics } from '../telemetry/metrics.js';
 
 // ============================================================================
 // Types
@@ -59,13 +61,24 @@ export async function generateWiki(
 ): Promise<WikiResult> {
   const startTime = Date.now();
   const warnings: string[] = [];
-  
+
+  // Apply feature flags from CLI options
+  if (options.noVerify) {
+    featureFlags.set({ noVerify: true });
+  }
+  if (options.strict) {
+    featureFlags.set({ strict: true });
+  }
+  if (options.verify === false) {
+    featureFlags.set({ verify: false });
+  }
+
   // Default options
   const opts: Required<WikiOptions> = {
     output: options.output ?? 'stdout',
     verify: options.verify ?? true,
     strict: options.strict ?? false,
-    confidenceThreshold: options.confidenceThreshold ?? 0.8,
+    confidenceThreshold: options.confidenceThreshold ?? featureFlags.getConfidenceThreshold(),
     noVerify: options.noVerify ?? false,
     includeCitations: options.includeCitations ?? true,
     verbose: options.verbose ?? false,
@@ -74,7 +87,7 @@ export async function generateWiki(
   try {
     // Step 1: Build context and retrieve evidence
     const { context, groundingContext } = await buildContext(input, opts);
-    
+
     // Step 2: Check freshness
     const freshness = checkStaleness({
       repoPath: input.path ?? '.',
@@ -82,40 +95,44 @@ export async function generateWiki(
       commitHash: 'mock',
       indexVersion: '1.0.0',
     });
-    
+
     if (freshness.staleness !== 'fresh') {
-      warnings.push(`⚠️ Graph data is ${freshness.staleness}`);
+      warnings.push(`Graph data is ${freshness.staleness}`);
     }
-    
+
     // Step 3: Generate content (simplified - in real impl would use LLM)
     const content = await generateContent(input, groundingContext, opts);
-    
+
     // Step 4: Verify if enabled
     let verification: VerificationResult | undefined;
     let verificationIterations = 0;
-    
-    if (opts.verify && !opts.noVerify) {
+
+    if (opts.verify && !opts.noVerify && featureFlags.shouldVerify()) {
       verification = await verifyContent(content, context, opts);
       verificationIterations = 1;
-      
+
       if (!verification.verified) {
         warnings.push(...verification.issues);
       }
     }
-    
+
     // Step 5: Calculate confidence
     const confidence = calculateConfidence({
       type: 'wiki',
       evidence: verification?.evidence ?? [],
     });
-    
+
+    // Record metrics
+    globalMetrics.recordConfidence(confidence.score);
+    globalMetrics.recordWikiGenerated();
+
     // Step 6: Apply behavior based on confidence
     if (opts.strict && confidence.level === 'low') {
       throw new Error(`Confidence too low (${confidence.score}): ${confidence.reasons.join(', ')}`);
     }
-    
+
     if (confidence.level === 'critical') {
-      warnings.push('🔴 CRITICAL: Content confidence very low, verify manually');
+      warnings.push('CRITICAL: Content confidence very low, verify manually');
     }
 
     return {
@@ -353,11 +370,16 @@ Usage:
 Options:
   --output, -o       Output file path
   --verify, -v       Enable verification (default)
-  --no-verify         Skip verification
-  --strict, -s       Fail on low confidence
+  --no-verify         Skip verification (rollback)
+  --strict, -s       Fail on low confidence claims
   --threshold <n>     Minimum confidence (0-1)
-  --verbose           Verbose output
+  --verbose           Verbose output with metrics
   --help, -h         Show this help
+
+Environment Variables:
+  FORGE_VERIFY=0     Disable verification
+  FORGE_STRICT=1     Enable strict mode
+  FORCE_NO_VERIFY=1  Bypass all verification
     `);
     return;
   }
@@ -384,8 +406,13 @@ Options:
       console.log('\n--- WARNINGS ---');
       result.warnings.forEach(w => console.log(w));
     }
+    
+    // Print metrics summary
+    if (options.verbose) {
+      console.log('\n' + printMetrics());
+    }
   } else {
-    console.error('❌ Wiki generation failed');
+    console.error('Wiki generation failed');
     result.warnings.forEach(w => console.error(w));
     process.exit(1);
   }

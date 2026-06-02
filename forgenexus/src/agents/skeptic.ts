@@ -22,6 +22,8 @@ import {
   extractConfidenceScore,
   SKEPTIC_SYSTEM_PROMPT,
 } from './prompts.js';
+import { featureFlags } from '../config/feature-flags.js';
+import { globalMetrics } from '../telemetry/metrics.js';
 
 // ============================================================================
 // Skeptic Agent
@@ -39,11 +41,11 @@ export class SkepticAgent {
   private llm: SkepticAgentOptions['llm'];
   private calibration: 'strict' | 'moderate' | 'lenient';
   private maxIterations: number;
-  
+
   constructor(options: SkepticAgentOptions) {
     this.llm = options.llm;
     this.calibration = options.calibration ?? 'moderate';
-    this.maxIterations = options.maxIterations ?? 3;
+    this.maxIterations = options.maxIterations ?? featureFlags.getMaxIterations();
   }
   
   /**
@@ -54,6 +56,19 @@ export class SkepticAgent {
     evidence: Evidence[];
     sources?: Array<{ file: string; line?: number; snippet: string }>;
   }): Promise<VerificationResult> {
+    // Check if verification is enabled
+    if (!featureFlags.shouldVerify()) {
+      return {
+        status: 'confirmed',
+        confidence: 1.0,
+        reasoning: 'Verification bypassed via feature flags',
+        evidence: params.evidence,
+        issues: [],
+        verified: true,
+      };
+    }
+
+    const startTime = Date.now();
     const evidenceText = this.formatEvidence(params.evidence);
     const prompt = buildVerificationPrompt({
       claims: [params.claim],
@@ -66,8 +81,17 @@ export class SkepticAgent {
         system: SKEPTIC_SYSTEM_PROMPT,
       });
       
-      return this.parseVerificationResult(response.content, params.evidence);
+      const result = this.parseVerificationResult(response.content, params.evidence);
+      const latencyMs = Date.now() - startTime;
+      
+      // Record metrics
+      const passed = result.status === 'confirmed';
+      globalMetrics.recordVerification(passed, latencyMs);
+      
+      return result;
     } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      globalMetrics.recordVerification(false, latencyMs);
       return this.handleError(error as Error, params.claim);
     }
   }
@@ -80,6 +104,19 @@ export class SkepticAgent {
     evidence: Evidence[];
     sources?: Array<{ file: string; line?: number; snippet: string }>;
   }): Promise<VerificationResult> {
+    // Check if verification is enabled
+    if (!featureFlags.shouldVerify()) {
+      return {
+        status: 'confirmed',
+        confidence: 1.0,
+        reasoning: 'Verification bypassed via feature flags',
+        evidence: params.evidence,
+        issues: [],
+        verified: true,
+      };
+    }
+
+    const startTime = Date.now();
     const evidenceText = this.formatEvidence(params.evidence);
     const prompt = buildVerificationPrompt({
       claims: params.claims,
@@ -92,8 +129,17 @@ export class SkepticAgent {
         system: SKEPTIC_SYSTEM_PROMPT,
       });
       
-      return this.parseVerificationResult(response.content, params.evidence);
+      const result = this.parseVerificationResult(response.content, params.evidence);
+      const latencyMs = Date.now() - startTime;
+      
+      // Record metrics
+      const passed = result.status === 'confirmed';
+      globalMetrics.recordVerification(passed, latencyMs);
+      
+      return result;
     } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      globalMetrics.recordVerification(false, latencyMs);
       return this.handleError(error as Error, params.claims.join('; '));
     }
   }
@@ -105,6 +151,18 @@ export class SkepticAgent {
     content: string;
     grounding: GroundingContext;
   }): Promise<DocumentVerification> {
+    // Check if verification is enabled
+    if (!featureFlags.shouldVerify()) {
+      return {
+        verified: true,
+        confidence: 1.0,
+        claims: [],
+        issues: [],
+        warnings: ['Verification bypassed via feature flags'],
+      };
+    }
+
+    const startTime = Date.now();
     const evidenceText = this.formatGroundingContext(params.grounding);
     const prompt = buildDocumentVerificationPrompt({
       document: params.content,
@@ -118,8 +176,16 @@ export class SkepticAgent {
         system: SKEPTIC_SYSTEM_PROMPT,
       });
       
-      return this.parseDocumentVerification(response.content, params.content);
+      const result = this.parseDocumentVerification(response.content, params.content);
+      const latencyMs = Date.now() - startTime;
+      
+      // Record metrics
+      globalMetrics.recordVerification(result.verified, latencyMs);
+      
+      return result;
     } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      globalMetrics.recordVerification(false, latencyMs);
       return this.handleDocumentError(error as Error);
     }
   }
@@ -136,6 +202,19 @@ export class SkepticAgent {
       dependencies?: string[];
     };
   }): Promise<VerificationResult> {
+    // Check if verification is enabled
+    if (!featureFlags.shouldVerify()) {
+      return {
+        status: 'confirmed',
+        confidence: 1.0,
+        reasoning: 'Verification bypassed via feature flags',
+        evidence: [],
+        issues: [],
+        verified: true,
+      };
+    }
+
+    const startTime = Date.now();
     const graphText = this.formatGraphData(params.graphData);
     const prompt = buildImpactVerificationPrompt({
       symbol: params.symbol,
@@ -150,15 +229,24 @@ export class SkepticAgent {
       });
       
       const parsed = parseVerificationResponse(response.content);
+      const confidence = extractConfidenceScore(response.content);
+      const latencyMs = Date.now() - startTime;
+      
+      // Record metrics
+      const passed = parsed.status === 'confirmed';
+      globalMetrics.recordVerification(passed, latencyMs);
+      globalMetrics.recordImpactAnalysis();
       
       return {
         status: parsed.status,
-        confidence: extractConfidenceScore(response.content),
+        confidence,
         reasoning: parsed.reasoning,
         evidence: [],
         issues: parsed.issues,
       };
     } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      globalMetrics.recordVerification(false, latencyMs);
       return this.handleError(error as Error, params.claim);
     }
   }
@@ -274,6 +362,9 @@ export class SkepticAgent {
   private parseVerificationResult(content: string, evidence: Evidence[]): VerificationResult {
     const parsed = parseVerificationResponse(content);
     
+    // Get threshold from feature flags
+    const threshold = featureFlags.getConfidenceThreshold();
+    
     // Adjust confidence based on calibration
     let confidence = extractConfidenceScore(content);
     if (this.calibration === 'strict') {
@@ -282,9 +373,14 @@ export class SkepticAgent {
       confidence = Math.min(1, confidence * 1.1);
     }
     
-    // Determine status
+    // Determine status based on threshold
     let status: VerificationStatus = parsed.status;
     if (status === 'uncertain' && this.calibration === 'strict') {
+      status = 'unconfirmed';
+    }
+    
+    // In strict mode, reclassify based on threshold
+    if (featureFlags.current.strict && confidence < threshold) {
       status = 'unconfirmed';
     }
     

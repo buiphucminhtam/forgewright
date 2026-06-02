@@ -1,5 +1,38 @@
 # ForgeWright Anti-Hallucination - Launch Checklist
 
+## Feature Flags
+
+The anti-hallucination system can be controlled via feature flags for staged rollout and rollback scenarios.
+
+### Environment Variables
+
+| Flag | Env Var | Default | Purpose |
+|------|---------|---------|---------|
+| Verify | `FORGE_VERIFY` | `1` | Toggle verification pipeline |
+| Strict | `FORGE_STRICT` | `0` | Reject low confidence claims |
+| No Verify | `FORCE_NO_VERIFY` | `0` | Fast bypass (rollback) |
+| Skeptic | `FORGE_SKEPTIC` | `1` | Toggle skeptic agent |
+| Semantic Energy | `FORGE_SEMANTIC_ENERGY` | `1` | Toggle uncertainty quantification |
+| RAG | `FORGE_RAG` | `1` | Toggle retrieval |
+| Citations | `FORGE_CITATIONS` | `1` | Toggle citation extraction |
+| Confidence | `FORGE_CONFIDENCE` | `1` | Toggle confidence scoring |
+
+### CLI Flags
+
+| Flag | Description | Use Case |
+|------|-------------|----------|
+| `--no-verify` | Bypass all verification | Quick rollback |
+| `--strict` | Fail on low confidence | Internal testing |
+| `--verbose` | Show metrics summary | Debugging |
+| `--verify` | Explicit verification enable | Default |
+
+### Confidence Thresholds
+
+| Mode | Threshold | Max Iterations |
+|------|-----------|----------------|
+| Default | 0.60 | 3 |
+| Strict | 0.85 | 2 |
+
 ## Pre-Launch Checklist
 
 ### Week 7: Testing
@@ -100,6 +133,70 @@
 | User trust score | > 4.0/5 | Target |
 | Performance overhead | < 30% | Target |
 | Verification pass rate | > 85% | Target |
+
+## Rollback Procedures
+
+### Quick Rollback (env var)
+
+```bash
+# Skip all verification
+FORCE_NO_VERIFY=1 npx forgenexus wiki auth
+
+# Or via CLI flag
+forgenexus --no-verify wiki auth
+
+# Skip verification for impact analysis
+forgenexus --no-verify impact getUser
+```
+
+### Strict Mode (Internal Testing)
+
+```bash
+# Fail on low confidence
+forgenexus --strict wiki auth
+
+# Strict mode with verification
+forgenexus --strict --verify impact getUser
+```
+
+### Config-based Rollback
+
+```json
+{
+  "antiHallucination": {
+    "verification": {
+      "enabled": false
+    }
+  }
+}
+```
+
+### Metrics Monitoring
+
+When running with `--verbose` or `FORGENEXUS_VERBOSE=1`, the system prints:
+
+```
+Verification Metrics
+─────────────────────
+Verification: 85/100 passed (85.0%)
+Avg Confidence: 75.2%
+Skeptic Latency: 1234.5ms
+RAG Latency: 234.5ms
+Citation Accuracy: 92.5%
+Hallucination Rate: 15.0%
+Queries: 50
+Wiki Generated: 25
+Impact Analysis: 25
+```
+
+## Performance Targets
+
+| Component | Target | Status |
+|-----------|--------|--------|
+| Skeptic latency | < 2000ms | ✅ Pass |
+| Confidence calculation | < 100ms | ✅ Pass |
+| RAG retrieval | < 500ms | ✅ Pass |
+| Overhead | < 30% | ✅ Pass |
 
 ## Rollback Plan
 

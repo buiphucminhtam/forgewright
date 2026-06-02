@@ -19,8 +19,16 @@ import { status } from './status.js';
 import { clean } from './clean.js';
 import { doctor } from './doctor.js';
 import { check } from './check.js';
+import { feedbackCommand } from './feedback.js';
 import { Registry } from '../data/registry.js';
 import { ForgeDB } from '../data/db.js';
+import { loadEnvOverrides } from '../config/thresholds.js';
+import { handleDashboardCommand } from './dashboard.js';
+import { featureFlags } from '../config/feature-flags.js';
+import { globalMetrics, printMetrics } from '../telemetry/metrics.js';
+
+// Load threshold overrides from environment
+loadEnvOverrides();
 
 export { evaluateCommand } from './evaluate.js';
 export { wikiCommand, generateWiki } from './wiki.js';
@@ -35,6 +43,8 @@ interface GlobalFlags {
   verbose?: boolean
   help?: boolean
   version?: boolean
+  noVerify?: boolean
+  strict?: boolean
 }
 
 function parseGlobalFlags(args: string[]): { flags: GlobalFlags; positional: string[] } {
@@ -46,6 +56,8 @@ function parseGlobalFlags(args: string[]): { flags: GlobalFlags; positional: str
     else if (arg === '--verbose' || arg === '-v') flags.verbose = true
     else if (arg === '--help' || arg === '-h') flags.help = true
     else if (arg === '--version' || arg === '-V') flags.version = true
+    else if (arg === '--no-verify') flags.noVerify = true
+    else if (arg === '--strict') flags.strict = true
     else positional.push(arg)
   }
 
@@ -62,9 +74,15 @@ function printHelp() {
 
 \x1b[1mGlobal Options:\x1b[0m
   -s, --silent     Suppress all output except errors
-  -v, --verbose    Enable detailed logging
+  -v, --verbose    Enable detailed logging with metrics
   -h, --help       Show this help message
   -V, --version    Show version number
+  --no-verify      Bypass all verification (rollback)
+  --strict         Enable strict mode (reject low confidence)
+
+\x1b[1mAnti-Hallucination Flags:\x1b[0m
+  --no-verify      FORCE_NO_VERIFY=1
+  --strict         FORGE_STRICT=1
 
 \x1b[1mCommands:\x1b[0m
   \x1b[32manalyze\x1b[0m    Index a repository (default: current directory)
@@ -80,6 +98,14 @@ function printHelp() {
   \x1b[32mwiki\x1b[0m       Generate documentation
   \x1b[32mclean\x1b[0m      Delete index for a repository
   \x1b[32mmcp\x1b[0m        Start MCP server (stdio mode)
+  \x1b[32mfeedback\x1b[0m   Feedback collection for beta testing
+  \x1b[32mdashboard\x1b[0m  Display metrics dashboard
+
+\x1b[1mdashboard options:\x1b[0m
+  metrics           Show terminal metrics dashboard (default)
+  html [-o <file>]  Generate HTML dashboard
+  report [-o <file>] Generate markdown report
+  export [-o <file>] Export all data as JSON
 
 \x1b[1manalyze options:\x1b[0m
   --force          Force full re-index (skip incremental)
@@ -101,8 +127,16 @@ function printHelp() {
   forgenexus status                    # Check index
   forgenexus query "findUser"          # Search symbol
   forgenexus context getUser           # Get symbol details
-  forgenexus impact validateToken       # Blast radius
+  forgenexus impact validateToken      # Blast radius
   forgenexus mcp                       # Start MCP server
+  forgenexus feedback add              # Add feedback
+  forgenexus feedback stats            # View feedback stats
+  forgenexus dashboard                # Show metrics dashboard
+  forgenexus dashboard html           # Generate HTML dashboard
+
+\x1b[1mRollback Examples:\x1b[0m
+  forgenexus --no-verify wiki auth     # Skip verification
+  forgenexus --strict impact getUser   # Fail on low confidence
 `)
 }
 
@@ -113,6 +147,14 @@ function printVersion() {
 export async function main() {
   const args = process.argv.slice(2)
   const { flags, positional } = parseGlobalFlags(args)
+
+  // Apply global feature flags
+  if (flags.noVerify) {
+    featureFlags.set({ noVerify: true });
+  }
+  if (flags.strict) {
+    featureFlags.set({ strict: true });
+  }
 
   // Set global flags
   if (flags.silent) process.env.FORGENEXUS_SILENT = '1'
@@ -268,6 +310,16 @@ export async function main() {
         break
       }
 
+      case 'feedback': {
+        feedbackCommand(commandArgs)
+        break
+      }
+
+      case 'dashboard': {
+        handleDashboardCommand(commandArgs)
+        break
+      }
+
       default:
         console.error(`\x1b[31mUnknown command: ${command}\x1b[0m`)
         console.error(`Run 'forgenexus --help' for usage.`)
@@ -278,6 +330,11 @@ export async function main() {
       console.error(`\x1b[31mFatal:\x1b[0m ${err instanceof Error ? err.message : String(err)}`)
     }
     process.exit(1)
+  } finally {
+    // Print metrics summary in verbose mode
+    if (flags.verbose) {
+      console.log('\n' + printMetrics());
+    }
   }
 }
 

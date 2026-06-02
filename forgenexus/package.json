@@ -18,6 +18,9 @@
     "test:coverage": "vitest run --coverage --reporter=basic",
     "test:integration": "npx tsx scripts/test-integration.ts",
     "test:all": "npm run test && npm run test:integration",
+    "benchmark": "npx tsx benchmarks/run.ts",
+    "benchmark:ci": "npx tsx benchmarks/run.ts --ci",
+    "eval": "npx tsx scripts/run-eval.ts",
     "lint": "eslint src/ --ext .ts --max-warnings=0",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "format:write": "prettier --write \"src/**/*.ts\""
@@ -51,6 +54,7 @@
     "@vitest/coverage-v8": "^1.2.2",
     "eslint": "^8.56.0",
     "prettier": "^3.2.4",
+    "tsx": "^4.19.0",
     "typescript": "^5.3.3",
     "vitest": "^1.2.2"
   },

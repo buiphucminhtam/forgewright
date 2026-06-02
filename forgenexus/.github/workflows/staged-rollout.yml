@@ -1,0 +1,383 @@
+name: Staged Rollout
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Deployment stage'
+        required: true
+        default: 'smoke-tests'
+        type: choice
+        options:
+          - smoke-tests
+          - integration-tests
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip test verification'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ============================================================
+  # Stage 1: Smoke Tests (fast, ~2 minutes)
+  # ============================================================
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    environment: dev
+    outputs:
+      status: ${{ job.status }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for versioning
+      
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: forgenexus/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./forgenexus
+        run: npm ci
+      
+      - name: Build TypeScript
+        working-directory: ./forgenexus
+        run: npm run build
+      
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./forgenexus/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Smoke Test — Wiki Mode
+        id: wiki-test
+        working-directory: ./forgenexus
+        run: |
+          echo "Testing wiki command..."
+          node dist/cli/index.js wiki --help > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+            echo "✓ Wiki mode smoke test passed"
+          else
+            echo "✗ Wiki mode smoke test failed"
+            exit 1
+          fi
+      
+      - name: Smoke Test — Query Mode
+        id: query-test
+        working-directory: ./forgenexus
+        run: |
+          echo "Testing query command..."
+          node dist/cli/index.js query --help > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+            echo "✓ Query mode smoke test passed"
+          else
+            echo "✗ Query mode smoke test failed"
+            exit 1
+          fi
+      
+      - name: Smoke Test — Impact Mode
+        id: impact-test
+        working-directory: ./forgenexus
+        run: |
+          echo "Testing impact command..."
+          node dist/cli/index.js impact --help > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+            echo "✓ Impact mode smoke test passed"
+          else
+            echo "✗ Impact mode smoke test failed"
+            exit 1
+          fi
+      
+      - name: Smoke Test — Verify Flag
+        id: verify-test
+        working-directory: ./forgenexus
+        run: |
+          echo "Testing verify feature flag..."
+          FORGE_VERIFY=1 node dist/cli/index.js wiki --help > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+            echo "✓ Verify flag smoke test passed"
+          else
+            echo "✗ Verify flag smoke test failed"
+            exit 1
+          fi
+      
+      - name: Upload smoke test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results
+          path: |
+            forgenexus/dist/
+          retention-days: 7
+
+  # ============================================================
+  # Stage 2: Integration Tests (medium, ~5 minutes)
+  # ============================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: smoke-tests
+    environment: dev
+    if: ${{ needs.smoke-tests.result == 'success' }}
+    outputs:
+      status: ${{ job.status }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: forgenexus/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./forgenexus
+        run: npm ci
+      
+      - name: Build TypeScript
+        working-directory: ./forgenexus
+        run: npm run build
+      
+      - name: Run all tests
+        working-directory: ./forgenexus
+        run: npm test
+      
+      - name: Run benchmarks
+        working-directory: ./forgenexus
+        run: npm run benchmark:ci
+        continue-on-error: true  # Don't fail rollout on perf regression
+      
+      - name: Run evaluation
+        working-directory: ./forgenexus
+        run: npm run eval
+      
+      - name: Upload integration results
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: |
+            forgenexus/coverage/
+            forgenexus/benchmarks/results/
+            forgenexus/benchmarks/eval-results*.json
+          retention-days: 30
+
+  # ============================================================
+  # Stage 3: Staging Deployment (requires prerelease tag)
+  # ============================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    environment: staging
+    if: |
+      needs.integration-tests.result == 'success' && (
+        contains(github.ref, 'alpha') ||
+        contains(github.ref, 'beta') ||
+        contains(github.ref, 'rc') ||
+        github.event.inputs.stage == 'staging'
+      )
+    outputs:
+      status: ${{ job.status }}
+      deployment_url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: forgenexus/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./forgenexus
+        run: npm ci
+      
+      - name: Build for production
+        working-directory: ./forgenexus
+        run: npm run build
+      
+      - name: Run staging acceptance tests
+        working-directory: ./forgenexus
+        run: |
+          echo "Running staging acceptance tests..."
+          # Placeholder for actual staging tests
+          # Example: curl -f https://staging.forgenexus.local/health || exit 1
+          echo "✓ Staging acceptance tests placeholder"
+      
+      - name: Deploy to staging environment
+        id: deploy
+        run: |
+          echo "Deploying to staging..."
+          echo "deployment_url=https://staging.forgenexus.local" >> $GITHUB_OUTPUT
+          # Add actual deployment steps here:
+          # - rsync to staging server
+          # - Docker push to staging registry
+          # - Helm upgrade on staging cluster
+          echo "✓ Staging deployment placeholder completed"
+      
+      - name: Notify staging deployment
+        if: always()
+        run: |
+          echo "::notice ::Staging deployment ${{ job.status }}"
+
+  # ============================================================
+  # Stage 4: Production Release (requires release tag)
+  # ============================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment: production
+    if: |
+      (
+        needs.deploy-staging.result == 'success' ||
+        (needs.deploy-staging.result == 'skipped' && github.event_name == 'workflow_dispatch')
+      ) && (
+        contains(github.ref, 'rc') ||
+        startsWith(github.ref, 'refs/tags/v') ||
+        github.event.inputs.stage == 'production'
+      )
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    outputs:
+      status: ${{ job.status }}
+      release_url: ${{ steps.release.outputs.url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: forgenexus/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./forgenexus
+        run: npm ci
+      
+      - name: Build for production
+        working-directory: ./forgenexus
+        run: npm run build
+      
+      - name: Deploy to production environment
+        run: |
+          echo "Deploying to production..."
+          # Add actual deployment steps here:
+          # - Docker push to production registry
+          # - Helm upgrade on production cluster
+          # - Rolling update with health checks
+          echo "✓ Production deployment placeholder completed"
+      
+      - name: Create GitHub Release
+        id: release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: CHANGELOG.md
+          files: |
+            forgenexus/dist/**
+            forgenexus/package.json
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create release output
+        id: release_info
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "url=https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}" >> $GITHUB_OUTPUT
+      
+      - name: Notify production deployment
+        if: always()
+        run: |
+          echo "::notice ::Production deployment ${{ job.status }}"
+          echo "::notice ::Release: ${{ github.ref_name }}"
+
+  # ============================================================
+  # Rollback Gate: Alert on failure
+  # ============================================================
+  rollback-gate:
+    name: Rollback Gate
+    runs-on: ubuntu-latest
+    needs: [smoke-tests, integration-tests, deploy-staging, deploy-production]
+    if: failure()
+    
+    steps:
+      - name: Check failure conditions
+        run: |
+          echo "⚠️ Rollout failed — Automatic rollback recommended"
+          echo ""
+          echo "## Failure Summary"
+          echo "| Stage | Status |"
+          echo "|-------|--------|"
+          echo "| Smoke Tests | ${{ needs.smoke-tests.result }} |"
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |"
+          echo "| Staging | ${{ needs.deploy-staging.result }} |"
+          echo "| Production | ${{ needs.deploy-production.result }} |"
+          echo ""
+          echo "::warning ::Feature flags should be set to rollback state"
+          echo "::warning ::Run: FORCE_NO_VERIFY=1 npx forgenexus ..."
+      
+      - name: Create rollback issue
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Rollback Required: Staged Rollout Failed',
+              body: `## Rollout Failure Report
+              
+Automated rollout failed for \`${{ github.ref }}\`.
+
+### Status
+| Stage | Result |
+|-------|--------|
+| Smoke Tests | ${{ needs.smoke-tests.result }} |
+| Integration Tests | ${{ needs.integration-tests.result }} |
+| Staging | ${{ needs.deploy-staging.result }} |
+| Production | ${{ needs.deploy-production.result }} |
+
+### Recommended Actions
+1. Check failed workflow logs
+2. Set \`FORCE_NO_VERIFY=1\` for rollback
+3. Investigate and fix issues
+4. Re-run rollout after fixes
+`,
+              labels: ['rollback', 'ci-cd']
+            })

@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-06-02T08:10:23.332Z",
+  "environment": {
+    "nodeVersion": "v22.22.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpus": 10,
+    "memory": 16
+  },
+  "results": [
+    {
+      "name": "skeptic-latency",
+      "coldTime": 257.219792,
+      "warmTime": 117.85126126666665,
+      "cacheHitRate": 0,
+      "memoryOverhead": 0,
+      "speedupRatio": 1.2789673307305904,
+      "runs": 5,
+      "avg": 117.85126126666665,
+      "min": 51.4439584,
+      "max": 201.11521679999998
+    },
+    {
+      "name": "confidence-calc",
+      "coldTime": 0.5083329999999933,
+      "warmTime": 0.0025271838333338413,
+      "cacheHitRate": 0,
+      "memoryOverhead": 0,
+      "speedupRatio": 201.14603191703878,
+      "runs": 1000,
+      "avg": 0.0025271838333338413,
+      "min": 0.00012499999979809218,
+      "max": 0.5083329999999933
+    },
+    {
+      "name": "rag-retrieval",
+      "coldTime": 6.541165999999976,
+      "warmTime": 6.588208400000076,
+      "cacheHitRate": -0.007191745324931276,
+      "memoryOverhead": 0,
+      "speedupRatio": 0.9928596065661646,
+      "runs": 11,
+      "avg": 1.0611988125000096,
+      "min": 0.29479200000014316,
+      "max": 1.3069375000000225
+    },
+    {
+      "name": "cold-run",
+      "coldTime": 255.8967090000001,
+      "warmTime": 255.8967090000001,
+      "cacheHitRate": 0,
+      "memoryOverhead": 0.04701995849609375,
+      "speedupRatio": 1,
+      "runs": 1,
+      "avg": 255.8967090000001,
+      "min": 255.8967090000001,
+      "max": 255.8967090000001
+    },
+    {
+      "name": "warm-cache",
+      "coldTime": 255.32658299999957,
+      "warmTime": 5.7634336000000985,
+      "cacheHitRate": 5,
+      "memoryOverhead": 0,
+      "speedupRatio": 44.3011233789516,
+      "runs": 6,
+      "avg": 5.7634336000000985,
+      "min": 4.760084000000006,
+      "max": 6.221958000000086
+    }
+  ],
+  "targets": [
+    {
+      "name": "skeptic-latency",
+      "target": "<2000ms",
+      "actual": 117.85126126666665,
+      "passed": true,
+      "details": "117.85ms < 2000ms ✓"
+    },
+    {
+      "name": "confidence-calc",
+      "target": "<100ms",
+      "actual": 0.0025271838333338413,
+      "passed": true,
+      "details": "3μs < 100ms ✓"
+    },
+    {
+      "name": "rag-retrieval",
+      "target": "<500ms",
+      "actual": 1.0611988125000096,
+      "passed": true,
+      "details": "1.06ms < 500ms ✓"
+    }
+  ],
+  "summary": {
+    "allTargetsMet": true,
+    "passCount": 3,
+    "failCount": 0,
+    "totalTime": 775.4925829999996
+  }
+}
