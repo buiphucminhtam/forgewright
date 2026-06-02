@@ -5,7 +5,7 @@ description: >
   system prompts, chain-of-thought, few-shot examples, evaluation frameworks,
   prompt versioning, and cost optimization. Activated for AI-heavy features.
   Routed via the production-grade orchestrator.
-version: 2.0.0
+version: 2.1.0
 ---
 
 # Prompt Engineer — AI Prompt Design & Optimization Specialist
@@ -949,3 +949,66 @@ evaluation/
 - [ ] A/B testing infrastructure ready
 - [ ] Version control established
 - [ ] Cost projections documented
+
+---
+
+## Prompt Template Library
+
+**`skills/prompt-engineer/prompts/`** — Curated, battle-tested prompts from [prompts.chat](https://github.com/f/prompts.chat) (163K stars), integrated into Forgewright's Prompt Engineer skill.
+
+```
+skills/prompt-engineer/prompts/
+├── code-review/           10 curated examples, OWASP + industry standards
+├── bug-debug/             10 curated examples, systematic diagnosis methodology
+├── architecture-design/    10 curated examples, distributed systems patterns
+├── security-audit/         10 curated examples, CWE + OWASP Top 10
+├── test-generation/        10 curated examples, TDD + coverage focus
+├── api-design/             10 curated examples, REST/GraphQL best practices
+├── frontend-dev/           10 curated examples, React/TypeScript + a11y
+├── backend-dev/            10 curated examples, error handling + scalability
+├── devops/                10 curated examples, CI/CD + containerization
+└── research/              10 curated examples, evidence-based methodology
+```
+
+Each domain directory contains:
+
+| File | Purpose |
+|------|---------|
+| `system.md` | Curated system prompt (500-1000 chars, few-shot structured) |
+| `examples.jsonl` | 10 few-shot examples (JSONL, one line per example) |
+| `config.yaml` | Model, temperature, output schema, quality bars, tags |
+
+### Using the Template Library
+
+When executing Prompt Engineer for any task:
+
+```
+1. Load domain system.md → sets structured role + task + output schema
+2. Load domain examples.jsonl → provides few-shot examples for the task type
+3. Load domain config.yaml → sets model, temperature, quality thresholds
+4. Inject user input → run through template structure
+5. Validate output → against JSON schema in system.md
+```
+
+### Adding New Domains
+
+When a new domain is needed (not covered by existing 10):
+
+```
+1. Search prompts.chat for relevant prompts
+2. Extract and deduplicate (use prompts.chat PROMPTS.md as source)
+3. Create directory: skills/prompt-engineer/prompts/<domain>/
+4. Create system.md + examples.jsonl + config.yaml
+5. Add to domain list above
+6. Submit via PR for review
+```
+
+### Contributing Prompts
+
+Prompts are sourced from [prompts.chat](https://github.com/f/prompts.chat) under CC0-1.0 license. To contribute:
+
+1. Find a high-quality prompt on prompts.chat
+2. Map it to the appropriate domain
+3. Add as a JSONL line in `examples.jsonl`
+4. Update `source_prompts` count in `config.yaml`
+5. Submit PR with contributor attribution

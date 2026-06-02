@@ -1,0 +1,21 @@
+domain: api-design
+description: "Design RESTful and GraphQL APIs with OpenAPI specifications"
+model:
+  primary: claude-3-5-sonnet
+  fallback: claude-3-haiku
+temperature: 0.3
+max_tokens: 4000
+output_schema: json
+source_prompts: 6
+contributors: 6
+techniques:
+  - few-shot
+  - structured-output
+quality_bars:
+  accuracy: 0.85
+  format_compliance: 0.90
+tags:
+  - API
+  - REST
+  - GraphQL
+  - OpenAPI

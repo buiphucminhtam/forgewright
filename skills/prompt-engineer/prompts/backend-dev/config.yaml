@@ -1,0 +1,22 @@
+domain: backend-dev
+description: "Build scalable backend services with proper error handling"
+model:
+  primary: claude-3-5-sonnet
+  fallback: claude-3-haiku
+temperature: 0.3
+max_tokens: 4000
+output_schema: json
+source_prompts: 11
+contributors: 7
+techniques:
+  - few-shot
+  - structured-output
+quality_bars:
+  accuracy: 0.85
+  format_compliance: 0.90
+tags:
+  - backend
+  - server
+  - API
+  - Node.js
+  - Python

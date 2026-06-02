@@ -1,0 +1,22 @@
+domain: code-review
+description: "AI-powered code review with security, performance, and best-practices checks"
+model:
+  primary: claude-3-5-sonnet
+  fallback: claude-3-haiku
+temperature: 0.3
+max_tokens: 4000
+output_schema: json
+source_prompts: 14
+contributors: 10
+techniques:
+  - few-shot
+  - structured-output
+  - chain-of-thought
+quality_bars:
+  accuracy: 0.85
+  format_compliance: 0.95
+tags:
+  - code-review
+  - security
+  - quality
+  - static-analysis

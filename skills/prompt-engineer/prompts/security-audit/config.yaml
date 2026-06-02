@@ -1,0 +1,30 @@
+domain: security-audit
+description: "Security audit with OWASP Top 10, CWE mapping, and compliance checks"
+
+model:
+  primary: claude-3-5-sonnet
+  fallback: claude-3-haiku
+
+temperature: 0.1
+max_tokens: 4000
+
+output_schema: json
+
+source_prompts: 67
+contributors: 15
+
+techniques:
+  - few-shot
+  - structured-output
+  - chain-of-thought
+
+quality_bars:
+  accuracy: 0.85
+  format_compliance: 0.95
+
+tags:
+  - security
+  - vulnerability
+  - OWASP
+  - audit
+  - compliance

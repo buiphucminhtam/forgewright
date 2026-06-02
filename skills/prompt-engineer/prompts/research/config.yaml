@@ -1,0 +1,22 @@
+domain: research
+description: "Conduct deep technical research with evidence-based findings"
+model:
+  primary: claude-3-5-sonnet
+  fallback: claude-3-haiku
+temperature: 0.4
+max_tokens: 5000
+output_schema: json
+source_prompts: 9
+contributors: 6
+techniques:
+  - few-shot
+  - structured-output
+  - chain-of-thought
+quality_bars:
+  accuracy: 0.80
+  format_compliance: 0.90
+tags:
+  - research
+  - analysis
+  - investigation
+  - academic

@@ -1,0 +1,62 @@
+domain: architecture-design
+description: "System architecture design for scalable distributed systems"
+
+model:
+  primary: claude-3-5-sonnet
+  fallback: claude-3-haiku
+
+temperature: 0.4
+max_tokens: 5000
+output_schema: json
+
+source_prompts: 116
+contributors: 12
+
+techniques:
+  - few-shot
+  - structured-output
+  - chain-of-thought (for trade-off analysis)
+
+quality_bars:
+  accuracy: 0.80
+  format_compliance: 0.90
+  completeness: 0.85
+
+tags:
+  - architecture
+  - system-design
+  - scalability
+  - microservices
+  - cloud
+  - enterprise
+  - distributed-systems
+  - devops
+
+variants:
+  - name: enterprise
+    description: "Enterprise-grade with compliance and governance"
+    temperature: 0.3
+    max_tokens: 8000
+  - name: startup
+    description: "MVP-focused with cost optimization"
+    temperature: 0.5
+    max_tokens: 4000
+  - name: mobile-first
+    description: "Mobile app architecture with edge computing"
+    temperature: 0.4
+    max_tokens: 5000
+
+references:
+  contributors:
+    - Littledotey
+    - savasturkoglu1
+    - Ted2xmen
+    - huanghshhe@gmail.com
+    - aitrainee
+    - Abdooo2235
+  patterns:
+    - microservices
+    - event-driven
+    - serverless
+    - clean-architecture
+    - hexagonal-architecture

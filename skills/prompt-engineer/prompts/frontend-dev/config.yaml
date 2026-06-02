@@ -1,0 +1,46 @@
+domain: frontend-dev
+description: "Build accessible, performant frontend components and pages with React/TypeScript"
+
+model:
+  primary: claude-3-5-sonnet
+  fallback: claude-3-haiku
+
+temperature: 0.4
+max_tokens: 4000
+output_schema: json
+
+source_prompts: 220
+contributors: 15
+
+techniques:
+  - few-shot
+  - structured-output
+
+quality_bars:
+  accuracy: 0.85
+  format_compliance: 0.90
+  accessibility_wcag: 0.95
+  performance_lighthouse: 0.90
+
+tags:
+  - frontend
+  - React
+  - TypeScript
+  - UI
+  - accessibility
+  - responsive
+  - component
+  - web
+  - hooks
+
+patterns:
+  - component-driven
+  - atomic-design
+  - mobile-first
+  - progressive-enhancement
+
+related_domains:
+  - ui-design
+  - web-design
+  - accessibility
+  - frontend-engineer
