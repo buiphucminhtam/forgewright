@@ -7,8 +7,8 @@
   <a href="https://github.com/buiphucminhtam/forgewright/network/members">
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
-  <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-67-brightgreen?style=flat-square" alt="Skills" />
+  <img src="https://img.shields.io/badge/version-8.0.0-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/skills-56-brightgreen?style=flat-square" alt="Skills" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
   </a>
@@ -338,12 +338,6 @@ The recommended MCP config for Cursor/Claude Desktop:
 
 **Manual setup:** If setup script fails, edit `~/.cursor/mcp.json` manually with the format above.
 
----
-
-### Multi-Project Architecture
-
----
-
 ### Updating Existing Installations
 
 ```bash
@@ -645,7 +639,7 @@ bash scripts/forge-validate.sh
 
 > **v8.5.0 UPDATE:** ForgeNexus has been migrated to **GitNexus** — the recommended code intelligence tool. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.
 
-This project is indexed by GitNexus as **forgewright** (19,487 nodes, 27,848 edges, 339 clusters, 269 flows).
+This project is indexed by GitNexus as **forgewright** (20,138 symbols, 28,557 relationships, 269 execution flows).
 
 ### Why GitNexus?
 
@@ -724,7 +718,7 @@ See [`docs/SETUP-GITNEXUS.md`](docs/SETUP-GITNEXUS.md) for full documentation.
 
 ---
 
-## Parallel Dispatch — Multi-Agent Execution
+## Parallel Dispatch
 
 Run multiple AI agents simultaneously for parallel task execution using git worktrees.
 
@@ -877,15 +871,16 @@ npm install -g gitnexus
 gitnexus setup
 ```
 
-**Q: What's new in v8.7.0?**
+**Q: What's new in v8.0.0?**
 
-A:** Memory System v2 — retrieval loop, rich checkpoints, auto-tagging, convention indexer, memory hygiene. See [Changelog](#v870-may-2026--memory-system-v2).
-- GitNexus provides 38K+ stars, npm installation, auto-setup for all editors
-- Single `gitnexus setup` command replaces multi-step ForgeNexus setup
-- 16 MCP tools with improved performance
-- Multi-repo support with `gitnexus group`
+A: Forgewright v8.0.0 is a major release focusing on reliability and maintainability:
+- **GitNexus Integration** — Code intelligence (context, impact analysis, detect changes)
+- **Universal MCP Setup** — Single script configures all platforms (Cursor, Claude Code, Antigravity, Codex)
+- **Memory System v2** — Retrieval loop, rich checkpoints, auto-tagging, convention indexer
+- **Anti-Hallucination System** — Skeptic agent, confidence scoring, citation extraction (via Forgenexus)
+- **57 Skills** — Added Prompt Optimizer, Data Engineer, XLSX Engineer, Project Manager, UX Researcher, Accessibility Engineer
 
-See [`docs/SETUP-GITNEXUS.md`](docs/SETUP-GITNEXUS.md) for full migration guide.
+See the [Changelog](#v800-june-2026--forgewright-80) below for full details.
 
 **Q: What's the difference between forgewright and gitnexus MCP?**
 
@@ -924,19 +919,23 @@ bash scripts/forgewright-mcp-setup.sh --force
 ---
 
 ## Changelog
-
-### v8.7.0 (May 2026) — Memory System v2
+### v8.0.0 (June 2026) — Forgewright 8.0
 
 **Major Changes:**
 
 | Change | Description |
 |--------|-------------|
+| **GitNexus Code Intelligence** | 20,138 symbols, 28,557 relationships, 269 execution flows — context, impact, detect_changes, rename |
+| **Universal MCP Setup** | Single `forgewright-mcp-setup.sh` configures all 4 platforms (Cursor, Claude Code, Antigravity, Codex) |
 | **Step 0.5 Memory Retrieval Loop** | Every session loads conversation summary + recent memories before processing requests |
 | **Rich Checkpoints** | `checkpoint-extract.sh` captures semantic context (intent, file categories, commit history) |
 | **Auto-Tagging** | `mem0-v2.py` auto-tags with 14 categories (auth, database, architecture, etc.) |
-| **Convention Indexer** | `convention-indexer.sh` indexes 20 coding conventions into mem0 decisions |
+| **Convention Indexer** | `convention-indexer.sh` indexes coding conventions into mem0 decisions |
 | **Memory Hygiene** | `memory-hygiene.sh` — GC, duplicate detection, old session cleanup |
-| **MCP Setup v3.0** | `forgewright-mcp-setup.sh` now installs builtin MCPs (exa, context7, grep.app) |
+| **Anti-Hallucination System (Forgenexus)** | Skeptic agent, ECE < 0.10, confidence scoring, citation extraction, RAG-grounded wiki |
+| **57 Skills** | Added Prompt Optimizer, Data Engineer, XLSX Engineer, Project Manager, UX Researcher, Accessibility Engineer |
+| **GitHub Actions CI/CD** | test, benchmark, staged-rollout, dependency-review, benchmark-compare workflows |
+| **Metrics Dashboard** | Terminal/HTML/Markdown/JSON dashboard via `forgenexus dashboard` |
 
 **Bug Fixes:**
 
@@ -949,7 +948,8 @@ bash scripts/forgewright-mcp-setup.sh --force
 
 **Tests:** 80/92 (86%) across 7 test suites + Python unittest for mem0-v2.py
 
-**GitNexus:** Index fresh (19,487 nodes, 27,848 edges, 339 clusters) — all memory system files: **LOW risk**
+**GitNexus:** Index fresh (20,138 symbols, 28,557 relationships) — all v8.0.0 files: **LOW risk**
+
 
 ### v8.5.0 (May 2026) — GitNexus Migration
 
