@@ -1,0 +1,24 @@
+# Mobile Development Prompt Configuration
+# Generated: 2026-06-02
+
+model: gpt-4o
+temperature: 0.3
+maxTokens: 4000
+
+qualityBars:
+  min_examples: 5
+  max_system_size: 1200
+  max_examples_size: 51200
+
+variants:
+  - ios-native
+  - android-native
+  - cross-platform
+
+metadata:
+  domain: mobile-development
+  contributors:
+    - forgewright
+  source_prompts_count: 0  # prompts.chat not found at ~/.claude/prompts/prompts.chat
+  created: 2026-06-02
+  version: 1.0.0

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity + Codex)
+# forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode)
 #
 # Single command to set up Forgewright MCP for ALL AI clients simultaneously.
-# Works for Cursor, Claude Code, Antigravity, and OpenAI Codex CLI.
+# Works for Cursor, Claude Code, Antigravity, OpenAI Codex CLI, Google Gemini CLI, Zed AI, and OpenCode.
 #
 # USAGE:
 #   bash forgewright/scripts/forgewright-mcp-setup.sh
@@ -14,6 +14,9 @@
 #   --claude-code Setup Claude Code only
 #   --antigravity Setup Antigravity only
 #   --codex       Setup OpenAI Codex CLI only
+#   --gemini      Setup Google Gemini CLI only
+#   --zed         Setup Zed AI only
+#   --opencode    Setup OpenCode only
 #   --all         Setup all platforms (default)
 #   --force       Re-generate even if already set up
 #   --uninstall   Remove MCP setup from all platforms
@@ -25,6 +28,10 @@
 #   Claude Code:  ~/.claude/settings.json
 #   Antigravity:  ~/.cursor/projects/<hash>/mcps/<server>/tools/*.json
 #   Codex CLI:    ~/.codex/config.toml
+#   Gemini CLI:   ~/.config/google/mcp-cli/config.json
+#   Zed AI:      ~/Library/Application Support/Zed/settings.json (macOS)
+#                ~/.config/zed/settings.json (Linux)
+#   OpenCode:    ~/.config/opencode/config.toml or config.json
 # =============================================================================
 
 set -euo pipefail
@@ -126,17 +133,20 @@ log_info()  { echo -e "  $1"; }
 
 show_help() {
     cat << 'EOF'
-forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity)
+forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode)
 
 USAGE:
   forgewright-mcp-setup.sh [OPTIONS]
 
 OPTIONS:
-  --all         Setup all platforms (Cursor + Claude Code + Antigravity + Codex) [DEFAULT]
+  --all         Setup all platforms (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode) [DEFAULT]
   --cursor      Setup Cursor MCP only
   --claude-code Setup Claude Code MCP only
   --antigravity Setup Antigravity MCP only
   --codex       Setup OpenAI Codex CLI MCP only
+  --gemini      Setup Google Gemini CLI MCP only
+  --zed         Setup Zed AI MCP only
+  --opencode    Setup OpenCode MCP only
   --check       Check MCP status across all platforms
   --force       Re-generate even if already set up
   --uninstall   Remove MCP setup from all platforms
@@ -148,6 +158,10 @@ PLATFORMS:
   Claude Code   ~/.claude/settings.json  (mcpServers key)
   Antigravity   ~/.cursor/projects/<hash>/mcps/user-forgewright/
   Codex CLI     ~/.codex/config.toml
+  Gemini CLI    ~/.config/google/mcp-cli/config.json
+  Zed AI       ~/Library/Application Support/Zed/settings.json (macOS)
+               ~/.config/zed/settings.json (Linux)
+  OpenCode     ~/.config/opencode/config.toml or config.json
 
 EXAMPLES:
   # Setup all platforms
@@ -164,6 +178,15 @@ EXAMPLES:
 
   # Setup OpenAI Codex CLI only
   forgewright-mcp-setup.sh --codex
+
+  # Setup Google Gemini CLI only
+  forgewright-mcp-setup.sh --gemini
+
+  # Setup Zed AI only
+  forgewright-mcp-setup.sh --zed
+
+  # Setup OpenCode only
+  forgewright-mcp-setup.sh --opencode
 EOF
 }
 
@@ -659,6 +682,326 @@ setup_codex() {
     log_info "  gitnexus    → $gitnexus_path"
 }
 
+# ─── Platform: Google Gemini CLI ───────────────────────────────────────────
+
+GEMINI_CONFIG=""
+
+setup_gemini() {
+    GEMINI_CONFIG="$HOME/.config/google/mcp-cli/config.json"
+    log_step "Setting up Google Gemini CLI MCP..."
+
+    # Check if Gemini CLI directory exists or is expected
+    if [[ ! -d "$(dirname "$GEMINI_CONFIG")" ]]; then
+        log_warn "Gemini CLI config directory not found"
+        log_info "  Expected: $(dirname "$GEMINI_CONFIG")"
+        log_info "  Gemini CLI may not be installed."
+        log_info "  Install: https://ai.google.dev/gemini-api/docs/gemini-cli"
+        return 0
+    fi
+
+    # CRITICAL: Always use CANONICAL path for global config, never submodule path
+    if [[ ! -f "$CANONICAL_SERVER_TS" ]]; then
+        log_error "Canonical MCP server not found: $CANONICAL_SERVER_TS"
+        log_info "  Run setup from the canonical forgewright installation first."
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$GEMINI_CONFIG")"
+
+    # Backup existing config
+    if [[ -f "$GEMINI_CONFIG" ]]; then
+        cp "$GEMINI_CONFIG" "${GEMINI_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
+    fi
+
+    # Determine gitnexus binary path
+    local gitnexus_path="gitnexus"
+    if [[ -x "/opt/homebrew/bin/gitnexus" ]]; then
+        gitnexus_path="/opt/homebrew/bin/gitnexus"
+    elif [[ -x "$HOME/.local/bin/gitnexus" ]]; then
+        gitnexus_path="$HOME/.local/bin/gitnexus"
+    fi
+
+    # Build new config using Node.js for proper JSON merging
+    local new_config
+    new_config=$(node -e "
+var fs = require('fs');
+var cfg = { mcpServers: {} };
+
+// Load existing config if present
+try {
+    if (fs.existsSync('$GEMINI_CONFIG')) {
+        var raw = fs.readFileSync('$GEMINI_CONFIG', 'utf8');
+        cfg = JSON.parse(raw);
+    }
+} catch(e) {
+    cfg = { mcpServers: {} };
+}
+
+if (!cfg.mcpServers) cfg.mcpServers = {};
+
+// forgewright MCP server — CANONICAL PATH
+cfg.mcpServers['forgewright'] = {
+    command: 'npx',
+    args: ['tsx', '$CANONICAL_SERVER_TS'],
+    env: {
+        FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
+    }
+};
+
+// gitnexus (native CLI)
+cfg.mcpServers['gitnexus'] = {
+    command: '$gitnexus_path',
+    args: ['mcp']
+};
+
+console.log(JSON.stringify(cfg, null, 2));
+" 2>/dev/null) || {
+        log_error "Failed to update Gemini CLI config"
+        return 1
+    }
+
+    echo "$new_config" > "$GEMINI_CONFIG"
+    log_ok "Updated $GEMINI_CONFIG"
+    log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
+    log_info "  gitnexus    → $gitnexus_path"
+}
+
+# ─── Platform: Zed AI ─────────────────────────────────────────────────────
+
+ZED_CONFIG=""
+
+setup_zed() {
+    # Zed stores MCP config in its settings JSON
+    # Primary: ~/.config/zed/settings.json (or equivalent based on OS)
+    local zed_settings_dir="$HOME/.config/zed"
+    local os_type
+    os_type=$(uname -s)
+
+    # On macOS, Zed uses ~/Library/Application Support/Zed
+    if [[ "$os_type" == "Darwin" ]]; then
+        zed_settings_dir="$HOME/Library/Application Support/Zed"
+    fi
+
+    ZED_CONFIG="${zed_settings_dir}/settings.json"
+    log_step "Setting up Zed AI MCP..."
+
+    # Check if Zed directory exists or is expected
+    if [[ ! -d "$(dirname "$ZED_CONFIG")" ]]; then
+        log_warn "Zed settings directory not found"
+        log_info "  Expected: $(dirname "$ZED_CONFIG")"
+        log_info "  Zed may not be installed."
+        log_info "  Install: https://zed.dev"
+        return 0
+    fi
+
+    # CRITICAL: Always use CANONICAL path for global config, never submodule path
+    if [[ ! -f "$CANONICAL_SERVER_TS" ]]; then
+        log_error "Canonical MCP server not found: $CANONICAL_SERVER_TS"
+        log_info "  Run setup from the canonical forgewright installation first."
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$ZED_CONFIG")"
+
+    # Backup existing config
+    if [[ -f "$ZED_CONFIG" ]]; then
+        cp "$ZED_CONFIG" "${ZED_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
+    fi
+
+    # Determine gitnexus binary path
+    local gitnexus_path="gitnexus"
+    if [[ -x "/opt/homebrew/bin/gitnexus" ]]; then
+        gitnexus_path="/opt/homebrew/bin/gitnexus"
+    elif [[ -x "$HOME/.local/bin/gitnexus" ]]; then
+        gitnexus_path="$HOME/.local/bin/gitnexus"
+    fi
+
+    # Build new config using Node.js for proper JSON merging
+    # Zed uses a 'mcpServers' key at the top level of settings.json
+    local new_config
+    new_config=$(node -e "
+var fs = require('fs');
+var cfg = {};
+
+// Load existing settings if present
+try {
+    if (fs.existsSync('$ZED_CONFIG')) {
+        var raw = fs.readFileSync('$ZED_CONFIG', 'utf8');
+        cfg = JSON.parse(raw);
+    }
+} catch(e) {
+    cfg = {};
+}
+
+if (!cfg.mcpServers) cfg.mcpServers = {};
+
+// forgewright MCP server — CANONICAL PATH
+cfg.mcpServers['forgewright'] = {
+    command: 'npx',
+    args: ['tsx', '$CANONICAL_SERVER_TS'],
+    env: {
+        FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
+    }
+};
+
+// gitnexus (native CLI)
+cfg.mcpServers['gitnexus'] = {
+    command: '$gitnexus_path',
+    args: ['mcp']
+};
+
+console.log(JSON.stringify(cfg, null, 2));
+" 2>/dev/null) || {
+        log_error "Failed to update Zed config"
+        return 1
+    }
+
+    echo "$new_config" > "$ZED_CONFIG"
+    log_ok "Updated $ZED_CONFIG"
+    log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
+    log_info "  gitnexus    → $gitnexus_path"
+}
+
+# ─── Platform: OpenCode ────────────────────────────────────────────────────
+
+OPENCODE_CONFIG=""
+
+setup_opencode() {
+    OPENCODE_CONFIG="$HOME/.config/opencode/config.json"
+    log_step "Setting up OpenCode MCP..."
+
+    # Check if OpenCode directory exists or is expected
+    if [[ ! -d "$(dirname "$OPENCODE_CONFIG")" ]]; then
+        log_warn "OpenCode config directory not found"
+        log_info "  Expected: $(dirname "$OPENCODE_CONFIG")"
+        log_info "  OpenCode may not be installed."
+        log_info "  Install: https://github.com/smolbananya/opencode"
+        return 0
+    fi
+
+    # CRITICAL: Always use CANONICAL path for global config, never submodule path
+    if [[ ! -f "$CANONICAL_SERVER_TS" ]]; then
+        log_error "Canonical MCP server not found: $CANONICAL_SERVER_TS"
+        log_info "  Run setup from the canonical forgewright installation first."
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$OPENCODE_CONFIG")"
+
+    # Backup existing config
+    if [[ -f "$OPENCODE_CONFIG" ]]; then
+        cp "$OPENCODE_CONFIG" "${OPENCODE_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
+    fi
+
+    # Determine gitnexus binary path
+    local gitnexus_path="gitnexus"
+    if [[ -x "/opt/homebrew/bin/gitnexus" ]]; then
+        gitnexus_path="/opt/homebrew/bin/gitnexus"
+    elif [[ -x "$HOME/.local/bin/gitnexus" ]]; then
+        gitnexus_path="$HOME/.local/bin/gitnexus"
+    fi
+
+    # OpenCode uses TOML config at ~/.config/opencode/config.toml (or JSON)
+    # Check if TOML or JSON format is used
+    local opencode_toml="$HOME/.config/opencode/config.toml"
+    local opencode_json="$HOME/.config/opencode/config.json"
+    local use_toml=false
+
+    if [[ -f "$opencode_toml" ]]; then
+        use_toml=true
+        OPENCODE_CONFIG="$opencode_toml"
+    elif [[ -f "$opencode_json" ]]; then
+        use_toml=false
+        OPENCODE_CONFIG="$opencode_json"
+    fi
+
+    if [[ "$use_toml" == "true" ]]; then
+        # TOML format
+        local existing=""
+        if [[ -f "$OPENCODE_CONFIG" ]]; then
+            existing=$(cat "$OPENCODE_CONFIG")
+        fi
+
+        {
+            # Remove existing forgewright/gitnexus sections
+            if [[ -n "$existing" ]]; then
+                local skip_section=""
+                while IFS= read -r line || [[ -n "$line" ]]; do
+                    if [[ "$line" =~ ^\[mcp_servers\.(forgewright|gitnexus)\] ]]; then
+                        skip_section="true"
+                        continue
+                    fi
+                    if [[ -n "$skip_section" ]]; then
+                        if [[ "$line" =~ ^\[.*\] ]]; then
+                            skip_section=""
+                            echo "$line"
+                        fi
+                        continue
+                    fi
+                    echo "$line"
+                done <<< "$existing"
+            fi
+
+            echo ""
+            echo "[mcp_servers.forgewright]"
+            echo 'enabled = true'
+            echo 'command = "npx"'
+            echo "args = [\"tsx\", \"$CANONICAL_SERVER_TS\"]"
+            echo "env = { FORGEWRIGHT_WORKSPACE = \"$PROJECT_ROOT\" }"
+
+            echo ""
+            echo "[mcp_servers.gitnexus]"
+            echo 'enabled = true'
+            echo "command = \"$gitnexus_path\""
+            echo 'args = ["mcp"]'
+        } > "$OPENCODE_CONFIG"
+    else
+        # JSON format
+        local new_config
+        new_config=$(node -e "
+var fs = require('fs');
+var cfg = { mcpServers: {} };
+
+try {
+    if (fs.existsSync('$OPENCODE_CONFIG')) {
+        var raw = fs.readFileSync('$OPENCODE_CONFIG', 'utf8');
+        cfg = JSON.parse(raw);
+    }
+} catch(e) {
+    cfg = { mcpServers: {} };
+}
+
+if (!cfg.mcpServers) cfg.mcpServers = {};
+
+// forgewright MCP server — CANONICAL PATH
+cfg.mcpServers['forgewright'] = {
+    command: 'npx',
+    args: ['tsx', '$CANONICAL_SERVER_TS'],
+    env: {
+        FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
+    }
+};
+
+// gitnexus (native CLI)
+cfg.mcpServers['gitnexus'] = {
+    command: '$gitnexus_path',
+    args: ['mcp']
+};
+
+console.log(JSON.stringify(cfg, null, 2));
+" 2>/dev/null) || {
+            log_error "Failed to update OpenCode config"
+            return 1
+        }
+
+        echo "$new_config" > "$OPENCODE_CONFIG"
+    fi
+
+    log_ok "Updated $OPENCODE_CONFIG"
+    log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
+    log_info "  gitnexus    → $gitnexus_path"
+}
+
 # ─── Verify Manifest ────────────────────────────────────────────────────────────
 
 verify_manifest() {
@@ -870,6 +1213,72 @@ cmd_check() {
     fi
     echo ""
 
+    # Gemini CLI
+    GEMINI_CONFIG="$HOME/.config/google/mcp-cli/config.json"
+    if [[ -f "$GEMINI_CONFIG" ]]; then
+        log_ok "Gemini CLI: $GEMINI_CONFIG"
+        if grep -q '"forgewright"' "$GEMINI_CONFIG" 2>/dev/null; then
+            log_ok "  forgewright: CONFIGURED"
+        else
+            log_warn "  forgewright: NOT configured"
+        fi
+        if grep -q '"gitnexus"' "$GEMINI_CONFIG" 2>/dev/null; then
+            log_ok "  gitnexus: CONFIGURED"
+        else
+            log_warn "  gitnexus: NOT configured"
+        fi
+    else
+        log_warn "Gemini CLI: NOT FOUND (~/.config/google/mcp-cli/config.json)"
+    fi
+    echo ""
+
+    # Zed AI
+    local zed_settings_dir="$HOME/.config/zed"
+    local os_type
+    os_type=$(uname -s)
+    if [[ "$os_type" == "Darwin" ]]; then
+        zed_settings_dir="$HOME/Library/Application Support/Zed"
+    fi
+    ZED_CONFIG="${zed_settings_dir}/settings.json"
+    if [[ -f "$ZED_CONFIG" ]]; then
+        log_ok "Zed AI: $ZED_CONFIG"
+        if grep -q '"forgewright"' "$ZED_CONFIG" 2>/dev/null; then
+            log_ok "  forgewright: CONFIGURED"
+        else
+            log_warn "  forgewright: NOT configured"
+        fi
+        if grep -q '"gitnexus"' "$ZED_CONFIG" 2>/dev/null; then
+            log_ok "  gitnexus: CONFIGURED"
+        else
+            log_warn "  gitnexus: NOT configured"
+        fi
+    else
+        log_warn "Zed AI: NOT FOUND (${zed_settings_dir}/settings.json)"
+    fi
+    echo ""
+
+    # OpenCode
+    OPENCODE_CONFIG="$HOME/.config/opencode/config.toml"
+    if [[ ! -f "$OPENCODE_CONFIG" ]]; then
+        OPENCODE_CONFIG="$HOME/.config/opencode/config.json"
+    fi
+    if [[ -f "$OPENCODE_CONFIG" ]]; then
+        log_ok "OpenCode: $OPENCODE_CONFIG"
+        if grep -q 'forgewright' "$OPENCODE_CONFIG" 2>/dev/null; then
+            log_ok "  forgewright: CONFIGURED"
+        else
+            log_warn "  forgewright: NOT configured"
+        fi
+        if grep -q 'gitnexus' "$OPENCODE_CONFIG" 2>/dev/null; then
+            log_ok "  gitnexus: CONFIGURED"
+        else
+            log_warn "  gitnexus: NOT configured"
+        fi
+    else
+        log_warn "OpenCode: NOT FOUND (~/.config/opencode/config.toml or .json)"
+    fi
+    echo ""
+
     # Built-in research MCPs
     install_builtin_mcps
 
@@ -971,6 +1380,75 @@ fs.writeFileSync('$CLAUDE_CODE_CONFIG', JSON.stringify(cfg, null, 2));
         log_ok "Removed from Codex CLI"
     fi
 
+    # Remove from Gemini CLI
+    local gemini_config="$HOME/.config/google/mcp-cli/config.json"
+    if [[ -f "$gemini_config" ]]; then
+        node -e "
+var fs = require('fs');
+var cfg = JSON.parse(fs.readFileSync('$gemini_config', 'utf8'));
+if (cfg.mcpServers) {
+    delete cfg.mcpServers['forgewright'];
+    delete cfg.mcpServers['gitnexus'];
+}
+fs.writeFileSync('$gemini_config', JSON.stringify(cfg, null, 2));
+" 2>/dev/null && log_ok "Removed from Gemini CLI" || log_warn "Gemini CLI: could not clean"
+    fi
+
+    # Remove from Zed AI
+    local zed_settings_dir="$HOME/.config/zed"
+    local os_type
+    os_type=$(uname -s)
+    if [[ "$os_type" == "Darwin" ]]; then
+        zed_settings_dir="$HOME/Library/Application Support/Zed"
+    fi
+    local zed_config="${zed_settings_dir}/settings.json"
+    if [[ -f "$zed_config" ]]; then
+        node -e "
+var fs = require('fs');
+var cfg = JSON.parse(fs.readFileSync('$zed_config', 'utf8'));
+if (cfg.mcpServers) {
+    delete cfg.mcpServers['forgewright'];
+    delete cfg.mcpServers['gitnexus'];
+}
+fs.writeFileSync('$zed_config', JSON.stringify(cfg, null, 2));
+" 2>/dev/null && log_ok "Removed from Zed AI" || log_warn "Zed AI: could not clean"
+    fi
+
+    # Remove from OpenCode (try TOML first, then JSON)
+    local opencode_config="$HOME/.config/opencode/config.toml"
+    if [[ -f "$opencode_config" ]]; then
+        local tmp
+        tmp=$(mktemp)
+        local skip_section=""
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" =~ ^\[mcp_servers\.(forgewright|gitnexus)\] ]]; then
+                skip_section="true"
+                continue
+            fi
+            if [[ -n "$skip_section" ]]; then
+                if [[ "$line" =~ ^\[.*\] ]]; then
+                    skip_section=""
+                fi
+                continue
+            fi
+            echo "$line"
+        done < "$opencode_config" > "$tmp"
+        mv "$tmp" "$opencode_config"
+        log_ok "Removed from OpenCode (TOML)"
+    fi
+    opencode_config="$HOME/.config/opencode/config.json"
+    if [[ -f "$opencode_config" ]]; then
+        node -e "
+var fs = require('fs');
+var cfg = JSON.parse(fs.readFileSync('$opencode_config', 'utf8'));
+if (cfg.mcpServers) {
+    delete cfg.mcpServers['forgewright'];
+    delete cfg.mcpServers['gitnexus'];
+}
+fs.writeFileSync('$opencode_config', JSON.stringify(cfg, null, 2));
+" 2>/dev/null && log_ok "Removed from OpenCode (JSON)" || log_warn "OpenCode: could not clean"
+    fi
+
     log_ok "Uninstall complete. Restart your AI clients."
 }
 
@@ -980,7 +1458,13 @@ declare PLATFORM_CURSOR="false"
 declare PLATFORM_CLAUDE_CODE="false"
 declare PLATFORM_ANTIGRAVITY="false"
 declare PLATFORM_CODEX="false"
+declare PLATFORM_GEMINI="false"
+declare PLATFORM_ZED="false"
+declare PLATFORM_OPENCODE="false"
 declare CODEX_CONFIG=""
+declare GEMINI_CONFIG=""
+declare ZED_CONFIG=""
+declare OPENCODE_CONFIG=""
 
 main() {
     local mode="install"
@@ -995,6 +1479,9 @@ main() {
             --claude-code)   mode="claude-code-only"; shift ;;
             --antigravity)   mode="antigravity-only"; shift ;;
             --codex)         mode="codex-only"; shift ;;
+            --gemini)        mode="gemini-only"; shift ;;
+            --zed)           mode="zed-only"; shift ;;
+            --opencode)      mode="opencode-only"; shift ;;
             --check)         mode="check"; shift ;;
             --force)         force=true; shift ;;
             --uninstall)     mode="uninstall"; shift ;;
@@ -1042,21 +1529,24 @@ main() {
         uninstall)
             cmd_uninstall
             ;;
-        install|cursor-only|claude-code-only|antigravity-only|codex-only)
+        install|cursor-only|claude-code-only|antigravity-only|codex-only|gemini-only|zed-only|opencode-only)
             # Check prerequisites for install modes
             [[ "$mode" == "install" ]] && check_prerequisites
 
             # Determine which platforms to setup
-            local do_cursor=false do_claude=false do_antigravity=false do_codex=false
+            local do_cursor=false do_claude=false do_antigravity=false do_codex=false do_gemini=false do_zed=false do_opencode=false
 
             case "$mode" in
                 install)
-                    do_cursor=true; do_claude=true; do_antigravity=true; do_codex=true
+                    do_cursor=true; do_claude=true; do_antigravity=true; do_codex=true; do_gemini=true; do_zed=true; do_opencode=true
                     ;;
                 cursor-only)       do_cursor=true ;;
                 claude-code-only)  do_claude=true ;;
                 antigravity-only)  do_antigravity=true ;;
                 codex-only)        do_codex=true ;;
+                gemini-only)       do_gemini=true ;;
+                zed-only)          do_zed=true ;;
+                opencode-only)     do_opencode=true ;;
             esac
 
             # Skip MCP server regen if already exists and not forced
@@ -1101,6 +1591,21 @@ main() {
                 echo ""
             fi
 
+            if [[ "$do_gemini" == "true" ]]; then
+                setup_gemini
+                echo ""
+            fi
+
+            if [[ "$do_zed" == "true" ]]; then
+                setup_zed
+                echo ""
+            fi
+
+            if [[ "$do_opencode" == "true" ]]; then
+                setup_opencode
+                echo ""
+            fi
+
             # Built-in research MCPs (non-blocking check)
             install_builtin_mcps
             echo ""
@@ -1117,6 +1622,9 @@ main() {
             [[ "$do_claude" == "true" ]] && echo "    ✓ Claude Code (~/.claude/settings.json)"
             [[ "$do_antigravity" == "true" ]] && echo "    ✓ Antigravity (MCP workspace)"
             [[ "$do_codex" == "true" ]] && echo "    ✓ OpenAI Codex CLI (~/.codex/config.toml)"
+            [[ "$do_gemini" == "true" ]] && echo "    ✓ Google Gemini CLI (~/.config/google/mcp-cli/config.json)"
+            [[ "$do_zed" == "true" ]] && echo "    ✓ Zed AI (Zed settings.json)"
+            [[ "$do_opencode" == "true" ]] && echo "    ✓ OpenCode (~/.config/opencode/config.*)"
             echo ""
             echo "  Next: Restart your AI clients to activate MCP servers"
             echo "        Verify: bash ${BASH_SOURCE[0]} --check"

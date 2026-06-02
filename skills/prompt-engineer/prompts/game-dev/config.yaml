@@ -1,0 +1,27 @@
+# Game Development Prompt Configuration
+# Template library for game-dev category in Forgewright
+
+model: gpt-4o
+temperature: 0.3
+maxTokens: 4000
+
+qualityBars:
+  min_examples: 5
+  max_system_size: 1200
+  max_examples_size: 51200
+
+variants:
+  - 2d
+  - 3d
+  - vr-ar
+  - multiplayer
+  - casual
+
+metadata:
+  domain: game-dev
+  contributors:
+    - name: Forgewright Team
+      role: Primary author
+  source_prompts_count: 0  # No game-related prompts found in prompts.chat database
+  created_date: "2026-06-02"
+  last_updated: "2026-06-02"

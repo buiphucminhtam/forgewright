@@ -1,0 +1,23 @@
+model: gpt-4o
+temperature: 0.3
+maxTokens: 4000
+
+qualityBars:
+  min_examples: 5
+  max_system_size: 1200
+  max_examples_size: 51200
+
+variants:
+  - web
+  - mobile
+  - enterprise
+  - consumer
+  - accessibility-first
+
+metadata:
+  domain: ux-ui-design
+  contributors:
+    - forgewright-maintainer
+  source_prompts_count: 0
+  created_at: "2026-06-02"
+  description: "Senior UX/UI Designer prompt library for comprehensive user experience and interface design tasks"

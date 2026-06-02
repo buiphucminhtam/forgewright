@@ -1,0 +1,24 @@
+model: gpt-4o
+temperature: 0.3
+maxTokens: 4000
+
+qualityBars:
+  min_examples: 5
+  max_system_size: 1200
+  max_examples_size: 51200
+
+variants:
+  - web-app
+  - api
+  - mobile
+  - infrastructure
+  - iot
+
+metadata:
+  domain: security-review
+  contributors:
+    - forgewright-team
+  source_prompts_count: 0
+  source_notes: "No security-related prompts found in prompts.chat database (0 matches)"
+  created: 2026-06-02
+  version: 1.0.0

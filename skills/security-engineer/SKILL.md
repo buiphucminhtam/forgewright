@@ -793,6 +793,128 @@ const result = await db.query(
 
 ---
 
+## Automated Scanning (AgentShield Integration)
+
+Forgewright includes automated security scanning via the AgentShield-style scanner. Every PR automatically gets a security grade.
+
+### Quick Start
+
+```bash
+# Run locally
+npx tsx .forgewright/security/scanner.ts
+
+# JSON output for automation
+npx tsx .forgewright/security/scanner.ts --output json
+
+# Scan specific files
+npx tsx .forgewright/security/scanner.ts --files "src/**/*.ts"
+
+# Fail on high or critical findings
+npx tsx .forgewright/security/scanner.ts --fail-on high
+```
+
+### Security Grades
+
+| Grade | Criteria | Merge Status |
+|-------|----------|--------------|
+| 🟢 **A** | 0 critical, 0 high | ✅ Allowed |
+| 🔵 **B** | 0 critical, ≤2 high | ✅ Allowed |
+| 🟡 **C** | 0 critical, ≤5 high, ≤10 medium | ✅ Allowed |
+| 🟠 **D** | ≤2 critical, ≤10 high | ⚠️ Allowed with warning |
+| 🔴 **F** | >2 critical OR >10 high | ❌ **Blocked** |
+
+**Grading Logic:**
+```
+A: 0 critical, 0 high
+B: 0 critical, ≤2 high
+C: 0 critical, ≤5 high, ≤10 medium
+D: ≤2 critical, ≤10 high
+F: >2 critical OR >10 high
+```
+
+### Available Rules
+
+The scanner includes **68+ security rules** across 4 categories:
+
+| Category | Rules | Coverage |
+|----------|-------|----------|
+| **Injection** | 16 | SQL, NoSQL, Command, XSS, SSTI, Path Traversal |
+| **Authentication** | 18 | Hardcoded secrets, weak JWT, auth bypass, insecure cookies |
+| **Exposure** | 16 | PII leaks, sensitive files, weak crypto, missing headers |
+| **IaC** | 18 | Terraform, Kubernetes, Docker, CloudFormation, Cloud |
+
+### CI Integration
+
+#### GitHub Actions (Recommended)
+
+Copy the workflow to your repository:
+
+```bash
+cp .forgewright/security/github-action.yml .github/workflows/security-scan.yml
+```
+
+The workflow:
+1. Triggers on PR open, push, and PR update
+2. Runs the security scanner
+3. Posts results as a PR comment
+4. Creates GitHub Check with annotations
+5. **Blocks merge on F grade**
+
+#### Standalone Usage
+
+```bash
+# As a pre-commit hook
+npx tsx .forgewright/security/scanner.ts --fail-on high
+
+# In CI pipeline
+npx tsx .forgewright/security/scanner.ts \
+  --base origin/main \
+  --output json \
+  --fail-on critical
+```
+
+#### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FORGEWRIGHT_SECURITY_RULES_DIR` | `.forgewright/security/rules` | Rules directory |
+| `FORGEWRIGHT_SECURITY_FAIL_ON` | `critical` | Minimum severity to fail |
+
+### Customizing Rules
+
+Add or modify rules in `.forgewright/security/rules/`:
+
+```yaml
+# rules/custom.yaml
+rules:
+  - id: custom-001
+    name: "Custom Security Rule"
+    pattern: 'dangerous_pattern.*user_input'
+    severity: high
+    description: "What this catches..."
+    cwe: "CWE-XXX"
+    remediation: "How to fix this..."
+```
+
+### Automated vs Manual Review
+
+The automated scanner handles ~80% of common vulnerabilities. Manual review is still needed for:
+
+| Automated Scanner | Manual Review Required |
+|-------------------|------------------------|
+| Pattern matching | Business logic flaws |
+| Known vulnerable patterns | Race conditions |
+| Configuration issues | Complex authorization flows |
+| Dependency vulnerabilities | Social engineering vectors |
+
+### Performance
+
+- Scans 1000 TypeScript files in ~30 seconds
+- Parallel rule matching per file
+- Incremental scan (changed files only) via git diff
+
+---
+
 ## Severity Classification
 
 | Severity | Definition | SLA |

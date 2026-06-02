@@ -16,6 +16,12 @@ Rules live in `.cursor/rules/` (project-level) and are loaded based on file patt
 
 No rules deployed yet. See "Adding a New Rule" below.
 
+## Active Rules
+
+|| # | Rule | File | Purpose |
+|--|---|------|------|---------|
+| 1 | Pipeline Enforcement | `.cursor/rules/01-forgewright-pipeline.md` | Force Step 0 + Step 0.5 before ANY execution |
+
 ---
 
 ## Quick Reference

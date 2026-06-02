@@ -56,5 +56,20 @@ RUN: pytest test_api_auth.py
 
 ---
 
+## ⚠️ Pipeline Skip = Hallucination Pattern
+
+Skipping the Forgewright pipeline is a form of hallucination. You **assume** you know what to do without verification.
+
+| Symptom | Root Cause | Fix |
+|---------|------------|-----|
+| User asks → I answer immediately | Assume "I already know" | Run Step 0.5 first |
+| Read file → Answer without interpretation | Assume "context is enough" | Step 0 + Step 1 + Step 2 |
+| "Simple task, no pipeline needed" | Assume task is simple | EVERY task needs pipeline |
+| Skip memory retrieval | Assume "no relevant memories" | Run `scripts/memory-retrieve.sh` |
+
+**The pipeline IS the verification step.** Not running it means every subsequent assumption is unverified.
+
+---
+
 *Source: skills/_shared/protocols/evidence-first.md*
 *Synced to: AGENTS.md, CLAUDE.md*

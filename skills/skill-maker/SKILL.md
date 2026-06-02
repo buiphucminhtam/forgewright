@@ -632,6 +632,98 @@ updated: "2026-05-24"
 
 ---
 
+## Git-Based Skill Auto-Generation
+
+Forgewright can auto-generate skills from git history analysis using `scripts/forgewright-skill-create.sh`.
+
+### When to Use
+
+| Situation | What to Do |
+|-----------|------------|
+| User says "analyze my git history" or "create skill from git" | Run git-based generator |
+| Pattern detected across 3+ commits | Suggest auto-generation |
+| User wants to extract patterns from existing codebase | Run analysis on repo |
+
+### Usage
+
+```bash
+# Analyze local git history for a pattern
+bash scripts/forgewright-skill-create.sh --pattern "auth" --name "auth-expert"
+
+# Analyze remote repo
+bash scripts/forgewright-skill-create.sh --from-repo https://github.com/user/repo --name "user-repo"
+
+# Interactive mode
+bash scripts/forgewright-skill-create.sh --interactive
+```
+
+### What It Does
+
+1. **Analyzes git log** for recurring patterns (same files modified together)
+2. **Clusters commits** by topic (auth, api, db, test, etc.)
+3. **Extracts common operations** from each cluster
+4. **Generates SKILL.md skeleton** with:
+   - Trigger patterns from commit keywords
+   - File patterns detected
+   - Common operations extracted
+   - Topic clusters with commit counts
+   - Directory distribution
+   - Confidence score based on commit frequency
+
+### Output
+
+Generated skills are placed in `skills/generated/<name>/SKILL.md`:
+
+```markdown
+---
+name: auth-expert
+description: >
+  Auto-generated skill from git history analysis.
+  Triggers on: auth, login, jwt, token, session.
+version: 0.1.0
+confidence: 0.65
+source_commits: 12
+---
+
+# Auth Expert
+
+> Auto-generated from 12 commits analyzing auth-related patterns.
+
+## Trigger Patterns
+- Keywords: auth, login, logout, jwt, token, session
+- File patterns: **/auth/**, **/session/**, **/*token*
+
+## Topic Clusters
+auth:8 api:2 db:4 test:3 security:2 ...
+```
+
+### Confidence Scoring
+
+| Commit Count | Confidence | Notes |
+|--------------|------------|-------|
+| 20+ | 0.85 | Strong pattern |
+| 10-19 | 0.75 | Good pattern |
+| 5-9 | 0.65 | Moderate pattern |
+| 3-4 | 0.55 | Weak pattern |
+| < 3 | 0.40 | Very weak, manual review needed |
+
+### Post-Generation Steps
+
+1. Review the generated SKILL.md in `skills/generated/<name>/`
+2. Edit trigger patterns to match actual use cases
+3. Validate file patterns are correct
+4. Adjust confidence score if needed
+5. Move to `skills/<name>/SKILL.md` when satisfied
+
+### Limitations
+
+- Works best with 5+ commits containing the pattern
+- Commit messages must be descriptive
+- May miss patterns not visible in file changes
+- Always requires human review before production use
+
+---
+
 ## Handoff Protocol
 
 | To | Provide | Format |

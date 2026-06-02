@@ -132,6 +132,77 @@ The following requests **MUST** trigger clarification:
 - No success criteria: "make it better", "improve it"
 - No file/location specified: "update login", "add auth"
 
+## ⚠️ PIPELINE SKIP DETECTION — Anti-Pattern
+
+**Root cause: Tool-first reflex.** The model reads files before running Step 0, classifying, and planning. This causes hallucination, wrong scope, and missed memory context.
+
+### Common Violations
+
+| # | Violation | What should happen |
+|---|-----------|---------------------|
+| 1 | User asks → I read files → I answer directly | User asks → Step 0.5 → Step 0 → Step 1 → Step 2 → Execute |
+| 2 | "I know this already, let me just..." | Step 0.5 Memory Retrieval FIRST |
+| 3 | "Simple task, no need for pipeline" | EVERY task needs Step 0 |
+| 4 | User asks "còn gì chưa làm" → I read and answer | This IS a user request → MUST go through pipeline |
+| 5 | User asks "lên plan" → I create plan manually | This IS a user request → MUST go through pipeline |
+
+### Trigger Keywords — Any of these means: RUN PIPELINE
+
+**Any of the following phrases = "this is a user request" → MUST run Step 0:**
+
+| Category | Keywords |
+|----------|----------|
+| Status check | "còn gì", "tình trạng", "status", "check", "còn phải làm gì" |
+| Planning | "lên plan", "kế hoạch", "roadmap", "sprint", "backlog", "ưu tiên" |
+| Priority | "đánh giá", "đánh ưu tiên", "priority", "thứ tự" |
+| Engineering | "build", "add", "implement", "fix", "review", "test", "refactor" |
+| Analysis | "phân tích", "evaluate", "assess", "what's left" |
+
+### How to Detect You've Skipped Pipeline
+
+**Self-check BEFORE answering any user request:**
+
+```
+1. Did I run bash scripts/memory-retrieve.sh or python3 scripts/mem0-v2.py?
+   └─ NO → STOP. Run Step 0.5 first.
+
+2. Did I read skills/production-grade/SKILL.md and extract 9 dimensions?
+   └─ NO → STOP. Run Step 0 first.
+
+3. Did I classify the mode (Feature, Architect, etc.)?
+   └─ NO → STOP. Run Step 1 first.
+
+4. Did I create a plan and score it >= 9.0?
+   └─ NO → STOP. Run Step 2 first.
+
+5. Did I execute via skills, not directly?
+   └─ NO → STOP. Delegate or execute via skills.
+```
+
+### Escalation Protocol
+
+If you realize mid-turn that you skipped the pipeline:
+
+```
+1. STOP current execution immediately
+2. Acknowledge: "I violated the Forgewright pipeline — correcting now."
+3. Run Step 0.5 + Step 0 retroactively
+4. Re-classify + Re-plan
+5. Continue or restart from correct step
+6. Log the lesson: Append to skills/_shared/protocols/pipeline.md as anti-pattern
+```
+
+### Enforcement Rule
+
+> **⚠️ MANDATORY: Before answering ANY user request, verify:**
+> - [ ] Memory retrieval ran (or confirmed no relevant memories exist)
+> - [ ] Step 0 interpretation done (9 dimensions extracted)
+> - [ ] Mode classified (one of 24 modes)
+> - [ ] Plan created + scored >= 9.0
+> - [ ] Execution via skills (not direct code changes)
+>
+> If ANY checkbox is empty → STOP → Fill it → Then proceed.
+
 ---
 
 *Source: skills/_shared/protocols/pipeline.md*

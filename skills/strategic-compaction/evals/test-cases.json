@@ -1,0 +1,231 @@
+{
+  "skill_name": "strategic-compaction",
+  "version": "0.1.0",
+  "description": "Test cases for strategic compaction trigger detection",
+
+  "test_cases": [
+    {
+      "id": 1,
+      "category": "milestone_trigger",
+      "prompt": "User says: 'That works, let's implement it.'",
+      "context": {
+        "toolCallsSinceCompaction": 15,
+        "filesModifiedSinceCompaction": 2,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 5
+      },
+      "expected_behavior": "SHOULD trigger compaction suggestion (milestone word + moderate context)",
+      "success_criteria": [
+        "Detects milestone word 'works'",
+        "Recognizes phase transition (planning → execution)",
+        "Suggests /compact with progress summary"
+      ]
+    },
+    {
+      "id": 2,
+      "category": "milestone_trigger",
+      "prompt": "User says: 'ok'",
+      "context": {
+        "toolCallsSinceCompaction": 5,
+        "filesModifiedSinceCompaction": 1,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 2
+      },
+      "expected_behavior": "SHOULD NOT trigger (casual 'ok' without context saturation)",
+      "success_criteria": [
+        "Recognizes as casual acknowledgment, not milestone",
+        "Does not suggest compaction unnecessarily"
+      ]
+    },
+    {
+      "id": 3,
+      "category": "milestone_trigger",
+      "prompt": "User says: 'ok, good, now I understand'",
+      "context": {
+        "toolCallsSinceCompaction": 25,
+        "filesModifiedSinceCompaction": 3,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 10
+      },
+      "expected_behavior": "SHOULD trigger (research milestone + near threshold)",
+      "success_criteria": [
+        "Detects 'now I understand' as research completion",
+        "Recognizes near-threshold context state",
+        "Suggests checkpoint before implementing"
+      ]
+    },
+    {
+      "id": 4,
+      "category": "failed_approach",
+      "prompt": "Attempt 1 failed, Attempt 2 failed, Attempt 3 failed",
+      "context": {
+        "toolCallsSinceCompaction": 20,
+        "filesModifiedSinceCompaction": 5,
+        "failedAttemptsSinceCompaction": 3,
+        "turnsSinceCompaction": 8
+      },
+      "expected_behavior": "SHOULD trigger (3+ failed attempts detected)",
+      "success_criteria": [
+        "Tracks consecutive failures",
+        "Triggers at threshold (3)",
+        "Suggests compaction to clear failed path"
+      ]
+    },
+    {
+      "id": 5,
+      "category": "complex_change",
+      "prompt": "User says: 'Go ahead with the refactor'",
+      "context": {
+        "toolCallsSinceCompaction": 10,
+        "filesModifiedSinceCompaction": 8,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 4
+      },
+      "expected_behavior": "SHOULD trigger (5+ files modified)",
+      "success_criteria": [
+        "Detects file modification count exceeds threshold",
+        "Recognizes large refactor as significant change",
+        "Suggests checkpoint before continuation"
+      ]
+    },
+    {
+      "id": 6,
+      "category": "context_saturation",
+      "prompt": "User says: 'Continue'",
+      "context": {
+        "toolCallsSinceCompaction": 45,
+        "filesModifiedSinceCompaction": 3,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 20
+      },
+      "expected_behavior": "SHOULD trigger (tool call threshold exceeded)",
+      "success_criteria": [
+        "Detects >30 tool calls since last compaction",
+        "Triggers proactive overflow prevention",
+        "Suggests /compact before continuing"
+      ]
+    },
+    {
+      "id": 7,
+      "category": "architecture_decision",
+      "prompt": "User says: 'Let's go with option B, the microservices approach'",
+      "context": {
+        "toolCallsSinceCompaction": 30,
+        "filesModifiedSinceCompaction": 2,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 12
+      },
+      "expected_behavior": "SHOULD trigger (architecture decision made)",
+      "success_criteria": [
+        "Recognizes decision language",
+        "Detects significant architectural choice",
+        "Preserves decision context before implementation"
+      ]
+    },
+    {
+      "id": 8,
+      "category": "false_positive_guard",
+      "prompt": "User says: 'thanks'",
+      "context": {
+        "toolCallsSinceCompaction": 8,
+        "filesModifiedSinceCompaction": 1,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 3
+      },
+      "expected_behavior": "SHOULD NOT trigger (casual thanks, no context buildup)",
+      "success_criteria": [
+        "Does not trigger on casual thanks",
+        "Does not suggest compaction for politeness"
+      ]
+    },
+    {
+      "id": 9,
+      "category": "false_positive_guard",
+      "prompt": "User says: 'k'",
+      "context": {
+        "toolCallsSinceCompaction": 5,
+        "filesModifiedSinceCompaction": 0,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 1
+      },
+      "expected_behavior": "SHOULD NOT trigger (minimal engagement)",
+      "success_criteria": [
+        "Does not trigger on terse acknowledgment",
+        "Requires meaningful context or threshold crossing"
+      ]
+    },
+    {
+      "id": 10,
+      "category": "false_positive_guard",
+      "prompt": "User says: 'wait, what about error handling?'",
+      "context": {
+        "toolCallsSinceCompaction": 10,
+        "filesModifiedSinceCompaction": 2,
+        "failedAttemptsSinceCompaction": 0,
+        "turnsSinceCompaction": 4
+      },
+      "expected_behavior": "SHOULD NOT trigger (mid-work question)",
+      "success_criteria": [
+        "Recognizes as clarification request, not completion",
+        "Does not interrupt user mid-thought"
+      ]
+    },
+    {
+      "id": 11,
+      "category": "sequence_detection",
+      "prompt": "Last 5 messages: 'failed', 'error', 'didn\\'t work', 'still broken', 'trying again'",
+      "context": {
+        "toolCallsSinceCompaction": 15,
+        "filesModifiedSinceCompaction": 4,
+        "failedAttemptsSinceCompaction": 2,
+        "turnsSinceCompaction": 6
+      },
+      "expected_behavior": "SHOULD trigger (consecutive failures pattern)",
+      "success_criteria": [
+        "Detects failure sequence pattern",
+        "Recognizes approach is not working",
+        "Suggests compaction to preserve learnings"
+      ]
+    },
+    {
+      "id": 12,
+      "category": "edge_case",
+      "prompt": "User says: 'Done'",
+      "context": {
+        "toolCallsSinceCompaction": 50,
+        "filesModifiedSinceCompaction": 10,
+        "failedAttemptsSinceCompaction": 1,
+        "turnsSinceCompaction": 25
+      },
+      "expected_behavior": "SHOULD trigger (high saturation + milestone)",
+      "success_criteria": [
+        "Detects 'done' as completion signal",
+        "Recognizes high saturation state",
+        "Suggests full compaction with summary"
+      ]
+    }
+  ],
+
+  "evaluation_criteria": {
+    "false_positive_rate": {
+      "target": "< 10%",
+      "test_cases": [2, 8, 9, 10],
+      "description": "Should not trigger on casual acknowledgments without context buildup"
+    },
+    "detection_accuracy": {
+      "target": "> 90%",
+      "test_cases": [1, 3, 4, 5, 6, 7, 11, 12],
+      "description": "Should detect actual milestones and threshold crossings"
+    },
+    "overflow_prevention": {
+      "target": "> 80%",
+      "test_cases": [6, 12],
+      "description": "Should trigger proactively before context overflow"
+    }
+  },
+
+  "test_runner": {
+    "script": "bash skills/strategic-compaction/evals/run-tests.sh",
+    "description": "Executes all test cases and reports pass/fail"
+  }
+}

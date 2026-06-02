@@ -1,0 +1,19 @@
+model: gpt-4o
+temperature: 0.3
+maxTokens: 4000
+
+qualityBars:
+  min_examples: 5
+  max_system_size: 1200
+  max_examples_size: 51200
+
+variants:
+  - standard
+  - high-performance
+  - multi-tenant
+
+metadata:
+  domain: database-design
+  contributors:
+    - senior-database-engineer
+  source_prompts_count: 0
