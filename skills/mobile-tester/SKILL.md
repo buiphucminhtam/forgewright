@@ -116,6 +116,11 @@ cat .env.midscene | grep API_KEY
 ```bash
 # Run mobile test setup if not configured
 bash scripts/mobile-test-setup.sh
+
+# If no physical device is connected, initialize local headless emulator:
+bash scripts/setup-local-emulators.sh
+bash scripts/start-emulator.sh
+
 ```
 
 **Output:** Device connection report, environment readiness status

@@ -635,6 +635,16 @@ bash scripts/forge-validate.sh
 
 ---
 
+## Zero-Cost & Local Testing Stack
+
+Forgewright supports a 100% free, open-source local testing stack to prevent SaaS subscription costs:
+
+*   **Visual Regression (VRT)**: Uses Playwright's native screenshot engine and `pixelmatch` locally or on CI via official Playwright Docker containers (ensuring cross-platform render consistency).
+*   **Performance & Load**: Configured k6 CLI metrics ingestion with a local InfluxDB & Grafana dockerized monitoring stack.
+*   **Mobile E2E**: Fully supports Appium and Midscene.js running against headless local Android Emulators (created via [scripts/setup-local-emulators.sh](file:///Users/buiphucminhtam/GitHub/forgewright/scripts/setup-local-emulators.sh)) and iOS Simulators.
+
+---
+
 ## ForgeNexus → GitNexus — Code Intelligence
 
 > **v8.5.0 UPDATE:** ForgeNexus has been migrated to **GitNexus** — the recommended code intelligence tool. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.

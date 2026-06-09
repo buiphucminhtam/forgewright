@@ -4,7 +4,7 @@ description: >
   [production-grade] Implements autonomous testing and self-healing workflow.
   After code generation, automatically runs tests (unit, integration, visual, E2E),
   detects bugs, attempts auto-fix, and continues development.
-  Requires: Vitest, Playwright, Applitools, LLM access.
+  Requires: Vitest, Playwright (VRT via Docker), LLM access.
 version: 2.0.0
 author: forgewright
 tags: [autonomous, self-healing, testing, CI-CD, automated-bug-fix, vitest, playwright, e2e]
@@ -73,7 +73,7 @@ You are the **Autonomous Testing Agent**. After code is generated:
 | **Unit** | Vitest, Jest, pytest | 10ms | 90% | Functions, classes |
 | **Integration** | Vitest, Supertest | 100ms | 60% | APIs, DB, services |
 | **Component** | Testing Library | 50ms | 70% | React/Vue components |
-| **Visual** | Playwright + Applitools | 1s | 40% | UI rendering |
+| **Visual** | Playwright (Native VRT via Docker) | 1s | 50% | UI rendering |
 | **E2E** | Playwright, Cypress | 10s | 30% | Full user flows |
 | **Accessibility** | axe-core | 200ms | 50% | WCAG compliance |
 | **Performance** | Lighthouse CI | 5s | 20% | Core Web Vitals |
@@ -152,7 +152,7 @@ You are the **Autonomous Testing Agent**. After code is generated:
 // lib/autonomous-testing/test-runner.ts
 import { VitestRunner } from './runners/vitest';
 import { PlaywrightRunner } from './runners/playwright';
-import { ApplitoolsRunner } from './runners/applitools';
+import { PlaywrightVisualRunner } from './runners/playwright-visual';
 import { BugClassifier } from './classifier';
 import { AutoFixer } from './auto-fixer';
 
@@ -180,7 +180,7 @@ export class TestRunnerOrchestrator {
   private runners = {
     unit: new VitestRunner(),
     integration: new VitestRunner(),
-    visual: new ApplitoolsRunner(),
+    visual: new PlaywrightVisualRunner(),
     e2e: new PlaywrightRunner(),
   };
 
@@ -578,6 +578,20 @@ class VisualRegressionHandler {
   }
 }
 ```
+
+## Docker & Mobile CI/CD Integration
+
+### Playwright VRT Docker Execution
+To prevent cross-platform font rendering and layout flakiness, run Playwright VRT inside the official Playwright Docker container:
+
+```bash
+# Run VRT locally or on CI/CD using the official Playwright container
+docker run --rm --network host -v $(pwd):/work/ -w /work/ mcr.microsoft.com/playwright:v1.45.0-jammy npx playwright test --grep @visual
+```
+
+### Mobile CI/CD Strategy
+*   **CI/CD (GitHub Actions / GitLab CI)**: Run mobile web/responsive tests using Playwright's mobile emulation (e.g., `devices['Pixel 5']` or `devices['iPhone 12']`) on a standard Linux runner.
+*   **Local Machine (Pre-commit/PR check)**: Run full E2E testing on native Android Emulators or iOS Simulators.
 
 ## Integration with Forgewright
 

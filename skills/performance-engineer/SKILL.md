@@ -490,12 +490,16 @@ jobs:
       
       - name: Run k6 test
         run: |
-          docker run -i \
-            -e K6_CLOUD_TOKEN=${{ secrets.K6_CLOUD_TOKEN }} \
+          # Start local monitoring stack (InfluxDB & Grafana)
+          docker-compose -f docker/perf-stack/docker-compose.yml up -d
+          
+          # Run k6 local test and push metrics to InfluxDB
+          docker run -i --network host \
             grafana/k6:latest run \
-            -o cloud \
-            -e BASE_URL=https://staging.example.com \
-            < k6/load-test.js
+            -o influxdb=http://localhost:8086/k6 \
+            -e BASE_URL=http://localhost:3000 \
+            < __tests__/performance/load-test.js
+
 ```
 
 ### Phase 6 — Monitoring & Alerting
