@@ -1,11 +1,11 @@
-# Forgewright — Adaptive AI Orchestrator
+# Forgewright — AI Orchestrator Tự Học và Tự Sửa Sai
 
 > **This is the Vietnamese version.** For English documentation, see [README.md](./README.md)
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/version-8.0.0-blue.svg" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-56-brightgreen.svg" alt="Skills" />
+  <img src="https://img.shields.io/badge/version-8.7.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/skills-80-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-24-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-29-00CED1.svg" alt="Protocols" />
   <img src="https://img.shields.io/badge/Game_Dev-Unity·Unreal·Godot·Roblox-FF4500.svg" alt="Game Dev" />
@@ -18,7 +18,7 @@
 
 ## TL;DR — Forgewright là gì?
 
-**Tưởng tượng:** Bạn có một đội ngũ 56 chuyên gia AI. Mỗi người giỏi một việc khác nhau — viết code, kiểm tra bảo mật, thiết kế game, tối ưu tốc độ. Forgewright là "người quản lý" — khi bạn nói "tôi muốn build một app bán hàng", nó tự biết cần gọi chuyên gia nào, theo thứ tự nào, và kiểm tra chất lượng ra sao.
+**Tưởng tượng:** Bạn có một đội ngũ 80 chuyên gia AI. Mỗi người giỏi một việc khác nhau — viết code, kiểm tra bảo mật, thiết kế game, tối ưu tốc độ. Forgewright là "người quản lý" — khi bạn nói "tôi muốn build một app bán hàng", nó tự biết cần gọi chuyên gia nào, theo thứ tự nào, và kiểm tra chất lượng ra sao.
 
 > **Một câu:** Forgewright tự động chọn đúng chuyên gia AI cho đúng việc, từ ý tưởng đến sản phẩm.
 
@@ -44,6 +44,25 @@ Forgewright tự động làm:
 Kết quả: Website production-ready, đã review, đã test, score 0-100
 ```
 
+---
+
+## Harness Engineering: Biến LLM Thô Thành Lập Trình Viên Đáng Tin Cậy
+
+Trong kỹ nghệ AI hiện đại, một mô hình ngôn ngữ lớn (LLM) thô chỉ đóng vai trò 20% trong một agent hoàn chỉnh. 80% còn lại thuộc về **Harness (Khung vận hành)** — hệ thống điều phối execution pipeline, các rào cản an toàn (safety guardrails), bộ nhớ (cognitive memory), và các lớp kiểm thử tự động điều khiển cách AI hoạt động.
+
+<p align="center">
+  <strong>Agent = Model (Claude/GPT) + Forgewright Harness</strong>
+</p>
+
+Forgewright đóng vai trò là một Harness phân phối phần mềm chuẩn production dành cho các AI coding agent:
+
+*   **Middleware Chain (14 giai đoạn)**: Bọc ngoài mỗi lượt thực thi skill bằng các công cụ kiểm soát an toàn, môi trường sandbox cô lập, nén ngữ cảnh và cổng kiểm định chất lượng (Quality Gates).
+*   **Vòng lặp ASIP tự sửa đổi**: Tự động phát hiện lỗi lên plan/thực thi code, kích hoạt nghiên cứu tài liệu chuyên sâu và tự cập nhật quy trình làm việc (SOPs).
+*   **Đồ thị nhận thức SQLite (FluxMem)**: Đảm bảo cô lập ngữ cảnh cho từng dự án riêng biệt và bộ nhớ đệm phục hồi quy trình dưới một giây (Procedural Circuits).
+*   **Hệ thống phòng vệ chủ động**: Tự động quét lỗ hổng bảo mật, tích hợp kiểm thử CI/CD và bảo vệ các thư mục nhạy cảm, ngăn các ảo giác của AI đưa lỗ hổng bảo mật vào dự án.
+
+---
+
 ### 4 cấp độ "sức mạnh" — chọn cái phù hợp với bạn
 
 ```mermaid
@@ -51,7 +70,7 @@ flowchart LR
     subgraph L1["⚡ Level 1 — Basic"]
         direction TB
         L1A["✅ Đã có gì"]
-        L1B["• 56 kỹ năng AI"]
+        L1B["• 80 kỹ năng AI"]
         L1C["• Pipeline tự động"]
         L1D["• Mặc định khi cài đặt"]
     end
@@ -101,7 +120,7 @@ flowchart TD
     START(["Bạn ơi, bắt đầu từ đâu?"])
 
     START --> Q1{"Bạn là dev?"}
-    Q1 --> |"Không / mới bắt đầu"| EASY["✅ Level 1 — Basic<br/>Chỉ cần cài là xong<br/>55 kỹ năng có sẵn"]
+    Q1 --> |"Không / mới bắt đầu"| EASY["✅ Level 1 — Basic<br/>Chỉ cần cài là xong<br/>80 kỹ năng có sẵn"]
     Q1 --> |"Có, muốn thông minh hơn"| SMART["✅ Level 2 — Smart<br/>Thêm phân tích code<br/>Hỏi gì đáp nấy"]
 
     SMART --> Q2{"Cần nhớ qua các lần chat?"}
@@ -788,7 +807,7 @@ flowchart LR
 
 ---
 
-## 55 Skills — Dùng cái nào, khi nào?
+## 80 Skills — Dùng cái nào, khi nào?
 
 ```mermaid
 flowchart TD
@@ -910,12 +929,27 @@ Sau đó khởi động lại Cursor/VS Code.
 echo "=== Kiểm tra ==="
 echo "Skills: $(ls forgewright/skills/ -1 2>/dev/null | wc -l | tr -d ' ')"
 echo "MCP: $([ -d forgewright/.forgewright/mcp-server ] && echo 'OK' || echo 'MISSING')"
-echo "Memory: $([ -f .forgewright/memory.jsonl ] && echo 'OK' || echo 'MISSING')"
+echo "Memory: $([ -f .forgewright/memory.db ] && echo 'OK' || echo 'MISSING')"
 ```
 
 ---
 
 ## Tính năng bổ sung
+
+### Bộ nhớ GraphRAG V4 — FluxMem (SQLite Brain)
+
+> **Mới trong v8.7.0** — Thay thế bộ nhớ lưu bằng file JSON bằng cấu trúc đồ thị nhận thức lớp 2 (Layer 2 Cognitive Graph) chạy trên SQLite (`flux_nodes` & `flux_edges`).
+
+Vấn đề lớn nhất của các phiên chat AI dài là **context bloat (phình to ngữ cảnh)** — AI sẽ quên mất phần đầu của cuộc trò chuyện do file memory quá lớn, dẫn tới việc lặp lại các lỗi cũ.
+
+**FluxMem (Memory V4)** giải quyết vấn đề này bằng mô hình bộ nhớ lai Đồ thị - Vector (Hybrid Graph-Vector):
+
+1. **Đồ thị nhận thức SQLite (`flux_nodes` & `flux_edges`)**: Toàn bộ các mốc sự kiện (episodic checkpoints), quyết định (semantic decisions), và kỹ năng (procedural skills) được lưu dưới dạng các Node/Edge trong SQLite database. Giúp tăng tốc truy vấn qua các liên kết (SQL JOINs), chống hỏng dữ liệu và xử lý ghi/đọc đồng thời.
+2. **Procedural Circuits (Mạch quy trình)**: Lưu trữ các luồng thực thi thành công của agent (completed session tasks) vào bảng `procedural_circuits` đi kèm điểm số PES (Performance Evaluation Score), cho phép tái sử dụng quy trình chạy chỉ trong mili-giây (sub-second recovery).
+3. **Cơ chế Edge Decay (Giảm liên kết) của ASIP**: Khi điểm số của plan dưới 9.0 hoặc gặp lỗi thực thi (execution blocker), ASIP tự động giảm trọng số liên kết của các node liên quan đi **0.5**, giúp AI học cách tránh đi vào các vết xe đổ.
+4. **Cơ chế Edge Reinforcement & Lesson Ingestion (Tăng cường & Tiếp thu bài học)**: Khi chạy thành công, trọng số liên kết được tăng thêm hệ số **1.2**. Đồng thời, các bài học học được từ NotebookLM sẽ tự động lưu dưới dạng Node ngữ nghĩa (`semantic`) và kết nối trực tiếp đến kỹ năng tương ứng (`edge_type: improves`, trọng số `1.5`).
+5. **Passive Idle Trigger (Tự động lưu checkpoint khi treo máy)**: Tự động tạo checkpoint sau **10 phút** không có phản hồi nếu phiên chat đang có tin nhắn chưa lưu, tránh mất dữ liệu khi IDE mất kết nối đột ngột.
+
 
 ### Research — NotebookLM CLI (v0.5.19)
 
@@ -1052,7 +1086,7 @@ Nếu Forgewright giúp bạn ship nhanh hơn, bạn có thể ủng hộ tại 
 ---
 
 <p align="center">
-  <strong>Forgewright — 55 AI skills. 23 modes. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
+  <strong>Forgewright — 80 AI skills. 24 modes. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
 </p>
 <p align="center">
   <em>Lên kế hoạch chính xác. Build với tự tin. Mở rộng thông minh.</em>

@@ -7,8 +7,8 @@
   <a href="https://github.com/buiphucminhtam/forgewright/network/members">
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
-  <img src="https://img.shields.io/badge/version-8.0.0-blue?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-56-brightgreen?style=flat-square" alt="Skills" />
+  <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/skills-80-brightgreen?style=flat-square" alt="Skills" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
   </a>
@@ -29,6 +29,23 @@ Forgewright: [Skips synchronous DB calls] → [Built correctly the first time]
 
 ---
 
+## Harness Engineering: Turning Raw LLMs into Reliable Coders
+
+In modern AI engineering, a raw language model is only 20% of a production agent. The other 80% is the **Harness**—the execution pipeline, safety guardrails, memory, and validation layers that govern how the AI operates.
+
+<p align="center">
+  <strong>Agent = Model (Claude/GPT) + Forgewright Harness</strong>
+</p>
+
+Forgewright acts as a production-grade software delivery harness for AI coding agents:
+
+*   **The Middleware Chain (14 Stages)**: Wraps every skill execution with guardrails, sandboxing, context compression, and quality gates.
+*   **ASIP Feedback Loops**: Automatically detects plan/execution failures, triggers deep research, and adapts skill SOPs.
+*   **SQLite Cognitive Graph (FluxMem)**: Ensures isolated project-specific context and sub-second execution path caching (Procedural Circuits).
+*   **Enforceable Guardrails**: Active security audits, CI validation, and protected paths prevent AI hallucinations from introducing vulnerabilities.
+
+---
+
 ## Why Forgewright?
 
 | Problem with other AI coding tools | Forgewright's solution |
@@ -37,7 +54,7 @@ Forgewright: [Skips synchronous DB calls] → [Built correctly the first time]
 | Gives generic advice | **Project-specific** — remembers your stack |
 | Hallucinates solutions | **Grounded in research** — uses NotebookLM |
 | No quality guarantee | **Auto-scored 0-100** — you know when it's ready |
-| Starts from scratch each chat | **GraphRAG Memory V3** — biological-inspired graph memory |
+| Starts from scratch each chat | **SQLite L2 Graph Memory** — biological-inspired cognitive graph (FluxMem) |
 | Handles requests directly | **Always via pipeline** — never skips orchestration |
 
 ---
@@ -171,7 +188,7 @@ flowchart TB
     subgraph LEVEL1["⚡ Level 1 — Zero Setup"]
         direction TB
         L1A["✅ Just works"]
-        L1B["56 AI skills auto-activate"]
+        L1B["80 AI skills auto-activate"]
         L1C["No install required"]
     end
 
@@ -369,18 +386,19 @@ bash scripts/forgewright-mcp-setup.sh --force
 
 ---
 
-## Featured: GraphRAG Memory V3 (Biological Brain)
+## Featured: GraphRAG Memory V4 — FluxMem (SQLite Brain)
 
-> **New in v8.6.0** — Replaces flat Markdown memory with a self-pruning Knowledge Graph.
+> **New in v8.7.0** — Replaces JSON-based memory with an isolated SQLite Layer 2 Cognitive Graph (`flux_nodes` & `flux_edges`).
 
-The biggest issue with long AI sessions is **context bloat** — the AI forgets the beginning of the chat because the memory file gets too large.
+The biggest issue with long AI sessions is **context bloat** — the AI forgets the beginning of the chat because the memory file gets too large, leading to repetitive mistakes.
 
-**GraphRAG V3** solves this by mimicking the human brain's **Ebbinghaus Forgetting Curve**:
+**FluxMem (Memory V4)** solves this by using a hybrid Graph-Vector memory architecture:
 
-1. **Graph Construction:** Every action, error, and decision is stored as a Node in a Local NetworkX Graph (`graph_memory.json`).
-2. **Cognitive Decay:** Over time, nodes lose "weight" (Decay Rate = 0.8). 
-3. **Garbage Collection:** Nodes that fall below the threshold are automatically pruned, keeping the context perfectly lean.
-4. **Self-Evolution:** `graph_cluster.py` detects repeated "Error → Decision" patterns and automatically upgrades Forgewright's `SKILL.md` files.
+1. **SQLite Cognitive Graph (`flux_nodes` & `flux_edges`)**: All episodic checkpoints, semantic decisions, and procedural skills are stored as nodes in a relational SQLite database. This ensures crash-safe concurrent operations and eliminates massive JSON parsing overhead.
+2. **Procedural Circuits**: Caches successful agent execution trajectories (completed session tasks) inside `procedural_circuits` with a PES (Performance Evaluation Score), allowing sub-second recovery of optimized action plans.
+3. **ASIP Edge Decay**: When a plan score falls below 9.0 or an execution blocker occurs, ASIP automatically decays affected graph relation weights by a factor of **0.5**, mathematically training the orchestrator to avoid failing paths.
+4. **ASIP Edge Reinforcement & Lesson Ingestion**: Upon a successful run, weights are reinforced by a factor of **1.2**. Lessons migrated from NotebookLM are saved as semantic graph nodes and linked to procedural skills (`edge_type: improves`, weight `1.5`).
+5. **Passive Idle Trigger**: Automatically triggers a checkpoint after **10 minutes** of inactivity if there are uncommitted session messages, protecting agent state from IDE disconnects.
 
 ---
 
@@ -582,7 +600,7 @@ Use the Token Tracker skill for AI-powered analysis:
 
 ---
 
-## 67 Skills, 24 Modes
+## 80 Skills, 24 Modes
 
 ```mermaid
 flowchart TD
@@ -881,14 +899,13 @@ npm install -g gitnexus
 gitnexus setup
 ```
 
-**Q: What's new in v8.0.0?**
+**Q: What's new in v8.7.0?**
 
-A: Forgewright v8.0.0 is a major release focusing on reliability and maintainability:
-- **GitNexus Integration** — Code intelligence (context, impact analysis, detect changes)
-- **Universal MCP Setup** — Single script configures all platforms (Cursor, Claude Code, Antigravity, Codex)
-- **Memory System v2** — Retrieval loop, rich checkpoints, auto-tagging, convention indexer
-- **Anti-Hallucination System** — Skeptic agent, confidence scoring, citation extraction (via Forgenexus)
-- **57 Skills** — Added Prompt Optimizer, Data Engineer, XLSX Engineer, Project Manager, UX Researcher, Accessibility Engineer
+A: Forgewright v8.7.0 is a major release focusing on reliability, learning retention, and code intelligence:
+- **GraphRAG Memory V4 (FluxMem)** — Integrated SQLite relational cognitive graph (`flux_nodes` & `flux_edges`) replacing slow JSON files. Includes **Procedural Circuits** caching for sub-second trajectory recovery, automatic edge decay (0.5) / reinforcement (1.2) via ASIP, and passive 10m idle checkpointing.
+- **GitNexus Integration** — In-editor symbol graph intelligence (impact analysis, blast radius, symbol-level rename).
+- **Universal MCP Setup** — Single script configures all platforms (Cursor, Claude Code, Antigravity, Codex) automatically.
+- **80 Skills** — Expanded team with 80 specialized agent skills (including Prompt Optimizer, XLSX Engineer, UX Researcher, and Roblox/Three.js/Phaser game engineers).
 
 See the [Changelog](#v800-june-2026--forgewright-80) below for full details.
 

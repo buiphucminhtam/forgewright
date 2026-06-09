@@ -12,8 +12,8 @@ PASS=0
 FAIL=0
 TESTS=0
 
-pass() { PASS=$((PASS+1)); TESTS=$((TESTS+1)); echo "  ✅ $1"; }
-fail() { FAIL=$((FAIL+1)); TESTS=$((TESTS+1)); echo "  ❌ $1"; }
+pass() { PASS=$((PASS+1)); echo "  ✅ $1"; }
+fail() { FAIL=$((FAIL+1)); echo "  ❌ $1"; }
 
 cd "$FORGEWRIGHT_DIR"
 

@@ -68,10 +68,14 @@ Maintain per-session state in `.forgewright/session/asip-state.json`:
 ```
 IF skill completes successfully:
   1. Check if research gate was triggered this session
-  2. IF yes: Verify lessons were written to skill files
-  3. Clear attempt counters for completed tasks
-  4. Log: SKILL_COMPLETED_WITH_IMPROVEMENT
-  5. Update .forgewright/asip-metrics.json
+  2. IF yes:
+     - Verify lessons were written to skill files
+     - Save lesson to L2 graph: python3 scripts/mem0-v2.py graph-add-node "lesson_[id]" "semantic" "Lesson" "Problem: ... | Research: ... | Lesson: ..."
+     - Link to skill node: python3 scripts/mem0-v2.py graph-link "lesson_[id]" "skill_[name]" --weight 1.5 --type "improves"
+  3. Strengthen the path: python3 scripts/mem0-v2.py graph-reinforce "current-session" "plan-quality" --factor 1.2
+  4. Clear attempt counters for completed tasks
+  5. Log: SKILL_COMPLETED_WITH_IMPROVEMENT
+  6. Update .forgewright/asip-metrics.json
 ```
 
 ## Post-Skill Hook: Failure Path (Plan Quality Loop)
@@ -80,6 +84,7 @@ IF skill completes successfully:
 IF plan scores < 9.0:
   1. Increment planAttempts[skill][task]
   2. Log attempt with score breakdown
+  3. Decay edge in L2 graph: python3 scripts/mem0-v2.py graph-decay "current-session" "plan-quality" --factor 0.5
   
   IF attempts == 1:
     → Return to skill: "Plan scored X. Improve on [weak criteria]. Try again."
@@ -95,6 +100,8 @@ IF plan scores < 9.0:
 ```
 IF execution fails with blocker:
   1. Increment executionAttempts[skill][problem]
+  2. Record failure fact: python3 scripts/mem0-v2.py add "Execution Blocker: [description] in skill [name]" --category blockers --importance 7
+  3. Decay edge: python3 scripts/mem0-v2.py graph-decay "current-session" "skill_[name]" --factor 0.5
   
   IF attempts == 1:
     → Return to skill: "Attempt 1 failed. Try alternative approach."

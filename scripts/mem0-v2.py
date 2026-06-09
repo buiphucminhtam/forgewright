@@ -289,6 +289,17 @@ CREATE TABLE IF NOT EXISTS flux_edges (
 CREATE INDEX IF NOT EXISTS idx_flux_node_layer ON flux_nodes(layer);
 CREATE INDEX IF NOT EXISTS idx_flux_edges_source ON flux_edges(source_id);
 CREATE INDEX IF NOT EXISTS idx_flux_edges_target ON flux_edges(target_id);
+
+-- Procedural Circuits (consolidation of high-performance task execution plans)
+CREATE TABLE IF NOT EXISTS procedural_circuits (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    steps_json TEXT NOT NULL,
+    pems_score REAL NOT NULL DEFAULT 0.0,
+    runs_count INTEGER DEFAULT 0,
+    success_count INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -920,6 +931,69 @@ class MemoryDB:
         finally:
             conn.close()
 
+    def save_procedural_circuit(self, circuit_id: str, name: str, steps_json: str, pems_score: float) -> bool:
+        """Consolidate high-performance procedural workflows."""
+        conn = self.get_connection()
+        try:
+            conn.execute("""
+                INSERT INTO procedural_circuits (id, name, steps_json, pems_score, runs_count, created_at)
+                VALUES (?, ?, ?, ?, 1, datetime('now'))
+                ON CONFLICT(id) DO UPDATE SET
+                    steps_json = excluded.steps_json,
+                    pems_score = excluded.pems_score,
+                    runs_count = runs_count + 1
+            """, (circuit_id, name, steps_json, pems_score))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error saving procedural circuit: {e}", file=sys.stderr)
+            return False
+        finally:
+            conn.close()
+
+    def get_procedural_circuit(self, circuit_id: str) -> Optional[dict]:
+        """Retrieve established procedural path or circuit."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.execute("""
+                SELECT id, name, steps_json, pems_score, runs_count, success_count, created_at
+                FROM procedural_circuits
+                WHERE id = ?
+            """, (circuit_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'id': row['id'],
+                    'name': row['name'],
+                    'steps_json': row['steps_json'],
+                    'pems_score': row['pems_score'],
+                    'runs_count': row['runs_count'],
+                    'success_count': row['success_count'],
+                    'created_at': row['created_at']
+                }
+            return None
+        except sqlite3.Error as e:
+            print(f"Error getting procedural circuit: {e}", file=sys.stderr)
+            return None
+        finally:
+            conn.close()
+
+    def increment_circuit_success(self, circuit_id: str) -> bool:
+        """Increment the success count for a procedural circuit."""
+        conn = self.get_connection()
+        try:
+            conn.execute("""
+                UPDATE procedural_circuits
+                SET success_count = success_count + 1
+                WHERE id = ?
+            """, (circuit_id,))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error incrementing circuit success: {e}", file=sys.stderr)
+            return False
+        finally:
+            conn.close()
 
 
 # ── Commands ─────────────────────────────────────────────────────────────────
@@ -1232,6 +1306,56 @@ def cmd_graph_neighbors(args):
         print(f"  ──({r['edge_type']}, weight={r['weight']})──► [{r['id']}] {r['layer']}{pes_info}: {r['title'][:80]}")
 
 
+def cmd_graph_save_circuit(args):
+    if len(args) < 4:
+        print("Usage: mem0-v2.py graph-save-circuit <id> <name> <steps_json> <pems_score>")
+        return
+    circuit_id, name, steps_json = args[0], args[1], args[2]
+    try:
+        pems_score = float(args[3])
+    except ValueError:
+        print("Error: pems_score must be a float")
+        return
+        
+    db = get_db()
+    if db.save_procedural_circuit(circuit_id, name, steps_json, pems_score):
+        print(f"✓ Consolidated procedural circuit '{circuit_id}'")
+    else:
+        print("❌ Failed to save procedural circuit")
+
+
+def cmd_graph_get_circuit(args):
+    if len(args) < 1:
+        print("Usage: mem0-v2.py graph-get-circuit <id>")
+        return
+    circuit_id = args[0]
+    db = get_db()
+    res = db.get_procedural_circuit(circuit_id)
+    if not res:
+        print(f"Circuit '{circuit_id}' not found.")
+        return
+    print(f"Procedural Circuit [{res['id']}]:")
+    print(f"  Name:          {res['name']}")
+    print(f"  PEMS Score:    {res['pems_score']}")
+    print(f"  Runs Count:    {res['runs_count']}")
+    print(f"  Success Count: {res['success_count']}")
+    print(f"  Created At:    {res['created_at']}")
+    print("  Steps JSON:")
+    print(res['steps_json'])
+
+
+def cmd_graph_inc_circuit(args):
+    if len(args) < 1:
+        print("Usage: mem0-v2.py graph-inc-circuit <id>")
+        return
+    circuit_id = args[0]
+    db = get_db()
+    if db.increment_circuit_success(circuit_id):
+        print(f"✓ Incremented success for circuit '{circuit_id}'")
+    else:
+        print("❌ Failed to increment success")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 COMMANDS = {
@@ -1250,6 +1374,9 @@ COMMANDS = {
     "graph-decay": cmd_graph_decay,
     "graph-reinforce": cmd_graph_reinforce,
     "graph-neighbors": cmd_graph_neighbors,
+    "graph-save-circuit": cmd_graph_save_circuit,
+    "graph-get-circuit": cmd_graph_get_circuit,
+    "graph-inc-circuit": cmd_graph_inc_circuit,
 }
 
 

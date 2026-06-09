@@ -15,7 +15,7 @@ missing=0
 for dir in "$SKILLS_DIR"/*/; do
     name=$(basename "$dir")
     
-    if [ "$name" == "_shared" ]; then
+    if [ "$name" == "_shared" ] || [ "$name" == "generated" ]; then
         continue
     fi
     

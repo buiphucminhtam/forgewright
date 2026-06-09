@@ -29,6 +29,7 @@ Environment Variables:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -109,6 +110,17 @@ CHECKPOINT_INTERVAL = int(os.environ.get("MEMORY_CHECKPOINT_INTERVAL", "3"))
 # Token thresholds: WARN at 80%, CRITICAL at 95%
 TOKEN_THRESHOLD_WARN = int(os.environ.get("MEMORY_TOKEN_THRESHOLD_WARN", "80"))
 TOKEN_THRESHOLD_CRITICAL = int(os.environ.get("MEMORY_TOKEN_THRESHOLD_CRITICAL", "95"))
+def parse_iso_datetime(dt_str: str) -> datetime:
+    """Safely parse ISO 8601 datetime strings, handling 'Z' suffix and double offsets."""
+    clean_str = dt_str
+    if clean_str.endswith("Z"):
+        clean_str = clean_str[:-1]
+        if not re.search(r"[-+]\d{2}:\d{2}$", clean_str):
+            clean_str += "+00:00"
+    # Deduplicate double offsets if any
+    clean_str = re.sub(r"(\+\d{2}:\d{2})\+\d{2}:\d{2}$", r"\1", clean_str)
+    clean_str = re.sub(r"(-\d{2}:\d{2})-\d{2}:\d{2}$", r"\1", clean_str)
+    return datetime.fromisoformat(clean_str)
 
 
 #────────────────────────────────────────────────────────────────────────────
@@ -573,10 +585,7 @@ def end_session(summary: str = "", next_steps: list = None) -> dict | None:
     if next_steps:
         session["next_steps"] = next_steps
 
-    start_str = session["started_at"]
-    start_str = start_str.replace("Z", "+00:00").rstrip("Z")
-    start_str = re.sub(r"(\+\d{2}:\d{2})\+\d{2}:\d{2}$", r"\1", start_str)
-    start = datetime.fromisoformat(start_str)
+    start = parse_iso_datetime(session["started_at"])
     end = datetime.now(timezone.utc)
     duration_min = int((end - start).total_seconds() / 60)
     session["duration_minutes"] = duration_min
@@ -670,6 +679,198 @@ def auto_ingest_session_decisions(session: dict) -> int:
         return 0
 
 
+def save_graph_nodes_edges(summary: str, checkpoint_id: str):
+    """Save episodic/semantic nodes and links in Layer 2 graph memory."""
+    try:
+        script_dir = Path(__file__).parent
+        mem0_script = script_dir / "mem0-v2.py"
+        extract_script = script_dir / "checkpoint-extract.sh"
+        if not mem0_script.exists():
+            return
+            
+        # 1. Create Episodic Node for this checkpoint
+        cmd = [
+            "python3", str(mem0_script), "graph-add-node",
+            checkpoint_id, "episodic", f"Checkpoint {checkpoint_id}", f"Summary: {summary}"
+        ]
+        subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        
+        # 2. Get current session context
+        session = get_current_session()
+        if session:
+            session_id = session.get("session_id")
+            session_title = f"Session {session_id}"
+            session_content = f"Request: {session.get('request', '')} | Mode: {session.get('mode', '')}"
+            cmd = [
+                "python3", str(mem0_script), "graph-add-node",
+                session_id, "episodic", session_title, session_content
+            ]
+            subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            
+            # Link checkpoint -> session
+            cmd = [
+                "python3", str(mem0_script), "graph-link",
+                checkpoint_id, session_id, "--weight", "1.0", "--type", "part_of"
+            ]
+            subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            
+            # Save request as a Semantic Node and link to session
+            request_text = session.get("request", "")
+            if request_text:
+                req_node_id = f"req_{session_id}"
+                cmd = [
+                    "python3", str(mem0_script), "graph-add-node",
+                    req_node_id, "semantic", "Session Request", request_text
+                ]
+                subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                
+                cmd = [
+                    "python3", str(mem0_script), "graph-link",
+                    session_id, req_node_id, "--weight", "1.0", "--type", "targets"
+                ]
+                subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+
+        # 3. Extract changed files / skills / configs from checkpoint-extract.sh
+        if extract_script.exists():
+            try:
+                res = subprocess.run(
+                    ["bash", str(extract_script)],
+                    capture_output=True, text=True, timeout=5
+                )
+                if res.returncode == 0 and res.stdout.strip():
+                    data = json.loads(res.stdout)
+                    changed_files = data.get("files", [])
+                    for filepath in changed_files:
+                        if not filepath or not filepath.strip():
+                            continue
+                        
+                        node_layer = "semantic"
+                        edge_type = "modifies"
+                        node_title = ""
+                        
+                        if filepath.startswith("skills/"):
+                            skill_parts = filepath.split("/")
+                            if len(skill_parts) > 1:
+                                skill_name = skill_parts[1]
+                                node_layer = "procedural"
+                                node_title = f"Skill: {skill_name}"
+                                node_id = f"skill_{skill_name}"
+                                edge_type = "updates_skill"
+                            else:
+                                continue
+                        elif filepath.startswith("scripts/"):
+                            script_name = Path(filepath).name
+                            node_layer = "procedural"
+                            node_title = f"Script: {script_name}"
+                            node_id = f"script_{script_name}"
+                            edge_type = "updates_script"
+                        elif any(filepath.endswith(ext) for ext in [".json", ".yaml", ".yml", ".env"]):
+                            config_name = Path(filepath).name
+                            node_layer = "semantic"
+                            node_title = f"Config: {config_name}"
+                            node_id = f"config_{config_name.replace('.', '_')}"
+                            edge_type = "modifies_config"
+                        else:
+                            file_name = Path(filepath).name
+                            node_layer = "semantic"
+                            node_title = f"File: {file_name}"
+                            node_id = f"file_{file_name.replace('.', '_')}"
+                            edge_type = "modifies_file"
+                            
+                        # Add node to graph
+                        cmd = [
+                            "python3", str(mem0_script), "graph-add-node",
+                            node_id, node_layer, node_title, f"File path: {filepath}"
+                        ]
+                        subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                        
+                        # Link checkpoint -> modified node
+                        cmd = [
+                            "python3", str(mem0_script), "graph-link",
+                            checkpoint_id, node_id, "--weight", "1.0", "--type", edge_type
+                        ]
+                        subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            except Exception as ex:
+                warn(f"Could not extract files for graph linking: {ex}")
+                
+    except Exception as e:
+        warn(f"Could not update graph nodes/edges: {e}")
+
+
+def extract_semantic_facts(summary: str, checkpoint_id: str):
+    """Scan summary/intent details and recent git commit messages for semantic facts."""
+    try:
+        script_dir = Path(__file__).parent
+        mem0_script = script_dir / "mem0-v2.py"
+        if not mem0_script.exists():
+            return
+            
+        KEEP_PATTERNS = [
+            (r"\b(prefer|always use|never use|default to|favorite)\b", "preference"),
+            (r"\b(when .{3,30}(do|always|never|run|use)|process:|steps:|workflow:|SOP:)\b", "sop"),
+            (r"\b(decided|chose|switched to|replaced|migrated|adopted|selected)\b", "decision"),
+            (r"\b(port \d+|url:|endpoint:|api.key|config|\.env|token stored)\b", "config"),
+            (r"\b(id:|ID:|task #|#[a-f0-9]{8})\b", "reference"),
+        ]
+
+        SKIP_PATTERNS = [
+            r"^```",           # Code blocks
+            r"^\s*\|",          # Table rows
+            r"Traceback ",      # Stack traces
+            r"^diff --",        # Diffs
+            r"at \w+\.\w+ \(",  # JS stack frames
+            r"^\s*\d+:\s",      # Line-numbered code
+            r"(password|secret|private.key)\s*[:=]",  # Secrets
+        ]
+
+        # Scan git commit log or summary or reason
+        try:
+            res = subprocess.run(
+                ["git", "log", "-1", "--pretty=%B"],
+                capture_output=True, text=True, timeout=5
+            )
+            git_msg = res.stdout.strip() if res.returncode == 0 else ""
+        except Exception:
+            git_msg = ""
+            
+        texts_to_scan = [summary, git_msg]
+        
+        session = get_current_session()
+        if session:
+            for task_id, task in session.get("tasks", {}).items():
+                task_sum = task.get("summary", "")
+                if task_sum:
+                    texts_to_scan.append(f"Task T{task_id}: {task_sum}")
+                    
+        for text in texts_to_scan:
+            if not text:
+                continue
+            for line in text.split("\n"):
+                line = line.strip()
+                if not line or len(line) < 10:
+                    continue
+                if any(re.search(pat, line, re.IGNORECASE) for pat in SKIP_PATTERNS):
+                    continue
+                for pat, category in KEEP_PATTERNS:
+                    if re.search(pat, line, re.IGNORECASE):
+                        fact_id = f"fact_{hashlib.md5(line.encode()).hexdigest()[:12]}"
+                        title = f"Extracted {category.capitalize()}"
+                        cmd = [
+                            "python3", str(mem0_script), "graph-add-node",
+                            fact_id, "semantic", title, line
+                        ]
+                        subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                        
+                        cmd = [
+                            "python3", str(mem0_script), "graph-link",
+                            checkpoint_id, fact_id, "--weight", "1.0", "--type", f"has_{category}"
+                        ]
+                        subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                        break
+    except Exception as e:
+        warn(f"Could not extract semantic facts: {e}")
+
+
 def save_to_mem0(summary: str, checkpoint_id: str) -> bool:
     """Save checkpoint to mem0-v2. Returns True on success, False on failure."""
     try:
@@ -689,6 +890,10 @@ def save_to_mem0(summary: str, checkpoint_id: str) -> bool:
         if result.returncode != 0:
             error(f"mem0 save failed: {result.stderr[:200]}")
             return False
+        
+        # Save L2 graph structures and extract semantic context
+        save_graph_nodes_edges(summary, checkpoint_id)
+        extract_semantic_facts(summary, checkpoint_id)
         return True
     except subprocess.TimeoutExpired:
         warn("mem0 save timed out, continuing without mem0 update")
@@ -937,6 +1142,23 @@ def do_checkpoint(reason: str = "manual") -> Optional[str]:
 def increment_message():
     """Increment message counter, trigger checkpoint if needed."""
     session = load_session()
+
+    # Passive Idle Checkpoint Trigger:
+    # If 10 minutes (600s) have passed since the last checkpoint and there are uncommitted messages,
+    # save an 'idle' checkpoint first before registering the new prompt.
+    last_checkpoint_str = session.get("last_checkpoint_at")
+    if last_checkpoint_str:
+        try:
+            last_checkpoint = parse_iso_datetime(last_checkpoint_str)
+            now = datetime.now(timezone.utc)
+            elapsed = (now - last_checkpoint).total_seconds()
+            if elapsed >= 600 and session.get("message_count", 0) > 0:
+                log(f"Idle time detected ({elapsed/60:.1f}m) — triggering idle checkpoint", Colors.YELLOW)
+                do_checkpoint("idle")
+                session = load_session()
+        except Exception as e:
+            warn(f"Could not check idle time: {e}")
+
     session["message_count"] = session.get("message_count", 0) + 1
     save_session(session)
 

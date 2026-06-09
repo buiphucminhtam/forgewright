@@ -241,5 +241,79 @@ class TestGC(unittest.TestCase):
         self.assertEqual(removed, 10)
 
 
+class TestProceduralCircuits(unittest.TestCase):
+    """Tests for Layer 2 Graph and Procedural Circuits."""
+
+    def setUp(self):
+        import tempfile
+        tmpdir = tempfile.mkdtemp()
+        _spec = importlib.util.spec_from_file_location("m", SCRIPTS_DIR / "mem0-v2.py")
+        _m = importlib.util.module_from_spec(_spec)
+        sys.modules["mem0_v2"] = _m
+        _spec.loader.exec_module(_m)
+        self.db = _m.MemoryDB(os.path.join(tmpdir, "graph_test.db"))
+
+    def test_add_graph_node(self):
+        success = self.db.add_node("node-1", "semantic", "Test Node", "Some content", 8.5)
+        self.assertTrue(success)
+        
+        # Test fetching/neighbors or queries
+        conn = self.db.get_connection()
+        row = conn.execute("SELECT * FROM flux_nodes WHERE id = 'node-1'").fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row['layer'], 'semantic')
+        self.assertEqual(row['title'], 'Test Node')
+        self.assertEqual(row['pes_score'], 8.5)
+        conn.close()
+
+    def test_link_decay_reinforce_edges(self):
+        self.db.add_node("n-1", "semantic", "N1", "Content 1")
+        self.db.add_node("n-2", "procedural", "N2", "Content 2")
+        
+        # Link edge
+        success = self.db.add_edge("n-1", "n-2", weight=1.0, edge_type="relates_to")
+        self.assertTrue(success)
+        
+        # Check neighbors
+        neighbors = self.db.get_neighbors("n-1")
+        self.assertEqual(len(neighbors), 1)
+        self.assertEqual(neighbors[0]['id'], 'n-2')
+        self.assertEqual(neighbors[0]['weight'], 1.0)
+        
+        # Decay
+        self.db.decay_edge("n-1", "n-2", edge_type="relates_to", factor=0.5)
+        neighbors = self.db.get_neighbors("n-1")
+        self.assertEqual(neighbors[0]['weight'], 0.5)
+        
+        # Reinforce
+        self.db.reinforce_edge("n-1", "n-2", edge_type="relates_to", factor=1.5)
+        neighbors = self.db.get_neighbors("n-1")
+        self.assertEqual(neighbors[0]['weight'], 0.75) # 0.5 * 1.5 = 0.75
+
+    def test_procedural_circuits(self):
+        steps = json.dumps([{"step": 1, "action": "test"}, {"step": 2, "action": "deploy"}])
+        success = self.db.save_procedural_circuit("circuit-100", "Deploy Circuit", steps, 9.2)
+        self.assertTrue(success)
+        
+        # Retrieve
+        circuit = self.db.get_procedural_circuit("circuit-100")
+        self.assertIsNotNone(circuit)
+        self.assertEqual(circuit['name'], "Deploy Circuit")
+        self.assertEqual(circuit['pems_score'], 9.2)
+        self.assertEqual(circuit['runs_count'], 1)
+        self.assertEqual(circuit['success_count'], 0)
+        
+        # Increment runs
+        self.db.save_procedural_circuit("circuit-100", "Deploy Circuit", steps, 9.5)
+        circuit = self.db.get_procedural_circuit("circuit-100")
+        self.assertEqual(circuit['runs_count'], 2)
+        self.assertEqual(circuit['pems_score'], 9.5)
+        
+        # Increment success
+        self.db.increment_circuit_success("circuit-100")
+        circuit = self.db.get_procedural_circuit("circuit-100")
+        self.assertEqual(circuit['success_count'], 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

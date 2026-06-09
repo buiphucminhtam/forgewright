@@ -8,7 +8,7 @@ INDEXER_SCRIPT="$FORGEWRIGHT_DIR/scripts/convention-indexer.sh"
 
 PASS=0; FAIL=0; TESTS=0
 pass() { PASS=$((PASS+1)); echo "  ✅ $1"; }
-fail() { FAIL=$((FAIL+1)); TESTS=$((TESTS+1)); echo "  ✅ $1"; }
+fail() { FAIL=$((FAIL+1)); echo "  ❌ $1"; }
 
 cd "$FORGEWRIGHT_DIR"
 
@@ -65,8 +65,8 @@ echo "T5: Full run stores conventions"
 before=$(python3 "$FORGEWRIGHT_DIR/scripts/mem0-v2.py" stats 2>/dev/null | grep "decisions:" | grep -oE "[0-9]+" || echo "0")
 output=$(bash "$INDEXER_SCRIPT" 2>&1)
 if echo "$output" | grep -q "Stored: [0-9]*/[0-9]*"; then
-    stored=$(echo "$output" | grep "Stored:" | grep -oE "[0-9]+" | head -1)
-    total=$(echo "$output" | grep "Stored:" | grep -oE "[0-9]+" | tail -1)
+    stored=$(echo "$output" | grep -oE "Stored: [0-9]+" | grep -oE "[0-9]+")
+    total=$(echo "$output" | grep -oE "Stored: [0-9]+/[0-9]+" | cut -d/ -f2)
     if [[ "$stored" -gt 0 ]] && [[ "$stored" -eq "$total" ]]; then
         pass "Stored $stored/$total conventions"
     else

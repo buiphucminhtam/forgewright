@@ -223,6 +223,32 @@ if '$status' == 'completed':
                     'python3', '$PROJECT_DIR/scripts/mem0-v2.py', 'graph-link',
                     f'proc-{session_id}', 'plan-quality', '--weight', '3.0', '--type', 'solves'
                 ], stderr=subprocess.DEVNULL)
+
+                # Consolidate procedural steps (tasks) into procedural_circuits
+                steps = []
+                try:
+                    from pathlib import Path
+                    session_log_path = Path('$PROJECT_DIR/.forgewright/session-log.json')
+                    if session_log_path.exists():
+                        log_data = json.loads(session_log_path.read_text())
+                        for s in log_data.get('sessions', []):
+                            if s.get('status') == 'in_progress' or s.get('session_id') == session_id:
+                                for tid, t in s.get('tasks', {}).items():
+                                    if t.get('status') == 'completed':
+                                        steps.append({
+                                            'id': tid,
+                                            'summary': t.get('summary', ''),
+                                            'updated_at': t.get('updated_at', '')
+                                        })
+                except Exception:
+                    pass
+                
+                steps_json = json.dumps(steps)
+                subprocess.run([
+                    'python3', '$PROJECT_DIR/scripts/mem0-v2.py', 'graph-save-circuit',
+                    f'proc-{session_id}', f'Optimized procedural circuit for {mode}',
+                    steps_json, str(pes_score)
+                ], stderr=subprocess.DEVNULL)
     except Exception as e:
         pass
 
