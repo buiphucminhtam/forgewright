@@ -1024,7 +1024,7 @@ Forgewright hỗ trợ hạ tầng kiểm thử mã nguồn mở và chạy offl
 
 *   **Visual Regression (VRT)**: Sử dụng trình so sánh ảnh gốc của Playwright kết hợp `pixelmatch` tại local hoặc chạy trong Docker container chính thức trên CI (nhằm đồng bộ font/giao diện render).
 *   **Performance & Load**: Tích hợp k6 CLI đẩy số liệu thời gian thực trực tiếp về hệ thống cơ sở dữ liệu InfluxDB và trực quan hóa qua Grafana cục bộ (dựng qua Docker Compose).
-*   **Mobile E2E**: Chạy Appium và Midscene.js tương tác bằng AI trực tiếp trên máy ảo Android Emulator cục bộ (tạo qua [scripts/setup-local-emulators.sh](file:///Users/buiphucminhtam/GitHub/forgewright/scripts/setup-local-emulators.sh)) hoặc iOS Simulator.
+*   **Mobile E2E**: Chạy Appium, Midscene.js tương tác bằng AI, và **Maestro (Chạy Local Miễn Phí)** trực tiếp trên máy ảo Android Emulator cục bộ (tạo qua [scripts/setup-local-emulators.sh](file:///Users/buiphucminhtam/GitHub/forgewright/scripts/setup-local-emulators.sh)) hoặc iOS Simulator.
 
 ---
 

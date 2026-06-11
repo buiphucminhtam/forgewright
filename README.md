@@ -659,7 +659,7 @@ Forgewright supports a 100% free, open-source local testing stack to prevent Saa
 
 *   **Visual Regression (VRT)**: Uses Playwright's native screenshot engine and `pixelmatch` locally or on CI via official Playwright Docker containers (ensuring cross-platform render consistency).
 *   **Performance & Load**: Configured k6 CLI metrics ingestion with a local InfluxDB & Grafana dockerized monitoring stack.
-*   **Mobile E2E**: Fully supports Appium and Midscene.js running against headless local Android Emulators (created via [scripts/setup-local-emulators.sh](file:///Users/buiphucminhtam/GitHub/forgewright/scripts/setup-local-emulators.sh)) and iOS Simulators.
+*   **Mobile E2E**: Fully supports Appium, Midscene.js (AI-vision), and **Maestro (Local-Only)** running against local Android Emulators (created via [scripts/setup-local-emulators.sh](file:///Users/buiphucminhtam/GitHub/forgewright/scripts/setup-local-emulators.sh)) and iOS Simulators.
 
 ---
 
@@ -840,6 +840,7 @@ npx gitnexus workflow ship-saas-mvp
 | `ship-saas-mvp` | Full-stack SaaS from scratch |
 | `setup-paperclip` | Paperclip testing setup |
 | `midscene-testing` | Midscene E2E automation |
+| `maestro-testing` | Maestro local E2E automation |
 | `mobile-test` | React Native testing |
 
 ---
