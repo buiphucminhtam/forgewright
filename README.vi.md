@@ -992,6 +992,25 @@ cd paperclip && pnpm dev
 # Dashboard: http://localhost:3100
 ```
 
+### Tích hợp LLM Wiki & Obsidian
+
+Forgewright tích hợp với [nashsu/llm_wiki](https://github.com/nashsu/llm_wiki) và Obsidian để quản lý và trực quan hóa tài liệu của tất cả các dự án trong một **Shared Obsidian Vault** tập trung.
+
+* **Không trùng lặp dung lượng (Symlink-based):** Tài liệu của mỗi dự án con được liên kết trực tiếp vào Vault bằng liên kết mềm (Symlink), đảm bảo cập nhật thời gian thực mà không làm tăng dung lượng đĩa.
+* **Tự động hóa 2 lớp:**
+  - **Post-Skill Hook:** AI tự động chạy đồng bộ khi đóng phiên làm việc (Session End).
+  - **Git Hook (post-commit):** Tự động đồng bộ mỗi khi bạn commit thay đổi liên quan đến tài liệu (`docs/`, `README.md`, `TASKS.md`...).
+* **Obsidian Graph View:** Trực quan hóa mối liên hệ kiến trúc, sơ đồ luồng dữ liệu APIs giữa các dự án.
+
+Các lệnh thực thi:
+```bash
+# Đồng bộ dự án hiện tại vào Vault chung
+./scripts/forgewright-wiki-sync.sh
+
+# Quét và đồng bộ hàng loạt tất cả dự án trong thư mục GitHub
+./scripts/forgewright-wiki-sync-all.sh
+```
+
 ---
 
 ## Quality Gate — Chấm điểm tự động

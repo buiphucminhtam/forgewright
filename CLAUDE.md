@@ -526,6 +526,9 @@ Before finishing ANY task, verify ALL of the following:
    # Check: any new planning improvements in SKILL.md files?
    # Log to .forgewright/asip-metrics.json:
    #   sessionsWithEvolution += 1 (if any new entries added)
+
+5. Sync documentation with llm_wiki:
+   bash scripts/forgewright-wiki-sync.sh
 ```
 
 **SAVE/Resume Commands:**

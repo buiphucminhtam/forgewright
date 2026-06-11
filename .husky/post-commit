@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Kiểm tra xem commit vừa rồi có thay đổi tài liệu không
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -q -E '^(docs/|README\.md|README\.vi\.md|TASKS\.md|\.forgewright/project-profile\.json|\.forgewright/code-conventions\.md)'; then
+  echo "📄 [Forgewright] Phát hiện thay đổi tài liệu. Đang tự động đồng bộ sang llm_wiki..."
+  if [ -x "./scripts/forgewright-wiki-sync.sh" ]; then
+    ./scripts/forgewright-wiki-sync.sh
+  fi
+fi

@@ -873,6 +873,27 @@ bash scripts/memory-hygiene.sh --dry-run
 | **Decisions** | `.forgewright/decisions/` | ADR records |
 | **Context** | `.forgewright/context/` | Session summaries |
 
+## LLM Wiki & Obsidian Integration
+
+Forgewright integrates with [nashsu/llm_wiki](https://github.com/nashsu/llm_wiki) and Obsidian to manage and visualize documentation across all your projects in a centralized **Shared Obsidian Vault**.
+
+### How it Works
+1. **Zero Duplication (Symlink-based):** Documentation from each project is linked into a centralized directory using absolute symlinks, saving disk space and ensuring real-time file updates.
+2. **Automated Ingestion:**
+   - **Post-Skill Hook:** When an AI Agent finishes a Forgewright session, it automatically syncs changes.
+   - **Git Hook (post-commit):** A git hook triggers synchronization only when documentation files (`docs/`, `README.md`, `TASKS.md`...) are committed.
+3. **Obsidian Graph View:** Visualize relationships, microservices APIs, and database schemas in Obsidian.
+
+### Commands
+
+```bash
+# Sync current project to the shared vault
+./scripts/forgewright-wiki-sync.sh
+
+# Batch-sync all projects in your GitHub directory
+./scripts/forgewright-wiki-sync-all.sh
+```
+
 ---
 
 ## FAQ
