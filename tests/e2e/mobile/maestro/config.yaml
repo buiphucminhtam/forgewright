@@ -1,0 +1,4 @@
+# Forgewright — Maestro E2E Configuration
+# Documented at: https://docs.maestro.dev/
+
+appId: com.example.app # Replace with your local App Bundle ID (e.g. com.myapp)

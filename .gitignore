@@ -59,3 +59,6 @@ scripts/cf-dns-remove.sh
 .forgewright/quality-report-*.json
 .forgewright/baseline-*.json
 .forgewright/change-manifest-*.json
+
+# Root-level SQLite database
+memory.db

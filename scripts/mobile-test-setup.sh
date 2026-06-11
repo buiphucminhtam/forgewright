@@ -68,7 +68,7 @@ print_report() {
   echo -e "${BOLD}${CYAN}║  ${PHONE} Forgewright Mobile Test Setup — Status Report         ║${NC}"
   echo -e "${BOLD}${CYAN}╠══════════════════════════════════════════════════════════╣${NC}"
 
-  local items="Node.js|npm|Appium|ADB|ANDROID_HOME|Android Device|Appium uiautomator2|Xcode CLI|WebDriverAgent|iOS Simulator|Appium xcuitest|@midscene/android|@midscene/ios|WebdriverIO|API Key (.env)|Test Directory"
+  local items="Node.js|npm|Appium|Maestro CLI|ADB|ANDROID_HOME|Android Device|Appium uiautomator2|Xcode CLI|WebDriverAgent|iOS Simulator|Appium xcuitest|@midscene/android|@midscene/ios|WebdriverIO|API Key (.env)|Test Directory"
   IFS='|' read -ra KEYS <<< "$items"
 
   for key in "${KEYS[@]}"; do
@@ -169,6 +169,41 @@ else
       warn "Failed to install Appium globally. Run: sudo npm install -g appium"
       report_status "Appium" "INSTALL FAILED"
     }
+  fi
+fi
+
+# ── Maestro CLI ──────────────────────────────────────────────────────────────
+if command_exists maestro; then
+  MAESTRO_VER=$(maestro -v 2>/dev/null || echo "Found")
+  ok "Maestro CLI $MAESTRO_VER"
+  report_status "Maestro CLI" "OK ($MAESTRO_VER)"
+else
+  fail "Maestro CLI not found"
+  report_status "Maestro CLI" "NOT FOUND"
+  if ! $CHECK_ONLY; then
+    info "Installing Maestro CLI..."
+    # Verify Java 17+ is installed first as Maestro depends on it
+    if command_exists java; then
+      JAVA_VER=$(java -version 2>&1 | head -1 | grep -oE '[0-9]+\.[0-9]+' | cut -d. -f1)
+      if [[ -z "$JAVA_VER" ]]; then
+        JAVA_VER=$(java -version 2>&1 | head -1 | awk -F '"' '{print $2}' | cut -d. -f1 || echo "")
+      fi
+      if [[ -n "$JAVA_VER" && "$JAVA_VER" -lt 17 ]]; then
+        warn "Java version $JAVA_VER found, but Maestro requires Java 17 or higher. Please upgrade Java."
+        report_status "Maestro CLI" "Java version too old"
+      else
+        curl -FsSL "https://get.maestro.mobile.dev" | bash &>/dev/null && {
+          ok "Maestro CLI installed. Please restart shell if 'maestro' command is not found."
+          report_status "Maestro CLI" "Installed (just now)"
+        } || {
+          warn "Failed to install Maestro CLI automatically."
+          report_status "Maestro CLI" "INSTALL FAILED"
+        }
+      fi
+    else
+      warn "Java not found. Maestro requires Java 17 or higher. Please install Java first: https://www.oracle.com/java/technologies/downloads/"
+      report_status "Maestro CLI" "Java missing"
+    fi
   fi
 fi
 
@@ -726,6 +761,37 @@ IATEST
 }
 TSCONF
     ok "Created $TEST_DIR/tsconfig.json"
+  fi
+
+  # ── Maestro E2E Demo Test ──────────────────────────────────────────────
+  if [[ ! -d "$TEST_DIR/maestro" ]]; then
+    mkdir -p "$TEST_DIR/maestro/scripts"
+    ok "Created Maestro directory: $TEST_DIR/maestro"
+  fi
+
+  if [[ ! -f "$TEST_DIR/maestro/config.yaml" ]]; then
+    cat > "$TEST_DIR/maestro/config.yaml" << 'MCONF'
+# Forgewright — Maestro E2E Configuration
+# Documented at: https://docs.maestro.dev/
+
+appId: com.example.app # Replace with your local App Bundle ID (e.g. com.myapp)
+MCONF
+    ok "Created Maestro config: $TEST_DIR/maestro/config.yaml"
+  fi
+
+  if [[ ! -f "$TEST_DIR/maestro/sample-flow.yaml" ]]; then
+    cat > "$TEST_DIR/maestro/sample-flow.yaml" << 'MFLOW'
+# Forgewright — Maestro E2E Demo Flow
+# Run locally with: maestro test tests/e2e/mobile/maestro/sample-flow.yaml
+
+appId: ${appId}
+---
+- launchApp
+- assertVisible: "Welcome"
+# - tapOn: "Log In"
+# - inputText: "test_user"
+MFLOW
+    ok "Created Maestro sample flow: $TEST_DIR/maestro/sample-flow.yaml"
   fi
 
   report_status "Test Directory" "Created"
