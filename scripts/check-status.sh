@@ -34,8 +34,8 @@ fi
 # 3. mmx-cli
 echo "⚡ mmx-cli (Antigravity CLI)"
 echo "-----------------------------------"
-if which mmx-cli > /dev/null 2>&1; then
-    VERSION=$(mmx-cli --version 2>/dev/null || echo "unknown")
+if which mmx > /dev/null 2>&1; then
+    VERSION=$(mmx --version 2>/dev/null || echo "unknown")
     echo "  Status: ✅ Installed ($VERSION)"
 else
     echo "  Status: ❌ Not installed"
