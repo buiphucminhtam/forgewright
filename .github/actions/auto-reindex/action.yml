@@ -1,5 +1,5 @@
-name: 'ForgeNexus Auto Reindex'
-description: 'Automatically reindex code changes using ForgeNexus'
+name: 'GitNexus Auto Reindex'
+description: 'Automatically reindex code changes using GitNexus'
 branding:
   icon: 'refresh-cw'
   color: 'green'
@@ -35,9 +35,9 @@ runs:
         node-version: '20'
         cache: 'npm'
 
-    - name: Install ForgeNexus
+    - name: Install GitNexus
       shell: bash
-      run: npm install -g forgenexus
+      run: npm install -g gitnexus
 
     - name: Detect changed files
       id: detect
@@ -64,7 +64,7 @@ runs:
         if [ -n "${{ inputs.embedding_provider }}" ]; then
           ARGS="$ARGS --embedding-provider ${{ inputs.embedding_provider }}"
         fi
-        OUTPUT=$(forgenexus analyze $ARGS ${{ inputs.repo_path }} 2>&1)
+        OUTPUT=$(gitnexus analyze $ARGS ${{ inputs.repo_path }} 2>&1)
         echo "$OUTPUT"
         
         # Parse output for stats
@@ -87,7 +87,7 @@ runs:
         if [ -n "${{ inputs.embedding_provider }}" ]; then
           ARGS="$ARGS --embedding-provider ${{ inputs.embedding_provider }}"
         fi
-        OUTPUT=$(forgenexus analyze $ARGS ${{ inputs.repo_path }} 2>&1)
+        OUTPUT=$(gitnexus analyze $ARGS ${{ inputs.repo_path }} 2>&1)
         echo "$OUTPUT"
         
         # Parse output for stats
@@ -112,14 +112,14 @@ runs:
         git config --local user.name "github-actions[bot]"
         
         # Add index files
-        git add .forgenexus/
+        git add .gitnexus/
         
         # Check if there are changes to commit
         if git diff --cached --quiet; then
           echo "No index changes to commit"
         else
           COMMIT_MSG=$(printf '%s\n\n%s\n%s\n%s\n' \
-            "chore: update ForgeNexus index [skip ci]" \
+            "chore: update GitNexus index [skip ci]" \
             "Updated code index" \
             "- Triggered by: ${{ github.sha }}" \
             "- Mode: ${{ inputs.mode }}")
@@ -134,15 +134,15 @@ runs:
       if: inputs.commit_index != 'true' && inputs.dry_run != 'true'
       uses: actions/upload-artifact@v4
       with:
-        name: forgenexus-index-${{ github.sha }}
-        path: .forgenexus/
+        name: gitnexus-index-${{ github.sha }}
+        path: .gitnexus/
         retention-days: 7
 
     - name: Dry Run Summary
       if: inputs.dry_run == 'true'
       shell: bash
       run: |
-        echo "🔍 DRY RUN — ForgeNexus Reindex"
+        echo "🔍 DRY RUN — GitNexus Reindex"
         echo ""
         echo "| Metric | Value |"
         echo "|--------|-------|"
@@ -150,7 +150,7 @@ runs:
         echo "| Files Changed | ${{ steps.detect.outputs.files_changed }} |"
         echo "| Repo Path | ${{ inputs.repo_path }} |"
         echo ""
-        echo "Would run: forgenexus analyze --${{ inputs.mode }}"
+        echo "Would run: gitnexus analyze --${{ inputs.mode }}"
         echo ""
         echo "✅ Dry run complete — no changes made"
 

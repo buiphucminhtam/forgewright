@@ -1,4 +1,4 @@
-# ForgeNexus Auto Reindex
+# GitNexus Auto Reindex
 
 > Tự động incremental reindex sau mỗi commit. Giữ index luôn updated mà không cần chạy thủ công.
 
@@ -73,8 +73,8 @@ Index được upload như artifact:
 ```yaml
 - uses: actions/upload-artifact@v4
   with:
-    name: forgenexus-index-${{ github.sha }}
-    path: .forgenexus/
+    name: gitnexus-index-${{ github.sha }}
+    path: .gitnexus/
     retention-days: 30
 ```
 
@@ -134,7 +134,7 @@ jobs:
                          ▼
 ┌──────────────────────────────────────────────────────────┐
 │               Upload Index Artifact                       │
-│               .forgenexus/                               │
+│               .gitnexus/                               │
 └──────────────────────────────────────────────────────────┘
                          │
                          ▼

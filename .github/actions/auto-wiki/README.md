@@ -1,4 +1,4 @@
-# ForgeNexus Auto Wiki
+# GitNexus Auto Wiki
 
 > Tự động generate architecture documentation từ code graph sau mỗi commit.
 
@@ -16,7 +16,7 @@
 
 ```yaml
 # .github/workflows/forge-auto-wiki.yml
-name: ForgeNexus Auto Wiki
+name: GitNexus Auto Wiki
 
 on:
   push:

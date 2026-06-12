@@ -1,4 +1,4 @@
-name: ForgeNexus Auto Wiki
+name: GitNexus Auto Wiki
 
 on:
   push:
@@ -73,7 +73,7 @@ jobs:
     steps:
       - name: Summary
         run: |
-          echo "## 🔍 ForgeNexus Auto Wiki Summary"
+          echo "## 🔍 GitNexus Auto Wiki Summary"
           echo ""
           echo "| Metric | Value |"
           echo "|--------|-------|"

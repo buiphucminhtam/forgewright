@@ -1,4 +1,4 @@
-name: ForgeNexus Multi-Repo Sync
+name: GitNexus Multi-Repo Sync
 
 on:
   schedule:
@@ -24,7 +24,7 @@ on:
         default: 'false'
 
 env:
-  FORGENEXUS_REGISTRY: ${{ vars.FORGENEXUS_REGISTRY || '.forgenexus/registry.kuzu' }}
+  GITNEXUS_REGISTRY: ${{ vars.GITNEXUS_REGISTRY || '.gitnexus/registry.kuzu' }}
 
 jobs:
   # ─── Sync Contracts ─────────────────────────────────────────────────────────
@@ -50,8 +50,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install ForgeNexus
-        run: npm install -g forgenexus
+      - name: Install GitNexus
+        run: npm install -g gitnexus
 
       - name: Setup environment
         id: setup
@@ -74,7 +74,7 @@ jobs:
           echo "Syncing contracts for group: $GROUP"
           
           # Run group sync
-          OUTPUT=$(npx forgenexus group sync "$GROUP" 2>&1)
+          OUTPUT=$(npx gitnexus group sync "$GROUP" 2>&1)
           echo "$OUTPUT"
           
           # Parse output
@@ -120,8 +120,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install ForgeNexus
-        run: npm install -g forgenexus
+      - name: Install GitNexus
+        run: npm install -g gitnexus
 
       - name: View Group Contracts
         id: contracts
@@ -131,7 +131,7 @@ jobs:
           echo "Fetching contracts for group: $GROUP"
           echo ""
           
-          CONTRACTS=$(npx forgenexus group contracts "$GROUP" 2>&1)
+          CONTRACTS=$(npx gitnexus group contracts "$GROUP" 2>&1)
           echo "$CONTRACTS"
           
           # Convert to JSON for output
@@ -163,8 +163,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install ForgeNexus
-        run: npm install -g forgenexus
+      - name: Install GitNexus
+        run: npm install -g gitnexus
 
       - name: Check Group Status
         id: status
@@ -174,7 +174,7 @@ jobs:
           echo "Checking status for group: $GROUP"
           echo ""
           
-          STATUS=$(npx forgenexus group status "$GROUP" 2>&1)
+          STATUS=$(npx gitnexus group status "$GROUP" 2>&1)
           echo "$STATUS"
           
           # Parse output
@@ -204,8 +204,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install ForgeNexus
-        run: npm install -g forgenexus
+      - name: Install GitNexus
+        run: npm install -g gitnexus
 
       - name: Search Group
         id: query
@@ -216,7 +216,7 @@ jobs:
           echo "Searching for: $SEARCH in group: $GROUP"
           echo ""
           
-          RESULTS=$(npx forgenexus group query "$GROUP" "$SEARCH" 2>&1)
+          RESULTS=$(npx gitnexus group query "$GROUP" "$SEARCH" 2>&1)
           echo "$RESULTS"
           
           # Convert to JSON
@@ -235,7 +235,7 @@ jobs:
     steps:
       - name: Generate Summary
         run: |
-          echo "## 🔄 ForgeNexus Multi-Repo Sync Summary"
+          echo "## 🔄 GitNexus Multi-Repo Sync Summary"
           echo ""
           echo "| Step | Status |"
           echo "|------|--------|"

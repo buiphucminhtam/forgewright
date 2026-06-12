@@ -1,4 +1,4 @@
-name: ForgeNexus Auto Reindex
+name: GitNexus Auto Reindex
 
 on:
   push:
@@ -68,7 +68,7 @@ jobs:
     steps:
       - name: Generate Summary
         run: |
-          echo "## 🔄 ForgeNexus Reindex Summary"
+          echo "## 🔄 GitNexus Reindex Summary"
           echo ""
           echo "| Metric | Value |"
           echo "|--------|-------|"
