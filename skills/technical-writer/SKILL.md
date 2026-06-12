@@ -74,44 +74,34 @@ If codebase context indicates `brownfield` mode:
 
 ```
 docs/
-├── README.md                          # Documentation hub
-├── getting-started/                   # Onboarding
-│   ├── quickstart.md                 # 10-minute quickstart
-│   ├── installation.md               # Detailed installation
-│   ├── local-development.md          # Dev environment setup
-│   └── first-api-call.md             # Hello World tutorial
-├── guides/                           # How-to documentation
-│   ├── authentication.md             # Auth patterns
-│   ├── error-handling.md            # Error codes & recovery
-│   ├── webhooks.md                   # Event notifications
-│   ├── rate-limiting.md             # API limits
-│   └── pagination.md                # List endpoints
-├── api-reference/                    # API documentation
-│   ├── openapi.yaml                  # OpenAPI spec (source)
-│   ├── overview.md                   # API concepts
-│   ├── endpoints/                    # Per-endpoint docs
-│   │   ├── users.md
-│   │   ├── projects.md
-│   │   └── ...
-│   └── sdks/                        # SDK guides
-│       ├── python.md
-│       ├── javascript.md
+├── 00-vision/                         # Tầm nhìn & Mục tiêu cốt lõi
+│   ├── VISION.md                     # Bản mô tả tầm nhìn, kiến trúc tổng quan
+│   └── roadmap.md                    # Lộ trình phát triển qua các mốc thời gian
+├── 01-product/                        # Nghiệp vụ & Yêu cầu sản phẩm (PM/BA)
+│   ├── brd-core-features.md          # Business Requirements Document
+│   └── user-stories/                 # Câu chuyện người dùng chi tiết
+│       ├── US-001-login.md
+│       └── US-002-register.md
+├── 02-architecture/                   # Thiết kế Kỹ thuật & Kiến trúc (Solution Architect)
+│   ├── architecture-overview.md      # Thiết kế tổng thể, component diagrams
+│   ├── data-model.md                 # Sơ đồ cơ sở dữ liệu (Database Schema)
+│   ├── api-specification.md          # Đặc tả API (RESTful/gRPC)
+│   └── adrs/                         # Architectural Decision Records
+│       ├── 0001-choose-sqlite.md
 │       └── ...
-├── architecture/                     # System documentation
-│   ├── overview.md                  # High-level architecture
-│   ├── service-map.md               # Service dependencies
-│   ├── data-model.md                # Database schema
-│   └── decisions/                    # ADRs
-│       ├── 0001-use-postgres.md
-│       └── ...
-├── operations/                       # Runbooks & ops
-│   ├── deployment.md                # Deploy procedures
-│   ├── monitoring.md                # Observability
-│   ├── incident-response.md         # Incident handling
-│   ├── backup-recovery.md           # DR procedures
-│   └── runbook-index.md             # Links to all runbooks
-└── changelog/
-    └── releases/                     # Per-release notes
+├── 03-guides/                         # Hướng dẫn lập trình viên (Developer Guides)
+│   ├── onboarding.md                 # Setup môi trường lập trình cục bộ
+│   ├── code-conventions.md           # Hướng dẫn viết code, format, linting
+│   └── coding-workflow.md            # Quy trình Git, branch, pull request
+├── 04-testing/                        # Kiểm thử & Đảm bảo chất lượng (QA/Test)
+│   ├── test-plan.md                  # Kế hoạch kiểm thử tổng thể
+│   ├── test-scenarios/               # Kịch bản kiểm thử (E2E/Visual)
+│   └── security-audit.md             # Đánh giá bảo mật
+└── 05-operations/                     # Vận hành & DevOps (SRE/DevOps)
+    ├── deployment.md                 # Hướng dẫn deploy các môi trường
+    ├── ci-cd-pipelines.md            # Luồng CI/CD
+    └── runbooks/                     # Hướng dẫn vận hành & sự cố
+        └── backup-restore.md
 ```
 
 ---
@@ -121,9 +111,9 @@ docs/
 | Phase | Name | Purpose | Output |
 |-------|------|---------|--------|
 | 1 | Content Audit | Inventory existing docs, gaps, standards | `content-inventory.md` |
-| 2 | API Reference | OpenAPI-based endpoint docs | `docs/api-reference/` |
-| 3 | Developer Guides | Quickstart, setup, contributing | `docs/getting-started/`, `docs/guides/` |
-| 4 | Architecture Docs | Service maps, ADRs, data flows | `docs/architecture/` |
+| 2 | API Reference | OpenAPI-based endpoint docs | `docs/02-architecture/` |
+| 3 | Developer Guides | Quickstart, setup, contributing | `docs/03-guides/` |
+| 4 | Architecture Docs | Service maps, ADRs, data flows | `docs/02-architecture/` |
 | 5 | Changelog | Conventional Commits generation | `CHANGELOG.md` |
 
 ---
@@ -1266,13 +1256,12 @@ def create_user(email):
 
 ```
 docs/
-    docusaurus/                # Docusaurus config
-    getting-started/           # Quickstart, installation
-    architecture/              # Service maps, ADRs
-    api-reference/             # OpenAPI + generated docs
-    guides/                    # How-to guides
-    operations/                # Deployment, monitoring
-    changelog/                 # Release notes
+    00-vision/                 # Vision and roadmap
+    01-product/                # Product requirements
+    02-architecture/           # Architecture spec and ADRs
+    03-guides/                 # Dev onboarding and conventions
+    04-testing/                # QA plans and scenarios
+    05-operations/             # Runbooks and pipelines
 CHANGELOG.md                   # Root changelog
 .forgewright/technical-writer/
     content-inventory.md

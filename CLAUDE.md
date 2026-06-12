@@ -811,7 +811,7 @@ Goals survive context resets:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (21710 symbols, 30848 relationships, 282 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (16457 symbols, 21636 relationships, 241 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -822,6 +822,8 @@ This project is indexed by GitNexus as **forgewright** (21710 symbols, 30848 rel
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
 - When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
 - When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+- **MUST run `bash scripts/verify-wiki-drift.sh --heal`** when asked to review, audit, or align project documentation to auto-detect and resolve port conflicts and stale indices first.
+- **MUST run `npx gitnexus analyze` and `npx gitnexus wiki`** after modifying or restructuring documentation directory layouts (under `docs/00-vision/` through `05-operations/`) to regenerate the canonical `ARCHITECTURE.md` file and keep indices fresh.
 
 ## Never Do
 
