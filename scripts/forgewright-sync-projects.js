@@ -17,11 +17,77 @@ if (!fs.existsSync(REGISTRY_PATH)) {
   process.exit(1);
 }
 
+// Parse arguments
+let scanDir = null;
+const args = process.argv.slice(2);
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--scan-dir' && args[i + 1]) {
+    scanDir = path.resolve(args[i + 1]);
+    break;
+  }
+}
+
 try {
   const registry = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
-  const projects = registry.projects || {};
+  registry.projects = registry.projects || {};
   let modified = false;
 
+  // If scanDir is provided, scan and register all git repositories in it
+  if (scanDir) {
+    if (!fs.existsSync(scanDir)) {
+      console.log(`❌ Scan directory does not exist: ${scanDir}`);
+      process.exit(1);
+    }
+    console.log(`🔍 Scanning parent directory: ${scanDir} for Git repositories...`);
+    const files = fs.readdirSync(scanDir);
+    for (const file of files) {
+      const fullPath = path.join(scanDir, file);
+      // Skip hidden files/folders or known non-projects
+      if (file.startsWith('.') || file.endsWith('.bfg-report') || file === 'forgewright') {
+        continue;
+      }
+      
+      try {
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          // Check if it is a git repository
+          const isGit = fs.existsSync(path.join(fullPath, '.git'));
+          if (isGit) {
+            if (!registry.projects[fullPath]) {
+              console.log(`➕ Registering new project found during scan: ${fullPath}`);
+              registry.projects[fullPath] = {
+                forgewright_path: FORGEWRIGHT_DIR,
+                registered_at: new Date().toISOString(),
+                last_used: new Date().toISOString()
+              };
+              modified = true;
+            }
+          } else {
+            // Check one level deeper for nested git repos (e.g. tiktoklive-unity/tiktoklive-unity)
+            const subfiles = fs.readdirSync(fullPath);
+            for (const subfile of subfiles) {
+              const subPath = path.join(fullPath, subfile);
+              if (fs.existsSync(path.join(subPath, '.git'))) {
+                if (!registry.projects[subPath]) {
+                  console.log(`➕ Registering nested project found during scan: ${subPath}`);
+                  registry.projects[subPath] = {
+                    forgewright_path: FORGEWRIGHT_DIR,
+                    registered_at: new Date().toISOString(),
+                    last_used: new Date().toISOString()
+                  };
+                  modified = true;
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore stats errors
+      }
+    }
+  }
+
+  const projects = registry.projects;
   for (const projectRoot of Object.keys(projects)) {
     // Skip home directory or invalid paths
     if (projectRoot === HOME || projectRoot === '/' || !fs.existsSync(projectRoot)) {
