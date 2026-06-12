@@ -362,6 +362,11 @@ main() {
         echo ""
     fi
 
+    # Sync projects in the global registry
+    info "Synchronizing registered projects..."
+    node "$FORGEWRIGHT_DIR/scripts/forgewright-sync-projects.js"
+    echo ""
+
     echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║${NC}  ${GREEN}✓ Update Complete${NC}                                    ${GREEN}║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
