@@ -261,6 +261,14 @@ level3_standards() {
     ISSUES+=("CRITICAL: $SECRETS_COUNT potential hardcoded secrets")
   fi
 
+  # 3c. Documentation & Wiki Drift check (5 points)
+  if [[ -f "$FORGEWRIGHT_DIR/scripts/verify-wiki-drift.sh" ]]; then
+    if ! bash "$FORGEWRIGHT_DIR/scripts/verify-wiki-drift.sh" --threshold 0.3 >/dev/null 2>&1; then
+      CONVENTION_SCORE=0
+      ISSUES+=("WARN: Wiki Drift or document contradiction detected (Run 'bash scripts/verify-wiki-drift.sh --verbose' to see details)")
+    fi
+  fi
+
   SCORE_STANDARDS=$((stubs_points + secrets_points + IMPORT_SCORE + CONVENTION_SCORE))
 }
 

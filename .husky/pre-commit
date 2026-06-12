@@ -7,6 +7,14 @@
 
 echo "Running pre-commit checks..."
 
+# ── Wave 0: Documentation Consistency & Drift check ───────────────────────
+echo "[0/4] Running Wiki Drift & Conflict checks..."
+bash scripts/verify-wiki-drift.sh --threshold 0.3
+if [ $? -ne 0 ]; then
+  echo "Wiki Drift or Contradiction check failed! Commit blocked."
+  exit 1
+fi
+
 cd mcp
 
 # ── Wave 1: Linting & Formatting (independent — parallel) ─────────────────

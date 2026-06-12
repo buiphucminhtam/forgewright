@@ -112,79 +112,22 @@ jobs:
         working-directory: mcp
 
   # ═══════════════════════════════════════════════════════════
-  # WAVE 1: Forgenexus Package Checks (parallel)
+  # WAVE 1: Wiki Drift & Conflict Check (parallel)
   # ═══════════════════════════════════════════════════════════
-  forgenexus-lint:
-    name: Forgenexus Lint
+  wiki-drift-check:
+    name: Wiki Drift & Conflict Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: forgenexus/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
-        working-directory: forgenexus
-
-      - name: Check ESLint
-        run: npm run lint
-        working-directory: forgenexus
-
-      - name: Check Prettier
-        run: npm run format:check
-        working-directory: forgenexus
-
-  forgenexus-typecheck:
-    name: Forgenexus TypeScript
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: forgenexus/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: forgenexus
-
-      - name: Type check
-        run: npm run build
-        working-directory: forgenexus
-
-  forgenexus-test:
-    name: Forgenexus Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: forgenexus/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: forgenexus
-
-      - name: Run tests
-        run: npm run test
-        working-directory: forgenexus
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: forgenexus-coverage-report
-          path: forgenexus/coverage/
-          retention-days: 14
+      - name: Run Wiki Drift Check
+        run: bash scripts/verify-wiki-drift.sh --threshold 0.3
 
   # ═══════════════════════════════════════════════════════════
   # WAVE 2: Coverage Gates (runs after test completes)
@@ -219,34 +162,7 @@ jobs:
           path: mcp/coverage/
           retention-days: 14
 
-  forgenexus-coverage:
-    name: Forgenexus Coverage Gate
-    runs-on: ubuntu-latest
-    needs: [forgenexus-test]
-    if: always()
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: forgenexus/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: forgenexus
-
-      - name: Check coverage thresholds
-        run: npm run test:coverage
-        working-directory: forgenexus
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: forgenexus-full-coverage-report
-          path: forgenexus/coverage/
-          retention-days: 14
 
   # ── Wave 2: All Wave 1 jobs must pass ──
   # This job exists to fail the overall workflow if any parallel job fails.
@@ -254,7 +170,7 @@ jobs:
   require-all:
     name: All Checks Passed
     runs-on: ubuntu-latest
-    needs: [lint-and-format, typecheck, test, commitlint, forgenexus-lint, forgenexus-typecheck, forgenexus-test]
+    needs: [lint-and-format, typecheck, test, commitlint, wiki-drift-check]
     steps:
       - name: All checks passed
         run: echo "All CI checks passed"

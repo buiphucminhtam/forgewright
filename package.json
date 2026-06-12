@@ -5,13 +5,9 @@
   "private": true,
   "scripts": {
     "prepare": "husky install",
-    "build": "npm run build:forgenexus",
-    "build:forgenexus": "cd forgenexus && npm run build",
-    "test": "npm run test:forgenexus",
-    "test:forgenexus": "cd forgenexus && npm test",
-    "lint": "npm run lint:forgenexus",
-    "lint:forgenexus": "cd forgenexus && npm run lint",
-    "format:forgenexus": "cd forgenexus && npm run format:write",
+    "build": "cd mcp && npm run build",
+    "test": "cd mcp && npm run test",
+    "lint": "cd mcp && npm run lint",
     "build:cli": "cd src/cli && npm install && npm run build",
     "dev:cli": "cd src/cli && npm run dev",
     "typecheck:cli": "cd src/cli && npx tsc --noEmit"
