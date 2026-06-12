@@ -894,6 +894,16 @@ Forgewright integrates with [nashsu/llm_wiki](https://github.com/nashsu/llm_wiki
 ./scripts/forgewright-wiki-sync-all.sh
 ```
 
+### Standardized Documentation Architecture
+
+To maintain consistency and optimize context retrieval for AI Agents (reducing hallucinations), Forgewright projects adopt a standardized documentation structure under the `docs/` directory:
+
+*   **Folder Structure**: Categorized with numeric prefixes (e.g., `00-vision/` for core roadmap, `01-product/` for business requirements, `02-architecture/` for design specs and ADRs, `03-guides/` for developer onboarding, `04-testing/` for QA plans, and `05-operations/` for deploy runbooks).
+*   **Naming Conventions**: Always use `kebab-case` and lowercase letters for file names (e.g., `api-specification.md`). No spaces or special characters allowed.
+*   **Templates Provided**:
+    *   [TEMPLATE-FEATURE-SPEC.md](docs/01-product/TEMPLATE-FEATURE-SPEC.md): Standardized format for feature specifications and acceptance criteria.
+    *   [TEMPLATE-ADR.md](docs/02-architecture/adrs/TEMPLATE-ADR.md): Standardized Architectural Decision Record (ADR) format.
+
 ---
 
 ## FAQ

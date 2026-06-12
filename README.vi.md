@@ -1011,6 +1011,16 @@ Các lệnh thực thi:
 ./scripts/forgewright-wiki-sync-all.sh
 ```
 
+### Chuẩn hóa cấu trúc tài liệu dự án
+
+Để duy trì tính nhất quán và tối ưu hóa việc truy xuất ngữ cảnh cho AI Agent (giảm thiểu ảo giác), các dự án Forgewright áp dụng cấu trúc thư mục tài liệu chuẩn hóa trong thư mục `docs/`:
+
+*   **Cấu trúc thư mục**: Phân lớp rõ ràng sử dụng tiền tố số (ví dụ: `00-vision/` cho lộ trình phát triển, `01-product/` cho yêu cầu nghiệp vụ, `02-architecture/` cho thiết kế kiến trúc và ADR, `03-guides/` cho hướng dẫn lập trình viên, `04-testing/` cho QA test case, và `05-operations/` cho tài liệu vận hành).
+*   **Quy tắc đặt tên file**: Chỉ sử dụng chữ viết thường và định dạng `kebab-case` (ví dụ: `api-specification.md`). Không sử dụng khoảng trắng hay tiếng Việt có dấu.
+*   **Bản mẫu thiết lập sẵn**:
+    *   [TEMPLATE-FEATURE-SPEC.md](docs/01-product/TEMPLATE-FEATURE-SPEC.md): Mẫu đặc tả tính năng và tiêu chí nghiệm thu chuẩn.
+    *   [TEMPLATE-ADR.md](docs/02-architecture/adrs/TEMPLATE-ADR.md): Mẫu nhật ký quyết định kiến trúc (ADR) chuẩn.
+
 ---
 
 ## Quality Gate — Chấm điểm tự động
