@@ -40,17 +40,41 @@ sync_file_or_dir() {
     local source=$1
     local dest_name=$2
     if [ -e "$source" ]; then
-        # Lấy đường dẫn tuyệt đối của source
-        local abs_source
-        abs_source=$(cd "$(dirname "$source")" && pwd)/$(basename "$source")
-        
-        # Xóa file/thư mục/symlink cũ nếu có để tránh lỗi
-        rm -rf "$PROJECT_RAW_DIR/$dest_name"
-        
-        # Tạo liên kết mềm (Symlink)
-        ln -sf "$abs_source" "$PROJECT_RAW_DIR/$dest_name"
-        echo "  ✓ Đã liên kết: raw/$PROJECT_NAME/$dest_name -> $abs_source"
-        COPIED_FILES=$((COPIED_FILES + 1))
+        if [ -d "$source" ]; then
+            # Nếu là thư mục, tạo thư mục thực tế ở đích và tạo symlink cho từng tệp bên trong
+            echo "  📂 Đang đồng bộ cấu trúc thư mục: $dest_name"
+            rm -rf "$PROJECT_RAW_DIR/$dest_name"
+            mkdir -p "$PROJECT_RAW_DIR/$dest_name"
+            
+            # Quét đệ quy tất cả các file trong thư mục nguồn
+            while IFS= read -r -d '' filepath; do
+                # Lấy đường dẫn tương đối so với thư mục nguồn
+                local relative_path="${filepath#$source/}"
+                local dest_filepath="$PROJECT_RAW_DIR/$dest_name/$relative_path"
+                local dest_parent_dir
+                dest_parent_dir=$(dirname "$dest_filepath")
+                
+                # Tạo thư mục cha ở đích nếu chưa có
+                mkdir -p "$dest_parent_dir"
+                
+                # Lấy đường dẫn tuyệt đối của filepath
+                local abs_filepath
+                abs_filepath=$(cd "$(dirname "$filepath")" && pwd)/$(basename "$filepath")
+                
+                # Tạo symlink cho tệp
+                rm -rf "$dest_filepath"
+                ln -sf "$abs_filepath" "$dest_filepath"
+                COPIED_FILES=$((COPIED_FILES + 1))
+            done < <(find "$source" -type f -print0)
+        else
+            # Nếu là tệp đơn lẻ
+            local abs_source
+            abs_source=$(cd "$(dirname "$source")" && pwd)/$(basename "$source")
+            rm -rf "$PROJECT_RAW_DIR/$dest_name"
+            ln -sf "$abs_source" "$PROJECT_RAW_DIR/$dest_name"
+            echo "  ✓ Đã liên kết tệp: raw/$PROJECT_NAME/$dest_name -> $abs_source"
+            COPIED_FILES=$((COPIED_FILES + 1))
+        fi
     fi
 }
 

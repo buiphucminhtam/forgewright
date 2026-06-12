@@ -80,16 +80,39 @@ for project_dir in "$GITHUB_DIR"/*; do
                     dest_name="code-conventions.md"
                 fi
                 
-                # Tạo đường dẫn tuyệt đối
-                parent_dir=$(dirname "$source_path")
-                abs_source=$(cd "$parent_dir" && pwd)/$(basename "$source_path")
-                
-                # Xóa liên kết cũ nếu có
-                rm -rf "$PROJECT_RAW_DIR/$dest_name"
-                
-                # Tạo liên kết mềm (Symlink)
-                ln -sf "$abs_source" "$PROJECT_RAW_DIR/$dest_name"
-                LINKED_FILES=$((LINKED_FILES + 1))
+                if [ -d "$source_path" ]; then
+                    # Nếu là thư mục, tạo thư mục thực tế ở đích và tạo symlink cho từng tệp bên trong
+                    mkdir -p "$PROJECT_RAW_DIR/$dest_name"
+                    
+                    while IFS= read -r -d '' filepath; do
+                        # Lấy đường dẫn tương đối so với thư mục nguồn
+                        relative_path="${filepath#$source_path/}"
+                        dest_filepath="$PROJECT_RAW_DIR/$dest_name/$relative_path"
+                        dest_parent_dir=$(dirname "$dest_filepath")
+                        
+                        # Tạo thư mục cha ở đích nếu chưa có
+                        mkdir -p "$dest_parent_dir"
+                        
+                        # Lấy đường dẫn tuyệt đối của filepath
+                        abs_filepath=$(cd "$(dirname "$filepath")" && pwd)/$(basename "$filepath")
+                        
+                        # Tạo symlink file
+                        rm -rf "$dest_filepath"
+                        ln -sf "$abs_filepath" "$dest_filepath"
+                        LINKED_FILES=$((LINKED_FILES + 1))
+                    done < <(find "$source_path" -type f -print0)
+                else
+                    # Tạo đường dẫn tuyệt đối
+                    parent_dir=$(dirname "$source_path")
+                    abs_source=$(cd "$parent_dir" && pwd)/$(basename "$source_path")
+                    
+                    # Xóa liên kết cũ nếu có
+                    rm -rf "$PROJECT_RAW_DIR/$dest_name"
+                    
+                    # Tạo liên kết mềm (Symlink)
+                    ln -sf "$abs_source" "$PROJECT_RAW_DIR/$dest_name"
+                    LINKED_FILES=$((LINKED_FILES + 1))
+                fi
             fi
         done
         
