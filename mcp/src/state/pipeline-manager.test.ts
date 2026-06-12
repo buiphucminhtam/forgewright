@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
+process.env.CURSOR_WORKSPACE_ROOT = process.cwd();
+
 const STATE_FILE = path.join(process.cwd(), '.forgewright', 'pipeline-state.json');
 
 function cleanState() {

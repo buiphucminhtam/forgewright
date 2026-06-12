@@ -554,7 +554,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (16457 symbols, 21636 relationships, 241 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (16566 symbols, 21896 relationships, 251 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -565,10 +565,6 @@ This project is indexed by GitNexus as **forgewright** (16457 symbols, 21636 rel
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
 - When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
 - When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
-- **MUST run `bash scripts/verify-wiki-drift.sh --heal`** when asked to review, audit, or align project documentation to auto-detect and resolve port conflicts and stale indices first.
-- **MUST run `npx gitnexus analyze`** after modifying or restructuring documentation directory layouts (under `docs/00-vision/` through `05-operations/`) to keep indices fresh.
-- **ONLY run `npx gitnexus wiki`** if an LLM API key (e.g., `OPENAI_API_KEY`, `GEMINI_API_KEY`) is configured or the `cursor` CLI is installed in PATH. If keys are missing, DO NOT run `gitnexus wiki`; instead, update docs manually via code edit and run `gitnexus analyze`.
-- **Note the difference**: `llm_wiki` refers to the local Obsidian RAG Server on port 3000 (no API key needed, queried via MCP tools), whereas `gitnexus wiki` is the CLI command to auto-generate markdown files from the code graph (requires LLM API keys).
 
 ## Never Do
 

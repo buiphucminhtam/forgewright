@@ -120,7 +120,7 @@ const ALLOWED_SCRIPTS = [
 echo "=== MCP Generator Prerequisites ==="
 
 # Check GitNexus
-if [ -d ".forgenexus" ] || [ -d ".gitnexus" ]; then
+if [ -d ".gitnexus" ]; then
     echo "✅ Code intelligence index found"
 else
     echo "❌ Code intelligence required"

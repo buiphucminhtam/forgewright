@@ -6,8 +6,8 @@
 
 set -euo pipefail
 
-EXPECTED=55
-ACTUAL=$(ls -1p skills/ | grep '/$' | grep -v '_shared/' | wc -l | tr -d ' ')
+EXPECTED=80
+ACTUAL=$(ls -1p skills/ | grep '/$' | grep -v '_shared/' | grep -v '_test/' | wc -l | tr -d ' ')
 
 echo "━━━ Skills Count Verification ━━━"
 echo "  Expected: $EXPECTED"

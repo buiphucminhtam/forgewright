@@ -19,7 +19,7 @@ description: >
 
 Adaptive meta-skill orchestrator for all software engineering work. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 17-skill greenfield build.
 
-**55 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
+**80 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
 
 **All skills are bundled in this plugin. Single install, everything included.**
 
@@ -56,7 +56,7 @@ Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → �
 Skills are loaded on-demand based on classified mode. Read `.forgewright/skills-config.json` for the mode→skill mapping.
 
 ```
-Instead of loading all 52 skill descriptions (~66KB), only load skills relevant to the mode:
+Instead of loading all 80 skill descriptions (~95KB), only load skills relevant to the mode:
   Review mode  → loads 1 skill  (~3KB)
   Feature mode → loads 5 skills (~15KB)
   Full Build   → loads 10 skills (~30KB)
@@ -372,7 +372,7 @@ Here's my plan:
 Scope: [light / moderate / heavy]
 
 1. **Looks good — start (Recommended)** — Execute this plan
-2. **I want the full production-grade pipeline** — Run all 55 skills, 6 phases, 3 gates
+2. **I want the full production-grade pipeline** — Run all 80 skills, 6 phases, 3 gates
 3. **Adjust the plan** — Add or remove skills from the plan
 4. **Chat about this** — Free-form input
 ```
@@ -574,7 +574,7 @@ When Goal mode is triggered, Forgewright enters autonomous pursuit mode:
 | 5 | **Code changes made?** | If yes → run QA tests |
 | 6 | **Tests written?** | If code changed → write tests |
 | 7 | **Tests passed?** | If tests exist → run them |
-| 8 | **forgenexus_impact run?** | If editing symbols → run impact analysis |
+| 8 | **gitnexus_impact run?** | If editing symbols → run impact analysis |
 | 9 | **Scope respected?** | If scope creep detected → flag to user |
 | 10 | **User approval obtained?** | If gate exists → wait for approval |
 | 11 | **Review mode respected?** | If Full mode → run director reviews; if Solo → confirm skip OK |
@@ -1157,18 +1157,45 @@ When generating prompts for specific AI tools, use the appropriate template and 
 
 Run silently BEFORE any execution (all modes) to ensure project intelligence is fully configured.
 
-**Step 0.1 — MCP & ForgeNexus Check:**
+**Step 0.1 — GitNexus + MCP Check:**
 
-1. Check if the file `.forgewright/mcp-server/mcp-config.json` exists in the project root.
-2. **If missing**, silently execute the following terminal commands to auto-initialize it:
-   - `npx --yes forgenexus analyze`
-   - `bash <path-to-forgewright-submodule>/scripts/mcp-generate.sh`
-   - Yield a brief message to the user: `ℹ Auto-initialized ForgeNexus index and MCP server (missing setup).`
-3. **If exists**, continue normally without doing anything.
+1. Check if `.antigravity/mcp-manifest.json` exists and is current in the project root.
+2. **If missing or stale**, run ONE command to set up everything:
+
+   **Detect forgewright path first**, then run:
+
+   ```bash
+   # If forgewright is a submodule in the project:
+   bash <project-root>/forgewright/scripts/forgewright-mcp-setup.sh
+
+   # If forgewright IS the project:
+   bash scripts/forgewright-mcp-setup.sh
+
+   # For Antigravity plugin users (universal, works from any project):
+   bash <forgewright>/.antigravity/plugins/production-grade/scripts/forgewright-mcp-setup.sh
+   ```
+
+   This single command:
+   - Analyzes the project (GitNexus index via `gitnexus analyze`)
+   - Generates the MCP server
+   - Creates the workspace manifest
+   - Updates global config (Cursor/Claude)
+   - Verifies installation
+
+3. **GitNexus Setup** (if not already done):
+   ```bash
+   npm install -g gitnexus
+   gitnexus setup  # Auto-configures all editors
+   ```
+
+4. After setup, yield a brief message:
+   `ℹ MCP server ready for this workspace. Restart your AI client to activate.`
+
+5. **If already set up**, continue normally.
 
 **Step 0.2 — System Requirements + Power Level Check (required):**
 
-Forgewright requires **Node.js 18+** (ForgeNexus) and **Python 3** (local memory). Power level determines which tools are needed.
+Forgewright requires **Node.js 18+** (GitNexus) and **Python 3** (local memory). Power level determines which tools are needed.
 
 **Step 0.2.1 — System Requirements Check:**
 
@@ -1196,7 +1223,7 @@ settings_check: [ -f .forgewright/settings.md ] && echo "exists" || echo "missin
 notify_user:
   "⚠️ Missing required tools for Forgewright:
 
-   Node.js 18+ required for: ForgeNexus code intelligence, MCP server
+   Node.js 18+ required for: GitNexus code intelligence, MCP server
    Python 3.8+ required for: Local memory (ChromaDB + sentence-transformers)
 
    How to install:
@@ -1245,8 +1272,8 @@ ELSE:
 notify_user:
   "Forgewright has 5 power levels. Choose based on how much capability you need:
 
-  ⚡ Basic       — 55 skills, full pipeline (Node.js only)
-  ⚡⚡ Smart     — + ForgeNexus blast-radius analysis (Node.js only)
+  ⚡ Basic       — 80 skills, full pipeline (Node.js only)
+  ⚡⚡ Smart     — + GitNexus blast-radius analysis (Node.js only)
   ⚡⚡⚡ Persistent — + Local memory with ChromaDB (Node.js + Python 3)
   ⚡⚡⚡⚡ Research  — + NotebookLM grounded research (optional)
   ⚡⚡⚡⚡⚡ Full Power — All of the above + crawl4ai, Midscene, Paperclip
@@ -1322,7 +1349,7 @@ IF Persistent:
   Log: "✓ Power level: Persistent — Local memory ready"
 
 IF Smart:
-  Log: "✓ Power level: Smart — ForgeNexus ready"
+  Log: "✓ Power level: Smart — GitNexus ready"
 
 IF Basic:
   Log: "✓ Power level: Basic"
@@ -1528,7 +1555,7 @@ mkdir -p .forgewright/
 | `brownfield-safety.md` | Safety net for existing projects: git branching, baseline snapshots, protected paths, change manifest, regression checks, rollback |
 | `quality-dashboard.md` | Quality scoring & reporting: real-time tracking, final dashboard, machine-readable JSON reports, cross-session trending, early warning |
 | `graceful-failure.md` | Retry limits, stuck detection, graceful exit format, failure categories — prevents skills from looping on impossible tasks |
-| `code-intelligence.md` | ForgeNexus-powered knowledge graph: impact analysis, 360° context, process tracing, pre-commit risk — optional enhancement for deep code awareness |
+| `code-intelligence.md` | GitNexus-powered knowledge graph: impact analysis, 360° context, process tracing, pre-commit risk — optional enhancement for deep code awareness |
 | `prompt-templates.md` | 12 prompt templates auto-selected by task type: RTF, CO-STAR, RISEN, CRISPE, Chain of Thought, Few-Shot, File-Scope, ReAct+Stop, Visual Descriptor, Reference Image, ComfyUI, Prompt Decompiler |
 | `credit-killing-patterns.md` | 35 patterns that waste tokens: 7 task, 6 context, 6 format, 6 scope, 5 reasoning, 5 agentic |
 | `prompt-techniques.md` | 5 safe techniques: Role Assignment, Few-Shot, XML Tags, Grounding Anchors, Chain of Thought. Also lists forbidden techniques: ToT, GoT, USC, prompt chaining, MoE |
@@ -2545,7 +2572,7 @@ When transitioning between sessions:
 
 ### Skill Catalog
 
-Complete list of 57 skills organized by category:
+Complete list of 80 skills organized by category:
 
 **Orchestration & Meta:**
 1. Orchestrator (production-grade)
@@ -2554,65 +2581,92 @@ Complete list of 57 skills organized by category:
 4. Memory Manager
 5. Skill Maker
 6. MCP Generator
+7. Token Tracker
+8. Instinct System
+9. Strategic Compaction
+10. Hook Expert (generated/hook-expert)
 
 **Engineering:**
-7. Business Analyst
-8. Product Manager
-9. Solution Architect
-10. Software Engineer
-11. Frontend Engineer
-12. QA Engineer
-13. Security Engineer
-14. Code Reviewer
-15. DevOps
-16. SRE
-17. Data Scientist
-18. Technical Writer
-19. UI Designer
-20. Interaction Designer
-21. Art Director
-22. Vision Review
-23. Mobile Engineer
-24. Mobile Tester
-25. API Designer
-26. Database Engineer
-27. Debugger
-28. Prompt Engineer
-29. Prompt Optimizer
-30. AI Engineer
-31. Accessibility Engineer
-32. Performance Engineer
-33. UX Researcher
-34. Data Engineer
-35. XLSX Engineer
-36. Project Manager
+11. Business Analyst
+12. Product Manager
+13. Solution Architect
+14. Software Engineer
+15. Software Engineer (Go)
+16. Software Engineer (Python)
+17. Software Engineer (Rust)
+18. Frontend Engineer
+19. Fullstack Engineer
+20. QA Engineer
+21. Security Engineer
+22. Code Reviewer
+23. Code Reviewer (Go)
+24. Code Reviewer (Python)
+25. Code Reviewer (Rust)
+26. Code Quality Engineer
+27. DevOps
+28. SRE
+29. Build & Release Engineer
+30. Data Scientist
+31. Technical Writer
+32. UI Designer
+33. Interaction Designer
+34. Art Director
+35. Vision Review
+36. Mobile Engineer
+37. Mobile Tester
+38. API Designer
+39. Database Engineer
+40. Debugger
+41. Prompt Engineer
+42. Prompt Optimizer
+43. AI Engineer
+44. Accessibility Engineer
+45. Performance Engineer
+46. UX Researcher
+47. Data Engineer
+48. XLSX Engineer
+49. Project Manager
+50. Eval Engineer
 
 **Game Development:**
-37. Game Designer
-38. Unity Engineer
-39. Unreal Engineer
-40. Godot Engineer
-41. Godot Multiplayer
-42. Roblox Engineer
-43. Phaser 3 Engineer
-44. Three.js Engineer
-45. Level Designer
-46. Narrative Designer
-47. Technical Artist
-48. Game Audio Engineer
-49. Game Asset & VFX
-50. Unity Shader Artist
-51. Unity Multiplayer
-52. Unreal Technical Artist
-53. Unreal Multiplayer
-54. XR Engineer
+51. Game Designer
+52. Game Engineer
+53. AI Behavior Engineer
+54. Animation Engineer
+55. Game Accessibility Engineer
+56. LiveOps Engineer
+57. Unity Engineer
+58. Unity MCP
+59. Unreal Engineer
+60. Godot Engineer
+61. Godot Multiplayer
+62. Roblox Engineer
+63. Phaser 3 Engineer
+64. Three.js Engineer
+65. Level Designer
+66. Narrative Designer
+67. Technical Artist
+68. Game Audio Engineer
+69. Game Asset & VFX
+70. Unity Shader Artist
+71. Unity Multiplayer
+72. Unreal Technical Artist
+73. Unreal Multiplayer
+74. XR Engineer
 
 **Growth & Marketing:**
-55. Growth Marketer
-56. Conversion Optimizer
+75. Growth Marketer
+76. Conversion Optimizer
+
+**Testing:**
+77. Autonomous Testing
+
+**Data Acquisition:**
+78. Web Scraper
+79. NotebookLM Researcher
 
 **Workflow:**
-57. Goal-Driven
+80. Goal-Driven
 
 ### Session Lifecycle Hooks
 
