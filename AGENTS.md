@@ -1,10 +1,10 @@
 # Forgewright — Production Grade AI Pipeline
 
-> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 56 specialized skills.
+> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 80 specialized skills.
 
 ## What is Forgewright?
 
-Forgewright is an adaptive orchestrator with **56 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Phaser 3/Three.js game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
+Forgewright is an adaptive orchestrator with **80 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Phaser 3/Three.js game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
 
 **Pipeline:** `INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
@@ -416,7 +416,7 @@ cp .claude/hooks.yml ~/.claude/hooks.yml
 
 ## Skills Directory
 
-All 56 skills are in the `skills/` directory:
+All 80 skills are in the `skills/` directory:
 
 | Skill | Location |
 |-------|----------|
@@ -427,6 +427,10 @@ All 56 skills are in the `skills/` directory:
 | Memory Manager | `skills/memory-manager/SKILL.md` |
 | Skill Maker | `skills/skill-maker/SKILL.md` |
 | MCP Generator | `skills/mcp-generator/SKILL.md` — generates `.antigravity/mcp-manifest.json` for Antigravity workspace isolation |
+| Token Tracker | `skills/token-tracker/SKILL.md` — tracks LLM tokens and API budgets |
+| Instinct System | `skills/instinct-system/SKILL.md` — runs automatic response instinct checks |
+| Strategic Compaction | `skills/strategic-compaction/SKILL.md` — manages conversation memory compaction |
+| Hook Expert | `skills/generated/hook-expert/SKILL.md` — automates git hook configuration |
 | **Planning** | |
 | Antigravity | `antigravity/README.md` |
 | **Engineering** | |
@@ -434,12 +438,21 @@ All 56 skills are in the `skills/` directory:
 | Product Manager | `skills/product-manager/SKILL.md` |
 | Solution Architect | `skills/solution-architect/SKILL.md` |
 | Software Engineer | `skills/software-engineer/SKILL.md` |
+| Software Engineer (Go) | `skills/software-engineer-go/SKILL.md` |
+| Software Engineer (Python) | `skills/software-engineer-python/SKILL.md` |
+| Software Engineer (Rust) | `skills/software-engineer-rust/SKILL.md` |
 | Frontend Engineer | `skills/frontend-engineer/SKILL.md` |
+| Fullstack Engineer | `skills/fullstack-engineer/SKILL.md` |
 | QA Engineer | `skills/qa-engineer/SKILL.md` |
 | Security Engineer | `skills/security-engineer/SKILL.md` |
 | Code Reviewer | `skills/code-reviewer/SKILL.md` |
+| Code Reviewer (Go) | `skills/code-reviewer-go/SKILL.md` |
+| Code Reviewer (Python) | `skills/code-reviewer-python/SKILL.md` |
+| Code Reviewer (Rust) | `skills/code-reviewer-rust/SKILL.md` |
+| Code Quality Engineer | `skills/code-quality-engineer/SKILL.md` |
 | DevOps | `skills/devops/SKILL.md` |
 | SRE | `skills/sre/SKILL.md` |
+| Build & Release Engineer | `skills/build-release-engineer/SKILL.md` — CI/CD builds, release pipelines, EAS automation |
 | Data Scientist | `skills/data-scientist/SKILL.md` |
 | Technical Writer | `skills/technical-writer/SKILL.md` |
 | UI Designer | `skills/ui-designer/SKILL.md` |
@@ -453,9 +466,6 @@ All 56 skills are in the `skills/` directory:
 | Debugger | `skills/debugger/SKILL.md` |
 | Prompt Engineer | `skills/prompt-engineer/SKILL.md` |
 | Prompt Optimizer | `skills/prompt-optimizer/SKILL.md` — DSPy-powered algorithmic optimization |
-| **Meta & Workflow** | |
-| Goal-Driven | `skills/goal-driven/SKILL.md` — Autonomous goal pursuit (inspired by Codex /goal) |
-| **New Engineering (v6.1)** | |
 | AI Engineer | `skills/ai-engineer/SKILL.md` |
 | Accessibility Engineer | `skills/accessibility-engineer/SKILL.md` |
 | Performance Engineer | `skills/performance-engineer/SKILL.md` |
@@ -463,6 +473,7 @@ All 56 skills are in the `skills/` directory:
 | Data Engineer | `skills/data-engineer/SKILL.md` |
 | XLSX Engineer | `skills/xlsx-engineer/SKILL.md` |
 | Project Manager | `skills/project-manager/SKILL.md` |
+| Eval Engineer | `skills/eval-engineer/SKILL.md` |
 | **Testing** | |
 | Autonomous Testing | `skills/autonomous-testing/SKILL.md` — Self-healing E2E workflow |
 | **Growth** | |
@@ -475,7 +486,13 @@ All 56 skills are in the `skills/` directory:
 | Paperclip Protocol | `skills/_shared/protocols/paperclip-integration.md` |
 | **Game Development** | |
 | Game Designer | `skills/game-designer/SKILL.md` |
+| Game Engineer | `skills/game-engineer/SKILL.md` |
+| AI Behavior Engineer | `skills/ai-behavior-engineer/SKILL.md` — utility AI, behavioral trees, state machines |
+| Animation Engineer | `skills/animation-engineer/SKILL.md` — interactive web/mobile animation |
+| Game Accessibility Engineer | `skills/game-accessibility-engineer/SKILL.md` — game custom inputs, subtitles, UI visual helpers |
+| LiveOps Engineer | `skills/liveops-engineer/SKILL.md` — events, operations, telemetry |
 | Unity Engineer | `skills/unity-engineer/SKILL.md` + Unity-MCP integration |
+| Unity MCP | `skills/unity-mcp/SKILL.md` — Editor automation, 100+ tools |
 | **Unity Quickstart** | `docs/unity-project-quickstart.md` |
 | Unreal Engineer | `skills/unreal-engineer/SKILL.md` |
 | Godot Engineer | `skills/godot-engineer/SKILL.md` |
@@ -490,7 +507,6 @@ All 56 skills are in the `skills/` directory:
 | Game Audio Engineer | `skills/game-audio-engineer/SKILL.md` |
 | Unity Shader Artist | `skills/unity-shader-artist/SKILL.md` + Unity-MCP visual feedback |
 | Unity Multiplayer | `skills/unity-multiplayer/SKILL.md` + Unity-MCP testing |
-| Unity MCP | `skills/unity-mcp/SKILL.md` — Editor automation, 100+ tools |
 | Unreal Technical Artist | `skills/unreal-technical-artist/SKILL.md` |
 | Unreal Multiplayer | `skills/unreal-multiplayer/SKILL.md` |
 | XR Engineer | `skills/xr-engineer/SKILL.md` |
