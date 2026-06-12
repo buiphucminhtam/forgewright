@@ -165,8 +165,8 @@ In addition to auto-reindex, manual re-indexing may be needed:
 
 ## LLM Configuration (Optional)
 
-GitNexus core features (analyze, impact, context, query, detect_changes) work **without any LLM**. LLM is only needed for:
-- `gitnexus wiki` — auto-generate documentation
+GitNexus core features (analyze, impact, context, query, detect_changes) work **without any LLM**. The LLM-dependent command:
+- `gitnexus wiki` (auto-generate documentation) is **deprecated** in favor of manual file edits (Documentation as Code) synced to Obsidian-based `llm_wiki`.
 
 ### Supported Providers
 
