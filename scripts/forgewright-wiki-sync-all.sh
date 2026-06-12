@@ -35,27 +35,41 @@ for project_dir in "$GITHUB_DIR"/*; do
     
     PROJECT_RAW_DIR="$SHARED_VAULT_PATH/raw/$PROJECT_NAME"
     
-    # Kiểm tra xem dự án có tài liệu không trước khi tạo thư mục
-    HAS_DOCS=0
+    # Thu thập tất cả các tài liệu thực tế của dự án này
+    declare -a actual_targets=()
     
-    # Danh sách các tài liệu cần kiểm tra
-    declare -a targets=("docs" "README.md" "README.vi.md" "TASKS.md" ".forgewright/project-profile.json" ".forgewright/code-conventions.md")
-    
-    for target in "${targets[@]}"; do
-        if [ -e "$project_dir/$target" ]; then
-            HAS_DOCS=1
-            break
+    # Kiểm tra các thư mục tài liệu phổ biến
+    for dir in docs architecture wiki documentation; do
+        if [ -d "$project_dir/$dir" ]; then
+            actual_targets+=("$dir")
         fi
     done
     
+    # Quét toàn bộ file Markdown ở thư mục gốc
+    while IFS= read -r -d '' file_path; do
+        filename=$(basename "$file_path")
+        actual_targets+=("$filename")
+    done < <(find "$project_dir" -maxdepth 1 -name "*.md" -print0)
+    
+    # Cấu hình đặc biệt của Forgewright
+    if [ -f "$project_dir/.forgewright/project-profile.json" ]; then
+        actual_targets+=(".forgewright/project-profile.json")
+    fi
+    if [ -f "$project_dir/.forgewright/code-conventions.md" ]; then
+        actual_targets+=(".forgewright/code-conventions.md")
+    fi
+
     # Nếu dự án có tài liệu, tiến hành tạo liên kết mềm
-    if [ $HAS_DOCS -eq 1 ]; then
+    if [ ${#actual_targets[@]} -gt 0 ]; then
         echo "📂 Đang xử lý: $PROJECT_NAME..."
         mkdir -p "$PROJECT_RAW_DIR"
         
+        # Dọn dẹp liên kết cũ để tránh rác
+        rm -rf "$PROJECT_RAW_DIR"/*
+        
         LINKED_FILES=0
         
-        for target in "${targets[@]}"; do
+        for target in "${actual_targets[@]}"; do
             source_path="$project_dir/$target"
             if [ -e "$source_path" ]; then
                 # Lấy tên đích tương ứng
@@ -67,7 +81,8 @@ for project_dir in "$GITHUB_DIR"/*; do
                 fi
                 
                 # Tạo đường dẫn tuyệt đối
-                abs_source=$(cd "$(dirname "$source_path")" && pwd)/$(basename "$source_path")
+                parent_dir=$(dirname "$source_path")
+                abs_source=$(cd "$parent_dir" && pwd)/$(basename "$source_path")
                 
                 # Xóa liên kết cũ nếu có
                 rm -rf "$PROJECT_RAW_DIR/$dest_name"

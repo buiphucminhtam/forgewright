@@ -54,10 +54,21 @@ sync_file_or_dir() {
     fi
 }
 
-sync_file_or_dir "docs" "docs"
-sync_file_or_dir "README.md" "README.md"
-sync_file_or_dir "README.vi.md" "README.vi.md"
-sync_file_or_dir "TASKS.md" "TASKS.md"
+# Đồng bộ các thư mục tài liệu phổ biến nếu tồn tại
+for dir in docs architecture wiki documentation; do
+    if [ -d "$dir" ]; then
+        sync_file_or_dir "$dir" "$dir"
+    fi
+done
+
+# Đồng bộ toàn bộ file Markdown ở thư mục gốc của dự án
+for file in *.md; do
+    if [ -f "$file" ]; then
+        sync_file_or_dir "$file" "$file"
+    fi
+done
+
+# Đồng bộ cấu hình đặc biệt của Forgewright
 sync_file_or_dir ".forgewright/project-profile.json" "project-profile.json"
 sync_file_or_dir ".forgewright/code-conventions.md" "code-conventions.md"
 
