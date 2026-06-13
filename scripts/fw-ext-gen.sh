@@ -246,7 +246,7 @@ ForgeWright is an adaptive AI orchestrator with 56 skills covering:
 ## Features
 
 - **56 AI Skills** for every development phase
-- **Code Intelligence** via ForgeNexus graph analysis
+- **Code Intelligence** via GitNexus graph analysis
 - **Memory** that persists across sessions
 - **Quality Gates** with automatic scoring
 
@@ -312,7 +312,6 @@ generate_extension() {
     log_step "Bundling ForgeWright..."
     mkdir -p "$temp_dir/forgewright-extension/forgewright/scripts"
     cp "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh" "$temp_dir/forgewright-extension/forgewright/scripts/"
-    cp "${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh" "$temp_dir/forgewright-extension/forgewright/scripts/"
 
     # Copy launchers
     cp "$temp_dir/forgewright-extension/launcher.sh" "$temp_dir/forgewright-extension/forgewright/scripts/"

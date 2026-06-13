@@ -285,28 +285,6 @@ try {
             echo "npx tsx $server_path"
             return 0
         fi
-
-        # Try forgenexus from manifest
-        local fnx_result
-        fnx_result="$(node -e "
-var fs = require('fs');
-var path = require('path');
-try {
-  var m = JSON.parse(fs.readFileSync('$manifest', 'utf8'));
-  var fnx = (m.servers || []).find(function(s){return s.type==='forgenexus'&&s.enabled;});
-  if (fnx && fnx.config && fnx.config.forgenexus_path) {
-    process.stdout.write(fnx.config.forgenexus_path);
-  } else {
-    process.exit(1);
-  }
-} catch(e) { process.exit(1); }
-" 2>/dev/null)" || fnx_result=""
-
-        if [[ -n "$fnx_result" ]] && [[ -f "$fnx_result" ]]; then
-            log_debug "  → Found forgenexus: $fnx_result"
-            echo "node $fnx_result mcp $workspace"
-            return 0
-        fi
     fi
 
     # ── Path B: Scan for forgewright and find MCP server ──────────

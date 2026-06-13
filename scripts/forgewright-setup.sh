@@ -177,18 +177,18 @@ ensure_forgewright() {
 # BUILD
 # ═══════════════════════════════════════════════════════════════════════════════
 
-build_forgenexus() {
+build_mcp_server() {
     local fw_dir="$1"
-    local fn_dir="${fw_dir}/forgenexus"
+    local mcp_dir="${fw_dir}/mcp"
     
-    info "Building ForgeNexus..."
+    info "Building Forgewright MCP Server..."
     
-    if [[ ! -f "${fn_dir}/package.json" ]]; then
-        error "ForgeNexus not found at ${fn_dir}"
+    if [[ ! -f "${mcp_dir}/package.json" ]]; then
+        error "MCP server not found at ${mcp_dir}"
         return 1
     fi
     
-    cd "$fn_dir"
+    cd "$mcp_dir"
     
     # Install with retries
     local retries=3
@@ -206,9 +206,9 @@ build_forgenexus() {
     # Build
     info "Compiling..."
     if npm run build 2>&1 | tail -5; then
-        success "ForgeNexus built"
+        success "Forgewright MCP Server built"
     else
-        error "Build failed"
+        error "Compilation failed"
         return 1
     fi
     
@@ -262,8 +262,8 @@ Object.keys(cfg.mcpServers).forEach(k => {
     }
 });
 cfg.mcpServers['${server_name}'] = {
-    command: 'node',
-    args: ['${fw_dir}/.cursor/forgenexus-mcp.js'],
+    command: 'npx',
+    args: ['tsx', '${project_root}/.forgewright/mcp-server/server.ts'],
     cwd: '${project_root}'
 };
 fs.writeFileSync('${config_path}', JSON.stringify(cfg, null, 2));
@@ -318,10 +318,10 @@ cmd_check() {
     
     if [[ -n "$fw_dir" ]]; then
         success "ForgeWright: ${fw_dir}"
-        if [[ -f "${fw_dir}/forgenexus/dist/cli/index.js" ]]; then
-            success "ForgeNexus: Built"
+        if [[ -f "${fw_dir}/mcp/build/index.js" ]]; then
+            success "MCP Server: Built"
         else
-            warn "ForgeNexus: Not built"
+            warn "MCP Server: Not built"
         fi
     else
         error "ForgeWright: Not found"
@@ -380,8 +380,8 @@ cmd_diagnose() {
     info "Files:"
     for f in \
         "${fw_dir}/AGENTS.md" \
-        "${fw_dir}/forgenexus/dist/cli/index.js" \
-        "${fw_dir}/.cursor/forgenexus-mcp.js" \
+        "${fw_dir}/mcp/build/index.js" \
+        "${project_root}/.forgewright/mcp-server/server.ts" \
         "${project_root}/.antigravity/mcp-manifest.json" \
         "$HOME/.cursor/mcp.json"; do
         if [[ -f "$f" ]]; then
@@ -494,15 +494,15 @@ main() {
     echo ""
     success "ForgeWright: ${fw_dir}"
     
-    # ── Build ForgeNexus ────────────────────────────────────────────────────
+    # ── Build MCP Server ────────────────────────────────────────────────────
     
-    if [[ "$force" == "true" ]] || [[ ! -f "${fw_dir}/forgenexus/dist/cli/index.js" ]]; then
-        build_forgenexus "$fw_dir" || {
-            error "Failed to build ForgeNexus"
+    if [[ "$force" == "true" ]] || [[ ! -f "${fw_dir}/mcp/build/index.js" ]]; then
+        build_mcp_server "$fw_dir" || {
+            error "Failed to build Forgewright MCP Server"
             exit 1
         }
     else
-        info "ForgeNexus already built"
+        info "MCP Server already built"
     fi
     echo ""
     

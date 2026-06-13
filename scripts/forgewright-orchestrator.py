@@ -59,21 +59,21 @@ class ForgewrightAgent:
                 print(f"[!] Warning: Auto-setup failed: {e}")
 
         # Define isolated path for DB
-        forgenexus_db_path = os.path.normpath(os.path.join(self.code_dir, "..", "forgenexus_db"))
+        gitnexus_db_path = os.path.normpath(os.path.join(self.code_dir, "..", "gitnexus_db"))
         
-        forgenexus_env = {**os.environ}
-        forgenexus_env["FORGEWRIGHT_WORKSPACE"] = self.code_dir
-        forgenexus_env["FORGEWRIGHT_TOOL_SANDBOX"] = "false"
-        forgenexus_env["FORGENEXUS_DB"] = forgenexus_db_path
+        gitnexus_env = {**os.environ}
+        gitnexus_env["FORGEWRIGHT_WORKSPACE"] = self.code_dir
+        gitnexus_env["FORGEWRIGHT_TOOL_SANDBOX"] = "false"
+        gitnexus_env["GITNEXUS_DB"] = gitnexus_db_path
 
         mcp_servers = [
             {
-                "name": "forgenexus",
+                "name": "gitnexus",
                 "params": StdioServerParameters(
-                    command="npx",
-                    args=["tsx", "src/mcp/server.ts"],
-                    cwd="/root/openclaw/forgenexus",
-                    env=forgenexus_env
+                    command="gitnexus",
+                    args=["mcp"],
+                    cwd=self.code_dir,
+                    env=gitnexus_env
                 )
             },
             {
@@ -122,7 +122,7 @@ class ForgewrightAgent:
 Bạn là Tiểu Mơ - Siêu Trí Tuệ Forgewright (Level 4 Agent Executor).
 Dự án bạn đang làm việc: '{self.project_id}'
 Thư mục mã nguồn cục bộ: '{self.code_dir}'
-Thư mục Database ForgeNexus của dự án (Isolate Data): '{forgenexus_db_path}'
+Thư mục Database GitNexus của dự án (Isolate Data): '{gitnexus_db_path}'
 
 [NGỮ CẢNH DỰ ÁN TÓM TẮT]:
 {project_context}

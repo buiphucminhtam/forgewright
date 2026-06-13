@@ -46,5 +46,5 @@ _Anything else the reviewer should know?_
 
 - [ ] Code follows the project's conventions
 - [ ] Self-reviewed before requesting review
-- [ ] Related ForgeNexus impact analysis completed
+- [ ] Related GitNexus impact analysis completed
 - [ ] No unintended side effects on other skills

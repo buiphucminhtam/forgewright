@@ -5,23 +5,108 @@
  * Generated at: {{generatedAt}}
  *
  * This server exposes project intelligence as MCP primitives.
- * Powered by ForgeNexus code intelligence (Native Integration).
+ * Powered by GitNexus code intelligence.
  */
 
-import { startMCPServer } from "forgenexus/dist/mcp/server.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { execSync } from "child_process";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
-// ─── Configuration ──────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = resolve(__dirname, "../../..");
 
 process.title = "{{projectNameLowerCase}}-mcp";
 
-// ─── Start Native Server ────────────────────────────────────────
+const server = new Server(
+  {
+    name: "{{projectNameLowerCase}}-mcp",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+);
 
-startMCPServer(PROJECT_ROOT).catch((err: any) => {
-  console.error(`[ForgeWright MCP] Fatal error: ${err.message}`);
-  process.exit(1);
+// Define tools supported
+const tools = [
+  {
+    name: "project_query",
+    description: "Search codebase by concept via GitNexus",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Concept query" }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "project_context",
+    description: "Get 360 view of a symbol (callers, callees, processes)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Symbol name" }
+      },
+      required: ["name"]
+    }
+  },
+  {
+    name: "project_impact",
+    description: "Analyze blast radius of a symbol change",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target: { type: "string", description: "Target symbol name" }
+      },
+      required: ["target"]
+    }
+  }
+];
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
+
+// Run GitNexus CLI commands and grab the console output
+function runGitnexus(command: string): string {
+  try {
+    return execSync(`gitnexus ${command}`, { cwd: PROJECT_ROOT, encoding: "utf8" });
+  } catch (error: any) {
+    return `Error: ${error.message}\nStdout: ${error.stdout || ""}\nStderr: ${error.stderr || ""}`;
+  }
+}
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  
+  if (name === "project_query") {
+    const res = runGitnexus(`query "${args?.query || ""}"`);
+    return { content: [{ type: "text", text: res }] };
+  }
+  if (name === "project_context") {
+    const res = runGitnexus(`context "${args?.name || ""}"`);
+    return { content: [{ type: "text", text: res }] };
+  }
+  if (name === "project_impact") {
+    const res = runGitnexus(`impact "${args?.target || ""}"`);
+    return { content: [{ type: "text", text: res }] };
+  }
+  
+  throw new Error(`Tool not found: ${name}`);
 });
+
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("[{{projectName}} MCP] Started");
+}
+
+main().catch(console.error);

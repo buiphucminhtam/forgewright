@@ -13,13 +13,13 @@
 #   1. Creates .forgewright/ directory in the target project
 #   2. Initializes mem0 (.forgewright/memory.jsonl) via mem0-cli.py
 #   3. Detects tech stack and generates project-profile.json
-#   4. Runs ForgeNexus analyze to index the project
+#   4. Runs GitNexus analyze to index the project
 #   5. Prints the Cursor MCP config snippet (add to ~/.cursor/mcp.json)
 #
 # Requirements:
 #   - Global Forgewright repo must exist at FORGEWRIGHT_PATH (see below)
-#   - Node.js >= 18 (for ForgeNexus)
-#   - Git repository (for ForgeNexus)
+#   - Node.js >= 18 (for GitNexus)
+#   - Git repository (for GitNexus)
 # ============================================================================
 
 set -euo pipefail
@@ -87,7 +87,7 @@ check_prerequisites() {
 
     # Check git repo
     if ! git -C "$TARGET_PROJECT" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        log_warn "Not a git repository. ForgeNexus indexing will be limited."
+        log_warn "Not a git repository. GitNexus indexing will be limited."
         log_info "Run 'git init' first if you want full code intelligence."
     else
         log_ok "Git repository detected"
@@ -97,7 +97,7 @@ check_prerequisites() {
     if command -v node &> /dev/null; then
         log_ok "Node.js: $(node --version)"
     else
-        log_warn "Node.js not found. ForgeNexus will not work."
+        log_warn "Node.js not found. GitNexus will not work."
         log_info "Install Node.js >= 18 for code intelligence."
     fi
 
@@ -198,24 +198,24 @@ EOF
     log_ok "Generated .forgewright/project-profile.json"
 }
 
-# ─── Index with ForgeNexus ─────────────────────────────────────────────────
+# ─── Index with GitNexus ───────────────────────────────────────────────────
 
-run_forgenexus_analyze() {
+run_gitnexus_analyze() {
     if ! command -v node &> /dev/null; then
-        log_warn "Node.js not found — skipping ForgeNexus analysis."
+        log_warn "Node.js not found — skipping GitNexus analysis."
         return
     fi
 
     if ! git -C "$TARGET_PROJECT" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        log_warn "Not a git repo — skipping ForgeNexus."
+        log_warn "Not a git repo — skipping GitNexus."
         return
     fi
 
-    log_info "Running ForgeNexus analysis..."
-    if npx --yes forgenexus analyze "$TARGET_PROJECT" > /dev/null 2>&1; then
-        log_ok "ForgeNexus analysis complete"
+    log_info "Running GitNexus analysis..."
+    if npx --yes gitnexus analyze "$TARGET_PROJECT" > /dev/null 2>&1; then
+        log_ok "GitNexus analysis complete"
     else
-        log_warn "ForgeNexus analysis failed. Install with: npm install -g forgenexus"
+        log_warn "GitNexus analysis failed. Install with: npm install -g gitnexus"
     fi
 }
 
@@ -344,7 +344,7 @@ main() {
     run_mem0_ensure
     update_gitignore
     setup_llm_wiki_integration
-    run_forgenexus_analyze
+    run_gitnexus_analyze
     print_cursor_config
 
     echo ""

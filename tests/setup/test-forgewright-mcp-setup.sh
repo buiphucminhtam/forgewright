@@ -91,6 +91,8 @@ test_setup() {
 }
 
 test_platform_flags() {
+    [[ "$FAST" == "1" ]] && { skip "Platform Flags test (--fast mode)"; return; }
+
     echo ""
     echo -e "${CYAN}━━━ Platform Flags ━━━${NC}"
 
@@ -100,15 +102,19 @@ test_platform_flags() {
     bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --codex > /dev/null 2>&1 && pass "--codex flag" || fail "--codex flag"
 }
 
-test_forgenexus() {
-    [[ "$FAST" == "1" ]] && { skip "ForgeNexus test (--fast mode)"; return; }
+test_gitnexus() {
+    [[ "$FAST" == "1" ]] && { skip "GitNexus test (--fast mode)"; return; }
 
     echo ""
-    echo -e "${CYAN}━━━ ForgeNexus ━━━${NC}"
+    echo -e "${CYAN}━━━ GitNexus ━━━${NC}"
 
     cd "$PROJECT_ROOT"
-    info "Testing forgenexus-setup.sh --check"
-    bash "${SCRIPT_DIR}/forgenexus-setup.sh" --check > /dev/null 2>&1 && pass "ForgeNexus check" || fail "ForgeNexus check"
+    info "Testing gitnexus binary"
+    if which gitnexus > /dev/null 2>&1; then
+        pass "gitnexus is installed"
+    else
+        skip "gitnexus is not installed locally"
+    fi
 }
 
 test_docs() {
@@ -163,7 +169,7 @@ main() {
     test_diagnose
     test_setup
     test_platform_flags
-    test_forgenexus
+    test_gitnexus
     test_docs
     test_templates
 

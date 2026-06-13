@@ -331,10 +331,6 @@ EOF
         chmod +x "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
         log_ok "Copied forgewright-mcp-launcher.sh"
     fi
-    if cp "${script_dir}/forgenexus-mcp-launcher.sh" "${FORGEWRIGHT_DIR}/scripts/" 2>/dev/null; then
-        chmod +x "${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh"
-        log_ok "Copied forgenexus-mcp-launcher.sh"
-    fi
 }
 
 # ─── Canonical MCP Server ─────────────────────────────────────────────────────
@@ -344,10 +340,10 @@ EOF
 # they reference is always the canonical ~/.forgewright/mcp-server/server.ts.
 
 CANONICAL_SERVER_DIR="$HOME/.forgewright/mcp-server"
-CANONICAL_SERVER_TS="$CANONICAL_SERVER_DIR/server.ts"
+CANONICAL_SERVER_TS="$CANONICAL_SERVER_DIR/src/index.ts"
 
 sync_canonical_server() {
-    local src_dir="${FORGEWRIGHT_DIR}/.forgewright/mcp-server"
+    local src_dir="${FORGEWRIGHT_DIR}/mcp"
     if [[ ! -d "$src_dir" ]]; then
         log_error "Source MCP server not found: $src_dir"
         return 1
@@ -1306,12 +1302,10 @@ cmd_diagnose() {
     log_step "Launchers"
     echo "  forgewright: ${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
     echo "  EXISTS: $([ -f "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh" ] && echo YES || echo NO)"
-    echo "  forgenexus:  ${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh"
-    echo "  EXISTS: $([ -f "${FORGEWRIGHT_DIR}/scripts/forgenexus-mcp-launcher.sh" ] && echo YES || echo NO)"
     echo ""
 
     log_step "MCP Server"
-    local server_dir="${PROJECT_ROOT}/.forgewright/mcp-server"
+    local server_dir="${FORGEWRIGHT_DIR}/mcp"
     echo "  PATH:  $server_dir"
     echo "  EXISTS: $([ -d "$server_dir" ] && echo YES || echo NO)"
     echo ""

@@ -95,17 +95,17 @@ update_submodules() {
 # BUILD
 # ═══════════════════════════════════════════════════════════════════════════════
 
-rebuild_forgenexus() {
-    info "Rebuilding ForgeNexus..."
+rebuild_mcp_server() {
+    info "Rebuilding Forgewright MCP Server..."
 
-    local fn_dir="${FORGEWRIGHT_DIR}/forgenexus"
+    local mcp_dir="${FORGEWRIGHT_DIR}/mcp"
 
-    if [[ ! -d "$fn_dir" ]]; then
-        warn "ForgeNexus directory not found"
+    if [[ ! -d "$mcp_dir" ]]; then
+        warn "MCP Server directory not found"
         return 1
     fi
 
-    cd "$fn_dir"
+    cd "$mcp_dir"
 
     # Install deps
     npm install --prefer-offline 2>&1 | tail -3 || true
@@ -113,7 +113,7 @@ rebuild_forgenexus() {
     # Build
     npm run build 2>&1 | tail -5
 
-    success "ForgeNexus rebuilt"
+    success "MCP Server rebuilt"
 
     cd "$FORGEWRIGHT_DIR"
 }
@@ -346,8 +346,8 @@ main() {
     update_submodules
     echo ""
 
-    # Rebuild ForgeNexus
-    rebuild_forgenexus
+    # Rebuild MCP Server
+    rebuild_mcp_server
     echo ""
 
     # Migration

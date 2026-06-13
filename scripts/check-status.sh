@@ -6,19 +6,21 @@ echo "   Forgewright Environment Status"
 echo "=========================================="
 echo ""
 
-# 1. ForgeNexus Status
-echo "🔮 ForgeNexus (Code Intelligence)"
+# 1. GitNexus Status
+echo "🔮 GitNexus (Code Intelligence)"
 echo "-----------------------------------"
-if pgrep -f "forgenexus" > /dev/null 2>&1; then
-    echo "  Status: ✅ Running"
-    pgrep -fl "forgenexus" | head -1
+if pgrep -f "gitnexus" > /dev/null 2>&1; then
+    echo "  Status: ✅ Running (MCP)"
+    pgrep -fl "gitnexus" | head -1
 else
-    echo "  Status: ❌ Not running"
+    echo "  Status: ❌ Not running in background"
 fi
 
-# Check lock
-if [ -f ~/.forgenexus/data/*.lock ] 2>/dev/null; then
-    echo "  ⚠️  Lock file detected - may be stale"
+# Check gitnexus index
+if [ -d ".gitnexus" ]; then
+    echo "  Index: ✅ Present (.gitnexus/)"
+else
+    echo "  Index: ❌ Missing (.gitnexus/)"
 fi
 echo ""
 

@@ -82,7 +82,7 @@ echo ""
 sections=(
     "Quick Start"
     "Token Tracking"
-    "ForgeNexus"
+    "GitNexus"
     "Troubleshooting"
     "FAQ"
 )

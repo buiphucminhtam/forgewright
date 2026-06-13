@@ -29,7 +29,7 @@ Every README update should include all sections below. Check off when verified.
 ### 5. Featured Capabilities (Add new section for each major feature)
 - [ ] ASIP — The Self-Improving Protocol
 - [ ] Token Tracking & Cost Analytics ⭐ (NEW)
-- [ ] ForgeNexus — Code Intelligence CLI
+- [ ] GitNexus — Code Intelligence CLI
 - [ ] Multica Hub — Dashboard
 - [ ] Any new skill/capability
 
@@ -67,7 +67,7 @@ When committing changes, verify:
 
 ### Token/API/CLI Change?
 - [ ] Update Token Tracking section
-- [ ] Update ForgeNexus section
+- [ ] Update GitNexus section
 - [ ] Update CLI commands
 - [ ] Add to Troubleshooting
 

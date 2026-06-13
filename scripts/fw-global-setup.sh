@@ -186,7 +186,7 @@ install_mcp_server() {
     log_step "Installing MCP server globally..."
     
     local source_server="${FORGEWRIGHT_DIR}/skills/mcp-generator/templates"
-    local source_mcp="${FORGEWRIGHT_DIR}/mcp-server"
+    local source_mcp="${FORGEWRIGHT_DIR}/mcp"
     
     # Check if source exists
     if [[ ! -d "$source_mcp" ]] && [[ ! -d "$source_server" ]]; then
@@ -334,7 +334,7 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 // Note: ${FORGEWRIGHT_DIR} should point to the actual forgewright installation
 cfg.mcpServers['forgewright'] = {
     command: 'npx',
-    args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
+    args: ['tsx', '${FORGEWRIGHT_DIR}/mcp/src/index.ts'],
     env: {
         FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
     }
@@ -350,7 +350,7 @@ fs.writeFileSync('${CURSOR_MCP_JSON}', JSON.stringify(cfg, null, 2));
   "mcpServers": {
     "forgewright": {
       "command": "npx",
-      "args": ["tsx", "${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts"],
+      "args": ["tsx", "${FORGEWRIGHT_DIR}/mcp/src/index.ts"],
       "env": {
         "FORGEWRIGHT_WORKSPACE": "\${workspaceFolder}"
       }
@@ -385,7 +385,7 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 // Update forgewright to direct tsx execution
 cfg.mcpServers['forgewright'] = {
     command: 'npx',
-    args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
+    args: ['tsx', '${FORGEWRIGHT_DIR}/mcp/src/index.ts'],
     env: {
         FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
     }
@@ -410,7 +410,7 @@ var cfg = JSON.parse(fs.readFileSync('${path}', 'utf8'));
 if (!cfg.mcpServers) cfg.mcpServers = {};
 cfg.mcpServers['forgewright'] = {
     command: 'npx',
-    args: ['tsx', '${FORGEWRIGHT_DIR}/.forgewright/mcp-server/server.ts'],
+    args: ['tsx', '${FORGEWRIGHT_DIR}/mcp/src/index.ts'],
     env: { FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}' }
 };
 fs.writeFileSync('${path}', JSON.stringify(cfg, null, 2));
