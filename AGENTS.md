@@ -31,6 +31,12 @@ Forgewright is an adaptive orchestrator with **80 AI skills** that covers the en
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+## ⚠️ MANDATORY INSTALLATION: SUBMODULE ONLY
+
+**Forgewright MUST always be installed as a git submodule (in the `forgewright/` directory) for any project using it.**
+- **Why**: Ensures version consistency across team members, supports project-specific custom skills, and is strictly required for executing local Git Hooks (pre-commit/post-commit) dynamically.
+- **Action**: Never rely solely on global MCP server setups for production or team repositories. Always run `/setup` (or `git submodule add`) to initialize Forgewright locally.
+
 <!-- NOTE: Evidence-First section is duplicated in CLAUDE.md (for Claude Code).
      Source of truth: skills/_shared/protocols/evidence-first.md -->
 
