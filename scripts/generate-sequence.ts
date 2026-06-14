@@ -18,8 +18,66 @@ interface ApiFlow {
   queryParams?: string;
 }
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+let clientDirArg = '';
+let apiDirArg = '';
+let repoNameArg = '';
+let outputDirArg = '';
+
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--client' && args[i + 1]) {
+    clientDirArg = args[i + 1];
+  }
+  if (args[i] === '--api' && args[i + 1]) {
+    apiDirArg = args[i + 1];
+  }
+  if (args[i] === '--repo' && args[i + 1]) {
+    repoNameArg = args[i + 1];
+  }
+  if (args[i] === '--output' && args[i + 1]) {
+    outputDirArg = args[i + 1];
+  }
+}
+
+// Helper: Resolve paths relative to working directory if not absolute
+const resolvePath = (p: string) => (path.isAbsolute(p) ? p : path.join(process.cwd(), p));
+
+// Auto-detection with CLI fallbacks
+let clientDir = clientDirArg ? resolvePath(clientDirArg) : '';
+if (!clientDir) {
+  if (fs.existsSync(path.join(process.cwd(), 'multica-hub', 'src'))) {
+    clientDir = path.join(process.cwd(), 'multica-hub', 'src');
+  } else if (fs.existsSync(path.join(process.cwd(), 'src'))) {
+    clientDir = path.join(process.cwd(), 'src');
+  } else {
+    clientDir = process.cwd();
+  }
+}
+
+let apiDir = apiDirArg ? resolvePath(apiDirArg) : '';
+if (!apiDir) {
+  if (fs.existsSync(path.join(clientDir, 'app', 'api'))) {
+    apiDir = path.join(clientDir, 'app', 'api');
+  } else if (fs.existsSync(path.join(clientDir, 'pages', 'api'))) {
+    apiDir = path.join(clientDir, 'pages', 'api');
+  } else if (fs.existsSync(path.join(clientDir, 'api'))) {
+    apiDir = path.join(clientDir, 'api');
+  } else {
+    apiDir = clientDir;
+  }
+}
+
+const repoName = repoNameArg || path.basename(process.cwd());
+const OUTPUT_DIR = outputDirArg ? resolvePath(outputDirArg) : path.join(process.cwd(), 'docs', 'architecture', 'flows');
+
+console.log(`🔧 Cấu hình Sequence Generator:`);
+console.log(`  - Client Dir: ${clientDir}`);
+console.log(`  - API Dir:    ${apiDir}`);
+console.log(`  - Repo Name:  ${repoName}`);
+console.log(`  - Output Dir: ${OUTPUT_DIR}`);
+
 // Ensure the output directory exists
-const OUTPUT_DIR = path.join(process.cwd(), 'docs', 'architecture', 'flows');
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
@@ -183,7 +241,7 @@ function traceServerCall(symbolUid: string, visited: Set<string> = new Set(), de
   visited.add(symbolUid);
 
   try {
-    const command = `gitnexus context -r forgewright "${symbolUid}"`;
+    const command = `gitnexus context -r "${repoName}" "${symbolUid}"`;
     const output = execSync(command, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
     const result = JSON.parse(output);
 
@@ -316,8 +374,10 @@ ${flow.queryParams ? `*   **Query Parameters**: \`${flow.queryParams}\`\n` : ''}
 function main() {
   console.log('🔮 Bắt đầu quét Client - Server API Flows...');
 
-  const clientDir = path.join(process.cwd(), 'multica-hub', 'src');
-  const apiDir = path.join(clientDir, 'app', 'api');
+  if (!fs.existsSync(clientDir)) {
+    console.error(`❌ Thư mục client không tồn tại: ${clientDir}`);
+    process.exit(1);
+  }
 
   // 1. Load all server API routes
   const serverRoutes = getServerRoutes(apiDir);
