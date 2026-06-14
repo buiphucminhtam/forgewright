@@ -36,6 +36,12 @@ def test_sequence_diagram_generation():
         assert "sequenceDiagram" in flow_content
         assert "mermaid" in flow_content
         assert "EnvironmentStatus.tsx" in flow_content
+        
+        # Verify noise filtering is working: system calls should NOT be in the connection list
+        assert "NextResponse" not in flow_content
+        assert "console.log" not in flow_content
+        assert "readdirSync" not in flow_content
+        assert "statSync" not in flow_content
 
     post_flow_path = os.path.join(output_dir, "POST-_api_projects_setup.md")
     assert os.path.exists(post_flow_path), "POST-_api_projects_setup.md flow diagram was not created"
@@ -46,3 +52,9 @@ def test_sequence_diagram_generation():
         assert "sequenceDiagram" in flow_content
         assert "mermaid" in flow_content
         assert "EnvironmentStatus.tsx" in flow_content
+        
+        # Verify noise filtering is working: system calls should NOT be in the connection list
+        assert "NextResponse" not in flow_content
+        assert "execSync" not in flow_content
+        assert "existsSync" not in flow_content
+        assert "readFileSync" not in flow_content

@@ -15,6 +15,7 @@ interface ApiFlow {
   method: string;
   routeFile: string | null;
   serverCallTree: CallNode | null;
+  queryParams?: string;
 }
 
 // Ensure the output directory exists
@@ -22,6 +23,28 @@ const OUTPUT_DIR = path.join(process.cwd(), 'docs', 'architecture', 'flows');
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
+
+// Blocklist for noise filtering
+const EXCLUDE_SYMBOLS = new Set([
+  'NextResponse',
+  'NextResponse.json',
+  'json',
+  'execSync',
+  'existsSync',
+  'readFileSync',
+  'writeFileSync',
+  'readdirSync',
+  'statSync',
+  'console.log',
+  'console.error',
+  'console.warn',
+  'console.info',
+  'Error',
+  'setTimeout',
+  'clearTimeout',
+  'setInterval',
+  'clearInterval',
+]);
 
 // Helper: Recursively get all source files
 function getSourceFiles(dir: string, fileList: string[] = []): string[] {
@@ -104,13 +127,14 @@ function scanClientFile(
   const flows: ApiFlow[] = [];
 
   // Match fetch literals or template strings
-  // fetch('/api/projects')
-  // fetch(`/api/workspaces/${workspaceId}`)
   const fetchRegex = /fetch\(\s*(['"`])(\/api\/[^'"`\s\+]+)\1/g;
   let match;
 
   while ((match = fetchRegex.exec(content)) !== null) {
-    const apiPath = match[2];
+    const fullApiPath = match[2];
+    const parts = fullApiPath.split('?');
+    const apiPath = parts[0];
+    const queryParams = parts.length > 1 ? parts[1] : undefined;
     let method = 'GET';
 
     // Heuristic: check if there's a method option near the fetch match
@@ -127,6 +151,7 @@ function scanClientFile(
       method,
       routeFile,
       serverCallTree: null,
+      queryParams,
     });
   }
 
@@ -134,7 +159,10 @@ function scanClientFile(
   const axiosRegex = /axios\.(get|post|put|delete|patch)\(\s*(['"`])(\/api\/[^'"`\s\+]+)\2/gi;
   while ((match = axiosRegex.exec(content)) !== null) {
     const method = match[1].toUpperCase();
-    const apiPath = match[3];
+    const fullApiPath = match[3];
+    const parts = fullApiPath.split('?');
+    const apiPath = parts[0];
+    const queryParams = parts.length > 1 ? parts[1] : undefined;
     const routeFile = resolveRoute(apiPath, serverRoutes);
     flows.push({
       clientFile: path.relative(process.cwd(), filePath),
@@ -142,6 +170,7 @@ function scanClientFile(
       method,
       routeFile,
       serverCallTree: null,
+      queryParams,
     });
   }
 
@@ -170,6 +199,11 @@ function traceServerCall(symbolUid: string, visited: Set<string> = new Set(), de
 
     const outgoingCalls = result.outgoing?.calls || [];
     for (const call of outgoingCalls) {
+      // Noise Filter: check if the call name is in the blocklist or starts with console.
+      if (EXCLUDE_SYMBOLS.has(call.name) || call.name.startsWith('console.')) {
+        continue;
+      }
+
       // Filter out node_modules, libraries, standard modules, or undefined files
       if (
         call.filePath &&
@@ -233,6 +267,14 @@ function generateMermaid(flow: ApiFlow) {
     })
     .join('\n');
 
+  // Inject query params note if present
+  let noteLine = '';
+  if (flow.queryParams) {
+    const clientAlias = clientName.replace(/[^a-zA-Z0-9]/g, '_');
+    const routeAlias = routeName.replace(/[^a-zA-Z0-9]/g, '_');
+    noteLine = `    Note over ${clientAlias},${routeAlias}: Query Parameters: ${flow.queryParams}\n`;
+  }
+
   const connectionLines = connections
     .map((conn) => {
       const parts = conn.split(':');
@@ -253,13 +295,13 @@ sequenceDiagram
     autonumber
 ${participantDeclarations}
 
-${connectionLines}
+${noteLine}${connectionLines}
 \`\`\`
 
 ## Flow Details
 *   **Client Component**: [${flow.clientFile}](file:///${path.resolve(flow.clientFile).replace(/\\/g, '/')})
 *   **API Endpoint**: \`${flow.method} ${flow.apiPath}\`
-*   **Server Handler File**: ${
+${flow.queryParams ? `*   **Query Parameters**: \`${flow.queryParams}\`\n` : ''}*   **Server Handler File**: ${
     flow.routeFile
       ? `[${flow.routeFile}](file:///${path.resolve(flow.routeFile).replace(/\\/g, '/')})`
       : '*Not Found*'
