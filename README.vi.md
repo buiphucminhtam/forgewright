@@ -1068,6 +1068,23 @@ Forgewright hỗ trợ hạ tầng kiểm thử mã nguồn mở và chạy offl
 
 ---
 
+## 🖼️ Tự động vẽ sơ đồ Sequence Flow Chart Client-Server (NEW v8.8.0)
+
+Forgewright tích hợp tính năng **Tự động vẽ và cập nhật Sequence Flow Chart** liên thông hoàn hảo giữa Client và Server sử dụng dữ liệu đồ thị tĩnh từ GitNexus và định tuyến Heuristics.
+
+*   **Không tốn phí & Không cần chạy App**: Tự động khớp nối các lượt gọi API ở Client (`fetch`/`axios` trong file React/Next.js) sang API handler tương ứng ở Server (`route.ts`) mà không cần khởi chạy ứng dụng hay kết nối cơ sở dữ liệu.
+*   **Truy vết sâu đồ thị cuộc gọi (Call Graph)**: Tự động chạy truy vấn đệ quy qua đồ thị GitNexus để vẽ chi tiết luồng gọi (`Route -> Service -> Database/Prisma`).
+*   **Sinh sơ đồ Mermaid chuyên nghiệp**: Xuất kết quả sơ đồ trình tự chuẩn Mermaid.js và cập nhật tự động vào thư mục [docs/architecture/flows/](file:///Users/buiphucminhtam/GitHub/forgewright/docs/architecture/flows/).
+*   **Lọc nhiễu thông minh & Tách tham số**: Tự động loại bỏ các hàm hệ thống/logs nhiễu (`console.log`, `execSync`, `NextResponse.json`...) để giữ sơ đồ sạch, đồng thời tách các Query Parameters truyền lên ở client và vẽ ghi chú (Mermaid Note) chi tiết.
+
+**Cách sử dụng:**
+```bash
+# Chạy script để sinh/cập nhật toàn bộ sơ đồ trình tự trong dự án
+npx tsx scripts/generate-sequence.ts
+```
+
+---
+
 ## Xử lý sự cố thường gặp
 
 | Vấn đề | Cách xử lý |

@@ -728,6 +728,21 @@ gitnexus status
 - NEVER ignore HIGH or CRITICAL risk warnings
 - NEVER rename symbols with find-and-replace — use `gitnexus_rename`
 
+### 🖼️ Client-Server Sequence Flow Generator (NEW v8.8.0)
+
+Forgewright features an automated **Client-Server Sequence Flow Generator** powered by GitNexus static call-graphs and heuristic route mapping.
+
+*   **Zero-Overhead Static Parsing**: Automatically matches client-side REST API calls (`fetch` / `axios` in React/Next.js files) to the corresponding backend/server handlers (`route.ts` API files) without running the application or database.
+*   **Recursive Call-Graph Stitching**: Queries GitNexus symbol contexts to recursively trace execution call graphs (`Route -> Service -> Database/Prisma`) and stitches them together.
+*   **Mermaid.js Sequence Chart Exports**: Generates clean, visual, and standard Mermaid sequence diagrams saved in `docs/architecture/flows/` and syncs them automatically.
+*   **Noise Filtering & Query Parameters**: Built-in smart blocklist filters out standard system loggers/helpers (`console.log`, `execSync`, `NextResponse.json`, etc.) to keep diagrams clutter-free, and documents query parameters.
+
+**Usage:**
+```bash
+# Generate sequence flow charts for the active project
+npx tsx scripts/generate-sequence.ts
+```
+
 ### Keeping Index Fresh
 
 ```bash
