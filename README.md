@@ -278,7 +278,7 @@ bash scripts/forgewright-mcp-setup.sh --check
 bash scripts/forgewright-mcp-setup.sh --diagnose
 ```
 
-#### Step 4: Setup GitNexus (Code Intelligence)
+#### Step 5: Setup GitNexus (Code Intelligence)
 
 ```bash
 # Install GitNexus
@@ -294,11 +294,11 @@ gitnexus analyze
 gitnexus status
 ```
 
-#### Step 5: Restart Your IDE
+#### Step 6: Restart Your IDE
 
 Restart Cursor or Claude Desktop to load the MCP servers.
 
-#### Step 5: Verify Setup
+#### Step 7: Verify Setup
 
 ```bash
 # From forgewright directory
@@ -307,6 +307,17 @@ bash scripts/forgewright-mcp-setup.sh --check
 # Check GitNexus
 gitnexus status
 ```
+
+#### Step 8: Run Project Onboarding (Recommended)
+
+Once your IDE has restarted, open the AI chat panel (Cursor Chat, Claude Code, or Antigravity) and run:
+
+> Run `/onboard` to initialize the project context.
+
+This will:
+1. Auto-detect your tech stack and generate `.forgewright/project-profile.json`.
+2. Run health checks for your development tools.
+3. Establish a baseline for local memory.
 
 ---
 

@@ -918,18 +918,29 @@ bash forgewright/scripts/ensure-mem0.sh "$(pwd)"
 Chạy 1 lệnh:
 
 ```bash
-bash forgewright/scripts/mcp-generate.sh
+bash forgewright/scripts/forgewright-mcp-setup.sh
 ```
 
 Sau đó khởi động lại Cursor/VS Code.
+
+### Bước 5: Chạy Onboarding lần đầu tiên (Khuyến nghị)
+
+Sau khi cài đặt xong và khởi động lại IDE (Cursor / Claude), việc đầu tiên bạn nên làm là mở khung chat AI và ra lệnh:
+
+> Chạy `/onboard` để phân tích và khởi tạo thông tin dự án.
+
+Lệnh này giúp Forgewright:
+1. Tự động nhận diện ngôn ngữ & framework của dự án để tạo file cấu hình `.forgewright/project-profile.json`.
+2. Kiểm tra sức khỏe hệ thống (các công cụ dev có sẵn).
+3. Thiết lập bộ nhớ cơ sở (local memory baseline) cho dự án mới này.
 
 ### Kiểm tra đã cài đúng chưa
 
 ```bash
 echo "=== Kiểm tra ==="
 echo "Skills: $(ls forgewright/skills/ -1 2>/dev/null | wc -l | tr -d ' ')"
-echo "MCP: $([ -d forgewright/.forgewright/mcp-server ] && echo 'OK' || echo 'MISSING')"
-echo "Memory: $([ -f .forgewright/memory.db ] && echo 'OK' || echo 'MISSING')"
+echo "MCP: $([ -d forgewright/.forgewright/mcp-server ] || [ -d ~/.forgewright/mcp-server ] && echo 'OK' || echo 'MISSING')"
+echo "Memory: $([ -f .forgewright/memory.db ] || [ -f .forgewright/memory.jsonl ] && echo 'OK' || echo 'MISSING')"
 ```
 
 ---
