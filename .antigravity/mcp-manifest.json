@@ -4,13 +4,13 @@
   "forgewright": {
     "version": "8.0.0",
     "canonical": "/Users/buiphucminhtam/.forgewright",
-    "server": "/Users/buiphucminhtam/.forgewright/mcp-server/server.ts"
+    "server": "/Users/buiphucminhtam/.forgewright/mcp-server/src/index.ts"
   },
   "servers": [
     {
       "name": "forgewright",
       "type": "forgewright-mcp-server",
-      "path": "/Users/buiphucminhtam/.forgewright/mcp-server/server.ts",
+      "path": "/Users/buiphucminhtam/.forgewright/mcp-server/src/index.ts",
       "auto_start": true
     },
     {
@@ -30,5 +30,5 @@
     "claude_code": "/Users/buiphucminhtam/.claude/settings.json",
     "antigravity": "/Users/buiphucminhtam/.cursor/projects/var-folders-nn-d2n-r53w5ddhd04y11f8yr0000gn-T-faf158ee-b029-4da1-9140-e85b3c2cca91/mcps/user-forgewright"
   },
-  "generated_at": "2026-05-30T05:24:15Z"
+  "generated_at": "2026-06-14T13:12:14Z"
 }

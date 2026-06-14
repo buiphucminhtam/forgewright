@@ -341,6 +341,7 @@ EOF
 
 CANONICAL_SERVER_DIR="$HOME/.forgewright/mcp-server"
 CANONICAL_SERVER_TS="$CANONICAL_SERVER_DIR/src/index.ts"
+CANONICAL_TSX="$CANONICAL_SERVER_DIR/node_modules/.bin/tsx"
 
 sync_canonical_server() {
     local src_dir="${FORGEWRIGHT_DIR}/mcp"
@@ -412,8 +413,8 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 
 // forgewright MCP server — CANONICAL PATH (do not change to submodule path)
 cfg.mcpServers['forgewright'] = {
-    command: 'npx',
-    args: ['tsx', '$CANONICAL_SERVER_TS'],
+    command: '$CANONICAL_TSX',
+    args: ['$CANONICAL_SERVER_TS'],
     env: {
         FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
     }
@@ -489,8 +490,8 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 
 // forgewright MCP server — CANONICAL PATH (do not change to submodule path)
 cfg.mcpServers['forgewright'] = {
-    command: 'npx',
-    args: ['tsx', '$CANONICAL_SERVER_TS'],
+    command: '$CANONICAL_TSX',
+    args: ['$CANONICAL_SERVER_TS'],
     env: {
         FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
     }
@@ -576,7 +577,7 @@ fi
 export FORGEWRIGHT_WORKSPACE="\$WORKSPACE"
 export FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR"
 
-exec npx tsx "$CANONICAL_SERVER_TS"
+exec "$CANONICAL_TSX" "$CANONICAL_SERVER_TS"
 LAUNCHER_EOF
         chmod +x "$launcher"
         log_ok "Created Antigravity launcher: $launcher"
@@ -660,8 +661,8 @@ setup_codex() {
         echo "[mcp_servers.forgewright]"
         echo 'enabled = true'
         echo 'transport = { type = "stdio" }'
-        echo 'command = "npx"'
-        echo "args = [\"tsx\", \"$CANONICAL_SERVER_TS\"]"
+        echo "command = \"$CANONICAL_TSX\""
+        echo "args = [\"$CANONICAL_SERVER_TS\"]"
         echo "env = { FORGEWRIGHT_WORKSPACE = \"$PROJECT_ROOT\" }"
 
         # Append gitnexus section
@@ -737,8 +738,8 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 
 // forgewright MCP server — CANONICAL PATH
 cfg.mcpServers['forgewright'] = {
-    command: 'npx',
-    args: ['tsx', '$CANONICAL_SERVER_TS'],
+    command: '$CANONICAL_TSX',
+    args: ['$CANONICAL_SERVER_TS'],
     env: {
         FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
     }
@@ -833,8 +834,8 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 
 // forgewright MCP server — CANONICAL PATH
 cfg.mcpServers['forgewright'] = {
-    command: 'npx',
-    args: ['tsx', '$CANONICAL_SERVER_TS'],
+    command: '$CANONICAL_TSX',
+    args: ['$CANONICAL_SERVER_TS'],
     env: {
         FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
     }
@@ -971,8 +972,8 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 
 // forgewright MCP server — CANONICAL PATH
 cfg.mcpServers['forgewright'] = {
-    command: 'npx',
-    args: ['tsx', '$CANONICAL_SERVER_TS'],
+    command: '$CANONICAL_TSX',
+    args: ['$CANONICAL_SERVER_TS'],
     env: {
         FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
     }
