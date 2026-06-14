@@ -737,11 +737,58 @@ Forgewright features an automated **Client-Server Sequence Flow Generator** powe
 *   **Mermaid.js Sequence Chart Exports**: Generates clean, visual, and standard Mermaid sequence diagrams saved in `docs/architecture/flows/` and syncs them automatically.
 *   **Noise Filtering & Query Parameters**: Built-in smart blocklist filters out standard system loggers/helpers (`console.log`, `execSync`, `NextResponse.json`, etc.) to keep diagrams clutter-free, and documents query parameters.
 
-**Usage:**
+**How to Use in Other Projects (Submodules):**
+
+To run and synchronize sequence diagrams for any project that imports Forgewright as a submodule:
+
+#### Step 1: Update Forgewright Submodule
+Run this command from your project root to pull the latest Forgewright files containing the script:
 ```bash
-# Generate sequence flow charts for the active project
-npx tsx scripts/generate-sequence.ts
+git submodule update --remote --merge
 ```
+
+#### Step 2: Ensure GitNexus is Indexed
+The Sequence Generator relies on GitNexus code intelligence. Run:
+```bash
+# 1. Install globally (if not done already)
+npm install -g gitnexus && gitnexus setup
+
+# 2. Re-index codebase
+gitnexus analyze
+```
+
+#### Step 3: Run the Sequence Flow Generator
+Run the script using flexible CLI arguments matching your project's directory structure:
+```bash
+npx tsx forgewright/scripts/generate-sequence.ts \
+  --client <client-directory> \
+  --api <server-routes-directory> \
+  --repo <gitnexus-repo-name> \
+  --output <output-diagrams-directory>
+```
+
+*Example:*
+```bash
+npx tsx forgewright/scripts/generate-sequence.ts \
+  --client apps/web/src \
+  --api apps/web/src/pages/api \
+  --repo my-saas-app \
+  --output docs/flows
+```
+*(If args are omitted, it defaults to standard directory fallbacks like `src/`, `src/app/api/` or `multica-hub/src`).*
+
+---
+
+#### 🚀 Automate and Enforce (Husky & AI Rules)
+
+1.  **Auto-update on commits**: Add this to your project's commit hooks (e.g. `.husky/post-commit`):
+    ```bash
+    # Auto-update sequence flow charts on commits
+    npx tsx forgewright/scripts/generate-sequence.ts --client apps/web/src --repo my-saas-app
+    ```
+2.  **Enforce AI Agent Rules**: Add this to your project's `CLAUDE.md` or `AGENTS.md`:
+    > **MUST run `npx tsx forgewright/scripts/generate-sequence.ts` with project-specific paths after any API changes or re-indexing.**
+
 
 ### Keeping Index Fresh
 

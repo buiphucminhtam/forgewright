@@ -1077,11 +1077,59 @@ Forgewright tích hợp tính năng **Tự động vẽ và cập nhật Sequenc
 *   **Sinh sơ đồ Mermaid chuyên nghiệp**: Xuất kết quả sơ đồ trình tự chuẩn Mermaid.js và cập nhật tự động vào thư mục [docs/architecture/flows/](file:///Users/buiphucminhtam/GitHub/forgewright/docs/architecture/flows/).
 *   **Lọc nhiễu thông minh & Tách tham số**: Tự động loại bỏ các hàm hệ thống/logs nhiễu (`console.log`, `execSync`, `NextResponse.json`...) để giữ sơ đồ sạch, đồng thời tách các Query Parameters truyền lên ở client và vẽ ghi chú (Mermaid Note) chi tiết.
 
-**Cách sử dụng:**
+**Cách sử dụng trong các dự án khác (Submodules):**
+
+Để chạy và đồng bộ sơ đồ trình tự cho bất kỳ dự án nào tích hợp Forgewright dưới dạng submodule:
+
+#### Bước 1: Cập nhật Submodule Forgewright mới nhất
+Tại thư mục root của dự án đó, chạy lệnh sau để kéo mã nguồn script mới nhất về:
 ```bash
-# Chạy script để sinh/cập nhật toàn bộ sơ đồ trình tự trong dự án
-npx tsx scripts/generate-sequence.ts
+git submodule update --remote --merge
 ```
+
+#### Bước 2: Đảm bảo GitNexus đã được lập chỉ mục (Indexing)
+Sequence Generator yêu cầu dữ liệu đồ thị từ GitNexus. Nếu chưa có hoặc index cũ, hãy chạy:
+```bash
+# 1. Cài đặt toàn cục (nếu chưa cài)
+npm install -g gitnexus && gitnexus setup
+
+# 2. Tạo chỉ mục đồ thị cho repo mới
+gitnexus analyze
+```
+
+#### Bước 3: Khởi chạy vẽ sơ đồ trình tự
+Chạy script sinh sơ đồ thông qua các tham số cấu hình đường dẫn linh hoạt (CLI Arguments) của dự án đó:
+```bash
+npx tsx forgewright/scripts/generate-sequence.ts \
+  --client <thư-mục-chứa-frontend> \
+  --api <thư-mục-chứa-routes-api> \
+  --repo <tên-repo-trong-gitnexus> \
+  --output <thư-mục-lưu-sơ-đồ>
+```
+
+*Ví dụ thực tế:*
+Nếu dự án mới có Client tại `apps/web/src`, API routes tại `apps/web/src/pages/api`, tên repo là `my-saas-app`, và muốn lưu sơ đồ vào `docs/flows/`:
+```bash
+npx tsx forgewright/scripts/generate-sequence.ts \
+  --client apps/web/src \
+  --api apps/web/src/pages/api \
+  --repo my-saas-app \
+  --output docs/flows
+```
+*(Nếu bỏ qua các tham số này, script sẽ tự động tìm kiếm các thư mục mặc định thông dụng như `src/`, `src/app/api/` hoặc `multica-hub/src`).*
+
+---
+
+#### 🚀 Cách ép quy luật tự động hóa (Automation)
+
+1.  **Tự động cập nhật khi commit**: Bổ sung vào file cấu hình commit hook của dự án (ví dụ: `.husky/post-commit`):
+    ```bash
+    # Tự động cập nhật sơ đồ sau mỗi lần commit
+    npx tsx forgewright/scripts/generate-sequence.ts --client apps/web/src --repo my-saas-app
+    ```
+2.  **Ràng buộc Agent AI**: Thêm quy tắc này vào file `CLAUDE.md` hoặc `AGENTS.md` của dự án đó:
+    > **MUST run `npx tsx forgewright/scripts/generate-sequence.ts` with project-specific paths after any API changes or re-indexing.**
+
 
 ---
 
