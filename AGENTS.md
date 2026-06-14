@@ -570,7 +570,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (16566 symbols, 21896 relationships, 251 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (16469 symbols, 21648 relationships, 241 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -579,13 +579,9 @@ This project is indexed by GitNexus as **forgewright** (16566 symbols, 21896 rel
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- **MUST run `npx tsx scripts/generate-sequence.ts` after any API changes or re-indexing** to ensure the client-server sequence flow charts in [docs/architecture/flows/](file:///Users/buiphucminhtam/GitHub/forgewright/docs/architecture/flows/) are kept up-to-date.
 - When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
 - When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
-- **MUST run `bash scripts/verify-wiki-drift.sh --heal`** when asked to review, audit, or align project documentation to auto-detect and resolve port conflicts and stale indices first.
-- **MUST run `npx gitnexus analyze`** after modifying or restructuring documentation directory layouts (under `docs/00-vision/` through `05-operations/`) to keep indices fresh.
-- **DEPRECATED `gitnexus wiki`**: DO NOT run `npx gitnexus wiki` or `gitnexus wiki` to generate documentation. It requires calling paid LLM APIs which consumes tokens.
-- **ALWAYS USE `llm_wiki` (Obsidian-based)**: Whenever the user mentions "wiki", "tài liệu", "documentation", or asks to review/update/create wiki, always refer to the local flat-file Markdown files (e.g., in `docs/` or project root). All documentation changes must be done directly via file editing (Documentation as Code) and synced via `scripts/forgewright-wiki-sync.sh`.
-- **Note the difference**: `llm_wiki` is the primary local Obsidian flat Markdown vault (completely free, queried via local MCP/RAG on port 3000), whereas `gitnexus wiki` is the CLI command to auto-generate markdown from code graph (stale/deprecated, requires LLM keys).
 
 ## Never Do
 

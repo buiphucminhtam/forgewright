@@ -13,6 +13,11 @@ antigravity
 .env*
 *.md
 !landing.html
+!architecture/
+!architecture/flows/
+!architecture/flows/*.md
+!architecture/flows/README.md
+!landing.html
 !server.js
 !404.html
 !.railwayignore
