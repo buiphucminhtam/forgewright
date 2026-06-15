@@ -321,7 +321,7 @@ function generateMermaid(flow: ApiFlow) {
     .map((p) => {
       const alias = p.replace(/[^a-zA-Z0-9]/g, '_');
       const label = path.basename(p);
-      return `    participant ${alias} as ${label} (${p})`;
+      return `    participant ${alias} as "${label} (${p})"`;
     })
     .join('\n');
 

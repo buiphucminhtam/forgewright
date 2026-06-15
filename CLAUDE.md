@@ -31,6 +31,12 @@
 - **Why**: Ensures version consistency across team members, supports project-specific custom skills, and is strictly required for executing local Git Hooks (pre-commit/post-commit) dynamically.
 - **Action**: Never rely solely on global MCP server setups for production or team repositories. Always run `/setup` (or `git submodule add`) to initialize Forgewright locally.
 
+## ⚠️ MANDATORY RULE: MERMAID FOR ALL SEQUENCE DIAGRAMS
+
+All sequence diagrams generated or requested in this repository (in documents, design files, pull requests, or AI chat responses) **MUST** be written in Mermaid.js syntax using the ` ```mermaid ` code block.
+- **NEVER** output raw text art, ASCII tables, or other text-based custom representations for sequence flows.
+- **ALWAYS** wrap participant labels in double quotes `""` to support special characters (like parenthesis and slashes, e.g. `participant A as "A (path/to/file.ts)"`).
+
 <!-- NOTE: Evidence-First section is duplicated in AGENTS.md (for Antigravity).
      Source of truth: CLAUDE.md. Changes here must be mirrored to AGENTS.md manually. -->
 

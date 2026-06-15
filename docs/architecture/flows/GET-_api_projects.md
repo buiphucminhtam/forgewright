@@ -1,13 +1,13 @@
 # API Flow: GET /api/projects
-Generated: 2026-06-14T10:24:35.951Z
+Generated: 2026-06-15T04:01:59.357Z
 
 ## Flow Diagram
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant multica_hub_src_components_hub_EnvironmentStatus_tsx as EnvironmentStatus.tsx (multica-hub/src/components/hub/EnvironmentStatus.tsx)
-    participant multica_hub_src_app_api_projects_route_ts as route.ts (multica-hub/src/app/api/projects/route.ts)
+    participant multica_hub_src_components_hub_EnvironmentStatus_tsx as "EnvironmentStatus.tsx (multica-hub/src/components/hub/EnvironmentStatus.tsx)"
+    participant multica_hub_src_app_api_projects_route_ts as "route.ts (multica-hub/src/app/api/projects/route.ts)"
 
     multica_hub_src_components_hub_EnvironmentStatus_tsx->>multica_hub_src_app_api_projects_route_ts: HTTP GET /api/projects
 ```

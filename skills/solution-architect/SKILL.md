@@ -214,42 +214,48 @@ Create a high-level system diagram:
 ## System Topology
 
 ### C4 Context Diagram
+
+```mermaid
+graph TD
+    subgraph External["EXTERNAL SYSTEMS"]
+        Users["Users Browser"]
+        ThirdParty["Third Party APIs"]
+        Payment["Payment Gateway"]
+        Email["Email Provider"]
+    end
+
+    subgraph OurSystem["OUR SYSTEM"]
+        Gateway["API Gateway<br>(Auth, Rate Limiting, Routing)"]
+        subgraph Services["Services"]
+            ServiceA["Service A"]
+            ServiceB["Service B"]
+            ServiceC["Service C"]
+        end
+        subgraph DBs["Databases"]
+            DBA[(DB A)]
+            DBB[(DB B)]
+            DBC[(DB C)]
+        end
+        Broker["MESSAGE BROKER<br>(Async Comm, Event Bus)"]
+    end
+
+    Users --> Gateway
+    ThirdParty --> Gateway
+    Payment --> Gateway
+    Email --> Gateway
+
+    Gateway --> ServiceA
+    Gateway --> ServiceB
+    Gateway --> ServiceC
+
+    ServiceA --> DBA
+    ServiceB --> DBB
+    ServiceC --> DBC
+
+    ServiceA <--> Broker
+    ServiceB <--> Broker
+    ServiceC <--> Broker
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      EXTERNAL SYSTEMS                        │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────┐ │
-│  │  Users  │  │ Third   │  │ Payment │  │   Email     │ │
-│  │ Browser │  │ Party   │  │ Gateway │  │   Provider   │ │
-│  └────┬────┘  │ APIs    │  └────┬────┘  └──────┬──────┘ │
-│       │        └────┬────┘       │            │         │
-└───────┼────────────┼─────────────┼────────────┼─────────┘
-        │            │             │            │
-        ▼            ▼             ▼            ▼
-┌───────────────────────────────────────────────────────────┐
-│                     OUR SYSTEM                              │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │                    API Gateway                        │ │
-│  │  (Auth, Rate Limiting, Routing)                      │ │
-│  └────────────────────────┬──────────────────────────────┘ │
-│                          │                                  │
-│  ┌───────────────────────┼───────────────────────────────┐ │
-│  │                       ▼                               │ │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐            │ │
-│  │  │ Service │  │ Service │  │ Service │  ...         │ │
-│  │  │    A    │  │    B    │  │    C    │              │ │
-│  │  └────┬────┘  └────┬────┘  └────┬────┘              │ │
-│  │       │            │            │                    │ │
-│  │       ▼            ▼            ▼                    │ │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐            │ │
-│  │  │   DB A   │  │   DB B   │  │   DB C   │            │ │
-│  │  └─────────┘  └─────────┘  └─────────┘              │ │
-│  └───────────────────────────────────────────────────────┘ │
-│                                                              │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │                  MESSAGE BROKER                       │  │
-│  │  (Async Communication, Event Bus)                    │  │
-│  └─────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────┘
 ```
 
 ### Step 2.2: Architecture Decision Records (ADRs)
@@ -615,29 +621,17 @@ COMMENT ON COLUMN users.deleted_at IS 'Soft delete timestamp - user is inactive 
 ```markdown
 ## Data Flow: User Registration
 
+```mermaid
+graph TD
+    Client[Client] --> APIGateway[API Gateway]
+    APIGateway --> UserService[User Service]
+    UserService --> PostgreSQL[(PostgreSQL)]
+    UserService -- "Publish event" --> Kafka[Kafka<br>(user.created)]
+    
+    Kafka --> EmailService[Email Service<br>(send welcome)]
+    Kafka --> AnalyticsService[Analytics Service<br>(track signup)]
+    Kafka --> AuditService[Audit Service<br>(log event)]
 ```
-┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
-│ Client  │────▶│  API    │────▶│  User   │────▶│  PostgreSQL
-│         │     │ Gateway  │     │ Service │     │         │
-└─────────┘     └─────────┘     └────┬────┘     └─────────┘
-                                      │
-                                      │ Publish event
-                                      ▼
-                               ┌─────────────┐
-                               │   Kafka     │
-                               │ (user.      │
-                               │  created)   │
-                               └──────┬──────┘
-                                      │
-                    ┌─────────────────┼─────────────────┐
-                    │                 │                 │
-                    ▼                 ▼                 ▼
-              ┌───────────┐   ┌───────────┐   ┌───────────┐
-              │ Email     │   │ Analytics │   │ Audit     │
-              │ Service   │   │ Service   │   │ Service   │
-              │ (send     │   │ (track    │   │ (log      │
-              │ welcome)  │   │ signup)   │   │ event)    │
-              └───────────┘   └───────────┘   └───────────┘
 ```
 
 ---
