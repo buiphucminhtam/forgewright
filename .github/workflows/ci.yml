@@ -164,13 +164,43 @@ jobs:
 
 
 
+  # ═══════════════════════════════════════════════════════════
+  # WAVE 1: Python Lint & Tests (parallel)
+  # ═══════════════════════════════════════════════════════════
+  python-tests:
+    name: Python Lint & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest hypothesis
+          if [ -f requirements-local-memory.txt ]; then pip install -r requirements-local-memory.txt; fi
+
+      - name: Lint with Ruff
+        run: ruff check .
+
+      - name: Format check with Ruff
+        run: ruff format --check .
+
+      - name: Run pytest
+        run: pytest tests/unit_tests/
+
   # ── Wave 2: All Wave 1 jobs must pass ──
   # This job exists to fail the overall workflow if any parallel job fails.
   # It doesn't need to run any commands — it just waits for its dependencies.
   require-all:
     name: All Checks Passed
     runs-on: ubuntu-latest
-    needs: [lint-and-format, typecheck, test, commitlint, wiki-drift-check]
+    needs: [lint-and-format, typecheck, test, commitlint, wiki-drift-check, python-tests]
     steps:
       - name: All checks passed
         run: echo "All CI checks passed"
+

@@ -1058,10 +1058,13 @@ bash scripts/forge-validate.sh --json
 
 ---
 
-## Hệ Thống Kiểm Thử Không Tốn Phí & Cục Bộ (Zero-Cost Testing)
+## Bộ Công Cụ Kiểm Thử & Quản Lý Chất Lượng Chuẩn Enterprise
 
-Forgewright hỗ trợ hạ tầng kiểm thử mã nguồn mở và chạy offline hoàn toàn, loại bỏ 100% chi phí bản quyền SaaS từ bên thứ ba:
+Forgewright hỗ trợ hạ tầng kiểm thử mã nguồn mở hoàn toàn miễn phí, chạy offline cục bộ, giúp loại bỏ hoàn toàn chi phí bản quyền SaaS bên thứ ba và đảm bảo chất lượng phần mềm không lọt lỗi (zero-escaped bugs):
 
+*   **Property-Based Testing (PBT)**: Tích hợp thư viện `fast-check` (JS/TS) và `Hypothesis` (Python) giúp tự động sinh hàng ngàn bộ dữ liệu ngẫu nhiên, dị biệt để dò tìm các lỗi biên, lỗi logic cực đoan của thuật toán trước khi release.
+*   **Mutation Testing (Kiểm thử đột biến)**: Tích hợp `Stryker` (JS/TS) và `mutmut` (Python) để tự động tiêm lỗi giả lập ("mutants") vào code logic, đánh giá độ tin cậy thực tế và chất lượng của bộ test case hiện có.
+*   **Shift-Left Spec Gate & DoD**: Thiết lập chốt chặn chất lượng từ khâu Specs (quy trình ký duyệt ba bên PM + Dev Lead + QA Lead) kết hợp với Git Hooks (Husky + lint-staged) cục bộ và CI pipeline chạy song song cực nhanh, thực thi nghiêm ngặt tiêu chí Definition of Done (DoD).
 *   **Visual Regression (VRT)**: Sử dụng trình so sánh ảnh gốc của Playwright kết hợp `pixelmatch` tại local hoặc chạy trong Docker container chính thức trên CI (nhằm đồng bộ font/giao diện render).
 *   **Performance & Load**: Tích hợp k6 CLI đẩy số liệu thời gian thực trực tiếp về hệ thống cơ sở dữ liệu InfluxDB và trực quan hóa qua Grafana cục bộ (dựng qua Docker Compose).
 *   **Mobile E2E**: Chạy Appium, Midscene.js tương tác bằng AI, và **Maestro (Chạy Local Miễn Phí)** trực tiếp trên máy ảo Android Emulator cục bộ (tạo qua [scripts/setup-local-emulators.sh](file:///Users/buiphucminhtam/GitHub/forgewright/scripts/setup-local-emulators.sh)) hoặc iOS Simulator.

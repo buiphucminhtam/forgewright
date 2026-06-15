@@ -62,3 +62,9 @@ scripts/cf-dns-remove.sh
 
 # Root-level SQLite database
 memory.db
+
+# Stryker & mutmut temporary directories
+.stryker-tmp/
+reports/
+mutants/
+.mutmut-cache

@@ -664,10 +664,13 @@ bash scripts/forge-validate.sh
 
 ---
 
-## Zero-Cost & Local Testing Stack
+## Enterprise-Grade Testing & Quality Control Stack
 
-Forgewright supports a 100% free, open-source local testing stack to prevent SaaS subscription costs:
+Forgewright supports a 100% free, open-source local testing stack designed to eliminate SaaS subscription costs and guarantee zero-escaped bugs in production:
 
+*   **Property-Based Testing (PBT)**: Integrated `fast-check` (JS/TS) and `Hypothesis` (Python) to automatically stress-test complex algorithms with thousands of randomized, extreme inputs, catching hidden boundary-value errors.
+*   **Mutation Testing**: Integrated `Stryker` (JS/TS) and `mutmut` (Python) to inject artificial faults ("mutants") into code logic, validating the actual assertion quality of your test suite and ensuring no regressions slip through.
+*   **Shift-Left Spec Review & DoD**: Implements a strict Three-Way Handshake gate (PM + Tech Lead + QA Lead) to eliminate requirements gaps before coding, backed by automated Git Hooks (Husky + lint-staged) and CI pipelines enforcing coverage and mutation gates.
 *   **Visual Regression (VRT)**: Uses Playwright's native screenshot engine and `pixelmatch` locally or on CI via official Playwright Docker containers (ensuring cross-platform render consistency).
 *   **Performance & Load**: Configured k6 CLI metrics ingestion with a local InfluxDB & Grafana dockerized monitoring stack.
 *   **Mobile E2E**: Fully supports Appium, Midscene.js (AI-vision), and **Maestro (Local-Only)** running against local Android Emulators (created via [scripts/setup-local-emulators.sh](file:///Users/buiphucminhtam/GitHub/forgewright/scripts/setup-local-emulators.sh)) and iOS Simulators.

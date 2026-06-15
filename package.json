@@ -16,6 +16,7 @@
     "handlebars": "^4.7.8",
     "husky": "^9.1.7",
     "js-yaml": "^4.2.0",
+    "lint-staged": "^15.4.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },
@@ -24,5 +25,21 @@
     "ws": "^8.20.0",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
+  },
+  "lint-staged": {
+    "mcp/src/**/*.ts": [
+      "eslint --fix --cache --cache-location mcp/node_modules/.cache/eslint",
+      "prettier --write"
+    ],
+    "src/cli/**/*.ts": [
+      "prettier --write"
+    ],
+    "**/*.py": [
+      "ruff check --fix",
+      "ruff format"
+    ],
+    "scripts/**/*.sh": [
+      "bash -n"
+    ]
   }
 }

@@ -1,6 +1,6 @@
 #!/bin/sh
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Pre-commit Hook — Parallel Execution v2.0
+# Pre-commit Hook — Parallel Execution v3.0 (TS & Python)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 . "$(dirname "$0")/_/husky.sh"
@@ -15,83 +15,55 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-cd mcp
-
-# ── Wave 1: Linting & Formatting (independent — parallel) ─────────────────
-(
-  echo "[1/2] Running ESLint (cached)..."
-  npx eslint src/ --max-warnings=0 --cache --cache-location node_modules/.cache/eslint
-  ESLINT_RC=$?
-  if [ $ESLINT_RC -ne 0 ]; then
-    echo "[ESLint] FAILED"
-  fi
-  exit $ESLINT_RC
-) &
-ESLINT_PID=$!
-
-(
-  echo "[2/2] Running Prettier check..."
-  npx prettier --check "src/**/*.ts"
-  PRETTY_RC=$?
-  if [ $PRETTY_RC -ne 0 ]; then
-    echo "[Prettier] FAILED"
-  fi
-  exit $PRETTY_RC
-) &
-PRETTY_PID=$!
-
-# Wait for wave 1
-wait $ESLINT_PID
-ESLINT_RC=$?
-wait $PRETTY_PID
-PRETTY_RC=$?
-
-if [ $ESLINT_RC -ne 0 ]; then
-  echo "ESLint failed!"
+# ── Wave 1: Linting & Formatting via lint-staged ──────────────────────────
+echo "[1/4] Running lint-staged..."
+npx lint-staged
+if [ $? -ne 0 ]; then
+  echo "lint-staged failed! Commit blocked."
   exit 1
 fi
 
-if [ $PRETTY_RC -ne 0 ]; then
-  echo "Prettier check failed!"
+# ── Wave 2: TypeScript check ──────────────────────────────────────────────
+echo "[2/4] Running TypeScript check (mcp)..."
+cd mcp && npx tsc --noEmit
+TYPE_MCP_RC=$?
+cd ..
+
+if [ $TYPE_MCP_RC -ne 0 ]; then
+  echo "TypeScript check failed! Commit blocked."
   exit 1
 fi
 
-# ── Wave 2: TypeScript & Tests (parallel — Vitest doesn't need tsc output) ──
+# ── Wave 3: Unit Tests (Vitest & pytest in parallel) ─────────────────────
 (
-  echo "[3/4] Running TypeScript check..."
-  npx tsc --noEmit
-  TYPE_RC=$?
-  if [ $TYPE_RC -ne 0 ]; then
-    echo "[TypeScript] FAILED"
-  fi
-  exit $TYPE_RC
+  echo "[4/4] Running Vitest (TS)..."
+  cd mcp && npx vitest run --reporter=basic
+  vitest_rc=$?
+  exit $vitest_rc
 ) &
-TYPE_PID=$!
+VITEST_PID=$!
 
 (
-  echo "[4/4] Running tests..."
-  npx vitest run --reporter=basic
-  TEST_RC=$?
-  if [ $TEST_RC -ne 0 ]; then
-    echo "[Tests] FAILED"
-  fi
-  exit $TEST_RC
+  echo "[4/4] Running Pytest (Python)..."
+  pytest tests/unit_tests/
+  pytest_rc=$?
+  exit $pytest_rc
 ) &
-TEST_PID=$!
+PYTEST_PID=$!
 
-# Wait for wave 2
-wait $TYPE_PID
-TYPE_RC=$?
-wait $TEST_PID
-TEST_RC=$?
+# Wait for Wave 3
+wait $VITEST_PID
+vitest_rc=$?
+wait $PYTEST_PID
+pytest_rc=$?
 
-if [ $TYPE_RC -ne 0 ]; then
-  echo "TypeScript check failed!"
+if [ $vitest_rc -ne 0 ]; then
+  echo "Vitest failed! Commit blocked."
   exit 1
 fi
 
-if [ $TEST_RC -ne 0 ]; then
-  echo "Tests failed!"
+if [ $pytest_rc -ne 0 ]; then
+  echo "Pytest failed! Commit blocked."
   exit 1
 fi
 
