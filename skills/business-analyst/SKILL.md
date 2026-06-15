@@ -95,9 +95,11 @@ Before passing any requirement to PM, verify:
 
 ### Elicitation Continues Until ALL of:
 
-1. ALL critical requirements score ≥ 6/7 on 6W1H (not 5/7 — that still has gaps)
-2. Client explicitly confirms "yes, this is complete and correct"
-3. Any remaining unknowns are documented as **explicit client-acknowledged assumptions**
+1. Requirements Completeness Score (based on 6W1H checklist) reaches $\ge 0.85$ (no gaps in critical features).
+2. Ambiguity Score is $\le 0.4$ (assessed quantitatively on a 0.0 - 1.0 scale).
+3. All functional specifications are written in **Given/When/Then (BDD/Gherkin)** scenarios.
+4. Client explicitly confirms "yes, this is complete and correct"
+5. Any remaining unknowns are documented as **explicit client-acknowledged assumptions**
 
 **Rule:** When in doubt, ASK. When it seems clear, VERIFY. When client says "you decide," REFUSE — present options instead.
 

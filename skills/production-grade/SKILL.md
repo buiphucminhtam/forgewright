@@ -155,20 +155,21 @@ If the literal interpretation differs from the Intent Analysis:
 
 **Output:** Append Intent Analysis to the structured request below.
 
-3. **Clarification Rules:**
-   - **MAX 3 clarifying questions** — pick the 3 most critical
-   - **If HIGH confidence**: Skip clarification, generate structured request
-   - **If MEDIUM/LOW confidence**: Ask before proceeding
-   - **NEVER start executing** if request is unclear
-   - **Use defaults** for everything else (don't over-ask)
+3. **Auto-Clarification Loop (Step 0.3 - NEW v8.8):**
+   - **Ambiguity Score Assessment:** Chấm điểm độ mơ hồ (Ambiguity Score: $0.0 - 1.0$). Nếu score $> 0.4$, bắt buộc dừng tiến trình code và đặt câu hỏi làm rõ.
+   - **6W1H Completeness Checklist:** Chấm điểm độ hoàn thiện yêu cầu ($0.0 - 1.0$) dựa trên 7 tiêu chí 6W1H.
+   - **Thực thi vòng lặp (No hard limit):** Tự động đặt câu hỏi làm rõ và lặp lại cho đến khi điểm hoàn thiện đạt $\ge 0.85$. Tuyệt đối không tiến hành code khi chưa đạt ngưỡng chất lượng đầu vào này.
+   - **Chuẩn hóa Gherkin/BDD:** Mọi đặc tả tính năng đã làm rõ phải được viết dưới dạng kịch bản Given/When/Then để làm đầu vào cho QA sinh test case tự động.
 
 4. **Generate Structured Request:**
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🔍 INTERPRETED REQUEST
+   🔍 INTERPRETED REQUEST (v8.8 Input Upgraded)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Mode: [detected]
    Confidence: [HIGH/MEDIUM/LOW]
+   Ambiguity Score: [Score/1.0 - Halted if > 0.4]
+   6W1H Completeness Score: [Score/1.0 - Target >= 0.85]
 
    Intent: "[original message quoted]"
 
@@ -189,11 +190,13 @@ If the literal interpretation differs from the Intent Analysis:
      ✓ [In scope]
      ✗ [Out of scope]
 
+   BDD/Gherkin Scenarios (MANDATORY):
+     Given [Context]
+     When [Action]
+     Then [Expected Outcome]
+
    Success criteria:
      [How we know it's done]
-
-   Missing (will be handled by PM):
-     [Max 3 items]
 
    Plan Quality & Self-Improvement Loop (MANDATORY Step 2):
    - Initial Plan Score: [Score/10]
