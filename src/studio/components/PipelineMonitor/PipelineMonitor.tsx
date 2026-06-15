@@ -16,9 +16,9 @@ interface PipelineMonitorProps {
 }
 
 const STATUS_COLORS = {
-  pending: "bg-gray-300",
-  running: "bg-blue-500 animate-pulse",
-  complete: "bg-green-500",
+  pending: "bg-[#3d3a39]",
+  running: "bg-[#00d992] animate-pulse",
+  complete: "bg-[#2fd6a1]",
   error: "bg-red-500",
 };
 
@@ -46,10 +46,10 @@ export function PipelineMonitor({ phases, isRunning }: PipelineMonitorProps) {
 
   if (phases.length === 0) {
     return (
-      <div className="p-4 text-gray-500 text-center">
+      <div className="p-4 text-[#8b949e] text-center bg-[#101010] h-full flex flex-col justify-center items-center">
         <div className="text-4xl mb-2">📊</div>
-        <p>No pipeline activity</p>
-        <p className="text-sm mt-1">
+        <p className="text-[#f2f2f2] font-semibold">No pipeline activity</p>
+        <p className="text-xs mt-1 text-[#8b949e]">
           Start a pipeline to see real-time progress
         </p>
       </div>
@@ -57,12 +57,12 @@ export function PipelineMonitor({ phases, isRunning }: PipelineMonitorProps) {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 bg-[#101010] text-[#f2f2f2] min-h-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Pipeline Progress</h2>
+        <h2 className="text-lg font-semibold text-[#f2f2f2]">Pipeline Progress</h2>
         {isRunning && (
-          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-            Running
+          <span className="text-xs bg-[#00d992]/20 text-[#00d992] border border-[#00d992]/30 px-2 py-0.5 rounded font-mono animate-pulse">
+            RUNNING
           </span>
         )}
       </div>
@@ -71,33 +71,33 @@ export function PipelineMonitor({ phases, isRunning }: PipelineMonitorProps) {
         {phases.map((phase, index) => (
           <div
             key={phase.id}
-            className="border border-gray-200 rounded-lg overflow-hidden"
+            className="border border-[#3d3a39] bg-[#1a1a1a] rounded overflow-hidden"
           >
             {/* Phase Header */}
             <button
               onClick={() => togglePhase(phase.id)}
-              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#101010] transition-colors text-left"
             >
               <div className="flex items-center gap-3">
                 <span
                   className={`w-2 h-2 rounded-full ${STATUS_COLORS[phase.status]}`}
                 />
-                <span className="text-gray-400 text-sm">{index + 1}</span>
-                <span className="font-medium">{phase.name}</span>
+                <span className="text-[#8b949e] font-mono text-sm">{String(index + 1).padStart(2, "0")}</span>
+                <span className="font-semibold text-[#f2f2f2]">{phase.name}</span>
               </div>
 
               <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-500">
+                <span className="text-sm font-mono text-[#bdbdbd]">
                   {phase.progress}%
                 </span>
-                <span className="text-gray-400">
+                <span className="text-[#8b949e] text-xs">
                   {expandedPhases.has(phase.id) ? "▼" : "▶"}
                 </span>
               </div>
             </button>
 
             {/* Progress Bar */}
-            <div className="h-1 bg-gray-100">
+            <div className="h-1 bg-[#3d3a39]">
               <div
                 className={`h-full transition-all duration-300 ${STATUS_COLORS[phase.status]}`}
                 style={{ width: `${phase.progress}%` }}
@@ -106,8 +106,8 @@ export function PipelineMonitor({ phases, isRunning }: PipelineMonitorProps) {
 
             {/* Skills (Expanded) */}
             {expandedPhases.has(phase.id) && phase.skills.length > 0 && (
-              <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
-                <div className="space-y-2">
+              <div className="px-4 py-3 bg-[#101010] border-t border-[#3d3a39]">
+                <div className="space-y-2.5">
                   {phase.skills.map((skill) => (
                     <SkillItem key={skill.id} skill={skill} />
                   ))}
@@ -125,13 +125,13 @@ function SkillItem({ skill }: { skill: Skill }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-start gap-2 text-xs">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-gray-400 hover:text-gray-600"
+        className="text-[#8b949e] hover:text-[#f2f2f2] mt-0.5"
       >
         <span
-          className={`text-sm ${STATUS_COLORS[skill.status] === "bg-blue-500 animate-pulse" ? "animate-spin" : ""}`}
+          className={`text-sm ${STATUS_COLORS[skill.status].includes("animate-pulse") ? "animate-spin" : ""}`}
         >
           {STATUS_ICONS[skill.status]}
         </span>
@@ -139,20 +139,20 @@ function SkillItem({ skill }: { skill: Skill }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium truncate">{skill.name}</span>
-          <span className="text-xs text-gray-500">{skill.progress}%</span>
+          <span className="text-sm font-semibold text-[#f2f2f2] truncate">{skill.name}</span>
+          <span className="text-xs font-mono text-[#8b949e]">{skill.progress}%</span>
         </div>
 
         {skill.message && (
-          <p className="text-xs text-gray-500 mt-1 truncate">
+          <p className="text-xs text-[#bdbdbd] mt-1 truncate font-mono">
             {skill.message}
           </p>
         )}
 
         {expanded && skill.message && (
-          <p className="text-xs text-gray-600 mt-1 p-2 bg-white rounded border">
+          <pre className="text-xs text-[#bdbdbd] mt-1.5 p-2 bg-[#1a1a1a] rounded border border-[#3d3a39] whitespace-pre-wrap font-mono">
             {skill.message}
-          </p>
+          </pre>
         )}
       </div>
     </div>

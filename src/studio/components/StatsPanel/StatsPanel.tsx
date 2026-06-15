@@ -17,6 +17,15 @@ interface StatsPanelProps {
   isRunning: boolean;
 }
 
+const METRIC_TEXT_COLORS: Record<string, string> = {
+  blue: "text-[#00d992]",
+  green: "text-[#00d992]",
+  purple: "text-purple-400",
+  orange: "text-amber-500",
+  red: "text-red-400",
+  gray: "text-[#8b949e]",
+};
+
 export function StatsPanel({ metrics, isRunning }: StatsPanelProps) {
   const stats = [
     {
@@ -52,13 +61,13 @@ export function StatsPanel({ metrics, isRunning }: StatsPanelProps) {
   ];
 
   return (
-    <div className="p-4">
+    <div className="p-4 bg-[#101010] text-[#f2f2f2] min-h-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Session Stats</h2>
+        <h2 className="text-lg font-semibold text-[#f2f2f2]">Session Stats</h2>
         {isRunning && (
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00d992] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00d992]"></span>
           </span>
         )}
       </div>
@@ -67,13 +76,13 @@ export function StatsPanel({ metrics, isRunning }: StatsPanelProps) {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className={`bg-${stat.color}-50 border border-${stat.color}-100 rounded-lg p-3`}
+            className="bg-[#1a1a1a] border border-[#3d3a39] rounded p-3 flex flex-col justify-between"
           >
             <div className="flex items-center gap-2 mb-1">
               <span>{stat.icon}</span>
-              <span className="text-xs text-gray-500">{stat.label}</span>
+              <span className="text-xs text-[#8b949e]">{stat.label}</span>
             </div>
-            <div className={`text-xl font-bold text-${stat.color}-700`}>
+            <div className={`text-xl font-bold font-mono ${METRIC_TEXT_COLORS[stat.color] || "text-[#f2f2f2]"}`}>
               {stat.value}
             </div>
           </div>
@@ -82,24 +91,24 @@ export function StatsPanel({ metrics, isRunning }: StatsPanelProps) {
 
       {/* Cost Breakdown */}
       {metrics.cost > 0 && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-          <h3 className="text-sm font-medium mb-2">Cost Estimate</h3>
-          <div className="text-xs text-gray-600 space-y-1">
+        <div className="mt-4 p-3 bg-[#1a1a1a] border border-[#3d3a39] rounded">
+          <h3 className="text-sm font-semibold mb-2 text-[#f2f2f2]">Cost Estimate</h3>
+          <div className="text-xs text-[#bdbdbd] space-y-1.5 font-mono">
             <div className="flex justify-between">
               <span>GPT-4o Prompt:</span>
-              <span className="font-mono">
+              <span className="text-[#8b949e]">
                 ${(metrics.tokens * 0.5 * 2.5 / 1_000_000).toFixed(4)}
               </span>
             </div>
             <div className="flex justify-between">
               <span>GPT-4o Completion:</span>
-              <span className="font-mono">
+              <span className="text-[#8b949e]">
                 ${(metrics.tokens * 0.5 * 10.0 / 1_000_000).toFixed(4)}
               </span>
             </div>
-            <div className="flex justify-between border-t pt-1 mt-1 font-medium">
+            <div className="flex justify-between border-t border-[#3d3a39] pt-1.5 mt-1 font-semibold text-[#f2f2f2]">
               <span>Total:</span>
-              <span className="font-mono">{formatCost(metrics.cost)}</span>
+              <span className="text-[#00d992]">{formatCost(metrics.cost)}</span>
             </div>
           </div>
         </div>
@@ -107,17 +116,17 @@ export function StatsPanel({ metrics, isRunning }: StatsPanelProps) {
 
       {/* Tips */}
       {metrics.skillCount > 5 && metrics.errorCount === 0 && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-100 rounded-lg">
-          <p className="text-xs text-green-700">
-            Great progress! {metrics.skillCount} skills completed with no errors.
+        <div className="mt-4 p-3 bg-[#00d992]/10 border border-[#00d992]/30 rounded">
+          <p className="text-xs text-[#2fd6a1]">
+            ✓ Great progress! {metrics.skillCount} skills completed with no errors.
           </p>
         </div>
       )}
 
       {metrics.errorCount > 0 && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg">
-          <p className="text-xs text-red-700">
-            {metrics.errorCount} error{metrics.errorCount > 1 ? "s" : ""} occurred.
+        <div className="mt-4 p-3 bg-red-950/20 border border-red-900/40 rounded">
+          <p className="text-xs text-red-400">
+            ✕ {metrics.errorCount} error{metrics.errorCount > 1 ? "s" : ""} occurred.
             Check the Memory Trace for details.
           </p>
         </div>

@@ -1,5 +1,21 @@
+import fs from 'fs';
+import path from 'path';
 import { ListPromptsRequestSchema, GetPromptRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
 import { getAllSkills } from '../parsers/skill-parser.js';
+import { getWorkspaceRoot } from '../state/pipeline-manager.js';
+function getDesignMdContent() {
+    try {
+        const wsRoot = getWorkspaceRoot();
+        const designMdPath = path.join(wsRoot, 'DESIGN.md');
+        if (fs.existsSync(designMdPath)) {
+            return fs.readFileSync(designMdPath, 'utf-8');
+        }
+    }
+    catch (e) {
+        console.error('[Forgewright Global MCP] Failed to read DESIGN.md:', e);
+    }
+    return '';
+}
 export function registerPrompts(server) {
     server.setRequestHandler(ListPromptsRequestSchema, async () => {
         const skills = getAllSkills();
@@ -27,6 +43,11 @@ export function registerPrompts(server) {
         if (promptName === 'fw_orchestrator') {
             const orchestratorSkill = skills.find((s) => s.name === 'production-grade');
             if (orchestratorSkill) {
+                let text = `Please operate as the Forgewright Orchestrator. Load and follow the production-grade skill instructions.\n\n${orchestratorSkill.content}`;
+                const designMd = getDesignMdContent();
+                if (designMd) {
+                    text += `\n\n[MANDATORY DESIGN SOURCE-OF-TRUTH: DESIGN.md]\nA DESIGN.md file has been detected at the root of the workspace. You and all downstream skills MUST strictly follow its design tokens, colors, typography, layout, and styling rules when planning, designing, or implementing UIs:\n\n${designMd}`;
+                }
                 return {
                     description: orchestratorSkill.description,
                     messages: [
@@ -34,9 +55,7 @@ export function registerPrompts(server) {
                             role: 'user',
                             content: {
                                 type: 'text',
-                                text: `Please operate as the Forgewright Orchestrator. Load and follow the production-grade skill instructions.
-
-${orchestratorSkill.content}`,
+                                text: text,
                             },
                         },
                     ],
@@ -46,6 +65,21 @@ ${orchestratorSkill.content}`,
         // Handle individual skills
         const skill = skills.find((s) => `fw_skill_${s.name}` === promptName);
         if (skill) {
+            let text = `Please operate as the following Forgewright Skill:\n\n${skill.content}\n\nExecute the duties for this role based on the current context.`;
+            const stylingSkills = [
+                'ui-designer',
+                'frontend-engineer',
+                'ux-researcher',
+                'qa-engineer',
+                'software-engineer',
+                'accessibility-engineer',
+            ];
+            if (stylingSkills.includes(skill.name)) {
+                const designMd = getDesignMdContent();
+                if (designMd) {
+                    text += `\n\n[MANDATORY DESIGN SOURCE-OF-TRUTH: DESIGN.md]\nA DESIGN.md file has been detected at the root of the workspace. You MUST strictly follow its design tokens, colors, typography, layout, and component specifications when executing your role:\n\n${designMd}`;
+                }
+            }
             return {
                 description: skill.description,
                 messages: [
@@ -53,7 +87,7 @@ ${orchestratorSkill.content}`,
                         role: 'user',
                         content: {
                             type: 'text',
-                            text: `Please operate as the following Forgewright Skill:\n\n${skill.content}\n\nExecute the duties for this role based on the current context.`,
+                            text: text,
                         },
                     },
                 ],

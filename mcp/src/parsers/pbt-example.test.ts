@@ -3,7 +3,7 @@ import fc from 'fast-check';
 import * as jsyaml from 'js-yaml';
 
 // Bản sao hàm parseFrontmatter từ skill-parser.ts để thực hiện test PBT độc lập
-function parseFrontmatter(content: string): { data: any; body: string } {
+function parseFrontmatter(content: string): { data: Record<string, unknown>; body: string } {
   const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
   const match = content.match(frontmatterRegex);
 
@@ -13,7 +13,7 @@ function parseFrontmatter(content: string): { data: any; body: string } {
 
   const [, yamlString, body] = match;
   try {
-    const data = jsyaml.load(yamlString) as any;
+    const data = jsyaml.load(yamlString) as Record<string, unknown>;
     return { data: data || {}, body };
   } catch (e) {
     return { data: {}, body: content };
@@ -29,15 +29,15 @@ describe('Property-Based Testing với fast-check (TypeScript)', () => {
         expect(result).toHaveProperty('data');
         expect(result).toHaveProperty('body');
       }),
-      { numRuns: 1000 } // Chạy 1000 bộ test case ngẫu nhiên tự động sinh ra
+      { numRuns: 1000 }, // Chạy 1000 bộ test case ngẫu nhiên tự động sinh ra
     );
   });
 
   it('Tính chất 2: Khi tạo chuỗi định dạng chuẩn, hàm phải trích xuất chính xác các thuộc tính YAML', () => {
     fc.assert(
       fc.property(
-        fc.string({ minLength: 1, maxLength: 10 }).filter(str => /^[a-zA-Z]+$/.test(str)), // Key chỉ chứa chữ cái
-        fc.string({ minLength: 0, maxLength: 20 }).filter(str => /^[a-zA-Z0-9]+$/.test(str)), // Value chỉ chứa chữ và số
+        fc.string({ minLength: 1, maxLength: 10 }).filter((str) => /^[a-zA-Z]+$/.test(str)), // Key chỉ chứa chữ cái
+        fc.string({ minLength: 0, maxLength: 20 }).filter((str) => /^[a-zA-Z0-9]+$/.test(str)), // Value chỉ chứa chữ và số
         fc.string(), // Phần body ngẫu nhiên
         (key, value, body) => {
           // Tạo chuỗi YAML frontmatter chuẩn
@@ -48,9 +48,9 @@ describe('Property-Based Testing với fast-check (TypeScript)', () => {
           // Kiểm tra xem trường key được parse ra có bằng đúng value ban đầu không
           expect(result.data[key]).toBe(value);
           expect(result.body).toBe(body);
-        }
+        },
       ),
-      { numRuns: 500 }
+      { numRuns: 500 },
     );
   });
 });

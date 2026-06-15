@@ -401,6 +401,24 @@ Everything in Thorough, PLUS:
 - Security requirements (authentication, authorization, data sensitivity)
 - Scalability expectations (growth projection)
 
+### UI/Design Theme Elicitation (awesome-design-md Integration)
+
+If the request involves building a new UI or redesigning/expanding frontend interfaces, and `DESIGN.md` is not present in the workspace root:
+You MUST proactively suggest that the user apply a design system template from the `awesome-design-md` library. Present the options as a multiple-choice prompt:
+
+"Which design style or brand aesthetic would you like to apply to your project? We have 74 pre-configured popular brand styles available as DESIGN.md templates.
+Choosing one will automatically copy its DESIGN.md to your project root to ensure visual consistency for all generated UIs:
+
+1. **VoltAgent** (Recommended - Sleek, electric-green on void-black developer dashboard)
+2. **Vercel** (Stark, ultra-clean monochrome precision)
+3. **Notion** (Warm, friendly editorial layout)
+4. **Raycast** (Sleek dark chrome with vibrant gradient accents)
+5. **Stripe** (Premium modern tech brand gradient aesthetic)
+6. **Other** (Specify any of the other 74 brands, e.g. Airbnb, Apple, Cal, Mistral AI, Ollama, Raycast, Supabase, Vercel, Warp, etc.)
+7. **Skip/Custom** (I will write my own DESIGN.md or use defaults)"
+
+Once the user selects a brand (e.g., `voltagent`), you MUST copy the template from `templates/design-md/<brand>/DESIGN.md` into the workspace root as `DESIGN.md` before proceeding.
+
 ### Elicitation Loop
 
 **This is NOT a single pass.** After each round of questions, re-score all requirements:

@@ -582,7 +582,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (16589 symbols, 21793 relationships, 243 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (19901 symbols, 25213 relationships, 253 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

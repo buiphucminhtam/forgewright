@@ -380,6 +380,11 @@ Scope: [light / moderate / heavy]
 4. **Chat about this** — Free-form input
 ```
 
+**DESIGN.md Suggestion during Plan Presentation**:
+For any mode that involves building a new UI or modifying frontend components, if `DESIGN.md` is not present in the workspace root, you MUST add a step to the plan presentation suggesting that the user apply a pre-configured theme from `templates/design-md/` to ensure visual consistency:
+- Suggest VoltAgent (electric-green on black), Vercel (monochrome), Notion, Raycast, or Stripe.
+- If approved, copy the corresponding `DESIGN.md` template to the workspace root before starting the build.
+
 **Large Feature Mode** (Feature with 3+ components, or any request with complexity): Create planning document on antigravity BEFORE starting:
 
 ```

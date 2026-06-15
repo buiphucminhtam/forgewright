@@ -91,17 +91,17 @@ export function MemoryTrace({ events, maxEvents = 100 }: MemoryTraceProps) {
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#101010] text-[#f2f2f2]">
       {/* Header */}
-      <div className="p-3 border-b border-gray-200 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Memory Trace</h3>
+      <div className="p-3 border-b border-[#3d3a39] flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-[#f2f2f2]">Memory Trace</h3>
 
         <div className="flex items-center gap-2">
           {/* Filter */}
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="text-xs border border-gray-200 rounded px-2 py-1"
+            className="text-xs bg-[#1a1a1a] border border-[#3d3a39] text-[#f2f2f2] rounded px-2 py-1 focus:outline-none focus:border-[#00d992]"
           >
             <option value="all">All</option>
             {actionTypes.map((type) => (
@@ -114,10 +114,10 @@ export function MemoryTrace({ events, maxEvents = 100 }: MemoryTraceProps) {
           {/* Auto-scroll toggle */}
           <button
             onClick={() => setAutoScroll(!autoScroll)}
-            className={`text-xs px-2 py-1 rounded border ${
+            className={`text-xs px-2 py-1 rounded border transition-colors ${
               autoScroll
-                ? "bg-blue-100 border-blue-300 text-blue-700"
-                : "bg-gray-100 border-gray-200 text-gray-600"
+                ? "bg-[#00d992]/20 border-[#00d992] text-[#00d992]"
+                : "bg-[#1a1a1a] border-[#3d3a39] text-[#bdbdbd]"
             }`}
           >
             {autoScroll ? "Auto" : "Pause"}
@@ -130,35 +130,35 @@ export function MemoryTrace({ events, maxEvents = 100 }: MemoryTraceProps) {
         ref={containerRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="flex-1 overflow-y-auto p-2 space-y-1"
+        className="flex-1 overflow-y-auto p-2 space-y-1 font-mono"
         style={{ maxHeight: "calc(100vh - 300px)" }}
       >
         {displayedEvents.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">
+          <div className="text-center text-[#8b949e] py-8">
             <div className="text-2xl mb-2">📜</div>
-            <p className="text-sm">No memory traces yet</p>
+            <p className="text-sm font-sans">No memory traces yet</p>
           </div>
         ) : (
           displayedEvents.map((event, index) => (
             <div
               key={`${event.timestamp}-${index}`}
-              className="flex items-start gap-2 text-xs hover:bg-gray-50 rounded px-2 py-1 transition-colors"
+              className="flex items-start gap-2 text-xs hover:bg-[#1a1a1a] rounded px-2 py-1 transition-colors"
             >
-              <span className="text-gray-400 w-16 flex-shrink-0">
+              <span className="text-[#8b949e] w-16 flex-shrink-0">
                 {formatTime(event.timestamp)}
               </span>
 
-              <span className="text-gray-300 w-8 flex-shrink-0">
+              <span className="text-[#3d3a39] w-8 flex-shrink-0 text-right">
                 +{formatDuration(event.timestamp, baseTimestamp)}
               </span>
 
               <span className="flex-shrink-0">{getIcon(event.action)}</span>
 
               <div className="flex-1 min-w-0">
-                <span className="font-medium text-gray-700">
+                <span className="font-semibold text-[#f2f2f2]">
                   {event.action}
                 </span>
-                <span className="text-gray-500 ml-2 truncate">
+                <span className="text-[#bdbdbd] ml-2 truncate">
                   {event.detail}
                 </span>
               </div>
@@ -168,7 +168,7 @@ export function MemoryTrace({ events, maxEvents = 100 }: MemoryTraceProps) {
       </div>
 
       {/* Footer */}
-      <div className="p-2 border-t border-gray-100 text-xs text-gray-400 text-center">
+      <div className="p-2 border-t border-[#3d3a39] text-xs text-[#8b949e] text-center font-mono">
         {displayedEvents.length} events
         {filter !== "all" && ` (filtered from ${events.length})`}
       </div>
