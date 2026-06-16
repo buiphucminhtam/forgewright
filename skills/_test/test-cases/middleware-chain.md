@@ -136,13 +136,13 @@ test_cases:
 test_id: middleware-006
 stage: 6
 name: "Plan Quality Scoring"
-description: "Score plan against 8-criteria rubric"
+description: "Score plan against 9-criteria rubric"
 max_latency: 500
 test_cases:
   - name: "High-quality plan"
-    input: "Plan with all 8 criteria met"
+    input: "Plan with all 9 criteria met"
     expected:
-      score: 8.0
+      score: 9.0
       pass: true
   - name: "Low-quality plan"
     input: "Plan missing risk/testability"

@@ -105,7 +105,7 @@ run_mode_classification_tests() {
 
 run_plan_quality_tests() {
     echo ""
-    echo "=== Plan Quality Scoring Tests (8 criteria) ==="
+    echo "=== Plan Quality Scoring Tests (9 criteria) ==="
     echo ""
     
     local test_file="$TEST_CASES_DIR/plan-quality.md"
@@ -204,8 +204,8 @@ main() {
     echo "╔══════════════════════════════════════════════════════════╗"
     echo "║       FORGEWRIGHT SELF-TEST SUITE (Phase 1 - Task 1.3)   ║"
     echo "╠══════════════════════════════════════════════════════════╣"
-    printf "║  Mode Classification: 24 modes    Plan Quality: 8 criteria ║\n"
-    printf "║  Middleware Chain: 12 stages                              ║\n"
+    printf "║  Mode Classification: 24 modes    Plan Quality: 9 criteria ║\n"
+    printf "║  Middleware Chain: 14 stages                              ║\n"
     echo "╚══════════════════════════════════════════════════════════╝"
     
     # Run tests based on category

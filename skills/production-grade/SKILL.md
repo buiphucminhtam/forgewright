@@ -28,9 +28,9 @@ Adaptive meta-skill orchestrator for all software engineering work. Analyzes the
 Every skill invocation is wrapped by an ordered middleware chain. Implementation details are in `skills/production-grade/middleware/`:
 
 ```
-Pre-Skill:  ① SessionData → ② ContextLoader → ③ SkillRegistry → ④ Guardrail → ⑤ Summarization
+Pre-Skill:  ① SessionData → ② ContextLoader → ③b DryRunContext → ③ SkillRegistry → ④ Guardrail → ⑤ Summarization
             ═══ SKILL EXECUTION ═══
-Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure → ⑪ CircuitBreaker → ⑫ Bulkhead → ⑬ Verification
+Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure → ⑪ ASIP → ⑫ CircuitBreaker → ⑬ Bulkhead → ⑭ Verification
 ```
 
 | # | Middleware | File | Hook | Purpose |
@@ -46,9 +46,10 @@ Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → �
 | ⑧ | TaskTracking | `middleware/08-task-tracking.md` | after_skill | Update todos, emit events |
 | ⑨ | Memory | `middleware/09-memory.md` | after_skill + turn_close | Persistent fact extraction |
 | ⑩ | GracefulFailure | `middleware/10-graceful-failure.md` | on_error | Retry logic, stuck detection |
-| ⑪ | CircuitBreaker | `skills/_shared/protocols/circuit-breaker.md` | after_skill | Fault isolation + state machine |
-| ⑫ | Bulkhead | `skills/_shared/protocols/bulkhead.md` | after_skill | Resource limits per worker type |
-| ⑬ | Verification | `skills/_shared/protocols/verification.md` | after_skill | Contract + criteria check |
+| ⑪ | ASIP | `skills/_shared/protocols/self-improving-loop.md` | after_skill + on_error | Canonical self-improvement (ASIP) |
+| ⑫ | CircuitBreaker | `skills/_shared/protocols/circuit-breaker.md` | after_skill | Fault isolation + state machine |
+| ⑬ | Bulkhead | `skills/_shared/protocols/bulkhead.md` | after_skill | Resource limits per worker type |
+| ⑭ | Verification | `skills/_shared/protocols/verification.md` | after_skill | Evidence-First verification check |
 **Middleware protocol:** `skills/_shared/protocols/middleware-chain.md`
 
 ### Progressive Skill Loading (v8.0 — DeerFlow Pattern)
@@ -435,7 +436,7 @@ All skills MUST follow the sensitive file protection protocol:
 
 **ALL skills** MUST run the plan quality loop before doing any work. No exceptions — every skill plans first, scores, improves until ≥ 9.0:
 
-!`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 8 criteria, threshold 9.0/10, improve loop with research + skill self-improvement"`
+!`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 9 criteria, threshold 9.0/10, improve loop with research + skill self-improvement"`
 
 ### ⚠️ ASIP Enforcement for Plan Quality
 

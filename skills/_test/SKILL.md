@@ -13,8 +13,8 @@ The Test Orchestrator provides automated testing for core Forgewright behaviors:
 | Category | Coverage |
 |----------|----------|
 | Mode Classification | 24 modes (100%) |
-| Plan Quality Scoring | 8 criteria |
-| Middleware Chain | 12 stages |
+| Plan Quality Scoring | 9 criteria |
+| Middleware Chain | 14 stages |
 | Memory Retrieval | 5 key operations |
 | Skill Routing | 15 edge cases |
 
@@ -73,37 +73,40 @@ Tests that verify the 24 execution modes are correctly detected from user reques
 
 ### Plan Quality Scoring Tests
 
-Tests that verify the 8-criteria scoring rubric works correctly.
+Tests that verify the 9-criteria scoring rubric works correctly.
 
 | Criterion | Weight | Min Score |
 |-----------|--------|-----------|
-| Completeness | 1.0 | 0.875 (7/8) |
-| Specificity | 1.0 | 0.875 (7/8) |
-| Feasibility | 1.0 | 0.875 (7/8) |
-| Risk Awareness | 1.0 | 0.875 (7/8) |
-| Scope Control | 1.0 | 1.0 (8/8) |
-| Dependency Ordering | 1.0 | 1.125 (9/8) |
-| Testability | 1.0 | 0.875 (7/8) |
-| Impact Assessment | 1.0 | 0.75 (6/8) |
+| Completeness | 1.0 | 0.888 (8/9) |
+| Specificity | 1.0 | 0.888 (8/9) |
+| Feasibility | 1.0 | 0.888 (8/9) |
+| Risk Awareness | 1.0 | 0.888 (8/9) |
+| Scope Control | 1.0 | 1.0 (9/9) |
+| Dependency Ordering | 1.0 | 1.111 (10/9) |
+| Testability | 1.0 | 0.888 (8/9) |
+| Impact Assessment | 1.0 | 0.777 (7/9) |
+| Evidence Verification | 1.0 | 0.888 (8/9) |
 
 ### Middleware Chain Tests
 
-Tests that verify the 12-stage middleware chain executes correctly.
+Tests that verify the 14-stage middleware chain executes correctly.
 
 | Stage | Description | Max Latency |
 |-------|-------------|-------------|
-| 1 | Memory Retrieval | 500ms |
-| 2 | Intent Analysis | 200ms |
-| 3 | Mode Classification | 100ms |
-| 4 | Context Loading | 300ms |
-| 5 | Plan Generation | 2000ms |
-| 6 | Plan Scoring | 500ms |
-| 7 | Skill Selection | 200ms |
-| 8 | Skill Execution | Variable |
-| 9 | Quality Gate | 100ms |
-| 10 | Result Validation | 200ms |
-| 11 | Memory Save | 300ms |
-| 12 | Session Update | 100ms |
+| 1 | Session Data Load | 200ms |
+| 2 | Context/Memory Load | 300ms |
+| 3 | Dry Run Context | 100ms |
+| 4 | Skill Registry Load | 200ms |
+| 5 | Guardrail Check | 100ms |
+| 6 | Summarization | 200ms |
+| 7 | Quality Gate Check | 100ms |
+| 8 | Brownfield Safety Check | 200ms |
+| 9 | Task Tracking Update | 100ms |
+| 10 | Memory fact extraction | 300ms |
+| 11 | Graceful Failure handler | 100ms |
+| 12 | ASIP Self-Healing Loop | 2000ms |
+| 13 | Circuit Breaker | 100ms |
+| 14 | Evidence Verification | 500ms |
 
 ---
 
@@ -130,8 +133,8 @@ expected:
 | Metric | Target | Current |
 |--------|--------|---------|
 | Mode Coverage | 100% (24/24) | 0% |
-| Plan Scoring Coverage | 100% (8/8) | 0% |
-| Middleware Coverage | 100% (12/12) | 0% |
+| Plan Scoring Coverage | 100% (9/9) | 0% |
+| Middleware Coverage | 100% (14/14) | 0% |
 | Overall Test Pass Rate | >=95% | N/A |
 | CI Integration | Yes | No |
 

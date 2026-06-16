@@ -18,8 +18,8 @@ Execute levels in order. Each level has a severity that determines whether to ST
 **Runs BEFORE implementation, not after.** See `plan-quality-loop.md` for full protocol.
 
 ```
-1. Every planning step scores the plan against 8 criteria (completeness, specificity,
-   feasibility, risk awareness, scope control, dependency ordering, testability, impact)
+1. Every planning step scores the plan against 9 criteria (completeness, specificity,
+   feasibility, risk awareness, scope control, dependency ordering, testability, impact, evidence verification)
 
 2. Score < threshold (default 9.0/10.0) → LEARN + RESEARCH + IMPROVE loop
    - Identify weak criteria

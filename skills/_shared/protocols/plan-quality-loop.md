@@ -12,7 +12,7 @@ Before ANY skill does ANY work:
 4. **IMPROVE** (if < 9.0) — Research → Improve skill → Re-plan
 5. **EXECUTE** — Only after passing threshold
 
-## 8-Criteria Rubric
+## 9-Criteria Rubric
 
 | Criterion | Weight | Description |
 |-----------|--------|-------------|
@@ -24,8 +24,9 @@ Before ANY skill does ANY work:
 | **Dependency Ordering** | 1.0 | Tasks are in correct dependency order |
 | **Testability** | 1.0 | Plan can be verified with concrete criteria |
 | **Impact Assessment** | 1.0 | Plan considers downstream effects |
+| **Evidence Verification** | 1.0 | Plan lists assumptions and details how they will be verified (Evidence-First) |
 
-**Pass Threshold:** ≥ 9.0/10 (with bonus from Dependency Ordering)
+**Pass Threshold:** ≥ 9.0/10 (Average of the 9 criteria, scaled 0-10 each)
 
 ## Enhanced Research Flow (NEW)
 

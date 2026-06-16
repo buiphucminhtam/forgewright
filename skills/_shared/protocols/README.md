@@ -8,7 +8,7 @@
 |------|---------|---------|
 | `evidence-first.md` | Evidence-First Thinking (Anti-Hallucination) | AGENTS.md, CLAUDE.md |
 | `pipeline.md` | INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN | AGENTS.md, CLAUDE.md |
-| `plan-quality-loop.md` | 8-criteria scoring rubric | AGENTS.md, CLAUDE.md |
+| `plan-quality-loop.md` | 9-criteria scoring rubric | AGENTS.md, CLAUDE.md |
 | `self-check.md` | Pre-completion checklist | AGENTS.md, CLAUDE.md |
 | `research-gate.md` | Research flow for low-scoring plans | AGENTS.md, CLAUDE.md |
 

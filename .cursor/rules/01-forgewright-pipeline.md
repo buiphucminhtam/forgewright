@@ -25,7 +25,7 @@
 2. Run Step 0.5: bash scripts/memory-retrieve.sh "<keywords>"
 3. Run Step 0: Read skills/production-grade/SKILL.md → extract 9 dimensions
 4. Run Step 1: Classify into one of 24 modes
-5. Run Step 2: Plan with 8-criteria rubric, score >= 9.0
+5. Run Step 2: Plan with 9-criteria rubric, score >= 9.0
 6. THEN execute or delegate
 ```
 
@@ -60,7 +60,7 @@ ASSUMPTION: "User muốn A/B/C"
 | Memory | `bash scripts/memory-suggest.sh "<keywords>"` | Get memory suggestions |
 | Interpret | Read `skills/production-grade/SKILL.md` Step 0 | Classify + interpret |
 | Classify | Read `skills/production-grade/modes/README.md` | 24 mode classification |
-| Plan | Read `skills/_shared/protocols/plan-quality-loop.md` | 8-criteria scoring |
+| Plan | Read `skills/_shared/protocols/plan-quality-loop.md` | 9-criteria scoring |
 | Orchestrate | Read `skills/production-grade/SKILL.md` | Full orchestrator |
 
 ### Escalation

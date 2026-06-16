@@ -153,11 +153,30 @@ test_cases:
     expected_score: 0.0
 ```
 
+## Evidence Verification Criterion
+
+```yaml
+test_id: plan-evidence
+criterion: EvidenceVerification
+description: "Plan lists assumptions and details how they will be verified (Evidence-First)"
+weight: 1.0
+test_cases:
+  - name: "Comprehensive verification"
+    input: "Lists all key assumptions with exact files to read or commands to verify"
+    expected_score: 1.0
+  - name: "Partial verification"
+    input: "Lists assumptions but lacks concrete verification steps"
+    expected_score: 0.625
+  - name: "No verification plan"
+    input: "No assumptions declared, guessing proposed"
+    expected_score: 0.0
+```
+
 ## Overall Scoring Tests
 
 ```yaml
 test_id: plan-009
-description: "Perfect plan scores 8.0+"
+description: "Perfect plan scores 9.0+"
 input:
   completeness: 1.0
   specificity: 1.0
@@ -167,9 +186,10 @@ input:
   dependency_ordering: 1.125
   testability: 1.0
   impact_assessment: 1.0
-expected_total: 8.125
+  evidence_verification: 1.0
+expected_total: 9.125
 pass_threshold: 9.0
-notes: "Bonus points from Dependency Ordering can push total above 8.0"
+notes: "Bonus points from Dependency Ordering can push total above 9.0"
 
 ---
 test_id: plan-010
@@ -183,7 +203,8 @@ input:
   dependency_ordering: 1.0
   testability: 0.625
   impact_assessment: 0.5
-expected_total: 5.875
+  evidence_verification: 0.625
+expected_total: 6.5
 pass_threshold: 9.0
 notes: "This plan would fail the quality gate"
 
@@ -199,8 +220,8 @@ input:
   dependency_ordering: 1.125
   testability: 1.0
   impact_assessment: 1.0
-  bonus: 0.875
+  evidence_verification: 0.875
 expected_total: 9.0
 pass_threshold: 9.0
-notes: "Additional bonus points needed to hit threshold"
+notes: "High evidence verification score required to hit threshold"
 ```

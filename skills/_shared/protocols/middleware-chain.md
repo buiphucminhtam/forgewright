@@ -31,7 +31,9 @@ User Request
 │  ⑩ GracefulFailure Stuck detection, retry limits     │
 │  ⑪ ASIP            ⭐ CANONICAL self-improvement   │
 │                      (write test → research → skill) │
-│  ⑫ CircuitBreaker Fault isolation + state machine  │
+│  ⑫ CircuitBreaker  Fault isolation + state machine  │
+│  ⑬ Bulkhead        Resource limits per worker type  │
+│  ⑭ Verification    ⭐ Evidence-First Verification   │
 │                                                     │
 └─────────────────────────────────────────────────────┘
   │
@@ -63,6 +65,8 @@ Result / Next Skill
 | ⑩ | **GracefulFailure** | graceful-failure.md | `on_error()` | Detect stuck states, manage retry counts, graceful exit. Delegates to ASIP after 2+ failures. |
 | ⑪ | **ASIP** | self-improving-loop.md | `after_skill()` + `on_error()` | **CANONICAL self-improvement loop.** 2+ failures → write verification artifact → run → research (NotebookLM/WebSearch) → update skills. Single source of truth for all self-improvement. |
 | ⑫ | **CircuitBreaker** | circuit-breaker.md | `after_skill()` | Update circuit state, transition based on outcome |
+| ⑬ | **Bulkhead** | bulkhead.md | `after_skill()` | Enforce resource limits per worker type |
+| ⑭ | **Verification** | verification.md | `after_skill()` | Verify all assumptions using Evidence-First Thinking |
 
 ## Execution Rules
 
@@ -185,6 +189,12 @@ middleware:
       failure_threshold: 3
       timeout_duration: 60
       recovery_timeout: 120
+    - name: bulkhead
+      enabled: true
+      max_concurrency: 5
+    - name: verification
+      enabled: true
+      enforceEvidenceFirst: true
 ```
 
 ## Integration with Existing Protocols
@@ -230,5 +240,9 @@ After each middleware chain execution, log summary:
   ⑧ TaskTracking:     ✓ 5ms    (SKILL_COMPLETED emitted)
   ⑨ Memory:           ✓ 15ms   (2 facts extracted)
   ⑩ GracefulFailure:  ✓ 1ms    (no errors)
+  ⑪ ASIP:             ✓ 2ms    (no errors)
+  ⑫ CircuitBreaker:   ✓ 1ms    (state: CLOSED)
+  ⑬ Bulkhead:         ✓ 2ms    (concurrency: 1)
+  ⑭ Verification:     ✓ 12ms   (all evidence verified)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```

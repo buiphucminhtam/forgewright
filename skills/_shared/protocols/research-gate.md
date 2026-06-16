@@ -59,7 +59,7 @@ When a plan scores below 9.0, the Research Gate activates to improve the plan qu
 ## After Research
 
 1. **Re-plan** with synthesized insights
-2. **Re-score** against 8-criteria rubric
+2. **Re-score** against 9-criteria rubric
 3. **If still < 9.0**, iterate (max 3 times)
 4. **If still failing**, escalate to user with findings
 
