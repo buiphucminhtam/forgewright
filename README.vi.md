@@ -276,35 +276,43 @@ flowchart TD
     REQ(["User Request"])
     PRE1["① SessionData<br/>Load profile + session state"]
     PRE2["② ContextLoader<br/>Memory + conventions + KIs"]
+    PRE3b["③b DryRunContext<br/>System Prompt mock injection"]
     PRE3["③ SkillRegistry<br/>Progressive skill discovery"]
     PRE4["④ Guardrail<br/>Pre-tool authorization"]
-    PRE5["⑤ PromptMaster<br/>Intent parse · Prompt techniques · Templates"]
-    PRE6["⑥ Summarization<br/>Auto-compress if >70% budget"]
+    PRE5["⑤ Summarization<br/>Auto-compress context if >70%"]
     SKILL_EXEC["SKILL EXECUTION<br/>Engineer → QA → Security → ..."]
-    POST1["⑦ QualityGate<br/>4-level validation 0-100"]
-    POST2["⑧ BrownfieldSafety<br/>Regression + change manifest"]
-    POST3["⑨ TaskTracking<br/>Update task.md"]
-    POST4["⑩ Memory Turn-Close<br/>REQ: DONE: OPEN: → mem0"]
-    POST5["⑪ GracefulFailure<br/>Retry + exit strategy"]
+    POST1["⑥ QualityGate<br/>4-level validation 0-100"]
+    POST2["⑦ BrownfieldSafety<br/>Regression + change manifest"]
+    POST3["⑧ TaskTracking<br/>Update task.md"]
+    POST4["⑨ Memory<br/>Async fact extraction"]
+    POST5["⑩ GracefulFailure<br/>Stuck detection + retry limits"]
+    POST6["⑪ ASIP<br/>Canonical self-improving loop"]
+    POST7["⑫ CircuitBreaker<br/>Fault isolation + states"]
+    POST8["⑬ Bulkhead<br/>Resource limits per worker"]
+    POST9["⑭ Verification<br/>Evidence-First Verification"]
     RESULT(["Result / Next Skill"])
 
-    REQ --> PRE1 --> PRE2 --> PRE3 --> PRE4 --> PRE5 --> PRE6 --> SKILL_EXEC
-    SKILL_EXEC --> POST1 --> POST2 --> POST3 --> POST4 --> POST5 --> RESULT
+    REQ --> PRE1 --> PRE2 --> PRE3b --> PRE3 --> PRE4 --> PRE5 --> SKILL_EXEC
+    SKILL_EXEC --> POST1 --> POST2 --> POST3 --> POST4 --> POST5 --> POST6 --> POST7 --> POST8 --> POST9 --> RESULT
 
     style REQ fill:#1a1a2e,stroke:#e94560,color:#fff
     style RESULT fill:#16213e,stroke:#0f3460,color:#e94560
     style SKILL_EXEC fill:#0f3460,stroke:#e94560,color:#fff
     style PRE1 fill:#1a5276,stroke:#3498db,color:#fff
     style PRE2 fill:#1a5276,stroke:#3498db,color:#fff
+    style PRE3b fill:#1a5276,stroke:#3498db,color:#fff
     style PRE3 fill:#1a5276,stroke:#3498db,color:#fff
     style PRE4 fill:#1a5276,stroke:#3498db,color:#fff
     style PRE5 fill:#1a5276,stroke:#3498db,color:#fff
-    style PRE6 fill:#1a5276,stroke:#3498db,color:#fff
     style POST1 fill:#1e8449,stroke:#2ecc71,color:#fff
     style POST2 fill:#1e8449,stroke:#2ecc71,color:#fff
     style POST3 fill:#1e8449,stroke:#2ecc71,color:#fff
     style POST4 fill:#1e8449,stroke:#2ecc71,color:#fff
     style POST5 fill:#1e8449,stroke:#2ecc71,color:#fff
+    style POST6 fill:#1e8449,stroke:#2ecc71,color:#fff
+    style POST7 fill:#1e8449,stroke:#2ecc71,color:#fff
+    style POST8 fill:#1e8449,stroke:#2ecc71,color:#fff
+    style POST9 fill:#1e8449,stroke:#2ecc71,color:#fff
 ```
 
 ### Session Lifecycle (Turn-Start + Turn-Close)
