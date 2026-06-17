@@ -661,6 +661,15 @@ Run these before every build:
 └─────────────────────────────────────────────┘
 ```
 
+### BDD-to-TDD Workflow (For Complex Tasks)
+
+When working on complex tasks (medium/large features or full builds), the QA Engineer must generate test stubs/skeletons directly from the Given/When/Then scenarios produced during the BA phase, *before* code changes are made.
+
+1. **Read the BA Spec:** Look at `.forgewright/business-analyst/handoff/ba-package.md` or the BRD to retrieve the Given/When/Then scenarios.
+2. **Create Test File(s) with Stubs:** Generate test files containing tests mapped directly to the Gherkin scenarios. Mark each test with pending/placeholder logic (e.g., `test.todo('should...')` in Jest, or failing assertions).
+3. **Save and Register:** Keep these stubs saved in the codebase as the baseline.
+4. **Developer Handoff:** Pass the stubs to the Developer to implement the code and make the tests pass.
+
 ### TDD Example
 
 ```typescript

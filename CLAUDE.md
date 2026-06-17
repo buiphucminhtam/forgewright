@@ -495,9 +495,9 @@ Before finishing ANY task, verify ALL of the following:
 | 2 | ✅ Plan scored ≥ 9.0? | Improve plan first |
 | 3 | ✅ Assumptions declared? | Write verification artifacts for each assumption |
 | 4 | ✅ Verification artifacts run? | Run artifacts → get pass/fail evidence before proceeding |
-| 5 | ✅ Code changed? | → Run QA tests |
-| 6 | ✅ Tests written? | Write tests (mandatory) |
-| 7 | ✅ Tests passed? | Fix issues first |
+| 5 | ✅ Test cases prepared? | For medium/large features, write test cases/stubs first |
+| 6 | ✅ Code changed? | Implement code to satisfy requirements & test cases |
+| 7 | ✅ Tests run & verified? | Run QA tests to verify 100% pass |
 | 8 | ✅ Scope respected? | Flag scope creep |
 | 9 | ✅ User approval? | Wait for approval (if gate) |
 | 10 | ✅ Turn-Close memory saved? | Save before ending turn |
@@ -558,12 +558,11 @@ Before finishing ANY task, verify ALL of the following:
 
 **⚠️ MANDATORY RULE:**
 ```
-Code Changed → Write Tests → Run Tests → Verify Pass → Done
-     ↑                                    ↓
-     ←←←←←←←← NO. ALWAYS RUN TESTS ←←←←←←
+For Complex Tasks: Given/When/Then (BA) → Write Tests/Stubs (QA) → Code (Dev) → Run Tests → Pass ✓
+For Simple Tasks:  Code (Dev) → Write & Run Tests (QA) → Pass ✓
 ```
 
-**Never wait for user to ask for tests. After any code change, auto-run QA.**
+**Never wait for user to ask for tests. Apply complexity-based hybrid testing flow.**
 
 ## Memory Middleware (Cross-IDE, Auto-Save)
 

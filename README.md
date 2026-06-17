@@ -43,6 +43,7 @@ Forgewright acts as a production-grade software delivery harness for AI coding a
 *   **ASIP Feedback Loops**: Automatically detects plan/execution failures, triggers deep research, and adapts skill SOPs.
 *   **SQLite Cognitive Graph (FluxMem)**: Ensures isolated project-specific context and sub-second execution path caching (Procedural Circuits).
 *   **Enforceable Guardrails**: Active security audits, CI validation, and protected paths prevent AI hallucinations from introducing vulnerabilities.
+*   **Hybrid BDD-First Testing Flow**: Automatically classifies task complexity using GitNexus metrics. Enforces a strict BDD/TDD-first sequence (`BA (BDD) -> QA (Stubs) -> Build -> Test`) for high-complexity tasks, while allowing a fast-track test-after flow for low-risk hotfixes.
 
 ---
 

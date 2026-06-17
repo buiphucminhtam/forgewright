@@ -533,7 +533,7 @@ All modes share these behaviors:
 - Apply sensitive file protection protocol for all file operations
 - **Run plan quality loop** on EVERY skill invocation — plan first, score ≥ 9.0 before any work begins
 - **Asynchronous Heartbeat:** Periodically emit human-readable status updates (e.g., "Running tests...", "Applying self-healing fix 2/5...") so the user knows the AI is working and hasn't frozen.
-- **⚠️ QA AUTO-RUN (MANDATORY):** After any code change (build, fix, feature), ALWAYS run QA/Testing WITHOUT waiting for user prompt. The sequence is: BUILD → TEST → VERIFY → DONE. Never finish without testing.
+- **⚠️ QA AUTO-RUN (MANDATORY):** Apply complexity-based hybrid testing flow. For complex tasks, the sequence is: Given/When/Then (BA) → Write Tests/Stubs (QA) → Code (Dev) → Run Tests → Pass ✓. For simple tasks: Code (Dev) → Write & Run Tests (QA) → Pass ✓. Never finish without verifying tests pass.
 - **Antigravity Planning (for large features):** Features with 3+ components MUST use antigravity planning structure BEFORE starting implementation. Create `antigravity/planning/[feature-name]/` with PLAN.md, SCOPE.md, ARCHITECTURE.md, TASKS.md files.
 - Engagement mode: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution.
 
@@ -580,34 +580,25 @@ When Goal mode is triggered, Forgewright enters autonomous pursuit mode:
 | 2 | **Plan scored ≥ 9.0?** | If < 9.0, improve plan before proceeding |
 | 3 | **ASIP Research Gate followed?** | If 2 failures occurred → research + skill update was mandatory |
 | 4 | **Lessons written?** | Append to skill SKILL.md + .forgewright/lessons.md |
-| 5 | **Code changes made?** | If yes → run QA tests |
-| 6 | **Tests written?** | If code changed → write tests |
-| 7 | **Tests passed?** | If tests exist → run them |
+| 5 | **Test cases prepared?** | For medium/large features, write test stubs first |
+| 6 | **Code changed?** | Implement code to satisfy requirements & test cases |
+| 7 | **Tests run & verified?** | Run QA tests to verify 100% pass |
 | 8 | **gitnexus_impact run?** | If editing symbols → run impact analysis |
 | 9 | **Scope respected?** | If scope creep detected → flag to user |
 | 10 | **User approval obtained?** | If gate exists → wait for approval |
 | 11 | **Review mode respected?** | If Full mode → run director reviews; if Solo → confirm skip OK |
 | 12 | **ASIP metrics updated?** | Increment counters in .forgewright/asip-metrics.json |
 
-**⚠️ NEVER finish a task without completing checks 3-5 if code was changed.**
+**⚠️ NEVER finish a task without completing checks 3-5 and 7 if code was changed.**
 
-### QA Test Sequence (MANDATORY after any code change)
+### QA Test Sequence (MANDATORY complexity-based hybrid flow)
 
 ```
-Code Changed?
-    ↓ YES
-Run QA Engineer (Express mode)
-    ↓
-Write tests (unit → integration → e2e)
-    ↓
-Run tests and verify ALL pass
-    ↓
-Report results
-    ↓
-Done ✓
+For Complex Tasks:   Given/When/Then (BA) → Write Tests/Stubs (QA) → Code (Dev) → Run Tests → Pass ✓
+For Simple Tasks:    Code (Dev) → Write & Run Tests (QA) → Pass ✓
 ```
 
-**Do NOT wait for user to ask for tests. Run them automatically.**
+**Do NOT wait for user to ask for tests. Run/verify them automatically.**
 
 ## Antigravity Planning System
 
@@ -692,13 +683,14 @@ Add a feature to an existing codebase. Lightweight DEFINE → BUILD → TEST.
 2. **BA pre-flight (conditional)** — Assess the user's feature description for information gaps using 6W1H. If requirements score < 6/7 completeness → run BA (Express depth) to elicit missing info. If clear → skip. Log: `✓ Requirements complete — skipping BA` or `⧖ Information gaps detected — running BA elicitation`
 3. **PM (Express depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only). If BA ran, use `ba-package.md` to reduce questions.
 4. **Architect (scoped)** — design how this feature fits the existing architecture. New endpoints, schema changes, component additions. NOT a full system redesign.
-5. **Build** — Software Engineer and/or Frontend Engineer implement the feature
-6. **⚠️ Test (AUTO-RUN)** — **Immediately** write and run tests for the new feature. **DO NOT WAIT for user to ask.** Sequence: Build → Test → Verify → Done.
-7. **Optional: Review** — Code Reviewer checks the new code against existing patterns
+5. **Test Cases/Stubs Preparation** — QA Engineer writes test stubs based on BDD/Gherkin spec from the BA package (Mandatory for medium/large features; optional for simple fixes).
+6. **Build** — Software Engineer and/or Frontend Engineer implement the feature code to satisfy requirements and test cases.
+7. **⚠️ Test Verification (AUTO-RUN)** — Run and verify tests. DO NOT WAIT for user to ask. Sequence: Given/When/Then (BA) → Write Tests/Stubs (QA) → Code (Dev) → Run Tests → Pass ✓.
+8. **Optional: Review** — Code Reviewer checks the new code against existing patterns
 
-**1 gate:** After PM scoping (step 3), confirm scope before building.
+**1 gate:** After PM scoping (step 3), confirm scope before test case preparation.
 
-**⚠️ IMPORTANT:** Step 6 (Test) is MANDATORY. After building, ALWAYS run tests without waiting for user prompt.
+**⚠️ IMPORTANT:** Step 7 (Test Verification) is MANDATORY. After building, ALWAYS run tests without waiting for user prompt.
 
 ### Harden Mode
 

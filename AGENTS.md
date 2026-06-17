@@ -276,8 +276,8 @@ If you realize mid-turn that you skipped the pipeline:
 
 | User Says | Mode | What Happens |
 |-----------|------|-------------|
-| "Build a SaaS for..." | Full Build | All skills, 6 phases, 3 gates |
-| "Add [feature]..." | Feature | PM → Architect → BE/FE → QA → auto-test |
+| "Build a SaaS for..." | Full Build | All skills, 6 phases, 3 gates (enforces BDD-First testing) |
+| "Add [feature]..." | Feature | PM → Architect → QA (stubs) → BE/FE → auto-test (BDD-First for complex) |
 | "Review my code" | Review | Code Reviewer only |
 | "Write tests" | Test | QA Engineer only |
 | "Deploy / CI/CD" | Ship | DevOps → SRE |
