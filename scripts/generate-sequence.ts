@@ -107,18 +107,32 @@ const EXCLUDE_SYMBOLS = new Set([
 // Helper: Recursively get all source files
 function getSourceFiles(dir: string, fileList: string[] = []): string[] {
   if (!fs.existsSync(dir)) return fileList;
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const filePath = path.join(dir, file);
-    if (fs.statSync(filePath).isDirectory()) {
-      if (file !== 'node_modules' && file !== '.git' && file !== '.gitnexus' && file !== '.forgewright') {
-        getSourceFiles(filePath, fileList);
-      }
-    } else {
-      if (/\.(ts|tsx|js|jsx)$/.test(file)) {
-        fileList.push(filePath);
+  try {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      // Skip hidden files/directories (starting with dot) to avoid scanning .git, .venv, .antigravitycli, etc.
+      if (file.startsWith('.')) continue;
+      
+      const filePath = path.join(dir, file);
+      try {
+        if (!fs.existsSync(filePath)) continue;
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+          if (file !== 'node_modules') {
+            getSourceFiles(filePath, fileList);
+          }
+        } else {
+          if (/\.(ts|tsx|js|jsx)$/.test(file)) {
+            fileList.push(filePath);
+          }
+        }
+      } catch (err) {
+        // Safe check for transient files disappearing during scan
+        continue;
       }
     }
+  } catch (err) {
+    // Fail-safe for permission denied or folder deletion during scan
   }
   return fileList;
 }
