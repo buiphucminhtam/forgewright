@@ -37,6 +37,9 @@ All sequence diagrams generated or requested in this repository (in documents, d
 - **NEVER** output raw text art, ASCII tables, or other text-based custom representations for sequence flows.
 - **ALWAYS** wrap participant labels in double quotes `""` to support special characters (like parenthesis and slashes, e.g. `participant A as "A (path/to/file.ts)"`).
 
+## ⚠️ MANDATORY RULE: CONDITIONAL GITNEXUS & SEQUENCE UPDATE
+If changes modify logic files (e.g. `.ts`, `.py`, `.js` under `src/`, `mcp/`, or `scripts/` excluding tests), you MUST run `gitnexus analyze` and `npx tsx scripts/generate-sequence.ts` to keep the code index and sequence flow diagrams updated.
+
 <!-- NOTE: Evidence-First section is duplicated in AGENTS.md (for Antigravity).
      Source of truth: CLAUDE.md. Changes here must be mirrored to AGENTS.md manually. -->
 
