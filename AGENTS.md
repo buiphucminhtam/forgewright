@@ -589,6 +589,7 @@ This project is indexed by GitNexus as **forgewright** (17375 symbols, 21943 rel
 
 ## Always Do
 
+- **MUST run `gitnexus analyze` and `npx tsx scripts/generate-sequence.ts`** if changes modify logic files (e.g. `.ts`, `.py`, `.js` under `src/`, `mcp/`, or `scripts/` excluding tests) to keep the code index and sequence flow diagrams updated.
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.

@@ -15,6 +15,23 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# ── Wave 0.5: Conditional GitNexus & Sequence Diagram Update ─────────────
+echo "[0.5/4] Checking for logic changes to update sequence diagrams & index..."
+LOGIC_CHANGES=$(git diff --cached --name-only | grep -E '\.(ts|py|js)$' | grep -v -E '(test|__tests__|jest|vitest|playwright|config)' || true)
+
+if [ -n "$LOGIC_CHANGES" ]; then
+  echo "⚙️ [Forgewright] Logic changes detected in staged files. Updating index and flow charts..."
+  
+  # 1. Run gitnexus analyze
+  gitnexus analyze || echo "⚠️ GitNexus analyze failed, skipping index update."
+  
+  # 2. Update sequence diagrams
+  npx tsx scripts/generate-sequence.ts || echo "⚠️ Sequence diagram generation failed, skipping diagram update."
+  
+  # 3. Stage updated files
+  git add docs/architecture/flows/ || true
+fi
+
 # ── Wave 1: Linting & Formatting via lint-staged ──────────────────────────
 echo "[1/4] Running lint-staged..."
 npx lint-staged
