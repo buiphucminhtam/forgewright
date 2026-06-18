@@ -1,0 +1,33 @@
+# Promptfoo configuration for Forgewright internal benchmark tests
+
+prompts:
+  - 'file://../../skills/qa-engineer/SKILL.md'
+
+providers:
+  - id: anthropic:messages:claude-3-5-sonnet-latest
+    config:
+      temperature: 0.2
+      max_tokens: 4000
+
+tests:
+  - description: 'QA Engineer - Scaffolds test stubs for simple feature'
+    vars:
+      requirements: 'Build a login function that takes username and password and returns a JWT token'
+      context: 'Python FastAPI codebase'
+    assert:
+      - type: contains
+        value: 'Given'
+      - type: contains
+        value: 'When'
+      - type: contains
+        value: 'Then'
+      - type: javascript
+        value: 'output.toLowerCase().includes("def test_login") || output.toLowerCase().includes("async def test_login")'
+
+  - description: 'QA Engineer - Rejects invalid task contract'
+    vars:
+      requirements: 'make it work'
+      context: 'empty'
+    assert:
+      - type: llm-rubric
+        value: 'The output should refuse the task or ask for clarification, rather than generating code.'

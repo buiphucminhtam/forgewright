@@ -25,7 +25,7 @@
       "grow": ["conversion-optimizer", "growth-marketer"],
       "game-build": ["game-designer", "unity-engineer", "unreal-engineer", "godot-engineer", "roblox-engineer", "level-designer", "narrative-designer", "technical-artist", "game-asset-vfx", "game-audio-engineer"],
       "xr-build": ["xr-engineer", "game-designer"],
-      "ai-build": ["ai-engineer", "prompt-engineer", "data-scientist", "web-scraper"],
+      "ai-build": ["ai-engineer", "prompt-engineer", "data-scientist", "web-scraper", "llm-tester"],
       "analyze": ["business-analyst"]
     }
   },
@@ -84,7 +84,8 @@
     "parallel-dispatch":      { "enabled": "auto" },
     "memory-manager":         { "enabled": "auto" },
     "skill-maker":            { "enabled": "auto" },
-    "mcp-generator":          { "enabled": "auto" }
+    "mcp-generator":          { "enabled": "auto" },
+    "llm-tester":             { "enabled": "auto" }
   },
 
   "context_budget": {
