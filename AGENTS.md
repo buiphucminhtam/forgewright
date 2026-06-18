@@ -1,10 +1,10 @@
 # Forgewright — Production Grade AI Pipeline
 
-> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 80 specialized skills.
+> **This file is read by Antigravity on every new chat.** It tells the AI assistant how to use Forgewright's 81 specialized skills.
 
 ## What is Forgewright?
 
-Forgewright is an adaptive orchestrator with **80 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Phaser 3/Three.js game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
+Forgewright is an adaptive orchestrator with **81 AI skills** that covers the entire software development lifecycle **plus game development, XR, data engineering, and MLOps**. From a single code review to a full Unity/Unreal/Godot/Phaser 3/Three.js game build, it routes to the right skills automatically. Supports **parallel execution** via git worktrees for faster builds.
 
 **Pipeline:** `INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
@@ -428,7 +428,7 @@ cp .claude/hooks.yml ~/.claude/hooks.yml
 
 ## Skills Directory
 
-All 80 skills are in the `skills/` directory:
+All 81 skills are in the `skills/` directory:
 
 | Skill | Location |
 |-------|----------|
@@ -486,6 +486,7 @@ All 80 skills are in the `skills/` directory:
 | XLSX Engineer | `skills/xlsx-engineer/SKILL.md` |
 | Project Manager | `skills/project-manager/SKILL.md` |
 | Eval Engineer | `skills/eval-engineer/SKILL.md` |
+| LLM Tester | `skills/llm-tester/SKILL.md` — Promptfoo-powered evaluation & red-teaming |
 | **Testing** | |
 | Autonomous Testing | `skills/autonomous-testing/SKILL.md` — Self-healing E2E workflow |
 | **Growth** | |

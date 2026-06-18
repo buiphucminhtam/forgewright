@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/version-8.7.0-blue.svg" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-80-brightgreen.svg" alt="Skills" />
+  <img src="https://img.shields.io/badge/skills-81-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-24-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-29-00CED1.svg" alt="Protocols" />
   <img src="https://img.shields.io/badge/Game_Dev-Unity·Unreal·Godot·Roblox-FF4500.svg" alt="Game Dev" />

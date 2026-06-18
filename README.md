@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
   <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-80-brightgreen?style=flat-square" alt="Skills" />
+  <img src="https://img.shields.io/badge/skills-81-brightgreen?style=flat-square" alt="Skills" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
   </a>
