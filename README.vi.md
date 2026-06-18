@@ -18,7 +18,7 @@
 
 ## TL;DR — Forgewright là gì?
 
-**Tưởng tượng:** Bạn có một đội ngũ 80 chuyên gia AI. Mỗi người giỏi một việc khác nhau — viết code, kiểm tra bảo mật, thiết kế game, tối ưu tốc độ. Forgewright là "người quản lý" — khi bạn nói "tôi muốn build một app bán hàng", nó tự biết cần gọi chuyên gia nào, theo thứ tự nào, và kiểm tra chất lượng ra sao.
+**Tưởng tượng:** Bạn có một đội ngũ 81 chuyên gia AI. Mỗi người giỏi một việc khác nhau — viết code, kiểm tra bảo mật, thiết kế game, tối ưu tốc độ. Forgewright là "người quản lý" — khi bạn nói "tôi muốn build một app bán hàng", nó tự biết cần gọi chuyên gia nào, theo thứ tự nào, và kiểm tra chất lượng ra sao.
 
 > **Một câu:** Forgewright tự động chọn đúng chuyên gia AI cho đúng việc, từ ý tưởng đến sản phẩm.
 
@@ -71,7 +71,7 @@ flowchart LR
     subgraph L1["⚡ Level 1 — Basic"]
         direction TB
         L1A["✅ Đã có gì"]
-        L1B["• 80 kỹ năng AI"]
+        L1B["• 81 kỹ năng AI"]
         L1C["• Pipeline tự động"]
         L1D["• Mặc định khi cài đặt"]
     end
@@ -121,7 +121,7 @@ flowchart TD
     START(["Bạn ơi, bắt đầu từ đâu?"])
 
     START --> Q1{"Bạn là dev?"}
-    Q1 --> |"Không / mới bắt đầu"| EASY["✅ Level 1 — Basic<br/>Chỉ cần cài là xong<br/>80 kỹ năng có sẵn"]
+    Q1 --> |"Không / mới bắt đầu"| EASY["✅ Level 1 — Basic<br/>Chỉ cần cài là xong<br/>81 kỹ năng có sẵn"]
     Q1 --> |"Có, muốn thông minh hơn"| SMART["✅ Level 2 — Smart<br/>Thêm phân tích code<br/>Hỏi gì đáp nấy"]
 
     SMART --> Q2{"Cần nhớ qua các lần chat?"}
@@ -816,7 +816,7 @@ flowchart LR
 
 ---
 
-## 80 Skills — Dùng cái nào, khi nào?
+## 81 Skills — Dùng cái nào, khi nào?
 
 ```mermaid
 flowchart TD
@@ -824,7 +824,7 @@ flowchart TD
 
     USER --> |"Build website/app mới"| SaaS["📦 Core Engineering<br/>22 kỹ năng"]
     USER --> |"Build game (Unity/Unreal/Godot)"| GAME["🎮 Game Development<br/>18 kỹ năng"]
-    USER --> |"Tối ưu / debug code"| OPT["🔧 Optimization & Debug<br/>Performance · Debugger · QA"]
+    USER --> |"Tối ưu / debug code"| OPT["🔧 Optimization, Debug & Test<br/>Performance · Debugger · QA · LLM Tester"]
     USER --> |"Research / phân tích dữ liệu"| DATA["📊 Data & AI<br/>AI Engineer · Data Scientist · NotebookLM"]
     USER --> |"Deploy / CI/CD / infra"| DEVOPS["🚀 DevOps & Ship<br/>DevOps · SRE · Database"]
     USER --> |"Marketing / tăng trưởng"| GROW["📈 Growth<br/>Growth Marketer · Conversion Optimizer"]
@@ -832,7 +832,7 @@ flowchart TD
 
     SaaS --> SaaS_DETAIL["<b>22 kỹ năng:</b><br/>Business Analyst · Product Manager<br/>Solution Architect · Software Engineer<br/>Frontend · QA · Security · DevOps · SRE<br/>Database · API Designer · Prompt Engineer"]
     GAME --> GAME_DETAIL["<b>18 kỹ năng:</b><br/>Game Designer · Unity/Unreal/Godot/Roblox Engineer<br/>Level Designer · Narrative Designer<br/>Technical Artist · Game Audio Engineer<br/>XR Engineer"]
-    OPT --> OPT_DETAIL["<b>Tối ưu:</b> Performance Engineer<br/><b>Debug:</b> Debugger → Software Engineer<br/><b>Test:</b> QA Engineer"]
+    OPT --> OPT_DETAIL["<b>Tối ưu:</b> Performance Engineer<br/><b>Debug:</b> Debugger → Software Engineer<br/><b>Test:</b> QA Engineer · LLM Tester"]
     DATA --> DATA_DETAIL["<b>AI:</b> AI Engineer · Prompt Engineer · Data Scientist<br/><b>Research:</b> NotebookLM Researcher<br/><b>Web:</b> Web Scraper · XLSX Engineer"]
     DEVOPS --> DEVOPS_DETAIL["<b>Ship:</b> DevOps · SRE · Performance Engineer<br/><b>Data:</b> Database Engineer<br/><b>API:</b> API Designer"]
     GROW --> GROW_DETAIL["<b>Tăng trưởng:</b> Growth Marketer<br/><b>Chuyển đổi:</b> Conversion Optimizer"]
@@ -1134,13 +1134,12 @@ npx tsx forgewright/scripts/generate-sequence.ts \
 
 #### 🚀 Cách ép quy luật tự động hóa (Automation)
 
-1.  **Tự động cập nhật khi commit**: Bổ sung vào file cấu hình commit hook của dự án (ví dụ: `.husky/post-commit`):
+1.  **Tự động cập nhật khi commit**: Forgewright tích hợp sẵn pre-commit hook (`.husky/pre-commit`). Khi phát hiện có thay đổi ở các file logic core (`.ts`, `.py`, `.js` trong `src/`, `mcp/` hoặc `scripts/` ngoại trừ test), hook này sẽ tự động chạy phân tích GitNexus và sinh lại sơ đồ Sequence Flow:
     ```bash
-    # Tự động cập nhật sơ đồ sau mỗi lần commit
-    npx tsx forgewright/scripts/generate-sequence.ts --client apps/web/src --repo my-saas-app
+    gitnexus analyze
+    npx tsx scripts/generate-sequence.ts
     ```
-2.  **Ràng buộc Agent AI**: Thêm quy tắc này vào file `CLAUDE.md` hoặc `AGENTS.md` của dự án đó:
-    > **MUST run `npx tsx forgewright/scripts/generate-sequence.ts` with project-specific paths after any API changes or re-indexing.**
+2.  **Ràng buộc Agent AI**: Dự án bắt buộc tự động cập nhật GitNexus & Sơ đồ Sequence thông qua các quy tắc (Rules) thiết lập trong file `CLAUDE.md` và `AGENTS.md`.
 
 
 ---
@@ -1203,7 +1202,7 @@ Nếu Forgewright giúp bạn ship nhanh hơn, bạn có thể ủng hộ tại 
 ---
 
 <p align="center">
-  <strong>Forgewright — 80 AI skills. 24 modes. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
+  <strong>Forgewright — 81 AI skills. 24 modes. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
 </p>
 <p align="center">
   <em>Lên kế hoạch chính xác. Build với tự tin. Mở rộng thông minh.</em>

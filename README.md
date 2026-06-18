@@ -189,7 +189,7 @@ flowchart TB
     subgraph LEVEL1["⚡ Level 1 — Zero Setup"]
         direction TB
         L1A["✅ Just works"]
-        L1B["80 AI skills auto-activate"]
+        L1B["81 AI skills auto-activate"]
         L1C["No install required"]
     end
 
@@ -612,7 +612,7 @@ Use the Token Tracker skill for AI-powered analysis:
 
 ---
 
-## 80 Skills, 24 Modes
+## 81 Skills, 24 Modes
 
 ```mermaid
 flowchart TD
@@ -785,13 +785,12 @@ npx tsx forgewright/scripts/generate-sequence.ts \
 
 #### 🚀 Automate and Enforce (Husky & AI Rules)
 
-1.  **Auto-update on commits**: Add this to your project's commit hooks (e.g. `.husky/post-commit`):
+1.  **Auto-update on commits**: Forgewright has a built-in pre-commit hook (`.husky/pre-commit`). If changes are made to core logic files (`.ts`, `.py`, `.js` under `src/`, `mcp/`, or `scripts/` excluding tests), it automatically updates the GitNexus index and regenerates sequence flow diagrams:
     ```bash
-    # Auto-update sequence flow charts on commits
-    npx tsx forgewright/scripts/generate-sequence.ts --client apps/web/src --repo my-saas-app
+    gitnexus analyze
+    npx tsx scripts/generate-sequence.ts
     ```
-2.  **Enforce AI Agent Rules**: Add this to your project's `CLAUDE.md` or `AGENTS.md`:
-    > **MUST run `npx tsx forgewright/scripts/generate-sequence.ts` with project-specific paths after any API changes or re-indexing.**
+2.  **Enforce AI Agent Rules**: The repository enforces GitNexus & Sequence Flow diagram updates via project rules in `CLAUDE.md` and `AGENTS.md`.
 
 
 ### Keeping Index Fresh
@@ -1014,7 +1013,7 @@ A: Forgewright v8.7.0 is a major release focusing on reliability, learning reten
 - **GraphRAG Memory V4 (FluxMem)** — Integrated SQLite relational cognitive graph (`flux_nodes` & `flux_edges`) replacing slow JSON files. Includes **Procedural Circuits** caching for sub-second trajectory recovery, automatic edge decay (0.5) / reinforcement (1.2) via ASIP, and passive 10m idle checkpointing.
 - **GitNexus Integration** — In-editor symbol graph intelligence (impact analysis, blast radius, symbol-level rename).
 - **Universal MCP Setup** — Single script configures all platforms (Cursor, Claude Code, Antigravity, Codex) automatically.
-- **80 Skills** — Expanded team with 80 specialized agent skills (including Prompt Optimizer, XLSX Engineer, UX Researcher, and Roblox/Three.js/Phaser game engineers).
+- **81 Skills** — Expanded team with 81 specialized agent skills (including LLM Tester, Prompt Optimizer, XLSX Engineer, UX Researcher, and Roblox/Three.js/Phaser game engineers).
 
 See the [Changelog](#v800-june-2026--forgewright-80) below for full details.
 
