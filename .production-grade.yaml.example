@@ -3,6 +3,42 @@
 # Place this file at the project root or in .forgewright/config.yaml
 
 # ============================================================
+# Optional Expert CLI Mode
+# ============================================================
+expertMode:
+  # Disabled by default. Enable with: forge expert on
+  enabled: false
+
+  # Supported values: claude | codex
+  # Switch with: forge expert use claude OR forge expert use codex
+  activeCli: "claude"
+
+  # Optional explicit fallback. Leave null for single-provider setups.
+  fallbackCli: null
+
+  # Only use expert CLI for high-stakes checkpoints.
+  useFor:
+    planning: false
+    failedPlanReview: true
+    gates: true
+    securityReview: true
+    architectureReview: true
+    codeReview: true
+
+  budget:
+    maxExpertCallsPerRun: 5
+    requireConfirmationAbove: 3
+
+# ============================================================
+# Token Tracking
+# ============================================================
+token_tracking:
+  # Enable with: forge token on
+  enabled: false
+  log_dir: "~/.forgewright/usage"
+  export_format: jsonl
+
+# ============================================================
 # Plan Quality Loop Configuration
 # ============================================================
 planQuality:

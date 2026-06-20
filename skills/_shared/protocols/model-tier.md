@@ -1,6 +1,8 @@
 # Model Tier Assignment Protocol
 
-> **Purpose:** Assign the optimal Claude model tier to each skill invocation based on task complexity. Optimizes cost and latency while maintaining quality.
+> **Purpose:** Assign an appropriate model tier to each skill invocation based on task complexity. Optimizes cost and latency while maintaining quality.
+
+For optional high-stakes escalation through local Claude CLI or Codex CLI, use `expert-cli-mode.md`. Expert CLI mode is disabled by default and does not require multiple providers.
 
 ## Model Tiers
 
@@ -105,6 +107,28 @@ User can override tier per invocation:
 ```
 
 CLI flags take precedence over frontmatter defaults.
+
+## Optional Expert CLI Mode
+
+Premium CLI escalation is controlled separately from normal model tiers:
+
+```bash
+forge expert status
+forge expert on
+forge expert off
+forge expert use claude
+forge expert use codex
+forge token on
+forge token status
+```
+
+Rules:
+
+1. Only `claude` and `codex` CLI backends are supported.
+2. Expert CLI mode is optional and defaults to off.
+3. Single-provider setups are valid. Do not require both CLIs.
+4. Missing CLI produces a warning and normal pipeline execution continues.
+5. Token tracking can be enabled independently with `forge token on`.
 
 ## Cost Optimization
 

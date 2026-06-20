@@ -44,6 +44,8 @@ Forgewright acts as a production-grade software delivery harness for AI coding a
 *   **SQLite Cognitive Graph (FluxMem)**: Ensures isolated project-specific context and sub-second execution path caching (Procedural Circuits).
 *   **Enforceable Guardrails**: Active security audits, CI validation, and protected paths prevent AI hallucinations from introducing vulnerabilities.
 *   **Hybrid BDD-First Testing Flow**: Automatically classifies task complexity using GitNexus metrics. Enforces a strict BDD/TDD-first sequence (`BA (BDD) -> QA (Stubs) -> Build -> Test`) for high-complexity tasks, while allowing a fast-track test-after flow for low-risk hotfixes.
+*   **Premium Judgment on Demand**: Optional Expert CLI Mode routes only high-stakes planning, architecture, security, code review, and gate decisions through your local Claude CLI or Codex CLI. It is off by default, works with just one CLI, and keeps premium model usage reserved for the moments that matter.
+*   **Built-in Cost Control**: `forge token on` enables local token tracking, budgets, reports, and dashboards so teams can prove where premium calls improve quality instead of guessing.
 
 ---
 
@@ -57,6 +59,34 @@ Forgewright acts as a production-grade software delivery harness for AI coding a
 | No quality guarantee | **Auto-scored 0-100** — you know when it's ready |
 | Starts from scratch each chat | **SQLite L2 Graph Memory** — biological-inspired cognitive graph (FluxMem) |
 | Handles requests directly | **Always via pipeline** — never skips orchestration |
+| Premium models are expensive | **Expert CLI Mode** — use Claude/Codex only for risky gates |
+| AI spend is invisible | **Token commands** — turn on tracking, budgets, reports, and dashboard |
+
+---
+
+## Premium Quality Without Premium Waste
+
+Forgewright now supports an optional **Expert CLI Mode** for teams that want stronger judgment at the riskiest points without paying for premium models on every prompt.
+
+```bash
+# Keep premium escalation off by default
+forge expert status
+
+# Use one local CLI only; no multi-provider setup required
+forge expert use codex --track-tokens
+forge expert use claude
+
+# Control where expert review is allowed
+forge expert gates on
+forge expert budget --max-calls 5
+
+# Track spend independently of expert mode
+forge token on
+forge token report --period week
+forge token dashboard
+```
+
+Use it for failed plan reviews, architecture gates, security reviews, production readiness, and other high-impact checkpoints. Leave it off for routine implementation and status checks.
 
 ---
 
@@ -529,14 +559,15 @@ After:  $5/month (same productivity)
 Track your LLM usage, costs, and optimization opportunities in real-time.
 
 ```bash
-# Start the token API server
-python3 scripts/token-api-server.py
+# Enable tracking for this project
+forge token on
 
-# Open the dashboard
-open scripts/token-dashboard.html
+# Set budgets
+forge token budget --daily 5 --weekly 25 --monthly 80
 
-# Or use the CLI analyzer
-python3 scripts/token-analyzer.py --project $(pwd) --period week
+# Report and dashboard
+forge token report --period week
+forge token dashboard
 ```
 
 ### Features

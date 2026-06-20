@@ -16,6 +16,8 @@ import { registerValidateCommand } from './commands/validate.js';
 import { registerCompletionCommand } from './commands/completion.js';
 import { registerCoordsCommand } from './commands/coords.js';
 import { registerAutonomousTestCommand } from './commands/test.js';
+import { registerExpertCommand } from './commands/expert.js';
+import { registerTokenCommand } from './commands/token.js';
 import { VERSION } from './version.js';
 import { EXIT_CODES } from './exit-codes.js';
 import pc from 'picocolors';
@@ -42,6 +44,8 @@ export function buildProgram(): Command {
   registerCompletionCommand(program);
   registerCoordsCommand(program);
   registerAutonomousTestCommand(program);
+  registerExpertCommand(program);
+  registerTokenCommand(program);
 
   // Initialize config
   const config = getConfig();
@@ -59,6 +63,10 @@ Examples:
   $ forge tools list --category engineering  # Filter by category
   $ forge skills list                 # List all skills
   $ forge skills search api           # Search skills
+  $ forge expert status               # Show optional Claude/Codex CLI expert mode
+  $ forge expert use codex --track-tokens  # Switch expert mode to Codex CLI
+  $ forge token on                    # Enable local token tracking
+  $ forge token report --period week  # Show local token usage summary
   $ forge --version                   # Show version
 
 Agent Mode:

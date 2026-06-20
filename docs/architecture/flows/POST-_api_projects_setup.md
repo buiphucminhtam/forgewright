@@ -1,5 +1,5 @@
 # API Flow: POST /api/projects/setup
-Generated: 2026-06-18T06:38:39.701Z
+Generated: 2026-06-20T06:10:37.321Z
 
 ## Flow Diagram
 
@@ -13,6 +13,6 @@ sequenceDiagram
 ```
 
 ## Flow Details
-*   **Client Component**: [multica-hub/src/components/hub/EnvironmentStatus.tsx](file:////Users/buiphucminhtam/GitHub/forgewright/multica-hub/src/components/hub/EnvironmentStatus.tsx)
+*   **Client Component**: [multica-hub/src/components/hub/EnvironmentStatus.tsx](../../../multica-hub/src/components/hub/EnvironmentStatus.tsx)
 *   **API Endpoint**: `POST /api/projects/setup`
-*   **Server Handler File**: [multica-hub/src/app/api/projects/setup/route.ts](file:////Users/buiphucminhtam/GitHub/forgewright/multica-hub/src/app/api/projects/setup/route.ts)
+*   **Server Handler File**: [multica-hub/src/app/api/projects/setup/route.ts](../../../multica-hub/src/app/api/projects/setup/route.ts)

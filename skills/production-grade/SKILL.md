@@ -522,6 +522,14 @@ User can override per-invocation with `--review [mode]` flag.
 
 Override per-invocation with `--model [haiku|sonnet|opus]` flag.
 
+## Optional Expert CLI Mode
+
+**Escalate high-stakes planning/review/gates through a local Claude CLI or Codex CLI only when explicitly enabled:**
+
+!`cat skills/_shared/protocols/expert-cli-mode.md 2>/dev/null || echo "Protocol not found — expert CLI mode disabled by default. Use forge expert status/on/off/use and forge token on/status."`
+
+Expert CLI mode is optional, supports single-provider setups, and must not require both Claude and Codex to be installed.
+
 ## Mode Execution (Non-Full-Build)
 
 All modes share these behaviors:

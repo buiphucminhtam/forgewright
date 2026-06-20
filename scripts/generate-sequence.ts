@@ -70,6 +70,7 @@ if (!apiDir) {
 
 const repoName = repoNameArg || path.basename(process.cwd());
 const OUTPUT_DIR = outputDirArg ? resolvePath(outputDirArg) : path.join(process.cwd(), 'docs', 'architecture', 'flows');
+const repoRoot = process.cwd();
 
 console.log(`🔧 Cấu hình Sequence Generator:`);
 console.log(`  - Client Dir: ${clientDir}`);
@@ -310,6 +311,20 @@ function flattenCallTree(node: CallNode, participants: Set<string>, connections:
   }
 }
 
+function normalizeSlashes(value: string): string {
+  return value.replace(/\\/g, '/');
+}
+
+function repoRelativePath(filePath: string): string {
+  return normalizeSlashes(filePath);
+}
+
+function markdownLinkTarget(filePath: string): string {
+  const absolutePath = path.resolve(repoRoot, filePath);
+  const relativeFromOutput = normalizeSlashes(path.relative(OUTPUT_DIR, absolutePath));
+  return relativeFromOutput.startsWith('.') ? relativeFromOutput : `./${relativeFromOutput}`;
+}
+
 // 5. Generate Mermaid diagram code and write markdown file
 function generateMermaid(flow: ApiFlow) {
   const fileName = `${flow.method}-${flow.apiPath.replace(/[^a-zA-Z0-9]/g, '_')}.md`;
@@ -371,11 +386,11 @@ ${noteLine}${connectionLines}
 \`\`\`
 
 ## Flow Details
-*   **Client Component**: [${flow.clientFile}](file:///${path.resolve(flow.clientFile).replace(/\\/g, '/')})
+*   **Client Component**: [${repoRelativePath(flow.clientFile)}](${markdownLinkTarget(flow.clientFile)})
 *   **API Endpoint**: \`${flow.method} ${flow.apiPath}\`
 ${flow.queryParams ? `*   **Query Parameters**: \`${flow.queryParams}\`\n` : ''}*   **Server Handler File**: ${
     flow.routeFile
-      ? `[${flow.routeFile}](file:///${path.resolve(flow.routeFile).replace(/\\/g, '/')})`
+      ? `[${repoRelativePath(flow.routeFile)}](${markdownLinkTarget(flow.routeFile)})`
       : '*Not Found*'
   }
 `;
@@ -435,11 +450,11 @@ Bộ tài liệu tự động vẽ sơ đồ trình tự liên thông giữa Cli
 ${flows
   .map((flow) => {
     const diagramFile = `${flow.method}-${flow.apiPath.replace(/[^a-zA-Z0-9]/g, '_')}.md`;
-    return `| **${flow.method}** | \`${flow.apiPath}\` | [\`${path.basename(flow.clientFile)}\`](file:///${path
-      .resolve(flow.clientFile)
-      .replace(/\\/g, '/')}) | ${
+    return `| **${flow.method}** | \`${flow.apiPath}\` | [\`${path.basename(flow.clientFile)}\`](${markdownLinkTarget(
+      flow.clientFile,
+    )}) | ${
       flow.routeFile
-        ? `[\`${path.basename(flow.routeFile)}\`](file:///${path.resolve(flow.routeFile).replace(/\\/g, '/')})`
+        ? `[\`${path.basename(flow.routeFile)}\`](${markdownLinkTarget(flow.routeFile)})`
         : '*Chưa xác định*'
     } | [Xem sơ đồ](${diagramFile}) |`;
   })
