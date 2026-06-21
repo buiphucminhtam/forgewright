@@ -308,6 +308,7 @@ Users can invoke these workflows directly:
 - `/pipeline` — Show full pipeline reference and available modes
 - `/setup-mobile-test` — Set up plug-and-play mobile testing (Android/iOS)
 - `/setup-paperclip` — Set up Paperclip multi-agent orchestration (optional)
+- `/setup-codex` or prompt "setup codex" / "enable codex mcp" — Configure Forgewright MCP for OpenAI Codex CLI
 - `/onboard` — Run deep project analysis (creates `.forgewright/project-profile.json`)
 - `/mcp` — Generate MCP workspace isolation config — creates `.antigravity/mcp-manifest.json` for Antigravity conflict-free multi-project support
 
@@ -341,7 +342,7 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 
    The script auto-detects which platforms are available and configures them all with identical settings — the same MCP server path, the same launchers, the same workspace detection logic.
 
-   To set up individual platforms:
+   To set up individual platforms (or when the user prompts "setup codex", "enable codex mcp", "bật codex cli" or similar):
    ```bash
    bash forgewright/scripts/forgewright-mcp-setup.sh --cursor       # Cursor only
    bash forgewright/scripts/forgewright-mcp-setup.sh --claude-code # Claude Code only

@@ -31,6 +31,52 @@
 - **Why**: Ensures version consistency across team members, supports project-specific custom skills, and is strictly required for executing local Git Hooks (pre-commit/post-commit) dynamically.
 - **Action**: Never rely solely on global MCP server setups for production or team repositories. Always run `/setup` (or `git submodule add`) to initialize Forgewright locally.
 
+## Auto-Initialization Check
+
+Run silently BEFORE any execution (all modes) to ensure project intelligence is fully configured.
+
+**Step 0.1 — GitNexus + MCP Check:**
+
+1. Check if `.antigravity/mcp-manifest.json` exists and is current in the project root.
+2. **If missing or stale**, run ONE command to set up everything:
+
+   **Detect forgewright path first**, then run:
+
+   ```bash
+   # If forgewright is a submodule in the project:
+   bash <project-root>/forgewright/scripts/forgewright-mcp-setup.sh
+
+   # If forgewright IS the project:
+   bash scripts/forgewright-mcp-setup.sh
+   ```
+
+   This single command sets up Forgewright MCP for **ALL four platforms simultaneously**:
+   - **Cursor**: `~/.cursor/mcp.json`
+   - **Claude Code**: `~/.claude/settings.json` (mcpServers key)
+   - **Antigravity**: MCP workspace isolation via `~/.cursor/projects/<hash>/mcps/`
+   - **OpenAI Codex CLI**: `~/.codex/config.toml` (TOML format)
+
+   To set up individual platforms (or when the user prompts "setup codex", "enable codex mcp", "bật codex cli" or similar):
+   ```bash
+   bash forgewright/scripts/forgewright-mcp-setup.sh --cursor       # Cursor only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --claude-code # Claude Code only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --antigravity  # Antigravity only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --codex        # OpenAI Codex CLI only
+   bash forgewright/scripts/forgewright-mcp-setup.sh --check       # Status check
+   bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose     # Full diagnostics
+   ```
+
+3. **GitNexus Setup** (if not already done):
+   ```bash
+   npm install -g gitnexus
+   gitnexus setup  # Auto-configures all editors
+   ```
+
+4. After setup, yield a brief message:
+   `ℹ MCP server ready for this workspace. Restart your AI client to activate.`
+
+5. **If already set up**, continue normally.
+
 ## ⚠️ MANDATORY RULE: MERMAID FOR ALL SEQUENCE DIAGRAMS
 
 All sequence diagrams generated or requested in this repository (in documents, design files, pull requests, or AI chat responses) **MUST** be written in Mermaid.js syntax using the ` ```mermaid ` code block.
@@ -825,13 +871,12 @@ Goals survive context resets:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (17375 symbols, 21943 relationships, 260 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (17519 symbols, 22381 relationships, 294 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
 ## Always Do
- 
-- **MUST run `gitnexus analyze` and `npx tsx scripts/generate-sequence.ts`** if changes modify logic files (e.g. `.ts`, `.py`, `.js`, `.cs`, `.gd`, `.go`, `.rs`, etc. under `src/`, `mcp/`, or `scripts/` excluding tests) to keep the code index and sequence flow diagrams updated.
+
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.

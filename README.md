@@ -299,8 +299,14 @@ npm install --legacy-peer-deps
 #### Step 4: Setup MCP (New Method)
 
 ```bash
-# One-command global setup (works for ALL projects)
+# One-command global setup (configures Cursor, Claude Code, Antigravity, and Codex CLI)
 bash scripts/forgewright-mcp-setup.sh
+
+# Or setup Codex CLI specifically
+bash scripts/forgewright-mcp-setup.sh --codex
+
+# Or ask your AI assistant (Cursor, Claude Code, or Codex CLI) with a simple prompt:
+# "enable codex mcp" OR "bật codex cli mcp" (the AI will automatically run the setup command)
 
 # Check status
 bash scripts/forgewright-mcp-setup.sh --check
