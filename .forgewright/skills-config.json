@@ -7,8 +7,8 @@
   "auto_detect_rules": {
     "description": "When auto_detect is true, skills are loaded based on the classified mode. Manual overrides below take precedence.",
     "mode_skill_map": {
-      "full-build": ["product-manager", "solution-architect", "software-engineer", "frontend-engineer", "qa-engineer", "security-engineer", "code-reviewer", "devops", "sre", "technical-writer"],
-      "feature": ["product-manager", "solution-architect", "software-engineer", "frontend-engineer", "qa-engineer"],
+      "full-build": ["product-manager", "solution-architect", "software-engineer", "frontend-engineer", "qa-engineer", "security-engineer", "code-reviewer", "devops", "sre", "technical-writer", "designer"],
+      "feature": ["product-manager", "solution-architect", "software-engineer", "frontend-engineer", "qa-engineer", "designer"],
       "harden": ["qa-engineer", "security-engineer", "code-reviewer", "performance-engineer"],
       "ship": ["devops", "sre"],
       "test": ["qa-engineer"],
@@ -18,7 +18,7 @@
       "explore": ["polymath"],
       "research": ["polymath"],
       "optimize": ["performance-engineer", "sre"],
-      "design": ["ux-researcher", "ui-designer"],
+      "design": ["ux-researcher", "ui-designer", "designer"],
       "mobile": ["mobile-engineer", "product-manager", "solution-architect"],
       "mobile-test": ["mobile-tester"],
       "marketing": ["growth-marketer", "conversion-optimizer"],
@@ -63,6 +63,7 @@
     "conversion-optimizer":   { "enabled": "auto" },
     "web-scraper":            { "enabled": "auto" },
     "polymath":               { "enabled": "auto" },
+    "designer":               { "enabled": "auto" },
 
     "game-designer":          { "enabled": "auto" },
     "unity-engineer":         { "enabled": "auto" },

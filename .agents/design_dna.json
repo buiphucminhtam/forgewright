@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "name": "Antigravity Modern Dark Theme",
+    "description": "Premium dark interface with glassmorphism effects and electric-green accents.",
+    "version": "1.0.0"
+  },
+  "design_system": {
+    "color": {
+      "palette_type": "dark-theme",
+      "primary": { "hex": "#0D0E12", "role": "main background" },
+      "secondary": { "hex": "#1A1C23", "role": "surface containers & cards" },
+      "accent": { "hex": "#00FF66", "role": "buttons, focus states, success indicators" },
+      "neutral": { "scale": "slate", "usage": "text-primary: #F8FAFC, text-secondary: #94A3B8" },
+      "surface": {
+        "background": "#0D0E12",
+        "card": "#1A1C23",
+        "elevated": "#262936"
+      },
+      "contrast_strategy": "WCAG AA compliant (minimum 4.5:1 ratio)"
+    },
+    "typography": {
+      "font_families": {
+        "heading": "Outfit, sans-serif",
+        "body": "Inter, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "type_scale": {
+        "heading_1": { "size": "2.25rem", "weight": "700", "line_height": "1.2" },
+        "body": { "size": "1rem", "weight": "400", "line_height": "1.5" }
+      }
+    },
+    "spacing": {
+      "base_unit": 8,
+      "scale": [8, 16, 24, 32, 48, 64],
+      "content_density": "comfortable"
+    },
+    "shape": {
+      "border_radius": {
+        "small": "4px",
+        "medium": "12px",
+        "large": "24px",
+        "pill": "9999px"
+      },
+      "divider_style": "1px solid rgba(255, 255, 255, 0.08)"
+    },
+    "elevation": {
+      "levels": {
+        "low": "0 2px 4px rgba(0,0,0,0.2)",
+        "medium": "0 8px 16px rgba(0,0,0,0.3)",
+        "high": "0 16px 32px rgba(0,0,0,0.4)"
+      }
+    }
+  },
+  "visual_effects": {
+    "glassmorphism": {
+      "enabled": true,
+      "backdrop_blur": "12px",
+      "border_color": "rgba(255, 255, 255, 0.08)",
+      "bg_opacity": 0.6
+    },
+    "performance_tier": "lightweight"
+  }
+}
