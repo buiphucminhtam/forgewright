@@ -14,6 +14,7 @@ tags: [qa, quality-assurance, testing, test-cases, automated-testing, regression
 
 ## Protocols
 
+!`cat skills/_shared/protocols/qa-test-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`
@@ -81,10 +82,15 @@ Write tests at the appropriate level:
 
 ### Test Case Design Principles
 
+Refer to [qa-test-protocol.md](file:///Users/buiphucminhtam/GitHub/forgewright/skills/_shared/protocols/qa-test-protocol.md) for full methodologies:
 - **Each test case has ONE assertion** (or one logical assertion group)
-- **Tests are independent** — no shared state between tests
-- **Tests are deterministic** — same input always produces same output
-- **Tests are readable** — name explains what and why
+- **Tests are independent** — no shared state between tests, always clean up using setup/teardown hooks
+- **Tests are deterministic** — same input always produces same output (mock Math.random, Date, and network responses)
+- **Tests are readable** — follow standard Gherkin Given-When-Then scenarios or descriptive test naming conventions
+- **Equivalence Partitioning & BVA** — Partition input domains into valid/invalid sets and explicitly check boundary values (edges)
+- **Decision Tables & ddgraphs** — map complex business logic dependencies and optimize branch paths using ddgraphs
+- **Pairwise Combinatorial Testing** — Use Covering Arrays $CA(N; t, k, v)$ to reduce test combinations while maintaining coverage
+- **Mutation Testing** — Run mutation checkers to verify the Fault Exposing Potential (FEP) of the test suite (FEP-Total & FEP-Additional)
 
 ### Anti-Pattern Watchlist
 

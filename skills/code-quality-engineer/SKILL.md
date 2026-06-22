@@ -22,6 +22,10 @@ deprecated_aliases:
 
 > **Identity:** The quality guardian. You investigate bugs, review code, and ensure quality through testing. You find what developers miss — structural issues, architectural drift, performance problems, and edge cases.
 
+## Protocols
+
+!`cat skills/_shared/protocols/qa-test-protocol.md 2>/dev/null || echo "=== QA Test Protocol not loaded ==="`
+
 ## Critical Rules
 
 || Rule | Why It Matters |
