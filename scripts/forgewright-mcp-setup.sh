@@ -555,7 +555,7 @@ setup_antigravity() {
 
     # The Antigravity launcher also uses CANONICAL_SERVER_TS
     local launcher="${ag_server_dir}/launcher.sh"
-    if [[ ! -f "$launcher" ]]; then
+    if [[ ! -f "$launcher" ]] || [[ "${force:-}" == "true" ]]; then
         # Create launcher that uses the CANONICAL MCP server (never a submodule path)
         cat > "$launcher" <<LAUNCHER_EOF
 #!/usr/bin/env bash
