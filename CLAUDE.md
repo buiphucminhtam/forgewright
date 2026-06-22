@@ -507,7 +507,7 @@ See `skills/` directory for full list:
 
 ### Universal MCP Setup — One Server, All Platforms
 
-**The canonical MCP server lives at:** `.forgewright/mcp-server/server.ts`
+**The canonical MCP server lives at:** `~/.forgewright/mcp-server/src/index.ts`
 
 **The setup script (`forgewright-mcp-setup.sh`) configures ALL platforms to reference this single canonical server:**
 
@@ -516,8 +516,10 @@ See `skills/` directory for full list:
 | **Cursor** | `~/.cursor/mcp.json` | `forgewright` + `gitnexus` entries |
 | **Claude Code** | `~/.claude/settings.json` | `mcpServers.forgewright` + `mcpServers.gitnexus` |
 | **Antigravity** | `~/.cursor/projects/<hash>/mcps/` | MCP workspace isolation |
+| **OpenAI Codex** | `~/.codex/config.toml` | `forgewright` + `gitnexus` (TOML) |
+| **OpenCode** | `~/.config/opencode/config.json` | `mcpServers.forgewright` + `mcpServers.gitnexus` |
 
-**Why this works:** All three platforms use `npx tsx` with the same absolute path to the canonical server. The server auto-detects workspace from `FORGEWRIGHT_WORKSPACE` env var or git root, so it works correctly from any project.
+**Why this works:** All platforms use `npx tsx` with the same absolute path to the canonical server. The server auto-detects workspace from `FORGEWRIGHT_WORKSPACE` env var or git root, so it works correctly from any project.
 
 **Setup commands:**
 ```bash
@@ -531,6 +533,43 @@ bash scripts/forgewright-mcp-setup.sh --antigravity  # Antigravity only
 bash scripts/forgewright-mcp-setup.sh --check        # Status check
 bash scripts/forgewright-mcp-setup.sh --diagnose     # Full diagnostics
 ```
+
+### ⚠️ SUBMODULE MCP GLOBAL PROTECTION — Mandatory Rule
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│             SUBMODULE MCP GLOBAL PROTECTION                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  When a project uses Forgewright as a SUBMODULE                    │
+│  (e.g., /my-project/forgewright/), the AI agent MUST:             │
+│                                                                     │
+│  ✅ DO:                                                             │
+│  1. Only write .antigravity/mcp-manifest.json (project-local)      │
+│  2. Point global configs to ~/.forgewright/mcp-server/src/index.ts │
+│  3. Use ${workspaceFolder} for Cursor/Claude (dynamic resolution) │
+│  4. Run setup from the CANONICAL install, not from submodule       │
+│                                                                     │
+│  ❌ NEVER:                                                          │
+│  1. Write submodule paths into ~/.cursor/mcp.json                  │
+│  2. Write submodule paths into ~/.claude/settings.json             │
+│  3. Write submodule paths into ~/.codex/config.toml                │
+│  4. Write submodule paths into ~/.config/opencode/config.json      │
+│  5. Hardcode a project-specific path into ANY global config        │
+│  6. Run forgewright-mcp-setup.sh from a submodule directory        │
+│     expecting it to write submodule paths globally                 │
+│                                                                     │
+│  WHY: Global configs are SHARED across ALL projects on the         │
+│  machine. Writing a submodule path breaks MCP for every other      │
+│  project that uses Forgewright.                                     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Self-check before any MCP config write:**
+1. Is the target file a GLOBAL config (`~/.cursor/`, `~/.claude/`, `~/.codex/`, `~/.config/opencode/`)?
+2. If YES → path MUST contain `~/.forgewright/mcp-server/` — never a project submodule path
+3. If the path contains `/forgewright/mcp/` or any project-specific directory → **STOP, you are about to corrupt global config**
 
 <!-- source: skills/_shared/protocols/self-check.md -->
 ## Self-Check
@@ -871,7 +910,7 @@ Goals survive context resets:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (17623 symbols, 22485 relationships, 294 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (17624 symbols, 22486 relationships, 294 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
