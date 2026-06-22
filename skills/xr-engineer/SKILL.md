@@ -14,6 +14,7 @@ tags: [xr, vr, ar, mr, spatial-computing, hand-tracking, visionos, quest, webxr,
 
 ## Protocols
 
+!`cat skills/_shared/protocols/3d-spatial-foundations.md 2>/dev/null || true`
 !`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/game-test-protocol.md 2>/dev/null || true`

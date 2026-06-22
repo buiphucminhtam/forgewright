@@ -235,7 +235,7 @@ check_protocols() {
     protocol_refs=$(grep -oE 'skills/_shared/protocols/[a-z][a-z0-9-]+\.md' "$skill_file" 2>/dev/null || echo "")
     
     for ref in $protocol_refs; do
-        local ref_path="${SCRIPT_DIR}/${ref}"
+        local ref_path="${PROJECT_DIR}/${ref}"
         if [ ! -f "$ref_path" ]; then
             missing="${missing}${ref} "
         fi

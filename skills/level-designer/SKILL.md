@@ -14,6 +14,7 @@ tags: [level-design, encounters, pacing, blockout, environmental-storytelling, w
 
 ## Protocols
 
+!`cat skills/_shared/protocols/3d-spatial-foundations.md 2>/dev/null || true`
 !`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`

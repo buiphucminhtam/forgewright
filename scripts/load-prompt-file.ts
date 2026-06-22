@@ -10,7 +10,7 @@
  *   FORGEWRIGHT_DIR - Override Forgewright directory (defaults to computed path)
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -23,9 +23,18 @@ function detectForgewrightDir(): string {
 
   // Fall back to computing from script location
   // scripts/load-prompt-file.ts -> scripts/.. -> forgewright root
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  return resolve(__dirname, '..');
+  let currentDir: string;
+  if (typeof __dirname !== 'undefined') {
+    currentDir = __dirname;
+  } else {
+    try {
+      const getMetaUrl = new Function('return import.meta.url');
+      currentDir = dirname(fileURLToPath(getMetaUrl()));
+    } catch {
+      currentDir = process.cwd();
+    }
+  }
+  return resolve(currentDir, '..');
 }
 
 interface LoadResult {
@@ -121,8 +130,7 @@ export function listPromptFiles(skillName: string): string[] {
   }
 
   try {
-    const { readdirSync } = require('fs');
-    return readdirSync(promptsDir).filter(f => f.endsWith('.md'));
+    return readdirSync(promptsDir).filter((f: string) => f.endsWith('.md'));
   } catch {
     return [];
   }
