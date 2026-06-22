@@ -943,6 +943,9 @@ npx gitnexus workflow deep-research
 
 # SaaS MVP
 npx gitnexus workflow ship-saas-mvp
+
+# Setup Auto-Publish
+npx gitnexus workflow setup-auto-publish
 ```
 
 | Workflow | Use Case |
@@ -951,6 +954,7 @@ npx gitnexus workflow ship-saas-mvp
 | `security-audit` | OWASP Top 10 review |
 | `deep-research` | NotebookLM + Polymath research |
 | `ship-saas-mvp` | Full-stack SaaS from scratch |
+| `setup-auto-publish` | Automated iOS/Android store publishing via EAS & Fastlane |
 | `setup-paperclip` | Paperclip testing setup |
 | `midscene-testing` | Midscene E2E automation |
 | `maestro-testing` | Maestro local E2E automation |

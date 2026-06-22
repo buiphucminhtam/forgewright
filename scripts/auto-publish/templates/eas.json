@@ -1,0 +1,57 @@
+{
+  "cli": {
+    "version": ">= 7.2.1"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_BACKEND_URL": "https://your-preview-api.com",
+        "EAS_BUILD_NPM_FLAGS": "--legacy-peer-deps"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "credentialsSource": "local",
+      "env": {
+        "EXPO_PUBLIC_BACKEND_URL": "https://your-production-api.com",
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "credentialsSource": "remote",
+        "simulator": false
+      }
+    },
+    "production_aab": {
+      "extends": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "credentialsSource": "remote",
+        "simulator": false
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyFile": "./google-service-account-key.json",
+        "track": "production"
+      },
+      "ios": {
+        "appleId": "buiphucminhtam@gmail.com"
+      }
+    }
+  }
+}

@@ -77,6 +77,7 @@ export type SkillId =
   | 'memory-manager'
   | 'skill-maker'
   | 'mcp-generator'
+  | 'auto-publish'
   | string;
 
 export type PipelinePhase = 'interpret' | 'define' | 'build' | 'harden' | 'ship' | 'sustain';
@@ -101,6 +102,7 @@ export type PipelineMode =
   | 'analyze'
   | 'prompt'
   | 'autonomous'
+  | 'auto-publish'
   | 'debug';
 
 export interface ToolResult {

@@ -26,7 +26,8 @@
       "game-build": ["game-designer", "unity-engineer", "unreal-engineer", "godot-engineer", "roblox-engineer", "level-designer", "narrative-designer", "technical-artist", "game-asset-vfx", "game-audio-engineer"],
       "xr-build": ["xr-engineer", "game-designer"],
       "ai-build": ["ai-engineer", "prompt-engineer", "data-scientist", "web-scraper", "llm-tester"],
-      "analyze": ["business-analyst"]
+      "analyze": ["business-analyst"],
+      "auto-publish": ["auto-publish"]
     }
   },
 
@@ -86,6 +87,7 @@
     "memory-manager":         { "enabled": "auto" },
     "skill-maker":            { "enabled": "auto" },
     "mcp-generator":          { "enabled": "auto" },
+    "auto-publish":           { "enabled": "auto" },
     "llm-tester":             { "enabled": "auto" }
   },
 

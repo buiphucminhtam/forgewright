@@ -357,12 +357,13 @@ Override the detected mode only if the user's intent clearly differs from what w
 | **Marketing** | "marketing", "SEO", "launch strategy", "copywriting", "content strategy", "go-to-market" | Growth Marketer (+ Conversion Optimizer if CRO mentioned) |
 | **Grow** | "growth", "CRO", "conversion", "funnel", "A/B test", "churn", "retention", "referral" | Conversion Optimizer (+ Growth Marketer if strategy needed) |
 | **Analyze** | "analyze requirements", "evaluate this", "is this feasible", "validate requirements", "check completeness", "client says" | Business Analyst (standalone requirements analysis) |
+| **Auto-Publish** | "auto publish", "publish store", "publish apple", "publish google play", "release app" | Auto-Publish |
 | **Goal** | "set goal", "work toward", "keep going until", "autonomous", "/goal" | Goal-Driven orchestrator — auto-evaluate and continue until condition met |
 | **Custom** | Doesn't fit above patterns | Present skill menu, let user pick |
 
 **Step 2 — Present or skip the plan:**
 
-**Single-skill modes** (Test, Review, Architect, Document, Explore, Design, Debug, Analyze, Goal): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
+**Single-skill modes** (Test, Review, Architect, Document, Explore, Design, Debug, Analyze, Goal, Auto-Publish): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
 
 **Goal mode** is special — it works with ANY skill. After each turn, it auto-evaluates and continues until the condition is met.
 

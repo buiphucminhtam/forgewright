@@ -1,0 +1,33 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "info": {
+      "en-US": {
+        "title": "Your App Name - SEO Title",
+        "subtitle": "Short marketing subtitle",
+        "description": "Exhaustive description of your app, detailing key features, user privacy guidelines, and policies.",
+        "keywords": [
+          "keyword1",
+          "keyword2",
+          "keyword3"
+        ],
+        "marketingUrl": "https://yourdomain.com",
+        "supportUrl": "https://yourdomain.com/support",
+        "privacyPolicyUrl": "https://yourdomain.com/privacy"
+      },
+      "vi": {
+        "title": "Tên Ứng Dụng - Chuẩn SEO",
+        "subtitle": "Mô tả ngắn gọn về sản phẩm",
+        "description": "Mô tả chi tiết các tính năng chính, tính năng trả phí, cam kết bảo mật và thông tin liên hệ.",
+        "keywords": [
+          "tukhoa1",
+          "tukhoa2",
+          "tukhoa3"
+        ],
+        "marketingUrl": "https://yourdomain.com",
+        "supportUrl": "https://yourdomain.com/support",
+        "privacyPolicyUrl": "https://yourdomain.com/privacy"
+      }
+    }
+  }
+}

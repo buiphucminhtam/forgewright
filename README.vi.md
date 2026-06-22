@@ -1171,6 +1171,7 @@ npx tsx forgewright/scripts/generate-sequence.ts \
 | `/onboard` | Phân tích sâu dự án — tạo `.forgewright/project-profile.json` |
 | `/mcp` | Tạo hoặc tạo lại MCP server config |
 | `/setup-mobile-test` | Cài đặt mobile testing cho Android/iOS |
+| `/setup-auto-publish` | Cài đặt tự động publish iOS/Android (EAS & Fastlane) |
 
 ---
 
