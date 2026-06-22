@@ -1180,10 +1180,13 @@ describe('Accessibility', () => {
 | 4 | No difficulty options | Too hard for some | Easy mode, assists |
 | 5 | Flashing > 3/sec | Seizure trigger | Reduce, disable option |
 | 6 | No pause | Can't take breaks | Always-pausable |
-| 7 | Tiny targets | Motor impaired miss | 48x48px minimum |
+| 7 | Tiny targets | Motor impaired miss | 48x48px (or 10-15mm) minimum |
 | 8 | No high contrast | Low vision struggles | Toggle option |
 | 9 | Complex UI | Cognitive impaired overwhelmed | Simplify, reduce elements |
 | 10 | No captions | Deaf players miss dialogue | Full caption system |
+| 11 | Stat-bloat in skill trees | Choice paralysis, cognitive overload | Limit to game-changing milestones; add search & color-coding. |
+| 12 | Heading line-height too loose | Disrupted reading rhythm | Reduce multiplier to 1.1x-1.2x for display text; keep 1.4x-1.5x for body text. |
+| 13 | Mobile safe zone violations | UI cut off by notches/finger occlusion | Respect Safe Areas and place controls in bottom corner Thumb Zones. |
 
 ## Execution Checklist
 
@@ -1191,6 +1194,8 @@ describe('Accessibility', () => {
 - [ ] Colorblind modes implemented (protanopia, deuteranopia, tritanopia)
 - [ ] High contrast mode available
 - [ ] Text size options (small, medium, large, extra-large)
+- [ ] Typography scale line height scaling (1.1x-1.2x headings, 1.4x-1.5x body)
+- [ ] Line length limit respected (45-75 characters per line)
 - [ ] Reduce motion option
 - [ ] Reduce particles option
 - [ ] All colors meet 4.5:1 contrast (text) and 3:1 (UI)
@@ -1210,11 +1215,14 @@ describe('Accessibility', () => {
 - [ ] Slow mode (50% speed)
 - [ ] One-hand mode
 - [ ] Vibration intensity control
+- [ ] Safe Areas respected and finger occlusion minimized (Thumb Zones for mobile)
+- [ ] Console 10-foot scaling and analog stick magnetic snapping specified
 
 ### Cognitive Accessibility
-- [ ] Difficulty modes (easy, normal, hard)
-- [ ] Tutorial length options
+- [ ] Difficulty modes (easy, normal, hard) without shame framing
+- [ ] Tutorial length options (Invisible Onboarding preferred over text dumps)
 - [ ] Reduce UI complexity option
+- [ ] Avoid stat-bloat in skill trees (support color-coding/search for large trees)
 - [ ] Hint system
 - [ ] Always-pausable
 
@@ -1224,3 +1232,4 @@ describe('Accessibility', () => {
 - [ ] Colorblind simulation tested
 - [ ] Contrast ratios verified
 - [ ] Mobile accessibility tested (TalkBack, Switch)
+- [ ] Two-handed landscape grip layout usability verified

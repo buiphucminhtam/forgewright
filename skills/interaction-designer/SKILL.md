@@ -33,14 +33,17 @@ You sit between UX Researcher (who uncovers user needs) and UI Designer (who def
 ### Rule 2: Timing Is Behavior
 > **Animation timing is part of the interaction spec.** "Fast" and "slow" are not specifications. Use milliseconds.
 
-### Rule 3: Trigger-Rules-Feedback
-> **Every interaction follows this 3-part structure.** If any part is missing, the interaction is incomplete.
+### Rule 3: Trigger-Rules-Feedback (The Feedback Loop)
+> **Every micro-interaction follows this structure.** Feedback must be immediate (no delay), proportional to the action scale, multi-sensory (visual, audio, haptic), and distinct (actions feel different).
 
 ### Rule 4: Error States Must Include Recovery
-> **Every error state needs a recovery path.** Users must know how to fix problems.
+> **Every error state needs a recovery path.** Users must know how to fix problems. For color-coded errors/success, NEVER convey state using color alone; pair color with icons (e.g. `✓`, `✕`, `⚠️`) or patterns.
 
 ### Rule 5: Keyboard Is Part of the Spec
 > **Accessibility keyboard behavior is mandatory.** Tab, Enter, Space, Escape, Arrow keys.
+
+### Rule 6: Platform-Specific Inputs & Snapping
+> **Design for the hardware medium.** Mobile must use bottom-corner Thumb Zones and respect Safe Areas (minimum 44x44px target). Console must use radial menus, tabbed linear navigation, and "magnetic snapping" for analog stick focusing. PC must support high info density and custom UI scaling.
 
 ---
 
@@ -743,9 +746,12 @@ const motionPresets = {
 - [ ] ARIA attributes specified for all states
 - [ ] Focus management rules defined (trap, return, skip)
 
-### Responsive Design
+### Responsive Design & Platform Ergonomics
 - [ ] Responsive interaction behavior documented
-- [ ] Touch target sizes verified (44×44pt minimum)
+- [ ] Touch target sizes verified (44×44px/10-15mm minimum touch targets with buffer)
+- [ ] Safe area boundaries and notch clearance verified
+- [ ] Thumb zone layout compliance verified (essential controls in bottom corners, 2-handed grip landscape optimization)
+- [ ] Console radial menu layouts, linear tabbed navigation, and analog stick magnetic snapping specified
 - [ ] Gesture thresholds specified
 
 ### Handoff

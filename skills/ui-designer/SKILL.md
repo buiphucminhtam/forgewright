@@ -85,20 +85,27 @@ You are the **UI Designer** — an interface design specialist who creates polis
 | Rule | Example |
 |------|---------|
 | **Max 3 font sizes per screen** | Title + body + label |
-| **Use letter-spacing on labels** | `letter-spacing: 3px` for ALL CAPS |
-| **Line height 1.4-1.6 for body** | Readable text blocks |
-| **Max 60-80 characters per line** | Prevents eye fatigue |
-| **Use bold sparingly** | Only for emphasis, not decoration |
+| **Use letter-spacing on labels** | `letter-spacing: 3px` for ALL CAPS; tighten letter-spacing slightly for headings, never for small text |
+| **Line height scaling** | Use 1.4x-1.5x for body (e.g. 16px font = 24px height). As font size goes up, multiplier goes down (1.3x for subheadings, 1.1x-1.2x for display headings) to prevent text lines from floating apart. |
+| **Line length rhythm** | Keep body text between 45 and 75 characters per line (sweet spot 60-65 chars, ~600-700px wide for 16px font) so the reader's eyes scan comfortably. |
+| **Sans-serif for Action** | Use clean sans-serif (e.g. Outfit) in fast-paced combat/chaos HUDs for immediate legibility. |
+| **Use bold sparingly** | Only for emphasis, not decoration. |
 
 ### Color System
 
 ### The 60-30-10 Rule
 
-| Percentage | Layer | Examples |
-|------------|-------|----------|
-| **60%** | Background | Deep navy, off-white |
-| **30%** | Secondary elements | Cards, panels, sections |
-| **10%** | Accent/emphasis | Buttons, highlights, CTAs |
+| Percentage | Layer | Examples & Rules |
+|------------|-------|------------------|
+| **60%** | Background | Deep navy, off-white (neutral base to ground the UI) |
+| **30%** | Secondary elements | Cards, panels, sections (creates structural contrast) |
+| **10%** | Accent/emphasis | Buttons, highlights, CTAs (using a single consistent "Hot-Action" accent color across all screens to guide focus) |
+
+### Accessibility & Color Independence
+> **MANDATORY:** Never convey core information (errors, success, hazards) using color alone. Sighted colorblind players will miss the cue.
+> - **Error state**: Red border + Error icon (e.g., `✕` or `⚠️`) + explanatory text.
+> - **Success state**: Green highlight + Success icon (e.g., `✓`) + explanatory text.
+> - **Map markers**: Different shapes/symbols, not just colored dots.
 
 ### Color Palette Structure
 
@@ -515,6 +522,30 @@ export function createSlider(
     return Object.assign(container, { setValue, getValue });
 }
 ```
+
+## Platform-Specific Ergonomics & UX Constraints
+
+Ensure all game user interfaces are tailored to the physical constraints, viewing distances, and input limitations of the target platform:
+
+### 1. Mobile UX (The Glass Screen Experience)
+*   **Finger Occlusion**: Be mindful that thumbs cover up to **33%** of the screen during play.
+*   **Thumb Zones**: Place all primary, frequent interactive elements in the bottom corners of the screen (natural resting positions for thumbs).
+*   **Touch Targets (Fat Finger Rule)**: Interactive elements must have a minimum touch target size of **44x44 pixels (or 10-15mm)**. Add an invisible padding buffer around small icons so the touch area remains large.
+*   **Safe Areas**: Anchor HUD elements dynamically relative to screen borders; respect Apple/Google notch and camera cutouts ("Safe Zones").
+*   **Ergonomic Grip Performance**: Design for landscape layout. Empirical research shows a two-handed landscape grip increases Fitts' Law index of performance by **9%**, tap precision by **4%**, speed by **7%**, and dampens device movement by **36-63%** relative to one-handed portrait use.
+
+### 2. Console UX (The 10-Foot Experience)
+*   **Distance Constraint**: Players typically sit 10 feet away. Text, prompts, and icons must be large and high-contrast (e.g. Playstation buttons can blur easily).
+*   **Linear & Radial Navigation**: Optimize menus for D-pad and analog sticks. Tabbed menu layouts and Radial (pie) menus are much easier to navigate than pointer-style grids.
+*   **Magnetic Snapping**: Implement magnetic snapping or highlight focus on interactive elements as the player navigates with an analog stick to compensate for the lack of cursor precision.
+
+### 3. PC UX (Precision & Density)
+*   **High Precision**: Sited <5 feet away, mouse/keyboard inputs allow high-density grids, complex list-based UIs, and small details.
+*   **Remapping & Scaling**: Always support custom keybindings (including mouse auxiliary buttons) and UI scale sliders.
+
+### 4. Specialized Inventory Paradigms
+*   **Grid-Based**: Great for space-management or survival gameplay (e.g. *Resident Evil*). Visually rich, but requires more art assets and is harder to navigate via gamepad D-pad.
+*   **List-Based**: Best for games with massive items/attributes (e.g. *Skyrim*). Easy to code, highly compatible with console D-pad scrolling, and allows rapid sorting by weight, value, or category.
 
 ## Layout Systems
 
@@ -1174,13 +1205,16 @@ export function createAccessibleIcon(
 | 1 | Too many font sizes | Visual noise | Max 3 per screen |
 | 2 | Low contrast text | Hard to read | Meet 4.5:1 ratio |
 | 3 | No hover states | Unclear interactivity | Scale + color change |
-| 4 | Tiny touch targets | Missed taps | 48×48px minimum |
+| 4 | Tiny touch targets | Missed taps | 48×48px (or 10-15mm) minimum |
 | 5 | No disabled states | Confusing UI | Gray out + reduce opacity |
 | 6 | Animations too fast | Abrupt feel | 200-500ms durations |
 | 7 | Static UI | Feels dead | Subtle idle animations |
 | 8 | Inconsistent spacing | Messy layout | 8px grid system |
 | 9 | No loading states | Appears frozen | Spinners, progress bars |
 | 10 | Color-only feedback | Inaccessible | Add icons, patterns |
+| 11 | Uniform line height multiplier | Headings float apart like they had a fight | Reduce multiplier to 1.1x-1.2x for massive headings; keep 1.4x-1.5x for body text. |
+| 12 | Excessive reading line width | Disrupted reading rhythm | Keep text width bound between 45 and 75 characters per line (sweet spot 60-65 chars). |
+| 13 | Stat-bloat in skill trees | Choice paralysis and boredom | Limit to meaningful gameplay milestones; support color-coding and search keyword filters. |
 
 ## Execution Checklist
 

@@ -56,6 +56,23 @@ Runs in **Design** mode before UI Designer. Also invoked at start of **Full Buil
 - Never lead users during interviews — use open-ended questions
 - Document methodology so it can be replicated and critiqued
 
+### Game UX Research Principles (Cognitive & Behavioral)
+
+*   **Working Memory & Cognitive Load**: Human working memory is a finite resource. UI must filter information dynamically and avoid clutter. If the interface is complex, players suffer anxiety; if too sparse, they experience boredom.
+*   **Flow Theory & Challenge Equilibrium**: Game UX serves as the feedback loop that maintains the equilibrium between game difficulty and player skill. Strive to eliminate unnecessary *interface friction* (clunky menus) so the player can focus purely on the intentional *gameplay friction*.
+*   **Operant Conditioning & Habit Loops**: Build habit loops (Cue → Routine → Reward) by evaluating feedback along four dimensions:
+    1. **Immediate**: Delayed feedback breaks the player's sense of agency.
+    2. **Proportional**: Larger in-game actions must yield visually/audibly larger feedback.
+    3. **Multi-sensory**: Combine visual, audio, and haptic feedback to build richer experiences.
+    4. **Distinct**: Different actions must feel completely different (e.g. headshot vs bodyshot).
+*   **Invisible Onboarding**: Assess if the game forces players to read "text walls" to learn. Prioritize teaching through level design and environmental cues where players learn by doing (e.g. World 1-1 Super Mario Bros. or saw blades in HL2).
+*   **Platform Ergonomics**:
+    - **Mobile**: Verify safe area boundaries (cam notch/ears) and thumb zone usability (thumbs cover 33% of the glass screen; active elements must be placed in bottom corners, minimum 44x44px target with padding buffer). Two-handed landscape grip increases performance by 9%, tap precision by 4%, and decreases device movement vibration by 36-63%.
+    - **Console**: Test readability at a 10-foot distance. Icons and text prompts must be large. Evaluate analog stick navigation speed and verify magnetic snapping is implemented.
+    - **PC**: Allow dense layouts, precision mouse cursor actions, list-based grids, custom UI scaling, and remapping.
+    - **Inventories**: Recommend Grid-based inventories for survival/visual space challenges; List-based inventories for stats-heavy games requiring rapid D-pad console navigation.
+    - **Skill Trees**: Flag "stat-bloat" (negligible +1% increments) as bad UX. Recommend major gameplay milestones instead. For large trees, recommend color coding and search keyword filters to prevent choice paralysis.
+
 ### The Researcher's Credo
 
 > **"The user is not like you. The user is not like the team. The user has a different mental model, different goals, and different constraints. Your job is to understand their model, not impose yours."**

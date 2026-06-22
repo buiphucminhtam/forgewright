@@ -28,8 +28,8 @@ You do NOT write engine code. You produce design artifacts — GDDs, economy spr
 ### Rule 2: Economy Must Balance
 > **Every source has a sink.** Currency that accumulates without spending causes hyperinflation. Plan sinks before sources.
 
-### Rule 3: Teach by Doing
-> **No text walls.** Tutorialize through gameplay, not dialogue. Contextual hints only.
+### Rule 3: Teach by Doing (Invisible Onboarding)
+> **No text walls.** Guide players through mechanics using level design and environmental cues instead of explicit text boxes or freezing the play (e.g. World 1-1 Super Mario Bros. or Gravity Gun saw blades in Half-Life 2).
 
 ### Rule 4: Accessible Depth
 > **Easy to learn, hard to master.** Every mechanic should be understandable in 30 seconds but take months to optimize.
@@ -38,7 +38,13 @@ You do NOT write engine code. You produce design artifacts — GDDs, economy spr
 > **AI should feel challenging but beatable.** Perfect accuracy feels unfair. Add intentional imperfection.
 
 ### Rule 6: Juice Everything
-> **Every action needs feedback.** Visual, audio, and haptic response for every player input.
+> **Every action needs feedback.** Visual, audio, and haptic response for every player input. Close the habit loop immediately, proportionally, and distinctively.
+
+### Rule 7: Platform Ergonomics & Layout Safety
+> **Never design a "one-size-fits-all" interface.** Mobile HUDs must respect "Safe Areas" and finger occlusion ("Thumb Zones"). Console HUDs must accommodate the "10-Foot Experience" (large icons, radial menus, D-pad snapping). PC must support info density and custom scaling.
+
+### Rule 8: Choose Inventory & Skill Trees Wisely
+> **Align UI mechanics with player goals.** Grid-based inventories serve space-management loops; List-based inventories serve stats-heavy sorting. Avoid "stat-bloat" (+1% mana) in skill trees; focus on gameplay-altering milestones and use search/color coding to prevent choice paralysis.
 
 ---
 
@@ -549,13 +555,18 @@ Idle → Attack1 → Attack2 → Attack3 → Recovery → Idle
 - Low-pressure, optional engagement
 ```
 
-### Step 5.2: HUD Specification
+### Step 5.2: Game Interface Taxonomy & HUD Specification
+
+When designing game interfaces, apply Fagerholt & Lorentzon's 4-part taxonomy:
+1. **Diegetic UI**: Exists in the game's fictional narrative and 3D environment, perceivable by the characters (e.g. ammo counter on the gun model in *Halo*, Pip-Boy in *Fallout*, or health bar on the character's suit in *Dead Space*). Use for maximum immersion.
+2. **Non-Diegetic UI**: 2D overlay on top of the screen, only visible to the player and completely outside the game's fiction (e.g. quest trackers, traditional HUD elements). Best for complex data delivery and novice onboarding.
+3. **Spatial UI**: Renders within the 3D game space but is invisible to the characters (e.g. glowing directions on the ground in *Fable*, markers/names over NPC heads). Reduces the need to look at a 2D minimap.
+4. **Meta UI**: Exists outside the 3D space but is intrinsically tied to the fiction/character status (e.g. blood splatters/blur on the screen when low health, screen static when near an anomaly).
 
 ```markdown
-## HUD Specification
+## HUD & Interface Specification
 
 ### Layout (60fps update)
-```
 ┌──────────────────────────────────────┐
 │ [HP Bar]              [Mini-map]     │
 │ [Mana/Stamina]        [Quest Tracker] │
@@ -565,7 +576,19 @@ Idle → Attack1 → Attack2 → Attack3 → Recovery → Idle
 │ [Abilities 1-4]       [Inventory]    │
 │ [Interaction Prompt]  [Chat]         │
 └──────────────────────────────────────┘
-```
+
+### Platform Ergonomics
+*   **Mobile UX (The Glass Screen)**:
+    - **Safe Areas**: Anchor all UI relative to edges and respect Apple/Google notch/rounded corner safe zones.
+    - **Thumb Zones**: Place primary interactive triggers in the bottom corners. Keep in mind that thumbs obstruct up to 33% of the screen.
+    - **Touch Targets**: Minimum size of 44x44 pixels (or 10-15mm) with extra touch buffer around icons to prevent misclicks.
+    - **Landscape 2-Handed Grip**: Design for landscape layout. Two-handed grip improves thumb motor performance by 9%, accuracy by 4%, and dampens device movement by 36-63%.
+*   **Console UX (The 10-Foot Experience)**:
+    - **Readability**: Sitting 10 feet away requires massive iconography and high color contrast.
+    - **Navigation**: Restrict to linear menus, tabbed layouts, or radial menus.
+    - **Snapping**: Implement "magnetic snapping" or object highlighting for D-pad/analog stick navigation to counter lack of cursor precision.
+*   **PC UX (Precision & Density)**:
+    - Sitting <5 feet from screen allows high-density layouts, small button prompts (ensure mouse auxiliary button icons are visible), and list-based layouts.
 
 ### Information Hierarchy
 | Priority | Element | Visibility | Size |
@@ -751,6 +774,9 @@ Every GDD must include a **Visual Feedback Table**:
 | 12 | Emoji as sprites | Cross-platform issues | Generate proper sprites |
 | 13 | Flat backgrounds | Placeholder feel | Gradient + particles |
 | 14 | No loading screen | No polish | Brand splash + progress |
+| 15 | Stat-bloat in skill trees | Choice paralysis, boring choice | Focus on gameplay-changing milestones. Add search filter & color-coding. |
+| 16 | One-size-fits-all layouts | Severe usability failures on mobile/console | Anchor relative to safe zones, use thumb zones, 44x44px target, radial menu/snapping. |
+| 17 | Misaligned inventory choice | Poor pacing & platform friction | Grid-based for visual/survival; List-based for massive stats & D-pad navigation. |
 
 ---
 
