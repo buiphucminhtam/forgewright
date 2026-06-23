@@ -10,6 +10,7 @@ tests = [
     ("convention-indexer",   "bash", ["tests/memory-system/test-convention-indexer.sh"]),
     ("memory-hygiene",       "bash", ["tests/memory-system/test-memory-hygiene.sh"]),
     ("memory-middleware",    "bash", ["tests/memory-system/test-memory-middleware.sh"]),
+    ("memory-diagnostic",    "bash", ["tests/memory-system/test-export-memory-diagnostic.sh"]),
     ("mem0-v2 (Python)",     "python3", ["tests/memory-system/test_mem0_v2.py"]),
 ]
 

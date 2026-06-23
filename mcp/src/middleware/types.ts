@@ -163,6 +163,33 @@ export interface MiddlewareConfig {
     include_tools?: string[];
     cache_reads?: boolean;
   };
+  tool_sandbox?: {
+    enabled?: boolean;
+    audit_log_dir?: string;
+    max_raw_size?: number;
+    max_summary_size?: number;
+    enable_audit?: boolean;
+    sanitize?: boolean;
+    compress_large?: boolean;
+    tool_overrides?: Partial<
+      Record<
+        string,
+        {
+          max_raw_size?: number;
+        }
+      >
+    >;
+  };
+  context_offload?: {
+    enabled?: boolean;
+    data_dir?: string;
+    min_tokens_to_offload?: number;
+    write_raw_refs?: boolean;
+    write_canvas?: boolean;
+    redact_secrets?: boolean;
+    max_summary_size?: number;
+    max_canvas_events?: number;
+  };
   guardrail?: {
     enabled?: boolean;
     mode?: 'warn' | 'deny' | 'disabled' | 'dry_run';

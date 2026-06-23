@@ -26,7 +26,9 @@
  */
 
 import type { ToolContext, ToolResult, MiddlewareConfig, ToolCall } from './types.js';
+import { ContextOffloadMiddleware } from './context-offload.js';
 import { SessionDeduplicationMiddleware } from './session-deduplication.js';
+import { ToolSandboxMiddleware } from './tool-sandbox.js';
 
 export type MiddlewareHook = 'before_tool' | 'after_tool' | 'on_error';
 
@@ -44,11 +46,15 @@ export interface ChainOptions {
 
 export class MiddlewareChain {
   private sessionDedup = new SessionDeduplicationMiddleware();
+  private toolSandbox = new ToolSandboxMiddleware();
+  private contextOffload = new ContextOffloadMiddleware();
   private options: ChainOptions;
 
   constructor(options: ChainOptions) {
     this.options = options;
     this.sessionDedup.configure(options.config.session_deduplication);
+    this.toolSandbox.configure(options.config.tool_sandbox);
+    this.contextOffload.configure(options.config.context_offload);
   }
 
   /**
@@ -134,8 +140,34 @@ export class MiddlewareChain {
     }
     const execMs = Date.now() - execStart;
 
-    // Store result in dedup store (for future cache hits)
-    ctx.call.result = result;
+    // ④c ToolSandbox: sanitize + compress before anything enters cache/model context.
+    const sandboxStart = Date.now();
+    let processedResult = result;
+    if (this.toolSandbox.enabled) {
+      const sandboxed = this.toolSandbox.processResult(ctx, result);
+      processedResult = sandboxed.result;
+      this.options.onMetrics?.(
+        'tool-sandbox',
+        'after_tool',
+        Date.now() - sandboxStart,
+        sandboxed.sandbox.injectionBlocked ? 'skip' : 'ok',
+      );
+    }
+
+    // ④d ContextOffload: persist full sanitized output with trace handle.
+    const offloadStart = Date.now();
+    if (this.contextOffload.enabled) {
+      const offload = this.contextOffload.processResult(ctx, result, processedResult);
+      this.options.onMetrics?.(
+        'context-offload',
+        'after_tool',
+        Date.now() - offloadStart,
+        offload.offloaded ? 'ok' : 'skip',
+      );
+    }
+
+    // Store processed result in dedup store (for future cache hits)
+    ctx.call.result = processedResult;
     this.sessionDedup.after_tool(ctx);
 
     // ── after_tool hooks ────────────────────────────────
@@ -145,7 +177,7 @@ export class MiddlewareChain {
     this.options.onMetrics?.('session-deduplication', 'after_tool', totalMs - execMs, 'ok');
 
     return {
-      result,
+      result: processedResult,
       cached: false,
       middlewareMs: totalMs,
     };
@@ -160,6 +192,16 @@ export class MiddlewareChain {
     };
   }
 
+  /** Get tool sandbox metrics. */
+  getSandboxMetrics() {
+    return this.toolSandbox.getMetrics();
+  }
+
+  /** Get context offload metrics. */
+  getOffloadMetrics() {
+    return this.contextOffload.getMetrics();
+  }
+
   /** Reset deduplication store (on session end). */
   resetSession() {
     this.sessionDedup.reset();
@@ -168,6 +210,8 @@ export class MiddlewareChain {
   /** Reset metrics only. */
   resetMetrics() {
     this.sessionDedup.resetMetrics();
+    this.toolSandbox.resetMetrics();
+    this.contextOffload.resetMetrics();
   }
 }
 

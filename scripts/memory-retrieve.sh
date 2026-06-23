@@ -13,9 +13,15 @@ CONVERSATION_SUMMARY="$FORGEWRIGHT_DIR/.forgewright/subagent-context/CONVERSATIO
 ACTIVE_CONTEXT="$FORGEWRIGHT_DIR/.forgewright/memory-bank/activeContext.md"
 BA_SCOPE="$FORGEWRIGHT_DIR/.forgewright/business-analyst/handoff/ba-package.md"
 SESSION_LOG="$FORGEWRIGHT_DIR/.forgewright/session-log.json"
+PERSONA_FILE="$FORGEWRIGHT_DIR/.forgewright/memory-bank/persona.md"
+SCENARIOS_DIR="$FORGEWRIGHT_DIR/.forgewright/memory-bank/scenarios"
 MAX_TOKENS="${MEM0_MAX_TOKENS:-500}"
 SEARCH_LIMIT="${MEM0_SEARCH_LIMIT:-3}"
 INDEX_LIMIT="${MEM0_INDEX_LIMIT:-5}"
+PERSONA_TOKEN_LIMIT="${MEM0_PERSONA_TOKENS:-120}"
+SCENARIO_TOKEN_LIMIT="${MEM0_SCENARIO_TOKENS:-180}"
+SCENARIO_LIMIT="${MEM0_SCENARIO_LIMIT:-2}"
+TOKEN_BUDGET_USED=0
 # ── Colors ───────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -26,6 +32,64 @@ NC='\033[0m'
 info()  { echo -e "${GREEN}[memory-retrieve]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[memory-retrieve]${NC} WARNING: $1" >&2; }
 error() { echo -e "${RED}[memory-retrieve]${NC} ERROR: $1" >&2; exit 1; }
+
+estimate_tokens() {
+    python3 -c "import sys; print((len(sys.stdin.read()) + 3) // 4)"
+}
+
+remaining_tokens() {
+    local remaining=$((MAX_TOKENS - TOKEN_BUDGET_USED))
+    if [[ "$remaining" -lt 0 ]]; then
+        echo 0
+    else
+        echo "$remaining"
+    fi
+}
+
+truncate_to_tokens() {
+    local max_tokens="$1"
+    python3 -c "
+import sys
+max_chars = max(0, int(sys.argv[1]) * 4)
+text = sys.stdin.read()
+if len(text) <= max_chars:
+    print(text.rstrip())
+else:
+    print(text[:max_chars].rstrip())
+    print('...[truncated]')
+" "$max_tokens"
+}
+
+emit_limited_section() {
+    local title="$1"
+    local body="$2"
+    local max_tokens="$3"
+    local remaining
+    remaining=$(remaining_tokens)
+
+    if [[ -z "$body" || "$remaining" -le 0 ]]; then
+        return
+    fi
+    if [[ "$max_tokens" -gt "$remaining" ]]; then
+        max_tokens="$remaining"
+    fi
+
+    local emitted
+    emitted=$(printf "%s" "$body" | truncate_to_tokens "$max_tokens")
+    if [[ -z "$emitted" ]]; then
+        return
+    fi
+
+    local used
+    used=$(printf "%s" "$emitted" | estimate_tokens)
+    TOKEN_BUDGET_USED=$((TOKEN_BUDGET_USED + used))
+
+    echo ""
+    echo "### $title"
+    echo ""
+    printf "%s\n" "$emitted"
+    echo ""
+}
 
 # Check mem0 availability
 check_deps() {
@@ -80,11 +144,7 @@ run_mem0_index() {
 load_conversation_summary() {
     if [[ -f "$CONVERSATION_SUMMARY" ]]; then
         info "Loading conversation summary: $CONVERSATION_SUMMARY"
-        echo ""
-        echo "### Conversation Summary (previous turns)"
-        echo ""
-        tail -20 "$CONVERSATION_SUMMARY"
-        echo ""
+        emit_limited_section "Conversation Summary (previous turns)" "$(tail -20 "$CONVERSATION_SUMMARY")" 120
     fi
 }
 
@@ -92,11 +152,7 @@ load_conversation_summary() {
 load_active_context() {
     if [[ -f "$ACTIVE_CONTEXT" ]]; then
         info "Loading active context: $ACTIVE_CONTEXT"
-        echo ""
-        echo "### Active Context"
-        echo ""
-        cat "$ACTIVE_CONTEXT"
-        echo ""
+        emit_limited_section "Active Context" "$(cat "$ACTIVE_CONTEXT")" 100
     fi
 }
 
@@ -104,11 +160,55 @@ load_active_context() {
 load_ba_scope() {
     if [[ -f "$BA_SCOPE" ]]; then
         info "Loading BA scope: $BA_SCOPE"
-        echo ""
-        echo "### BA Scope"
-        echo ""
-        head -50 "$BA_SCOPE"
-        echo ""
+        emit_limited_section "BA Scope" "$(head -50 "$BA_SCOPE")" 120
+    fi
+}
+
+# Load persona layer before atom-level search.
+load_persona_context() {
+    if [[ -f "$PERSONA_FILE" ]]; then
+        info "Loading persona memory: $PERSONA_FILE"
+        emit_limited_section "Persona Memory" "$(cat "$PERSONA_FILE")" "$PERSONA_TOKEN_LIMIT"
+    fi
+}
+
+# Load scenario layer before atom-level search.
+load_scenario_context() {
+    local keywords="$1"
+    if [[ ! -d "$SCENARIOS_DIR" ]]; then
+        return
+    fi
+
+    local scenario_body
+    scenario_body=$(python3 - "$SCENARIOS_DIR" "$keywords" "$SCENARIO_LIMIT" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+keywords = [part.lower() for part in sys.argv[2].split() if part.strip()]
+limit = int(sys.argv[3])
+ranked = []
+
+for path in sorted(root.glob("*.md")):
+    text = path.read_text()
+    haystack = text.lower()
+    score = sum(1 for keyword in keywords if keyword in haystack)
+    ranked.append((score, path.name, text))
+
+ranked.sort(key=lambda item: (-item[0], item[1]))
+selected = ranked[:limit]
+if selected:
+    for _, name, text in selected:
+        print(f"#### {name}")
+        print("")
+        print(text.strip())
+        print("")
+PY
+)
+
+    if [[ -n "$scenario_body" ]]; then
+        info "Loading scenario memory: $SCENARIOS_DIR"
+        emit_limited_section "Relevant Scenarios" "$scenario_body" "$SCENARIO_TOKEN_LIMIT"
     fi
 }
 
@@ -142,15 +242,22 @@ except:
 # Format search results as markdown
 format_search_results() {
     local results="$1"
+    local max_tokens="${2:-240}"
+    local remaining
+    remaining=$(remaining_tokens)
+    if [[ "$remaining" -le 0 ]]; then
+        return
+    fi
+    if [[ "$max_tokens" -gt "$remaining" ]]; then
+        max_tokens="$remaining"
+    fi
     local count
     count=$(echo "$results" | python3 -c "import json,sys; data=json.load(sys.stdin); print(len(data) if isinstance(data,list) else 0)" 2>/dev/null || echo "0")
     if [[ "$count" -eq 0 ]]; then
         return
     fi
-    echo ""
-    echo "### Relevant Memories (mem0)"
-    echo ""
-    echo "$results" | python3 -c "
+    local formatted
+    formatted=$(echo "$results" | python3 -c "
 import json, sys
 try:
     data = json.load(sys.stdin)
@@ -166,7 +273,20 @@ try:
             print(f'- **[{cat}]** {mem[:200]}')
 except Exception as e:
     pass
-" 2>/dev/null || true
+" 2>/dev/null || true)
+    emit_limited_section "Relevant Memories (mem0)" "$formatted" "$max_tokens"
+}
+
+effective_search_limit() {
+    local remaining
+    remaining=$(remaining_tokens)
+    if [[ "$remaining" -lt 60 ]]; then
+        echo 0
+    elif [[ "$remaining" -lt 140 ]]; then
+        echo 1
+    else
+        echo "$SEARCH_LIMIT"
+    fi
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────
@@ -200,18 +320,31 @@ main() {
 
     # Load context files
     get_session_info
+    load_persona_context
+    load_scenario_context "$keywords"
     load_conversation_summary
     load_active_context
     load_ba_scope
 
     # Run mem0 search (Layer 2 - FTS + BM25)
     local search_results
-    search_results=$(run_mem0_search "$keywords" "$SEARCH_LIMIT")
-    format_search_results "$search_results"
+    local actual_search_limit
+    actual_search_limit=$(effective_search_limit)
+    if [[ "$actual_search_limit" -gt 0 ]]; then
+        search_results=$(run_mem0_search "$keywords" "$actual_search_limit")
+        format_search_results "$search_results" 240
+    else
+        search_results="[]"
+        info "Skipping mem0 atom search — context budget already used by higher layers"
+    fi
 
     # Run mem0 index (Layer 1 - compact)
     local index_results
-    index_results=$(run_mem0_index "$keywords" "$INDEX_LIMIT")
+    if [[ "$(remaining_tokens)" -ge 60 ]]; then
+        index_results=$(run_mem0_index "$keywords" "$INDEX_LIMIT")
+    else
+        index_results="[]"
+    fi
 
     echo ""
     echo "--- END MEMORY BLOCK ---"
@@ -220,7 +353,7 @@ main() {
     # Count memories loaded
     local mem_count
     mem_count=$(echo "$search_results" | python3 -c "import json,sys; data=json.load(sys.stdin); print(len(data) if isinstance(data,list) else 0)" 2>/dev/null || echo "0")
-    info "Memory retrieval done — $mem_count memories loaded (budget: ${MAX_TOKENS} tokens)"
+    info "Memory retrieval done — $mem_count memories loaded (budget: ${MAX_TOKENS} tokens, higher-layer estimate: ${TOKEN_BUDGET_USED})"
 }
 
 main "$@"

@@ -111,15 +111,18 @@ fi
 # Check authentication
 echo ""
 echo "=== Authentication Status ==="
-nlm auth status
+nlm login --check
+
+# Optional diagnostics
+nlm doctor --verbose
 ```
 
 #### 1.2 Authentication Flow
 
 ```bash
 # Check current auth status
-nlm auth status
-# Output: "Authenticated" or "Not authenticated"
+nlm login --check
+# Exit code 0 means current auth is valid; non-zero means login is needed.
 
 # If not authenticated, login
 nlm login
@@ -667,7 +670,7 @@ nlm report create $NOTEBOOK_A --format "Briefing Doc" --confirm
 
 ## Execution Checklist
 
-- [ ] Check authentication (`nlm auth status`)
+- [ ] Check authentication (`nlm login --check`)
 - [ ] Check existing notebooks before creating new
 - [ ] Use `--notebook-id` for all research commands
 - [ ] Use `--confirm` for all generation commands

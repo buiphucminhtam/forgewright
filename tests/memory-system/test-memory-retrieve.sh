@@ -133,6 +133,48 @@ else
     fail "Markdown format missing"
 fi
 
+# ── T11: Persona/scenario layers load before mem0 atoms and respect caps ──
+echo ""
+echo "T11: Persona/scenario layers load before mem0 atoms with token caps"
+((TESTS++))
+tmp_workspace="$(mktemp -d)"
+mkdir -p "$tmp_workspace/.forgewright/memory-bank/scenarios"
+cat > "$tmp_workspace/.forgewright/memory-bank/persona.md" <<'EOF'
+---
+schema: forgewright-memory-persona/v1
+sources:
+  - mem0:1
+---
+# Persona Memory
+
+This persona content is intentionally long so retrieval truncates it when
+the MEM0_PERSONA_TOKENS cap is small. The important stable preference is
+to load persona before scenario and before atom search.
+EOF
+cat > "$tmp_workspace/.forgewright/memory-bank/scenarios/memory-upgrade.md" <<'EOF'
+---
+schema: forgewright-memory-scenario/v1
+scenario_id: memory-upgrade
+sources:
+  - offload:session-a/n1
+---
+# Scenario: Memory upgrade
+
+Use scenario context before atom-level search.
+EOF
+output=$(FORGEWRIGHT_WORKSPACE="$tmp_workspace" MEM0_MAX_TOKENS=120 MEM0_PERSONA_TOKENS=20 MEM0_SCENARIO_TOKENS=40 MEM0_SEARCH_LIMIT=0 MEM0_INDEX_LIMIT=0 bash "$RETRIEVE_SCRIPT" "memory upgrade" 2>&1)
+rm -rf "$tmp_workspace"
+persona_line=$(printf "%s\n" "$output" | grep -n "### Persona Memory" | head -1 | cut -d: -f1)
+scenario_line=$(printf "%s\n" "$output" | grep -n "### Relevant Scenarios" | head -1 | cut -d: -f1)
+mem0_line=$(printf "%s\n" "$output" | grep -n "### Relevant Memories" | head -1 | cut -d: -f1)
+if [[ -n "$persona_line" && -n "$scenario_line" && "$persona_line" -lt "$scenario_line" ]] \
+    && [[ -z "$mem0_line" || "$scenario_line" -lt "$mem0_line" ]] \
+    && echo "$output" | grep -q "\.\.\.\[truncated\]"; then
+    pass "Persona/scenario loaded first and content was capped"
+else
+    fail "Persona/scenario layering failed: $output"
+fi
+
 echo ""
 echo "━━━ Results: $PASS/$TESTS passed ━━━"
 [[ "$FAIL" -eq 0 ]]

@@ -450,6 +450,43 @@ The biggest issue with long AI sessions is **context bloat** — the AI forgets 
 
 ---
 
+## Featured: MCP Tool Sandbox & Context Offload (DeerFlow IV)
+
+To combat context bloat and ensure token efficiency during long sessions, Forgewright introduces a twin-middleware layer inside the MCP tool execution pipeline (running at stage ④c and ④d):
+
+1. **Tool Sandbox (Middleware ④c)**: Automatically intercepts all tool output, strips ANSI colors, scans for prompt injections, and redacts credentials or secrets (such as API keys, bearer tokens, and connection URIs) using strict regex filters before they enter the model context or cache.
+2. **Context Offload (Middleware ④d)**: Automatically offloads large tool execution outputs exceeding a token threshold (default: 1200 tokens) to the local disk under `.forgewright/offload/<session_id>/refs/<node_id>.md`.
+   - The model context receives only a **short trace handle** (e.g. `refs/n-X-tool-hash.md`) and a compact summary of the output.
+   - Saves up to 90% of context window token space.
+   - Automatically maintains a session execution graph (`canvas.mmd` in Mermaid format) color-coded by node status (`queued`, `running`, `done`, `error`, `skipped`), providing a visual map of the agent's work.
+
+### Tracing and Consolidating Offloaded Context
+
+Two new scripts manage the offloaded context and local memory bank:
+
+*   **Context Tracer (`scripts/memory-trace.py`)**: Allows searching, inspecting, and retrieving offloaded output from the command line:
+    ```bash
+    # List all tool events in a session
+    python3 scripts/memory-trace.py trace-session <session_id>
+
+    # Inspect a specific offloaded tool result node with output preview
+    python3 scripts/memory-trace.py trace-node <node_id> --session <session_id>
+
+    # Print the Mermaid visual execution canvas of a session
+    python3 scripts/memory-trace.py trace-canvas <session_id>
+    ```
+*   **Memory Consolidator (`scripts/memory-consolidate.py`)**: Consolidates SQLite database observations, completed session logs, and offloaded tool events into structured persona and scenario memory layers under the project memory bank:
+    ```bash
+    # Consolidate raw memory assets
+    python3 scripts/memory-consolidate.py
+    ```
+    Outputs:
+    - `.forgewright/memory-bank/persona.md`: Project-specific defaults and stable developer preferences.
+    - `.forgewright/memory-bank/scenarios/<scenario_id>.md`: Successful execution patterns and workflows from completed sessions.
+
+---
+
+
 ## Featured: ASIP — The Self-Improving Protocol
 
 > **Updated in v8.4.0** — Enhanced Research Gate with automatic failure tracking.

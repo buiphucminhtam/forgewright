@@ -233,6 +233,113 @@ python3 scripts/mem0-v2.py stats --by-category
 python3 scripts/mem0-v2.py related 123 --limit 5
 ```
 
+### Context Offload Trace CLI: `scripts/memory-trace.py`
+
+Use this when MCP context offload is enabled and a tool result has been stored under `.forgewright/offload/<session>/`.
+
+```bash
+# Inspect one tool event and preview its sanitized raw ref
+python3 scripts/memory-trace.py trace-node <node_id> --session <session_id>
+
+# List all offloaded events for a session
+python3 scripts/memory-trace.py trace-session <session_id>
+
+# Print the Mermaid canvas for a session
+python3 scripts/memory-trace.py trace-canvas <session_id>
+```
+
+Drill-down workflow:
+
+1. Open `.forgewright/offload/<session_id>/canvas.mmd` or run `trace-canvas`.
+2. Pick the node ID from the Mermaid node label.
+3. Run `trace-node <node_id> --session <session_id>`.
+4. Inspect the referenced sanitized file under `refs/<node_id>.md` only when full detail is needed.
+
+### Scenario and Persona Layers
+
+Use `scripts/memory-consolidate.py` to promote repeated observations, completed sessions, and offload events into stable upper memory layers:
+
+```bash
+python3 scripts/memory-consolidate.py
+```
+
+Scenario files live at `.forgewright/memory-bank/scenarios/*.md` and use this schema:
+
+```markdown
+---
+schema: forgewright-memory-scenario/v1
+scenario_id: <stable-slug>
+generated_at: <iso-8601>
+sources:
+  - mem0:<observation_id>
+  - offload:<session_id>/<node_id>
+---
+
+# Scenario: <summary>
+
+## Trigger
+<request or situation that should recall this scenario>
+
+## Context
+- Session: <session_id>
+- Mode: <pipeline mode>
+
+## Successful Pattern
+- <repeatable action or decision>
+
+## Evidence
+- mem0:<observation_id>
+- offload:<session_id>/<node_id>
+```
+
+Persona memory lives at `.forgewright/memory-bank/persona.md` and uses this schema:
+
+```markdown
+---
+schema: forgewright-memory-persona/v1
+generated_at: <iso-8601>
+sources:
+  - mem0:<observation_id>
+  - offload:<session_id>/<node_id>
+---
+
+# Persona Memory
+
+## Stable Preferences
+- <durable user/project preference> [mem0:<observation_id>]
+
+## Project Defaults
+- <stable project convention>
+
+## Source References
+- mem0:<observation_id>
+- offload:<session_id>/<node_id>
+```
+
+`scripts/memory-retrieve.sh` loads persona/scenario layers before atom-level mem0 search. Tune caps with `MEM0_PERSONA_TOKENS`, `MEM0_SCENARIO_TOKENS`, `MEM0_SCENARIO_LIMIT`, and `MEM0_MAX_TOKENS`.
+
+### Diagnostic Export
+
+Use `scripts/export-memory-diagnostic.sh` to package a redacted local diagnostic archive:
+
+```bash
+bash scripts/export-memory-diagnostic.sh /tmp
+
+# Include sanitized raw offload refs only when explicitly needed
+bash scripts/export-memory-diagnostic.sh /tmp --include-raw
+```
+
+The default archive includes:
+
+- `manifest.json`
+- memory DB stats, not the raw SQLite DB
+- persona/scenario files
+- session and pipeline metadata
+- offload `events.jsonl`, `state.json`, `canvas.mmd`, and session summary metadata
+- MCP audit logs when present
+
+Raw offload `refs/*.md` are excluded by default. With `--include-raw`, refs are included after redaction.
+
 ---
 
 ## Python API

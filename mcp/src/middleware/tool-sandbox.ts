@@ -97,6 +97,26 @@ const PROMPT_INJECTION_PATTERNS: RegExp[] = [
   /```system[\s\S]*?```/i,
 ];
 
+const SECRET_PATTERNS: RegExp[] = [
+  /sk-[a-zA-Z0-9]{20,}/g,
+  /key-[a-zA-Z0-9]{20,}/g,
+  /Bearer\s+[a-zA-Z0-9\-._~+/]+=*/g,
+  /password\s*[:=]\s*['"]?[^\s'"]{4,}/gi,
+  /secret\s*[:=]\s*['"]?[^\s'"]{4,}/gi,
+  /token\s*[:=]\s*['"]?[^\s'"]{8,}/gi,
+  /postgres:\/\/\S+:\S+@/g,
+  /mysql:\/\/\S+:\S+@/g,
+  /mongodb(?:\+srv)?:\/\/\S+:\S+@/g,
+];
+
+function redactSecrets(text: string): string {
+  let redacted = text;
+  for (const pattern of SECRET_PATTERNS) {
+    redacted = redacted.replace(pattern, '[REDACTED]');
+  }
+  return redacted;
+}
+
 /** Strip ANSI escape codes from text. */
 function stripAnsi(text: string): string {
   return text
@@ -141,7 +161,7 @@ function truncate(text: string, maxBytes: number): { text: string; wasTruncated:
 
 /** Sanitize text: strip ANSI, detect injection. */
 function sanitize(text: string): { text: string; injectionBlocked: boolean } {
-  const cleaned = stripAnsi(text);
+  const cleaned = redactSecrets(stripAnsi(text));
   const blocked = detectInjection(cleaned);
   if (blocked) {
     // Replace suspicious content with placeholder
