@@ -685,29 +685,14 @@ GEMINI_CONFIG=""
 
 setup_gemini() {
     GEMINI_CONFIG="$HOME/.config/google/mcp-cli/config.json"
-    log_step "Setting up Google Gemini CLI MCP..."
-
-    # Check if Gemini CLI directory exists or is expected
-    if [[ ! -d "$(dirname "$GEMINI_CONFIG")" ]]; then
-        log_warn "Gemini CLI config directory not found"
-        log_info "  Expected: $(dirname "$GEMINI_CONFIG")"
-        log_info "  Gemini CLI may not be installed."
-        log_info "  Install: https://ai.google.dev/gemini-api/docs/gemini-cli"
-        return 0
-    fi
+    ANTIGRAVITY_CLI_CONFIG="$HOME/.gemini/config/mcp_config.json"
+    log_step "Setting up Google Gemini CLI & Antigravity MCP..."
 
     # CRITICAL: Always use CANONICAL path for global config, never submodule path
     if [[ ! -f "$CANONICAL_SERVER_TS" ]]; then
         log_error "Canonical MCP server not found: $CANONICAL_SERVER_TS"
         log_info "  Run setup from the canonical forgewright installation first."
         return 1
-    fi
-
-    mkdir -p "$(dirname "$GEMINI_CONFIG")"
-
-    # Backup existing config
-    if [[ -f "$GEMINI_CONFIG" ]]; then
-        cp "$GEMINI_CONFIG" "${GEMINI_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
     fi
 
     # Determine gitnexus binary path
@@ -718,16 +703,28 @@ setup_gemini() {
         gitnexus_path="$HOME/.local/bin/gitnexus"
     fi
 
-    # Build new config using Node.js for proper JSON merging
-    local new_config
-    new_config=$(node -e "
+    # Helper function to write config for a given file
+    write_mcp_config() {
+        local target_config="$1"
+        local target_dir
+        target_dir=$(dirname "$target_config")
+        
+        mkdir -p "$target_dir"
+        
+        # Backup existing config
+        if [[ -f "$target_config" ]]; then
+            cp "$target_config" "${target_config}.bak.$(date +%Y%m%d%H%M%S)"
+        fi
+
+        # Build new config using Node.js for proper JSON merging
+        local new_config
+        new_config=$(node -e "
 var fs = require('fs');
 var cfg = { mcpServers: {} };
 
-// Load existing config if present
 try {
-    if (fs.existsSync('$GEMINI_CONFIG')) {
-        var raw = fs.readFileSync('$GEMINI_CONFIG', 'utf8');
+    if (fs.existsSync('$target_config')) {
+        var raw = fs.readFileSync('$target_config', 'utf8');
         cfg = JSON.parse(raw);
     }
 } catch(e) {
@@ -736,7 +733,6 @@ try {
 
 if (!cfg.mcpServers) cfg.mcpServers = {};
 
-// forgewright MCP server — CANONICAL PATH
 cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
     args: ['$CANONICAL_SERVER_TS'],
@@ -745,7 +741,6 @@ cfg.mcpServers['forgewright'] = {
     }
 };
 
-// gitnexus (native CLI)
 cfg.mcpServers['gitnexus'] = {
     command: '$gitnexus_path',
     args: ['mcp']
@@ -753,12 +748,24 @@ cfg.mcpServers['gitnexus'] = {
 
 console.log(JSON.stringify(cfg, null, 2));
 " 2>/dev/null) || {
-        log_error "Failed to update Gemini CLI config"
-        return 1
+            log_error "Failed to update MCP config for $target_config"
+            return 1
+        }
+
+        echo "$new_config" > "$target_config"
+        log_ok "Updated $target_config"
     }
 
-    echo "$new_config" > "$GEMINI_CONFIG"
-    log_ok "Updated $GEMINI_CONFIG"
+    # Write to Gemini CLI if parent directory exists
+    if [[ -d "$(dirname "$GEMINI_CONFIG")" ]]; then
+        write_mcp_config "$GEMINI_CONFIG"
+    else
+        log_info "Skipping Gemini CLI config (directory not found)"
+    fi
+    
+    # Always write to Antigravity CLI config
+    write_mcp_config "$ANTIGRAVITY_CLI_CONFIG"
+
     log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
     log_info "  gitnexus    → $gitnexus_path"
 }
@@ -1229,6 +1236,25 @@ cmd_check() {
     fi
     echo ""
 
+    # Antigravity CLI
+    local ag_config="$HOME/.gemini/config/mcp_config.json"
+    if [[ -f "$ag_config" ]]; then
+        log_ok "Antigravity CLI: $ag_config"
+        if grep -q '"forgewright"' "$ag_config" 2>/dev/null; then
+            log_ok "  forgewright: CONFIGURED"
+        else
+            log_warn "  forgewright: NOT configured"
+        fi
+        if grep -q '"gitnexus"' "$ag_config" 2>/dev/null; then
+            log_ok "  gitnexus: CONFIGURED"
+        else
+            log_warn "  gitnexus: NOT configured"
+        fi
+    else
+        log_warn "Antigravity CLI: NOT FOUND (~/.gemini/config/mcp_config.json)"
+    fi
+    echo ""
+
     # Zed AI
     local zed_settings_dir="$HOME/.config/zed"
     local os_type
@@ -1387,6 +1413,20 @@ if (cfg.mcpServers) {
 }
 fs.writeFileSync('$gemini_config', JSON.stringify(cfg, null, 2));
 " 2>/dev/null && log_ok "Removed from Gemini CLI" || log_warn "Gemini CLI: could not clean"
+    fi
+
+    # Remove from Antigravity CLI
+    local ag_config="$HOME/.gemini/config/mcp_config.json"
+    if [[ -f "$ag_config" ]]; then
+        node -e "
+var fs = require('fs');
+var cfg = JSON.parse(fs.readFileSync('$ag_config', 'utf8'));
+if (cfg.mcpServers) {
+    delete cfg.mcpServers['forgewright'];
+    delete cfg.mcpServers['gitnexus'];
+}
+fs.writeFileSync('$ag_config', JSON.stringify(cfg, null, 2));
+" 2>/dev/null && log_ok "Removed from Antigravity CLI" || log_warn "Antigravity CLI: could not clean"
     fi
 
     # Remove from Zed AI
