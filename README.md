@@ -1,6 +1,10 @@
 # Forgewright — AI Orchestrator That Actually Learns
 
 <p align="center">
+  <img src="assets/forgewright-banner.png" alt="Forgewright Banner" width="600" />
+</p>
+
+<p align="center">
   <a href="https://github.com/buiphucminhtam/forgewright/stargazers">
     <img src="https://img.shields.io/github/stars/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Stars" alt="Stars" />
   </a>

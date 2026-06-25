@@ -3,6 +3,10 @@
 > **This is the Vietnamese version.** For English documentation, see [README.md](./README.md)
 
 <p align="center">
+  <img src="assets/forgewright-banner.png" alt="Forgewright Banner" width="600" />
+</p>
+
+<p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/version-8.7.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/skills-81-brightgreen.svg" alt="Skills" />
