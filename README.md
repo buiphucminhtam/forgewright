@@ -29,6 +29,25 @@ Forgewright: [Skips synchronous DB calls] → [Built correctly the first time]
 
 ---
 
+## 🖥️ ForgeWright Console — Native Desktop Environment (Premium GUI)
+
+Want to visualize your agent pipelines in real-time? Check out the **[ForgeWright Console](https://feedmycode.com/)**, a premium local desktop GUI designed to work side-by-side with the open-source CLI.
+
+<p align="center">
+  <a href="https://feedmycode.com/">
+    <img src="https://img.shields.io/badge/Desktop_Console-Get_Lifetime_License-brightgreen?style=for-the-badge&logo=appstore&logoColor=white" alt="Get ForgeWright Console" />
+  </a>
+</p>
+
+*   **Visual Dashboard**: Watch real-time execution flows and progress diagrams of your 56+ AI skills. No more parsing raw CLI JSON logs.
+*   **Local SQLite Explorer**: Visually query, filter, and audit past agent decisions, requirements gaps, and architectural schemas.
+*   **One-Click Settings**: Toggle workspace variables, MCP multi-project isolation, cost parameters, and tools from a clean visual interface.
+*   **Background Task Runner**: Run long-running autonomous pipelines smoothly with native OS notification triggers.
+
+👉 Learn more and grab a lifetime license at **[feedmycode.com](https://feedmycode.com/)**.
+
+---
+
 ## Harness Engineering: Turning Raw LLMs into Reliable Coders
 
 In modern AI engineering, a raw language model is only 20% of a production agent. The other 80% is the **Harness**—the execution pipeline, safety guardrails, memory, and validation layers that govern how the AI operates.

@@ -53,7 +53,7 @@ export class MiddlewareChain {
   constructor(options: ChainOptions) {
     this.options = options;
     this.sessionDedup.configure(options.config.session_deduplication);
-    this.toolSandbox.configure(options.config.tool_sandbox);
+    this.toolSandbox.configure(options.config.tool_sandbox || {});
     this.contextOffload.configure(options.config.context_offload);
   }
 

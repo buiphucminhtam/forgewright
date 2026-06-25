@@ -46,6 +46,25 @@ Kết quả: Website production-ready, đã review, đã test, score 0-100
 
 ---
 
+## 🖥️ ForgeWright Console — Giao diện Desktop Chuyên nghiệp (Premium GUI)
+
+Bạn muốn theo dõi trực quan luồng hoạt động của agent theo thời gian thực? Hãy trải nghiệm **[ForgeWright Console](https://feedmycode.com/)** — phiên bản giao diện Desktop cao cấp (GUI) chạy cục bộ, được thiết kế để kết hợp hoàn hảo với CLI mã nguồn mở.
+
+<p align="center">
+  <a href="https://feedmycode.com/">
+    <img src="https://img.shields.io/badge/Giao_diện_Desktop-Sở_hữu_License_Trọn_đời-brightgreen?style=for-the-badge&logo=appstore&logoColor=white" alt="Sở hữu ForgeWright Console" />
+  </a>
+</p>
+
+*   **Bảng điều khiển trực quan (Visual Dashboard)**: Theo dõi sơ đồ tiến trình và luồng chạy thực tế của hơn 56 kỹ năng AI theo thời gian thực thay vì phải đọc log JSON thô từ terminal.
+*   **Trình khám phá SQLite cục bộ**: Dễ dàng truy vấn, lọc và kiểm tra (audit) các quyết định trước đó của agent, các khoảng trống yêu cầu (requirements gaps) và sơ đồ kiến trúc.
+*   **Cấu hình một chạm**: Chỉnh sửa các biến môi trường workspace, chế độ cô lập dự án MCP (Multi-project Isolation) và cấu hình tools thông qua giao diện trực quan và sạch sẽ.
+*   **Chạy tác vụ nền**: Vận hành các pipeline chạy tự động dài ngày một cách mượt mà dưới nền với các thông báo hệ thống (OS notifications) tích hợp.
+
+👉 Tìm hiểu thêm và mua bản quyền trọn đời chỉ với $25 tại **[feedmycode.com](https://feedmycode.com/)**.
+
+---
+
 ## Harness Engineering: Biến LLM Thô Thành Lập Trình Viên Đáng Tin Cậy
 
 Trong kỹ nghệ AI hiện đại, một mô hình ngôn ngữ lớn (LLM) thô chỉ đóng vai trò 20% trong một agent hoàn chỉnh. 80% còn lại thuộc về **Harness (Khung vận hành)** — hệ thống điều phối execution pipeline, các rào cản an toàn (safety guardrails), bộ nhớ (cognitive memory), và các lớp kiểm thử tự động điều khiển cách AI hoạt động.
