@@ -363,7 +363,7 @@ sync_canonical_server() {
     # Ensure node_modules is usable (reinstall if broken)
     if [[ ! -f "$CANONICAL_SERVER_DIR/node_modules/.bin/tsx" ]]; then
         log_info "  Reinstalling dependencies..."
-        (cd "$CANONICAL_SERVER_DIR" && npm install --silent 2>&1 | tail -2) || true
+        (cd "$CANONICAL_SERVER_DIR" && npm install --no-bin-links --silent 2>&1 | tail -2) || true
     fi
 
     log_ok "Canonical MCP server synced → $CANONICAL_SERVER_DIR"
