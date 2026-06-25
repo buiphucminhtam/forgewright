@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# ⚡ Tự động đồng bộ MCP Global khi phát hiện thay đổi trong thư mục mcp/ sau khi merge/pull
+if git diff-tree --no-commit-id --name-only -r ORIG_HEAD HEAD | grep -q '^mcp/'; then
+  echo "⚡ [Forgewright] Phát hiện thay đổi trong MCP từ nhánh nguồn. Đang tự động đồng bộ MCP Global..."
+  if [ -x "./scripts/forgewright-mcp-setup.sh" ]; then
+    bash ./scripts/forgewright-mcp-setup.sh
+  fi
+fi

@@ -1,6 +1,14 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
+# ⚡ Tự động đồng bộ MCP Global khi phát hiện thay đổi trong thư mục mcp/
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -q '^mcp/'; then
+  echo "⚡ [Forgewright] Phát hiện thay đổi trong MCP. Đang tự động đồng bộ MCP Global..."
+  if [ -x "./scripts/forgewright-mcp-setup.sh" ]; then
+    bash ./scripts/forgewright-mcp-setup.sh
+  fi
+fi
+
 # Kiểm tra xem commit vừa rồi có thay đổi tài liệu không
 if git diff-tree --no-commit-id --name-only -r HEAD | grep -q -E '^(docs/|README\.md|README\.vi\.md|TASKS\.md|\.forgewright/project-profile\.json|\.forgewright/code-conventions\.md)'; then
   echo "📄 [Forgewright] Phát hiện thay đổi tài liệu. Đang tự động đồng bộ sang llm_wiki..."
