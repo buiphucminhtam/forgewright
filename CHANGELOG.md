@@ -2,6 +2,17 @@
 
 All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewright).
 
+## [8.2.0] — 2026-06-25
+
+> **v8.2 — Test Coverage Reporting & State Isolation**
+
+### Fixed
+- **Vitest Coverage Reporter**: Removed `minimatch` version override in `mcp/package.json` to resolve conflicts with `test-exclude` and enable Vitest coverage generation and reporting.
+- **Pipeline Test State Isolation**: Refactored `mcp/src/state/pipeline-manager.test.ts` to execute inside isolated temporary directories, preventing test runs from writing to and polluting the workspace's `.forgewright/` state directory.
+
+### Added
+- **Sequence Diagram Generator Update**: Automated sequence diagram generator to trace routes, extract parameters, and map client-to-server call trees using GitNexus.
+
 ## [8.1.0] — 2026-04-29
 
 > **v8.1 — Autonomous Pipeline Hardening (Clarify-to-Deploy)**

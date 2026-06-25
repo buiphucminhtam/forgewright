@@ -40,7 +40,6 @@
     "vitest": "^1.2.2"
   },
   "overrides": {
-    "esbuild": "^0.25.0",
-    "minimatch": "^9.0.5"
+    "esbuild": "^0.25.0"
   }
 }

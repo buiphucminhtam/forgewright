@@ -1151,6 +1151,12 @@ bash scripts/forgewright-mcp-setup.sh --force
 ---
 
 ## Changelog
+### v8.2.0 (June 2026) — Test Coverage Reporting & State Isolation
+**Major Changes:**
+- **Vitest Coverage Reporter Fix**: Removed `minimatch` version override in `mcp/package.json` to resolve conflicts with `test-exclude` and enable successful Vitest coverage generation and reporting in CI/CD gates.
+- **Pipeline Test State Isolation**: Refactored `mcp/src/state/pipeline-manager.test.ts` to execute inside isolated temporary directories, preventing test runs from writing to and polluting the workspace's `.forgewright/` state directory.
+- **Sequence Diagram Generator Update**: Automated sequence diagram generator to trace routes, extract parameters, and map client-to-server call trees using GitNexus.
+
 ### v8.0.0 (June 2026) — Forgewright 8.0
 
 **Major Changes:**

@@ -1,5 +1,5 @@
 # API Flow: GET /api/projects
-Generated: 2026-06-25T09:56:44.973Z
+Generated: 2026-06-25T11:40:29.131Z
 
 ## Flow Diagram
 

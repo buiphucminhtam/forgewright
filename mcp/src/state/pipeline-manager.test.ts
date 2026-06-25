@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
-process.env.CURSOR_WORKSPACE_ROOT = process.cwd();
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'forgewright-test-'));
+process.env.CURSOR_WORKSPACE_ROOT = tmpDir;
 
-const STATE_FILE = path.join(process.cwd(), '.forgewright', 'pipeline-state.json');
+const STATE_FILE = path.join(tmpDir, '.forgewright', 'pipeline-state.json');
 
 function cleanState() {
   if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE);
@@ -17,6 +19,16 @@ describe('Pipeline Manager', () => {
 
   afterEach(() => {
     cleanState();
+  });
+
+  afterAll(() => {
+    try {
+      if (fs.existsSync(tmpDir)) {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    } catch (e) {
+      console.error('Failed to clean up temp test directory:', e);
+    }
   });
 
   it('getState returns default state when no state file exists', async () => {

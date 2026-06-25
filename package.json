@@ -1,6 +1,6 @@
 {
   "name": "forgewright",
-  "version": "8.0.0",
+  "version": "8.2.0",
   "description": "Adaptive AI Orchestrator — 52 skills, 19 modes. SaaS, game dev, XR, AI/ML, data engineering. Pipeline: DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW",
   "private": true,
   "scripts": {
@@ -27,11 +27,11 @@
   },
   "lint-staged": {
     "mcp/src/**/*.ts": [
-      "eslint --fix --cache --cache-location mcp/node_modules/.cache/eslint",
-      "prettier --write"
+      "npx --prefix mcp eslint --fix --cache --cache-location mcp/node_modules/.cache/eslint",
+      "npx --prefix mcp prettier --write"
     ],
     "src/cli/**/*.ts": [
-      "prettier --write"
+      "npx --prefix mcp prettier --write"
     ],
     "**/*.py": [
       "ruff check --fix",
