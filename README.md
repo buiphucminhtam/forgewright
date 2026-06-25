@@ -1156,6 +1156,7 @@ bash scripts/forgewright-mcp-setup.sh --force
 - **Vitest Coverage Reporter Fix**: Removed `minimatch` version override in `mcp/package.json` to resolve conflicts with `test-exclude` and enable successful Vitest coverage generation and reporting in CI/CD gates.
 - **Pipeline Test State Isolation**: Refactored `mcp/src/state/pipeline-manager.test.ts` to execute inside isolated temporary directories, preventing test runs from writing to and polluting the workspace's `.forgewright/` state directory.
 - **Sequence Diagram Generator Update**: Automated sequence diagram generator to trace routes, extract parameters, and map client-to-server call trees using GitNexus.
+- **Submodule Auto-Update Check**: Added `scripts/forgewright-submodule-check.sh` to allow projects using Forgewright as a submodule to automatically check, fetch, and pull Forgewright updates in their git hooks (pre-commit or post-merge).
 
 ### v8.0.0 (June 2026) — Forgewright 8.0
 

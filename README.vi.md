@@ -1197,6 +1197,11 @@ npx tsx forgewright/scripts/generate-sequence.ts \
     npx tsx scripts/generate-sequence.ts
     ```
 2.  **Ràng buộc Agent AI**: Dự án bắt buộc tự động cập nhật GitNexus & Sơ đồ Sequence thông qua các quy tắc (Rules) thiết lập trong file `CLAUDE.md` và `AGENTS.md`.
+3.  **Tự động kiểm tra và cập nhật Submodule Forgewright**: Đối với các dự án sử dụng Forgewright dưới dạng submodule, bạn có thể tích hợp việc kiểm tra và cập nhật tự động bằng cách thêm dòng sau vào file hook (ví dụ `.husky/pre-commit` hoặc `.husky/post-merge`) của dự án cha:
+    ```bash
+    bash forgewright/scripts/forgewright-submodule-check.sh --pull
+    ```
+    Script này sẽ tự động kết nối và đối chiếu mã nguồn của submodule với GitHub. Nếu có bản cập nhật mới, nó sẽ tự động chạy lệnh `git submodule update --remote --merge` để kéo code mới về, đồng thời tự động rebuild và refresh lại MCP Global.
 
 
 ---

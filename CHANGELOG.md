@@ -12,6 +12,7 @@ All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewrig
 
 ### Added
 - **Sequence Diagram Generator Update**: Automated sequence diagram generator to trace routes, extract parameters, and map client-to-server call trees using GitNexus.
+- **Submodule Auto-Update Check**: Added `scripts/forgewright-submodule-check.sh` to allow projects using Forgewright as a submodule to automatically check, fetch, and pull Forgewright updates in their git hooks (pre-commit or post-merge).
 
 ## [8.1.0] — 2026-04-29
 
