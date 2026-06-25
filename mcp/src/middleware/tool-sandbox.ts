@@ -261,7 +261,7 @@ export class ToolSandboxMiddleware {
     injectionAttemptsBlocked: 0,
   };
 
-  configure(config: SandboxConfig): void {
+  configure(config: SandboxConfig | undefined): void {
     if (!config) return;
     this.enabled = config.enabled ?? this.enabled;
     this.config = {

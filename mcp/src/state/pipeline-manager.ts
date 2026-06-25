@@ -47,6 +47,7 @@ export function setWorkspaceRoot(): void {
 
   // Try environment variables first (set by Cursor when calling MCP)
   let ws =
+    process.env.FORGEWRIGHT_WORKSPACE ||
     process.env.CURSOR_WORKSPACE_ROOT ||
     process.env.CLASSD_WORKSPACE_ROOT ||
     process.env.AGENTS_WORKSPACE;
@@ -65,7 +66,7 @@ export function setWorkspaceRoot(): void {
       `[Forgewright Global MCP] Warning: Could not detect workspace. Using FORGEWRIGHT_ROOT.`,
     );
     console.error(
-      `[Forgewright Global MCP] Set CURSOR_WORKSPACE_ROOT env var for multi-project support.`,
+      `[Forgewright Global MCP] Set FORGEWRIGHT_WORKSPACE or CURSOR_WORKSPACE_ROOT env var for multi-project support.`,
     );
     ws = _getForgewrightRoot();
   }

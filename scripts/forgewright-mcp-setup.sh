@@ -416,7 +416,8 @@ cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
     args: ['$CANONICAL_SERVER_TS'],
     env: {
-        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
+        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}',
+        AGENTS_WORKSPACE: '\${workspaceFolder}'
     }
 };
 
@@ -493,7 +494,8 @@ cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
     args: ['$CANONICAL_SERVER_TS'],
     env: {
-        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
+        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}',
+        AGENTS_WORKSPACE: '\${workspaceFolder}'
     }
 };
 
@@ -663,7 +665,6 @@ setup_codex() {
         echo 'transport = { type = "stdio" }'
         echo "command = \"$CANONICAL_TSX\""
         echo "args = [\"$CANONICAL_SERVER_TS\"]"
-        echo "env = { FORGEWRIGHT_WORKSPACE = \"$PROJECT_ROOT\" }"
 
         # Append gitnexus section
         echo ""
@@ -737,7 +738,8 @@ cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
     args: ['$CANONICAL_SERVER_TS'],
     env: {
-        FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
+        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}',
+        AGENTS_WORKSPACE: '\${workspaceFolder}'
     }
 };
 
@@ -844,7 +846,8 @@ cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
     args: ['$CANONICAL_SERVER_TS'],
     env: {
-        FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
+        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}',
+        AGENTS_WORKSPACE: '\${workspaceFolder}'
     }
 };
 
@@ -951,7 +954,6 @@ setup_opencode() {
             echo 'enabled = true'
             echo 'command = "npx"'
             echo "args = [\"tsx\", \"$CANONICAL_SERVER_TS\"]"
-            echo "env = { FORGEWRIGHT_WORKSPACE = \"$PROJECT_ROOT\" }"
 
             echo ""
             echo "[mcp_servers.gitnexus]"
@@ -980,10 +982,7 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 // forgewright MCP server — CANONICAL PATH
 cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
-    args: ['$CANONICAL_SERVER_TS'],
-    env: {
-        FORGEWRIGHT_WORKSPACE: '$PROJECT_ROOT'
-    }
+    args: ['$CANONICAL_SERVER_TS']
 };
 
 // gitnexus (native CLI)

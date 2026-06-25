@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# Wibuno — Android Auto-Publish Script (Local Build & Submit)
+# Android Auto-Publish Script (Local Build & Submit)
 # ==============================================================================
 # This script automates building the Android App Bundle (AAB) locally,
 # uploading it to the Google Play Console, and submitting it to production/tracks.
@@ -10,11 +10,17 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-# Default mobile app path relative to script directory
-DEFAULT_APP_PATH="../waifu-application/apps/mobile"
+# Default mobile app path relative to the project where the command is run.
+DEFAULT_APP_PATH="${MOBILE_APP_PATH:-apps/mobile}"
 APP_PATH="${1:-$DEFAULT_APP_PATH}"
 
 # Resolve absolute path
+if [ ! -d "$APP_PATH" ]; then
+  echo "❌ Error: Mobile application directory not found at $APP_PATH"
+  echo "💡 Pass the app path as the first argument or set MOBILE_APP_PATH."
+  exit 1
+fi
+
 ABS_APP_PATH=$(cd "$APP_PATH" && pwd)
 
 echo "======================================================================"
@@ -24,11 +30,6 @@ echo "======================================================================"
 
 # Step 1: Pre-flight Checks
 echo "🔍 Running pre-flight checks..."
-
-if [ ! -d "$ABS_APP_PATH" ]; then
-  echo "❌ Error: Mobile application directory not found at $ABS_APP_PATH"
-  exit 1
-fi
 
 if [ ! -f "$ABS_APP_PATH/google-services.json" ]; then
   echo "❌ Error: google-services.json is missing from $ABS_APP_PATH"
