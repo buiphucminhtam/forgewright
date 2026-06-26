@@ -149,6 +149,7 @@ describe('Pipeline Manager', () => {
       phaseProgress: 0.5,
       selfHealing: null,
       qualityGate: null,
+      phases: [],
     };
 
     saveState(state);
@@ -186,6 +187,11 @@ describe('Pipeline Manager', () => {
     expect(state.phaseProgress).toBeNull();
     expect(state.selfHealing).toBeNull();
     expect(state.qualityGate).toBeNull();
+    expect(state.phases).toBeDefined();
+    expect(state.phases.length).toBe(5);
+    expect(state.phases[0].key).toBe('interpret');
+    expect(state.phases[0].status).toBe('passed');
+    expect(state.phases[1].status).toBe('running');
   });
 
   it('requestGateApproval accepts qualityGate details', async () => {

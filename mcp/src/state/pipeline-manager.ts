@@ -105,6 +105,23 @@ export interface QualityGateState {
   failedCriteria: FailedCriterion[];
 }
 
+export interface PhaseState {
+  key: 'interpret' | 'define' | 'build' | 'harden' | 'ship';
+  status:
+    | 'not_started'
+    | 'running'
+    | 'waiting_review'
+    | 'passed'
+    | 'failed'
+    | 'skipped'
+    | 'blocked';
+  progress: number; // 0.0 to 1.0
+  activeAction?: string | null;
+  startedAt?: string | null;
+  endedAt?: string | null;
+  errorSummary?: string | null;
+}
+
 export interface PipelineState {
   currentPhase: number;
   currentMode: string | null;
@@ -114,6 +131,7 @@ export interface PipelineState {
   phaseProgress?: number | null;
   selfHealing?: SelfHealingState | null;
   qualityGate?: QualityGateState | null;
+  phases: PhaseState[];
 }
 
 export const PIPELINE_PHASES = [
@@ -123,6 +141,41 @@ export const PIPELINE_PHASES = [
   'Phase 3: QA & Hardening',
   'Phase 4: Release & Deployment',
 ];
+
+export const PHASE_KEYS: PhaseState['key'][] = ['interpret', 'define', 'build', 'harden', 'ship'];
+
+export function initializeDefaultPhases(
+  currentPhaseIndex: number,
+  currentStatus: string,
+): PhaseState[] {
+  return PHASE_KEYS.map((key, index) => {
+    let status: PhaseState['status'] = 'not_started';
+    let progress = 0;
+    let startedAt: string | null = null;
+    let endedAt: string | null = null;
+
+    if (index < currentPhaseIndex) {
+      status = 'passed';
+      progress = 1.0;
+      endedAt = new Date().toISOString();
+    } else if (index === currentPhaseIndex) {
+      status =
+        currentStatus === 'FAILED'
+          ? 'failed'
+          : currentStatus === 'WAITING_FOR_GATE'
+            ? 'waiting_review'
+            : currentStatus === 'IDLE'
+              ? 'not_started'
+              : 'running';
+      progress = 0.0;
+      if (currentStatus !== 'IDLE') {
+        startedAt = new Date().toISOString();
+      }
+    }
+
+    return { key, status, progress, startedAt, endedAt };
+  });
+}
 
 export function resetWorkspaceRoot(): void {
   _workspaceRoot = null;
@@ -139,6 +192,7 @@ const DEFAULT_STATE: PipelineState = {
   phaseProgress: null,
   selfHealing: null,
   qualityGate: null,
+  phases: initializeDefaultPhases(0, 'IDLE'),
 };
 
 function ensureDirSync(dirPath: string) {
@@ -176,10 +230,27 @@ export function getState(): PipelineState {
     if (parsed.phaseProgress === undefined) parsed.phaseProgress = null;
     if (parsed.selfHealing === undefined) parsed.selfHealing = null;
     if (parsed.qualityGate === undefined) parsed.qualityGate = null;
+    if (!parsed.phases || !Array.isArray(parsed.phases) || parsed.phases.length === 0) {
+      parsed.phases = initializeDefaultPhases(parsed.currentPhase, parsed.status);
+    }
     return parsed;
   } catch (e) {
     console.error('Failed to read state, returning default', e);
     return DEFAULT_STATE;
+  }
+}
+
+function emitOscEvent(state: PipelineState) {
+  try {
+    const payload = {
+      ...state,
+      history: undefined, // Strip history to optimize payload size
+    };
+    const jsonStr = JSON.stringify(payload);
+    const base64 = Buffer.from(jsonStr).toString('base64');
+    process.stdout.write(`\u001b]777;status;${base64}\u0007\n`);
+  } catch (e) {
+    console.error('Failed to emit OSC event:', e);
   }
 }
 
@@ -189,6 +260,7 @@ export function saveState(state: PipelineState) {
   try {
     fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf-8');
     fs.renameSync(tempFile, stateFile);
+    emitOscEvent(state);
   } catch (e) {
     if (fs.existsSync(tempFile)) {
       try {
@@ -212,6 +284,10 @@ export function startPipeline(mode: string): string {
   state.phaseProgress = null;
   state.selfHealing = null;
   state.qualityGate = null;
+
+  // Initialize the phases (Requirement 2.1)
+  state.phases = initializeDefaultPhases(1, 'IN_PROGRESS');
+
   saveState(state);
 
   return `Successfully started pipeline in ${mode} mode. You are now at Phase 1: Research & Discovery. Follow the Forgewright orchestrator instructions.`;
@@ -221,6 +297,17 @@ export function advancePhase(): string {
   const state = getState();
   if (state.status === 'WAITING_FOR_GATE') {
     return `Error: You cannot advance the phase yet. The current phase is frozen pending human-in-the-loop (HITL) gate approval.`;
+  }
+
+  const now = new Date().toISOString();
+
+  // Mark the current phase in phases as 'passed', update endedAt = now, and set progress = 1.0 (Requirement 2.2)
+  const currentPhaseKey = PHASE_KEYS[state.currentPhase];
+  const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
+  if (currentPhaseState) {
+    currentPhaseState.status = 'passed';
+    currentPhaseState.endedAt = now;
+    currentPhaseState.progress = 1.0;
   }
 
   if (state.currentPhase >= PIPELINE_PHASES.length - 1) {
@@ -243,6 +330,16 @@ export function advancePhase(): string {
   state.phaseProgress = null;
   state.selfHealing = null;
   state.qualityGate = null;
+
+  // Mark the new currentPhase in phases as 'running', set startedAt = now, and progress = 0.0 (Requirement 2.2)
+  const newPhaseKey = PHASE_KEYS[state.currentPhase];
+  const newPhaseState = state.phases.find((p) => p.key === newPhaseKey);
+  if (newPhaseState) {
+    newPhaseState.status = 'running';
+    newPhaseState.startedAt = now;
+    newPhaseState.progress = 0.0;
+  }
+
   saveState(state);
 
   return `Successfully advanced to ${phaseName}. Check the Forgewright instructions for roles required in this phase.`;
@@ -256,6 +353,14 @@ export function requestGateApproval(
   state.status = 'WAITING_FOR_GATE';
   state.history.push(`Requested Gate Approval: ${message}`);
   state.qualityGate = qualityGate || null;
+
+  // Mark current phase in phases as 'waiting_review' (Requirement 2.3)
+  const currentPhaseKey = PHASE_KEYS[state.currentPhase];
+  const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
+  if (currentPhaseState) {
+    currentPhaseState.status = 'waiting_review';
+  }
+
   saveState(state);
 
   return `System is now locked. Ask the user for explicit approval to pass the gate: "${message}".`;
@@ -269,6 +374,14 @@ export function approveGate(): string {
   state.status = 'IN_PROGRESS';
   state.history.push('Gate approved by user.');
   state.qualityGate = null; // Clear quality gate info after approval
+
+  // Mark current phase back to 'running'
+  const currentPhaseKey = PHASE_KEYS[state.currentPhase];
+  const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
+  if (currentPhaseState) {
+    currentPhaseState.status = 'running';
+  }
+
   saveState(state);
   return 'Gate successfully approved. Proceed to next step or advance phase.';
 }
@@ -277,6 +390,17 @@ export function updateSubTask(activeAction: string | null, phaseProgress: number
   const state = getState();
   state.activeAction = activeAction;
   state.phaseProgress = phaseProgress;
+
+  // Synchronize to the current active phase
+  const currentPhaseKey = PHASE_KEYS[state.currentPhase];
+  const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
+  if (currentPhaseState) {
+    if (activeAction !== undefined) currentPhaseState.activeAction = activeAction;
+    if (phaseProgress !== null && phaseProgress !== undefined) {
+      currentPhaseState.progress = phaseProgress;
+    }
+  }
+
   saveState(state);
 }
 
@@ -295,6 +419,15 @@ export function failPipeline(reason?: string): string {
   state.phaseProgress = null;
   state.selfHealing = null;
   state.qualityGate = null;
+
+  // Mark current phase in phases as 'failed' and set errorSummary = reason (Requirement 2.4)
+  const currentPhaseKey = PHASE_KEYS[state.currentPhase];
+  const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
+  if (currentPhaseState) {
+    currentPhaseState.status = 'failed';
+    currentPhaseState.errorSummary = reason || 'Unknown failure';
+  }
+
   saveState(state);
   return `Pipeline status updated to FAILED.`;
 }
