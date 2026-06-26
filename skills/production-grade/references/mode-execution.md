@@ -1,0 +1,482 @@
+# Mode Execution Reference
+
+<!-- source: skills/production-grade/references/mode-execution.md -->
+
+## Mode Execution (Non-Full-Build)
+
+All modes share these behaviors:
+- Bootstrap workspace: `mkdir -p skills/_shared/protocols/ .forgewright/`
+- Write shared protocols (same as Full Build step 3)
+- Read `.production-grade.yaml` for path overrides
+- Read existing workspace state if present
+- Apply coding-level adaptation from `.production-grade.yaml` (see main orchestrator config)
+- Apply sensitive file protection protocol for all file operations
+- **Run plan quality loop** on EVERY skill invocation — plan first, score ≥ 9.0 before any work begins
+- **Asynchronous Heartbeat:** Periodically emit human-readable status updates (e.g., "Running tests...", "Applying self-healing fix 2/5...") so the user knows the AI is working and hasn't frozen.
+- **⚠️ QA AUTO-RUN (MANDATORY):** Apply complexity-based hybrid testing flow. For complex tasks, the sequence is: Given/When/Then (BA) → Write Tests/Stubs (QA) → Code (Dev) → Run Tests → Pass ✓. For simple tasks: Code (Dev) → Write & Run Tests (QA) → Pass ✓. Never finish without verifying tests pass.
+- **Antigravity Planning (for large features):** Features with 3+ components MUST use antigravity planning structure BEFORE starting implementation. Create `antigravity/planning/[feature-name]/` with PLAN.md, SCOPE.md, ARCHITECTURE.md, TASKS.md files.
+- Engagement mode: ask ONLY if mode involves 3+ skills. For 1-2 skill modes, use Standard engagement + Sequential execution.
+
+### Goal Mode Execution (v8.2)
+
+When Goal mode is triggered, Forgewright enters autonomous pursuit mode:
+
+```
+1. SET GOAL:
+   - Parse condition from user message
+   - Validate condition is measurable
+   - Create .forgewright/active-goal.json
+
+2. AUTONOMOUS LOOP:
+   After each turn:
+   a. Run evaluation:
+      bash scripts/goal-evaluate.py "[condition]"
+   b. Check result:
+      - MET: Report completion, clear goal, exit autonomous mode
+      - NOT_MET: Continue to next turn (no user prompt needed)
+      - UNKNOWN: Ask user to verify
+
+3. PROGRESS TRACKING:
+   - Write progress to .forgewright/goal-progress.md
+   - Update turns counter in active-goal.json
+   - Emit heartbeat: "Working toward goal: [reason why not met yet]"
+
+4. EXIT CONDITIONS:
+   - Condition is met (evaluator returns MET)
+   - User runs `/goal clear`
+   - Safety limit reached (max_turns, timeout)
+   - User explicitly stops
+```
+
+**Integration with other skills:** Goal mode wraps ANY skill execution. The underlying skill does the work; Goal mode handles the loop and evaluation.
+
+## ⚠️ Self-Check Before Finishing (MANDATORY)
+
+**BEFORE declaring a task complete, verify ALL of the following:**
+
+| # | Check | Action if Failed |
+|---|-------|-----------------|
+| 1 | **Request interpreted?** | If Step 0 wasn't completed, go back and do it |
+| 2 | **Plan scored ≥ 9.0?** | If < 9.0, improve plan before proceeding |
+| 3 | **ASIP Research Gate followed?** | If 2 failures occurred → research + skill update was mandatory |
+| 4 | **Lessons written?** | Append to skill SKILL.md + .forgewright/lessons.md |
+| 5 | **Test cases prepared?** | For medium/large features, write test stubs first |
+| 6 | **Code changed?** | Implement code to satisfy requirements & test cases |
+| 7 | **Tests run & verified?** | Run QA tests to verify 100% pass |
+| 8 | **gitnexus_impact run?** | If editing symbols → run impact analysis |
+| 9 | **Scope respected?** | If scope creep detected → flag to user |
+| 10 | **User approval obtained?** | If gate exists → wait for approval |
+| 11 | **Review mode respected?** | If Full mode → run director reviews; if Solo → confirm skip OK |
+| 12 | **ASIP metrics updated?** | Increment counters in .forgewright/asip-metrics.json |
+
+**⚠️ NEVER finish a task without completing checks 3-5 and 7 if code was changed.**
+
+### QA Test Sequence (MANDATORY complexity-based hybrid flow)
+
+```
+For Complex Tasks:   Given/When/Then (BA) → Write Tests/Stubs (QA) → Code (Dev) → Run Tests → Pass ✓
+For Simple Tasks:    Code (Dev) → Write & Run Tests (QA) → Pass ✓
+```
+
+**Do NOT wait for user to ask for tests. Run/verify them automatically.**
+
+## Antigravity Planning System
+
+For large features (3+ components), use the Antigravity Planning System to structure your work.
+
+### When to Use Antigravity
+
+| Feature Type | Antigravity? |
+|--------------|--------------|
+| Single file change | ❌ No |
+| Small (1-2 components) | ❌ No |
+| Medium (3+ components) | ✅ Yes |
+| Full Build / Game Build | ✅ Required |
+| Multi-team coordination | ✅ Required |
+| New integration (auth, payment) | ✅ Yes |
+
+### Antigravity Folder Structure
+
+```
+antigravity/
+└── planning/
+    └── [feature-name]/
+        ├── PLAN.md          # Main planning document
+        ├── SCOPE.md         # Scope definition
+        ├── ARCHITECTURE.md   # Technical architecture
+        ├── TASKS.md         # Task breakdown
+        ├── DECISIONS.md     # Architecture decisions log
+        └── RETROSPECTIVE.md # Post-completion retrospective
+```
+
+### Quick Commands
+
+```bash
+# Create new feature plan
+./scripts/antigravity/antigravity.sh new <feature-name>
+
+# Check status
+./scripts/antigravity/antigravity.sh status
+
+# Show progress
+./scripts/antigravity/antigravity.sh progress <feature>
+
+# Archive completed
+./scripts/antigravity/antigravity.sh archive <feature>
+```
+
+### Feature Plan Template
+
+Each feature plan must include:
+
+| File | Required? | Content |
+|------|-----------|---------|
+| `PLAN.md` | ✅ Yes | Overview, goals, key decisions, timeline |
+| `SCOPE.md` | ✅ Yes | In/out scope, constraints, risks, acceptance criteria |
+| `ARCHITECTURE.md` | ⚠️ If complex | Component diagram, data models, API design |
+| `TASKS.md` | ✅ Yes | Task breakdown by priority, estimates |
+| `DECISIONS.md` | ⚠️ Recommended | Architecture Decision Records |
+| `RETROSPECTIVE.md` | ⚠️ After completion | Lessons learned, metrics |
+
+### Plan Quality Criteria
+
+Each feature plan must score above the complexity-scaled threshold (≥ 8.0/10 for Feature mode) on:
+
+| Criteria | Description |
+|----------|-------------|
+| Clarity | Scope clearly defined |
+| Completeness | Enough info to implement |
+| Feasibility | Achievable in timeframe |
+| Risk Awareness | Risks identified |
+| Testability | Clear acceptance criteria |
+| Maintainability | Long-term viable |
+| Priority | Impact vs effort clear |
+| Dependencies | External deps identified |
+
+See `antigravity/README.md` for full documentation.
+
+### Feature Mode
+
+Add a feature to an existing codebase. Lightweight DEFINE → BUILD → TEST.
+
+1. **Codebase scan** — read existing code structure, framework, patterns
+2. **BA pre-flight (conditional)** — Assess the user's feature description for information gaps using 6W1H. If requirements score < 6/7 completeness → run BA (Express depth) to elicit missing info. If clear → skip. Log: `✓ Requirements complete — skipping BA` or `⧖ Information gaps detected — running BA elicitation`
+3. **PM (Express depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only). If BA ran, use `ba-package.md` to reduce questions.
+4. **Architect (scoped)** — design how this feature fits the existing architecture. New endpoints, schema changes, component additions. NOT a full system redesign.
+5. **Test Cases/Stubs Preparation** — QA Engineer writes test stubs based on BDD/Gherkin spec from the BA package (Mandatory for medium/large features; optional for simple fixes).
+6. **Build** — Software Engineer and/or Frontend Engineer implement the feature code to satisfy requirements and test cases.
+7. **⚠️ Test Verification (AUTO-RUN)** — Run and verify tests. DO NOT WAIT for user to ask. Sequence: Given/When/Then (BA) → Write Tests/Stubs (QA) → Code (Dev) → Run Tests → Pass ✓.
+8. **Optional: Review** — Code Reviewer checks the new code against existing patterns
+
+**1 gate:** After PM scoping (step 3), confirm scope before test case preparation.
+
+**⚠️ IMPORTANT:** Step 7 (Test Verification) is MANDATORY. After building, ALWAYS run tests without waiting for user prompt.
+
+### Harden Mode
+
+Security + quality audit on existing code. No building, pure analysis + fixes.
+
+1. **Codebase scan** — read all existing code
+2. **Sequential:** Security Engineer → QA Engineer → Code Reviewer analyze the code
+3. **Consolidated findings** — merge all findings, deduplicate, sort by severity
+4. **Present findings** — show Critical/High/Medium/Low counts with top issues
+5. **Remediation** — fix Critical and High issues (with user confirmation)
+
+**1 gate:** After findings (step 4), before remediation.
+
+### Ship Mode
+
+Get existing code deployed. Infrastructure + reliability.
+
+1. **Codebase scan** — read existing code, identify services, dependencies
+2. **DevOps** — Dockerfiles, CI/CD pipelines, IaC (Terraform/Pulumi), monitoring
+3. **SRE** — SLO definitions, runbooks, alerting, chaos experiment plan
+
+**1 gate:** After DevOps infra plan, before applying.
+
+### Test Mode
+
+Write tests for existing code. Single skill.
+
+1. Read skills/qa-engineer/SKILL.md and follow its instructions against existing code
+2. QA reads code, writes test plan, implements tests, runs them
+3. Report results
+
+**0 gates.** QA operates autonomously.
+
+### Review Mode
+
+Code quality review. Single skill, read-only.
+
+1. Read skills/code-reviewer/SKILL.md and follow its instructions
+2. Review produces findings report
+3. Present findings with severity distribution
+
+**0 gates.** Read-only operation.
+
+### Architect Mode
+
+Design or redesign architecture. Single skill.
+
+1. Read skills/solution-architect/SKILL.md and follow its instructions
+2. Full discovery interview (depth based on engagement mode)
+3. Produces ADRs, diagrams, tech stack, API contracts, scaffold
+
+**1 gate:** Architecture approval before scaffold generation.
+
+### Document Mode
+
+Generate documentation for existing code. Single skill.
+
+1. Read skills/technical-writer/SKILL.md and follow its instructions
+2. Reads all code + existing docs
+3. Generates API reference, dev guides, architecture overview
+
+**0 gates.** Technical Writer operates autonomously.
+
+### Explore Mode
+
+Thinking partner. Single skill.
+
+1. Read skills/polymath/SKILL.md and follow its instructions
+2. Research, advise, ideate — whatever the user needs
+3. When ready, offer to hand off to any other mode
+
+**0 gates.** Polymath manages its own dialogue.
+
+### Research Mode
+
+Deep, grounded research on any topic. **NotebookLM Researcher is the primary skill** (v0.5.19, 35+ tools: research, studio, audio, quiz, flashcards, slides, cross-notebook, batch, pipelines, tags). Polymath + crawl4ai are enhancement layers.
+
+1. Read `skills/notebooklm-researcher/SKILL.md` and follow its instructions
+2. Check authentication: `nlm auth status`
+3. Check for existing notebooks before creating new: `nlm notebook list`
+4. **Phase 1 — Discovery:** Identify if this is a new topic (→ create notebook) or existing notebook (→ add sources)
+5. **Phase 2 — Source Ingestion:** Add source URLs, text notes, or YouTube videos. Use `nlm research start --mode deep` for automatic web discovery
+6. **Phase 3 — NotebookLM Synthesis:** Use `notebook describe`, `notebook query`, `cross query` to synthesize findings
+7. **Phase 4 — Content Generation:** Generate study materials: audio (podcast), report (briefing doc/study guide), quiz, flashcards, slides, infographic
+8. **Phase 5 — Cross-Notebook (if needed):** Query across multiple notebooks for comparative research
+9. **Phase 6 — Handoff:** Format findings as research report with citations, hand off to relevant mode
+
+**NotebookLM Capabilities (v0.5.19):**
+- 35+ MCP tools: notebook, source, research, studio, audio, video, report, quiz, flashcards, mindmap, slides, infographic, data-table, download, export, chat, share, batch, cross, pipeline, tag, alias, config, doctor, skill, setup
+- Batch operations: same action across multiple notebooks
+- Pipelines: `ingest-and-podcast`, `research-and-report`, `multi-format`
+- Drive sync: stale source detection and sync
+- Multi-profile: multiple Google accounts
+- Enterprise/Workspace support via `NOTEBOOKLM_BASE_URL`
+
+**0 gates.** NotebookLM Researcher manages dialogue.
+
+### Optimize Mode
+
+Performance + reliability analysis. Two skills.
+
+1. **Code Reviewer** — identify performance anti-patterns, N+1 queries, memory leaks
+2. **SRE** — capacity analysis, scaling bottlenecks, SLO evaluation
+3. **Consolidated report** — performance findings + reliability recommendations
+4. **Remediation** — fix top issues
+
+**1 gate:** After analysis, before fixes.
+
+### Marketing Mode
+
+Go-to-market strategy, content, and SEO. Primarily Growth Marketer.
+
+1. **Growth Marketer** — market analysis, positioning, content strategy, SEO audit, copywriting, launch campaign, analytics setup
+2. **Conversion Optimizer** (if CRO explicitly mentioned) — funnel audit, CRO recommendations alongside marketing strategy
+3. **Frontend Engineer** (if SEO code changes needed) — implement meta tags, schema markup, page speed fixes
+
+**1 gate:** After strategy, before content creation.
+
+### Grow Mode
+
+Conversion optimization, experimentation, and growth engineering. Primarily Conversion Optimizer.
+
+1. **Conversion Optimizer** — funnel audit, CRO implementation, A/B test design, growth loops, churn prevention
+2. **Growth Marketer** (if strategy context needed) — provide positioning, messaging, and traffic analysis
+3. **Frontend Engineer** (if code changes needed) — implement CRO changes, experiment infrastructure
+4. **QA Engineer** (if A/B test infrastructure) — verify experiment implementation
+
+**1 gate:** After audit, before implementation.
+
+### Analyze Mode
+
+Standalone requirements analysis and validation. Single skill.
+
+1. Read `skills/business-analyst/SKILL.md` and follow its instructions
+2. BA receives client information, applies 6W1H framework, evaluates completeness
+3. BA challenges assumptions, checks feasibility, detects contradictions
+4. BA generates `ba-package.md` with validated requirements
+5. When complete, offer handoff options:
+
+```
+Analysis complete. What next?
+
+1. **Hand off to PM — write BRD from this analysis (Recommended)**
+2. **Start Feature mode — build what was analyzed**
+3. **Start Full Build — full pipeline from this analysis**
+4. **Done — I just needed the analysis**
+5. **Chat about this** — Free-form input
+```
+
+**0 gates.** BA operates autonomously. Handoff is optional.
+
+### Custom Mode
+
+User picks skills from a menu. Present via notify_user:
+
+```
+Which skills do you need? (list the numbers separated by commas)
+
+--- Core Engineering ---
+1. **Business Analyst** — Requirements elicitation, feasibility analysis, critical evaluation, information gatekeeping
+2. **Product Manager** — Requirements, user stories, BRD
+3. **Solution Architect** — System design, API contracts, tech stack
+4. **Software Engineer** — Backend implementation
+5. **Frontend Engineer** — UI components, pages, design system
+6. **QA Engineer** — Tests — unit, integration, e2e, performance
+7. **Security Engineer** — OWASP audit, STRIDE, AI security, runtime detection
+8. **Code Reviewer** — Architecture conformance, code quality, git workflow
+9. **DevOps** — Docker, CI/CD, Terraform, monitoring
+10. **SRE** — SLOs, chaos engineering, runbooks
+11. **Technical Writer** — API docs, dev guides, architecture docs
+12. **Data Scientist** — AI/ML systems, RAG pipelines, agent orchestration
+13. **Debugger** — Bug investigation, root cause analysis, regression testing
+14. **Prompt Engineer** — Prompt design, evaluation, optimization
+15. **API Designer** — REST/GraphQL design, endpoints, error taxonomy
+16. **Database Engineer** — Schema design, migrations, query optimization
+17. **AI Engineer** — MLOps, model serving, fine-tuning, evaluation
+18. **Accessibility Engineer** — WCAG compliance, a11y audit, screen reader
+19. **Performance Engineer** — Load testing, profiling, Core Web Vitals
+20. **UX Researcher** — User research, usability testing, personas
+21. **Data Engineer** — ETL pipelines, data warehouse, dbt, data quality
+22. **Project Manager** — Sprint planning, velocity, risk management
+23. **XLSX Engineer** — Excel spreadsheet creation, financial models, formula-driven reports, data formatting
+
+--- Game Development ---
+24. **Game Designer** — GDD, gameplay loops, economy, mechanic specs
+25. **Unity Engineer** — C# ScriptableObjects, Editor tools, URP
+26. **Unreal Engineer** — C++/Blueprint, GAS, Nanite/Lumen
+27. **Godot Engineer** — GDScript, scene tree, signals, cross-platform
+28. **Godot Multiplayer** — MultiplayerSpawner, ENet, prediction, dedicated server
+29. **Roblox Engineer** — Luau, DataStore, Roblox Studio, experience design
+30. **Phaser 3 Engineer** — TypeScript, modular scenes, ECS-optional, WebGL/Canvas, shared vfx/ui helpers
+31. **Three.js Engineer** — ECS, WebGPU/WebGL, Rapier physics, performance budgets, post-processing
+32. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
+33. **Narrative Designer** — Branching dialogue, character voice, lore
+34. **Technical Artist** — Shaders, VFX, LOD, performance budgets
+35. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
+36. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
+37. **Unity Multiplayer** — Netcode for GameObjects, relay, prediction
+38. **Unreal Technical Artist** — Niagara, Material Editor, Lumen/Nanite
+39. **Unreal Multiplayer** — Replication, dedicated server, GAS networking
+40. **XR Engineer** — AR/VR/MR, spatial UI, hand tracking, comfort
+
+--- Growth ---
+41. **Growth Marketer** — Launch strategy, content, channels, SEO
+42. **Conversion Optimizer** — CRO, funnel analysis, A/B testing, retention
+
+--- Data Acquisition ---
+43. **Web Scraper** — Secure web crawling (crawl4ai), URL validation, output sanitization, CSS/LLM extraction
+
+--- Integration ---
+44. **Paperclip** (optional) — Multi-agent orchestration, ticket management, budget control, heartbeat scheduling
+
+45. **Chat about this** — Free-form input
+```
+
+Execute selected skills in dependency order. If user picks conflicting skills, resolve via the authority hierarchy.
+
+### Debug Mode
+
+Systematic bug investigation. Single skill (+ optional fix).
+
+1. Read `skills/debugger/SKILL.md` and follow its instructions
+2. Debugger performs triage using the **MANDATORY Iceberg Assessment** (Static vs Dynamic, Cascade Failure Scanning, Sensitive Domains check).
+3. If classified as dynamic or suspicious, proceeds with full hypothesis-driven investigation to find root cause. If a simple/static bypass is aborted due to underlying dynamic complexity, triggers the **Auto-escalation Protocol**.
+4. Present root cause and proposed fix
+5. If user approves fix → apply fix + regression test
+6. If fix touches backend code → Software Engineer applies it
+7. If fix touches frontend code → Frontend Engineer applies it
+
+**1 gate:** After root cause identified (step 4), before applying fix.
+
+### AI Build Mode
+
+Build or integrate AI-powered features. Multi-skill.
+
+1. **Codebase scan** — identify existing AI infrastructure (LLM clients, embeddings, RAG, agents)
+2. **PM (Express depth)** — scope the AI feature. User stories focused on AI behavior.
+3. **Data Scientist** — select model, design RAG pipeline/agent architecture (if needed)
+4. **Prompt Engineer** — design and evaluate prompts for the feature
+5. **Architect (scoped)** — API contracts for AI endpoints, vector DB schema
+6. **Build** — Software Engineer + Frontend Engineer implement
+7. **Test** — QA + evaluation framework for AI quality
+
+**2 gates:** After AI architecture design (step 3-4), and after prompt evaluation (step 7).
+
+### Migrate Mode
+
+Database migration, framework upgrade, or large-scale code migration.
+
+1. **Codebase scan** — understand current state (schema, framework version, code patterns)
+2. **Database Engineer** — design migration: new schema, zero-downtime migration scripts, data transformation
+3. **Software Engineer** — update code to work with new schema/framework
+4. **QA** — regression tests, data integrity verification
+5. **Optional: Rollback plan** — reversible migrations, feature flags for gradual rollout
+
+**2 gates:** After migration plan (step 2), and after migration scripts generated (before execution).
+
+### Game Build Mode
+
+Build a game from concept to playable build. Full game development pipeline.
+
+1. **Concept analysis** — extract game concept, genre, platform, engine from user's message
+2. **Engine detection** — read `.production-grade.yaml` for `game.engine` override, or ask:
+   ```
+   Which engine for this game?
+   1. **Unity** (Recommended for indie-AA, mobile, 2D/3D)
+   2. **Unreal Engine** (AAA quality, heavy 3D, C++/Blueprint)
+   3. **Godot** (Open-source, lightweight, rapid iteration)
+   4. **Phaser 3** (Web-native 2D, HTML5, Canvas/WebGL — no install, instant play)
+   5. **Three.js** (Web-native 3D, WebGPU/WebGL — browser-native 3D experiences)
+   ```
+3. **Game Designer** — `skills/game-designer/SKILL.md` — design pillars, core loop, economy, mechanic specs, player flows
+4. **Engine Engineer** — based on chosen engine:
+   - Unity: `skills/unity-engineer/SKILL.md` — C# architecture, ScriptableObjects, Editor tools
+   - Unreal: `skills/unreal-engineer/SKILL.md` — C++/Blueprint, GAS, AI, Blueprint layer
+   - Godot: `skills/godot-engineer/SKILL.md` — GDScript, scene tree, signals
+   - Phaser 3: `skills/phaser3-engineer/SKILL.md` — TypeScript, modular scenes, ECS-optional, WebGL/Canvas
+   - Three.js: `skills/threejs-engineer/SKILL.md` — ECS architecture, WebGPU/WebGL, Rapier physics
+5. **Level Designer** — `skills/level-designer/SKILL.md` — level structure, encounters, pacing, blockouts
+6. **Narrative Designer** (if story-driven) — `skills/narrative-designer/SKILL.md` — dialogue, characters, lore
+7. **Technical Artist** — `skills/technical-artist/SKILL.md` — shaders, VFX, LOD, performance budgets
+8. **Game Audio Engineer** — `skills/game-audio-engineer/SKILL.md` — SFX, adaptive music, spatial audio
+9. **Engine-specific depth** (optional, based on game needs):
+   - Multiplayer: `skills/unity-multiplayer/SKILL.md`, `skills/unreal-multiplayer/SKILL.md`, `skills/godot-multiplayer/SKILL.md`
+   - Shader/VFX: `skills/unity-shader-artist/SKILL.md`, `skills/unreal-technical-artist/SKILL.md`
+10. **QA** — per `skills/_shared/protocols/game-test-protocol.md` (extended for Phaser 3 and Three.js):
+    - Mechanics Validation (engine-specific tests: Unity UTF, Unreal Automation, Godot GUT, Phaser 3 Vitest/Jest, Three.js ECS system tests)
+    - Balance Validation (economy, XP curves, difficulty scaling against GDD)
+    - State Machine Validation (all mechanic transitions match GDD state diagrams)
+    - Performance Validation (FPS, memory, load time per platform targets; Three.js: draw calls < 100/frame)
+    - Build Verification (compile, references, platform builds, boot test; Phaser 3: Vite build; Three.js: Vite bundle)
+    - Integration Validation (cross-system regressions)
+    - Platform Validation (web browsers, mobile WebGL, desktop WebGL/WebGPU)
+11. **Quality Gate** — run `skills/_shared/protocols/quality-gate.md` with game-specific thresholds (see `tests/coverage/thresholds.json`)
+12. **Task Validator** — run `skills/_shared/protocols/task-validator.md` to validate delivery against Task Contract
+
+**4 gates:** After Game Designer GDD (step 3), after engine architecture (step 4), after first playable (step 9), and after QA test suite (step 10).
+
+### XR Build Mode
+
+Build AR/VR/MR applications. XR Engineer + optional game development pipeline.
+
+1. **Concept analysis** — determine XR type (VR game, AR tool, MR experience), platform (Quest, Vision Pro, PCVR, WebXR)
+2. **XR Engineer** — `skills/xr-engineer/SKILL.md` — XR setup, spatial interaction, comfort, spatial UI
+3. **If game-like XR** (VR game, interactive experience) — run Game Build pipeline steps 3-8 within XR context
+4. **If tool/productivity XR** — route to standard Feature/Full Build pipeline with XR Engineer leading spatial design
+5. **QA** — comfort testing, frame rate validation, input model coverage
+
+**2 gates:** After XR architecture (step 2), and after spatial interaction playable (step 3-4).

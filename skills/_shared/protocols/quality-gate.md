@@ -38,10 +38,16 @@ Execute levels in order. Each level has a severity that determines whether to ST
 
 ```
 1. All new/modified files parse without syntax errors
-   - TypeScript: npx tsc --noEmit
-   - Python: python -m py_compile [files]
-   - Go: go vet ./...
-   - Rust: cargo check
+   - TypeScript/JavaScript: `npx tsc --noEmit` or `eslint`
+   - Python: `python -m py_compile [files]` or `ruff check`
+   - Go: `go vet ./...`
+   - Rust: `cargo check`
+   - Java: `javac -d /tmp [files]`
+   - C#: `dotnet build` or `csc /target:library /out:/tmp/test.dll [files]`
+   - C++: `g++ -fsyntax-only [files]` or `clang++ -fsyntax-only [files]`
+   - GDScript: `godot --headless --check-only [files]`
+   - Luau: `luau-analyze [files]`
+   - HTML/CSS: `htmlhint [files]` / `stylelint [files]`
 
 2. Project builds successfully
    - Detect build command from package.json, Makefile, etc.
@@ -74,11 +80,10 @@ Execute levels in order. Each level has a severity that determines whether to ST
      - etc.
    - Files outside expected scope → WARN + log
 
-3. API contract integrity (if API exists)
-   - IF api/ directory has OpenAPI specs:
-     - Check that existing endpoints are not removed
-     - Check that existing response schemas are not broken
-     - New endpoints OK, removals → STOP
+3. API contract integrity (REST, GraphQL, gRPC)
+   - REST (OpenAPI/Swagger in `api/` or `openapi.yaml`): Check that existing endpoints are not removed, and response schemas are not broken (new endpoints/fields are OK, deletions/breaking changes → STOP)
+   - GraphQL (`.graphql` or `.gql` schemas): Check that existing types, fields, queries, mutations, or inputs are not removed or renamed, and field types are not changed (new types/fields are OK, removals → STOP)
+   - gRPC (`.proto` files): Enforce protobuf backward compatibility (no changing field numbers, no changing field types, no deleting/renaming existing fields, no removing RPC methods → STOP)
 ```
 
 **For greenfield projects:** Level 2 is automatically satisfied (no baseline, no existing tests).
