@@ -100,7 +100,7 @@ If detected:
 
 If not detected → proceed normally (no changes).
 
-## Step 0 — Request Interpretation (MANDATORY)
+## Phase 0.B — Request Interpretation (MANDATORY)
 
 **⚠️ DO NOT SKIP THIS STEP. EVER.**
 
@@ -127,7 +127,7 @@ Before ANY skill execution, interpret the user's request:
    - No scope boundary → ask what's in/out
    - No file path → ask for location
 
-### IntentGate — Explicit Intent Analysis (NEW Step 0.2)
+### IntentGate — Explicit Intent Analysis (NEW Phase 0.D)
 
 **Purpose:** Before classifying into modes, verify we understand the user's TRUE goal. This prevents literal misinterpretation — user says "fix the login" but actually wants OAuth added.
 
@@ -156,7 +156,7 @@ If the literal interpretation differs from the Intent Analysis:
 
 **Output:** Append Intent Analysis to the structured request below.
 
-3. **Auto-Clarification Loop (Step 0.3 - NEW v8.8):**
+3. **Auto-Clarification Loop (Phase 0.E - NEW v8.8):**
    - **Ambiguity Score Assessment:** Chấm điểm độ mơ hồ (Ambiguity Score: $0.0 - 1.0$). Nếu score $> 0.4$, bắt buộc dừng tiến trình code và đặt câu hỏi làm rõ.
    - **6W1H Completeness Checklist:** Chấm điểm độ hoàn thiện yêu cầu ($0.0 - 1.0$) dựa trên 7 tiêu chí 6W1H.
    - **Thực thi vòng lặp (No hard limit):** Tự động đặt câu hỏi làm rõ và lặp lại cho đến khi điểm hoàn thiện đạt $\ge 0.85$. Tuyệt đối không tiến hành code khi chưa đạt ngưỡng chất lượng đầu vào này.
@@ -177,7 +177,7 @@ If the literal interpretation differs from the Intent Analysis:
    What you want:
      [1-sentence clear description]
 
-   Intent Analysis (Step 0.2):
+   Intent Analysis (Phase 0.D):
    - User's true goal: [1-sentence — what they actually want, not what they said]
    - Success definition: [from the USER's perspective]
    - Intent vs Literal: [if different from what they said, note it here]
@@ -199,7 +199,7 @@ If the literal interpretation differs from the Intent Analysis:
    Success criteria:
      [How we know it's done]
 
-   Plan Quality & Self-Improvement Loop (MANDATORY Step 2):
+   Plan Quality & Self-Improvement Loop (MANDATORY Phase 2):
    - Initial Plan Score: [Score/10]
    - Optimization Iterations: [N times (0 if score >= 9.0 on first try)]
    - Research Gate Triggered: [Yes/No (and what was researched if Yes)]
@@ -207,9 +207,9 @@ If the literal interpretation differs from the Intent Analysis:
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
 
-**Step 1 — Analyze the request:**
+**Phase 1 — Analyze the request:**
 
-Read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` (from chat-interpreter Step -1) for the authoritative request analysis. The chat-interpreter has already performed 9-dimension extraction and mode detection.
+Read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` (from chat-interpreter Phase 0.A) for the authoritative request analysis. The chat-interpreter has already performed 9-dimension extraction and mode detection.
 
 ## Enhanced Mode Classification with Fuzzy Matching (v8.7+)
 
@@ -345,11 +345,11 @@ Detailed execution instructions, QA test sequences, and task flows for each non-
 
 ## Chat Interpretation (Pre-Processing — BEFORE everything else)
 
-> **Powered by prompt-master methodology.** Run BEFORE Step 0.1 on every user message.
+> **Powered by prompt-master methodology.** Run BEFORE Phase 0.C on every user message.
 
 Every user message is first interpreted through the `chat-interpreter` Cursor subagent. This converts vague natural language into a structured, unambiguous pipeline request — eliminating the need for users to speak "prompt engineer."
 
-**Step -1 — Chat Interpretation:**
+**Phase 0.A — Chat Interpretation:**
 
 ```
 Invoke: /chat-interpreter [user's message]
@@ -378,7 +378,7 @@ Invoke: /chat-interpreter [user's message]
 ```
 ✓ Request interpreted — [mode] mode detected
 [Structured request summary — 3 lines max]
-→ Proceeding to Step 0.1
+→ Proceeding to Phase 0.C
 ```
 
 **If confidence is MEDIUM:**
@@ -469,7 +469,7 @@ Read these from the plugin's `skills/_shared/protocols/` directory and copy them
 
 4. **Codebase discovery — detect greenfield vs brownfield:**
 
-   **If project onboarding already ran** (Step 0.5 loaded `.forgewright/project-profile.json`) → use cached fingerprint data. Otherwise, run scans:
+   **If project onboarding already ran** (Phase 0.B loaded `.forgewright/project-profile.json`) → use cached fingerprint data. Otherwise, run scans:
 
    Run these scans in parallel:
    ```
@@ -505,7 +505,7 @@ Read these from the plugin's `skills/_shared/protocols/` directory and copy them
 
    **If Brownfield** → run the enhanced adaptation sequence:
 
-   a. **Deep project onboarding** — run full `skills/_shared/protocols/project-onboarding.md` if not already done in Step 0.5. This produces:
+   a. **Deep project onboarding** — run full `skills/_shared/protocols/project-onboarding.md` if not already done in Phase 0.B. This produces:
       - `.forgewright/project-profile.json` — full fingerprint, health, patterns, risk
       - `.forgewright/code-conventions.md` — coding patterns for all skills to follow
 

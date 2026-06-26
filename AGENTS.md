@@ -26,7 +26,7 @@ Forgewright is an adaptive orchestrator with **81 AI skills** that covers the en
 │  If the request is a NEW PROJECT requiring Business Analyst          │
 │  scope elicitation, the BA skill will ask clarifying questions     │
 │  first. This is NOT a conflict — it's the correct Forgewright      │
-│  workflow (Step 0: Interpret → Identify need for BA).              │
+│  workflow (Phase 0.A: Interpret → Identify need for BA).              │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -112,17 +112,17 @@ This never requires user input — it only escalates when no artifact can be wri
 
 **IMPORTANT:** When the user gives any software development request, you MUST:
 
-1. **STEP 0 — Chat Interpreter (MANDATORY)**: Read `skills/production-grade/SKILL.md` for the full request interpretation flow. This step:
+1. **Phase 0.A — Chat Interpreter (MANDATORY)**: Read `skills/production-grade/SKILL.md` for the full request interpretation flow. This step:
    - Extracts 9 dimensions from the user's message
    - Detects vague/confusing requests and asks clarifying questions (MAX 3)
    - Generates a structured request with clear scope and success criteria
    - **DO NOT SKIP THIS STEP** — if the request is unclear, ask before proceeding
 
-2. **STEP 0.5 — Memory Retrieval (MANDATORY)**: Every model call is stateless — restore continuity first.
+2. **Phase 0.B — Memory Retrieval (MANDATORY)**: Every model call is stateless — restore continuity first.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ Step 0.5 — MEMORY RETRIEVAL (MANDATORY)                          │
+│ Phase 0.B — MEMORY RETRIEVAL (MANDATORY)                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Run BEFORE interpreting the user's request:                       │
 │                                                                      │
@@ -142,9 +142,9 @@ This never requires user input — it only escalates when no artifact can be wri
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-3. **STEP 1 — Classify the request** into one of 24 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze**, **Prompt**, **Autonomous**)
-3. **STEP 2 — PLAN FIRST, ALWAYS** — Before ANY skill does ANY work, it MUST create a plan, score it (9 criteria, complexity-scaled threshold), and improve until passing. See `skills/_shared/protocols/plan-quality-loop.md`
-4. **STEP 3 — Execute the pipeline** as defined in the orchestrator
+3. **Phase 1 — Classify the request** into one of 24 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze**, **Prompt**, **Autonomous**)
+3. **Phase 2 — PLAN FIRST, ALWAYS** — Before ANY skill does ANY work, it MUST create a plan, score it (9 criteria, complexity-scaled threshold), and improve until passing. See `skills/_shared/protocols/plan-quality-loop.md`
+4. **Phase 3 — Execute the pipeline** as defined in the orchestrator
 
 **⚠️ CRITICAL RULE: NEVER START EXECUTING WITHOUT INTERPRETATION**
 
@@ -170,7 +170,7 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 │                                                                     │
 │  0. CHECK NotebookLM availability:                                 │
 │     nlm --version 2>/dev/null || echo "NOT_AVAILABLE"             │
-│     └─ If NOT_AVAILABLE → SKIP to Step 2 (Web Search fallback)    │
+│     └─ If NOT_AVAILABLE → SKIP to Phase 2 (Web Search fallback)    │
 │                                                                     │
 │  1. TRY NotebookLM CLI (if available):                             │
 │     nlm notebook create "[Project] - [Skill] - [Topic]"            │
@@ -206,15 +206,15 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 
 ## ⚠️ PIPELINE SKIP DETECTION — Anti-Pattern
 
-**Root cause: Tool-first reflex.** The model reads files before running Step 0, classifying, and planning. This causes hallucination, wrong scope, and missed memory context.
+**Root cause: Tool-first reflex.** The model reads files before running Phase 0.B, classifying, and planning. This causes hallucination, wrong scope, and missed memory context.
 
 ### Common Violations
 
 | # | Violation | What should happen |
 |---|-----------|---------------------|
-| 1 | User asks → I read files → I answer directly | User asks → Step 0.5 → Step 0 → Step 1 → Step 2 → Execute |
-| 2 | "I know this already, let me just..." | Step 0.5 Memory Retrieval FIRST |
-| 3 | "Simple task, no need for pipeline" | EVERY task needs Step 0 |
+| 1 | User asks → I read files → I answer directly | User asks → Phase 0.A → Phase 0.B → Phase 1 → Phase 2 → Execute |
+| 2 | "I know this already, let me just..." | Phase 0.B Memory Retrieval FIRST |
+| 3 | "Simple task, no need for pipeline" | EVERY task needs Phase 0.B |
 | 4 | User asks "còn gì chưa làm" → I read and answer | This IS a user request → MUST go through pipeline |
 | 5 | User asks "lên plan" → I create plan manually | This IS a user request → MUST go through pipeline |
 
@@ -236,16 +236,16 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 
 ```
 1. Did I run bash scripts/memory-retrieve.sh or python3 scripts/mem0-v2.py?
-   └─ NO → STOP. Run Step 0.5 first.
+   └─ NO → STOP. Run Phase 0.B first.
 
 2. Did I read skills/production-grade/SKILL.md and extract 9 dimensions?
-   └─ NO → STOP. Run Step 0 first.
+   └─ NO → STOP. Run Phase 0.B first.
 
 3. Did I classify the mode (Feature, Architect, etc.)?
-   └─ NO → STOP. Run Step 1 first.
+   └─ NO → STOP. Run Phase 1 first.
 
 4. Did I create a plan and score it >= 9.0?
-   └─ NO → STOP. Run Step 2 first.
+   └─ NO → STOP. Run Phase 2 first.
 
 5. Did I execute via skills, not directly?
    └─ NO → STOP. Delegate or execute via skills.
@@ -258,7 +258,7 @@ If you realize mid-turn that you skipped the pipeline:
 ```
 1. STOP current execution immediately
 2. Acknowledge: "I violated the Forgewright pipeline — correcting now."
-3. Run Step 0.5 + Step 0 retroactively
+3. Run Phase 0.A + Phase 0.B retroactively
 4. Re-classify + Re-plan
 5. Continue or restart from correct step
 6. Log the lesson: Append to skills/_shared/protocols/pipeline.md as anti-pattern
@@ -268,7 +268,7 @@ If you realize mid-turn that you skipped the pipeline:
 
 > **⚠️ MANDATORY: Before answering ANY user request, verify:**
 > - [ ] Memory retrieval ran (or confirmed no relevant memories exist)
-> - [ ] Step 0 interpretation done (9 dimensions extracted)
+> - [ ] Phase 0.B interpretation done (9 dimensions extracted)
 > - [ ] Mode classified (one of 24 modes)
 > - [ ] Plan created + scored >= 9.0
 > - [ ] Execution via skills (not direct code changes)
@@ -316,7 +316,7 @@ Users can invoke these workflows directly:
 
 Run silently BEFORE any execution (all modes) to ensure project intelligence is fully configured.
 
-**Step 0.1 — GitNexus + MCP Check:**
+**Phase 0.C — GitNexus + MCP Check:**
 
 1. Check if `.antigravity/mcp-manifest.json` exists and is current in the project root.
 2. **If missing or stale**, run ONE command to set up everything:
