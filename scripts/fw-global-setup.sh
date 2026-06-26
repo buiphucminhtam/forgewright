@@ -385,10 +385,9 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 // Update forgewright to direct tsx execution
 cfg.mcpServers['forgewright'] = {
     command: 'npx',
-    args: ['tsx', '${FORGEWRIGHT_DIR}/mcp/src/index.ts'],
-    env: {
-        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}'
-    }
+    args: ['tsx', '${FORGEWRIGHT_DIR}/mcp/src/index.ts']
+    // No env needed — MCP server auto-detects workspace from cwd
+    // (Claude Desktop does NOT resolve \${workspaceFolder})
 };
 
 fs.writeFileSync('${CLAUDE_CONFIG_JSON}', JSON.stringify(cfg, null, 2));
@@ -410,8 +409,8 @@ var cfg = JSON.parse(fs.readFileSync('${path}', 'utf8'));
 if (!cfg.mcpServers) cfg.mcpServers = {};
 cfg.mcpServers['forgewright'] = {
     command: 'npx',
-    args: ['tsx', '${FORGEWRIGHT_DIR}/mcp/src/index.ts'],
-    env: { FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}' }
+    args: ['tsx', '${FORGEWRIGHT_DIR}/mcp/src/index.ts']
+    // No env — Claude Desktop does NOT resolve \${workspaceFolder}
 };
 fs.writeFileSync('${path}', JSON.stringify(cfg, null, 2));
 "

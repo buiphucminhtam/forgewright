@@ -6,23 +6,17 @@
     "forgewright-workspace": {
       "command": "bash",
       "args": ["FORGEWRIGHT/scripts/forgewright-mcp-launcher.sh"],
-      "env": {
-        "FORGEWRIGHT_WORKSPACE": "${workspaceFolder}"
-      },
       "description": "ForgeWright project intelligence with workspace isolation"
     },
     "forgenexus-workspace": {
       "command": "bash",
       "args": ["FORGEWRIGHT/scripts/forgenexus-mcp-launcher.sh"],
-      "env": {
-        "FORGENEXUS_WORKSPACE": "${workspaceFolder}"
-      },
       "description": "Code intelligence with workspace isolation"
     }
   },
   "notes": {
     "installation": "Run 'forgewright-mcp-setup.sh setup' from your project to auto-generate this config",
-    "workspace": "Antigravity sets workspaceFolder env var automatically",
+    "workspace": "MCP server auto-detects workspace from cwd (no ${workspaceFolder} needed — Antigravity does not resolve it)",
     "restart": "Restart Antigravity after modifying this file",
     "multi_project": "One config works for ALL projects with Antigravity"
   }

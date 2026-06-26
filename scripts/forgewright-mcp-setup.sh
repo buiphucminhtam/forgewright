@@ -492,11 +492,9 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 // forgewright MCP server — CANONICAL PATH (do not change to submodule path)
 cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
-    args: ['$CANONICAL_SERVER_TS'],
-    env: {
-        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}',
-        AGENTS_WORKSPACE: '\${workspaceFolder}'
-    }
+    args: ['$CANONICAL_SERVER_TS']
+    // No env needed — MCP server auto-detects workspace from cwd
+    // (Claude Code does NOT resolve \${workspaceFolder})
 };
 
 // gitnexus
@@ -736,11 +734,9 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 
 cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
-    args: ['$CANONICAL_SERVER_TS'],
-    env: {
-        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}',
-        AGENTS_WORKSPACE: '\${workspaceFolder}'
-    }
+    args: ['$CANONICAL_SERVER_TS']
+    // No env needed — MCP server auto-detects workspace from cwd
+    // (Gemini CLI / Antigravity do NOT resolve \${workspaceFolder})
 };
 
 cfg.mcpServers['gitnexus'] = {
@@ -844,11 +840,9 @@ if (!cfg.mcpServers) cfg.mcpServers = {};
 // forgewright MCP server — CANONICAL PATH
 cfg.mcpServers['forgewright'] = {
     command: '$CANONICAL_TSX',
-    args: ['$CANONICAL_SERVER_TS'],
-    env: {
-        FORGEWRIGHT_WORKSPACE: '\${workspaceFolder}',
-        AGENTS_WORKSPACE: '\${workspaceFolder}'
-    }
+    args: ['$CANONICAL_SERVER_TS']
+    // No env needed — MCP server auto-detects workspace from cwd
+    // (Zed AI does NOT resolve \${workspaceFolder})
 };
 
 // gitnexus (native CLI)
