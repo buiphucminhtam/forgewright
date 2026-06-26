@@ -48,7 +48,7 @@ export function getForgewrightRoot(): string {
  * These are Cursor-specific and are NOT resolved by other IDEs (e.g., Antigravity, Codex).
  * Returns true if the path is safe to use, false if it contains unresolved variables.
  */
-function _isResolvedPath(p: string | undefined): p is string {
+export function _isResolvedPath(p: string | undefined): p is string {
   if (!p) return false;
   // Detect unresolved ${...} template variables
   if (/\$\{[^}]+\}/.test(p)) {
