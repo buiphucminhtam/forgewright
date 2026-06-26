@@ -43,10 +43,12 @@ tags: [cro, conversion, ab-testing, growth, retention, funnel, churn, experiment
 
 **Your expertise:**
 - Funnel auditing and friction mapping
-- CRO best practices (forms, signup, onboarding, paywall)
-- A/B test design and statistical analysis
+- AI-driven Hypothesis Generation
+- Multi-Armed Bandit (MAB) testing and classical A/B test design
+- Real-Time AI Personalization
 - Growth loop engineering (referral, viral, network effects)
-- Churn prevention and win-back campaigns
+- Pricing psychology (Outcome-based, Hybrid pricing, Decoys)
+- AI Churn prediction and win-back campaigns
 
 **Where you fit:**
 ```
@@ -255,6 +257,11 @@ Click "Sign up with Google"
     → Done (no password to manage)
 ```
 
+### Conversational Agents vs. Static Forms
+- Replace long static B2B forms with real-time conversational agents (e.g., Knock AI)
+- Conversational agents qualify leads interactively, bypassing the typical 85% MQL drop-off
+- Route high-intent prospects directly to sales teams
+
 ### Trust Signals Near Form
 - "Join 10,000+ teams already using us"
 - Security badges (SOC2, GDPR)
@@ -365,16 +372,16 @@ Benefits:
 ### Tier Comparison
 | Strategy | Example |
 |----------|---------|
-| **Anchoring** | Show Enterprise ($999) first → Starter ($99) feels affordable |
-| **Decoy** | 3 tiers: A ($10), B ($15), C ($25). B is "most popular" → makes B look best |
-| **Highlighting** | Emphasize recommended tier with border, badge, or "Most Popular" |
-| **Feature Table** | ✓/✗ matrix with clear differentiation |
+| **Anchoring & Decoys** | Introduce an asymmetric decoy option to make the higher-margin target tier look like an incredible value |
+| **Outcome-Based Pricing** | Charge based on customer-recognized results (e.g., $0.99 per successful AI resolution) |
+| **Hybrid Pricing** | Combine flat recurring subscription platform fee with consumption overages (tokens/API calls) |
+| **3-Tier Optimization** | Limit to 3 tiers; 4+ tiers convert 31% worse. Make the middle tier the primary profit driver (extremeness aversion) |
 
 ### Recommended Tier Layout
 ```
 ┌─────────────┬─────────────┬─────────────┐
 │   Starter   │   Pro ★     │  Enterprise │
-│   $29/mo    │   $99/mo    │   Custom    │
+│   Flat Fee  │ Hybrid/Usage│ Outcome-base│
 │   [Choose]  │   [Choose]  │   [Contact] │
 ├─────────────┼─────────────┼─────────────┤
 │ Feature A ✓ │ Feature A ✓ │ Feature A ✓ │
@@ -423,6 +430,11 @@ Example:
 | **Guard-rail** | Support tickets | 5/week | < 7/week | +40% |
 | **Guard-rail** | Activation rate | 30% | > 28% | -7% |
 
+### AI Hypothesis Generation
+Instead of manual intuition, utilize AI to automatically surface conversion friction patterns:
+- Identify drop-off points correlated with behavioral signals (device, traffic source)
+- Generate specific, testable hypotheses (e.g., "Visitors from Google Shopping who don't scroll to reviews abandon at 78% — test showing star rating near CTA")
+
 ### Variant Description
 
 | Version | Description |
@@ -430,14 +442,14 @@ Example:
 | **Control (A)** | Current 5-field form |
 | **Variant (B)** | 2-field form (email + password) |
 
-### Traffic Allocation
+### Traffic Allocation (Multi-Armed Bandit vs A/B)
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
-| Split | 50/50 | Standard for low-risk changes |
-| Minimum sample | 1,000 conversions/variant | For 15% MDE at 95% confidence |
-| Duration | 14 days minimum | Capture weekly patterns |
-| Power | 80% | Standard statistical power |
+| Testing Model | Multi-Armed Bandit | For short campaign windows (under 7 days), use AI MAB to dynamically allocate traffic to winning variants in real-time. |
+| Testing Model | Classical A/B | For permanent elements (nav structure, checkout), use A/B testing with statistical significance. |
+| Split | 50/50 | Standard for classical A/B tests |
+| Duration | 14 days minimum | Capture weekly patterns for evergreen tests |
 
 ### Implementation
 
@@ -543,9 +555,13 @@ Example:
 ```markdown
 ## Churn Prevention Framework
 
-### At-Risk User Signals
+### AI-Driven At-Risk Signals
+Modern CS platforms track multi-dimensional risk scores using AI conversation intelligence rather than just usage metrics:
+
 | Signal | Threshold | Action |
 |--------|-----------|--------|
+| Sentiment Decline | Negative language in support/emails | Proactive CS outreach (detected 6 weeks early) |
+| Competitor Mention | Detected in email/tickets | Feature comparison sheet |
 | No login in 7 days | 1 week inactive | Re-engagement email |
 | No core action in 14 days | 2 weeks | In-app prompt |
 | Usage declining 3+ weeks | Week-over-week drop | Survey + offer |

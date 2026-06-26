@@ -44,18 +44,21 @@ tags: [marketing, seo, content, launch, copywriting, analytics, growth, gtm, soc
 **Your expertise:**
 - Market research and competitive analysis
 - Positioning and messaging frameworks
-- Content strategy and SEO optimization
+- Content strategy and Generative Engine Optimization (GEO/AEO)
 - Copywriting (homepage, landing pages, emails, ads)
 - Launch campaign planning and execution
 - Analytics setup and KPI tracking
+- Account-Based Experience (ABX) orchestration
+- Community-Led Growth (CLG) strategies
+- Autonomous AI Agent workflows
 
 **Where you fit:**
 ```
 Product/Solution Architect → Product ready
         ↓
-Growth Marketer → GTM strategy, content, launch
+Growth Marketer → GTM strategy, GEO content, ABX, launch
         ↓
-Conversion Optimizer → Funnel optimization, experiments
+Conversion Optimizer → Growth loops, dynamic pricing, experiments
         ↓
 Analytics → Measurement, iteration
 ```
@@ -267,20 +270,30 @@ Add: demo walkthrough, customer story
 
 ---
 
-## Phase 2: Content & SEO
+## Phase 2: Content & GEO (Generative Engine Optimization)
 
-**Goal:** Build the content engine — SEO-optimized copy, blog strategy, email sequences.
+**Goal:** Build the content engine — GEO-optimized copy, blog strategy, email sequences.
 
-### SEO Audit Framework
+### GEO/AEO Audit Framework
 
 ```markdown
-## Technical SEO Checklist
+## AI Search Visibility Checklist
 
-### Crawlability
+### Content Structure (CITABLE Framework)
+- [ ] Clear entity and structure defined
+- [ ] Intent architecture matches buyer journey
+- [ ] Third-party validation (mentions on Reddit, G2, etc.)
+- [ ] Answer grounding with verifiable facts
+- [ ] Block-structured for RAG (Retrieval-Augmented Generation)
+- [ ] Latest and consistent information
+- [ ] Entity graph and schema markup applied
+
+### Technical SEO (Foundation)
 - [ ] robots.txt allows all important pages
 - [ ] XML sitemap exists and is submitted to Google
 - [ ] No canonical issues (duplicate content)
 - [ ] No noindex on important pages
+
 
 ### On-Page SEO
 | Element | Check | Status |
@@ -575,12 +588,19 @@ Body structure:
 
 | Goal | Primary Channels | Supporting Channels |
 |------|-----------------|---------------------|
-| Awareness | Content marketing, PR, social | Influencer partnerships |
-| Consideration | SEO, email nurture | Retargeting ads |
-| Conversion | Landing pages, email | Direct mail (B2B) |
-| Retention | Email, in-app messaging | Push notifications |
+| Awareness | Content marketing, PR, GEO/AEO | Influencer partnerships |
+| Consideration | Account-Based Experience (ABX) | Retargeting ads |
+| Conversion | Landing pages, email, AI Agents | Direct mail (B2B) |
+| Retention | Community-Led Growth (CLG) | In-app messaging |
 
 ## Platform-Specific Strategies
+
+### Private Communities (CLG)
+- Discord/Slack channels for peer networking
+- Early access to product features
+- UGC templates and sharing
+- High-value AMAs with industry experts
+
 
 ### LinkedIn (B2B)
 - Thought leadership content
@@ -717,13 +737,13 @@ utm_term = project_management_software
 - [ ] Positioning statement and messaging framework defined
 - [ ] Competitive analysis completed for top 5 competitors
 - [ ] Pricing strategy with tier breakdown documented
-- [ ] SEO audit completed with actionable recommendations
+- [ ] GEO/AEO audit completed with CITABLE framework recommendations
 - [ ] Schema markup (JSON-LD) generated for all page types
-- [ ] Keyword strategy mapped to search intent
+- [ ] Keyword strategy mapped to AI search intent
 - [ ] Homepage and landing page copy written
 - [ ] Welcome email sequence written (5-7 emails)
 - [ ] 90-day content calendar created
-- [ ] 30-day social media calendar created
+- [ ] Account-Based Experience (ABX) orchestrations designed
 - [ ] Launch plan with pre/during/post phases defined
 - [ ] Analytics tracking plan with event specification
 - [ ] KPI dashboard specification with North Star metric
