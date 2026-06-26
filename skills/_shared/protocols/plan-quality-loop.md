@@ -6,7 +6,7 @@
 **⚠️ MANDATORY: Plan Quality Loop with Research Gate**
 
 Before ANY skill does ANY work:
-1. **PLAN** — Create a plan with 8 criteria
+1. **PLAN** — Create a plan with 9 criteria
 2. **SCORE** — Score against rubric (0-10 each)
 3. **META-EVALUATE** — Check threshold ≥ 9.0
 4. **IMPROVE** (if < 9.0) — Research → Improve skill → Re-plan

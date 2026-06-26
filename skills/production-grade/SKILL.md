@@ -892,8 +892,8 @@ Which skills do you need? (list the numbers separated by commas)
 29. **Roblox Engineer** — Luau, DataStore, Roblox Studio, experience design
 30. **Phaser 3 Engineer** — TypeScript, modular scenes, ECS-optional, WebGL/Canvas, shared vfx/ui helpers
 31. **Three.js Engineer** — ECS, WebGPU/WebGL, Rapier physics, performance budgets, post-processing
-30. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
-31. **Narrative Designer** — Branching dialogue, character voice, lore
+32. **Level Designer** — Spatial design, encounters, pacing, environmental storytelling
+33. **Narrative Designer** — Branching dialogue, character voice, lore
 34. **Technical Artist** — Shaders, VFX, LOD, performance budgets
 35. **Game Audio Engineer** — Spatial audio, adaptive music, SFX, mix
 36. **Unity Shader Artist** — Shader Graph, HLSL, VFX Graph, post-processing
@@ -1919,91 +1919,8 @@ After EVERY skill completes (in any mode — Full Build, Feature, Harden, etc.),
 
 **For greenfield projects:** Level 2 is auto-satisfied (no baseline).
 
-### Detailed Quality Gate Levels
+> **Quality Scoring:** See `skills/_shared/protocols/quality-gate.md` for the authoritative scoring rubric (4 levels, 100-point scale: Build 25, Regression 25, Standards 30, Traceability 20) and grade thresholds (A/B/C/F).
 
-#### Level 1: Build Quality
-
-| Check | Pass | Fail |
-|-------|------|------|
-| Code compiles | No errors | Any compilation error |
-| TypeScript/ESLint | No errors | Any lint error |
-| Dependencies resolved | All installed | Missing dependencies |
-| Basic syntax | Valid | Syntax errors |
-
-**Scoring:**
-- All pass (4/4): 25 points
-- Minor warnings only: 20 points
-- 1-2 minor errors: 10 points
-- 3+ errors or any major error: 0 points
-
-#### Level 2: Regression Quality (Brownfield Only)
-
-| Check | Pass | Fail |
-|-------|------|------|
-| Existing tests pass | 100% of baseline | Any test failure |
-| No protected path changes | None detected | Changes to protected paths |
-| No breaking API changes | Contracts preserved | Breaking changes |
-| No data loss | Data integrity preserved | Data corruption |
-
-**Scoring:**
-- All pass (4/4): 25 points
-- 3/4: 20 points
-- 2/4: 10 points
-- 1/4 or less: 0 points
-
-#### Level 3: Standards Quality
-
-| Check | Pass | Fail |
-|-------|------|------|
-| Naming conventions | Matches project | Violations |
-| Error handling | All edge cases | Silent failures |
-| Logging | Appropriate level | Missing/verbose |
-| Security | No vulnerabilities | Any security issue |
-| Documentation | Code documented | Missing docs |
-
-**Scoring:**
-- All pass (5/5): 25 points
-- 4/5: 22 points
-- 3/5: 15 points
-- 2/5: 8 points
-- 1/5 or less: 0 points
-
-#### Level 4: Traceability Quality
-
-| Check | Pass | Fail |
-|-------|------|------|
-| BRD coverage | 100% of requirements | Gaps found |
-| Acceptance criteria met | All verified | Missing criteria |
-| Test coverage | ≥ 80% | Below threshold |
-| No orphaned code | All code used | Dead code |
-| Dependencies tracked | All noted | Unknown deps |
-
-**Scoring:**
-- All pass (5/5): 25 points
-- 4/5: 22 points
-- 3/5: 15 points
-- 2/5: 8 points
-- 1/5 or less: 0 points
-
-### Quality Score Thresholds
-
-| Score | Grade | Action |
-|-------|-------|--------|
-| 95-100 | A+ | Exceptional, may have minor polish |
-| 90-94 | A | Production ready |
-| 85-89 | B+ | Good, minor improvements suggested |
-| 80-84 | B | Acceptable, improvements needed |
-| 70-79 | C | Below standard, significant improvements needed |
-| 60-69 | D | Poor, major rework required |
-| 0-59 | F | Unacceptable, must not proceed |
-
-**Threshold configuration in `.production-grade.yaml`:**
-```yaml
-quality:
-  block_score: 60   # Score below this = STOP
-  minimum_score: 90 # Score below this = WARN at gate
-  excellent_score: 95 # Score at or above = special recognition
-```
 
 ### Session Handoff Protocol
 
