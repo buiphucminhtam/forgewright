@@ -1,7 +1,7 @@
 /**
  * Spinner - Progress indicator for long operations
  */
-import pc from 'picocolors';
+import pc from "picocolors";
 
 export interface SpinnerOptions {
   text?: string;
@@ -10,7 +10,7 @@ export interface SpinnerOptions {
 }
 
 export class Spinner {
-  private frames: string[] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  private frames: string[] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   private interval: NodeJS.Timeout | null = null;
   private currentFrame = 0;
   private text: string;
@@ -19,8 +19,8 @@ export class Spinner {
   private started = false;
 
   constructor(options: SpinnerOptions = {}) {
-    this.text = options.text || 'Loading...';
-    this.color = options.color || 'cyan';
+    this.text = options.text || "Loading...";
+    this.color = options.color || "cyan";
     this.disabled = options.disabled || !process.stdout.isTTY;
   }
 
@@ -72,10 +72,10 @@ export class Spinner {
     }
 
     // Clear line
-    process.stdout.write('\r' + '\x1B[K');
+    process.stdout.write("\r" + "\x1B[K");
 
     if (message) {
-      process.stdout.write(message + '\n');
+      process.stdout.write(message + "\n");
     }
 
     this.started = false;
@@ -83,15 +83,15 @@ export class Spinner {
   }
 
   success(message?: string): this {
-    return this.stop(message ? pc.green('✓ ') + message : undefined);
+    return this.stop(message ? pc.green("✓ ") + message : undefined);
   }
 
   warning(message?: string): this {
-    return this.stop(message ? pc.yellow('⚠ ') + message : undefined);
+    return this.stop(message ? pc.yellow("⚠ ") + message : undefined);
   }
 
   error(message?: string): this {
-    return this.stop(message ? pc.red('✗ ') + message : undefined);
+    return this.stop(message ? pc.red("✗ ") + message : undefined);
   }
 }
 
@@ -107,9 +107,9 @@ export function spinner(options?: SpinnerOptions): Spinner {
  */
 export async function withSpinner<T>(
   operation: () => Promise<T>,
-  options: { text?: string; success?: string; error?: string } = {}
+  options: { text?: string; success?: string; error?: string } = {},
 ): Promise<T> {
-  const spin = new Spinner({ text: options.text || 'Working...' });
+  const spin = new Spinner({ text: options.text || "Working..." });
   spin.start();
 
   try {
@@ -117,7 +117,9 @@ export async function withSpinner<T>(
     spin.success(options.success);
     return result;
   } catch (error) {
-    spin.error(options.error || (error instanceof Error ? error.message : 'Error'));
+    spin.error(
+      options.error || (error instanceof Error ? error.message : "Error"),
+    );
     throw error;
   }
 }

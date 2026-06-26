@@ -1,13 +1,20 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  appendFileSync,
+} from "fs";
+import { homedir } from "os";
+import { join } from "path";
 import {
   getProjectName,
   readProductionConfig,
   readTopLevelBlock,
   upsertTopLevelBlock,
   writeProductionConfig,
-} from './project-config.js';
+} from "./project-config.js";
 
 export interface TokenBudget {
   daily: number;
@@ -33,31 +40,43 @@ export const DEFAULT_TOKEN_BUDGET: TokenBudget = {
 };
 
 export function getDefaultUsageDir(projectRoot: string): string {
-  return join(homedir(), '.forgewright', 'usage', getProjectName(projectRoot));
+  return join(homedir(), ".forgewright", "usage", getProjectName(projectRoot));
 }
 
 export function getBudgetPath(projectRoot: string): string {
-  return join(projectRoot, '.forgewright', 'budget.yaml');
+  return join(projectRoot, ".forgewright", "budget.yaml");
 }
 
-export function setTokenTrackingEnabled(projectRoot: string, enabled: boolean): void {
+export function setTokenTrackingEnabled(
+  projectRoot: string,
+  enabled: boolean,
+): void {
   const content = readProductionConfig(projectRoot);
   const block = buildTokenTrackingBlock(enabled);
-  writeProductionConfig(projectRoot, upsertTopLevelBlock(content, 'token_tracking', block));
+  writeProductionConfig(
+    projectRoot,
+    upsertTopLevelBlock(content, "token_tracking", block),
+  );
 
   mkdirSync(getDefaultUsageDir(projectRoot), { recursive: true });
   ensureBudgetFile(projectRoot);
 }
 
 export function getTokenTrackingEnabled(projectRoot: string): boolean {
-  const block = readTopLevelBlock(readProductionConfig(projectRoot), 'token_tracking');
+  const block = readTopLevelBlock(
+    readProductionConfig(projectRoot),
+    "token_tracking",
+  );
   if (!block) {
     return false;
   }
   return /enabled:\s*true/i.test(block);
 }
 
-export function ensureBudgetFile(projectRoot: string, budget: TokenBudget = DEFAULT_TOKEN_BUDGET): string {
+export function ensureBudgetFile(
+  projectRoot: string,
+  budget: TokenBudget = DEFAULT_TOKEN_BUDGET,
+): string {
   const budgetPath = getBudgetPath(projectRoot);
   if (existsSync(budgetPath)) {
     return budgetPath;
@@ -67,23 +86,26 @@ export function ensureBudgetFile(projectRoot: string, budget: TokenBudget = DEFA
   return budgetPath;
 }
 
-export function writeBudgetFile(projectRoot: string, budget: TokenBudget): string {
+export function writeBudgetFile(
+  projectRoot: string,
+  budget: TokenBudget,
+): string {
   const budgetPath = getBudgetPath(projectRoot);
-  mkdirSync(join(projectRoot, '.forgewright'), { recursive: true });
+  mkdirSync(join(projectRoot, ".forgewright"), { recursive: true });
   writeFileSync(
     budgetPath,
     [
-      'budget:',
+      "budget:",
       `  daily: ${budget.daily}`,
       `  weekly: ${budget.weekly}`,
       `  monthly: ${budget.monthly}`,
-      '  alerts:',
-      '    warning: 0.80',
-      '    danger: 0.95',
-      '    critical: 1.00',
-      '',
-    ].join('\n'),
-    'utf-8',
+      "  alerts:",
+      "    warning: 0.80",
+      "    danger: 0.95",
+      "    critical: 1.00",
+      "",
+    ].join("\n"),
+    "utf-8",
   );
   return budgetPath;
 }
@@ -94,15 +116,36 @@ export function readBudgetFile(projectRoot: string): TokenBudget | null {
     return null;
   }
 
-  const content = readFileSync(budgetPath, 'utf-8');
+  const content = readFileSync(budgetPath, "utf-8");
   return {
-    daily: readNumber(content, 'daily', DEFAULT_TOKEN_BUDGET.daily),
-    weekly: readNumber(content, 'weekly', DEFAULT_TOKEN_BUDGET.weekly),
-    monthly: readNumber(content, 'monthly', DEFAULT_TOKEN_BUDGET.monthly),
+    daily: readNumber(content, "daily", DEFAULT_TOKEN_BUDGET.daily),
+    weekly: readNumber(content, "weekly", DEFAULT_TOKEN_BUDGET.weekly),
+    monthly: readNumber(content, "monthly", DEFAULT_TOKEN_BUDGET.monthly),
   };
 }
 
-export function summarizeUsage(projectRoot: string, days: number): UsageSummary {
+export function logTokenUsage(
+  projectRoot: string,
+  entry: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    provider: string;
+    cost?: number | null;
+    timestamp: string;
+    skill: string;
+  },
+): void {
+  const usageDir = getDefaultUsageDir(projectRoot);
+  mkdirSync(usageDir, { recursive: true });
+  const logFile = join(usageDir, "usage.log");
+  appendFileSync(logFile, JSON.stringify(entry) + "\n", "utf-8");
+}
+
+export function summarizeUsage(
+  projectRoot: string,
+  days: number,
+): UsageSummary {
   const usageDir = getDefaultUsageDir(projectRoot);
   const minTime = Date.now() - days * 24 * 60 * 60 * 1000;
   const summary: UsageSummary = {
@@ -121,12 +164,16 @@ export function summarizeUsage(projectRoot: string, days: number): UsageSummary 
   }
 
   for (const file of readdirSync(usageDir)) {
-    if (!file.endsWith('.jsonl')) {
+    if (
+      !file.endsWith(".jsonl") &&
+      !file.endsWith(".log") &&
+      !file.endsWith(".json")
+    ) {
       continue;
     }
 
     const path = join(usageDir, file);
-    const lines = readFileSync(path, 'utf-8').split(/\r?\n/);
+    const lines = readFileSync(path, "utf-8").split(/\r?\n/);
     for (const line of lines) {
       if (!line.trim()) {
         continue;
@@ -134,7 +181,8 @@ export function summarizeUsage(projectRoot: string, days: number): UsageSummary 
 
       try {
         const entry = JSON.parse(line) as Record<string, unknown>;
-        const timestamp = typeof entry.timestamp === 'string' ? entry.timestamp : null;
+        const timestamp =
+          typeof entry.timestamp === "string" ? entry.timestamp : null;
         if (timestamp && Date.parse(timestamp) < minTime) {
           continue;
         }
@@ -149,7 +197,10 @@ export function summarizeUsage(projectRoot: string, days: number): UsageSummary 
         summary.totalTokens += inputTokens + outputTokens;
         summary.estimatedCostUsd += cost;
 
-        if (timestamp && (!summary.latestTimestamp || timestamp > summary.latestTimestamp)) {
+        if (
+          timestamp &&
+          (!summary.latestTimestamp || timestamp > summary.latestTimestamp)
+        ) {
           summary.latestTimestamp = timestamp;
         }
       } catch {
@@ -164,15 +215,22 @@ export function summarizeUsage(projectRoot: string, days: number): UsageSummary 
 
 function buildTokenTrackingBlock(enabled: boolean): string {
   return [
-    'token_tracking:',
-    `  enabled: ${enabled ? 'true' : 'false'}`,
+    "token_tracking:",
+    `  enabled: ${enabled ? "true" : "false"}`,
     '  log_dir: "~/.forgewright/usage"',
-    '  export_format: jsonl',
-  ].join('\n');
+    "  export_format: jsonl",
+  ].join("\n");
 }
 
-function readNumber(content: string, key: string, defaultValue: number): number {
-  const pattern = new RegExp(`^[ \\t]*${key}:[ \\t]*([0-9]+(?:\\.[0-9]+)?)`, 'm');
+function readNumber(
+  content: string,
+  key: string,
+  defaultValue: number,
+): number {
+  const pattern = new RegExp(
+    `^[ \\t]*${key}:[ \\t]*([0-9]+(?:\\.[0-9]+)?)`,
+    "m",
+  );
   const match = content.match(pattern);
   if (!match) {
     return defaultValue;
@@ -183,5 +241,5 @@ function readNumber(content: string, key: string, defaultValue: number): number 
 }
 
 function numberField(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }

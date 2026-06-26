@@ -7,15 +7,15 @@
  * - @path: @/path/to/file.md (relative to cwd)
  * - Literal: Just text content
  */
-import { readFileSync, existsSync } from 'fs';
-import { resolve, isAbsolute } from 'path';
-import { AgentEnvelope } from '../types/index.js';
-import { EXIT_CODES } from '../exit-codes.js';
+import { readFileSync, existsSync } from "fs";
+import { resolve, isAbsolute } from "path";
+import { AgentEnvelope } from "../types/index.js";
+import { EXIT_CODES } from "../exit-codes.js";
 
 /**
  * Input type detection
  */
-export type InputType = 'url' | 'stdin' | 'file' | 'literal';
+export type InputType = "url" | "stdin" | "file" | "literal";
 
 export interface InputResult {
   type: InputType;
@@ -33,25 +33,25 @@ export interface InputResult {
 export function detectInputType(input: string): InputType {
   // URL
   if (input.match(/^https?:\/\//i)) {
-    return 'url';
+    return "url";
   }
 
   // stdin
-  if (input === '-') {
-    return 'stdin';
+  if (input === "-") {
+    return "stdin";
   }
 
   // @file path
-  if (input.startsWith('@')) {
-    return 'file';
+  if (input.startsWith("@")) {
+    return "file";
   }
 
   // File path (absolute or .something)
-  if (isAbsolute(input) || input.startsWith('./') || input.startsWith('../')) {
-    return 'file';
+  if (isAbsolute(input) || input.startsWith("./") || input.startsWith("../")) {
+    return "file";
   }
 
-  return 'literal';
+  return "literal";
 }
 
 /**
@@ -61,18 +61,18 @@ export async function resolveInput(input: string): Promise<InputResult> {
   const type = detectInputType(input);
 
   switch (type) {
-    case 'url':
+    case "url":
       return resolveUrl(input);
 
-    case 'stdin':
+    case "stdin":
       return resolveStdin();
 
-    case 'file':
-      return resolveFilePath(input.startsWith('@') ? input.slice(1) : input);
+    case "file":
+      return resolveFilePath(input.startsWith("@") ? input.slice(1) : input);
 
-    case 'literal':
+    case "literal":
       return {
-        type: 'literal',
+        type: "literal",
         content: input,
         metadata: {
           size: input.length,
@@ -92,7 +92,7 @@ async function resolveUrl(url: string): Promise<InputResult> {
   if (!url.match(/^https?:\/\//i)) {
     throw new InputError(
       `Invalid URL protocol. Only http:// and https:// are allowed.`,
-      EXIT_CODES.USAGE_ERROR
+      EXIT_CODES.USAGE_ERROR,
     );
   }
 
@@ -100,21 +100,21 @@ async function resolveUrl(url: string): Promise<InputResult> {
     const response = await fetch(url, {
       signal: AbortSignal.timeout(10000),
       headers: {
-        'Accept': 'text/*, application/json, */*',
+        Accept: "text/*, application/json, */*",
       },
     });
 
     if (!response.ok) {
       throw new InputError(
         `Failed to fetch URL: ${response.status} ${response.statusText}`,
-        EXIT_CODES.TOOL_ERROR
+        EXIT_CODES.TOOL_ERROR,
       );
     }
 
     const content = await response.text();
 
     return {
-      type: 'url',
+      type: "url",
       content,
       metadata: {
         url,
@@ -127,7 +127,7 @@ async function resolveUrl(url: string): Promise<InputResult> {
     }
     throw new InputError(
       `Failed to fetch URL: ${error instanceof Error ? error.message : String(error)}`,
-      EXIT_CODES.TOOL_ERROR
+      EXIT_CODES.TOOL_ERROR,
     );
   }
 }
@@ -137,10 +137,10 @@ async function resolveUrl(url: string): Promise<InputResult> {
  */
 async function resolveStdin(): Promise<InputResult> {
   return new Promise((resolve, reject) => {
-    let data = '';
+    let data = "";
     const maxSize = 10 * 1024 * 1024; // 10MB limit
 
-    process.stdin.on('readable', () => {
+    process.stdin.on("readable", () => {
       let chunk: string | Buffer | null;
       while ((chunk = process.stdin.read()) !== null) {
         data += chunk.toString();
@@ -150,17 +150,17 @@ async function resolveStdin(): Promise<InputResult> {
           reject(
             new InputError(
               `Input exceeds maximum size of ${maxSize} bytes`,
-              EXIT_CODES.USAGE_ERROR
-            )
+              EXIT_CODES.USAGE_ERROR,
+            ),
           );
           return;
         }
       }
     });
 
-    process.stdin.on('end', () => {
+    process.stdin.on("end", () => {
       resolve({
-        type: 'stdin',
+        type: "stdin",
         content: data,
         metadata: {
           size: data.length,
@@ -168,12 +168,12 @@ async function resolveStdin(): Promise<InputResult> {
       });
     });
 
-    process.stdin.on('error', (error) => {
+    process.stdin.on("error", (error) => {
       reject(
         new InputError(
           `Failed to read stdin: ${error.message}`,
-          EXIT_CODES.INTERNAL_ERROR
-        )
+          EXIT_CODES.INTERNAL_ERROR,
+        ),
       );
     });
   });
@@ -183,39 +183,49 @@ async function resolveStdin(): Promise<InputResult> {
  * Resolve file path input
  */
 function resolveFilePath(filePath: string): InputResult {
-  const resolvedPath = isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath);
+  const resolvedPath = isAbsolute(filePath)
+    ? filePath
+    : resolve(process.cwd(), filePath);
 
   // Security: Prevent path traversal
-  if (resolvedPath.includes('..')) {
+  if (resolvedPath.includes("..")) {
     throw new InputError(
       `Path traversal not allowed: ${filePath}`,
-      EXIT_CODES.USAGE_ERROR
+      EXIT_CODES.USAGE_ERROR,
     );
   }
 
   // Security: Only allow certain extensions
-  const allowedExtensions = ['.md', '.txt', '.json', '.yaml', '.yml', '.ts', '.js', '.py', '.go', '.rs'];
-  const ext = resolvedPath.slice(resolvedPath.lastIndexOf('.')).toLowerCase();
+  const allowedExtensions = [
+    ".md",
+    ".txt",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".ts",
+    ".js",
+    ".py",
+    ".go",
+    ".rs",
+  ];
+  const ext = resolvedPath.slice(resolvedPath.lastIndexOf(".")).toLowerCase();
 
   if (ext && !allowedExtensions.includes(ext)) {
     throw new InputError(
-      `File type not allowed: ${ext}. Allowed: ${allowedExtensions.join(', ')}`,
-      EXIT_CODES.USAGE_ERROR
+      `File type not allowed: ${ext}. Allowed: ${allowedExtensions.join(", ")}`,
+      EXIT_CODES.USAGE_ERROR,
     );
   }
 
   if (!existsSync(resolvedPath)) {
-    throw new InputError(
-      `File not found: ${filePath}`,
-      EXIT_CODES.USAGE_ERROR
-    );
+    throw new InputError(`File not found: ${filePath}`, EXIT_CODES.USAGE_ERROR);
   }
 
   try {
-    const content = readFileSync(resolvedPath, 'utf-8');
+    const content = readFileSync(resolvedPath, "utf-8");
 
     return {
-      type: 'file',
+      type: "file",
       content,
       metadata: {
         filePath: resolvedPath,
@@ -225,7 +235,7 @@ function resolveFilePath(filePath: string): InputResult {
   } catch (error) {
     throw new InputError(
       `Failed to read file: ${error instanceof Error ? error.message : String(error)}`,
-      EXIT_CODES.TOOL_ERROR
+      EXIT_CODES.TOOL_ERROR,
     );
   }
 }
@@ -236,10 +246,10 @@ function resolveFilePath(filePath: string): InputResult {
 export class InputError extends Error {
   constructor(
     message: string,
-    public readonly exitCode: number
+    public readonly exitCode: number,
   ) {
     super(message);
-    this.name = 'InputError';
+    this.name = "InputError";
   }
 }
 
@@ -252,7 +262,7 @@ export function parseJsonInput(input: string): Record<string, unknown> {
   } catch (error) {
     throw new InputError(
       `Invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
-      EXIT_CODES.USAGE_ERROR
+      EXIT_CODES.USAGE_ERROR,
     );
   }
 }

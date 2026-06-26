@@ -1,4 +1,4 @@
-import { spawnSync } from 'child_process';
+import { spawnSync } from "child_process";
 
 export interface CliAvailability {
   name: string;
@@ -7,10 +7,10 @@ export interface CliAvailability {
   error?: string;
 }
 
-export function checkCli(name: 'claude' | 'codex'): CliAvailability {
-  const result = spawnSync(name, ['--version'], {
-    encoding: 'utf-8',
-    shell: process.platform === 'win32',
+export function checkCli(name: "claude" | "codex"): CliAvailability {
+  const result = spawnSync(name, ["--version"], {
+    encoding: "utf-8",
+    shell: process.platform === "win32",
     timeout: 5000,
   });
 
@@ -22,12 +22,12 @@ export function checkCli(name: 'claude' | 'codex'): CliAvailability {
     };
   }
 
-  const output = `${result.stdout || ''}${result.stderr || ''}`.trim();
+  const output = `${result.stdout || ""}${result.stderr || ""}`.trim();
   if (result.status === 0) {
     return {
       name,
       available: true,
-      version: output || 'available',
+      version: output || "available",
     };
   }
 
@@ -39,5 +39,5 @@ export function checkCli(name: 'claude' | 'codex'): CliAvailability {
 }
 
 export function checkSupportedClis(): CliAvailability[] {
-  return [checkCli('claude'), checkCli('codex')];
+  return [checkCli("claude"), checkCli("codex")];
 }

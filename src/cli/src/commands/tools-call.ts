@@ -1,12 +1,12 @@
 /**
  * Tools Call Command - Execute a tool by name
  */
-import type { Command } from 'commander';
-import pc from 'picocolors';
-import { getToolByName, getAllTools } from '../core/tool-registry.js';
-import { buildEnvelope, AgentEnvelope } from '../types/index.js';
-import { VERSION } from '../version.js';
-import { EXIT_CODES } from '../exit-codes.js';
+import type { Command } from "commander";
+import pc from "picocolors";
+import { getToolByName, getAllTools } from "../core/tool-registry.js";
+import { buildEnvelope, AgentEnvelope } from "../types/index.js";
+import { VERSION } from "../version.js";
+import { EXIT_CODES } from "../exit-codes.js";
 
 export interface ToolsCallOptions {
   args?: string;
@@ -17,18 +17,21 @@ export interface ToolsCallOptions {
 export function registerToolsCallCommand(program: Command): void {
   // tools:call <name>
   program
-    .command('tools:call')
-    .description('Call a tool by name')
-    .argument('<name>', 'Tool name to call (e.g., skills.list)')
-    .option('-a, --args <json>', 'Tool arguments as JSON string')
-    .option('--stdin', 'Read arguments from stdin')
-    .option('-j, --json', 'Output as JSON')
+    .command("tools:call")
+    .description("Call a tool by name")
+    .argument("<name>", "Tool name to call (e.g., skills.list)")
+    .option("-a, --args <json>", "Tool arguments as JSON string")
+    .option("--stdin", "Read arguments from stdin")
+    .option("-j, --json", "Output as JSON")
     .action(async (name: string, options: ToolsCallOptions) => {
       await handleToolsCall(name, options);
     });
 }
 
-async function handleToolsCall(name: string, options: ToolsCallOptions): Promise<void> {
+async function handleToolsCall(
+  name: string,
+  options: ToolsCallOptions,
+): Promise<void> {
   const startTime = Date.now();
   const useJson = options.json || !process.stdout.isTTY;
 
@@ -37,9 +40,11 @@ async function handleToolsCall(name: string, options: ToolsCallOptions): Promise
     const tool = getToolByName(name);
 
     if (!tool) {
-      const availableTools = getAllTools().map((t) => t.name).join(', ');
+      const availableTools = getAllTools()
+        .map((t) => t.name)
+        .join(", ");
       throw new Error(
-        `Tool "${name}" not found. Available tools: ${availableTools}`
+        `Tool "${name}" not found. Available tools: ${availableTools}`,
       );
     }
 
@@ -52,14 +57,16 @@ async function handleToolsCall(name: string, options: ToolsCallOptions): Promise
       try {
         args = JSON.parse(stdinData);
       } catch {
-        throw new Error('Invalid JSON from stdin');
+        throw new Error("Invalid JSON from stdin");
       }
     } else if (options.args) {
       // Parse from CLI argument
       try {
         args = JSON.parse(options.args);
       } catch {
-        throw new Error('Invalid JSON in --args. Use: --args \'{"key":"value"}\'');
+        throw new Error(
+          'Invalid JSON in --args. Use: --args \'{"key":"value"}\'',
+        );
       }
     }
 
@@ -94,7 +101,7 @@ async function handleToolsCall(name: string, options: ToolsCallOptions): Promise
     if (useJson) {
       const envelope: AgentEnvelope = {
         ok: false,
-        tool: 'tools.call',
+        tool: "tools.call",
         data: null,
         metadata: {
           duration_ms,
@@ -116,27 +123,30 @@ async function handleToolsCall(name: string, options: ToolsCallOptions): Promise
 
 async function readStdin(): Promise<string> {
   return new Promise((resolve, reject) => {
-    let data = '';
+    let data = "";
 
-    process.stdin.on('readable', () => {
+    process.stdin.on("readable", () => {
       let chunk: string | Buffer | null;
       while ((chunk = process.stdin.read()) !== null) {
         data += chunk.toString();
       }
     });
 
-    process.stdin.on('end', () => resolve(data));
-    process.stdin.on('error', reject);
+    process.stdin.on("end", () => resolve(data));
+    process.stdin.on("error", reject);
   });
 }
 
-async function executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+async function executeTool(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
   // Tool execution stub
   // In the future, this will route to actual tool implementations
   return {
     tool: name,
     args,
-    status: 'executed',
+    status: "executed",
     message: `Tool "${name}" executed successfully`,
     timestamp: new Date().toISOString(),
   };
@@ -145,9 +155,9 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
 function printHumanReadable(toolName: string, result: unknown): void {
   console.log();
   console.log(pc.green(`✓ ${toolName}`));
-  console.log(pc.dim('─'.repeat(50)));
+  console.log(pc.dim("─".repeat(50)));
   console.log();
-  console.log(pc.bold('Result:'));
+  console.log(pc.bold("Result:"));
   console.log(JSON.stringify(result, null, 2));
   console.log();
 }

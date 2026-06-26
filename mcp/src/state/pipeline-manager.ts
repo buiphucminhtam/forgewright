@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import os from 'os';
 
 // ─── Forgewright Root Detection ──────────────────────────────────────
 // Compiled entry: FORGEWRIGHT/mcp/build/index.js
@@ -85,11 +86,34 @@ export function getWorkspaceRoot(): string {
 
 // ─── Pipeline State ────────────────────────────────────────────────
 
+export interface SelfHealingState {
+  isHealing: boolean;
+  currentAttempt: number;
+  maxAttempts: number;
+  lastError?: string;
+}
+
+export interface FailedCriterion {
+  name: string;
+  score: number;
+  reason: string;
+}
+
+export interface QualityGateState {
+  score: number;
+  threshold: number;
+  failedCriteria: FailedCriterion[];
+}
+
 export interface PipelineState {
   currentPhase: number;
   currentMode: string | null;
+  status: 'IDLE' | 'IN_PROGRESS' | 'WAITING_FOR_GATE' | 'COMPLETED' | 'FAILED';
   history: string[];
-  status: 'IDLE' | 'IN_PROGRESS' | 'WAITING_FOR_GATE' | 'COMPLETED';
+  activeAction?: string | null;
+  phaseProgress?: number | null;
+  selfHealing?: SelfHealingState | null;
+  qualityGate?: QualityGateState | null;
 }
 
 export const PIPELINE_PHASES = [
@@ -111,6 +135,10 @@ const DEFAULT_STATE: PipelineState = {
   currentMode: null,
   history: [],
   status: 'IDLE',
+  activeAction: null,
+  phaseProgress: null,
+  selfHealing: null,
+  qualityGate: null,
 };
 
 function ensureDirSync(dirPath: string) {
@@ -138,11 +166,16 @@ export function getState(): PipelineState {
     if (
       typeof parsed.currentPhase !== 'number' ||
       !Array.isArray(parsed.history) ||
-      !['IDLE', 'IN_PROGRESS', 'WAITING_FOR_GATE', 'COMPLETED'].includes(parsed.status)
+      !['IDLE', 'IN_PROGRESS', 'WAITING_FOR_GATE', 'COMPLETED', 'FAILED'].includes(parsed.status)
     ) {
       console.error('State has invalid shape, returning default');
       return DEFAULT_STATE;
     }
+    // Backward compatibility: initialize new fields if they are missing
+    if (parsed.activeAction === undefined) parsed.activeAction = null;
+    if (parsed.phaseProgress === undefined) parsed.phaseProgress = null;
+    if (parsed.selfHealing === undefined) parsed.selfHealing = null;
+    if (parsed.qualityGate === undefined) parsed.qualityGate = null;
     return parsed;
   } catch (e) {
     console.error('Failed to read state, returning default', e);
@@ -152,7 +185,20 @@ export function getState(): PipelineState {
 
 export function saveState(state: PipelineState) {
   const stateFile = getStateFile();
-  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf-8');
+  const tempFile = stateFile + '.tmp';
+  try {
+    fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf-8');
+    fs.renameSync(tempFile, stateFile);
+  } catch (e) {
+    if (fs.existsSync(tempFile)) {
+      try {
+        fs.unlinkSync(tempFile);
+      } catch (err) {
+        // ignore to preserve original exception
+      }
+    }
+    throw e;
+  }
 }
 
 export function startPipeline(mode: string): string {
@@ -161,6 +207,11 @@ export function startPipeline(mode: string): string {
   state.currentMode = mode;
   state.status = 'IN_PROGRESS';
   state.history.push(`Started pipeline in mode: ${mode}`);
+  // Clear any existing sub-task, self-healing, quality-gate details
+  state.activeAction = null;
+  state.phaseProgress = null;
+  state.selfHealing = null;
+  state.qualityGate = null;
   saveState(state);
 
   return `Successfully started pipeline in ${mode} mode. You are now at Phase 1: Research & Discovery. Follow the Forgewright orchestrator instructions.`;
@@ -175,22 +226,36 @@ export function advancePhase(): string {
   if (state.currentPhase >= PIPELINE_PHASES.length - 1) {
     state.status = 'COMPLETED';
     state.history.push(`Pipeline completed.`);
+    state.activeAction = null;
+    state.phaseProgress = null;
+    state.selfHealing = null;
+    state.qualityGate = null;
     saveState(state);
     return `Success: Pipeline is now Fully Completed.`;
   }
 
   state.currentPhase += 1;
   const phaseName = PIPELINE_PHASES[state.currentPhase];
+  state.status = 'IN_PROGRESS'; // Set status to IN_PROGRESS on phase transition (Requirement 3.1)
   state.history.push(`Advanced to ${phaseName}`);
+  // Reset sub-task details, self-healing, and quality-gate when beginning a new phase
+  state.activeAction = null;
+  state.phaseProgress = null;
+  state.selfHealing = null;
+  state.qualityGate = null;
   saveState(state);
 
   return `Successfully advanced to ${phaseName}. Check the Forgewright instructions for roles required in this phase.`;
 }
 
-export function requestGateApproval(message: string): string {
+export function requestGateApproval(
+  message: string,
+  qualityGate?: QualityGateState | null,
+): string {
   const state = getState();
   state.status = 'WAITING_FOR_GATE';
   state.history.push(`Requested Gate Approval: ${message}`);
+  state.qualityGate = qualityGate || null;
   saveState(state);
 
   return `System is now locked. Ask the user for explicit approval to pass the gate: "${message}".`;
@@ -203,6 +268,52 @@ export function approveGate(): string {
   }
   state.status = 'IN_PROGRESS';
   state.history.push('Gate approved by user.');
+  state.qualityGate = null; // Clear quality gate info after approval
   saveState(state);
   return 'Gate successfully approved. Proceed to next step or advance phase.';
+}
+
+export function updateSubTask(activeAction: string | null, phaseProgress: number | null): void {
+  const state = getState();
+  state.activeAction = activeAction;
+  state.phaseProgress = phaseProgress;
+  saveState(state);
+}
+
+export function updateSelfHealing(selfHealing: SelfHealingState | null): void {
+  const state = getState();
+  state.selfHealing = selfHealing;
+  saveState(state);
+}
+
+export function failPipeline(reason?: string): string {
+  const state = getState();
+  state.status = 'FAILED';
+  const entry = reason ? `Pipeline failed: ${reason}` : 'Pipeline failed.';
+  state.history.push(entry);
+  state.activeAction = null;
+  state.phaseProgress = null;
+  state.selfHealing = null;
+  state.qualityGate = null;
+  saveState(state);
+  return `Pipeline status updated to FAILED.`;
+}
+
+export interface TokenUsageEntry {
+  inputTokens: number;
+  outputTokens: number;
+  model: string;
+  provider: string;
+  cost?: number | null;
+  timestamp: string;
+  skill: string;
+}
+
+export function logTokenUsage(entry: TokenUsageEntry): void {
+  const wsRoot = getWorkspaceRoot();
+  const folderName = path.basename(wsRoot);
+  const usageDir = path.join(os.homedir(), '.forgewright', 'usage', folderName);
+  ensureDirSync(usageDir);
+  const logFile = path.join(usageDir, 'usage.log');
+  fs.appendFileSync(logFile, JSON.stringify(entry) + '\n', 'utf-8');
 }

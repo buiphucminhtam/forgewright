@@ -1,9 +1,9 @@
 /**
  * Logger utility with debug mode support
  */
-import pc from 'picocolors';
+import pc from "picocolors";
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface LoggerOptions {
   quiet: boolean;
@@ -24,37 +24,39 @@ export class Logger {
 
   debug(message: string, ...args: unknown[]): void {
     if (this.debug) {
-      this.log('debug', message, ...args);
+      this.log("debug", message, ...args);
     }
   }
 
   info(message: string, ...args: unknown[]): void {
-    this.log('info', message, ...args);
+    this.log("info", message, ...args);
   }
 
   warn(message: string, ...args: unknown[]): void {
-    this.log('warn', message, ...args);
+    this.log("warn", message, ...args);
   }
 
   error(message: string, ...args: unknown[]): void {
-    this.log('error', message, ...args);
+    this.log("error", message, ...args);
   }
 
   private log(level: LogLevel, message: string, ...args: unknown[]): void {
-    if (this.quiet && level !== 'error') {
+    if (this.quiet && level !== "error") {
       return;
     }
 
-    const timestamp = this.useColors ? pc.dim(new Date().toISOString()) : new Date().toISOString();
+    const timestamp = this.useColors
+      ? pc.dim(new Date().toISOString())
+      : new Date().toISOString();
     const prefix = this.getPrefix(level);
     const formattedMessage = this.format(message, ...args);
 
     const output = `${timestamp} ${prefix} ${formattedMessage}`;
 
-    if (level === 'error') {
-      process.stderr.write(output + '\n');
+    if (level === "error") {
+      process.stderr.write(output + "\n");
     } else {
-      process.stdout.write(output + '\n');
+      process.stdout.write(output + "\n");
     }
   }
 
@@ -64,10 +66,10 @@ export class Logger {
     }
 
     const prefixes: Record<LogLevel, string> = {
-      debug: pc.gray('[DEBUG]'),
-      info: pc.blue('[INFO]'),
-      warn: pc.yellow('[WARN]'),
-      error: pc.red('[ERROR]'),
+      debug: pc.gray("[DEBUG]"),
+      info: pc.blue("[INFO]"),
+      warn: pc.yellow("[WARN]"),
+      error: pc.red("[ERROR]"),
     };
 
     return prefixes[level];
@@ -81,9 +83,9 @@ export class Logger {
     try {
       return args.length === 1
         ? `${message} ${JSON.stringify(args[0])}`
-        : `${message} ${args.map((a) => JSON.stringify(a)).join(' ')}`;
+        : `${message} ${args.map((a) => JSON.stringify(a)).join(" ")}`;
     } catch {
-      return `${message} ${args.join(' ')}`;
+      return `${message} ${args.join(" ")}`;
     }
   }
 }

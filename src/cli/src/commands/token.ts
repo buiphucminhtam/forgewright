@@ -1,13 +1,16 @@
 /**
  * Token Command - Token tracking controls
  */
-import type { Command } from 'commander';
-import pc from 'picocolors';
-import { spawn, spawnSync } from 'child_process';
-import { existsSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
-import { findProjectRoot, getProductionConfigPath } from '../utils/project-config.js';
+import type { Command } from "commander";
+import pc from "picocolors";
+import { spawn, spawnSync } from "child_process";
+import { existsSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
+import {
+  findProjectRoot,
+  getProductionConfigPath,
+} from "../utils/project-config.js";
 import {
   DEFAULT_TOKEN_BUDGET,
   ensureBudgetFile,
@@ -18,66 +21,98 @@ import {
   setTokenTrackingEnabled,
   summarizeUsage,
   writeBudgetFile,
+  logTokenUsage,
   type TokenBudget,
-} from '../utils/token-tracking.js';
-import { buildEnvelope } from '../types/index.js';
-import { VERSION } from '../version.js';
-import { EXIT_CODES } from '../exit-codes.js';
+} from "../utils/token-tracking.js";
+import { buildEnvelope } from "../types/index.js";
+import { VERSION } from "../version.js";
+import { EXIT_CODES } from "../exit-codes.js";
 
 export function registerTokenCommand(program: Command): void {
   const token = program
-    .command('token')
-    .description('Token tracking controls and usage reports');
+    .command("token")
+    .description("Token tracking controls and usage reports");
 
   token
-    .command('status')
-    .description('Show token tracking status')
-    .option('-j, --json', 'Output as JSON')
+    .command("status")
+    .description("Show token tracking status")
+    .option("-j, --json", "Output as JSON")
     .action(async (options: { json?: boolean }) => {
       await handleStatus(Boolean(options.json));
     });
 
   token
-    .command('on')
-    .description('Enable token tracking')
-    .option('-j, --json', 'Output as JSON')
+    .command("on")
+    .description("Enable token tracking")
+    .option("-j, --json", "Output as JSON")
     .action(async (options: { json?: boolean }) => {
-      await handleToggle(true, Boolean(options.json), 'token.on');
+      await handleToggle(true, Boolean(options.json), "token.on");
     });
 
   token
-    .command('off')
-    .description('Disable token tracking without deleting usage data')
-    .option('-j, --json', 'Output as JSON')
+    .command("off")
+    .description("Disable token tracking without deleting usage data")
+    .option("-j, --json", "Output as JSON")
     .action(async (options: { json?: boolean }) => {
-      await handleToggle(false, Boolean(options.json), 'token.off');
+      await handleToggle(false, Boolean(options.json), "token.off");
     });
 
   token
-    .command('budget')
-    .description('Show or update token tracking budget')
-    .option('--daily <usd>', 'Daily budget in USD')
-    .option('--weekly <usd>', 'Weekly budget in USD')
-    .option('--monthly <usd>', 'Monthly budget in USD')
-    .option('-j, --json', 'Output as JSON')
-    .action(async (options: { daily?: string; weekly?: string; monthly?: string; json?: boolean }) => {
-      await handleBudget(options);
-    });
+    .command("budget")
+    .description("Show or update token tracking budget")
+    .option("--daily <usd>", "Daily budget in USD")
+    .option("--weekly <usd>", "Weekly budget in USD")
+    .option("--monthly <usd>", "Monthly budget in USD")
+    .option("-j, --json", "Output as JSON")
+    .action(
+      async (options: {
+        daily?: string;
+        weekly?: string;
+        monthly?: string;
+        json?: boolean;
+      }) => {
+        await handleBudget(options);
+      },
+    );
 
   token
-    .command('report')
-    .description('Show usage summary from local token logs')
-    .option('--period <day|week|month>', 'Report period', 'week')
-    .option('-j, --json', 'Output as JSON')
+    .command("report")
+    .description("Show usage summary from local token logs")
+    .option("--period <day|week|month>", "Report period", "week")
+    .option("-j, --json", "Output as JSON")
     .action(async (options: { period: string; json?: boolean }) => {
       await handleReport(options);
     });
 
   token
-    .command('dashboard')
-    .description('Start the token usage dashboard server')
-    .option('--port <port>', 'Dashboard port', '8080')
-    .option('-j, --json', 'Output startup information as JSON before launching')
+    .command("log")
+    .description("Log LLM token usage details")
+    .requiredOption("--input-tokens <tokens>", "Prompt/input tokens")
+    .requiredOption("--output-tokens <tokens>", "Completion/output tokens")
+    .requiredOption("--model <model>", "Model name")
+    .requiredOption("--provider <provider>", "Provider name")
+    .option("--cost <cost>", "USD Cost")
+    .requiredOption("--skill <skill>", "Skill name")
+    .option("-j, --json", "Output as JSON")
+    .action(
+      async (options: {
+        inputTokens: string;
+        outputTokens: string;
+        model: string;
+        provider: string;
+        cost?: string;
+        skill: string;
+        json?: boolean;
+      }) => {
+        await handleLogToken(options);
+      },
+    );
+
+  token
+    .command("dashboard")
+    .description("Start the token usage dashboard server")
+    .option("--port <port>", "Dashboard port", "8080")
+    .option("-j, --json", "Output startup information as JSON before launching")
     .action(async (options: { port: string; json?: boolean }) => {
       await handleDashboard(options);
     });
@@ -97,16 +132,20 @@ async function handleStatus(useJson: boolean): Promise<void> {
     last7Days: summary,
     sources: {
       forgewrightUsageDir: existsSync(getDefaultUsageDir(projectRoot)),
-      claudeTelemetry: existsSync(join(homedir(), '.claude', 'telemetry')),
-      codexConfig: existsSync(join(homedir(), '.codex')),
+      claudeTelemetry: existsSync(join(homedir(), ".claude", "telemetry")),
+      codexConfig: existsSync(join(homedir(), ".codex")),
     },
   };
 
-  writeOutput('token.status', data, useJson, Date.now() - startTime);
+  writeOutput("token.status", data, useJson, Date.now() - startTime);
   process.exit(EXIT_CODES.OK);
 }
 
-async function handleToggle(enabled: boolean, useJson: boolean, tool: string): Promise<void> {
+async function handleToggle(
+  enabled: boolean,
+  useJson: boolean,
+  tool: string,
+): Promise<void> {
   const startTime = Date.now();
   const projectRoot = findProjectRoot();
   setTokenTrackingEnabled(projectRoot, enabled);
@@ -133,12 +172,24 @@ async function handleBudget(options: {
   const useJson = Boolean(options.json) || !process.stdout.isTTY;
   const projectRoot = findProjectRoot();
   const existing = readBudgetFile(projectRoot) ?? DEFAULT_TOKEN_BUDGET;
-  const shouldUpdate = options.daily !== undefined || options.weekly !== undefined || options.monthly !== undefined;
+  const shouldUpdate =
+    options.daily !== undefined ||
+    options.weekly !== undefined ||
+    options.monthly !== undefined;
 
   const budget: TokenBudget = {
-    daily: options.daily !== undefined ? parseUsd(options.daily, 'daily', useJson) : existing.daily,
-    weekly: options.weekly !== undefined ? parseUsd(options.weekly, 'weekly', useJson) : existing.weekly,
-    monthly: options.monthly !== undefined ? parseUsd(options.monthly, 'monthly', useJson) : existing.monthly,
+    daily:
+      options.daily !== undefined
+        ? parseUsd(options.daily, "daily", useJson)
+        : existing.daily,
+    weekly:
+      options.weekly !== undefined
+        ? parseUsd(options.weekly, "weekly", useJson)
+        : existing.weekly,
+    monthly:
+      options.monthly !== undefined
+        ? parseUsd(options.monthly, "monthly", useJson)
+        : existing.monthly,
   };
 
   if (shouldUpdate) {
@@ -147,44 +198,68 @@ async function handleBudget(options: {
     ensureBudgetFile(projectRoot, budget);
   }
 
-  writeOutput('token.budget', {
-    projectRoot,
-    budgetPath: getBudgetPath(projectRoot),
-    updated: shouldUpdate,
-    budget,
-  }, useJson, Date.now() - startTime);
+  writeOutput(
+    "token.budget",
+    {
+      projectRoot,
+      budgetPath: getBudgetPath(projectRoot),
+      updated: shouldUpdate,
+      budget,
+    },
+    useJson,
+    Date.now() - startTime,
+  );
   process.exit(EXIT_CODES.OK);
 }
 
-async function handleReport(options: { period: string; json?: boolean }): Promise<void> {
+async function handleReport(options: {
+  period: string;
+  json?: boolean;
+}): Promise<void> {
   const startTime = Date.now();
   const useJson = Boolean(options.json) || !process.stdout.isTTY;
   const projectRoot = findProjectRoot();
   const days = periodToDays(options.period, useJson);
   const summary = summarizeUsage(projectRoot, days);
 
-  writeOutput('token.report', {
-    projectRoot,
-    period: options.period,
-    summary,
-  }, useJson, Date.now() - startTime);
+  writeOutput(
+    "token.report",
+    {
+      projectRoot,
+      period: options.period,
+      summary,
+    },
+    useJson,
+    Date.now() - startTime,
+  );
   process.exit(EXIT_CODES.OK);
 }
 
-async function handleDashboard(options: { port: string; json?: boolean }): Promise<void> {
+async function handleDashboard(options: {
+  port: string;
+  json?: boolean;
+}): Promise<void> {
   const startTime = Date.now();
   const useJson = Boolean(options.json) || !process.stdout.isTTY;
   const projectRoot = findProjectRoot();
-  const scriptPath = join(projectRoot, 'scripts', 'token-api-server.py');
+  const scriptPath = join(projectRoot, "scripts", "token-api-server.py");
   const port = parsePort(options.port, useJson);
 
   if (!existsSync(scriptPath)) {
-    fail(`Token dashboard script not found: ${scriptPath}`, useJson, EXIT_CODES.MISSING_DEPENDENCY);
+    fail(
+      `Token dashboard script not found: ${scriptPath}`,
+      useJson,
+      EXIT_CODES.MISSING_DEPENDENCY,
+    );
   }
 
   const python = findPythonCommand();
   if (!python) {
-    fail('No Python launcher found. Install python, python3, or py to run the dashboard.', useJson, EXIT_CODES.MISSING_DEPENDENCY);
+    fail(
+      "No Python launcher found. Install python, python3, or py to run the dashboard.",
+      useJson,
+      EXIT_CODES.MISSING_DEPENDENCY,
+    );
   }
 
   const data = {
@@ -196,23 +271,28 @@ async function handleDashboard(options: { port: string; json?: boolean }): Promi
   };
 
   if (useJson) {
-    writeOutput('token.dashboard', data, true, Date.now() - startTime);
+    writeOutput("token.dashboard", data, true, Date.now() - startTime);
   } else {
     console.log(pc.green(`Starting token dashboard: ${data.url}`));
-    console.log(pc.dim('Press Ctrl+C to stop.'));
+    console.log(pc.dim("Press Ctrl+C to stop."));
   }
 
-  const child = spawn(python, [scriptPath, '--port', String(port)], {
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
+  const child = spawn(python, [scriptPath, "--port", String(port)], {
+    stdio: "inherit",
+    shell: process.platform === "win32",
   });
 
-  child.on('exit', (code) => {
+  child.on("exit", (code) => {
     process.exit(code ?? EXIT_CODES.OK);
   });
 }
 
-function writeOutput<T>(tool: string, data: T, useJson: boolean, durationMs: number): void {
+function writeOutput<T>(
+  tool: string,
+  data: T,
+  useJson: boolean,
+  durationMs: number,
+): void {
   if (useJson || !process.stdout.isTTY) {
     const envelope = buildEnvelope(tool, data, {
       ok: true,
@@ -225,7 +305,7 @@ function writeOutput<T>(tool: string, data: T, useJson: boolean, durationMs: num
 
   console.log();
   console.log(pc.bold(`  ${tool}`));
-  console.log(pc.gray('  ' + '-'.repeat(50)));
+  console.log(pc.gray("  " + "-".repeat(50)));
   console.log(JSON.stringify(data, null, 2));
   console.log();
 }
@@ -233,7 +313,11 @@ function writeOutput<T>(tool: string, data: T, useJson: boolean, durationMs: num
 function parseUsd(value: string, label: string, useJson: boolean): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
-    fail(`Invalid ${label} budget: ${value}. Use a non-negative number.`, useJson, EXIT_CODES.USAGE_ERROR);
+    fail(
+      `Invalid ${label} budget: ${value}. Use a non-negative number.`,
+      useJson,
+      EXIT_CODES.USAGE_ERROR,
+    );
   }
   return parsed;
 }
@@ -241,29 +325,37 @@ function parseUsd(value: string, label: string, useJson: boolean): number {
 function parsePort(value: string, useJson: boolean): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
-    fail(`Invalid port: ${value}. Use an integer from 1 to 65535.`, useJson, EXIT_CODES.USAGE_ERROR);
+    fail(
+      `Invalid port: ${value}. Use an integer from 1 to 65535.`,
+      useJson,
+      EXIT_CODES.USAGE_ERROR,
+    );
   }
   return parsed;
 }
 
 function periodToDays(period: string, useJson: boolean): number {
-  if (period === 'day') {
+  if (period === "day") {
     return 1;
   }
-  if (period === 'week') {
+  if (period === "week") {
     return 7;
   }
-  if (period === 'month') {
+  if (period === "month") {
     return 30;
   }
-  fail(`Invalid period "${period}". Use day, week, or month.`, useJson, EXIT_CODES.USAGE_ERROR);
+  fail(
+    `Invalid period "${period}". Use day, week, or month.`,
+    useJson,
+    EXIT_CODES.USAGE_ERROR,
+  );
 }
 
 function findPythonCommand(): string | null {
-  for (const command of ['python3', 'python', 'py']) {
-    const result = spawnSync(command, ['--version'], {
-      encoding: 'utf-8',
-      shell: process.platform === 'win32',
+  for (const command of ["python3", "python", "py"]) {
+    const result = spawnSync(command, ["--version"], {
+      encoding: "utf-8",
+      shell: process.platform === "win32",
       timeout: 3000,
     });
 
@@ -277,7 +369,7 @@ function findPythonCommand(): string | null {
 
 function fail(message: string, useJson: boolean, code: number): never {
   if (useJson || !process.stdout.isTTY) {
-    const envelope = buildEnvelope('token.error', null, {
+    const envelope = buildEnvelope("token.error", null, {
       ok: false,
       duration_ms: 0,
       version: VERSION,
@@ -288,4 +380,67 @@ function fail(message: string, useJson: boolean, code: number): never {
     console.error(pc.red(`Error: ${message}`));
   }
   process.exit(code);
+}
+
+async function handleLogToken(options: {
+  inputTokens: string;
+  outputTokens: string;
+  model: string;
+  provider: string;
+  cost?: string;
+  skill: string;
+  json?: boolean;
+}): Promise<void> {
+  const startTime = Date.now();
+  const useJson = Boolean(options.json) || !process.stdout.isTTY;
+  const projectRoot = findProjectRoot();
+
+  const inputTokens = Number(options.inputTokens);
+  const outputTokens = Number(options.outputTokens);
+  const cost = options.cost !== undefined ? Number(options.cost) : null;
+
+  if (!Number.isInteger(inputTokens) || inputTokens < 0) {
+    fail(
+      "Invalid input-tokens: must be a non-negative integer.",
+      useJson,
+      EXIT_CODES.USAGE_ERROR,
+    );
+  }
+  if (!Number.isInteger(outputTokens) || outputTokens < 0) {
+    fail(
+      "Invalid output-tokens: must be a non-negative integer.",
+      useJson,
+      EXIT_CODES.USAGE_ERROR,
+    );
+  }
+  if (cost !== null && (!Number.isFinite(cost) || cost < 0)) {
+    fail(
+      "Invalid cost: must be a non-negative number.",
+      useJson,
+      EXIT_CODES.USAGE_ERROR,
+    );
+  }
+
+  const entry = {
+    inputTokens,
+    outputTokens,
+    model: options.model,
+    provider: options.provider,
+    cost,
+    timestamp: new Date().toISOString(),
+    skill: options.skill,
+  };
+
+  logTokenUsage(projectRoot, entry);
+
+  writeOutput(
+    "token.log",
+    {
+      success: true,
+      entry,
+    },
+    useJson,
+    Date.now() - startTime,
+  );
+  process.exit(EXIT_CODES.OK);
 }

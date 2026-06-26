@@ -8,40 +8,40 @@
  * 4. .env files (.env, .env.local)
  * 5. Inline flags (lowest priority)
  */
-import { homedir } from 'os';
-import { join, resolve } from 'path';
-import { existsSync, readFileSync } from 'fs';
-import type { ConfigSource, ConfigEntry } from '../types/index.js';
+import { homedir } from "os";
+import { join, resolve } from "path";
+import { existsSync, readFileSync } from "fs";
+import type { ConfigSource, ConfigEntry } from "../types/index.js";
 
 // Config source priorities
 export const CONFIG_SOURCE_PRIORITY: Record<number, ConfigSource> = {
-  1: 'OS_ENV',
-  2: 'USER_CONFIG',
-  3: 'PROCESS_ENV',
-  4: 'DOTENV',
-  5: 'INLINE_FLAGS',
+  1: "OS_ENV",
+  2: "USER_CONFIG",
+  3: "PROCESS_ENV",
+  4: "DOTENV",
+  5: "INLINE_FLAGS",
 };
 
 export const SOURCE_LABELS: Record<ConfigSource, string> = {
-  OS_ENV: 'Environment Variable',
-  USER_CONFIG: 'User Config (~/.config/forgewright)',
-  PROCESS_ENV: 'Process Environment',
-  DOTENV: '.env File',
-  INLINE_FLAGS: 'Inline Flag',
+  OS_ENV: "Environment Variable",
+  USER_CONFIG: "User Config (~/.config/forgewright)",
+  PROCESS_ENV: "Process Environment",
+  DOTENV: ".env File",
+  INLINE_FLAGS: "Inline Flag",
 };
 
 // Config file locations
 export const CONFIG_PATHS = {
-  USER_CONFIG: join(homedir(), '.config', 'forgewright', 'config.json'),
-  LEGACY_CONFIG: join(homedir(), '.forgewright', 'config.json'),
-  LOCAL_ENV: '.env',
-  LOCAL_ENV_LOCAL: '.env.local',
-  PROJECT_ENV: '.env',
-  PROJECT_ENV_LOCAL: '.env.local',
+  USER_CONFIG: join(homedir(), ".config", "forgewright", "config.json"),
+  LEGACY_CONFIG: join(homedir(), ".forgewright", "config.json"),
+  LOCAL_ENV: ".env",
+  LOCAL_ENV_LOCAL: ".env.local",
+  PROJECT_ENV: ".env",
+  PROJECT_ENV_LOCAL: ".env.local",
 };
 
 // Environment variable prefix
-export const ENV_PREFIX = 'FORGE_';
+export const ENV_PREFIX = "FORGE_";
 
 /**
  * Configuration store
@@ -58,22 +58,22 @@ export class ConfigStore {
    * Load default configuration values
    */
   private loadDefaults(): void {
-    this.set('forge.debug', false, 'DEFAULT');
-    this.set('forge.quiet', false, 'DEFAULT');
-    this.set('forge.json', false, 'DEFAULT');
-    this.set('forge.color', true, 'DEFAULT');
-    this.set('forge.apiUrl', 'https://api.forgewright.io', 'DEFAULT');
-    this.set('forge.timeout', 30000, 'DEFAULT');
+    this.set("forge.debug", false, "DEFAULT");
+    this.set("forge.quiet", false, "DEFAULT");
+    this.set("forge.json", false, "DEFAULT");
+    this.set("forge.color", true, "DEFAULT");
+    this.set("forge.apiUrl", "https://api.forgewright.io", "DEFAULT");
+    this.set("forge.timeout", 30000, "DEFAULT");
   }
 
   /**
    * Set a configuration value
    */
-  set(key: string, value: unknown, source: ConfigSource | 'DEFAULT'): void {
+  set(key: string, value: unknown, source: ConfigSource | "DEFAULT"): void {
     const entry: ConfigEntry = {
       key,
       value,
-      source: source === 'DEFAULT' ? 'INLINE_FLAGS' : source,
+      source: source === "DEFAULT" ? "INLINE_FLAGS" : source,
     };
 
     // Check if we should override
@@ -88,7 +88,10 @@ export class ConfigStore {
   /**
    * Check if new source should override existing
    */
-  private shouldOverride(existingSource: ConfigSource, newSource: ConfigSource): boolean {
+  private shouldOverride(
+    existingSource: ConfigSource,
+    newSource: ConfigSource,
+  ): boolean {
     if (this.inlineFirst) {
       return existingSource > newSource;
     }
@@ -147,12 +150,12 @@ export class ConfigStore {
     if (!existsSync(path)) {
       // Try legacy path
       if (existsSync(CONFIG_PATHS.LEGACY_CONFIG)) {
-        return this.loadJsonFile(CONFIG_PATHS.LEGACY_CONFIG, 'USER_CONFIG');
+        return this.loadJsonFile(CONFIG_PATHS.LEGACY_CONFIG, "USER_CONFIG");
       }
       return false;
     }
 
-    return this.loadJsonFile(path, 'USER_CONFIG');
+    return this.loadJsonFile(path, "USER_CONFIG");
   }
 
   /**
@@ -177,8 +180,11 @@ export class ConfigStore {
   loadEnvVars(): void {
     for (const [key, value] of Object.entries(process.env)) {
       if (key.startsWith(ENV_PREFIX)) {
-        const configKey = key.slice(ENV_PREFIX.length).toLowerCase().replace(/_/g, '.');
-        this.set(configKey, this.parseValue(value), 'OS_ENV');
+        const configKey = key
+          .slice(ENV_PREFIX.length)
+          .toLowerCase()
+          .replace(/_/g, ".");
+        this.set(configKey, this.parseValue(value), "OS_ENV");
       }
     }
   }
@@ -188,7 +194,7 @@ export class ConfigStore {
    */
   private loadJsonFile(path: string, source: ConfigSource): boolean {
     try {
-      const content = readFileSync(path, 'utf-8');
+      const content = readFileSync(path, "utf-8");
       const config = JSON.parse(content);
 
       for (const [key, value] of Object.entries(config)) {
@@ -207,21 +213,21 @@ export class ConfigStore {
    */
   private loadEnvFile(path: string): void {
     try {
-      const content = readFileSync(path, 'utf-8');
-      const lines = content.split('\n');
+      const content = readFileSync(path, "utf-8");
+      const lines = content.split("\n");
 
       for (const line of lines) {
         const trimmed = line.trim();
 
         // Skip comments and empty lines
-        if (!trimmed || trimmed.startsWith('#')) {
+        if (!trimmed || trimmed.startsWith("#")) {
           continue;
         }
 
         const match = trimmed.match(/^([^=]+)=(.*)$/);
         if (match) {
           const [, key, value] = match;
-          this.set(key.trim(), this.parseValue(value.trim()), 'DOTENV');
+          this.set(key.trim(), this.parseValue(value.trim()), "DOTENV");
         }
       }
     } catch (error) {
@@ -234,20 +240,22 @@ export class ConfigStore {
    */
   private parseValue(value: string): unknown {
     // Boolean
-    if (value === 'true') return true;
-    if (value === 'false') return false;
+    if (value === "true") return true;
+    if (value === "false") return false;
 
     // Null
-    if (value === 'null') return null;
-    if (value === 'undefined') return undefined;
+    if (value === "null") return null;
+    if (value === "undefined") return undefined;
 
     // Number
     if (/^\d+$/.test(value)) return parseInt(value, 10);
     if (/^\d+\.\d+$/.test(value)) return parseFloat(value);
 
     // JSON parse for objects/arrays
-    if ((value.startsWith('{') && value.endsWith('}')) ||
-        (value.startsWith('[') && value.endsWith(']'))) {
+    if (
+      (value.startsWith("{") && value.endsWith("}")) ||
+      (value.startsWith("[") && value.endsWith("]"))
+    ) {
       try {
         return JSON.parse(value);
       } catch {

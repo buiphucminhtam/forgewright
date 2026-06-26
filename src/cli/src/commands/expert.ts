@@ -1,8 +1,8 @@
 /**
  * Expert Command - Optional Claude/Codex CLI escalation controls
  */
-import type { Command } from 'commander';
-import pc from 'picocolors';
+import type { Command } from "commander";
+import pc from "picocolors";
 import {
   findProjectRoot,
   getProductionConfigPath,
@@ -13,14 +13,17 @@ import {
   readTopLevelBlock,
   upsertTopLevelBlock,
   writeProductionConfig,
-} from '../utils/project-config.js';
-import { checkCli, checkSupportedClis } from '../utils/cli-detection.js';
-import { getTokenTrackingEnabled, setTokenTrackingEnabled } from '../utils/token-tracking.js';
-import { buildEnvelope } from '../types/index.js';
-import { VERSION } from '../version.js';
-import { EXIT_CODES } from '../exit-codes.js';
+} from "../utils/project-config.js";
+import { checkCli, checkSupportedClis } from "../utils/cli-detection.js";
+import {
+  getTokenTrackingEnabled,
+  setTokenTrackingEnabled,
+} from "../utils/token-tracking.js";
+import { buildEnvelope } from "../types/index.js";
+import { VERSION } from "../version.js";
+import { EXIT_CODES } from "../exit-codes.js";
 
-type SupportedExpertCli = 'claude' | 'codex';
+type SupportedExpertCli = "claude" | "codex";
 
 interface ExpertUseFor {
   planning: boolean;
@@ -44,7 +47,7 @@ interface ExpertConfig {
 
 const DEFAULT_EXPERT_CONFIG: ExpertConfig = {
   enabled: false,
-  activeCli: 'claude',
+  activeCli: "claude",
   fallbackCli: null,
   useFor: {
     planning: false,
@@ -62,69 +65,94 @@ const DEFAULT_EXPERT_CONFIG: ExpertConfig = {
 
 export function registerExpertCommand(program: Command): void {
   const expert = program
-    .command('expert')
-    .description('Optional expert-mode routing through Claude CLI or Codex CLI');
+    .command("expert")
+    .description(
+      "Optional expert-mode routing through Claude CLI or Codex CLI",
+    );
 
   expert
-    .command('status')
-    .description('Show expert-mode configuration and CLI availability')
-    .option('-j, --json', 'Output as JSON')
+    .command("status")
+    .description("Show expert-mode configuration and CLI availability")
+    .option("-j, --json", "Output as JSON")
     .action(async (options: { json?: boolean }) => {
       await handleStatus(Boolean(options.json));
     });
 
   expert
-    .command('on')
-    .description('Enable optional expert mode')
-    .option('--cli <claude|codex>', 'CLI to use for expert checks')
-    .option('--track-tokens', 'Also enable token tracking')
-    .option('-j, --json', 'Output as JSON')
-    .action(async (options: { cli?: string; trackTokens?: boolean; json?: boolean }) => {
-      await handleEnable(options);
-    });
+    .command("on")
+    .description("Enable optional expert mode")
+    .option("--cli <claude|codex>", "CLI to use for expert checks")
+    .option("--track-tokens", "Also enable token tracking")
+    .option("-j, --json", "Output as JSON")
+    .action(
+      async (options: {
+        cli?: string;
+        trackTokens?: boolean;
+        json?: boolean;
+      }) => {
+        await handleEnable(options);
+      },
+    );
 
   expert
-    .command('off')
-    .description('Disable optional expert mode')
-    .option('-j, --json', 'Output as JSON')
+    .command("off")
+    .description("Disable optional expert mode")
+    .option("-j, --json", "Output as JSON")
     .action(async (options: { json?: boolean }) => {
       await handleDisable(Boolean(options.json));
     });
 
   expert
-    .command('use')
-    .description('Switch active expert CLI')
-    .argument('<cli>', 'claude or codex')
-    .option('--track-tokens', 'Also enable token tracking')
-    .option('-j, --json', 'Output as JSON')
-    .action(async (cli: string, options: { trackTokens?: boolean; json?: boolean }) => {
-      await handleUse(cli, options);
-    });
+    .command("use")
+    .description("Switch active expert CLI")
+    .argument("<cli>", "claude or codex")
+    .option("--track-tokens", "Also enable token tracking")
+    .option("-j, --json", "Output as JSON")
+    .action(
+      async (
+        cli: string,
+        options: { trackTokens?: boolean; json?: boolean },
+      ) => {
+        await handleUse(cli, options);
+      },
+    );
 
   expert
-    .command('test')
-    .description('Check whether the configured expert CLI is available')
-    .option('--cli <claude|codex>', 'CLI to test instead of the configured active CLI')
-    .option('-j, --json', 'Output as JSON')
+    .command("test")
+    .description("Check whether the configured expert CLI is available")
+    .option(
+      "--cli <claude|codex>",
+      "CLI to test instead of the configured active CLI",
+    )
+    .option("-j, --json", "Output as JSON")
     .action(async (options: { cli?: string; json?: boolean }) => {
       await handleTest(options);
     });
 
   expert
-    .command('budget')
-    .description('Set expert-mode call budget')
-    .option('--max-calls <count>', 'Maximum expert calls per pipeline run')
-    .option('--confirm-above <count>', 'Require confirmation above this call count')
-    .option('-j, --json', 'Output as JSON')
-    .action(async (options: { maxCalls?: string; confirmAbove?: string; json?: boolean }) => {
-      await handleBudget(options);
-    });
+    .command("budget")
+    .description("Set expert-mode call budget")
+    .option("--max-calls <count>", "Maximum expert calls per pipeline run")
+    .option(
+      "--confirm-above <count>",
+      "Require confirmation above this call count",
+    )
+    .option("-j, --json", "Output as JSON")
+    .action(
+      async (options: {
+        maxCalls?: string;
+        confirmAbove?: string;
+        json?: boolean;
+      }) => {
+        await handleBudget(options);
+      },
+    );
 
   expert
-    .command('gates')
-    .description('Enable or disable expert checks for pipeline gates')
-    .argument('<state>', 'on or off')
-    .option('-j, --json', 'Output as JSON')
+    .command("gates")
+    .description("Enable or disable expert checks for pipeline gates")
+    .argument("<state>", "on or off")
+    .option("-j, --json", "Output as JSON")
     .action(async (state: string, options: { json?: boolean }) => {
       await handleGates(state, Boolean(options.json));
     });
@@ -142,11 +170,15 @@ async function handleStatus(useJson: boolean): Promise<void> {
     clis: checkSupportedClis(),
   };
 
-  writeOutput('expert.status', data, useJson, Date.now() - startTime);
+  writeOutput("expert.status", data, useJson, Date.now() - startTime);
   process.exit(EXIT_CODES.OK);
 }
 
-async function handleEnable(options: { cli?: string; trackTokens?: boolean; json?: boolean }): Promise<void> {
+async function handleEnable(options: {
+  cli?: string;
+  trackTokens?: boolean;
+  json?: boolean;
+}): Promise<void> {
   const startTime = Date.now();
   const useJson = Boolean(options.json) || !process.stdout.isTTY;
   const projectRoot = findProjectRoot();
@@ -168,7 +200,7 @@ async function handleEnable(options: { cli?: string; trackTokens?: boolean; json
     expertMode: config,
     tokenTrackingEnabled: getTokenTrackingEnabled(projectRoot),
   };
-  writeOutput('expert.on', data, useJson, Date.now() - startTime);
+  writeOutput("expert.on", data, useJson, Date.now() - startTime);
   process.exit(EXIT_CODES.OK);
 }
 
@@ -179,15 +211,23 @@ async function handleDisable(useJson: boolean): Promise<void> {
   config.enabled = false;
   writeExpertConfig(projectRoot, config);
 
-  writeOutput('expert.off', {
-    projectRoot,
-    configPath: getProductionConfigPath(projectRoot),
-    expertMode: config,
-  }, useJson, Date.now() - startTime);
+  writeOutput(
+    "expert.off",
+    {
+      projectRoot,
+      configPath: getProductionConfigPath(projectRoot),
+      expertMode: config,
+    },
+    useJson,
+    Date.now() - startTime,
+  );
   process.exit(EXIT_CODES.OK);
 }
 
-async function handleUse(cli: string, options: { trackTokens?: boolean; json?: boolean }): Promise<void> {
+async function handleUse(
+  cli: string,
+  options: { trackTokens?: boolean; json?: boolean },
+): Promise<void> {
   const startTime = Date.now();
   const useJson = Boolean(options.json) || !process.stdout.isTTY;
   const projectRoot = findProjectRoot();
@@ -202,37 +242,54 @@ async function handleUse(cli: string, options: { trackTokens?: boolean; json?: b
   }
 
   const availability = checkCli(config.activeCli);
-  writeOutput('expert.use', {
-    projectRoot,
-    configPath: getProductionConfigPath(projectRoot),
-    expertMode: config,
-    tokenTrackingEnabled: getTokenTrackingEnabled(projectRoot),
-    availability,
-  }, useJson, Date.now() - startTime);
+  writeOutput(
+    "expert.use",
+    {
+      projectRoot,
+      configPath: getProductionConfigPath(projectRoot),
+      expertMode: config,
+      tokenTrackingEnabled: getTokenTrackingEnabled(projectRoot),
+      availability,
+    },
+    useJson,
+    Date.now() - startTime,
+  );
   process.exit(EXIT_CODES.OK);
 }
 
-async function handleTest(options: { cli?: string; json?: boolean }): Promise<void> {
+async function handleTest(options: {
+  cli?: string;
+  json?: boolean;
+}): Promise<void> {
   const startTime = Date.now();
   const useJson = Boolean(options.json) || !process.stdout.isTTY;
   const projectRoot = findProjectRoot();
   const config = readExpertConfig(projectRoot);
-  const cli = options.cli ? parseSupportedCli(options.cli, useJson) : config.activeCli;
+  const cli = options.cli
+    ? parseSupportedCli(options.cli, useJson)
+    : config.activeCli;
   const availability = checkCli(cli);
 
   if (useJson) {
-    const envelope = buildEnvelope('expert.test', { cli, availability }, {
-      ok: availability.available,
-      duration_ms: Date.now() - startTime,
-      version: VERSION,
-      error: availability.available
-        ? undefined
-        : { code: EXIT_CODES.MISSING_DEPENDENCY, message: `${cli} CLI is not available` },
-    });
+    const envelope = buildEnvelope(
+      "expert.test",
+      { cli, availability },
+      {
+        ok: availability.available,
+        duration_ms: Date.now() - startTime,
+        version: VERSION,
+        error: availability.available
+          ? undefined
+          : {
+              code: EXIT_CODES.MISSING_DEPENDENCY,
+              message: `${cli} CLI is not available`,
+            },
+      },
+    );
     console.log(JSON.stringify(envelope, null, 2));
   } else if (availability.available) {
     console.log(pc.green(`OK: ${cli} CLI available`));
-    console.log(pc.dim(availability.version || 'No version output'));
+    console.log(pc.dim(availability.version || "No version output"));
   } else {
     console.error(pc.red(`Missing: ${cli} CLI is not available`));
     if (availability.error) {
@@ -240,7 +297,9 @@ async function handleTest(options: { cli?: string; json?: boolean }): Promise<vo
     }
   }
 
-  process.exit(availability.available ? EXIT_CODES.OK : EXIT_CODES.MISSING_DEPENDENCY);
+  process.exit(
+    availability.available ? EXIT_CODES.OK : EXIT_CODES.MISSING_DEPENDENCY,
+  );
 }
 
 async function handleBudget(options: {
@@ -254,18 +313,31 @@ async function handleBudget(options: {
   const config = readExpertConfig(projectRoot);
 
   if (options.maxCalls !== undefined) {
-    config.budget.maxExpertCallsPerRun = parsePositiveInteger(options.maxCalls, 'max-calls', useJson);
+    config.budget.maxExpertCallsPerRun = parsePositiveInteger(
+      options.maxCalls,
+      "max-calls",
+      useJson,
+    );
   }
   if (options.confirmAbove !== undefined) {
-    config.budget.requireConfirmationAbove = parsePositiveInteger(options.confirmAbove, 'confirm-above', useJson);
+    config.budget.requireConfirmationAbove = parsePositiveInteger(
+      options.confirmAbove,
+      "confirm-above",
+      useJson,
+    );
   }
 
   writeExpertConfig(projectRoot, config);
-  writeOutput('expert.budget', {
-    projectRoot,
-    configPath: getProductionConfigPath(projectRoot),
-    expertMode: config,
-  }, useJson, Date.now() - startTime);
+  writeOutput(
+    "expert.budget",
+    {
+      projectRoot,
+      configPath: getProductionConfigPath(projectRoot),
+      expertMode: config,
+    },
+    useJson,
+    Date.now() - startTime,
+  );
   process.exit(EXIT_CODES.OK);
 }
 
@@ -278,51 +350,73 @@ async function handleGates(state: string, useJson: boolean): Promise<void> {
   config.useFor.gates = enabled;
   writeExpertConfig(projectRoot, config);
 
-  writeOutput('expert.gates', {
-    projectRoot,
-    configPath: getProductionConfigPath(projectRoot),
-    gatesEnabled: enabled,
-    expertMode: config,
-  }, useJson, Date.now() - startTime);
+  writeOutput(
+    "expert.gates",
+    {
+      projectRoot,
+      configPath: getProductionConfigPath(projectRoot),
+      gatesEnabled: enabled,
+      expertMode: config,
+    },
+    useJson,
+    Date.now() - startTime,
+  );
   process.exit(EXIT_CODES.OK);
 }
 
 function readExpertConfig(projectRoot: string): ExpertConfig {
   const content = readProductionConfig(projectRoot);
-  const block = readTopLevelBlock(content, 'expertMode');
+  const block = readTopLevelBlock(content, "expertMode");
 
   if (!block) {
     return cloneDefaultConfig();
   }
 
-  const activeCli = parseNullableString(getScalar(block, 'activeCli'));
-  const fallbackCli = parseNullableString(getScalar(block, 'fallbackCli'));
+  const activeCli = parseNullableString(getScalar(block, "activeCli"));
+  const fallbackCli = parseNullableString(getScalar(block, "fallbackCli"));
 
   return {
-    enabled: parseBoolean(getScalar(block, 'enabled'), DEFAULT_EXPERT_CONFIG.enabled),
-    activeCli: isSupportedCli(activeCli) ? activeCli : DEFAULT_EXPERT_CONFIG.activeCli,
+    enabled: parseBoolean(
+      getScalar(block, "enabled"),
+      DEFAULT_EXPERT_CONFIG.enabled,
+    ),
+    activeCli: isSupportedCli(activeCli)
+      ? activeCli
+      : DEFAULT_EXPERT_CONFIG.activeCli,
     fallbackCli: isSupportedCli(fallbackCli) ? fallbackCli : null,
     useFor: {
-      planning: parseBoolean(getScalar(block, 'planning'), DEFAULT_EXPERT_CONFIG.useFor.planning),
+      planning: parseBoolean(
+        getScalar(block, "planning"),
+        DEFAULT_EXPERT_CONFIG.useFor.planning,
+      ),
       failedPlanReview: parseBoolean(
-        getScalar(block, 'failedPlanReview'),
+        getScalar(block, "failedPlanReview"),
         DEFAULT_EXPERT_CONFIG.useFor.failedPlanReview,
       ),
-      gates: parseBoolean(getScalar(block, 'gates'), DEFAULT_EXPERT_CONFIG.useFor.gates),
-      securityReview: parseBoolean(getScalar(block, 'securityReview'), DEFAULT_EXPERT_CONFIG.useFor.securityReview),
+      gates: parseBoolean(
+        getScalar(block, "gates"),
+        DEFAULT_EXPERT_CONFIG.useFor.gates,
+      ),
+      securityReview: parseBoolean(
+        getScalar(block, "securityReview"),
+        DEFAULT_EXPERT_CONFIG.useFor.securityReview,
+      ),
       architectureReview: parseBoolean(
-        getScalar(block, 'architectureReview'),
+        getScalar(block, "architectureReview"),
         DEFAULT_EXPERT_CONFIG.useFor.architectureReview,
       ),
-      codeReview: parseBoolean(getScalar(block, 'codeReview'), DEFAULT_EXPERT_CONFIG.useFor.codeReview),
+      codeReview: parseBoolean(
+        getScalar(block, "codeReview"),
+        DEFAULT_EXPERT_CONFIG.useFor.codeReview,
+      ),
     },
     budget: {
       maxExpertCallsPerRun: parseInteger(
-        getScalar(block, 'maxExpertCallsPerRun'),
+        getScalar(block, "maxExpertCallsPerRun"),
         DEFAULT_EXPERT_CONFIG.budget.maxExpertCallsPerRun,
       ),
       requireConfirmationAbove: parseInteger(
-        getScalar(block, 'requireConfirmationAbove'),
+        getScalar(block, "requireConfirmationAbove"),
         DEFAULT_EXPERT_CONFIG.budget.requireConfirmationAbove,
       ),
     },
@@ -332,29 +426,37 @@ function readExpertConfig(projectRoot: string): ExpertConfig {
 function writeExpertConfig(projectRoot: string, config: ExpertConfig): void {
   const content = readProductionConfig(projectRoot);
   const block = buildExpertBlock(config);
-  writeProductionConfig(projectRoot, upsertTopLevelBlock(content, 'expertMode', block));
+  writeProductionConfig(
+    projectRoot,
+    upsertTopLevelBlock(content, "expertMode", block),
+  );
 }
 
 function buildExpertBlock(config: ExpertConfig): string {
   return [
-    'expertMode:',
-    `  enabled: ${config.enabled ? 'true' : 'false'}`,
+    "expertMode:",
+    `  enabled: ${config.enabled ? "true" : "false"}`,
     `  activeCli: "${config.activeCli}"`,
-    `  fallbackCli: ${config.fallbackCli ? `"${config.fallbackCli}"` : 'null'}`,
-    '  useFor:',
-    `    planning: ${config.useFor.planning ? 'true' : 'false'}`,
-    `    failedPlanReview: ${config.useFor.failedPlanReview ? 'true' : 'false'}`,
-    `    gates: ${config.useFor.gates ? 'true' : 'false'}`,
-    `    securityReview: ${config.useFor.securityReview ? 'true' : 'false'}`,
-    `    architectureReview: ${config.useFor.architectureReview ? 'true' : 'false'}`,
-    `    codeReview: ${config.useFor.codeReview ? 'true' : 'false'}`,
-    '  budget:',
+    `  fallbackCli: ${config.fallbackCli ? `"${config.fallbackCli}"` : "null"}`,
+    "  useFor:",
+    `    planning: ${config.useFor.planning ? "true" : "false"}`,
+    `    failedPlanReview: ${config.useFor.failedPlanReview ? "true" : "false"}`,
+    `    gates: ${config.useFor.gates ? "true" : "false"}`,
+    `    securityReview: ${config.useFor.securityReview ? "true" : "false"}`,
+    `    architectureReview: ${config.useFor.architectureReview ? "true" : "false"}`,
+    `    codeReview: ${config.useFor.codeReview ? "true" : "false"}`,
+    "  budget:",
     `    maxExpertCallsPerRun: ${config.budget.maxExpertCallsPerRun}`,
     `    requireConfirmationAbove: ${config.budget.requireConfirmationAbove}`,
-  ].join('\n');
+  ].join("\n");
 }
 
-function writeOutput<T>(tool: string, data: T, useJson: boolean, durationMs: number): void {
+function writeOutput<T>(
+  tool: string,
+  data: T,
+  useJson: boolean,
+  durationMs: number,
+): void {
   if (useJson || !process.stdout.isTTY) {
     const envelope = buildEnvelope(tool, data, {
       ok: true,
@@ -367,12 +469,15 @@ function writeOutput<T>(tool: string, data: T, useJson: boolean, durationMs: num
 
   console.log();
   console.log(pc.bold(`  ${tool}`));
-  console.log(pc.gray('  ' + '-'.repeat(50)));
+  console.log(pc.gray("  " + "-".repeat(50)));
   console.log(JSON.stringify(data, null, 2));
   console.log();
 }
 
-function parseSupportedCli(value: string, useJson: boolean): SupportedExpertCli {
+function parseSupportedCli(
+  value: string,
+  useJson: boolean,
+): SupportedExpertCli {
   if (isSupportedCli(value)) {
     return value;
   }
@@ -381,10 +486,14 @@ function parseSupportedCli(value: string, useJson: boolean): SupportedExpertCli 
 }
 
 function isSupportedCli(value: string | null): value is SupportedExpertCli {
-  return value === 'claude' || value === 'codex';
+  return value === "claude" || value === "codex";
 }
 
-function parsePositiveInteger(value: string, label: string, useJson: boolean): number {
+function parsePositiveInteger(
+  value: string,
+  label: string,
+  useJson: boolean,
+): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0) {
     fail(`Invalid ${label}: ${value}. Use a non-negative integer.`, useJson);
@@ -402,10 +511,10 @@ function parseInteger(value: string | null, defaultValue: number): number {
 }
 
 function parseOnOff(value: string, useJson: boolean): boolean {
-  if (value === 'on') {
+  if (value === "on") {
     return true;
   }
-  if (value === 'off') {
+  if (value === "off") {
     return false;
   }
   fail(`Invalid state "${value}". Use "on" or "off".`, useJson);
@@ -417,7 +526,7 @@ function cloneDefaultConfig(): ExpertConfig {
 
 function fail(message: string, useJson: boolean): never {
   if (useJson || !process.stdout.isTTY) {
-    const envelope = buildEnvelope('expert.error', null, {
+    const envelope = buildEnvelope("expert.error", null, {
       ok: false,
       duration_ms: 0,
       version: VERSION,

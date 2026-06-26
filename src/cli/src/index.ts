@@ -5,31 +5,31 @@
  * • Humans: colored pretty output, spinners, sensible defaults
  * • Agents: --json for structured envelopes, non-TTY auto-detection, stable exit codes
  */
-import { Command } from 'commander';
-import { registerGlobalFlags } from './core/global-flags.js';
-import { registerToolsCommands } from './commands/tools.js';
-import { registerSkillsCommands } from './commands/skills.js';
-import { registerToolsCallCommand } from './commands/tools-call.js';
-import { registerConfigCommands } from './commands/config.js';
-import { registerDoctorCommand } from './commands/doctor.js';
-import { registerValidateCommand } from './commands/validate.js';
-import { registerCompletionCommand } from './commands/completion.js';
-import { registerCoordsCommand } from './commands/coords.js';
-import { registerAutonomousTestCommand } from './commands/test.js';
-import { registerExpertCommand } from './commands/expert.js';
-import { registerTokenCommand } from './commands/token.js';
-import { VERSION } from './version.js';
-import { EXIT_CODES } from './exit-codes.js';
-import pc from 'picocolors';
-import { getConfig } from './config/store.js';
+import { Command } from "commander";
+import { registerGlobalFlags } from "./core/global-flags.js";
+import { registerToolsCommands } from "./commands/tools.js";
+import { registerSkillsCommands } from "./commands/skills.js";
+import { registerToolsCallCommand } from "./commands/tools-call.js";
+import { registerConfigCommands } from "./commands/config.js";
+import { registerDoctorCommand } from "./commands/doctor.js";
+import { registerValidateCommand } from "./commands/validate.js";
+import { registerCompletionCommand } from "./commands/completion.js";
+import { registerCoordsCommand } from "./commands/coords.js";
+import { registerAutonomousTestCommand } from "./commands/test.js";
+import { registerExpertCommand } from "./commands/expert.js";
+import { registerTokenCommand } from "./commands/token.js";
+import { VERSION } from "./version.js";
+import { EXIT_CODES } from "./exit-codes.js";
+import pc from "picocolors";
+import { getConfig } from "./config/store.js";
 
 export function buildProgram(): Command {
   const program = new Command();
 
   program
-    .name('forge')
-    .description('Forgewright CLI - Agent-First Command Line Interface')
-    .version(VERSION, '-V, --version');
+    .name("forge")
+    .description("Forgewright CLI - Agent-First Command Line Interface")
+    .version(VERSION, "-V, --version");
 
   // Register global flags
   registerGlobalFlags(program);
@@ -55,7 +55,7 @@ export function buildProgram(): Command {
 
   // Add examples help text
   program.addHelpText(
-    'after',
+    "after",
     `
 Examples:
   $ forge tools list                  # List all tools
@@ -80,7 +80,7 @@ Environment Variables:
   FORGE_DEBUG=1                       # Enable debug mode
   NO_COLOR=1                          # Disable colors
   FORGE_LEGACY_OUTPUT=1               # Force legacy output mode
-`
+`,
   );
 
   return program;
@@ -98,7 +98,7 @@ export async function main(): Promise<void> {
     if (!process.stdout.isTTY) {
       const envelope = {
         ok: false,
-        tool: 'cli',
+        tool: "cli",
         data: null,
         metadata: {
           duration_ms: 0,
@@ -109,9 +109,9 @@ export async function main(): Promise<void> {
           message,
         },
       };
-      process.stdout.write(JSON.stringify(envelope) + '\n');
+      process.stdout.write(JSON.stringify(envelope) + "\n");
     } else {
-      process.stderr.write(`${pc.red('Error:')} ${message}\n`);
+      process.stderr.write(`${pc.red("Error:")} ${message}\n`);
     }
 
     process.exit(EXIT_CODES.INTERNAL_ERROR);

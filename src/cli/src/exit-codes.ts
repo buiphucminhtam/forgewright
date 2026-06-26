@@ -32,25 +32,25 @@ export const EXIT_CODES = {
 export type ExitCode = (typeof EXIT_CODES)[keyof typeof EXIT_CODES];
 
 export const EXIT_CODE_NAMES: Record<ExitCode, string> = {
-  [EXIT_CODES.OK]: 'OK',
-  [EXIT_CODES.TOOL_ERROR]: 'TOOL_ERROR',
-  [EXIT_CODES.USAGE_ERROR]: 'USAGE_ERROR',
-  [EXIT_CODES.CONFIG_ERROR]: 'CONFIG_ERROR',
-  [EXIT_CODES.AUTH_ERROR]: 'AUTH_ERROR',
-  [EXIT_CODES.TIMEOUT]: 'TIMEOUT',
-  [EXIT_CODES.MISSING_DEPENDENCY]: 'MISSING_DEPENDENCY',
-  [EXIT_CODES.INTERNAL_ERROR]: 'INTERNAL_ERROR',
+  [EXIT_CODES.OK]: "OK",
+  [EXIT_CODES.TOOL_ERROR]: "TOOL_ERROR",
+  [EXIT_CODES.USAGE_ERROR]: "USAGE_ERROR",
+  [EXIT_CODES.CONFIG_ERROR]: "CONFIG_ERROR",
+  [EXIT_CODES.AUTH_ERROR]: "AUTH_ERROR",
+  [EXIT_CODES.TIMEOUT]: "TIMEOUT",
+  [EXIT_CODES.MISSING_DEPENDENCY]: "MISSING_DEPENDENCY",
+  [EXIT_CODES.INTERNAL_ERROR]: "INTERNAL_ERROR",
 } as const;
 
 export const EXIT_CODE_MESSAGES: Record<ExitCode, string> = {
-  [EXIT_CODES.OK]: 'Success',
-  [EXIT_CODES.TOOL_ERROR]: 'Tool execution failed',
-  [EXIT_CODES.USAGE_ERROR]: 'Invalid arguments or usage',
-  [EXIT_CODES.CONFIG_ERROR]: 'Configuration error',
-  [EXIT_CODES.AUTH_ERROR]: 'Authentication or permission error',
-  [EXIT_CODES.TIMEOUT]: 'Operation timed out',
-  [EXIT_CODES.MISSING_DEPENDENCY]: 'Required dependency not found',
-  [EXIT_CODES.INTERNAL_ERROR]: 'Internal error',
+  [EXIT_CODES.OK]: "Success",
+  [EXIT_CODES.TOOL_ERROR]: "Tool execution failed",
+  [EXIT_CODES.USAGE_ERROR]: "Invalid arguments or usage",
+  [EXIT_CODES.CONFIG_ERROR]: "Configuration error",
+  [EXIT_CODES.AUTH_ERROR]: "Authentication or permission error",
+  [EXIT_CODES.TIMEOUT]: "Operation timed out",
+  [EXIT_CODES.MISSING_DEPENDENCY]: "Required dependency not found",
+  [EXIT_CODES.INTERNAL_ERROR]: "Internal error",
 } as const;
 
 /**

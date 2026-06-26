@@ -9,7 +9,7 @@
 /** JSON output mode flag */
 export interface GlobalFlags {
   json: boolean;
-  'no-color': boolean;
+  "no-color": boolean;
   quiet: boolean;
   debug: boolean;
   version: boolean;
@@ -22,7 +22,7 @@ export interface GlobalFlags {
 
 /** Input schema for a tool parameter */
 export interface ToolInputField {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  type: "string" | "number" | "boolean" | "array" | "object";
   required?: boolean;
   description?: string;
   default?: unknown;
@@ -83,7 +83,7 @@ export function buildEnvelope<T>(
       message: string;
       details?: unknown;
     };
-  }
+  },
 ): AgentEnvelope<T> {
   return {
     ok: options.ok,
@@ -125,7 +125,9 @@ export interface ConfigEntry {
 // ============================================================================
 
 /** Command handler function signature */
-export type CommandHandler<T = unknown> = (options: T) => Promise<CommandResult<T>>;
+export type CommandHandler<T = unknown> = (
+  options: T,
+) => Promise<CommandResult<T>>;
 
 /** Command execution result */
 export interface CommandResult<T = unknown> {

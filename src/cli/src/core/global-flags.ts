@@ -1,21 +1,21 @@
 /**
  * Global flags configuration for Forgewright CLI
  */
-import type { Command } from 'commander';
+import type { Command } from "commander";
 
 export interface GlobalOptions {
   json: boolean;
-  'no-color': boolean;
+  "no-color": boolean;
   quiet: boolean;
   debug: boolean;
 }
 
 export function registerGlobalFlags(program: Command): void {
   program
-    .option('-j, --json', 'Force JSON output (agent mode)')
-    .option('--no-color', 'Disable colored output')
-    .option('-q, --quiet', 'Suppress stdout output')
-    .option('--debug', 'Enable debug mode');
+    .option("-j, --json", "Force JSON output (agent mode)")
+    .option("--no-color", "Disable colored output")
+    .option("-q, --quiet", "Suppress stdout output")
+    .option("--debug", "Enable debug mode");
 }
 
 /**
@@ -36,7 +36,7 @@ export function shouldOutputJson(options: GlobalOptions): boolean {
  */
 export function shouldUseColors(options: GlobalOptions): boolean {
   // Explicit flag takes precedence
-  if (options['no-color']) {
+  if (options["no-color"]) {
     return false;
   }
 
@@ -57,5 +57,5 @@ export function shouldUseColors(options: GlobalOptions): boolean {
  * Check if debug mode is enabled
  */
 export function isDebugMode(options: GlobalOptions): boolean {
-  return options.debug || process.env.FORGE_DEBUG === '1';
+  return options.debug || process.env.FORGE_DEBUG === "1";
 }

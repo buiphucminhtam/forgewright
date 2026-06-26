@@ -1,11 +1,16 @@
 /**
  * Skills Command - Skill management
  */
-import type { Command } from 'commander';
-import pc from 'picocolors';
-import { getAllTools, getCategories, getToolCountByCategory, searchTools } from '../core/tool-registry.js';
-import { buildEnvelope } from '../types/index.js';
-import { VERSION } from '../version.js';
+import type { Command } from "commander";
+import pc from "picocolors";
+import {
+  getAllTools,
+  getCategories,
+  getToolCountByCategory,
+  searchTools,
+} from "../core/tool-registry.js";
+import { buildEnvelope } from "../types/index.js";
+import { VERSION } from "../version.js";
 
 export interface SkillsListOptions {
   category?: string;
@@ -15,33 +20,33 @@ export interface SkillsListOptions {
 
 export function registerSkillsCommands(program: Command): void {
   // skills
-  const skills = program.command('skills').description('Skill management');
+  const skills = program.command("skills").description("Skill management");
 
   skills
-    .command('list')
-    .description('List all skills')
-    .option('-c, --category <category>', 'Filter by category')
-    .option('-s, --search <query>', 'Search skills')
-    .option('-j, --json', 'Output as JSON')
+    .command("list")
+    .description("List all skills")
+    .option("-c, --category <category>", "Filter by category")
+    .option("-s, --search <query>", "Search skills")
+    .option("-j, --json", "Output as JSON")
     .action(async (options: SkillsListOptions) => {
       await handleSkillsList(options);
     });
 
   // skills search
   skills
-    .command('search')
-    .description('Search skills')
-    .argument('<query>', 'Search query')
-    .option('-j, --json', 'Output as JSON')
+    .command("search")
+    .description("Search skills")
+    .argument("<query>", "Search query")
+    .option("-j, --json", "Output as JSON")
     .action(async (query: string, options: { json: boolean }) => {
       await handleSkillsList({ ...options, search: query });
     });
 
   // skills categories
   skills
-    .command('categories')
-    .description('List skill categories')
-    .option('-j, --json', 'Output as JSON')
+    .command("categories")
+    .description("List skill categories")
+    .option("-j, --json", "Output as JSON")
     .action(async (options: { json: boolean }) => {
       await handleCategories(options.json);
     });
@@ -64,18 +69,22 @@ async function handleSkillsList(options: SkillsListOptions): Promise<void> {
     const duration_ms = Date.now() - startTime;
 
     if (useJson) {
-      const envelope = buildEnvelope('skills.list', {
-        skills: skills.map((s) => ({
-          name: s.name,
-          description: s.description,
-          category: s.category,
-        })),
-        total: skills.length,
-      }, {
-        ok: true,
-        duration_ms,
-        version: VERSION,
-      });
+      const envelope = buildEnvelope(
+        "skills.list",
+        {
+          skills: skills.map((s) => ({
+            name: s.name,
+            description: s.description,
+            category: s.category,
+          })),
+          total: skills.length,
+        },
+        {
+          ok: true,
+          duration_ms,
+          version: VERSION,
+        },
+      );
 
       console.log(JSON.stringify(envelope, null, 2));
     } else {
@@ -88,7 +97,7 @@ async function handleSkillsList(options: SkillsListOptions): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
 
     if (useJson) {
-      const envelope = buildEnvelope('skills.list', null, {
+      const envelope = buildEnvelope("skills.list", null, {
         ok: false,
         duration_ms,
         version: VERSION,
@@ -108,21 +117,25 @@ async function handleCategories(json: boolean): Promise<void> {
   const counts = getToolCountByCategory();
 
   if (json || !process.stdout.isTTY) {
-    const envelope = buildEnvelope('skills.categories', {
-      categories: categories.map((c) => ({
-        name: c,
-        count: counts[c] || 0,
-      })),
-      total: categories.length,
-    }, {
-      ok: true,
-      duration_ms: 0,
-      version: VERSION,
-    });
+    const envelope = buildEnvelope(
+      "skills.categories",
+      {
+        categories: categories.map((c) => ({
+          name: c,
+          count: counts[c] || 0,
+        })),
+        total: categories.length,
+      },
+      {
+        ok: true,
+        duration_ms: 0,
+        version: VERSION,
+      },
+    );
     console.log(JSON.stringify(envelope, null, 2));
   } else {
     console.log();
-    console.log(pc.bold('  Skill Categories\n'));
+    console.log(pc.bold("  Skill Categories\n"));
 
     for (const cat of categories) {
       console.log(`    ${pc.cyan(cat.padEnd(20))} ${counts[cat] || 0} skills`);
@@ -136,11 +149,11 @@ async function handleCategories(json: boolean): Promise<void> {
 function printSkillsHumanReadable(
   skills: readonly { name: string; description: string; category: string }[],
   category?: string,
-  search?: string
+  search?: string,
 ): void {
   console.log();
   console.log(pc.bold(`  Forgewright Skills`));
-  console.log(pc.dim('  ' + '─'.repeat(50)));
+  console.log(pc.dim("  " + "─".repeat(50)));
 
   if (category || search) {
     const filter = category ? `Category: ${category}` : `Search: "${search}"`;
@@ -156,5 +169,5 @@ function printSkillsHumanReadable(
     console.log();
   }
 
-  console.log(pc.dim('  Use --json for machine-readable output'));
+  console.log(pc.dim("  Use --json for machine-readable output"));
 }
