@@ -143,7 +143,7 @@ This never requires user input — it only escalates when no artifact can be wri
 ```
 
 3. **STEP 1 — Classify the request** into one of 24 modes (Full Build, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Mobile Test, Marketing, Grow, **Game Build**, **XR Build**, **Analyze**, **Prompt**, **Autonomous**)
-3. **STEP 2 — PLAN FIRST, ALWAYS** — Before ANY skill does ANY work, it MUST create a plan, score it (9 criteria, threshold ≥ 9.0/10), and improve until passing. See `skills/_shared/protocols/plan-quality-loop.md`
+3. **STEP 2 — PLAN FIRST, ALWAYS** — Before ANY skill does ANY work, it MUST create a plan, score it (9 criteria, complexity-scaled threshold), and improve until passing. See `skills/_shared/protocols/plan-quality-loop.md`
 4. **STEP 3 — Execute the pipeline** as defined in the orchestrator
 
 **⚠️ CRITICAL RULE: NEVER START EXECUTING WITHOUT INTERPRETATION**
@@ -157,7 +157,7 @@ If the user's request is vague or missing critical information:
 Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the production-grade skill classify and route.
 
 > **⚠️ MANDATORY: Plan Quality Loop**
-> Every skill invocation MUST follow: **PLAN → SCORE → META-EVALUATE → CHECK ≥9 → EXECUTE**.
+> Every skill invocation MUST follow: **PLAN → SCORE → META-EVALUATE → CHECK threshold (complexity-scaled) → EXECUTE**.
 > If score < 9.0: **LEARN (identify weak criteria) → RESEARCH (NotebookLM → Web Search) → IMPROVE SKILL (append lessons) → RE-PLAN**.
 > Max 3 iterations. No skill may skip this. Read `skills/_shared/protocols/plan-quality-loop.md` for full rubric.
 

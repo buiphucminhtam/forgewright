@@ -437,7 +437,7 @@ All skills MUST follow the sensitive file protection protocol:
 
 **ALL skills** MUST run the plan quality loop before doing any work. No exceptions — every skill plans first, scores, improves until ≥ 9.0:
 
-!`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 9 criteria, threshold 9.0/10, improve loop with research + skill self-improvement"`
+!`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 9 criteria, complexity-scaled threshold (6.0-9.0 by mode), improve loop with research + skill self-improvement"`
 
 ### ⚠️ ASIP Enforcement for Plan Quality
 
@@ -669,7 +669,7 @@ Each feature plan must include:
 
 ### Plan Quality Criteria
 
-Each feature plan must score ≥ 9.0/10 on:
+Each feature plan must score above the complexity-scaled threshold (≥ 8.0/10 for Feature mode) on:
 
 | Criteria | Description |
 |----------|-------------|

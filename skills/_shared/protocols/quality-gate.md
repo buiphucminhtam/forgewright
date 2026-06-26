@@ -156,17 +156,60 @@ Total: sum of all points
 |-------|-------|--------|
 | 95-100 | A | ✓ Proceed immediately |
 | 90-94 | B | ✓ Proceed with minor warnings logged |
-| 60-89 | C | ⚠ Pause — show quality report, ask user to continue or fix |
+| 75-89 | C | 🔄 Auto-retry (see Escalation Ladder below) |
+| 60-74 | D | 🔄 Escalate to ASIP research gate |
 | 0-59 | F | ✗ Stop — unacceptable quality, must remediate |
+
+### Escalation Ladder
+
+**Instead of binary pass/fail, quality gate failures trigger progressive escalation:**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ QUALITY GATE ESCALATION LADDER                                   │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│ Score 95-100 (A) → ✅ Continue pipeline                         │
+│                                                                  │
+│ Score 90-94  (B) → ⚠️ Log warnings, continue                    │
+│                    Record issues in quality-metrics.json          │
+│                                                                  │
+│ Score 75-89  (C) → 🔄 Auto-retry with focused fixes (1 retry)   │
+│                    1. Identify failing checks                    │
+│                    2. Apply targeted fixes (no scope expansion)  │
+│                    3. Re-run quality gate                        │
+│                    4. If still C → escalate to D behavior        │
+│                                                                  │
+│ Score 60-74  (D) → 🔄 Escalate to ASIP research gate            │
+│                    1. Trigger self-improving-loop.md             │
+│                    2. Research best practices for failing area   │
+│                    3. Re-plan the skill execution                │
+│                    4. If still D after research → escalate to F  │
+│                                                                  │
+│ Score 0-59   (F) → 🛑 Stop — require user decision:             │
+│                    [1] Retry with different approach              │
+│                    [2] Lower threshold (acknowledge tech debt)   │
+│                    [3] Skip quality gate (manual override)       │
+│                    Log override reason in quality-metrics.json   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Rules:**
+- Auto-retry (C) is limited to 1 attempt — no infinite loops
+- ASIP escalation (D) counts toward the session tracker's consecutive failure count
+- User override (F) requires explicit acknowledgment and is logged for audit
 
 **Configurable in `.production-grade.yaml`:**
 ```yaml
 quality:
-  minimum_score: 90          # default: pass threshold (aligned with plan-quality-loop 9.0/10)
+  minimum_score: 90          # default: pass threshold
   block_score: 60            # default: stop below this
+  auto_retry_threshold: 75   # default: auto-retry above this
   strict_mode: false         # if true: Level 3 violations also block
   skip_regression: false     # if true: skip Level 2 (not recommended)
 ```
+
 
 ## Quality Scorecard Display
 
