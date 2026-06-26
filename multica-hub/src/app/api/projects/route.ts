@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { execSync } from 'child_process';
-import { existsSync, readdirSync, statSync } from 'fs';
+import { readdir, stat } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
 
 export async function GET() {
-  const githubPath = '/Users/buiphucminhtam/Documents/GitHub';
+  const githubPath = process.env.GITHUB_PATH || '/Users/buiphucminhtam/GitHub';
   const projects: Array<{
     name: string;
     path: string;
@@ -14,7 +14,7 @@ export async function GET() {
   }> = [];
 
   try {
-    const entries = readdirSync(githubPath);
+    const entries = await readdir(githubPath);
 
     for (const entry of entries) {
       if (entry.startsWith('.')) continue;
@@ -22,8 +22,8 @@ export async function GET() {
       const fullPath = join(githubPath, entry);
       
       try {
-        const stat = statSync(fullPath);
-        if (!stat.isDirectory()) continue;
+        const s = await stat(fullPath);
+        if (!s.isDirectory()) continue;
 
         const hasGit = existsSync(join(fullPath, '.git'));
         const hasForgewright = existsSync(join(fullPath, 'forgewright'));

@@ -1,5 +1,5 @@
 # API Flow: POST /api/projects/setup
-Generated: 2026-06-26T13:55:16.819Z
+Generated: 2026-06-26T14:25:38.161Z
 
 ## Flow Diagram
 

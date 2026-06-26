@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 
 export async function POST(request: Request) {
@@ -29,7 +29,8 @@ export async function POST(request: Request) {
       if (!hasForgewright) {
         // Initialize forgewright as submodule
         try {
-          execSync(`cd "${projectPath}" && git submodule add https://github.com/buiphucminhtam/forgewright.git forgewright`, {
+          execFileSync('git', ['submodule', 'add', 'https://github.com/buiphucminhtam/forgewright.git', 'forgewright'], {
+            cwd: projectPath,
             stdio: 'pipe',
           });
           result.details.push('Forgewright submodule added');
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       try {
         const setupScript = `${forgewrightPath}/scripts/forgewright-mcp-setup.sh`;
         if (existsSync(setupScript)) {
-          const output = execSync(`bash "${setupScript}"`, {
+          const output = execFileSync('bash', [setupScript], {
             cwd: projectPath,
             encoding: 'utf-8',
             maxBuffer: 10 * 1024 * 1024,
@@ -56,6 +57,8 @@ export async function POST(request: Request) {
         result.details.push(`Setup warning: ${error.message?.substring(0, 200) || 'Unknown error'}`);
       }
 
+      result.hasForgewright = existsSync(forgewrightPath);
+      result.hasMCP = existsSync(mcpManifest);
       result.success = true;
       result.message = 'Forgewright and MCP setup completed';
       return NextResponse.json(result);
@@ -71,7 +74,7 @@ export async function POST(request: Request) {
       try {
         const setupScript = `${forgewrightPath}/scripts/forgewright-mcp-setup.sh`;
         if (existsSync(setupScript)) {
-          const output = execSync(`bash "${setupScript}"`, {
+          const output = execFileSync('bash', [setupScript], {
             cwd: projectPath,
             encoding: 'utf-8',
             maxBuffer: 10 * 1024 * 1024,
@@ -84,9 +87,13 @@ export async function POST(request: Request) {
         }
       } catch (error: any) {
         result.message = `Setup failed: ${error.message?.substring(0, 200) || 'Unknown error'}`;
+        result.hasForgewright = existsSync(forgewrightPath);
+        result.hasMCP = existsSync(mcpManifest);
         return NextResponse.json(result, { status: 500 });
       }
 
+      result.hasForgewright = existsSync(forgewrightPath);
+      result.hasMCP = existsSync(mcpManifest);
       return NextResponse.json(result);
     }
 
@@ -101,6 +108,8 @@ export async function POST(request: Request) {
           result.details.push('Manifest exists but invalid');
         }
       }
+      result.hasForgewright = existsSync(forgewrightPath);
+      result.hasMCP = existsSync(mcpManifest);
       result.success = true;
       result.message = 'Status checked';
       return NextResponse.json(result);

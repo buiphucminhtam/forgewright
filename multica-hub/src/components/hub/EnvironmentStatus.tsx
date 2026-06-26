@@ -326,7 +326,7 @@ export function EnvironmentStatus() {
       if (data.projects) {
         setProjects(data.projects.map((p: any) => ({
           ...p,
-          mcpStatus: p.hasMCP ? 'warning' as const : 'offline' as const,
+          mcpStatus: (p.hasForgewright && p.hasMCP) ? 'online' as const : (p.hasForgewright ? 'warning' as const : 'offline' as const),
           setupProgress: 'idle' as const,
         })));
         setStats({
@@ -361,11 +361,13 @@ export function EnvironmentStatus() {
       // Update project with result
       setProjects(prev => prev.map(p => {
         if (p.path === projectPath) {
+          const hasForgewright = result.hasForgewright ?? p.hasForgewright;
+          const hasMCP = result.hasMCP ?? p.hasMCP;
           return {
             ...p,
-            hasForgewright: result.hasForgewright ?? p.hasForgewright,
-            hasMCP: result.hasMCP ?? p.hasMCP,
-            mcpStatus: (result.hasMCP ? 'warning' : 'offline') as any,
+            hasForgewright,
+            hasMCP,
+            mcpStatus: (hasForgewright && hasMCP) ? 'online' as const : (hasForgewright ? 'warning' as const : 'offline' as const),
             setupProgress: result.success ? 'success' as const : 'error' as const,
             setupMessage: result.message,
           };
