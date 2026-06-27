@@ -25,6 +25,21 @@ Modern models hallucinate confidently. The solution is not to try harder to be c
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+## 🎯 Empirical Confidence > 99% Rule
+
+No module, feature, or logic block is considered "done" unless the AI has **empirical evidence** yielding 99% confidence.
+- **Subjective Confidence (Bad):** "I am 100% sure this code works because it looks correct."
+- **Empirical Confidence (Good):** "I am 99% confident because `npm run test` passed and the CLI returned exit code 0."
+
+**UI/Visual Confidence Exception (Max 80%):**
+- AI cannot visually assess aesthetics (color harmony, spacing aesthetics) accurately.
+- For UI tasks, empirical confidence is **capped at 80%** (verified structurally via Chrome DevTools/DOM check).
+- The remaining **19% MUST be provided by the User** via a Quality Gate (or AI Vision) to reach 99%.
+
+**Anti-Loop Breaker:**
+- If verification fails **3 consecutive times** (Confidence remains < 99%), STOP execution.
+- Do not burn tokens in an infinite fix-loop. Lock the Gate and escalate to the user using the `scripts/confidence-breaker.sh` protocol.
+
 **Decision rules:**
 - If evidence **confirms** assumption → safe to proceed
 - If evidence **denies** assumption → correct the assumption, update plan

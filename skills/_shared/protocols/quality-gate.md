@@ -247,6 +247,13 @@ Overall: 97/100 (A) ████████████████████
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+## ⚠️ UI/Visual Verification (Gate 3 / UX/UI Specifics)
+
+For any task involving user interfaces, styling, or visual components (HTML/CSS, frontend frameworks, game engine UI):
+1. **Empirical Confidence Cap:** AI can only achieve a maximum of 80% confidence in UI tasks through automated DOM/structural tests (e.g., using `chrome-devtools` or static analysis).
+2. **Mandatory Human-in-the-Loop:** The remaining 19% required to reach the 99% Empirical Confidence threshold MUST come from the User.
+3. **Execution:** The AI MUST present a screenshot, a live component preview, or explicitly ask the User to verify the aesthetics/layout before clearing the UX/UI Quality Gate. AI self-approval for visual aesthetics is strictly prohibited.
+
 ## Integration with Existing Protocols
 
 - **task-validator.md:** Quality Gate is a SUPERSET of task-validator. In parallel mode, task-validator runs first (contract compliance), then quality gate runs on merged output.

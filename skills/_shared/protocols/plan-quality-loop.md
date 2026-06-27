@@ -12,7 +12,7 @@ Before ANY skill does ANY work:
 4. **IMPROVE** (if below threshold) — Research → Improve skill → Re-plan
 5. **EXECUTE** — Only after passing threshold
 
-## 9-Criteria Rubric
+## 10-Criteria Rubric
 
 | Criterion | Default Weight | Description |
 |-----------|---------------|-------------|
@@ -25,6 +25,7 @@ Before ANY skill does ANY work:
 | **Testability** | 1.0 | Plan can be verified with concrete criteria |
 | **Impact Assessment** | 1.0 | Plan considers downstream effects |
 | **Evidence Verification** | 1.0 | Plan lists assumptions and details how they will be verified (Evidence-First) |
+| **Confidence Check** | 1.0 | Plan specifies exactly how 99% empirical confidence will be proven (or how UI visual gate will be triggered) |
 
 ## Complexity-Scaled Thresholds (P1-1)
 
@@ -65,15 +66,16 @@ Before ANY skill does ANY work:
 | Testability | **1.5** | 1.0 | 1.0 | 0.3 |
 | Impact Assessment | **1.5** | 1.0 | 0.8 | 0.3 |
 | Evidence Verification | 1.0 | 1.0 | 1.0 | 0.5 |
+| Confidence Check | 1.0 | 1.2 | 1.2 | 0.5 |
 
 **Calculation example (Review mode):**
 ```
-Raw scores:   [9, 8, 10, 7, 9, 8, 9, 10, 8]
-Weights:      [1.0, 1.0, 0.5, 0.3, 0.5, 0.3, 1.5, 1.5, 1.0]
-Weighted sum: 9×1.0 + 8×1.0 + 10×0.5 + 7×0.3 + 9×0.5 + 8×0.3 + 9×1.5 + 10×1.5 + 8×1.0
-            = 9 + 8 + 5 + 2.1 + 4.5 + 2.4 + 13.5 + 15 + 8 = 67.5
-Sum weights:  1.0 + 1.0 + 0.5 + 0.3 + 0.5 + 0.3 + 1.5 + 1.5 + 1.0 = 7.6
-Final score:  67.5 / 7.6 = 8.88 → check against Review threshold (≥ 7.0) → ✅ PASS
+Raw scores:   [9, 8, 10, 7, 9, 8, 9, 10, 8, 9]
+Weights:      [1.0, 1.0, 0.5, 0.3, 0.5, 0.3, 1.5, 1.5, 1.0, 1.0]
+Weighted sum: 9×1.0 + 8×1.0 + 10×0.5 + 7×0.3 + 9×0.5 + 8×0.3 + 9×1.5 + 10×1.5 + 8×1.0 + 9×1.0
+            = 9 + 8 + 5 + 2.1 + 4.5 + 2.4 + 13.5 + 15 + 8 + 9 = 76.5
+Sum weights:  1.0 + 1.0 + 0.5 + 0.3 + 0.5 + 0.3 + 1.5 + 1.5 + 1.0 + 1.0 = 8.6
+Final score:  76.5 / 8.6 = 8.89 → check against Review threshold (≥ 7.0) → ✅ PASS
 ```
 
 **If mode not listed:** Use default weights (all 1.0).

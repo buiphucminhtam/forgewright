@@ -70,9 +70,24 @@ Modern models hallucinate confidently. The solution is not to try harder to be c
 │ ✅ "I ASSUME the API is at /api/users."  READ routes.ts           │
 │    → Evidence: base path is /v1/users. VERIFIED. Proceeding."     │
 │                                                                     │
-│ NEVER guess then implement. Guess → VERIFY → then implement.        │
+│ NEVER guess then implement. Guess → VERIFY → then implement.         │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+## 🎯 Empirical Confidence > 99% Rule
+
+No module, feature, or logic block is considered "done" unless the AI has **empirical evidence** yielding 99% confidence.
+- **Subjective Confidence (Bad):** "I am 100% sure this code works because it looks correct."
+- **Empirical Confidence (Good):** "I am 99% confident because `npm run test` passed and the CLI returned exit code 0."
+
+**UI/Visual Confidence Exception (Max 80%):**
+- AI cannot visually assess aesthetics (color harmony, spacing aesthetics) accurately.
+- For UI tasks, empirical confidence is **capped at 80%** (verified structurally via Chrome DevTools/DOM check).
+- The remaining **19% MUST be provided by the User** via a Quality Gate (or AI Vision) to reach 99%.
+
+**Anti-Loop Breaker:**
+- If verification fails **3 consecutive times** (Confidence remains < 99%), STOP execution.
+- Do not burn tokens in an infinite fix-loop. Lock the Gate and escalate to the user using the `scripts/confidence-breaker.sh` protocol.
 
 **Decision rules:**
 - If evidence **confirms** assumption → safe to proceed
@@ -646,7 +661,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (17883 symbols, 23237 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (17869 symbols, 23229 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
