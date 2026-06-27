@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { emitRpcEvent } from './rpc-client.js';
 
 // ─── Forgewright Root Detection ──────────────────────────────────────
 // Compiled entry: FORGEWRIGHT/mcp/build/index.js
@@ -281,6 +282,7 @@ export function saveState(state: PipelineState) {
     fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf-8');
     fs.renameSync(tempFile, stateFile);
     emitOscEvent(state);
+    emitRpcEvent('PIPELINE_STATE_UPDATE', state);
   } catch (e) {
     if (fs.existsSync(tempFile)) {
       try {
@@ -469,4 +471,5 @@ export function logTokenUsage(entry: TokenUsageEntry): void {
   ensureDirSync(usageDir);
   const logFile = path.join(usageDir, 'usage.log');
   fs.appendFileSync(logFile, JSON.stringify(entry) + '\n', 'utf-8');
+  emitRpcEvent('COST_UPDATE', entry);
 }

@@ -18,6 +18,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
     "js-yaml": "^4.1.0",
+    "ws": "^8.21.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -27,6 +28,7 @@
     "@stryker-mutator/vitest-runner": "^8.7.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.11.16",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "@vitest/coverage-v8": "^1.2.2",
