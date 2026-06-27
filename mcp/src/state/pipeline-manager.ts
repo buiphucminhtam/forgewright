@@ -261,18 +261,8 @@ export function getState(): PipelineState {
   }
 }
 
-function emitOscEvent(state: PipelineState) {
-  try {
-    const payload = {
-      ...state,
-      history: undefined, // Strip history to optimize payload size
-    };
-    const jsonStr = JSON.stringify(payload);
-    const base64 = Buffer.from(jsonStr).toString('base64');
-    process.stdout.write(`\u001b]777;status;${base64}\u0007\n`);
-  } catch (e) {
-    console.error('Failed to emit OSC event:', e);
-  }
+function emitOscEvent(_state: PipelineState) {
+  // Disabled: We now use WebSocket RPC instead of OSC. Emitting OSC breaks JSON-RPC.
 }
 
 export function saveState(state: PipelineState) {

@@ -170,6 +170,31 @@ export function registerTools(server: Server) {
             required: ['inputTokens', 'outputTokens', 'model', 'provider', 'skill'],
           },
         },
+        {
+          name: 'fw_update_status_and_log_usage',
+          description:
+            'Update the active subtask action, phase progress, and log token usage in a single call.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              activeAction: {
+                type: ['string', 'null'],
+                description: 'A detailed description of the currently running sub-task.',
+              },
+              phaseProgress: {
+                type: ['number', 'null'],
+                description: 'The progress score of the current phase (0.0 to 1.0).',
+              },
+              inputTokens: { type: 'number', description: 'Prompt/input tokens' },
+              outputTokens: { type: 'number', description: 'Completion/output tokens' },
+              model: { type: 'string', description: 'Model name' },
+              provider: { type: 'string', description: 'Provider name' },
+              cost: { type: 'number', description: 'USD Cost (optional)' },
+              skill: { type: 'string', description: 'Skill name' },
+            },
+            required: ['inputTokens', 'outputTokens', 'model', 'provider', 'skill'],
+          },
+        },
       ],
     };
   });
@@ -284,6 +309,40 @@ export function registerTools(server: Server) {
         return {
           content: [
             { type: 'text', text: `Token usage logged successfully for skill "${skill}".` },
+          ],
+        };
+      }
+
+      if (request.params.name === 'fw_update_status_and_log_usage') {
+        const activeAction = request.params.arguments?.activeAction as string | null;
+        const phaseProgress = request.params.arguments?.phaseProgress as number | null;
+        const inputTokens = request.params.arguments?.inputTokens as number;
+        const outputTokens = request.params.arguments?.outputTokens as number;
+        const model = request.params.arguments?.model as string;
+        const provider = request.params.arguments?.provider as string;
+        const cost = request.params.arguments?.cost as number | undefined;
+        const skill = request.params.arguments?.skill as string;
+
+        if (activeAction !== undefined || phaseProgress !== undefined) {
+          updateSubTask(activeAction ?? null, phaseProgress ?? null);
+        }
+
+        logTokenUsage({
+          inputTokens,
+          outputTokens,
+          model,
+          provider,
+          cost: cost ?? null,
+          timestamp: new Date().toISOString(),
+          skill,
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Status updated and token usage logged successfully for skill "${skill}".`,
+            },
           ],
         };
       }
