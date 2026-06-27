@@ -68,9 +68,14 @@ export function getTokenTrackingEnabled(projectRoot: string): boolean {
     "token_tracking",
   );
   if (!block) {
+    // Default to true if not explicitly defined
+    return true;
+  }
+  // If defined, check if it's explicitly set to false
+  if (/enabled:\s*false/i.test(block)) {
     return false;
   }
-  return /enabled:\s*true/i.test(block);
+  return true;
 }
 
 export function ensureBudgetFile(

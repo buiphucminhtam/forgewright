@@ -33,8 +33,8 @@ expertMode:
 # Token Tracking
 # ============================================================
 token_tracking:
-  # Enable with: forge token on
-  enabled: false
+  # Enabled by default. Disable with: forge token off
+  enabled: true
   log_dir: "~/.forgewright/usage"
   export_format: jsonl
 
