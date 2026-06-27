@@ -1,78 +1,73 @@
-import WebSocket from 'ws';
-import { getRpcUrl } from './rpc-port.js';
-
-let wsClient: WebSocket | null = null;
-let isConnecting = false;
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 function getSessionId(): string | undefined {
   return process.env.FORGEWRIGHT_SESSION_ID;
 }
 
-let messageQueue: any[] = [];
+function getWebhookUrl(): string | null {
+  if (process.env.FORGEWRIGHT_WEBHOOK_URL) {
+    return process.env.FORGEWRIGHT_WEBHOOK_URL;
+  }
+  try {
+    const portFile = path.join(os.homedir(), '.forgewright-console', 'webhook-port.txt');
+    if (fs.existsSync(portFile)) {
+      const port = fs.readFileSync(portFile, 'utf8').trim();
+      return `http://127.0.0.1:${port}`;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+}
 
 export function initRpcClient(): void {
-  if (wsClient || isConnecting) return;
-
-  const url = getRpcUrl();
-  if (!url) return; // RPC not available
-
-  isConnecting = true;
-  try {
-    wsClient = new WebSocket(url);
-
-    wsClient.on('open', () => {
-      isConnecting = false;
-      // Send queued messages
-      while (messageQueue.length > 0) {
-        const msg = messageQueue.shift();
-        try {
-          wsClient?.send(JSON.stringify(msg));
-        } catch (e) {}
-      }
-    });
-
-    wsClient.on('error', (_err) => {
-      isConnecting = false;
-    });
-
-    wsClient.on('close', () => {
-      wsClient = null;
-      isConnecting = false;
-    });
-  } catch (error) {
-    isConnecting = false;
-  }
+  // Deprecated, no-op since we use stateless webhook
 }
 
 export function emitRpcEvent(eventName: string, payload: unknown): void {
-  if (!getRpcUrl()) return;
-
-  if (!wsClient && !isConnecting) {
-    initRpcClient();
-  }
+  const baseUrl = getWebhookUrl();
+  if (!baseUrl) return;
 
   const sessionId = getSessionId();
   const workspacePath = process.cwd();
 
-  const rpcMessage = {
-    event: eventName,
+  const body = JSON.stringify({
     sessionId,
     workspacePath,
     payload,
-  };
+  });
 
-  if (!wsClient || wsClient.readyState !== WebSocket.OPEN) {
-    messageQueue.push(rpcMessage);
-    return;
+  let endpoint = '/api/v1/unknown';
+  if (eventName === 'PIPELINE_STATE_UPDATE') {
+    endpoint = '/api/v1/state';
+  } else if (eventName === 'COST_UPDATE') {
+    endpoint = '/api/v1/telemetry';
   }
 
-  try {
-    wsClient.send(JSON.stringify(rpcMessage), (err) => {
-      if (err) {
-        // Ignore
-      }
-    });
-  } catch (e) {
-    // Fallback
-  }
+  const fullUrl = new URL(endpoint, baseUrl);
+
+  const req = http.request(
+    fullUrl,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    },
+    (res) => {
+      // Ignore response
+      res.resume();
+    }
+  );
+
+  req.on('error', () => {
+    // Ignore error
+  });
+
+  req.write(body);
+  req.end();
 }
