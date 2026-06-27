@@ -1,8 +1,0 @@
-{
-  "name": "board-ui",
-  "version": "1.0.0",
-  "description": "Real-time Kanban board UI for Forgewright",
-  "type": "frontend",
-  "dependencies": ["multica-orchestrator"],
-  "author": "Forgewright"
-}

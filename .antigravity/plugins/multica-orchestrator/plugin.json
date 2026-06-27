@@ -1,9 +1,0 @@
-{
-  "name": "multica-orchestrator",
-  "version": "1.0.0",
-  "description": "Multi-agent orchestration with mmx-cli, Claude Code, and Cursor Agent",
-  "skills": ["orchestrator", "agent-manager"],
-  "commands": ["daemon:*", "task:*", "agents:*"],
-  "dependencies": ["production-grade"],
-  "author": "Forgewright"
-}
