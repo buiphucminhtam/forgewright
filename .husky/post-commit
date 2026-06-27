@@ -1,5 +1,4 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
 
 # ⚡ Tự động đồng bộ MCP Global khi phát hiện thay đổi trong thư mục mcp/
 if git diff-tree --no-commit-id --name-only -r HEAD | grep -q '^mcp/'; then

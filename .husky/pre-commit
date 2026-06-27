@@ -3,8 +3,6 @@
 # Pre-commit Hook — Parallel Execution v3.0 (TS & Python)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-. "$(dirname "$0")/_/husky.sh"
-
 echo "Running pre-commit checks..."
 
 # ── Wave 0: Documentation Consistency & Drift check ───────────────────────
