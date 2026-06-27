@@ -584,6 +584,15 @@ Body structure:
 ### Channel Strategy
 
 ```markdown
+## Kelly-Based Ad Budget Allocation Framework
+
+Never divide ad spend equally. Use the **Kelly Criterion** to allocate performance marketing budgets dynamically:
+- $p$: Expected Conversion Rate (Win Probability).
+- $q$: Expected Bounce/Failure Rate ($1 - p$).
+- $b$: Expected ROAS (Return On Ad Spend).
+- **Rule**: Allocate budget percentage based on $f^* = p - (q/b)$. 
+- **Safety**: Use **Half-Kelly** or **Quarter-Kelly** to protect against ad platform algorithm volatility (fat-tailed risks). Channels with $f^* \le 0$ receive 0% budget.
+
 ## Channel Mix by Goal
 
 | Goal | Primary Channels | Supporting Channels |
@@ -748,3 +757,11 @@ utm_term = project_management_software
 - [ ] Analytics tracking plan with event specification
 - [ ] KPI dashboard specification with North Star metric
 - [ ] All marketing assets written to `marketing/` directory
+
+---
+
+## Advanced Strategies: Kelly Incentive Sizing
+
+When designing Referral Programs or Growth Loops, calculate maximum referral rewards dynamically using the **Kelly Criterion** instead of static CAC targets. 
+
+If referred users have a higher LTV (high $p$ of retention, high $b$ payoff), Kelly dictates you can safely "bet" more on the acquisition cost (i.e. offering a larger reward like 3 months free instead of 1 month free) to rapidly accelerate the viral loop.

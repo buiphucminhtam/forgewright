@@ -446,7 +446,7 @@ Instead of manual intuition, utilize AI to automatically surface conversion fric
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
-| Testing Model | Multi-Armed Bandit | For short campaign windows (under 7 days), use AI MAB to dynamically allocate traffic to winning variants in real-time. |
+| Testing Model | Kelly-Regulated MAB | For short campaign windows, use MAB but constrain traffic allocation using Fractional Kelly. Limit maximum traffic shift based on $f^* = p - (q/b)$ to cap exposure to false positives and variance. |
 | Testing Model | Classical A/B | For permanent elements (nav structure, checkout), use A/B testing with statistical significance. |
 | Split | 50/50 | Standard for classical A/B tests |
 | Duration | 14 days minimum | Capture weekly patterns for evergreen tests |
@@ -567,11 +567,16 @@ Modern CS platforms track multi-dimensional risk scores using AI conversation in
 | Usage declining 3+ weeks | Week-over-week drop | Survey + offer |
 | Cancellation started | Cancel flow | Save offer |
 
-### Save Offer Matrix
+### Save Offer Matrix (Kelly-Optimized)
 
-| Reason Given | Offer | Condition |
+Instead of static discounts, use the **Kelly Criterion** to calculate the maximum safe discount:
+- **Win Probability ($p$)**: Likelihood the user will accept the offer and stay.
+- **Payoff Ratio ($b$)**: (Expected LTV recovered) / (Cost of the discount).
+- Only offer discounts where the Kelly fraction $f^* > 0$. High-risk users (low $p$, serial cancelers) get no discount.
+
+| Reason Given | Base Offer (Adjust via Kelly) | Condition |
 |-------------|-------|-----------|
-| "Too expensive" | 30% off annual | First-time cancel |
+| "Too expensive" | Up to 30% off annual | First-time cancel ($f^* > 0$) |
 | "Too expensive" | Downgrade option | Any cancel |
 | "Missing features" | Roadmap preview | Feature request logged |
 | "Not using enough" | Pause subscription | 1-3 months pause |
