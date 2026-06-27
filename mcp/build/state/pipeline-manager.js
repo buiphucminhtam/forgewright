@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { emitRpcEvent } from './rpc-client.js';
 // ─── Forgewright Root Detection ──────────────────────────────────────
 // Compiled entry: FORGEWRIGHT/mcp/build/index.js
 // __dirname at runtime: FORGEWRIGHT/mcp/build
@@ -37,14 +38,33 @@ function _getForgewrightRoot() {
 export function getForgewrightRoot() {
     return _getForgewrightRoot();
 }
+/**
+ * Check if a path contains unresolved IDE template variables like ${workspaceFolder}.
+ * These are Cursor-specific and are NOT resolved by other IDEs (e.g., Antigravity, Codex).
+ * Returns true if the path is safe to use, false if it contains unresolved variables.
+ */
+export function _isResolvedPath(p) {
+    if (!p)
+        return false;
+    // Detect unresolved ${...} template variables
+    if (/\$\{[^}]+\}/.test(p)) {
+        console.error(`[Forgewright Global MCP] Warning: Skipping unresolved template variable in path: "${p}"`);
+        return false;
+    }
+    return true;
+}
 export function setWorkspaceRoot() {
     if (_workspaceRoot)
         return; // already set
     // Try environment variables first (set by Cursor when calling MCP)
-    let ws = process.env.FORGEWRIGHT_WORKSPACE ||
-        process.env.CURSOR_WORKSPACE_ROOT ||
-        process.env.CLASSD_WORKSPACE_ROOT ||
-        process.env.AGENTS_WORKSPACE;
+    // Filter out unresolved template variables (e.g., literal "${workspaceFolder}")
+    const candidates = [
+        process.env.FORGEWRIGHT_WORKSPACE,
+        process.env.CURSOR_WORKSPACE_ROOT,
+        process.env.CLASSD_WORKSPACE_ROOT,
+        process.env.AGENTS_WORKSPACE,
+    ];
+    let ws = candidates.find(_isResolvedPath) || undefined;
     if (!ws) {
         // Fallback: check if .forgewright exists in cwd
         const candidate = path.join(process.cwd(), '.forgewright');
@@ -185,6 +205,7 @@ export function saveState(state) {
         fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf-8');
         fs.renameSync(tempFile, stateFile);
         emitOscEvent(state);
+        emitRpcEvent('PIPELINE_STATE_UPDATE', state);
     }
     catch (e) {
         if (fs.existsSync(tempFile)) {
@@ -336,4 +357,5 @@ export function logTokenUsage(entry) {
     ensureDirSync(usageDir);
     const logFile = path.join(usageDir, 'usage.log');
     fs.appendFileSync(logFile, JSON.stringify(entry) + '\n', 'utf-8');
+    emitRpcEvent('COST_UPDATE', entry);
 }

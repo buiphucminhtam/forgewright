@@ -1,4 +1,5 @@
 import WebSocket from 'ws';
+import { getRpcUrl } from './rpc-port.js';
 
 let wsClient: WebSocket | null = null;
 let isConnecting = false;
@@ -12,7 +13,7 @@ let messageQueue: any[] = [];
 export function initRpcClient(): void {
   if (wsClient || isConnecting) return;
 
-  const url = process.env.FORGEWRIGHT_RPC_URL;
+  const url = getRpcUrl();
   if (!url) return; // RPC not available
 
   isConnecting = true;
@@ -44,18 +45,19 @@ export function initRpcClient(): void {
 }
 
 export function emitRpcEvent(eventName: string, payload: unknown): void {
-  if (!process.env.FORGEWRIGHT_RPC_URL) return;
+  if (!getRpcUrl()) return;
 
   if (!wsClient && !isConnecting) {
     initRpcClient();
   }
 
   const sessionId = getSessionId();
-  if (!sessionId) return;
+  const workspacePath = process.cwd();
 
   const rpcMessage = {
     event: eventName,
     sessionId,
+    workspacePath,
     payload,
   };
 

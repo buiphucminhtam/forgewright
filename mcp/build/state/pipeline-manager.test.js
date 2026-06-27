@@ -250,3 +250,37 @@ describe('Pipeline Manager', () => {
         }
     });
 });
+describe('_isResolvedPath — IDE template variable guard', () => {
+    it('rejects undefined', async () => {
+        const { _isResolvedPath } = await import('../state/pipeline-manager.js');
+        expect(_isResolvedPath(undefined)).toBe(false);
+    });
+    it('rejects empty string', async () => {
+        const { _isResolvedPath } = await import('../state/pipeline-manager.js');
+        expect(_isResolvedPath('')).toBe(false);
+    });
+    it('rejects literal ${workspaceFolder}', async () => {
+        const { _isResolvedPath } = await import('../state/pipeline-manager.js');
+        expect(_isResolvedPath('${workspaceFolder}')).toBe(false);
+    });
+    it('rejects path containing unresolved ${workspaceFolder}', async () => {
+        const { _isResolvedPath } = await import('../state/pipeline-manager.js');
+        expect(_isResolvedPath('/Users/test/project/${workspaceFolder}')).toBe(false);
+    });
+    it('rejects other unresolved template variables like ${env:HOME}', async () => {
+        const { _isResolvedPath } = await import('../state/pipeline-manager.js');
+        expect(_isResolvedPath('${env:HOME}/project')).toBe(false);
+    });
+    it('accepts a valid absolute path', async () => {
+        const { _isResolvedPath } = await import('../state/pipeline-manager.js');
+        expect(_isResolvedPath('/Users/test/my-project')).toBe(true);
+    });
+    it('accepts a valid relative path', async () => {
+        const { _isResolvedPath } = await import('../state/pipeline-manager.js');
+        expect(_isResolvedPath('./my-project')).toBe(true);
+    });
+    it('accepts path with $ but not in ${} syntax', async () => {
+        const { _isResolvedPath } = await import('../state/pipeline-manager.js');
+        expect(_isResolvedPath('/Users/$admin/project')).toBe(true);
+    });
+});
