@@ -23,6 +23,13 @@ Adaptive meta-skill orchestrator for all software engineering work. Analyzes the
 
 **All skills are bundled in this plugin. Single install, everything included.**
 
+### ⚠️ MANDATORY: Pipeline State Management (MCP Tools)
+If you are running in an environment with the Forgewright MCP Server connected, YOU MUST explicitly manage the pipeline state using the exposed `fw_*` tools. This ensures any connected IDE or Dashboard accurately tracks your progress.
+1. When starting a new goal/session, call `fw_start_pipeline`.
+2. When transitioning from one Phase to the next (e.g. from Phase 0 Interpret to Phase 1 Define), you MUST call `fw_advance_to_next_phase`.
+3. If a step requires explicit human approval (e.g. locking the architecture), call `fw_request_gate_approval`.
+**Failure to call these MCP tools will cause the user's dashboard to permanently hang at "Interpret".**
+
 ### Middleware Chain (v8.0 — DeerFlow Pattern)
 
 Every skill invocation is wrapped by an ordered middleware chain. Implementation details are in `skills/production-grade/middleware/`:
@@ -246,6 +253,12 @@ All skills MUST follow the sensitive file protection protocol:
 **ALL skills** MUST run the plan quality loop before doing any work. No exceptions — every skill plans first, scores, improves until ≥ 9.0:
 
 !`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 9 criteria, complexity-scaled threshold (6.0-9.0 by mode), improve loop with research + skill self-improvement"`
+
+## Webhook State & Telemetry Protocol
+
+**ALL skills** and Orchestrator MUST use the Local Webhook to report state changes and token usage. OSC sequences and direct MCP Tool calls for state/tokens are deprecated.
+
+!`cat skills/_shared/protocols/webhook-telemetry-protocol.md 2>/dev/null || echo "Protocol not found — apply defaults: POST to FORGEWRIGHT_WEBHOOK_URL/api/v1/telemetry and /api/v1/state instead of using OSC sequences."`
 
 ### ⚠️ ASIP Enforcement for Plan Quality
 
