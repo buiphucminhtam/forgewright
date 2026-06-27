@@ -256,7 +256,7 @@ All skills MUST follow the sensitive file protection protocol:
 
 ## Webhook State & Telemetry Protocol
 
-**ALL skills** and Orchestrator MUST use the Local Webhook to report state changes and token usage. OSC sequences and direct MCP Tool calls for state/tokens are deprecated.
+**ALL skills** and Orchestrator MUST use the Local Webhook to report state changes and token usage. OSC sequences are deprecated. You may use direct HTTP Webhook via curl OR continue using MCP Tools (which will automatically proxy to the Webhook).
 
 !`cat skills/_shared/protocols/webhook-telemetry-protocol.md 2>/dev/null || echo "Protocol not found — apply defaults: POST to FORGEWRIGHT_WEBHOOK_URL/api/v1/telemetry and /api/v1/state instead of using OSC sequences."`
 
