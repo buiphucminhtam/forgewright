@@ -202,12 +202,12 @@ export function registerTools(server: Server) {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
       if (request.params.name === 'fw_start_pipeline') {
-        const result = startPipeline(request.params.arguments?.mode as string);
+        const result = await startPipeline(request.params.arguments?.mode as string);
         return { content: [{ type: 'text', text: result }] };
       }
 
       if (request.params.name === 'fw_get_current_phase') {
-        const state = getState();
+        const state = await getState();
         const phaseName = PIPELINE_PHASES[state.currentPhase] || 'Unknown Phase';
         let msg = `Mode: ${state.currentMode || 'None'}\nPhase: ${phaseName}\nStatus: ${state.status}`;
 
@@ -238,26 +238,26 @@ export function registerTools(server: Server) {
       }
 
       if (request.params.name === 'fw_advance_to_next_phase') {
-        const result = advancePhase();
+        const result = await advancePhase();
         return { content: [{ type: 'text', text: result }] };
       }
 
       if (request.params.name === 'fw_request_gate_approval') {
         const message = request.params.arguments?.message as string;
         const qualityGate = request.params.arguments?.qualityGate as QualityGateState | undefined;
-        const result = requestGateApproval(message, qualityGate);
+        const result = await requestGateApproval(message, qualityGate);
         return { content: [{ type: 'text', text: result }] };
       }
 
       if (request.params.name === 'fw_approve_gate') {
-        const result = approveGate();
+        const result = await approveGate();
         return { content: [{ type: 'text', text: result }] };
       }
 
       if (request.params.name === 'fw_update_subtask') {
         const activeAction = request.params.arguments?.activeAction as string | null;
         const phaseProgress = request.params.arguments?.phaseProgress as number | null;
-        updateSubTask(activeAction, phaseProgress);
+        await updateSubTask(activeAction, phaseProgress);
         return {
           content: [
             {
@@ -270,7 +270,7 @@ export function registerTools(server: Server) {
 
       if (request.params.name === 'fw_update_self_healing') {
         const selfHealing = request.params.arguments?.selfHealing as SelfHealingState | null;
-        updateSelfHealing(selfHealing);
+        await updateSelfHealing(selfHealing);
         return {
           content: [
             {
@@ -285,7 +285,7 @@ export function registerTools(server: Server) {
 
       if (request.params.name === 'fw_fail_pipeline') {
         const reason = request.params.arguments?.reason as string | undefined;
-        const result = failPipeline(reason);
+        const result = await failPipeline(reason);
         return { content: [{ type: 'text', text: result }] };
       }
 
@@ -324,7 +324,7 @@ export function registerTools(server: Server) {
         const skill = request.params.arguments?.skill as string;
 
         if (activeAction !== undefined || phaseProgress !== undefined) {
-          updateSubTask(activeAction ?? null, phaseProgress ?? null);
+          await updateSubTask(activeAction ?? null, phaseProgress ?? null);
         }
 
         logTokenUsage({
