@@ -13,6 +13,8 @@
   </a>
   <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/skills-81-brightgreen?style=flat-square" alt="Skills" />
+  <img src="https://img.shields.io/badge/MCP-Supported-purple?style=flat-square" alt="MCP Supported" />
+  <img src="https://img.shields.io/badge/Architecture-Agentic_Framework-orange?style=flat-square" alt="Agentic Framework" />
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
   </a>
@@ -21,6 +23,8 @@
 ---
 
 > **The AI that gets smarter every time it fails.** Unlike other AI assistants, Forgewright doesn't repeat the same mistakes. It learns.
+
+As a powerful **Open Source Devin alternative**, Forgewright is a true **Multi-Agent System** that acts as your **Local LLM coding assistant**. Through its unique **Self-healing code generation** pipelines, it orchestrates complex engineering tasks while you retain full control.
 
 ```
 You: "Build an e-commerce API"
@@ -84,6 +88,15 @@ Forgewright acts as a production-grade software delivery harness for AI coding a
 | Handles requests directly | **Always via pipeline** — never skips orchestration |
 | Premium models are expensive | **Expert CLI Mode** — use Claude/Codex only for risky gates |
 | AI spend is invisible | **Token commands** — turn on tracking, budgets, reports, and dashboard |
+
+---
+
+## 🔒 Local-First & 100% Data Privacy (No Vendor Lock-in)
+
+In the era of AI, your codebase is your most valuable asset. Forgewright is designed with a strict **Privacy-First** architecture:
+- **Local Cognitive Graph:** All project memories, architectural decisions, and agent learning patterns are stored locally on your machine via a SQLite GraphRAG database (`.forgewright`).
+- **No Third-Party Storage:** We do not send your code, prompts, or proprietary logic to any centralized Forgewright servers.
+- **No Vendor Lock-in:** You can swap between OpenAI, Anthropic, Gemini, or local models (via Ollama/LMStudio) using standard CLI integrations. You own your tokens, your models, and your data.
 
 ---
 
@@ -445,15 +458,14 @@ bash scripts/forgewright-mcp-setup.sh --force
 | You say... | Forgewright does... |
 |------------|---------------------|
 | `"Build a SaaS app"` | BA → PM → Architect → Code → Test → Deploy |
-| `"Add user auth"` | PM → Code → Test |
-| `"Write tests"` | QA Engineer writes unit/integration/e2e |
-| `"Review my code"` | Code Reviewer checks quality (0-100) |
-| `"Fix the bug"` | Debugger → Engineer → Test |
+| `"Modernize legacy code"`| Architect → Refactor → QA (Safely migrates outdated architecture) |
+| `"Reduce API Costs"` | Token Analyzer → Optimizes LLM usage & logs budget reports |
+| `"Automate Tech Docs"` | Technical Writer → Syncs live code to Obsidian/Wiki |
+| `"Audit security"` | Security Engineer (OWASP Top 10 automated review) |
+| `"Fix the bug"` | Debugger → Engineer → Test (Self-healing loops) |
 | `"Deploy to Vercel"` | DevOps → CI/CD → SRE |
 | `"Build a Unity game"` | Game Designer → Unity Engineer → Level |
 | `"Research RAG"` | NotebookLM + Polymath (deep research) |
-| `"Audit security"` | Security Engineer (OWASP Top 10) |
-| `"Optimize speed"` | Performance Engineer → Profiler → Fix |
 
 ---
 
