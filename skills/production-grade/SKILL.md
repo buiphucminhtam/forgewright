@@ -362,6 +362,11 @@ Detailed execution instructions, QA test sequences, and task flows for each non-
 
 Every user message is first interpreted through the `chat-interpreter` Cursor subagent. This converts vague natural language into a structured, unambiguous pipeline request — eliminating the need for users to speak "prompt engineer."
 
+### 🛑 Momentum Breaker (MANDATORY)
+
+Before invoking the chat interpreter or calling any tools to process a new user request, **you MUST output the exact string `[PIPELINE_RESET]` to the user**. 
+This physical action acts as a "brake" to interrupt Conversational Momentum. Once this flag is outputted, you are strictly bound to follow the 5-step pipeline (0.A -> 0.B -> 1 -> 2 -> 3) without bypassing to direct tool execution (Tool-first reflex).
+
 **Phase 0.A — Chat Interpretation:**
 
 ```

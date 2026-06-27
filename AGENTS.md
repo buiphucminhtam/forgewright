@@ -221,7 +221,11 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 
 ## ⚠️ PIPELINE SKIP DETECTION — Anti-Pattern
 
-**Root cause: Tool-first reflex.** The model reads files before running Phase 0.B, classifying, and planning. This causes hallucination, wrong scope, and missed memory context.
+**Root cause: The 3 Psychological Traps of LLMs.** 
+
+1. **"Tool-first reflex"**: The innate desire to be immediately helpful overrides the instruction to plan. The model uses tools (like `grep` or `read_file`) to find data instantly instead of orchestrating.
+2. **Attention Decay**: In a large prompt, a short user prompt (e.g., "đánh giá plan") causes the attention mechanism to focus entirely on the verb ("đánh giá"), burying the Trigger Keyword rules.
+3. **Conversational Momentum**: Continuing a smooth conversation makes the AI treat the new command as a simple continuation rather than a strict new Task needing Phase 0.B (Memory) -> Phase 0.A (Interpret) -> Phase 1 -> Phase 2.
 
 ### Common Violations
 
@@ -244,6 +248,13 @@ Do NOT skip the orchestrator. Do NOT try to handle requests directly. Let the pr
 | Priority | "đánh giá", "đánh ưu tiên", "priority", "thứ tự" |
 | Engineering | "build", "add", "implement", "fix", "review", "test", "refactor" |
 | Analysis | "phân tích", "evaluate", "assess", "what's left" |
+
+### 🛑 The Momentum Breaker (MANDATORY)
+
+To defeat Conversational Momentum, whenever the User provides a Trigger Keyword (or any new command/task), **your very first action MUST be to output the exact string `[PIPELINE_RESET]` to the user**. 
+
+**DO NOT call any tools before outputting `[PIPELINE_RESET]`.** 
+Outputting this token acts as a physical "brake" to interrupt your conversational momentum and forces your attention mechanism to restart the pipeline at Phase 0.B (Memory Retrieval).
 
 ### How to Detect You've Skipped Pipeline
 
