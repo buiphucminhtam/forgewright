@@ -313,6 +313,15 @@ if git diff-tree --no-commit-id --name-only -r HEAD | grep -q -E '^(docs/|README
     ./scripts/forgewright-wiki-sync.sh
   fi
 fi
+
+# Kiểm tra thay đổi logic files để chạy gitnexus analyze và cập nhật sequence flow
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^(src/|mcp/|scripts/).*\.(ts|py|js|cs|gd|go|rs)$' | grep -v -E '(test|spec)' > /dev/null; then
+  echo "🔍 [Forgewright] Phát hiện thay đổi logic files. Đang chạy gitnexus analyze và cập nhật sequence flow..."
+  npx gitnexus analyze
+  if [ -f "./scripts/generate-sequence.ts" ]; then
+    npx tsx ./scripts/generate-sequence.ts
+  fi
+fi
 EOF
         chmod +x "$husky_hook"
         log_ok "Husky post-commit hook configured: .husky/post-commit"
@@ -328,6 +337,15 @@ if git diff-tree --no-commit-id --name-only -r HEAD | grep -q -E '^(docs/|README
   echo "📄 [Forgewright] Phát hiện thay đổi tài liệu. Đang tự động đồng bộ sang llm_wiki..."
   if [ -x "./scripts/forgewright-wiki-sync.sh" ]; then
     ./scripts/forgewright-wiki-sync.sh
+  fi
+fi
+
+# Kiểm tra thay đổi logic files để chạy gitnexus analyze và cập nhật sequence flow
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^(src/|mcp/|scripts/).*\.(ts|py|js|cs|gd|go|rs)$' | grep -v -E '(test|spec)' > /dev/null; then
+  echo "🔍 [Forgewright] Phát hiện thay đổi logic files. Đang chạy gitnexus analyze và cập nhật sequence flow..."
+  npx gitnexus analyze
+  if [ -f "./scripts/generate-sequence.ts" ]; then
+    npx tsx ./scripts/generate-sequence.ts
   fi
 fi
 EOF
@@ -359,6 +377,15 @@ if git diff-tree --no-commit-id --name-only -r HEAD | grep -q -E '^(docs/|README
   echo "📄 [Forgewright] Phát hiện thay đổi tài liệu. Đang tự động đồng bộ sang llm_wiki..."
   if [ -x "./scripts/forgewright-wiki-sync.sh" ]; then
     ./scripts/forgewright-wiki-sync.sh
+  fi
+fi
+
+# Kiểm tra thay đổi logic files để chạy gitnexus analyze và cập nhật sequence flow
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^(src/|mcp/|scripts/).*\.(ts|py|js|cs|gd|go|rs)$' | grep -v -E '(test|spec)' > /dev/null; then
+  echo "🔍 [Forgewright] Phát hiện thay đổi logic files. Đang chạy gitnexus analyze và cập nhật sequence flow..."
+  npx gitnexus analyze
+  if [ -f "./scripts/generate-sequence.ts" ]; then
+    npx tsx ./scripts/generate-sequence.ts
   fi
 fi
 EOF
@@ -396,6 +423,15 @@ if git diff-tree --no-commit-id --name-only -r HEAD | grep -q -E '^(docs/|README
   echo "📄 [Forgewright] Phát hiện thay đổi tài liệu. Đang tự động đồng bộ sang llm_wiki..."
   if [ -x "./scripts/forgewright-wiki-sync.sh" ]; then
     ./scripts/forgewright-wiki-sync.sh
+  fi
+fi
+
+# Kiểm tra thay đổi logic files để chạy gitnexus analyze và cập nhật sequence flow
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^(src/|mcp/|scripts/).*\.(ts|py|js|cs|gd|go|rs)$' | grep -v -E '(test|spec)' > /dev/null; then
+  echo "🔍 [Forgewright] Phát hiện thay đổi logic files. Đang chạy gitnexus analyze và cập nhật sequence flow..."
+  npx gitnexus analyze
+  if [ -f "./scripts/generate-sequence.ts" ]; then
+    npx tsx ./scripts/generate-sequence.ts
   fi
 fi
 EOF
