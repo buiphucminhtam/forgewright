@@ -7,6 +7,8 @@ function getSessionId(): string | undefined {
   return process.env.FORGEWRIGHT_SESSION_ID;
 }
 
+let messageQueue: any[] = [];
+
 export function initRpcClient(): void {
   if (wsClient || isConnecting) return;
 
@@ -19,34 +21,33 @@ export function initRpcClient(): void {
 
     wsClient.on('open', () => {
       isConnecting = false;
-      // Optional: Log connection success if needed, but usually we stay silent to avoid polluting stdout
+      // Send queued messages
+      while (messageQueue.length > 0) {
+        const msg = messageQueue.shift();
+        try {
+          wsClient?.send(JSON.stringify(msg));
+        } catch (e) {}
+      }
     });
 
     wsClient.on('error', (_err) => {
-      // Catch errors silently so it doesn't crash the CLI
       isConnecting = false;
     });
 
     wsClient.on('close', () => {
       wsClient = null;
       isConnecting = false;
-      // Connection closed, we could try reconnecting, but gracefully falling back is fine
     });
   } catch (error) {
-    // Catch initial creation errors
     isConnecting = false;
   }
 }
 
 export function emitRpcEvent(eventName: string, payload: unknown): void {
-  // Try to initialize if not done yet
-  if (!wsClient && !isConnecting && process.env.FORGEWRIGHT_RPC_URL) {
-    initRpcClient();
-  }
+  if (!process.env.FORGEWRIGHT_RPC_URL) return;
 
-  // If no connection is active, gracefully fallback
-  if (!wsClient || wsClient.readyState !== WebSocket.OPEN) {
-    return;
+  if (!wsClient && !isConnecting) {
+    initRpcClient();
   }
 
   const sessionId = getSessionId();
@@ -58,13 +59,18 @@ export function emitRpcEvent(eventName: string, payload: unknown): void {
     payload,
   };
 
+  if (!wsClient || wsClient.readyState !== WebSocket.OPEN) {
+    messageQueue.push(rpcMessage);
+    return;
+  }
+
   try {
     wsClient.send(JSON.stringify(rpcMessage), (err) => {
       if (err) {
-        // Ignore send errors to avoid crashing
+        // Ignore
       }
     });
   } catch (e) {
-    // Graceful fallback on sync errors
+    // Fallback
   }
 }
