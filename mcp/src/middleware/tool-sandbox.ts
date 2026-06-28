@@ -34,7 +34,7 @@ export interface SandboxConfig {
   >;
 }
 
-interface SandboxResult {
+export interface SandboxResult {
   originalTokens: number;
   summaryTokens: number;
   tokensSaved: number;

@@ -256,6 +256,8 @@ To defeat Conversational Momentum, whenever the User provides a Trigger Keyword 
 **DO NOT call any tools before outputting `[PIPELINE_RESET]`.** 
 Outputting this token acts as a physical "brake" to interrupt your conversational momentum and forces your attention mechanism to restart the pipeline at Phase 0.B (Memory Retrieval).
 
+Source of truth: `skills/_shared/protocols/pipeline-activation.md`.
+
 ### How to Detect You've Skipped Pipeline
 
 **Self-check BEFORE answering any user request:**
@@ -672,7 +674,7 @@ Forgewright maintains project state in the `.forgewright/` directory:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (17869 symbols, 23229 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (17954 symbols, 23515 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

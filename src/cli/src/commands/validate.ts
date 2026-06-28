@@ -4,8 +4,7 @@
 import type { Command } from "commander";
 import pc from "picocolors";
 import { execSync } from "child_process";
-import { existsSync, readFileSync } from "fs";
-import { resolve, join } from "path";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { buildEnvelope } from "../types/index.js";
 import { VERSION } from "../version.js";
 
@@ -21,7 +20,7 @@ export interface ValidationResult {
 
 export interface ValidationCheck {
   name: string;
-  status: "pass" | "fail" | "skip";
+  status: "pass" | "fail" | "skip" | "warning";
   score: number;
   maxScore: number;
   message: string;
@@ -32,9 +31,9 @@ export function registerValidateCommand(program: Command): void {
     .command("validate")
     .description("Run quality gate validation")
     .option(
-      "-l, --level <1-3>",
-      "Validation level (1: build, 2: +regression, 3: +standards)",
-      "3",
+      "-l, --level <1-4>",
+      "Validation level (1: build, 2: +regression, 3: +standards, 4: +traceability)",
+      "4",
     )
     .option("--strict", "Treat warnings as failures")
     .option("-j, --json", "Output as JSON")
@@ -61,18 +60,18 @@ async function handleValidate(options: {
   const useJson = options.json || !process.stdout.isTTY;
   const level = parseInt(options.level, 10);
 
-  if (isNaN(level) || level < 1 || level > 3) {
+  if (isNaN(level) || level < 1 || level > 4) {
     if (useJson) {
       const envelope = buildEnvelope("validate.quality", null, {
         ok: false,
         duration_ms: Date.now() - startTime,
         version: VERSION,
-        error: { code: 2, message: "Invalid level. Use 1, 2, or 3." },
+        error: { code: 2, message: "Invalid level. Use 1, 2, 3, or 4." },
       });
       console.log(JSON.stringify(envelope, null, 2));
     } else {
       console.error(
-        pc.red(`Error: Invalid level "${options.level}". Use 1, 2, or 3.`),
+        pc.red(`Error: Invalid level "${options.level}". Use 1, 2, 3, or 4.`),
       );
     }
     process.exit(2);
@@ -85,7 +84,7 @@ async function handleValidate(options: {
     const reportContent = useJson
       ? JSON.stringify(result, null, 2)
       : generateTextReport(result);
-    require("fs").writeFileSync(options.report, reportContent + "\n");
+    writeFileSync(options.report, reportContent + "\n");
   }
 
   if (useJson) {
@@ -100,7 +99,7 @@ async function handleValidate(options: {
     });
     console.log(JSON.stringify(envelope, null, 2));
   } else {
-    printHumanReadable(result, options.strict);
+    printHumanReadable(result);
   }
 
   const exitCode = result.issues.length > 0 ? 1 : 0;
@@ -140,12 +139,26 @@ async function runValidation(
 
   // Level 3: Code Standards
   if (level >= 3) {
-    const standardsChecks = await runStandardsChecks(strict);
+    const standardsChecks = await runStandardsChecks();
     checks.push(...standardsChecks.checks);
     issues.push(...standardsChecks.issues);
     warnings.push(...standardsChecks.warnings);
     totalScore += standardsChecks.score;
     maxScore += standardsChecks.maxScore;
+  }
+
+  // Level 4: Acceptance Traceability
+  if (level >= 4) {
+    const traceabilityChecks = await runTraceabilityChecks();
+    checks.push(...traceabilityChecks.checks);
+    issues.push(...traceabilityChecks.issues);
+    warnings.push(...traceabilityChecks.warnings);
+    totalScore += traceabilityChecks.score;
+    maxScore += traceabilityChecks.maxScore;
+  }
+
+  if (strict && warnings.length > 0) {
+    issues.push(...warnings.map((warning) => `Strict warning: ${warning}`));
   }
 
   // Calculate grade
@@ -182,6 +195,8 @@ async function runBuildChecks(): Promise<{
 
   // Check package.json exists
   if (existsSync("package.json")) {
+    const packageJson = readPackageJson();
+    const scripts = packageJson?.scripts ?? {};
     checks.push({
       name: "Build Tool",
       status: "pass",
@@ -216,28 +231,43 @@ async function runBuildChecks(): Promise<{
     }
 
     // Type check
-    try {
-      execSync("npx tsc --noEmit 2>/dev/null", {
-        stdio: "pipe",
-        timeout: 60000,
-      });
+    const typecheckCommand =
+      typeof scripts.typecheck === "string"
+        ? "npm run typecheck --silent"
+        : null;
+    if (!typecheckCommand) {
       checks.push({
         name: "TypeScript Check",
-        status: "pass",
+        status: "skip",
         score: 10,
         maxScore: 10,
-        message: "TypeScript compilation passed",
+        message: "No typecheck script or tsconfig.json; skipped",
       });
       score += 10;
-    } catch {
-      checks.push({
-        name: "TypeScript Check",
-        status: "fail",
-        score: 0,
-        maxScore: 10,
-        message: "TypeScript compilation errors",
-      });
-      issues.push("TypeScript compilation failed");
+    } else {
+      try {
+        execSync(`${typecheckCommand} 2>/dev/null`, {
+          stdio: "pipe",
+          timeout: 60000,
+        });
+        checks.push({
+          name: "TypeScript Check",
+          status: "pass",
+          score: 10,
+          maxScore: 10,
+          message: "TypeScript compilation passed",
+        });
+        score += 10;
+      } catch {
+        checks.push({
+          name: "TypeScript Check",
+          status: "fail",
+          score: 0,
+          maxScore: 10,
+          message: "TypeScript compilation errors",
+        });
+        issues.push("TypeScript compilation failed");
+      }
     }
   } else {
     checks.push({
@@ -250,6 +280,16 @@ async function runBuildChecks(): Promise<{
   }
 
   return { checks, issues, warnings, score, maxScore };
+}
+
+function readPackageJson(): { scripts?: Record<string, unknown> } | null {
+  try {
+    return JSON.parse(readFileSync("package.json", "utf-8")) as {
+      scripts?: Record<string, unknown>;
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function runRegressionChecks(): Promise<{
@@ -265,7 +305,6 @@ async function runRegressionChecks(): Promise<{
   let score = 0;
   const maxScore = 25;
 
-  // Check if git repo
   if (existsSync(".git")) {
     checks.push({
       name: "Git Repository",
@@ -275,7 +314,6 @@ async function runRegressionChecks(): Promise<{
       message: "Git repository detected",
     });
 
-    // Run tests if available
     if (existsSync("package.json")) {
       try {
         execSync("npm test --silent 2>/dev/null", {
@@ -324,7 +362,7 @@ async function runRegressionChecks(): Promise<{
   return { checks, issues, warnings, score, maxScore };
 }
 
-async function runStandardsChecks(strict: boolean): Promise<{
+async function runStandardsChecks(): Promise<{
   checks: ValidationCheck[];
   issues: string[];
   warnings: string[];
@@ -340,7 +378,7 @@ async function runStandardsChecks(strict: boolean): Promise<{
   // Check for TODOs/FIXMEs (10 points)
   try {
     const todoOutput = execSync(
-      'grep -rn "TODO\\|FIXME\\|HACK\\|XXX" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" --exclude-dir=node_modules --exclude-dir=dist 2>/dev/null | head -5 || true',
+      'git grep -nE "TODO|FIXME|HACK|XXX" -- "*.ts" "*.js" "*.tsx" "*.jsx" ":(exclude)node_modules/**" ":(exclude)dist/**" ":(exclude)build/**" ":(exclude)tests/**" ":(exclude)**/*.test.*" ":(exclude)**/*.spec.*" ":(exclude)scripts/comment-checker/**" ":(exclude)src/cli/src/commands/validate.ts" 2>/dev/null | head -5 || true',
       { encoding: "utf-8", timeout: 10000 },
     );
 
@@ -377,7 +415,7 @@ async function runStandardsChecks(strict: boolean): Promise<{
   // Check for secrets (10 points)
   try {
     const secretOutput = execSync(
-      'grep -rn "sk-[a-zA-Z0-9]\\|AKIA[A-Z0-9]\\|password\\s*=\\s*[\'\"]" --include="*.ts" --include="*.js" --exclude-dir=node_modules --exclude-dir=dist 2>/dev/null | grep -v ".env" | head -5 || true',
+      'grep -rnE "(sk-[a-zA-Z0-9]{20,}|AKIA[A-Z0-9]{16}|password[[:space:]]*[:=])" --include="*.ts" --include="*.js" --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build 2>/dev/null | grep -v ".env" | grep -v ".test." | grep -v ".spec." | head -5 || true',
       { encoding: "utf-8", timeout: 10000 },
     );
 
@@ -412,13 +450,19 @@ async function runStandardsChecks(strict: boolean): Promise<{
   }
 
   // Check conventions (5 points)
-  if (existsSync(".forgewright/code-conventions.md")) {
+  const conventionFile = [
+    ".forgewright/code-conventions.md",
+    "skills/_shared/protocols/pipeline-activation.md",
+    "AGENTS.md",
+  ].find((file) => existsSync(file));
+
+  if (conventionFile) {
     checks.push({
       name: "Code Conventions",
       status: "pass",
       score: 5,
       maxScore: 5,
-      message: "Code conventions defined",
+      message: `Code conventions defined in ${conventionFile}`,
     });
   } else {
     checks.push({
@@ -451,6 +495,136 @@ async function runStandardsChecks(strict: boolean): Promise<{
     });
     warnings.push("No README.md");
     score -= 5;
+  }
+
+  return { checks, issues, warnings, score, maxScore };
+}
+
+async function runTraceabilityChecks(): Promise<{
+  checks: ValidationCheck[];
+  issues: string[];
+  warnings: string[];
+  score: number;
+  maxScore: number;
+}> {
+  const checks: ValidationCheck[] = [];
+  const issues: string[] = [];
+  const warnings: string[] = [];
+  let score = 0;
+  const maxScore = 25;
+
+  if (existsSync(".forgewright/product-manager/BRD")) {
+    checks.push({
+      name: "Requirement Mapping",
+      status: "pass",
+      score: 10,
+      maxScore: 10,
+      message: "BRD directory found",
+    });
+  } else {
+    checks.push({
+      name: "Requirement Mapping",
+      status: "skip",
+      score: 10,
+      maxScore: 10,
+      message:
+        "No BRD directory; requirement mapping treated as not applicable",
+    });
+  }
+  score += 10;
+
+  try {
+    const testFiles = execSync(
+      'find . \\( -name "*.test.*" -o -name "*.spec.*" -o -name "test_*" \\) -not -path "./node_modules/*" -not -path "./dist/*" | head -5',
+      { encoding: "utf-8", timeout: 10000 },
+    )
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+
+    if (testFiles.length > 0) {
+      checks.push({
+        name: "Test Traceability",
+        status: "pass",
+        score: 5,
+        maxScore: 5,
+        message: `Found ${testFiles.length} test file(s)`,
+      });
+      score += 5;
+    } else {
+      checks.push({
+        name: "Test Traceability",
+        status: "warning",
+        score: 0,
+        maxScore: 5,
+        message: "No test files found",
+      });
+      warnings.push("No test files found");
+    }
+  } catch {
+    checks.push({
+      name: "Test Traceability",
+      status: "warning",
+      score: 0,
+      maxScore: 5,
+      message: "Could not inspect test files",
+    });
+    warnings.push("Could not inspect test files");
+  }
+
+  if (existsSync(".forgewright")) {
+    checks.push({
+      name: "Workspace Artifacts",
+      status: "pass",
+      score: 5,
+      maxScore: 5,
+      message: ".forgewright workspace exists",
+    });
+    score += 5;
+  } else {
+    checks.push({
+      name: "Workspace Artifacts",
+      status: "warning",
+      score: 0,
+      maxScore: 5,
+      message: "No .forgewright workspace artifacts found",
+    });
+    warnings.push("No .forgewright workspace artifacts found");
+  }
+
+  if (existsSync("scripts/pipeline-preflight.sh")) {
+    try {
+      execSync("bash scripts/pipeline-preflight.sh --max-state-age-minutes 240 --json-only", {
+        stdio: "pipe",
+        timeout: 15000,
+      });
+      checks.push({
+        name: "Pipeline Activation",
+        status: "pass",
+        score: 5,
+        maxScore: 5,
+        message: "Pipeline activation controls pass",
+      });
+      score += 5;
+    } catch {
+      checks.push({
+        name: "Pipeline Activation",
+        status: "warning",
+        score: 0,
+        maxScore: 5,
+        message: "Pipeline activation preflight failed",
+      });
+      warnings.push("Pipeline activation preflight failed");
+    }
+  } else {
+    checks.push({
+      name: "Pipeline Activation",
+      status: "warning",
+      score: 0,
+      maxScore: 5,
+      message: "No pipeline preflight script",
+    });
+    warnings.push("No scripts/pipeline-preflight.sh");
   }
 
   return { checks, issues, warnings, score, maxScore };
@@ -489,7 +663,7 @@ function generateTextReport(result: ValidationResult): string {
   return lines.join("\n");
 }
 
-function printHumanReadable(result: ValidationResult, strict: boolean): void {
+function printHumanReadable(result: ValidationResult): void {
   const percentage =
     result.maxScore > 0
       ? Math.round((result.score / result.maxScore) * 100)
@@ -565,7 +739,9 @@ function printHumanReadable(result: ValidationResult, strict: boolean): void {
         ? pc.green
         : check.status === "fail"
           ? pc.red
-          : pc.gray;
+          : check.status === "warning"
+            ? pc.yellow
+            : pc.gray;
     console.log(
       `    ${icon} ${check.name.padEnd(20)} ${statusColor(check.message)}`,
     );

@@ -266,7 +266,9 @@ var fs = require('fs');
 var path = require('path');
 try {
   var m = JSON.parse(fs.readFileSync('$manifest', 'utf8'));
-  var server = (m.servers || []).find(function(s){return s.type==='forgewright-mcp-server'&&s.enabled;});
+  var server = (m.servers || []).find(function(s){
+    return s.type === 'forgewright-mcp-server' && s.enabled !== false && s.auto_start !== false;
+  });
   if (server) {
     var sp = path.join('$workspace', '.forgewright', 'mcp-server', 'server.ts');
     if (fs.existsSync(sp)) {

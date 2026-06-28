@@ -194,6 +194,21 @@ export interface MiddlewareConfig {
     enabled?: boolean;
     mode?: 'warn' | 'deny' | 'disabled' | 'dry_run';
   };
+  quality_gate?: {
+    enabled?: boolean;
+    minimum_score?: number;
+    block_score?: number;
+    block_on_error?: boolean;
+    block_on_injection?: boolean;
+    require_non_empty_output?: boolean;
+    metrics_file?: string;
+  };
+  verification?: {
+    enabled?: boolean;
+    enforce_evidence_first?: boolean;
+    require_audit_ref?: boolean;
+    metrics_file?: string;
+  };
   [key: string]: Record<string, unknown> | undefined;
 }
 

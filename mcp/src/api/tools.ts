@@ -10,6 +10,7 @@ import {
   updateSelfHealing,
   failPipeline,
   logTokenUsage,
+  checkPipelineCompliance,
   PIPELINE_PHASES,
   QualityGateState,
   SelfHealingState,
@@ -195,6 +196,20 @@ export function registerTools(server: Server) {
             required: ['inputTokens', 'outputTokens', 'model', 'provider', 'skill'],
           },
         },
+        {
+          name: 'fw_check_pipeline_compliance',
+          description:
+            'Check whether Forgewright pipeline activation state is healthy and not stale. Use before closing substantial work.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              maxStateAgeMinutes: {
+                type: 'number',
+                description: 'Maximum acceptable active pipeline state age in minutes.',
+              },
+            },
+          },
+        },
       ],
     };
   });
@@ -345,6 +360,13 @@ export function registerTools(server: Server) {
             },
           ],
         };
+      }
+
+      if (request.params.name === 'fw_check_pipeline_compliance') {
+        const maxStateAgeMinutes =
+          (request.params.arguments?.maxStateAgeMinutes as number | undefined) ?? 120;
+        const report = await checkPipelineCompliance(maxStateAgeMinutes);
+        return { content: [{ type: 'text', text: JSON.stringify(report, null, 2) }] };
       }
 
       throw new Error(`Tool not found: ${request.params.name}`);

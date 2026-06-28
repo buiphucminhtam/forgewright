@@ -27,8 +27,10 @@
 
 import type { ToolContext, ToolResult, MiddlewareConfig, ToolCall } from './types.js';
 import { ContextOffloadMiddleware } from './context-offload.js';
+import { QualityGateMiddleware, type QualityGateReport } from './quality-gate.js';
 import { SessionDeduplicationMiddleware } from './session-deduplication.js';
 import { ToolSandboxMiddleware } from './tool-sandbox.js';
+import { VerificationMiddleware, type VerificationReport } from './verification.js';
 
 export type MiddlewareHook = 'before_tool' | 'after_tool' | 'on_error';
 
@@ -48,6 +50,8 @@ export class MiddlewareChain {
   private sessionDedup = new SessionDeduplicationMiddleware();
   private toolSandbox = new ToolSandboxMiddleware();
   private contextOffload = new ContextOffloadMiddleware();
+  private qualityGate = new QualityGateMiddleware();
+  private verification = new VerificationMiddleware();
   private options: ChainOptions;
 
   constructor(options: ChainOptions) {
@@ -55,6 +59,8 @@ export class MiddlewareChain {
     this.sessionDedup.configure(options.config.session_deduplication);
     this.toolSandbox.configure(options.config.tool_sandbox || {});
     this.contextOffload.configure(options.config.context_offload);
+    this.qualityGate.configure(options.config.quality_gate);
+    this.verification.configure(options.config.verification);
   }
 
   /**
@@ -75,6 +81,8 @@ export class MiddlewareChain {
     cached: boolean;
     dedup?: { seenCount: number; tokensSaved: number; summary: string };
     middlewareMs: number;
+    qualityGate?: QualityGateReport;
+    verification?: VerificationReport;
   }> {
     const ctx: ToolContext = {
       call: toolCall,
@@ -143,9 +151,11 @@ export class MiddlewareChain {
     // ④c ToolSandbox: sanitize + compress before anything enters cache/model context.
     const sandboxStart = Date.now();
     let processedResult = result;
+    let sandbox;
     if (this.toolSandbox.enabled) {
       const sandboxed = this.toolSandbox.processResult(ctx, result);
       processedResult = sandboxed.result;
+      sandbox = sandboxed.sandbox;
       this.options.onMetrics?.(
         'tool-sandbox',
         'after_tool',
@@ -166,12 +176,92 @@ export class MiddlewareChain {
       );
     }
 
-    // Store processed result in dedup store (for future cache hits)
+    // ⑥ QualityGate: deterministic output validation.
+    let qualityGateReport: QualityGateReport | undefined;
+    const qualityGateStart = Date.now();
+    if (this.qualityGate.enabled) {
+      qualityGateReport = this.qualityGate.evaluate(ctx, processedResult, sandbox);
+      this.options.onMetrics?.(
+        'quality-gate',
+        'after_tool',
+        Date.now() - qualityGateStart,
+        qualityGateReport.blocked
+          ? 'error'
+          : qualityGateReport.score < qualityGateReport.threshold
+            ? 'skip'
+            : 'ok',
+      );
+
+      if (qualityGateReport.blocked) {
+        const totalMs = Date.now() - chainStart;
+        return {
+          result: {
+            content: [
+              {
+                type: 'text' as const,
+                text:
+                  `Blocked by quality gate: score ${qualityGateReport.score}/${qualityGateReport.threshold}. ` +
+                  qualityGateReport.failedCriteria
+                    .map((item) => `${item.name}: ${item.reason}`)
+                    .join('; '),
+              },
+            ],
+            isError: true,
+          },
+          cached: false,
+          middlewareMs: totalMs,
+          qualityGate: qualityGateReport,
+        };
+      }
+    }
+
+    // ⑭ Verification: Evidence-First output verification.
+    let verificationReport: VerificationReport | undefined;
+    const verificationStart = Date.now();
+    if (this.verification.enabled) {
+      verificationReport = this.verification.verify(
+        ctx,
+        processedResult,
+        sandbox,
+        qualityGateReport,
+      );
+      this.options.onMetrics?.(
+        'verification',
+        'after_tool',
+        Date.now() - verificationStart,
+        verificationReport.blocked ? 'error' : verificationReport.status === 'fail' ? 'skip' : 'ok',
+      );
+
+      if (verificationReport.blocked) {
+        const totalMs = Date.now() - chainStart;
+        return {
+          result: {
+            content: [
+              {
+                type: 'text' as const,
+                text:
+                  'Blocked by verification: ' +
+                  verificationReport.checks
+                    .filter((item) => item.status === 'fail')
+                    .map((item) => `${item.name}: ${item.evidence}`)
+                    .join('; '),
+              },
+            ],
+            isError: true,
+          },
+          cached: false,
+          middlewareMs: totalMs,
+          qualityGate: qualityGateReport,
+          verification: verificationReport,
+        };
+      }
+    }
+
+    // Store processed, verified result in dedup store (for future cache hits)
     ctx.call.result = processedResult;
     this.sessionDedup.after_tool(ctx);
 
     // ── after_tool hooks ────────────────────────────────
-    // (Placeholder for QualityGate, BrownfieldSafety, etc.)
     const totalMs = Date.now() - chainStart;
 
     this.options.onMetrics?.('session-deduplication', 'after_tool', totalMs - execMs, 'ok');
@@ -180,6 +270,8 @@ export class MiddlewareChain {
       result: processedResult,
       cached: false,
       middlewareMs: totalMs,
+      qualityGate: qualityGateReport,
+      verification: verificationReport,
     };
   }
 
@@ -202,6 +294,16 @@ export class MiddlewareChain {
     return this.contextOffload.getMetrics();
   }
 
+  /** Get quality gate metrics. */
+  getQualityGateMetrics() {
+    return this.qualityGate.getMetrics();
+  }
+
+  /** Get verification metrics. */
+  getVerificationMetrics() {
+    return this.verification.getMetrics();
+  }
+
   /** Reset deduplication store (on session end). */
   resetSession() {
     this.sessionDedup.reset();
@@ -212,6 +314,8 @@ export class MiddlewareChain {
     this.sessionDedup.resetMetrics();
     this.toolSandbox.resetMetrics();
     this.contextOffload.resetMetrics();
+    this.qualityGate.resetMetrics();
+    this.verification.resetMetrics();
   }
 }
 

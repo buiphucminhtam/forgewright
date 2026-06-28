@@ -291,6 +291,16 @@ The following requests **MUST** trigger clarification:
 | Engineering | "build", "add", "implement", "fix", "review", "test", "refactor" |
 | Analysis | "phân tích", "evaluate", "assess", "what's left" |
 
+### 🛑 The Momentum Breaker (MANDATORY)
+
+To defeat Conversational Momentum, whenever the User provides a Trigger Keyword
+(or any new command/task), **your very first action MUST be to output the exact
+string `[PIPELINE_RESET]` to the user**.
+
+**DO NOT call any tools before outputting `[PIPELINE_RESET]`.**
+
+Source of truth: `skills/_shared/protocols/pipeline-activation.md`.
+
 ### How to Detect You've Skipped Pipeline
 
 **Self-check BEFORE answering any user request:**
@@ -910,7 +920,7 @@ Goals survive context resets:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (17883 symbols, 23237 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (17954 symbols, 23515 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

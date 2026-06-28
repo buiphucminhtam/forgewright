@@ -85,9 +85,49 @@ with open('$TRACK_FILE', 'w') as f:
 
 record_plan() {
     local score="$1"
-    local threshold="${2:-9.0}"
+    local threshold_arg="${2:-}"
     
     init_track
+
+    local threshold
+    threshold=$(python3 -c "
+import json, re
+
+arg = '''$threshold_arg'''.strip()
+if arg and re.match(r'^[0-9]+(\.[0-9]+)?$', arg):
+    print(arg)
+    raise SystemExit
+
+mode = arg.lower()
+if not mode:
+    try:
+        with open('$TRACK_FILE') as f:
+            data = json.load(f)
+        mode = str((data.get('current_session') or {}).get('mode') or '').lower()
+    except Exception:
+        mode = ''
+
+mode = mode.replace('_', '-').replace(' ', '-')
+thresholds = {
+    'explore': 6.0,
+    'research': 6.0,
+    'review': 7.0,
+    'test': 7.0,
+    'document': 7.0,
+    'feature': 8.0,
+    'debug': 8.0,
+    'optimize': 8.0,
+    'harden': 8.5,
+    'migrate': 8.5,
+    'full-build': 9.0,
+    'ship': 9.0,
+    'game': 9.0,
+    'game-build': 9.0,
+    'xr-build': 9.0,
+    'ai-build': 9.0,
+}
+print(thresholds.get(mode, 8.0))
+" 2>/dev/null)
     
     local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     
@@ -116,6 +156,7 @@ if 'planScores' not in data:
 
 data['planScores'].append({
     'score': float('$score'),
+    'threshold': float('$threshold'),
     'passed': '$passed' == 'true',
     'timestamp': '$timestamp'
 })
@@ -389,7 +430,7 @@ case "${1:-status}" in
         start_session "${2:-}" "${3:-}"
         ;;
     plan)
-        record_plan "${2:-0}" "${3:-9.0}"
+        record_plan "${2:-0}" "${3:-}"
         ;;
     end)
         end_session "${2:-completed}" "${3:-}"
@@ -409,7 +450,7 @@ case "${1:-status}" in
         echo ""
         echo "Commands:"
         echo "  start <mode> <request>   - Start a new session"
-        echo "  plan <score> [threshold] - Record plan score (triggers ASIP on failure)"
+        echo "  plan <score> [threshold|mode] - Record plan score with mode-aware threshold"
         echo "  end [status] [summary]   - End current session"
         echo "  check                    - Check and trigger ASIP if needed"
         echo "  status                   - Show current status"

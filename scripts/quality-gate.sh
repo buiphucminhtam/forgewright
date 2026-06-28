@@ -104,11 +104,14 @@ SCORE_BUILD=0       # max 25
 SCORE_REGRESSION=0  # max 25
 SCORE_STANDARDS=0   # max 30
 SCORE_TRACE=0       # max 20
+SCORE_PIPELINE=0    # max 10
 
 BUILD_STATUS="skip"
 BUILD_DETAIL=""
 REGRESSION_STATUS="skip"
 REGRESSION_DETAIL=""
+PIPELINE_STATUS="skip"
+PIPELINE_DETAIL=""
 STUBS_COUNT=0
 SECRETS_COUNT=0
 IMPORT_SCORE=5  # default: assume OK
@@ -306,28 +309,66 @@ level4_traceability() {
   SCORE_TRACE=$((trace_req + trace_tests + trace_docs))
 }
 
+# ── Pipeline Activation Compliance ─────────────────────
+pipeline_preflight() {
+  if [[ ! -f "$FORGEWRIGHT_DIR/scripts/pipeline-preflight.sh" ]]; then
+    SCORE_PIPELINE=10
+    PIPELINE_STATUS="skip"
+    PIPELINE_DETAIL="pipeline-preflight.sh not found"
+    return
+  fi
+
+  local preflight_args=(--max-state-age-minutes 240)
+  if [[ "$STRICT_MODE" == true ]]; then
+    preflight_args+=(--strict)
+  fi
+
+  if (cd "$PROJECT_ROOT" && bash "$FORGEWRIGHT_DIR/scripts/pipeline-preflight.sh" "${preflight_args[@]}" >/tmp/fg-pipeline-preflight.log 2>&1); then
+    SCORE_PIPELINE=10
+    PIPELINE_STATUS="pass"
+    PIPELINE_DETAIL="Pipeline activation controls pass"
+  else
+    SCORE_PIPELINE=0
+    PIPELINE_STATUS="fail"
+    PIPELINE_DETAIL="Pipeline activation controls failed — see /tmp/fg-pipeline-preflight.log"
+    ISSUES+=("CRITICAL: Pipeline activation preflight failed")
+  fi
+}
+
 # ── Execute all levels ─────────────────────────────────
 level1_build
 level1_lint
 level2_regression
 level3_standards
 level4_traceability
+pipeline_preflight
 
 # ── Compute total score ────────────────────────────────
-TOTAL_SCORE=$((SCORE_BUILD + SCORE_REGRESSION + SCORE_STANDARDS + SCORE_TRACE))
+TOTAL_SCORE=$((SCORE_BUILD + SCORE_REGRESSION + SCORE_STANDARDS + SCORE_TRACE + SCORE_PIPELINE))
+MAX_SCORE=110
+PERCENT_SCORE=$(( TOTAL_SCORE * 100 / MAX_SCORE ))
 
 # Grade
 GRADE="F"
-if   [[ $TOTAL_SCORE -ge 95 ]]; then GRADE="A"
-elif [[ $TOTAL_SCORE -ge 90 ]]; then GRADE="B"
-elif [[ $TOTAL_SCORE -ge 70 ]]; then GRADE="C"
-elif [[ $TOTAL_SCORE -ge 60 ]]; then GRADE="D"
+if   [[ $PERCENT_SCORE -ge 95 ]]; then GRADE="A"
+elif [[ $PERCENT_SCORE -ge 90 ]]; then GRADE="B"
+elif [[ $PERCENT_SCORE -ge 70 ]]; then GRADE="C"
+elif [[ $PERCENT_SCORE -ge 60 ]]; then GRADE="D"
 fi
 
 # ── Write JSON metrics ─────────────────────────────────
 mkdir -p "$WORKSPACE"
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+if [[ ${#ISSUES[@]} -gt 0 ]]; then
+  ISSUES_JSON=$(printf '%s\n' "${ISSUES[@]}" | node -e "
+    const input = require('fs').readFileSync(0,'utf8').trim();
+    const lines = input ? input.split('\n').filter(Boolean) : [];
+    console.log(JSON.stringify(lines));
+  " 2>/dev/null || echo '[]')
+else
+  ISSUES_JSON="[]"
+fi
 
 node -e "
 const existing = (() => {
@@ -342,14 +383,14 @@ existing.measurements.push({
     build: { status: '$BUILD_STATUS', points: $SCORE_BUILD, detail: '$BUILD_DETAIL' },
     regression: { status: '$REGRESSION_STATUS', points: $SCORE_REGRESSION, detail: '${REGRESSION_DETAIL//\'/\\\'}' },
     standards: { status: $STUBS_COUNT > 0 || $SECRETS_COUNT > 0 ? '\"warn\"' : '\"pass\"', points: $SCORE_STANDARDS, stubs: $STUBS_COUNT, secrets: $SECRETS_COUNT },
-    traceability: { status: 'pass', points: $SCORE_TRACE }
+    traceability: { status: 'pass', points: $SCORE_TRACE },
+    pipeline: { status: '$PIPELINE_STATUS', points: $SCORE_PIPELINE, detail: '${PIPELINE_DETAIL//\'/\\\'}' }
   },
   total_score: $TOTAL_SCORE,
+  max_score: $MAX_SCORE,
+  percent_score: $PERCENT_SCORE,
   grade: '$GRADE',
-  issues: $(printf '%s\n' "${ISSUES[@]}" | node -e "
-    const lines = require('fs').readFileSync(0,'utf8').trim().split('\n').filter(Boolean);
-    console.log(JSON.stringify(lines));
-  " 2>/dev/null || echo '[]')
+  issues: $ISSUES_JSON
 });
 
 require('fs').writeFileSync('$METRICS_FILE', JSON.stringify(existing, null, 2));
@@ -369,13 +410,17 @@ if [[ "$JSON_ONLY" != "true" ]]; then
   [[ "$STUBS_COUNT" -gt 0 || "$SECRETS_COUNT" -gt 0 ]] && std_icon="⚠"
   [[ "$SECRETS_COUNT" -gt 0 ]] && std_icon="✗"
 
+  pipe_icon="✓"; [[ "$PIPELINE_STATUS" == "fail" ]] && pipe_icon="✗"
+  [[ "$PIPELINE_STATUS" == "skip" ]] && pipe_icon="—"
+
   echo ""
   echo "┌─ Quality Gate: $TASK_ID $SKILL_NAME ──────────┐"
   echo "│ Build:        $build_icon  $BUILD_DETAIL"
   echo "│ Regression:   $regr_icon  $REGRESSION_DETAIL"
   echo "│ Standards:    $std_icon  Stubs: $STUBS_COUNT, Secrets: $SECRETS_COUNT"
   echo "│ Traceability: ✓  Score: $SCORE_TRACE/20"
-  echo "│ Score: $TOTAL_SCORE/100 ($GRADE)"
+  echo "│ Pipeline:     $pipe_icon  $PIPELINE_DETAIL"
+  echo "│ Score: $TOTAL_SCORE/$MAX_SCORE ($PERCENT_SCORE%, $GRADE)"
   echo "└────────────────────────────────────────────────┘"
 
   if [[ ${#ISSUES[@]} -gt 0 ]]; then
@@ -388,9 +433,9 @@ if [[ "$JSON_ONLY" != "true" ]]; then
 fi
 
 # ── Exit code ──────────────────────────────────────────
-if [[ $TOTAL_SCORE -lt 60 ]]; then
+if [[ $PERCENT_SCORE -lt 60 ]]; then
   exit 2  # BLOCK
-elif [[ $TOTAL_SCORE -lt 90 ]]; then
+elif [[ $PERCENT_SCORE -lt 90 ]]; then
   exit 1  # WARN
 else
   exit 0  # PASS

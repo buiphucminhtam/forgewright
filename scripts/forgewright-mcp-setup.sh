@@ -301,6 +301,7 @@ setup_mcp_server() {
       "name": "forgewright",
       "type": "forgewright-mcp-server",
       "path": "${CANONICAL_SERVER_TS}",
+      "enabled": true,
       "auto_start": true
     },
     {
@@ -308,6 +309,7 @@ setup_mcp_server() {
       "type": "gitnexus",
       "command": "gitnexus",
       "args": ["mcp"],
+      "enabled": true,
       "auto_start": true
     }
   ],
