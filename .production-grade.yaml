@@ -1,0 +1,19 @@
+expertMode:
+  enabled: true
+  activeCli: "codex"
+  fallbackCli: null
+  useFor:
+    planning: false
+    failedPlanReview: true
+    gates: true
+    securityReview: true
+    architectureReview: true
+    codeReview: true
+  budget:
+    maxExpertCallsPerRun: 5
+    requireConfirmationAbove: 3
+
+token_tracking:
+  enabled: true
+  log_dir: "~/.forgewright/usage"
+  export_format: jsonl

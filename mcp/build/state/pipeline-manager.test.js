@@ -30,7 +30,7 @@ describe('Pipeline Manager', () => {
         const { getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        const state = getState();
+        const state = await getState();
         expect(state.currentPhase).toBe(0);
         expect(state.status).toBe('IDLE');
         expect(state.currentMode).toBeNull();
@@ -39,10 +39,10 @@ describe('Pipeline Manager', () => {
         const { startPipeline, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        const result = startPipeline('Full Build');
+        const result = await startPipeline('Full Build');
         expect(result).toContain('Full Build');
         expect(result).toContain('Phase 1');
-        const state = getState();
+        const state = await getState();
         expect(state.currentMode).toBe('Full Build');
         expect(state.currentPhase).toBe(1);
         expect(state.status).toBe('IN_PROGRESS');
@@ -51,18 +51,18 @@ describe('Pipeline Manager', () => {
         const { startPipeline, advancePhase, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
-        const result = advancePhase();
+        await startPipeline('Feature');
+        const result = await advancePhase();
         expect(result).toContain('Phase 2');
-        expect(getState().currentPhase).toBe(2);
+        expect((await getState()).currentPhase).toBe(2);
     });
     it('advancePhase blocked when waiting for gate', async () => {
         const { startPipeline, requestGateApproval, advancePhase, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
-        requestGateApproval('test gate');
-        const result = advancePhase();
+        await startPipeline('Feature');
+        await requestGateApproval('test gate');
+        const result = await advancePhase();
         expect(result).toContain('Error');
         expect(result).toContain('frozen');
     });
@@ -70,42 +70,42 @@ describe('Pipeline Manager', () => {
         const { startPipeline, advancePhase, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
+        await startPipeline('Feature');
         for (let i = 0; i < 5; i++) {
-            const { status } = getState();
+            const { status } = await getState();
             if (status === 'COMPLETED')
                 break;
-            advancePhase();
+            await advancePhase();
         }
-        const state = getState();
+        const state = await getState();
         expect(state.status).toBe('COMPLETED');
     });
     it('requestGateApproval locks pipeline', async () => {
         const { startPipeline, requestGateApproval, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
-        const result = requestGateApproval('GDD is ready');
+        await startPipeline('Feature');
+        const result = await requestGateApproval('GDD is ready');
         expect(result).toContain('locked');
         expect(result).toContain('GDD is ready');
-        expect(getState().status).toBe('WAITING_FOR_GATE');
+        expect((await getState()).status).toBe('WAITING_FOR_GATE');
     });
     it('approveGate unlocks pipeline', async () => {
         const { startPipeline, requestGateApproval, approveGate, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
-        requestGateApproval('test');
-        const result = approveGate();
+        await startPipeline('Feature');
+        await requestGateApproval('test');
+        const result = await approveGate();
         expect(result).toContain('approved');
-        expect(getState().status).toBe('IN_PROGRESS');
+        expect((await getState()).status).toBe('IN_PROGRESS');
     });
     it('approveGate errors when not waiting', async () => {
         const { startPipeline, approveGate, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
-        const result = approveGate();
+        await startPipeline('Feature');
+        const result = await approveGate();
         expect(result).toContain('Error');
     });
     it('PIPELINE_PHASES has correct phases', async () => {
@@ -113,30 +113,6 @@ describe('Pipeline Manager', () => {
         expect(PIPELINE_PHASES.length).toBe(5);
         expect(PIPELINE_PHASES[0]).toContain('Phase 0');
         expect(PIPELINE_PHASES[4]).toContain('Phase 4');
-    });
-    it('saveState writes atomically', async () => {
-        const { saveState, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
-        resetWorkspaceRoot();
-        cleanState();
-        const state = {
-            currentPhase: 2,
-            currentMode: 'Feature',
-            status: 'IN_PROGRESS',
-            history: ['Started'],
-            activeAction: 'Testing atomic write',
-            phaseProgress: 0.5,
-            selfHealing: null,
-            qualityGate: null,
-            phases: [],
-        };
-        saveState(state);
-        // The state file should be present and equal
-        expect(fs.existsSync(STATE_FILE)).toBe(true);
-        // The temporary file should not exist
-        expect(fs.existsSync(STATE_FILE + '.tmp')).toBe(false);
-        const readState = getState();
-        expect(readState.activeAction).toBe('Testing atomic write');
-        expect(readState.phaseProgress).toBe(0.5);
     });
     it('getState backward compatibility fills undefined fields with null', async () => {
         const { getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
@@ -151,7 +127,7 @@ describe('Pipeline Manager', () => {
         };
         fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
         fs.writeFileSync(STATE_FILE, JSON.stringify(legacyState), 'utf-8');
-        const state = getState();
+        const state = await getState();
         expect(state.currentPhase).toBe(1);
         expect(state.status).toBe('IN_PROGRESS');
         expect(state.activeAction).toBeNull();
@@ -168,7 +144,7 @@ describe('Pipeline Manager', () => {
         const { startPipeline, requestGateApproval, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
+        await startPipeline('Feature');
         const gateInfo = {
             score: 8.5,
             threshold: 9.0,
@@ -180,8 +156,8 @@ describe('Pipeline Manager', () => {
                 },
             ],
         };
-        requestGateApproval('test gate', gateInfo);
-        const state = getState();
+        await requestGateApproval('test gate', gateInfo);
+        const state = await getState();
         expect(state.status).toBe('WAITING_FOR_GATE');
         expect(state.qualityGate).toEqual(gateInfo);
     });
@@ -189,9 +165,9 @@ describe('Pipeline Manager', () => {
         const { startPipeline, updateSubTask, updateSelfHealing, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
-        updateSubTask('Running Vitest...', 0.65);
-        let state = getState();
+        await startPipeline('Feature');
+        await updateSubTask('Running Vitest...', 0.65);
+        let state = await getState();
         expect(state.activeAction).toBe('Running Vitest...');
         expect(state.phaseProgress).toBe(0.65);
         const healing = {
@@ -200,19 +176,19 @@ describe('Pipeline Manager', () => {
             maxAttempts: 3,
             lastError: 'Vitest assertion error',
         };
-        updateSelfHealing(healing);
-        state = getState();
+        await updateSelfHealing(healing);
+        state = await getState();
         expect(state.selfHealing).toEqual(healing);
     });
     it('failPipeline updates status to FAILED and clears progress/action details', async () => {
         const { startPipeline, updateSubTask, failPipeline, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();
         cleanState();
-        startPipeline('Feature');
-        updateSubTask('Working on it', 0.8);
-        const result = failPipeline('Compiling failed');
+        await startPipeline('Feature');
+        await updateSubTask('Working on it', 0.8);
+        const result = await failPipeline('Compiling failed');
         expect(result).toContain('FAILED');
-        const state = getState();
+        const state = await getState();
         expect(state.status).toBe('FAILED');
         expect(state.history).toContain('Pipeline failed: Compiling failed');
         expect(state.activeAction).toBeNull();

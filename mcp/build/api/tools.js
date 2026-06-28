@@ -145,17 +145,41 @@ export function registerTools(server) {
                         required: ['inputTokens', 'outputTokens', 'model', 'provider', 'skill'],
                     },
                 },
+                {
+                    name: 'fw_update_status_and_log_usage',
+                    description: 'Update the active subtask action, phase progress, and log token usage in a single call.',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {
+                            activeAction: {
+                                type: ['string', 'null'],
+                                description: 'A detailed description of the currently running sub-task.',
+                            },
+                            phaseProgress: {
+                                type: ['number', 'null'],
+                                description: 'The progress score of the current phase (0.0 to 1.0).',
+                            },
+                            inputTokens: { type: 'number', description: 'Prompt/input tokens' },
+                            outputTokens: { type: 'number', description: 'Completion/output tokens' },
+                            model: { type: 'string', description: 'Model name' },
+                            provider: { type: 'string', description: 'Provider name' },
+                            cost: { type: 'number', description: 'USD Cost (optional)' },
+                            skill: { type: 'string', description: 'Skill name' },
+                        },
+                        required: ['inputTokens', 'outputTokens', 'model', 'provider', 'skill'],
+                    },
+                },
             ],
         };
     });
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
         try {
             if (request.params.name === 'fw_start_pipeline') {
-                const result = startPipeline(request.params.arguments?.mode);
+                const result = await startPipeline(request.params.arguments?.mode);
                 return { content: [{ type: 'text', text: result }] };
             }
             if (request.params.name === 'fw_get_current_phase') {
-                const state = getState();
+                const state = await getState();
                 const phaseName = PIPELINE_PHASES[state.currentPhase] || 'Unknown Phase';
                 let msg = `Mode: ${state.currentMode || 'None'}\nPhase: ${phaseName}\nStatus: ${state.status}`;
                 if (state.activeAction) {
@@ -183,23 +207,23 @@ export function registerTools(server) {
                 return { content: [{ type: 'text', text: msg }] };
             }
             if (request.params.name === 'fw_advance_to_next_phase') {
-                const result = advancePhase();
+                const result = await advancePhase();
                 return { content: [{ type: 'text', text: result }] };
             }
             if (request.params.name === 'fw_request_gate_approval') {
                 const message = request.params.arguments?.message;
                 const qualityGate = request.params.arguments?.qualityGate;
-                const result = requestGateApproval(message, qualityGate);
+                const result = await requestGateApproval(message, qualityGate);
                 return { content: [{ type: 'text', text: result }] };
             }
             if (request.params.name === 'fw_approve_gate') {
-                const result = approveGate();
+                const result = await approveGate();
                 return { content: [{ type: 'text', text: result }] };
             }
             if (request.params.name === 'fw_update_subtask') {
                 const activeAction = request.params.arguments?.activeAction;
                 const phaseProgress = request.params.arguments?.phaseProgress;
-                updateSubTask(activeAction, phaseProgress);
+                await updateSubTask(activeAction, phaseProgress);
                 return {
                     content: [
                         {
@@ -211,7 +235,7 @@ export function registerTools(server) {
             }
             if (request.params.name === 'fw_update_self_healing') {
                 const selfHealing = request.params.arguments?.selfHealing;
-                updateSelfHealing(selfHealing);
+                await updateSelfHealing(selfHealing);
                 return {
                     content: [
                         {
@@ -225,7 +249,7 @@ export function registerTools(server) {
             }
             if (request.params.name === 'fw_fail_pipeline') {
                 const reason = request.params.arguments?.reason;
-                const result = failPipeline(reason);
+                const result = await failPipeline(reason);
                 return { content: [{ type: 'text', text: result }] };
             }
             if (request.params.name === 'fw_log_token_usage') {
@@ -247,6 +271,36 @@ export function registerTools(server) {
                 return {
                     content: [
                         { type: 'text', text: `Token usage logged successfully for skill "${skill}".` },
+                    ],
+                };
+            }
+            if (request.params.name === 'fw_update_status_and_log_usage') {
+                const activeAction = request.params.arguments?.activeAction;
+                const phaseProgress = request.params.arguments?.phaseProgress;
+                const inputTokens = request.params.arguments?.inputTokens;
+                const outputTokens = request.params.arguments?.outputTokens;
+                const model = request.params.arguments?.model;
+                const provider = request.params.arguments?.provider;
+                const cost = request.params.arguments?.cost;
+                const skill = request.params.arguments?.skill;
+                if (activeAction !== undefined || phaseProgress !== undefined) {
+                    await updateSubTask(activeAction ?? null, phaseProgress ?? null);
+                }
+                logTokenUsage({
+                    inputTokens,
+                    outputTokens,
+                    model,
+                    provider,
+                    cost: cost ?? null,
+                    timestamp: new Date().toISOString(),
+                    skill,
+                });
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Status updated and token usage logged successfully for skill "${skill}".`,
+                        },
                     ],
                 };
             }

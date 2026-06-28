@@ -3,14 +3,12 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
 
-import {
+import { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS } from '../core/models/PipelineState.js';
+import type {
   PipelineState,
   SelfHealingState,
   QualityGateState,
-  DEFAULT_STATE,
-  PIPELINE_PHASES,
   PhaseState,
-  PHASE_KEYS,
 } from '../core/models/PipelineState.js';
 import { PipelineService } from '../core/services/PipelineService.js';
 import { StateQueryService } from '../core/services/StateQueryService.js';
@@ -21,15 +19,9 @@ import { HttpWebhookEventPublisher } from '../infrastructure/adapters/HttpWebhoo
 import { CombinedEventPublisher } from '../infrastructure/adapters/CombinedEventPublisher.js';
 
 // Re-export models for backward compatibility
-export {
-  PipelineState,
-  SelfHealingState,
-  QualityGateState,
-  DEFAULT_STATE,
-  PIPELINE_PHASES,
-  PhaseState,
-  PHASE_KEYS,
-};
+export { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS };
+
+export type { PipelineState, SelfHealingState, QualityGateState, PhaseState };
 
 // ─── Forgewright Root Detection ──────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);

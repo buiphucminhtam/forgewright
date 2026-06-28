@@ -12,6 +12,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { registerPrompts } from './api/prompts.js';
 import { registerTools } from './api/tools.js';
 import { setWorkspaceRoot } from './state/pipeline-manager.js';
+import { setMcpServer } from './state/rpc-client.js';
 const server = new Server({
     name: 'forgewright-mcp-global',
     version: '1.0.0',
@@ -23,6 +24,7 @@ const server = new Server({
 });
 // Detect and set workspace root BEFORE registering handlers
 setWorkspaceRoot();
+setMcpServer(server);
 registerPrompts(server);
 registerTools(server);
 async function run() {
