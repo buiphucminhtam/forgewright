@@ -527,6 +527,62 @@ bash forgewright-mcp-setup.sh diagnose --verbose
 
 4. Check logs in IDE console
 
+### Windows Compatibility (Path & TSX Errors)
+
+On Windows, path structures and command execution differ from macOS. If you encounter errors like `ERR_MODULE_NOT_FOUND` or executables not found:
+
+1. **GitNexus Path (Global)**: 
+   - **macOS**: Typically `/opt/homebrew/bin/gitnexus` or `~/.local/bin/gitnexus`.
+   - **Windows**: Use `"gitnexus"` (if in PATH) or absolute node path like `"C:/Users/<YourUsername>/AppData/Roaming/npm/node_modules/gitnexus/dist/cli/index.js"` with `"command": "node"`.
+
+2. **TypeScript Execution (tsx)**:
+   - Avoid using bash-style paths `/c/Users/...` directly as the executable `command` on Windows.
+   - Instead, configure the server to run with `"command": "npx"` and `"args": ["tsx", "C:/Users/<YourUsername>/.forgewright/mcp-server/src/index.ts"]`.
+
+3. **Claude Code Hooks**:
+   - For Windows environments, prefix hook script paths with `bash` to ensure they execute correctly under non-POSIX shells:
+     ```json
+     "hooks": {
+       "PostMessage": "bash D:/path/to/forgewright/scripts/forgewright-memory-hook.sh tick",
+       "PostToolUse": "bash D:/path/to/forgewright/scripts/forgewright-memory-hook.sh checkpoint"
+     }
+     ```
+
+4. **OpenAI Codex CLI (`config.toml` on Windows)**:
+   - Ensure the TOML configurations use Windows paths and native tools:
+     ```toml
+     [mcp_servers.forgewright]
+     enabled = true
+     transport = { type = "stdio" }
+     command = "npx"
+     args = ["tsx", "C:/Users/<YourUsername>/.forgewright/mcp-server/src/index.ts"]
+
+     [mcp_servers.gitnexus]
+     enabled = true
+     transport = { type = "stdio" }
+     command = "node"
+     args = ["C:/Users/<YourUsername>/AppData/Roaming/npm/node_modules/gitnexus/dist/cli/index.js", "mcp"]
+     ```
+
+5. **Antigravity CLI & App (`mcp_config.json` on Windows)**:
+   - Ensure both `~/.gemini/config/mcp_config.json` and `~/.gemini/antigravity-cli/mcp_config.json` configure the servers correctly:
+     ```json
+     "forgewright": {
+       "command": "npx",
+       "args": [
+         "tsx",
+         "C:/Users/<YourUsername>/.forgewright/mcp-server/src/index.ts"
+       ]
+     },
+     "gitnexus": {
+       "command": "node",
+       "args": [
+         "C:/Users/<YourUsername>/AppData/Roaming/npm/node_modules/gitnexus/dist/cli/index.js",
+         "mcp"
+       ]
+     }
+     ```
+
 ### Workspace Detection Issues
 
 **Symptoms:** Wrong project context

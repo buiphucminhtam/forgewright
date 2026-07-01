@@ -284,6 +284,8 @@ echo "Memory:          $([ -f .forgewright/memory.jsonl ] && echo 'OK' || echo '
 | `realpath` không tìm thấy (macOS) | `brew install coreutils` |
 | `python3` không tìm thấy | Cài Python 3.8+ cho tính năng memory |
 | Windows: `bash` không tìm thấy | Dùng lệnh PowerShell tương đương |
+| Windows: Lỗi đường dẫn GitNexus hoặc TSX (`ERR_MODULE_NOT_FOUND`) | **1. GitNexus**: Sử dụng `"command": "node"` và chỉ định file js chạy chính thay vì `/opt/homebrew/bin/gitnexus`. <br/> **2. TSX (forgewright)**: Tránh gọi trực tiếp `/c/Users/...`, hãy đổi cấu hình chạy sang `"command": "npx"` và `"args": ["tsx", "C:/Users/<Username>/.forgewright/mcp-server/src/index.ts"]`. |
+| Windows: Claude Code Hook không chạy | Thêm tiền tố `bash` trước đường dẫn script hook (Ví dụ: `"PostMessage": "bash D:/path/to/script.sh tick"`). |
 
 ---
 
