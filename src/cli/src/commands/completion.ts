@@ -3,8 +3,7 @@
  */
 import type { Command } from "commander";
 import { readFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 
 const completionsDir = join(process.cwd(), "completions");
 

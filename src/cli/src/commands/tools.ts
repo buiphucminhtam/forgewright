@@ -7,7 +7,6 @@ import {
   getAllTools,
   getToolsByCategory,
   searchTools,
-  getCategories,
   getToolCount,
   getToolCountByCategory,
 } from "../core/tool-registry.js";
@@ -56,7 +55,7 @@ export function registerToolsCommands(program: Command): void {
 }
 
 async function handleToolsCommand(
-  command: string,
+  _command: string,
   options: ToolsListOptions,
 ): Promise<void> {
   const startTime = Date.now();
@@ -193,7 +192,10 @@ function printHumanReadable(
   }
 
   // Group by category
-  const grouped = new Map<string, typeof tools>();
+  const grouped = new Map<
+    string,
+    { name: string; description: string; category: string }[]
+  >();
   for (const tool of tools) {
     const existing = grouped.get(tool.category) || [];
     existing.push(tool);

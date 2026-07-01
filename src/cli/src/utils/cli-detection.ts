@@ -7,7 +7,9 @@ export interface CliAvailability {
   error?: string;
 }
 
-export function checkCli(name: "claude" | "codex"): CliAvailability {
+export type SupportedCli = "claude" | "codex" | "agy";
+
+export function checkCli(name: SupportedCli): CliAvailability {
   const result = spawnSync(name, ["--version"], {
     encoding: "utf-8",
     shell: process.platform === "win32",

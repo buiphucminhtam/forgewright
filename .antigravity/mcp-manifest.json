@@ -1,16 +1,16 @@
 {
   "manifest_version": "1.0",
-  "workspace": "D:/Sources/Github/forgewright",
+  "workspace": "/Users/buiphucminhtam/GitHub/forgewright",
   "forgewright": {
     "version": "8.2.0",
-    "canonical": "C:/Users/buiph/.forgewright",
-    "server": "C:/Users/buiph/.forgewright/mcp-server/src/index.ts"
+    "canonical": "/Users/buiphucminhtam/.forgewright",
+    "server": "/Users/buiphucminhtam/.forgewright/mcp-server/src/index.ts"
   },
   "servers": [
     {
       "name": "forgewright",
       "type": "forgewright-mcp-server",
-      "path": "C:/Users/buiph/.forgewright/mcp-server/src/index.ts",
+      "path": "/Users/buiphucminhtam/.forgewright/mcp-server/src/index.ts",
       "enabled": true,
       "auto_start": true
     },
@@ -28,9 +28,9 @@
     "workspace_detection": "git-root"
   },
   "platforms": {
-    "cursor": "C:/Users/buiph/.cursor/mcp.json",
-    "claude_code": "C:/Users/buiph/.claude/settings.json",
+    "cursor": "/Users/buiphucminhtam/.cursor/mcp.json",
+    "claude_code": "/Users/buiphucminhtam/.claude/settings.json",
     "antigravity": "not_found"
   },
-  "generated_at": "2026-07-01T11:41:00Z"
+  "generated_at": "2026-07-01T11:30:00Z"
 }

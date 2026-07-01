@@ -3,7 +3,7 @@
  */
 import type { Command } from "commander";
 import pc from "picocolors";
-import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs";
 import { dirname } from "path";
 import { getConfig, CONFIG_PATHS, SOURCE_LABELS } from "../config/store.js";
 import { buildEnvelope } from "../types/index.js";

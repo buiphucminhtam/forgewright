@@ -240,7 +240,7 @@ export interface ValidationResult {
 
 export function validateTransform(
   transform: Transform,
-  engine: Engine,
+  _engine: Engine,
 ): ValidationResult {
   const result: ValidationResult = {
     valid: true,

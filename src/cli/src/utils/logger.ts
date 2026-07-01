@@ -13,17 +13,17 @@ export interface LoggerOptions {
 
 export class Logger {
   private quiet: boolean;
-  private debug: boolean;
+  private isDebug: boolean;
   private useColors: boolean;
 
   constructor(options: LoggerOptions) {
     this.quiet = options.quiet;
-    this.debug = options.debug;
+    this.isDebug = options.debug;
     this.useColors = options.useColors;
   }
 
   debug(message: string, ...args: unknown[]): void {
-    if (this.debug) {
+    if (this.isDebug) {
       this.log("debug", message, ...args);
     }
   }

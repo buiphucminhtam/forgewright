@@ -6,15 +6,12 @@ import pc from "picocolors";
 import {
   convertPosition,
   convertRotation,
-  convertQuaternion,
   convertScale,
-  convertTransform,
   parsePosition,
   formatPosition,
   formatRotation,
   formatScale,
   validateTransform,
-  isPrecisionRisk,
   getPrecisionWarning,
   ENGINE_SPECS,
   type Vector3,
@@ -451,6 +448,7 @@ async function handleBatch(
   file: string | undefined,
   options: BatchOptions,
 ): Promise<void> {
+  const startTime = Date.now();
   const from = options.from.toLowerCase() as Engine;
   const to = options.to.toLowerCase() as Engine;
 
@@ -509,7 +507,11 @@ async function handleBatch(
               input: r.input,
               output: r.output,
             },
-            { ok: true },
+            {
+              ok: true,
+              duration_ms: Date.now() - startTime,
+              version: VERSION,
+            },
           ),
         ),
       );

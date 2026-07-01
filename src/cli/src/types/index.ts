@@ -111,7 +111,7 @@ export const CONFIG_SOURCES = {
   INLINE_FLAGS: 5,
 } as const;
 
-export type ConfigSource = (typeof CONFIG_SOURCES)[keyof typeof CONFIG_SOURCES];
+export type ConfigSource = keyof typeof CONFIG_SOURCES;
 
 /** Resolved configuration entry */
 export interface ConfigEntry {

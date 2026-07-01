@@ -18,6 +18,10 @@ import { registerCoordsCommand } from "./commands/coords.js";
 import { registerAutonomousTestCommand } from "./commands/test.js";
 import { registerExpertCommand } from "./commands/expert.js";
 import { registerTokenCommand } from "./commands/token.js";
+import {
+  maybeNotifyAutoDelegation,
+  registerDelegateCommand,
+} from "./commands/delegate.js";
 import { VERSION } from "./version.js";
 import { EXIT_CODES } from "./exit-codes.js";
 import pc from "picocolors";
@@ -46,6 +50,7 @@ export function buildProgram(): Command {
   registerAutonomousTestCommand(program);
   registerExpertCommand(program);
   registerTokenCommand(program);
+  registerDelegateCommand(program);
 
   // Initialize config
   const config = getConfig();
@@ -67,6 +72,8 @@ Examples:
   $ forge expert use codex --track-tokens  # Switch expert mode to Codex CLI
   $ forge token on                    # Enable local token tracking
   $ forge token report --period week  # Show local token usage summary
+  $ forge delegate status             # Show auto-detected controller/worker state
+  $ forge delegate auto               # Auto-enable when Codex/Claude + Agy are available
   $ forge --version                   # Show version
 
 Agent Mode:
@@ -88,6 +95,7 @@ Environment Variables:
 
 export async function main(): Promise<void> {
   const program = buildProgram();
+  maybeNotifyAutoDelegation();
 
   try {
     // Parse arguments

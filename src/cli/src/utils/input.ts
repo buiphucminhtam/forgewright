@@ -9,7 +9,6 @@
  */
 import { readFileSync, existsSync } from "fs";
 import { resolve, isAbsolute } from "path";
-import { AgentEnvelope } from "../types/index.js";
 import { EXIT_CODES } from "../exit-codes.js";
 
 /**

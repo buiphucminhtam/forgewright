@@ -11,6 +11,7 @@
 import { homedir } from "os";
 import { join, resolve } from "path";
 import { existsSync, readFileSync } from "fs";
+import { CONFIG_SOURCES } from "../types/index.js";
 import type { ConfigSource, ConfigEntry } from "../types/index.js";
 
 // Config source priorities
@@ -48,7 +49,6 @@ export const ENV_PREFIX = "FORGE_";
  */
 export class ConfigStore {
   private values: Map<string, ConfigEntry> = new Map();
-  private inlineFirst = false;
 
   constructor() {
     this.loadDefaults();
@@ -92,10 +92,9 @@ export class ConfigStore {
     existingSource: ConfigSource,
     newSource: ConfigSource,
   ): boolean {
-    if (this.inlineFirst) {
-      return existingSource > newSource;
-    }
-    return existingSource > newSource;
+    const existingPriority = CONFIG_SOURCES[existingSource];
+    const newPriority = CONFIG_SOURCES[newSource];
+    return existingPriority >= newPriority;
   }
 
   /**
@@ -132,13 +131,6 @@ export class ConfigStore {
    */
   delete(key: string): boolean {
     return this.values.delete(key);
-  }
-
-  /**
-   * Enable inline-first mode (higher priority for inline/flag values)
-   */
-  enableInlineFirst(): void {
-    this.inlineFirst = true;
   }
 
   /**
@@ -179,7 +171,7 @@ export class ConfigStore {
    */
   loadEnvVars(): void {
     for (const [key, value] of Object.entries(process.env)) {
-      if (key.startsWith(ENV_PREFIX)) {
+      if (key.startsWith(ENV_PREFIX) && value !== undefined) {
         const configKey = key
           .slice(ENV_PREFIX.length)
           .toLowerCase()

@@ -11,8 +11,6 @@
 import type { Command } from "commander";
 import pc from "picocolors";
 import { execSync } from "child_process";
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { resolve } from "path";
 import { buildEnvelope } from "../types/index.js";
 import { VERSION } from "../version.js";
 
@@ -294,6 +292,7 @@ async function handleAutonomous(options: AutonomousOptions): Promise<void> {
 }
 
 async function handleUpdateBaseline(options: { json: boolean }): Promise<void> {
+  const startTime = Date.now();
   console.log(pc.bold("\n  Updating Visual Baselines"));
   console.log(pc.gray("  ".repeat(50)));
 
@@ -309,6 +308,7 @@ async function handleUpdateBaseline(options: { json: boolean }): Promise<void> {
             { success: true },
             {
               ok: true,
+              duration_ms: Date.now() - startTime,
               version: VERSION,
             },
           ),
@@ -327,7 +327,7 @@ async function handleUpdateBaseline(options: { json: boolean }): Promise<void> {
 
 async function runTestLayer(
   layer: string,
-  verbose: boolean,
+  _verbose: boolean,
 ): Promise<TestResult> {
   const result: TestResult = {
     passed: true,
@@ -449,7 +449,7 @@ function classifyError(errorMessage: string): TestError["type"] {
 
 async function attemptAutoFix(
   errors: TestError[],
-  maxAttempts: number,
+  _maxAttempts: number,
 ): Promise<AutoFixResult> {
   const result: AutoFixResult = {
     success: false,

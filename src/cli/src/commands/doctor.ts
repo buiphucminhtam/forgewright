@@ -252,7 +252,7 @@ function findForgewrightRoot(cwd: string): string | null {
 
 function printHumanReadable(
   checks: HealthCheck[],
-  healthy: number,
+  _healthy: number,
   warnings: number,
   errors: number,
   verbose: boolean,

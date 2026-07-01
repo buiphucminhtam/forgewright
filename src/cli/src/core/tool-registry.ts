@@ -3,7 +3,7 @@
  *
  * Provides discoverable tool specifications for AI agents
  */
-import type { ToolSpec, ToolInputField } from "../types/index.js";
+import type { ToolSpec } from "../types/index.js";
 
 // ============================================================================
 // Tool Categories
