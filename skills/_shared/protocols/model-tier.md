@@ -11,6 +11,9 @@ For optional high-stakes escalation through local Claude CLI or Codex CLI, use `
 | **Haiku** | `claude-haiku-4-5-20251001` | Read-only, status checks, formatting | Lowest | Fastest |
 | **Sonnet** | `claude-sonnet-4-6` | Implementation, design, analysis | Medium | Medium |
 | **Opus** | `claude-opus-4-6` | Multi-document synthesis, high-stakes review | Highest | Slowest |
+| **Flash** | `gemini-3.5-flash` | Multi-step agentic workflows (PM, DevOps, Research) | Low | Very Fast |
+| **Pro** | `gemini-3.1-pro` | Complex code generation and architecture design | High | Medium |
+
 
 ## Skill-to-Tier Mapping
 
@@ -53,6 +56,15 @@ All other skills default to Sonnet. This includes:
 - **Execution skills:** Software Engineer, Frontend Engineer, QA, DevOps, etc.
 - **Design skills:** Product Manager, Solution Architect, Game Designer, etc.
 - **Analysis skills:** Security Engineer, Performance Engineer, Data Scientist, etc.
+
+### Gemini (Antigravity) Mappings
+
+When using Gemini as the backend provider:
+- **Gemini 3.5 Flash:** Default for multi-step agentic workflows, research, and high-throughput orchestration (e.g., PM, DevOps, Research). Always use `thinking_level: MINIMAL` to maximize speed.
+- **Gemini 3.1 Pro:** Default for complex code generation, architecture design, and high-stakes reasoning. Always use `thinking_level: HIGH` and Temperature `1.0`.
+- **Media Resolution:** For OCR and dense PDFs, the default is `media_resolution: HIGH`. Note that `ULTRA_HIGH` resolution must be set per media part, not globally.
+
+
 
 ## Frontmatter Configuration
 

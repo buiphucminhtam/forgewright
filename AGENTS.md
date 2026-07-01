@@ -46,6 +46,11 @@ All sequence diagrams generated or requested in this repository (in documents, d
 ## ⚠️ MANDATORY RULE: CONDITIONAL GITNEXUS & SEQUENCE UPDATE
 If changes modify logic files (e.g. `.ts`, `.py`, `.js`, `.cs`, `.gd`, `.go`, `.rs`, etc. under `src/`, `mcp/`, or `scripts/` excluding tests), you MUST run `gitnexus analyze` and `npx tsx scripts/generate-sequence.ts` to keep the code index and sequence flow diagrams updated.
 
+## ⚠️ MANDATORY RULE: GEMINI 3 PARAMETERS
+- **Deprecate `thinking_budget`**: Never use the legacy `thinking_budget` parameter in API calls or prompts. It will cause API Error 400.
+- **Implement `thinking_level`**: Use `thinking_level: MINIMAL` for high-throughput Agentic modes or `thinking_level: HIGH` for Architect/Coding modes requiring verified reasoning.
+- **Enforce Temperature `1.0`**: When executing reasoning-heavy tasks on Gemini 3.x, ensure temperature is set to `1.0` to prevent infinite loops.
+
 <!-- NOTE: Evidence-First section is duplicated in CLAUDE.md (for Claude Code).
      Source of truth: skills/_shared/protocols/evidence-first.md -->
 
@@ -769,7 +774,7 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (17950 symbols, 23578 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (17959 symbols, 23597 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

@@ -30,6 +30,12 @@ If you are running in an environment with the Forgewright MCP Server connected, 
 3. If a step requires explicit human approval (e.g. locking the architecture), call `fw_request_gate_approval`.
 **Failure to call these MCP tools will cause the user's dashboard to permanently hang at "Interpret".**
 
+### ⚠️ MANDATORY RULE: GEMINI 3 PARAMETERS
+- **Deprecate `thinking_budget`**: Never use the legacy `thinking_budget` parameter in API calls or prompts. It will cause API Error 400.
+- **Implement `thinking_level`**: Use `thinking_level: MINIMAL` for high-throughput Agentic modes or `thinking_level: HIGH` for Architect/Coding modes requiring verified reasoning.
+- **Enforce Temperature `1.0`**: When executing reasoning-heavy tasks on Gemini 3.x, ensure temperature is set to `1.0` to prevent infinite loops.
+
+
 ### Middleware Chain (v8.0 — DeerFlow Pattern)
 
 Every skill invocation is wrapped by an ordered middleware chain. Implementation details are in `skills/production-grade/middleware/`:

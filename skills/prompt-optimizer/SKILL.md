@@ -100,7 +100,7 @@ import dspy
 lm = dspy.LM(
     'anthropic/claude-sonnet-4-20250514',
     api_key=os.getenv('ANTHROPIC_API_KEY'),
-    temperature=0.3,
+    temperature=1.0,
     max_tokens=4096,
 )
 dspy.settings.configure(lm=lm)

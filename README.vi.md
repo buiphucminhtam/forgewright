@@ -74,7 +74,7 @@ Bạn muốn theo dõi trực quan luồng hoạt động của agent theo thờ
 Trong kỹ nghệ AI hiện đại, một mô hình ngôn ngữ lớn (LLM) thô chỉ đóng vai trò 20% trong một agent hoàn chỉnh. 80% còn lại thuộc về **Harness (Khung vận hành)** — hệ thống điều phối execution pipeline, các rào cản an toàn (safety guardrails), bộ nhớ (cognitive memory), và các lớp kiểm thử tự động điều khiển cách AI hoạt động.
 
 <p align="center">
-  <strong>Agent = Model (Claude/GPT) + Forgewright Harness</strong>
+  <strong>Agent = Model (Claude/GPT/Gemini) + Forgewright Harness</strong>
 </p>
 
 Forgewright đóng vai trò là một Harness phân phối phần mềm chuẩn production dành cho các AI coding agent:
@@ -84,6 +84,8 @@ Forgewright đóng vai trò là một Harness phân phối phần mềm chuẩn 
 *   **Đồ thị nhận thức SQLite (FluxMem)**: Đảm bảo cô lập ngữ cảnh cho từng dự án riêng biệt và bộ nhớ đệm phục hồi quy trình dưới một giây (Procedural Circuits).
 *   **Hệ thống phòng vệ chủ động**: Tự động quét lỗ hổng bảo mật, tích hợp kiểm thử CI/CD và bảo vệ các thư mục nhạy cảm, ngăn các ảo giác của AI đưa lỗ hổng bảo mật vào dự án.
 *   **Quy trình kiểm thử Hybrid BDD-First**: Tự động phân loại độ phức tạp của tác vụ dựa trên số liệu của GitNexus. Bắt buộc thực hiện theo luồng BDD/TDD-first (`BA (BDD) -> QA (Stubs) -> Build -> Test`) cho các tác vụ phức tạp, và cho phép kiểm thử sau (test-after) đối với các hotfix rủi ro thấp.
+*   **Tối ưu hóa Gemini 3.x Native**: Hỗ trợ tối ưu hoàn toàn cho Gemini 3.5 Flash (cho các luồng điều phối nhanh với `thinking_level: MINIMAL`) và Gemini 3.1 Pro (cho lập luận phức tạp với `thinking_level: HIGH`). Tích hợp sẵn cơ chế ép buộc Temperature `1.0`, bảo toàn Thought Signatures (tránh lỗi API 400), và tự động kích hoạt Context Caching cho ngữ cảnh lớn hơn 4,096 tokens.
+
 
 ---
 

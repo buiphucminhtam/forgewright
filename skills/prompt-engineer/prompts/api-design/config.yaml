@@ -3,7 +3,7 @@ description: "Design RESTful and GraphQL APIs with OpenAPI specifications"
 model:
   primary: claude-3-5-sonnet
   fallback: claude-3-haiku
-temperature: 0.3
+temperature: 1.0
 max_tokens: 4000
 output_schema: json
 source_prompts: 6

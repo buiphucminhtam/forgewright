@@ -61,7 +61,7 @@ Want to visualize your agent pipelines in real-time? Check out the **[ForgeWrigh
 In modern AI engineering, a raw language model is only 20% of a production agent. The other 80% is the **Harness**—the execution pipeline, safety guardrails, memory, and validation layers that govern how the AI operates.
 
 <p align="center">
-  <strong>Agent = Model (Claude/GPT) + Forgewright Harness</strong>
+  <strong>Agent = Model (Claude/GPT/Gemini) + Forgewright Harness</strong>
 </p>
 
 Forgewright acts as a production-grade software delivery harness for AI coding agents:
@@ -73,6 +73,8 @@ Forgewright acts as a production-grade software delivery harness for AI coding a
 *   **Hybrid BDD-First Testing Flow**: Automatically classifies task complexity using GitNexus metrics. Enforces a strict BDD/TDD-first sequence (`BA (BDD) -> QA (Stubs) -> Build -> Test`) for high-complexity tasks, while allowing a fast-track test-after flow for low-risk hotfixes.
 *   **Premium Judgment on Demand**: Optional Expert CLI Mode routes only high-stakes planning, architecture, security, code review, and gate decisions through your local Claude CLI or Codex CLI. It is off by default, works with just one CLI, and keeps premium model usage reserved for the moments that matter.
 *   **Built-in Cost Control**: `forge token on` enables local token tracking, budgets, reports, and dashboards so teams can prove where premium calls improve quality instead of guessing.
+*   **Gemini 3.x Native Optimization**: Direct support for Gemini 3.5 Flash (for high-speed agentic routing with `thinking_level: MINIMAL`) and Gemini 3.1 Pro (for complex reasoning with `thinking_level: HIGH`). Features automated Temperature `1.0` enforcement, Thought Signatures preservation (to prevent API 400 errors), and Context Caching thresholds.
+
 
 ---
 

@@ -697,7 +697,7 @@ model:
   fallback: "claude-3-haiku"
 
 parameters:
-  temperature: 0.3
+  temperature: 1.0
   max_tokens: 500
 ```
 

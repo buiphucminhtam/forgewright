@@ -478,7 +478,7 @@ autonomous:
   llm:
     provider: anthropic
     model: claude-sonnet-4
-    temperature: 0.3
+    temperature: 1.0
     maxTokens: 2000
 
   reporting:

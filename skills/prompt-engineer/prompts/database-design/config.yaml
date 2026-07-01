@@ -1,5 +1,5 @@
 model: gpt-4o
-temperature: 0.3
+temperature: 1.0
 maxTokens: 4000
 
 qualityBars:

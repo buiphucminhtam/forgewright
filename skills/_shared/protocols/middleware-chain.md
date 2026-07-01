@@ -64,7 +64,7 @@ Result / Next Skill
 | ⑨ | **Memory** | memory-manager.md §Hooks + session-lifecycle §Per-request | `after_skill()` **and** `turn_close()` | After each skill: extract decisions/blockers → local_memory. **After each completed user request:** mandatory Turn-Close `add` (session + optional decisions/architecture/blockers) — not optional unless `LOCAL_MEMORY_DISABLED` / `FORGEWRIGHT_SKIP_MEMORY` |
 | ⑩ | **GracefulFailure** | graceful-failure.md | `on_error()` | Detect stuck states, manage retry counts, graceful exit. Delegates to ASIP after 2+ failures. |
 | ⑪ | **ASIP** | self-improving-loop.md | `after_skill()` + `on_error()` | **CANONICAL self-improvement loop.** 2+ failures → write verification artifact → run → research (NotebookLM/WebSearch) → update skills. Single source of truth for all self-improvement. |
-| ⑫ | **CircuitBreaker** | circuit-breaker.md | `after_skill()` | Update circuit state, transition based on outcome |
+| ⑫ | **CircuitBreaker** | circuit-breaker.md | `after_skill()` | Fault isolation + state machine. Must explicitly capture and pass back the encrypted Thought Signatures in sequential function calls (Gemini 3.x) to avoid Hard Error 400. |
 | ⑬ | **Bulkhead** | bulkhead.md | `after_skill()` | Enforce resource limits per worker type |
 | ⑭ | **Verification** | verification.md | `after_skill()` | Verify all assumptions using Evidence-First Thinking |
 
