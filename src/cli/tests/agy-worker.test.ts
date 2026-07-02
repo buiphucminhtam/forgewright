@@ -13,13 +13,18 @@ describe("Agy worker adapter", () => {
       sandbox: true,
     });
 
+    const prompt =
+      "Read WORKER_INSTRUCTIONS.md and CONTRACT.json, execute only the contracted task, run its verification commands, and write DELIVERY.json.";
+
     expect(args).toEqual([
-      "--print",
       "--model",
       "Gemini 3.5 Flash (High)",
       "--sandbox",
-      "Read WORKER_INSTRUCTIONS.md and CONTRACT.json, execute only the contracted task, run its verification commands, and write DELIVERY.json.",
+      "--print",
+      prompt,
     ]);
+    expect(args.at(-2)).toBe("--print");
+    expect(args.at(-1)).toBe(prompt);
     expect(args).not.toContain("--dangerously-skip-permissions");
   });
 

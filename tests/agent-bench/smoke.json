@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "name": "Smoke Benchmark Suite",
+  "description": "Exercises agent benchmark schema and runner dry-runs without requiring external credentials.",
+  "defaultProviderSettings": {
+    "provider": "agy",
+    "model": "Gemini 3.5 Flash (High)"
+  },
+  "defaultAttempts": 1,
+  "defaultTimeoutMs": 10000,
+  "tasks": [
+    {
+      "id": "smoke-task-1",
+      "category": "file-operations",
+      "prompt": "Create a file named hello.txt containing the text 'Hello World'.",
+      "attempts": 2,
+      "timeoutMs": 5000,
+      "workspace": "smoke-workspace-1",
+      "verifierCommands": [
+        "node -e \"const fs = require('fs'); if (!fs.existsSync('hello.txt')) process.exit(1);\""
+      ]
+    },
+    {
+      "id": "smoke-task-2",
+      "category": "validation",
+      "prompt": "Verify environment exit code is standard.",
+      "attempts": 1,
+      "timeoutMs": 2000,
+      "workspace": "smoke-workspace-2",
+      "verifierCommands": [
+        "node -e \"process.exit(0)\""
+      ]
+    }
+  ]
+}

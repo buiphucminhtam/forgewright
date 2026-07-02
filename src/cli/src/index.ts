@@ -22,6 +22,7 @@ import {
   maybeNotifyAutoDelegation,
   registerDelegateCommand,
 } from "./commands/delegate.js";
+import { registerBenchCommand } from "./commands/bench.js";
 import { VERSION } from "./version.js";
 import { EXIT_CODES } from "./exit-codes.js";
 import pc from "picocolors";
@@ -51,6 +52,7 @@ export function buildProgram(): Command {
   registerExpertCommand(program);
   registerTokenCommand(program);
   registerDelegateCommand(program);
+  registerBenchCommand(program);
 
   // Initialize config
   const config = getConfig();

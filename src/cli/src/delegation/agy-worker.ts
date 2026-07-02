@@ -13,11 +13,12 @@ export interface AgyWorkerResult {
 }
 
 export function buildAgyArgs(options: AgyWorkerOptions): string[] {
-  const args = ["--print", "--model", options.model];
+  const args = ["--model", options.model];
   if (options.sandbox) {
     args.push("--sandbox");
   }
   args.push(
+    "--print",
     `Read WORKER_INSTRUCTIONS.md and ${options.contractFileName}, execute only the contracted task, run its verification commands, and write DELIVERY.json.`,
   );
   return args;
