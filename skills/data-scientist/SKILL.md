@@ -273,7 +273,7 @@ class SemanticCache:
         norm_b = sum(x * x for x in b) ** 0.5
         return dot_product / (norm_a * norm_b)
     
-    def get(self, prompt: str, temperature: float = 1.0) -> Optional[dict]:
+    def get(self, prompt: str, temperature: float = 0.3) -> Optional[dict]:
         """Retrieve cached response if similar prompt exists."""
         if temperature > 0.5:
             return None  # Don't cache high-temperature responses

@@ -3,7 +3,7 @@ description: "Conduct deep technical research with evidence-based findings"
 model:
   primary: claude-3-5-sonnet
   fallback: claude-3-haiku
-temperature: 1.0
+temperature: 0.4
 max_tokens: 5000
 output_schema: json
 source_prompts: 9

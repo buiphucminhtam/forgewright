@@ -540,7 +540,7 @@ templates:
   pr: ./templates/pr
 ai:
   model: claude-3-5-sonnet
-  temperature: 1.0
+  temperature: 0.3
 ```
 
 ---

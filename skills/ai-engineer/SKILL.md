@@ -202,7 +202,7 @@ class LLMProvider(ABC):
         self, 
         messages: list[dict], 
         model: str,
-        temperature: float = 1.0,
+        temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> LLMResponse:

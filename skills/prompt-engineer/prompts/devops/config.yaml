@@ -3,7 +3,7 @@ description: "Build CI/CD pipelines, Docker configs, and infrastructure"
 model:
   primary: claude-3-5-sonnet
   fallback: claude-3-haiku
-temperature: 1.0
+temperature: 0.3
 max_tokens: 4000
 output_schema: json
 source_prompts: 12

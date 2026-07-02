@@ -2,7 +2,7 @@
 # Template library for game-dev category in Forgewright
 
 model: gpt-4o
-temperature: 1.0
+temperature: 0.7
 maxTokens: 4000
 
 qualityBars:

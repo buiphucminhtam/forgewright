@@ -52,7 +52,7 @@ action:
     3. [Action 3]
   
   model: "Let AI Decide"
-  temperature: 1.0              # Lower = more predictable
+  temperature: 0.3              # Lower = more predictable
   max_tokens: 500
 
   output:

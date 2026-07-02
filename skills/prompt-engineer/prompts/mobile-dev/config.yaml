@@ -2,7 +2,7 @@
 # Generated: 2026-06-02
 
 model: gpt-4o
-temperature: 1.0
+temperature: 0.3
 maxTokens: 4000
 
 qualityBars:
