@@ -1525,6 +1525,11 @@ main() {
     detect_forgewright
     PROJECT_ROOT="$(detect_actual_project_root)"
 
+    # Submodule update check (runs when setup is executed in a parent project)
+    if [[ "$FORGEWRIGHT_IS_PROJECT" == "false" ]] && [[ -f "${FORGEWRIGHT_DIR}/scripts/forgewright-submodule-check.sh" ]]; then
+        bash "${FORGEWRIGHT_DIR}/scripts/forgewright-submodule-check.sh" || true
+    fi
+
     # Set default config paths
     CURSOR_CONFIG="$HOME/.cursor/mcp.json"
     CLAUDE_CODE_CONFIG="$HOME/.claude/settings.json"
