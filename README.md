@@ -12,7 +12,7 @@
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
   <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-81-brightgreen?style=flat-square" alt="Skills" />
+  <img src="https://img.shields.io/badge/skills-83-brightgreen?style=flat-square" alt="Skills" />
   <img src="https://img.shields.io/badge/MCP-Supported-purple?style=flat-square" alt="MCP Supported" />
   <img src="https://img.shields.io/badge/Architecture-Agentic_Framework-orange?style=flat-square" alt="Agentic Framework" />
   <a href="https://opensource.org/licenses/MIT">
@@ -263,7 +263,7 @@ flowchart TB
     subgraph LEVEL1["⚡ Level 1 — Zero Setup"]
         direction TB
         L1A["✅ Just works"]
-        L1B["81 AI skills auto-activate"]
+        L1B["83 AI skills auto-activate"]
         L1C["No install required"]
     end
 
@@ -729,7 +729,7 @@ Use the Token Tracker skill for AI-powered analysis:
 
 ---
 
-## 81 Skills, 24 Modes
+## 83 Skills, 24 Modes
 
 ```mermaid
 flowchart TD
@@ -1175,6 +1175,12 @@ bash scripts/forgewright-mcp-setup.sh --force
 ---
 
 ## Changelog
+### v8.7.0 (July 2026) — Evidence-Gated Kernel & Parallel Skill Distillation
+**Major Changes:**
+- **⚡ Forgewright Lite — Evidence-Gated Kernel (Upgraded v3)**: Integrated a lightweight reasoning kernel optimized for fast models (Gemini Flash), featuring turn-level script verification via `.forgewright/verify/<turn>.json` evidence files, turn-blocking platform hooks, ≤7k tokens boot budget, and objective escalations to Sonnet/Opus models.
+- **Automated Skill Distillation & Batch Upgrader**: Implemented `upgrade-skills.py` to query NotebookLM CLI in parallel via multi-agent subagents, successfully distilling all 83 skills to Lite overlays (`LITE.md`).
+- **Self-Healing Skill Indexing**: Integrated dynamic generation of `kernel/INDEX.md` by scanning all `LITE.md` overlays, automatically mapping triggers and paths.
+
 ### v8.2.0 (June 2026) — Test Coverage Reporting & State Isolation
 **Major Changes:**
 - **Vitest Coverage Reporter Fix**: Removed `minimatch` version override in `mcp/package.json` to resolve conflicts with `test-exclude` and enable successful Vitest coverage generation and reporting in CI/CD gates.

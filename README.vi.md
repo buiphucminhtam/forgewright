@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/version-8.7.0-blue.svg" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-81-brightgreen.svg" alt="Skills" />
+  <img src="https://img.shields.io/badge/skills-83-brightgreen.svg" alt="Skills" />
   <img src="https://img.shields.io/badge/modes-24-blueviolet.svg" alt="Modes" />
   <img src="https://img.shields.io/badge/protocols-29-00CED1.svg" alt="Protocols" />
   <img src="https://img.shields.io/badge/Game_Dev-Unity·Unreal·Godot·Roblox-FF4500.svg" alt="Game Dev" />
@@ -22,7 +22,7 @@
 
 ## TL;DR — Forgewright là gì?
 
-**Tưởng tượng:** Bạn có một đội ngũ 81 chuyên gia AI. Mỗi người giỏi một việc khác nhau — viết code, kiểm tra bảo mật, thiết kế game, tối ưu tốc độ. Forgewright là "người quản lý" — khi bạn nói "tôi muốn build một app bán hàng", nó tự biết cần gọi chuyên gia nào, theo thứ tự nào, và kiểm tra chất lượng ra sao.
+**Tưởng tượng:** Bạn có một đội ngũ 83 chuyên gia AI. Mỗi người giỏi một việc khác nhau — viết code, kiểm tra bảo mật, thiết kế game, tối ưu tốc độ. Forgewright là "người quản lý" — khi bạn nói "tôi muốn build một app bán hàng", nó tự biết cần gọi chuyên gia nào, theo thứ tự nào, và kiểm tra chất lượng ra sao.
 
 > **Một câu:** Forgewright tự động chọn đúng chuyên gia AI cho đúng việc, từ ý tưởng đến sản phẩm.
 
@@ -96,7 +96,7 @@ flowchart LR
     subgraph L1["⚡ Level 1 — Basic"]
         direction TB
         L1A["✅ Đã có gì"]
-        L1B["• 81 kỹ năng AI"]
+        L1B["• 83 kỹ năng AI"]
         L1C["• Pipeline tự động"]
         L1D["• Mặc định khi cài đặt"]
     end
@@ -146,7 +146,7 @@ flowchart TD
     START(["Bạn ơi, bắt đầu từ đâu?"])
 
     START --> Q1{"Bạn là dev?"}
-    Q1 --> |"Không / mới bắt đầu"| EASY["✅ Level 1 — Basic<br/>Chỉ cần cài là xong<br/>81 kỹ năng có sẵn"]
+    Q1 --> |"Không / mới bắt đầu"| EASY["✅ Level 1 — Basic<br/>Chỉ cần cài là xong<br/>83 kỹ năng có sẵn"]
     Q1 --> |"Có, muốn thông minh hơn"| SMART["✅ Level 2 — Smart<br/>Thêm phân tích code<br/>Hỏi gì đáp nấy"]
 
     SMART --> Q2{"Cần nhớ qua các lần chat?"}
@@ -841,7 +841,7 @@ flowchart LR
 
 ---
 
-## 81 Skills — Dùng cái nào, khi nào?
+## 83 Skills — Dùng cái nào, khi nào?
 
 ```mermaid
 flowchart TD
@@ -1271,7 +1271,7 @@ Nếu Forgewright giúp bạn ship nhanh hơn, bạn có thể ủng hộ tại 
 ---
 
 <p align="center">
-  <strong>Forgewright — 81 AI skills. 24 modes. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
+  <strong>Forgewright — 83 AI skills. 24 modes. Persistent Memory. Code Intelligence. SaaS to AAA games.</strong>
 </p>
 <p align="center">
   <em>Lên kế hoạch chính xác. Build với tự tin. Mở rộng thông minh.</em>
