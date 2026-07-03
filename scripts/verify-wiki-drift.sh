@@ -209,9 +209,9 @@ echo "  • Số mâu thuẫn cấu hình (Doc-to-Doc): $CONFLICTS_FOUND"
 echo "  • Số lỗi lệch pha code (Doc-to-Code): $UNCONFIRMED_CLAIMS"
 echo -e "  • ${BOLD}Tỷ lệ lệch tài liệu (Drift Ratio): ${DRIFT_PERCENT}%${NC}"
 
-# So sánh với Threshold
-DRIFT_RATIO=$(echo "scale=2; $TOTAL_ISSUES / $CLAIMS_COUNT" | bc)
-IS_ABOVE_THRESHOLD=$(echo "$DRIFT_RATIO >= $THRESHOLD" | bc)
+# So sánh với Threshold sử dụng Node.js để tương thích không cần lệnh 'bc'
+IS_ABOVE_THRESHOLD=$(node -e "console.log(($TOTAL_ISSUES / $CLAIMS_COUNT) >= $THRESHOLD ? 1 : 0)")
+DRIFT_RATIO=$(node -e "console.log(($TOTAL_ISSUES / $CLAIMS_COUNT).toFixed(2))")
 
 echo -e "\n${BOLD}📢 ĐÁNH GIÁ CẤP ĐỘ CẢNH BÁO:${NC}"
 
