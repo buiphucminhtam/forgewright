@@ -74,6 +74,12 @@ Forgewright acts as a production-grade software delivery harness for AI coding a
 *   **Premium Judgment on Demand**: Optional Expert CLI Mode routes only high-stakes planning, architecture, security, code review, and gate decisions through your local Claude CLI or Codex CLI. It is off by default, works with just one CLI, and keeps premium model usage reserved for the moments that matter.
 *   **Built-in Cost Control**: `forge token on` enables local token tracking, budgets, reports, and dashboards so teams can prove where premium calls improve quality instead of guessing.
 *   **Gemini 3.x Native Optimization**: Direct support for Gemini 3.5 Flash (for high-speed agentic routing with `thinking_level: MINIMAL` and strict grounding) and Gemini 3.1 Pro (for complex reasoning with `thinking_level: HIGH` and temperature 1.0). Avoids blanket temperature 1.0 enforcement to keep deterministic Claude/GPT tasks stable, and features Thought Signatures preservation (to prevent API 400 errors) and Context Caching thresholds.
+*   **⚡ Forgewright Lite — Evidence-Gated Kernel (Upgraded v3)**: Designed specifically for cheap and fast models (e.g. Gemini Flash), it strips away heavy prose ceremony in favor of a lightweight reasoning kernel coupled with script-layer verification, pushing same-model coding accuracy up significantly.
+    *   **Evidence-Gated Turn Checks**: Turn completion is enforced via script-layer validation of machine-written evidence files (`.forgewright/verify/<turn>.json`), eliminating self-attested hallucination and bias.
+    *   **Turn-level Platform Hooks**: Out-of-the-box configurations for Claude Code, Gemini CLI, Cursor, and Codex CLI to hard-block execution on verification failure.
+    *   **Strict ≤7k Boot Budget**: Restricts the boot context to under 7,000 tokens through progressive skill-overlay loading, keeping the task in the model's reliable-recall window.
+    *   **Objective Escalations**: System-side triggers (like path grep on security/concurrency/schema edits or consecutive test failures) to cascade tasks to Sonnet/Opus models automatically.
+    *   **13-Task Golden Eval**: Standardized benchmark harness measuring pass rates, execution durations, and cost improvements.
 
 
 ---

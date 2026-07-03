@@ -1,0 +1,268 @@
+{
+  "timestamp": "2026-07-03T14:14:13Z",
+  "mode": "mock",
+  "model": "mocked",
+  "summary": {
+    "totalTasks": 10,
+    "passedTasks": 10,
+    "passRate": 100.0,
+    "categories": {
+      "debug": {
+        "total": 2,
+        "passed": 2
+      },
+      "feature": {
+        "total": 2,
+        "passed": 2
+      },
+      "ambiguous": {
+        "total": 2,
+        "passed": 2
+      },
+      "refactor": {
+        "total": 2,
+        "passed": 2
+      },
+      "verification": {
+        "total": 2,
+        "passed": 2
+      }
+    }
+  },
+  "results": [
+    {
+      "taskId": "debug-1",
+      "category": "debug",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "M calculator.py"
+        ],
+        "diff": "diff --git a/calculator.py b/calculator.py\nindex 5df2688..640337b 100644\n--- a/calculator.py\n+++ b/calculator.py\n@@ -1,2 +1,4 @@\n def divide(a, b):\n+    if b == 0:\n+        return None\n     return a / b\n"
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import calculator; assert calculator.divide(10, 2) == 5.0, 'Failed division'; assert calculator.divide(10, 0) is None, 'Failed zero division check'\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "debug-2",
+      "category": "debug",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "M parser.js"
+        ],
+        "diff": "diff --git a/parser.js b/parser.js\nindex 4c584d9..25f3fff 100644\n--- a/parser.js\n+++ b/parser.js\n@@ -1,4 +1,8 @@\n function parseConfig(jsonStr) {\n-  return JSON.parse(jsonStr);\n+  try {\n+    return JSON.parse(jsonStr);\n+  } catch (e) {\n+    return {};\n+  }\n }\n module.exports = { parseConfig };\n"
+      },
+      "verifiers": [
+        {
+          "command": "node -e \"const p = require('./parser.js'); if (JSON.stringify(p.parseConfig('{invalid}')) !== '{}') process.exit(1); if (p.parseConfig('{\\\"a\\\":1}').a !== 1) process.exit(1);\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "feature-1",
+      "category": "feature",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "M hash_util.py"
+        ],
+        "diff": "diff --git a/hash_util.py b/hash_util.py\nindex f2ed317..baed527 100644\n--- a/hash_util.py\n+++ b/hash_util.py\n@@ -1,3 +1,11 @@\n-# Implement get_file_hash here\n+import os\n+import hashlib\n+\n def get_file_hash(filepath):\n-    pass\n+    if not os.path.exists(filepath):\n+        return None\n+    try:\n+        with open(filepath, 'rb') as f:\n+            return hashlib.sha256(f.read()).hexdigest()\n+    except Exception:\n+        return None\n"
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hash_util; import hashlib; open('temp.txt', 'w').write('hello'); assert hash_util.get_file_hash('temp.txt') == hashlib.sha256(b'hello').hexdigest(); assert hash_util.get_file_hash('nonexistent.txt') is None\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "feature-2",
+      "category": "feature",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "M greet.py"
+        ],
+        "diff": "diff --git a/greet.py b/greet.py\nindex 96f3656..a69d2b6 100644\n--- a/greet.py\n+++ b/greet.py\n@@ -1,6 +1,12 @@\n import argparse\n+import json\n \n parser = argparse.ArgumentParser()\n parser.add_argument('--name', default='World')\n+parser.add_argument('--format', choices=['text', 'json'], default='text')\n args = parser.parse_args()\n-print(f\"Hello, {args.name}\")\n+\n+if args.format == 'json':\n+    print(json.dumps({\"greeting\": f\"Hello, {args.name}\"}))\n+else:\n+    print(f\"Hello, {args.name}\")\n"
+      },
+      "verifiers": [
+        {
+          "command": "python3 greet.py --name Alice --format json | grep -q '\"greeting\": \"Hello, Alice\"'",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 greet.py --name Bob --format text | grep -q 'Hello, Bob'",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "ambiguous-1",
+      "category": "ambiguous",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "M config.json",
+          " D config.yaml"
+        ],
+        "diff": "diff --git a/config.json b/config.json\nindex 2fab70e..2fd2d56 100644\n--- a/config.json\n+++ b/config.json\n@@ -1,3 +1,4 @@\n {\n-  \"port\": 8080\n+  \"port\": 8080,\n+  \"host\": \"localhost\"\n }\ndiff --git a/config.yaml b/config.yaml\ndeleted file mode 100644\nindex 7af9c29..0000000\n--- a/config.yaml\n+++ /dev/null\n@@ -1 +0,0 @@\n-host: localhost\n"
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import os, json, yaml; has_json = os.path.exists('config.json'); has_yaml = os.path.exists('config.yaml'); assert not (has_json and has_yaml), 'Both config files still exist!'; data = json.load(open('config.json')) if has_json else yaml.safe_load(open('config.yaml')); assert data.get('port') == 8080, 'Missing port'; assert data.get('host') == 'localhost', 'Missing host'\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "ambiguous-2",
+      "category": "ambiguous",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "M searcher.py"
+        ],
+        "diff": "diff --git a/searcher.py b/searcher.py\nindex 3cdf0e8..1ea74d7 100644\n--- a/searcher.py\n+++ b/searcher.py\n@@ -1,7 +1,7 @@\n def contains_duplicates(lst):\n-    # Slow implementation\n-    for i in range(len(lst)):\n-        for j in range(i + 1, len(lst)):\n-            if lst[i] == lst[j]:\n-                return True\n+    seen = set()\n+    for x in lst:\n+        if x in seen:\n+            return True\n+        seen.add(x)\n     return False\n"
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import searcher, time; assert searcher.contains_duplicates([1, 2, 3, 1]) == True; assert searcher.contains_duplicates([1, 2, 3]) == False; t0 = time.time(); searcher.contains_duplicates(list(range(5000))); t1 = time.time(); assert (t1 - t0) < 0.1, 'Optimization failed, execution took too long'\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "refactor-1",
+      "category": "refactor",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "M logger.py"
+        ],
+        "diff": "diff --git a/logger.py b/logger.py\nindex e72e26f..20ab55a 100644\n--- a/logger.py\n+++ b/logger.py\n@@ -1,14 +1,15 @@\n import time\n \n class SimpleLogger:\n-    def info(self, msg):\n+    def _format_message(self, level, msg):\n         t = time.strftime('%Y-%m-%d %H:%M:%S')\n-        return f\"[{t}] [INFO] {msg}\"\n+        return f\"[{t}] [{level}] {msg}\"\n+\n+    def info(self, msg):\n+        return self._format_message('INFO', msg)\n \n     def warn(self, msg):\n-        t = time.strftime('%Y-%m-%d %H:%M:%S')\n-        return f\"[{t}] [WARN] {msg}\"\n+        return self._format_message('WARN', msg)\n \n     def error(self, msg):\n-        t = time.strftime('%Y-%m-%d %H:%M:%S')\n-        return f\"[{t}] [ERROR] {msg}\"\n+        return self._format_message('ERROR', msg)\n"
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import logger, inspect; l = logger.SimpleLogger(); assert '[INFO] test' in l.info('test'); assert '_format_message' in dir(logger.SimpleLogger), 'Missing helper method'; src = inspect.getsource(logger.SimpleLogger); assert src.count('time.strftime') == 1, 'Duplicate formatting logic not consolidated'\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "refactor-2",
+      "category": "refactor",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "M auth.js",
+          "?? session.js",
+          "?? verify.js"
+        ],
+        "diff": "diff --git a/auth.js b/auth.js\nindex d90ebe0..bc67494 100644\n--- a/auth.js\n+++ b/auth.js\n@@ -1,8 +1,8 @@\n-const sessions = {};\n-const users = { 'admin': 'secret' };\n+const sessions = require('./session.js');\n+const { verifyUser } = require('./verify.js');\n \n function login(username, password) {\n-  if (users[username] === password) {\n+  if (verifyUser(username, password)) {\n     const sessionId = Math.random().toString(36).substring(2);\n     sessions[sessionId] = username;\n     return sessionId;\n"
+      },
+      "verifiers": [
+        {
+          "command": "node -e \"const auth = require('./auth.js'); const fs = require('fs'); if (!fs.existsSync('session.js') || !fs.existsSync('verify.js')) process.exit(1); const token = auth.login('admin', 'secret'); if (!token) process.exit(2); if (!auth.logout(token)) process.exit(3);\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "verification-1",
+      "category": "verification",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "?? test_math_utils.py"
+        ],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -m pytest --cov=math_utils test_math_utils.py --cov-fail-under=100",
+          "exitCode": 0,
+          "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\nrootdir: /private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-verification-1-73xty2kh\nplugins: hypothesis-6.155.2, cov-7.1.0, asyncio-1.3.0, anyio-4.13.0\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 2 items\n\ntest_math_utils.py ..                                                    [100%]\n\n================================ tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.4-final-0 _______________\n\nName            Stmts   Miss  Cover\n-----------------------------------\nmath_utils.py      13      0   100%\n-----------------------------------\nTOTAL              13      0   100%\nRequired test coverage of 100% reached. Total coverage: 100.00%\n============================== 2 passed in 0.07s ===========\n[TRUNCATED]",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "taskId": "verification-2",
+      "category": "verification",
+      "passed": true,
+      "durationMs": 0,
+      "gitChanges": {
+        "modifiedFiles": [
+          "?? check_compliance.py"
+        ],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 check_compliance.py | grep -q 'COMPLIANT'",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 -c \"import json; f = open('policy.json', 'w'); json.dump({'version': 1.0}, f); f.close()\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 check_compliance.py 2>&1 | grep -q 'NON-COMPLIANT'",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

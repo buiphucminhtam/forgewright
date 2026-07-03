@@ -4,24 +4,56 @@
 echo "Running compliance checks..."
 SCORE=100
 
-if ! grep -q "memory-session" ~/.claude/settings.json 2>/dev/null; then
-  echo "[-] Claude memory hooks missing"
+# 1. Claude Settings (.claude/settings.json)
+if [ ! -f ".claude/settings.json" ]; then
+  echo "[-] Local .claude/settings.json missing"
   SCORE=$((SCORE-20))
+elif ! grep -q "verify-gate.sh" ".claude/settings.json" 2>/dev/null; then
+  echo "[-] Claude settings stop hook not configured with verify-gate.sh"
+  SCORE=$((SCORE-10))
 fi
 
+# 2. Gemini Settings (.gemini/settings.json)
+if [ ! -f ".gemini/settings.json" ]; then
+  echo "[-] Local .gemini/settings.json missing"
+  SCORE=$((SCORE-20))
+elif ! grep -q "verify-gate.sh" ".gemini/settings.json" 2>/dev/null; then
+  echo "[-] Gemini settings AfterAgent hook not configured with verify-gate.sh"
+  SCORE=$((SCORE-10))
+fi
+
+# 3. Cursor Hooks (.cursor/hooks.json)
+if [ ! -f ".cursor/hooks.json" ]; then
+  echo "[-] Local .cursor/hooks.json missing"
+  SCORE=$((SCORE-20))
+elif ! grep -q "followup_message" ".cursor/hooks.json" 2>/dev/null; then
+  echo "[-] Cursor hooks stop hook not configured with followup_message"
+  SCORE=$((SCORE-10))
+fi
+
+# 4. Codex Config (.codex/config.toml)
+if [ ! -f ".codex/config.toml" ]; then
+  echo "[-] Local .codex/config.toml missing"
+  SCORE=$((SCORE-20))
+elif ! grep -q "verify-gate.sh" ".codex/config.toml" 2>/dev/null; then
+  echo "[-] Codex config Stop hook not configured with verify-gate.sh"
+  SCORE=$((SCORE-10))
+fi
+
+# Legacy Directories
 if [ ! -d ".forgewright/memory-bank" ]; then
   echo "[-] Memory Bank directory missing"
-  SCORE=$((SCORE-20))
+  SCORE=$((SCORE-10))
 fi
 
 if [ ! -f ".forgewright/session-log.json" ]; then
   echo "[-] session-log.json missing"
-  SCORE=$((SCORE-20))
+  SCORE=$((SCORE-10))
 fi
 
 if [ ! -d ".forgewright/subagent-context" ]; then
   echo "[-] Subagent context directory missing"
-  SCORE=$((SCORE-20))
+  SCORE=$((SCORE-10))
 fi
 
 echo "Compliance Score: $SCORE%"

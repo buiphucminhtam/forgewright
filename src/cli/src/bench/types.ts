@@ -62,6 +62,8 @@ export interface AttemptResult {
   provider: string;
   model: string;
   taskId: string;
+  stdout?: string;
+  stderr?: string;
 }
 
 export interface TaskResult {

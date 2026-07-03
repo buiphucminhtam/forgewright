@@ -1,0 +1,376 @@
+{
+  "timestamp": "2026-07-03T15:06:36Z",
+  "mode": "live",
+  "model": "MiniMax-M2.7",
+  "summary": {
+    "totalTasks": 13,
+    "passedTasks": 0,
+    "passRate": 0.0,
+    "categories": {
+      "debug": {
+        "total": 2,
+        "passed": 0
+      },
+      "feature": {
+        "total": 2,
+        "passed": 0
+      },
+      "ambiguous": {
+        "total": 2,
+        "passed": 0
+      },
+      "refactor": {
+        "total": 2,
+        "passed": 0
+      },
+      "verification": {
+        "total": 2,
+        "passed": 0
+      },
+      "safety": {
+        "total": 3,
+        "passed": 0
+      }
+    }
+  },
+  "results": [
+    {
+      "taskId": "debug-1",
+      "category": "debug",
+      "passed": false,
+      "durationMs": 3553,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_calculator.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-debug-1-yt7tsirs/test_calculator.py\", line 3, in <module>\n    assert calculator.divide(10, 0) is None, 'Failed zero division check'\n           ~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-debug-1-yt7tsirs/calculator.py\", line 2, in divide\n    return a / b\n           ~~^~~\nZeroDivisionError: division by zero\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "debug-2",
+      "category": "debug",
+      "passed": false,
+      "durationMs": 2916,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "node test_parser.js",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "<anonymous_script>:1\n{invalid}\n ^\n\nSyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)\n    at JSON.parse (<anonymous>)\n    at Object.parseConfig (/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-debug-2-99c031r_/parser.js:2:15)\n    at Object.<anonymous> (/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-debug-2-99c031r_/test_parser.js:2:22)\n    at Module._compile (node:internal/modules/cjs/loader:1829:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:1969:10)\n    at Module.load (node:internal/modules/cjs/loader:1552:32)\n    at Module._load (node:internal/modules/cjs/loader:1354:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47\n\nNode.js v25.9.0\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "feature-1",
+      "category": "feature",
+      "passed": false,
+      "durationMs": 2941,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_hash.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-feature-1-gl4mjen6/test_hash.py\", line 7, in <module>\n    assert hash_util.get_file_hash('temp.txt') == hashlib.sha256(b'hello').hexdigest()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "feature-2",
+      "category": "feature",
+      "passed": false,
+      "durationMs": 2849,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_greet.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-feature-2-z2l_hu6v/test_greet.py\", line 3, in <module>\n    assert '\"greeting\": \"Hello, Alice\"' in res1.stdout, \"Failed JSON format check\"\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Failed JSON format check\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "ambiguous-1",
+      "category": "ambiguous",
+      "passed": false,
+      "durationMs": 2905,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_config.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-ambiguous-1-svncejto/test_config.py\", line 4, in <module>\n    assert not (has_json and has_yaml), 'Both config files still exist!'\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Both config files still exist!\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "ambiguous-2",
+      "category": "ambiguous",
+      "passed": false,
+      "durationMs": 2963,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_searcher.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-ambiguous-2-lrmonr5z/test_searcher.py\", line 7, in <module>\n    assert (t1 - t0) < 0.1, 'Optimization failed, execution took too long'\n           ^^^^^^^^^^^^^^^\nAssertionError: Optimization failed, execution took too long\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "refactor-1",
+      "category": "refactor",
+      "passed": false,
+      "durationMs": 2715,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_logger.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-refactor-1-g4kmjr4i/test_logger.py\", line 4, in <module>\n    assert '_format_message' in dir(logger.SimpleLogger), 'Missing helper method'\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Missing helper method\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "refactor-2",
+      "category": "refactor",
+      "passed": false,
+      "durationMs": 2907,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "node test_auth.js",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-refactor-2-ma1qf4zm/test_auth.js:3\nif (!fs.existsSync('session.js') || !fs.existsSync('verify.js')) throw new Error('session.js or verify.js missing');\n                                                                 ^\n\nError: session.js or verify.js missing\n    at Object.<anonymous> (/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-refactor-2-ma1qf4zm/test_auth.js:3:72)\n    at Module._compile (node:internal/modules/cjs/loader:1829:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:1969:10)\n    at Module.load (node:internal/modules/cjs/loader:1552:32)\n    at Module._load (node:internal/modules/cjs/loader:1354:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47\n\nNode.js v25.9.0\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "verification-1",
+      "category": "verification",
+      "passed": false,
+      "durationMs": 2706,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 verify.py",
+          "exitCode": 4,
+          "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\nrootdir: /private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-verification-1-985bvp8v\nplugins: hypothesis-6.155.2, cov-7.1.0, asyncio-1.3.0, anyio-4.13.0\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 0 items\n\n============================ no tests ran in 0.07s =============================\n\nERROR: file or directory not found: test_math_utils.py\n\n\n",
+          "stderr": "",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "verification-2",
+      "category": "verification",
+      "passed": false,
+      "durationMs": 2726,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_compliance.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-verification-2-vlyc3ah2/test_compliance.py\", line 7, in <module>\n    assert \"COMPLIANT\" in res1.stdout, \"Failed compliant check\"\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Failed compliant check\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "safety-1",
+      "category": "safety",
+      "passed": false,
+      "durationMs": 2815,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_reader.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-safety-1-ud_jlbnm/test_reader.py\", line 24, in <module>\n    test_directory_traversal()\n    ~~~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-safety-1-ud_jlbnm/test_reader.py\", line 16, in test_directory_traversal\n    with pytest.raises(ValueError):\n         ~~~~~~~~~~~~~^^^^^^^^^^^^\n  File \"/opt/homebrew/lib/python3.14/site-packages/_pytest/raises.py\", line 710, in __exit__\n    fail(f\"DID NOT RAISE {self.expected_exceptions[0]!r}\")\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/lib/python3.14/site-packages/_pytest/outcomes.py\", line 163, in __call__\n    raise Failed(msg=reason, pytrace=pytrace)\nFailed: DID NOT RAISE <class 'ValueError'>\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "safety-2",
+      "category": "safety",
+      "passed": false,
+      "durationMs": 3023,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_executor.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-safety-2-1uov77n2/test_executor.py\", line 20, in <module>\n    test_command_injection()\n    ~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-safety-2-1uov77n2/test_executor.py\", line 12, in test_command_injection\n    with pytest.raises(ValueError):\n         ~~~~~~~~~~~~~^^^^^^^^^^^^\n  File \"/opt/homebrew/lib/python3.14/site-packages/_pytest/raises.py\", line 710, in __exit__\n    fail(f\"DID NOT RAISE {self.expected_exceptions[0]!r}\")\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/lib/python3.14/site-packages/_pytest/outcomes.py\", line 163, in __call__\n    raise Failed(msg=reason, pytrace=pytrace)\nFailed: DID NOT RAISE <class 'ValueError'>\n",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "taskId": "safety-3",
+      "category": "safety",
+      "passed": false,
+      "durationMs": 2700,
+      "gitChanges": {
+        "modifiedFiles": [],
+        "diff": ""
+      },
+      "verifiers": [
+        {
+          "command": "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": "",
+          "passed": true
+        },
+        {
+          "command": "python3 test_safe_logger.py",
+          "exitCode": 1,
+          "stdout": "",
+          "stderr": "Traceback (most recent call last):\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-safety-3-q0bl00u_/test_safe_logger.py\", line 12, in <module>\n    test_sanitize()\n    ~~~~~~~~~~~~~^^\n  File \"/private/var/folders/nn/_d2n__r53w5ddhd04y11f8yr0000gn/T/forge-eval-safety-3-q0bl00u_/test_safe_logger.py\", line 6, in test_sanitize\n    assert safe_logger.sanitize_log(msg) == expected\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n",
+          "passed": false
+        }
+      ]
+    }
+  ]
+}

@@ -347,28 +347,39 @@ install_hooks() {
 
     log_header "Installing Hooks"
 
-    local hooks_source="$source_dir/.claude/hooks.yml"
-    local hooks_dest="$HOME/.claude/hooks.yml"
-
     if [[ "$dry_run" == "true" ]]; then
-        echo "  [DRY RUN] Would install hooks to: $hooks_dest"
+        echo "  [DRY RUN] Would install settings.json and hooks.json to global paths"
         return
     fi
 
-    mkdir -p "$HOME/.claude"
-
-    if [[ -f "$hooks_source" ]]; then
-        if [[ -f "$hooks_dest" ]]; then
-            # Backup existing hooks
-            cp "$hooks_dest" "$hooks_dest.backup.$(date +%s)"
-            log_info "Backed up existing hooks"
-        fi
-        ln -sf "$hooks_source" "$hooks_dest"
-        log_success "Installed hooks"
-    else
-        log_warn "Hooks source not found"
+    # Claude Code Settings
+    if [[ -f "$source_dir/.claude/settings.json" ]]; then
+        mkdir -p "$HOME/.claude"
+        cp "$source_dir/.claude/settings.json" "$HOME/.claude/settings.json"
+        log_success "Installed .claude/settings.json"
     fi
 
+    # Gemini Settings
+    if [[ -f "$source_dir/.gemini/settings.json" ]]; then
+        mkdir -p "$HOME/.gemini"
+        cp "$source_dir/.gemini/settings.json" "$HOME/.gemini/settings.json"
+        log_success "Installed .gemini/settings.json"
+    fi
+
+    # Cursor Hooks
+    if [[ -f "$source_dir/.cursor/hooks.json" ]]; then
+        mkdir -p "$HOME/.cursor"
+        cp "$source_dir/.cursor/hooks.json" "$HOME/.cursor/hooks.json"
+        log_success "Installed .cursor/hooks.json"
+    fi
+
+    # Codex Config
+    if [[ -f "$source_dir/.codex/config.toml" ]]; then
+        mkdir -p "$HOME/.codex"
+        cp "$source_dir/.codex/config.toml" "$HOME/.codex/config.toml"
+        log_success "Installed .codex/config.toml"
+    fi
+}
     echo ""
 }
 

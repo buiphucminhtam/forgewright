@@ -3,64 +3,70 @@ import sys
 import json
 import asyncio
 import requests
-from typing import List, Dict, Any
+from typing import List, Dict
 from contextlib import AsyncExitStack
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-API_KEY = os.environ.get('MINIMAX_API_KEY', 'sk-cp-2vP0SZLSFnl_sbVSpxX2S213n39WcIWf4Lo0rkJyxRsrq4JcnoRplWIM4nPQQJ_tPmyn1dhY2ZB9ApwYY3QnxBJlTNPV6WwT3rscQsUxYlEI8oFNoKH0b00')
-BASE_URL = 'https://api.minimax.io/v1/text/chatcompletion_v2'
+API_KEY = os.environ.get("MINIMAX_API_KEY")
+BASE_URL = "https://api.minimax.io/v1/text/chatcompletion_v2"
+
 
 class ForgewrightAgent:
     def __init__(self, project_id: str, code_dir: str):
         self.project_id = project_id
         self.code_dir = code_dir
         self.messages = []
-        
+
     def _call_minimax(self, tools: List[Dict]) -> Dict:
         headers = {
-            'Authorization': f'Bearer {API_KEY}',
-            'Content-Type': 'application/json'
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json",
         }
-        
-        data = {
-            'model': 'MiniMax-M2.7',
-            'messages': self.messages,
-            'temperature': 0.1
-        }
+
+        data = {"model": "MiniMax-M2.7", "messages": self.messages, "temperature": 0.1}
         if tools:
-            data['tools'] = tools
-            
+            data["tools"] = tools
+
         print(f"[*] Calling MiniMax (Messages: {len(self.messages)})...")
         resp = requests.post(BASE_URL, headers=headers, json=data, timeout=120)
         resp_json = resp.json()
-        
-        if 'choices' not in resp_json:
+
+        if "choices" not in resp_json:
             print(f"[!] API Error: {resp_json}")
             sys.exit(1)
-            
-        return resp_json['choices'][0]['message']
+
+        return resp_json["choices"][0]["message"]
 
     async def run(self, task: str):
         import subprocess
+
         # 1. Auto-Setup MCP for the project if manifest does not exist
         manifest_path = os.path.join(self.code_dir, ".antigravity", "mcp-manifest.json")
-        forgewright_manifest_path = os.path.join(self.code_dir, "..", ".forgewright", "mcp-manifest.json")
-        if not os.path.exists(manifest_path) and not os.path.exists(forgewright_manifest_path):
-            print(f"[*] Missing MCP Manifest in '{self.code_dir}'. Running auto-setup...")
+        forgewright_manifest_path = os.path.join(
+            self.code_dir, "..", ".forgewright", "mcp-manifest.json"
+        )
+        if not os.path.exists(manifest_path) and not os.path.exists(
+            forgewright_manifest_path
+        ):
+            print(
+                f"[*] Missing MCP Manifest in '{self.code_dir}'. Running auto-setup..."
+            )
             try:
                 subprocess.run(
                     ["bash", "/root/openclaw/scripts/forgewright-mcp-setup.sh"],
                     cwd=self.code_dir,
-                    check=True
+                    check=True,
                 )
             except Exception as e:
                 print(f"[!] Warning: Auto-setup failed: {e}")
 
         # Define isolated path for DB
-        gitnexus_db_path = os.path.normpath(os.path.join(self.code_dir, "..", "gitnexus_db"))
-        
+        gitnexus_db_path = os.path.normpath(
+            os.path.join(self.code_dir, "..", "gitnexus_db")
+        )
+
         gitnexus_env = {**os.environ}
         gitnexus_env["FORGEWRIGHT_WORKSPACE"] = self.code_dir
         gitnexus_env["FORGEWRIGHT_TOOL_SANDBOX"] = "false"
@@ -73,36 +79,41 @@ class ForgewrightAgent:
                     command="gitnexus",
                     args=["mcp"],
                     cwd=self.code_dir,
-                    env=gitnexus_env
-                )
+                    env=gitnexus_env,
+                ),
             },
             {
                 "name": "nlm",
                 "params": StdioServerParameters(
-                    command="nlm",
-                    args=["mcp"],
-                    env={**os.environ}
-                )
-            }
+                    command="nlm", args=["mcp"], env={**os.environ}
+                ),
+            },
         ]
 
-        if os.path.exists(os.path.join(self.code_dir, ".antigravity", "mcp-manifest.json")) or \
-           os.path.exists(os.path.join(self.code_dir, "..", ".forgewright", "mcp-manifest.json")):
-            mcp_servers.append({
-                "name": "forgewright",
-                "params": StdioServerParameters(
-                    command="bash",
-                    args=["/root/openclaw/scripts/forgewright-mcp-launcher.sh"],
-                    env={**os.environ, "FORGEWRIGHT_WORKSPACE": self.code_dir}
-                )
-            })
-        
+        if os.path.exists(
+            os.path.join(self.code_dir, ".antigravity", "mcp-manifest.json")
+        ) or os.path.exists(
+            os.path.join(self.code_dir, "..", ".forgewright", "mcp-manifest.json")
+        ):
+            mcp_servers.append(
+                {
+                    "name": "forgewright",
+                    "params": StdioServerParameters(
+                        command="bash",
+                        args=["/root/openclaw/scripts/forgewright-mcp-launcher.sh"],
+                        env={**os.environ, "FORGEWRIGHT_WORKSPACE": self.code_dir},
+                    ),
+                }
+            )
+
         # Extract Project Context to give Tieu Mo better background
         project_context = ""
         readme_path = os.path.join(self.code_dir, "README.md")
-        profile_path = os.path.join(self.code_dir, "..", ".forgewright", "project-profile.json")
+        profile_path = os.path.join(
+            self.code_dir, "..", ".forgewright", "project-profile.json"
+        )
         pkg_path = os.path.join(self.code_dir, "package.json")
-        
+
         try:
             if os.path.exists(readme_path):
                 with open(readme_path, "r", encoding="utf-8") as f:
@@ -118,7 +129,169 @@ class ForgewrightAgent:
         except Exception:
             project_context = "Không thể đọc thông tin ngữ cảnh dự án do lỗi cấp quyền hoặc định dạng file."
 
-        system_prompt = f"""
+        # Determine if running in Lite mode vs Legacy Mode
+        use_lite = os.environ.get("FORGEWRIGHT_LITE", "false").lower() == "true"
+
+        if use_lite:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            repo_root = os.path.abspath(os.path.join(script_dir, ".."))
+            kernel_dir = os.path.join(repo_root, "kernel")
+
+            entry_content = ""
+            solve_content = ""
+            verify_content = ""
+            escalate_content = ""
+
+            entry_path = os.path.join(kernel_dir, "ENTRY.md")
+            if os.path.exists(entry_path):
+                with open(entry_path, "r", encoding="utf-8") as f:
+                    entry_content = f.read()
+
+            solve_path = os.path.join(kernel_dir, "SOLVE.md")
+            if os.path.exists(solve_path):
+                with open(solve_path, "r", encoding="utf-8") as f:
+                    solve_content = f.read()
+
+            verify_path = os.path.join(kernel_dir, "VERIFY.md")
+            if os.path.exists(verify_path):
+                with open(verify_path, "r", encoding="utf-8") as f:
+                    verify_content = f.read()
+
+            escalate_path = os.path.join(kernel_dir, "ESCALATE.md")
+            if os.path.exists(escalate_path):
+                with open(escalate_path, "r", encoding="utf-8") as f:
+                    escalate_content = f.read()
+
+            # Simple keyword matching against prompt to select skill overlay
+            skill_overlay_content = ""
+            matched_skill = None
+            prompt_lower = task.lower()
+
+            triggers_map = {
+                "debugger": [
+                    "bug",
+                    "crash",
+                    "error",
+                    "exception",
+                    "broken",
+                    "failing",
+                    "not working",
+                    "typeerror",
+                    "fail",
+                ],
+                "software-engineer": [
+                    "service",
+                    "logic",
+                    "refactor",
+                    "api",
+                    "feature",
+                    "build",
+                ],
+                "qa-engineer": ["test", "qa", "verify", "validation", "coverage"],
+                "frontend-engineer": [
+                    "ui",
+                    "component",
+                    "react",
+                    "next.js",
+                    "tailwind",
+                    "css",
+                    "html",
+                    "style",
+                    "frontend",
+                    "form",
+                ],
+                "frontend": [
+                    "ui",
+                    "component",
+                    "react",
+                    "next.js",
+                    "tailwind",
+                    "css",
+                    "html",
+                    "style",
+                    "frontend",
+                    "form",
+                ],
+                "backend": [
+                    "server",
+                    "route",
+                    "middleware",
+                    "auth",
+                    "cors",
+                    "express",
+                    "backend",
+                ],
+                "api-designer": ["openapi", "swagger", "endpoint", "spec", "rest api"],
+                "database-engineer": [
+                    "db",
+                    "schema",
+                    "migration",
+                    "prisma",
+                    "sql",
+                    "query",
+                    "index",
+                    "database",
+                ],
+                "security-engineer": [
+                    "security",
+                    "audit",
+                    "owasp",
+                    "sanitize",
+                    "threat",
+                    "injection",
+                    "parameterize",
+                ],
+                "code-reviewer": ["review", "lint", "style", "pr ", "pull request"],
+                "product-manager": [
+                    "brd",
+                    "prd",
+                    "gherkin",
+                    "user story",
+                    "acceptance criteria",
+                ],
+            }
+
+            for skill_name, triggers in triggers_map.items():
+                for trigger in triggers:
+                    if trigger in prompt_lower:
+                        matched_skill = skill_name
+                        break
+                if matched_skill:
+                    break
+
+            if matched_skill:
+                overlay_path = os.path.join(
+                    repo_root, "skills", matched_skill, "LITE.md"
+                )
+                if os.path.exists(overlay_path):
+                    with open(overlay_path, "r", encoding="utf-8") as f:
+                        skill_overlay_content = f.read()
+                        print(f"[*] Loaded skill LITE overlay: {matched_skill}")
+
+            system_prompt = f"""
+{entry_content}
+
+{solve_content}
+
+{verify_content}
+
+{escalate_content}
+"""
+            if skill_overlay_content:
+                system_prompt += (
+                    f"\n## Skill-Specific Instructions\n{skill_overlay_content}\n"
+                )
+
+            system_prompt += f"""
+## Current Task Context
+- Project: '{self.project_id}'
+- Workspace: '{self.code_dir}'
+
+Nhiệm vụ từ Sếp: {task}
+Bắt đầu bằng việc viết scratchpad UNDERSTAND theo SOLVE.md.
+"""
+        else:
+            system_prompt = f"""
 Bạn là Tiểu Mơ - Siêu Trí Tuệ Forgewright (Level 4 Agent Executor).
 Dự án bạn đang làm việc: '{self.project_id}'
 Thư mục mã nguồn cục bộ: '{self.code_dir}'
@@ -137,89 +310,114 @@ Nhiệm vụ từ Sếp: {task}
 Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy trả về kết quả bằng văn bản bình thường (không gọi tool nữa) để hệ thống kết thúc và deploy.
 """
         self.messages.append({"role": "system", "content": system_prompt.strip()})
-        self.messages.append({"role": "user", "content": f"Bắt đầu xử lý tính năng: {task}"})
-        
+        self.messages.append(
+            {"role": "user", "content": f"Bắt đầu xử lý tính năng: {task}"}
+        )
+
         try:
             async with AsyncExitStack() as stack:
                 active_sessions = {}
                 for srv in mcp_servers:
                     try:
-                        read, write = await stack.enter_async_context(stdio_client(srv["params"]))
-                        session = await stack.enter_async_context(ClientSession(read, write))
+                        read, write = await stack.enter_async_context(
+                            stdio_client(srv["params"])
+                        )
+                        session = await stack.enter_async_context(
+                            ClientSession(read, write)
+                        )
                         await session.initialize()
                         active_sessions[srv["name"]] = session
                         print(f"[✓] MCP Server connected: {srv['name']}")
                     except Exception as e:
-                        print(f"[!] Warning: Failed to connect to MCP Server: {srv['name']} - {e}")
-                
+                        print(
+                            f"[!] Warning: Failed to connect to MCP Server: {srv['name']} - {e}"
+                        )
+
                 if not active_sessions:
-                    raise RuntimeError("No MCP Servers could be connected. Check dependencies.")
+                    raise RuntimeError(
+                        "No MCP Servers could be connected. Check dependencies."
+                    )
 
                 while True:
                     # 1. Fetch available MCP Tools dynamically
                     tools_payload = []
                     tool_to_session_map = {}
-                    
+
                     for srv_name, session in active_sessions.items():
                         try:
                             mcp_tools = await session.list_tools()
                             for t in mcp_tools.tools:
                                 tool_to_session_map[t.name] = session
-                                tools_payload.append({
-                                    "type": "function",
-                                    "function": {
-                                        "name": t.name,
-                                        "description": t.description,
-                                        "parameters": t.inputSchema
+                                tools_payload.append(
+                                    {
+                                        "type": "function",
+                                        "function": {
+                                            "name": t.name,
+                                            "description": t.description,
+                                            "parameters": t.inputSchema,
+                                        },
                                     }
-                                })
+                                )
                         except Exception as e:
                             print(f"[!] Error querying tools from {srv_name}: {e}")
-                            
+
                     # 2. ReAct reasoning with MiniMax
                     reply = self._call_minimax(tools_payload)
                     self.messages.append(reply)
-                    
+
                     # 3. Tool Execution Phase
                     if "tool_calls" in reply and reply["tool_calls"]:
                         for tcall in reply["tool_calls"]:
                             tname = tcall["function"]["name"]
                             targs = json.loads(tcall["function"]["arguments"])
                             print(f" ⚙️  Thực thi Tool: {tname} | Args: {targs}")
-                            
+
                             target_session = tool_to_session_map.get(tname)
                             if not target_session:
                                 res_text = f"Execution Error: Unknown tool {tname} - It was not supplied by any connected MCP server."
                             else:
                                 try:
-                                    result = await target_session.call_tool(tname, arguments=targs)
-                                    res_text = "\n".join([c.text for c in result.content if hasattr(c, 'text')])
+                                    result = await target_session.call_tool(
+                                        tname, arguments=targs
+                                    )
+                                    res_text = "\n".join(
+                                        [
+                                            c.text
+                                            for c in result.content
+                                            if hasattr(c, "text")
+                                        ]
+                                    )
                                 except Exception as e:
                                     res_text = f"Execution Error: {str(e)}"
-                                    
-                            self.messages.append({
-                                "role": "tool",
-                                "tool_call_id": tcall["id"],
-                                "name": tname,
-                                "content": res_text
-                            })
+
+                            self.messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tcall["id"],
+                                    "name": tname,
+                                    "content": res_text,
+                                }
+                            )
                     else:
                         # Final output reached
-                        final_str = reply.get('content', '')
+                        final_str = reply.get("content", "")
                         print(f"\n[🏁 KẾT THÚC TASK]\n{final_str}")
                         break
         except Exception as err:
             print(f"[!] Orchestrator Error: {str(err)}")
             sys.exit(1)
 
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python3 forgewright-orchestrator.py <PROJECT_ID> <TASK_PROMPT> [CODE_DIR]")
+        print(
+            "Usage: python3 forgewright-orchestrator.py <PROJECT_ID> <TASK_PROMPT> [CODE_DIR]"
+        )
         sys.exit(1)
-        
+
     pid = sys.argv[1]
     task_desc = sys.argv[2]
     cdir = sys.argv[3] if len(sys.argv) > 3 else f"/root/projects/{pid}/code"
-    
+
     agent = ForgewrightAgent(pid, cdir)
     asyncio.run(agent.run(task_desc))

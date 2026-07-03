@@ -196,8 +196,8 @@ print(json.dumps(d))
 " 2>/dev/null)
 
     local new_json
-    new_count=$(echo "${new_count}" | head -1)
     new_json=$(echo "${new_count}" | tail -1)
+    new_count=$(echo "${new_count}" | head -1)
 
     save_session "${new_json}"
 

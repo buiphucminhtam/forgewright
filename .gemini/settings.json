@@ -1,0 +1,5 @@
+{
+  "hooks": {
+    "AfterAgent": "scripts/lite/verify-gate.sh"
+  }
+}

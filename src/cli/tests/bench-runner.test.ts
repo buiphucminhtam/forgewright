@@ -18,9 +18,9 @@ function createMockSpawn(exitCode: number, stdoutText = "", stderrText = "") {
     cp.stdout = Readable.from([stdoutText]);
     cp.stderr = Readable.from([stderrText]);
     cp.kill = () => {};
-    process.nextTick(() => {
+    setTimeout(() => {
       cp.emit("exit", exitCode, null);
-    });
+    }, 5);
     return cp;
   }) as any;
   return { spawnFn, spawnCalls };
@@ -40,7 +40,7 @@ describe("Benchmark runner", () => {
 
   it("sanitizes output of sensitive API keys and truncates long text", () => {
     const raw =
-      "API Key: sk-12345678901234567890123456789012\nGoogle Key: AIzaSy1234567890-abcdefghij123456789012\nSome long text ".repeat(
+      "API Key: sk-[REDACTED]\nGoogle Key: AIzaSy1234567890-abcdefghij123456789012\nSome long text ".repeat(
         100,
       );
     const sanitized = sanitizeOutput(raw);
@@ -166,9 +166,9 @@ describe("Benchmark runner", () => {
 
     expect(report).toBeDefined();
     expect(report?.summary.totalTasks).toBe(1);
-    // Runs twice because defaultAttempts = 2
-    expect(report?.summary.totalTasks).toBe(1);
     expect(report?.tasks[0].attempts.length).toBe(2);
+    expect(report?.tasks[0].attempts[0].stdout).toBe("success_stdout");
+    expect(report?.tasks[0].attempts[0].stderr).toBe("no_errors");
 
     // Check spawned adapter and verifier calls
     expect(spawnCalls.length).toBe(4); // 2 runs (adapter + verifier) per attempt
@@ -214,7 +214,7 @@ describe("Benchmark runner", () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("checks exact argv shapes for Agy and Codex adapters", async () => {
+  it("checks exact argv shapes for Agy, Codex and Gemini adapters", async () => {
     const tempDir = join(tmpdir(), `test-suite-argv-${Date.now()}`);
     mkdirSync(tempDir, { recursive: true });
 
@@ -286,6 +286,46 @@ describe("Benchmark runner", () => {
       "--skip-git-repo-check",
       "--model",
       "GPT-5.5",
+      "--sandbox",
+      "workspace-write",
+      "--ephemeral",
+      "Hello Prompt",
+    ]);
+
+    // Test Gemini
+    const suitePathGemini = join(tempDir, "suite-gemini.json");
+    writeFileSync(
+      suitePathGemini,
+      JSON.stringify({
+        version: "1.0",
+        name: "Gemini Argv Suite",
+        defaultProviderSettings: { provider: "gemini", model: "Gemini-3.1" },
+        tasks: [
+          {
+            id: "task-3",
+            category: "smoke",
+            prompt: "Hello Prompt",
+            verifierCommands: ["node verify.js"],
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    const { spawnFn: spawnFnGemini, spawnCalls: spawnCallsGemini } =
+      createMockSpawn(0);
+    await runBenchmarkSuite(suitePathGemini, {
+      run: true,
+      spawnFn: spawnFnGemini,
+    });
+
+    const geminiCall = spawnCallsGemini.find((c) => c.program === "gemini");
+    expect(geminiCall).toBeDefined();
+    expect(geminiCall?.args).toEqual([
+      "exec",
+      "--skip-git-repo-check",
+      "--model",
+      "Gemini-3.1",
       "--sandbox",
       "workspace-write",
       "--ephemeral",

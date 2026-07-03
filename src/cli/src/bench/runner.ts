@@ -63,7 +63,12 @@ export type ProcessAdapter = (
     timeoutMs: number;
   },
   spawnFn: typeof spawn,
-) => Promise<{ exitStatus: number | null; durationMs: number }>;
+) => Promise<{
+  exitStatus: number | null;
+  durationMs: number;
+  stdout: string;
+  stderr: string;
+}>;
 
 export const ADAPTERS: Record<string, ProcessAdapter> = {
   agy: async (input, spawnFn) => {
@@ -108,17 +113,33 @@ ${input.prompt}
 
     const startTime = Date.now();
     return new Promise((resolve, reject) => {
+      let stdout = "";
+      let stderr = "";
+
       const child = spawnFn("agy", args, {
         cwd: input.workspace,
         shell: false,
-        stdio: ["ignore", "ignore", "ignore"],
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      child.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr?.on("data", (data) => {
+        stderr += data.toString();
       });
 
       let timer: NodeJS.Timeout | null = null;
       if (input.timeoutMs > 0) {
         timer = setTimeout(() => {
           child.kill("SIGTERM");
-          resolve({ exitStatus: null, durationMs: Date.now() - startTime });
+          resolve({
+            exitStatus: null,
+            durationMs: Date.now() - startTime,
+            stdout,
+            stderr,
+          });
         }, input.timeoutMs);
       }
 
@@ -133,7 +154,12 @@ ${input.prompt}
         if (timer) {
           clearTimeout(timer);
         }
-        resolve({ exitStatus: code, durationMs: Date.now() - startTime });
+        resolve({
+          exitStatus: code,
+          durationMs: Date.now() - startTime,
+          stdout,
+          stderr,
+        });
       });
     });
   },
@@ -152,17 +178,33 @@ ${input.prompt}
 
     const startTime = Date.now();
     return new Promise((resolve, reject) => {
+      let stdout = "";
+      let stderr = "";
+
       const child = spawnFn("codex", args, {
         cwd: input.workspace,
         shell: false,
-        stdio: ["ignore", "ignore", "ignore"],
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      child.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr?.on("data", (data) => {
+        stderr += data.toString();
       });
 
       let timer: NodeJS.Timeout | null = null;
       if (input.timeoutMs > 0) {
         timer = setTimeout(() => {
           child.kill("SIGTERM");
-          resolve({ exitStatus: null, durationMs: Date.now() - startTime });
+          resolve({
+            exitStatus: null,
+            durationMs: Date.now() - startTime,
+            stdout,
+            stderr,
+          });
         }, input.timeoutMs);
       }
 
@@ -177,7 +219,77 @@ ${input.prompt}
         if (timer) {
           clearTimeout(timer);
         }
-        resolve({ exitStatus: code, durationMs: Date.now() - startTime });
+        resolve({
+          exitStatus: code,
+          durationMs: Date.now() - startTime,
+          stdout,
+          stderr,
+        });
+      });
+    });
+  },
+
+  gemini: async (input, spawnFn) => {
+    const args = [
+      "exec",
+      "--skip-git-repo-check",
+      "--model",
+      input.model,
+      "--sandbox",
+      "workspace-write",
+      "--ephemeral",
+      input.prompt,
+    ];
+
+    const startTime = Date.now();
+    return new Promise((resolve, reject) => {
+      let stdout = "";
+      let stderr = "";
+
+      const child = spawnFn("gemini", args, {
+        cwd: input.workspace,
+        shell: false,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      child.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      let timer: NodeJS.Timeout | null = null;
+      if (input.timeoutMs > 0) {
+        timer = setTimeout(() => {
+          child.kill("SIGTERM");
+          resolve({
+            exitStatus: null,
+            durationMs: Date.now() - startTime,
+            stdout,
+            stderr,
+          });
+        }, input.timeoutMs);
+      }
+
+      child.on("error", (err) => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        reject(err);
+      });
+
+      child.on("exit", (code) => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        resolve({
+          exitStatus: code,
+          durationMs: Date.now() - startTime,
+          stdout,
+          stderr,
+        });
       });
     });
   },
@@ -345,7 +457,12 @@ export async function runBenchmarkSuite(
       }
 
       totalAttemptsRun++;
-      let runResult: { exitStatus: number | null; durationMs: number };
+      let runResult: {
+        exitStatus: number | null;
+        durationMs: number;
+        stdout: string;
+        stderr: string;
+      };
       try {
         runResult = await adapter(
           {
@@ -361,6 +478,8 @@ export async function runBenchmarkSuite(
         runResult = {
           exitStatus: null,
           durationMs: 0,
+          stdout: "",
+          stderr: err instanceof Error ? err.message : String(err),
         };
       }
 
@@ -383,6 +502,8 @@ export async function runBenchmarkSuite(
         provider,
         model,
         taskId: task.id,
+        stdout: sanitizeOutput(runResult.stdout),
+        stderr: sanitizeOutput(runResult.stderr),
       });
 
       cleanupFn();

@@ -120,12 +120,24 @@ try {
         console.log(`  ✓ Updated AGENTS.md`);
       }
 
-      // Copy hooks.yml
-      const hooksSrc = path.join(FORGEWRIGHT_DIR, '.claude', 'hooks.yml');
-      const hooksDest = path.join(claudeDir, 'hooks.yml');
-      if (fs.existsSync(hooksSrc)) {
-        fs.copyFileSync(hooksSrc, hooksDest);
-        console.log(`  ✓ Updated .claude/hooks.yml`);
+      // Copy real platform hook configs
+      const copyPairs = [
+        ['.claude', 'settings.json'],
+        ['.gemini', 'settings.json'],
+        ['.cursor', 'hooks.json'],
+        ['.codex', 'config.toml']
+      ];
+      for (const [dir, file] of copyPairs) {
+        const src = path.join(FORGEWRIGHT_DIR, dir, file);
+        const destDir = path.join(projectRoot, dir);
+        const dest = path.join(destDir, file);
+        if (fs.existsSync(src)) {
+          if (!fs.existsSync(destDir)) {
+            fs.mkdirSync(destDir, { recursive: true });
+          }
+          fs.copyFileSync(src, dest);
+          console.log(`  ✓ Updated ${dir}/${file}`);
+        }
       }
     } catch (err) {
       console.log(`  ❌ Failed to copy configs: ${err.message}`);

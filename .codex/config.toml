@@ -1,0 +1,10 @@
+[features]
+hooks = true
+
+[hooks]
+
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+command = "scripts/lite/verify-gate.sh"

@@ -1,0 +1,5 @@
+{
+  "hooks": {
+    "stop": "echo '{\"followup_message\": \"followup_message\"}'"
+  }
+}

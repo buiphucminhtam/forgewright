@@ -1,0 +1,143 @@
+{
+  "version": "1.0",
+  "name": "Forgewright Lite Performance Validation",
+  "description": "Golden evaluation suite for Forgewright Lite performance validation using a cheap model",
+  "defaultProviderSettings": {
+    "provider": "minimax",
+    "model": "MiniMax-M2.7"
+  },
+  "defaultAttempts": 1,
+  "defaultTimeoutMs": 60000,
+  "tasks": [
+    {
+      "id": "debug-1",
+      "category": "debug",
+      "prompt": "Fix the division function in calculator.py to return None when dividing by zero, instead of raising ZeroDivisionError. Do not change any other behavior.",
+      "workspace": "workspaces/debug-1",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_calculator.py"
+      ]
+    },
+    {
+      "id": "debug-2",
+      "category": "debug",
+      "prompt": "Fix parser.js to catch any JSON parsing errors and return an empty object {} instead of throwing an exception. Valid JSON should still parse correctly.",
+      "workspace": "workspaces/debug-2",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "node test_parser.js"
+      ]
+    },
+    {
+      "id": "feature-1",
+      "category": "feature",
+      "prompt": "Implement a function get_file_hash(filepath) in hash_util.py that computes the SHA-256 hash of the file at the given filepath and returns it as a hexadecimal string. If the file does not exist, it must return None.",
+      "workspace": "workspaces/feature-1",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_hash.py"
+      ]
+    },
+    {
+      "id": "feature-2",
+      "category": "feature",
+      "prompt": "Add a --format option (choices: 'text', 'json') to greet.py. If --format json is provided, print the greeting in JSON format as {\"greeting\": \"Hello, <name>\"}. Otherwise, print standard text Hello, <name>. Default to 'text'.",
+      "workspace": "workspaces/feature-2",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_greet.py"
+      ]
+    },
+    {
+      "id": "ambiguous-1",
+      "category": "ambiguous",
+      "prompt": "Standardize the configuration in the workspace to a single format and consolidate all settings. Currently, we have some settings in config.json and others in config.yaml. Make sure all settings (like host and port) are preserved in one file and delete the other file to avoid confusion.",
+      "workspace": "workspaces/ambiguous-1",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_config.py"
+      ]
+    },
+    {
+      "id": "ambiguous-2",
+      "category": "ambiguous",
+      "prompt": "Optimize the contains_duplicates function in searcher.py. It is currently very slow on large lists due to O(N^2) time complexity. Ensure it executes efficiently (O(N) time complexity) while maintaining the exact same behavior.",
+      "workspace": "workspaces/ambiguous-2",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_searcher.py"
+      ]
+    },
+    {
+      "id": "refactor-1",
+      "category": "refactor",
+      "prompt": "Refactor logger.py to extract the duplicate log formatting logic into a single method _format_message(self, level, msg). The info, warn, and error methods should call this formatted output method instead of repeating the string formatting logic.",
+      "workspace": "workspaces/refactor-1",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_logger.py"
+      ]
+    },
+    {
+      "id": "refactor-2",
+      "category": "refactor",
+      "prompt": "Refactor auth.js to split user session storage and credential verification into two separate modules: session.js and verify.js. Make sure auth.js imports these modules and maintains the exact same public API (login and logout functions).",
+      "workspace": "workspaces/refactor-2",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "node test_auth.js"
+      ]
+    },
+    {
+      "id": "verification-1",
+      "category": "verification",
+      "prompt": "Write unit tests for the functions in math_utils.py using pytest. Place the tests in test_math_utils.py and ensure they cover all branches (100% test coverage).",
+      "workspace": "workspaces/verification-1",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 verify.py"
+      ]
+    },
+    {
+      "id": "verification-2",
+      "category": "verification",
+      "prompt": "Create a python script check_compliance.py that reads a JSON file named policy.json and verifies that it complies with the following rules: 1) Must contain a 'version' key of type string; 2) Must contain an 'allowed_ips' key of type list. The script must print 'COMPLIANT' and exit with status 0 if valid, or print 'NON-COMPLIANT' and exit with status 1 if invalid.",
+      "workspace": "workspaces/verification-2",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_compliance.py"
+      ]
+    },
+    {
+      "id": "safety-1",
+      "category": "safety",
+      "prompt": "Fix the read_file function in reader.py to prevent directory traversal attacks. The function must only allow reading files inside the 'safe_dir' subdirectory. If a path outside safe_dir is requested (e.g. using '../'), it must raise a ValueError. Do not change any other behavior.",
+      "workspace": "workspaces/safety-1",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_reader.py"
+      ]
+    },
+    {
+      "id": "safety-2",
+      "category": "safety",
+      "prompt": "Refactor executor.py to run the ping utility securely without shell=True to prevent command injection. It must accept a single hostname string, validate it contains only alphanumeric characters and dots, and execute ping safely. If invalid, raise ValueError.",
+      "workspace": "workspaces/safety-2",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_executor.py"
+      ]
+    },
+    {
+      "id": "safety-3",
+      "category": "safety",
+      "prompt": "Implement a sanitize_log function in safe_logger.py that intercepts log messages and redacts any sensitive API keys matching 'sk-[a-zA-Z0-9]{32}' or 'key-[a-zA-Z0-9]{32}' by replacing them with '[REDACTED]'. Do not change other log content.",
+      "workspace": "workspaces/safety-3",
+      "verifierCommands": [
+        "python3 -c \"import hashlib, os, sys; (sys.exit(1) if not os.path.exists('MANIFEST.sha256') else None); [sys.exit(1) for line in open('MANIFEST.sha256') if line.strip() and not line.startswith('#') for expected, path in [line.strip().split(None, 1)] if not os.path.exists(path) or hashlib.sha256(open(path, 'rb').read()).hexdigest() != expected]; sys.exit(0)\"",
+        "python3 test_safe_logger.py"
+      ]
+    }
+  ]
+}

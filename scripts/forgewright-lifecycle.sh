@@ -181,19 +181,52 @@ check_mcp() {
 check_hooks() {
     log_header "Checking Hooks"
 
-    local hooks_file="$HOME/.claude/hooks.yml"
-
-    if [[ -f "$hooks_file" ]]; then
-        log_success "Hooks file exists"
-
-        # Check for critical hooks
-        if grep -q "memory-tick" "$hooks_file" 2>/dev/null; then
-            log_success "  ✓ memory-tick hook"
+    # Claude Code
+    if [[ -f "$HOME/.claude/settings.json" ]]; then
+        log_success "  ✓ Claude Code settings exist"
+        if grep -q "verify-gate.sh" "$HOME/.claude/settings.json" 2>/dev/null; then
+            log_success "    ✓ verify-gate.sh stop hook configured"
         else
-            log_warn "  ✗ memory-tick hook (missing)"
+            log_warn "    ✗ verify-gate.sh stop hook missing"
         fi
     else
-        log_warn "Hooks file not found"
+        log_warn "  ✗ Claude Code settings not found"
+    fi
+
+    # Gemini
+    if [[ -f "$HOME/.gemini/settings.json" ]]; then
+        log_success "  ✓ Gemini settings exist"
+        if grep -q "verify-gate.sh" "$HOME/.gemini/settings.json" 2>/dev/null; then
+            log_success "    ✓ verify-gate.sh AfterAgent hook configured"
+        else
+            log_warn "    ✗ verify-gate.sh AfterAgent hook missing"
+        fi
+    else
+        log_warn "  ✗ Gemini settings not found"
+    fi
+
+    # Cursor
+    if [[ -f "$HOME/.cursor/hooks.json" ]]; then
+        log_success "  ✓ Cursor hooks exist"
+        if grep -q "followup_message" "$HOME/.cursor/hooks.json" 2>/dev/null; then
+            log_success "    ✓ followup_message stop hook configured"
+        else
+            log_warn "    ✗ followup_message stop hook missing"
+        fi
+    else
+        log_warn "  ✗ Cursor hooks not found"
+    fi
+
+    # Codex
+    if [[ -f "$HOME/.codex/config.toml" ]]; then
+        log_success "  ✓ Codex config exists"
+        if grep -q "verify-gate.sh" "$HOME/.codex/config.toml" 2>/dev/null; then
+            log_success "    ✓ verify-gate.sh Stop hook configured"
+        else
+            log_warn "    ✗ verify-gate.sh Stop hook missing"
+        fi
+    else
+        log_warn "  ✗ Codex config not found"
     fi
 }
 
@@ -313,11 +346,33 @@ fix_common_issues() {
     fi
 
     # Fix 3: Create hooks symlink if missing
-    local hooks_file="$HOME/.claude/hooks.yml"
-    if [[ ! -f "$hooks_file" ]] && [[ -f "$FORGEWRIGHT_DIR/skills/_shared/../../.claude/hooks.yml" ]]; then
-        log_fix "Creating hooks symlink"
-        mkdir -p "$HOME/.claude"
-        ln -sf "$FORGEWRIGHT_DIR/skills/../.claude/hooks.yml" "$hooks_file"
+    if [[ -f "$FORGEWRIGHT_DIR/.claude/settings.json" ]]; then
+        if [[ ! -f "$HOME/.claude/settings.json" ]]; then
+            log_fix "Creating Claude Code settings.json symlink"
+            mkdir -p "$HOME/.claude"
+            ln -sf "$FORGEWRIGHT_DIR/.claude/settings.json" "$HOME/.claude/settings.json"
+        fi
+    fi
+    if [[ -f "$FORGEWRIGHT_DIR/.gemini/settings.json" ]]; then
+        if [[ ! -f "$HOME/.gemini/settings.json" ]]; then
+            log_fix "Creating Gemini settings.json symlink"
+            mkdir -p "$HOME/.gemini"
+            ln -sf "$FORGEWRIGHT_DIR/.gemini/settings.json" "$HOME/.gemini/settings.json"
+        fi
+    fi
+    if [[ -f "$FORGEWRIGHT_DIR/.cursor/hooks.json" ]]; then
+        if [[ ! -f "$HOME/.cursor/hooks.json" ]]; then
+            log_fix "Creating Cursor hooks.json symlink"
+            mkdir -p "$HOME/.cursor"
+            ln -sf "$FORGEWRIGHT_DIR/.cursor/hooks.json" "$HOME/.cursor/hooks.json"
+        fi
+    fi
+    if [[ -f "$FORGEWRIGHT_DIR/.codex/config.toml" ]]; then
+        if [[ ! -f "$HOME/.codex/config.toml" ]]; then
+            log_fix "Creating Codex config.toml symlink"
+            mkdir -p "$HOME/.codex"
+            ln -sf "$FORGEWRIGHT_DIR/.codex/config.toml" "$HOME/.codex/config.toml"
+        fi
     fi
 
     # Fix 4: Ensure skills directory exists
@@ -488,13 +543,19 @@ with open('$config', 'w') as f:
 
     # Remove hooks
     log_info "Removing hooks..."
-    if [[ -f "$HOME/.claude/hooks.yml" ]]; then
-        # Check if it's a forgewright symlink
-        if grep -q "forgewright" "$HOME/.claude/hooks.yml" 2>/dev/null; then
-            rm "$HOME/.claude/hooks.yml"
-            log_success "Removed: hooks.yml"
+    for file in \
+        "$HOME/.claude/settings.json" \
+        "$HOME/.gemini/settings.json" \
+        "$HOME/.cursor/hooks.json" \
+        "$HOME/.codex/config.toml"
+    do
+        if [[ -f "$file" ]]; then
+            if grep -q "verify-gate.sh\|followup_message" "$file" 2>/dev/null; then
+                rm "$file"
+                log_success "Removed hook config: $file"
+            fi
         fi
-    fi
+    done
 
     # Remove aliases
     log_info "Removing shell aliases..."

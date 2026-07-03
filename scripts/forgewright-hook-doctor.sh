@@ -121,7 +121,10 @@ for dir in \
     "${HOME}/.forgewright" \
     "${HOME}/.forgewright/sessions" \
     "${SCRIPT_DIR}/.." \
-    "${HOME}/.claude"
+    "${HOME}/.claude" \
+    "${HOME}/.gemini" \
+    "${HOME}/.cursor" \
+    "${HOME}/.codex"
 do
     if [[ -d "$dir" ]]; then
         log_pass "Directory exists: $dir"
@@ -175,45 +178,163 @@ else
     log_info "Session start max chars not set (default: 50000)"
 fi
 
-# ─── Check 4: Claude Code Hooks Configuration ──────────────────────────────────
+# ─── Check 4: Platform Hook Configurations ─────────────────────────────────────
 
-log_header "Claude Code Configuration"
+log_header "Platform Hook Configurations"
 
+# Determine project root path
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+GATE_SCRIPT="${PROJECT_ROOT}/scripts/lite/verify-gate.sh"
+
+# 1. Claude Code Hook Configuration
 CLAUDE_SETTINGS="${HOME}/.claude/settings.json"
 if [[ -f "$CLAUDE_SETTINGS" ]]; then
     log_pass "Claude Code settings file exists"
-
-    # Check if hooks are configured
-    if grep -q "forgewright-memory-hook" "$CLAUDE_SETTINGS" 2>/dev/null; then
-        log_pass "Hook script referenced in settings"
-
-        # Check if PostMessage hook is set
-        if grep -q '"PostMessage".*forgewright-memory-hook' "$CLAUDE_SETTINGS" 2>/dev/null || \
-           grep -q 'PostMessage.*forgewright-memory-hook' "$CLAUDE_SETTINGS" 2>/dev/null; then
-            log_pass "PostMessage hook configured"
-        else
-            log_warn "PostMessage hook may not be configured"
-        fi
+    if grep -q "verify-gate.sh" "$CLAUDE_SETTINGS" 2>/dev/null; then
+        log_pass "Claude stop hook configured with verify-gate.sh"
     else
-        log_warn "Hook script NOT referenced in Claude Code settings"
+        log_warn "Claude stop hook NOT configured with verify-gate.sh"
         if [[ "$AUTO_FIX" == "true" ]]; then
-            # Backup
             cp "$CLAUDE_SETTINGS" "${CLAUDE_SETTINGS}.bak.$(date +%Y%m%d%H%M%S)"
-            # Add hooks using Node.js
             node -e "
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$CLAUDE_SETTINGS', 'utf8'));
 if (!cfg.hooks) cfg.hooks = {};
-cfg.hooks.PostMessage = '$HOOK_SCRIPT tick';
-cfg.hooks.PostToolUse = '$HOOK_SCRIPT checkpoint';
+cfg.hooks.stop = '$GATE_SCRIPT';
 fs.writeFileSync('$CLAUDE_SETTINGS', JSON.stringify(cfg, null, 2));
 "
-            log_info "  → Fixed: Added hook references to settings"
+            log_info "  → Fixed: Added stop hook to Claude settings"
         fi
     fi
 else
     log_warn "Claude Code settings file not found: $CLAUDE_SETTINGS"
-    log_info "  Run 'claude' once to generate settings, then re-run doctor"
+    if [[ "$AUTO_FIX" == "true" ]]; then
+        mkdir -p "$(dirname "$CLAUDE_SETTINGS")"
+        cat <<EOF > "$CLAUDE_SETTINGS"
+{
+  "hooks": {
+    "stop": "$GATE_SCRIPT"
+  }
+}
+EOF
+        log_info "  → Fixed: Created Claude settings with stop hook"
+    fi
+fi
+
+# 2. Gemini Hook Configuration
+GEMINI_SETTINGS="${HOME}/.gemini/settings.json"
+if [[ -f "$GEMINI_SETTINGS" ]]; then
+    log_pass "Gemini settings file exists"
+    if grep -q "verify-gate.sh" "$GEMINI_SETTINGS" 2>/dev/null; then
+        log_pass "Gemini AfterAgent hook configured with verify-gate.sh"
+    else
+        log_warn "Gemini AfterAgent hook NOT configured with verify-gate.sh"
+        if [[ "$AUTO_FIX" == "true" ]]; then
+            cp "$GEMINI_SETTINGS" "${GEMINI_SETTINGS}.bak.$(date +%Y%m%d%H%M%S)"
+            node -e "
+var fs = require('fs');
+var cfg = JSON.parse(fs.readFileSync('$GEMINI_SETTINGS', 'utf8'));
+if (!cfg.hooks) cfg.hooks = {};
+cfg.hooks.AfterAgent = '$GATE_SCRIPT';
+fs.writeFileSync('$GEMINI_SETTINGS', JSON.stringify(cfg, null, 2));
+"
+            log_info "  → Fixed: Added AfterAgent hook to Gemini settings"
+        fi
+    fi
+else
+    log_warn "Gemini settings file not found: $GEMINI_SETTINGS"
+    if [[ "$AUTO_FIX" == "true" ]]; then
+        mkdir -p "$(dirname "$GEMINI_SETTINGS")"
+        cat <<EOF > "$GEMINI_SETTINGS"
+{
+  "hooks": {
+    "AfterAgent": "$GATE_SCRIPT"
+  }
+}
+EOF
+        log_info "  → Fixed: Created Gemini settings with AfterAgent hook"
+    fi
+fi
+
+# 3. Cursor Hook Configuration
+CURSOR_HOOKS="${HOME}/.cursor/hooks.json"
+if [[ -f "$CURSOR_HOOKS" ]]; then
+    log_pass "Cursor hooks file exists"
+    if grep -q "followup_message" "$CURSOR_HOOKS" 2>/dev/null; then
+        log_pass "Cursor stop hook configured with followup_message"
+    else
+        log_warn "Cursor stop hook NOT configured with followup_message"
+        if [[ "$AUTO_FIX" == "true" ]]; then
+            cp "$CURSOR_HOOKS" "${CURSOR_HOOKS}.bak.$(date +%Y%m%d%H%M%S)"
+            node -e "
+var fs = require('fs');
+var cfg = JSON.parse(fs.readFileSync('$CURSOR_HOOKS', 'utf8'));
+if (!cfg.hooks) cfg.hooks = {};
+cfg.hooks.stop = 'echo \x27{\"followup_message\": \"followup_message\"}\x27';
+fs.writeFileSync('$CURSOR_HOOKS', JSON.stringify(cfg, null, 2));
+"
+            log_info "  → Fixed: Added stop hook to Cursor hooks config"
+        fi
+    fi
+else
+    log_warn "Cursor hooks file not found: $CURSOR_HOOKS"
+    if [[ "$AUTO_FIX" == "true" ]]; then
+        mkdir -p "$(dirname "$CURSOR_HOOKS")"
+        cat <<'EOF' > "$CURSOR_HOOKS"
+{
+  "hooks": {
+    "stop": "echo '{\"followup_message\": \"followup_message\"}'"
+  }
+}
+EOF
+        log_info "  → Fixed: Created Cursor hooks settings"
+    fi
+fi
+
+# 4. Codex CLI Hook Configuration
+CODEX_CONFIG="${HOME}/.codex/config.toml"
+if [[ -f "$CODEX_CONFIG" ]]; then
+    log_pass "Codex config file exists"
+    if grep -q "verify-gate.sh" "$CODEX_CONFIG" 2>/dev/null; then
+        log_pass "Codex Stop hook configured with verify-gate.sh"
+    else
+        log_warn "Codex Stop hook NOT configured with verify-gate.sh"
+        if [[ "$AUTO_FIX" == "true" ]]; then
+            cp "$CODEX_CONFIG" "${CODEX_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
+            cat <<EOF >> "$CODEX_CONFIG"
+
+[features]
+hooks = true
+
+[hooks]
+
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+command = "$GATE_SCRIPT"
+EOF
+            log_info "  → Fixed: Added hooks block to Codex config"
+        fi
+    fi
+else
+    log_warn "Codex config file not found: $CODEX_CONFIG"
+    if [[ "$AUTO_FIX" == "true" ]]; then
+        mkdir -p "$(dirname "$CODEX_CONFIG")"
+        cat <<EOF > "$CODEX_CONFIG"
+[features]
+hooks = true
+
+[hooks]
+
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+command = "$GATE_SCRIPT"
+EOF
+        log_info "  → Fixed: Created Codex config with Stop hook"
+    fi
 fi
 
 # ─── Check 5: Memory Session Status ───────────────────────────────────────────
