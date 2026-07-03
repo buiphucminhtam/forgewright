@@ -1,105 +1,42 @@
 ---
-name: accessibility-engineer
-description: "Orchestrates accessibility audits, WCAG 2.1/2.2 AA compliance testing, and automated ARIA/semantic HTML remediation. Use when the user requests frontend UI updates, accessibility audits, design system reviews, or screen reader and keyboard navigation validation."
+name: 3d-spatial-engineer
+description: "Expert in 3D spatial design, coordinate transformations, blockout workflows, and engine-level performance optimizations. Use when the user requests 3D scene organization, coordinate transformations, layout optimizations, culling setups, or LOD metrics."
 version: 1.0.0
 ---
 
-# Accessibility Engineer (LITE)
+# 3D Spatial Engineer (LITE)
 
-## SOLVE Step 2: GROUND (Accessibility Engineer Domain Slots)
+## SOLVE Step 2: GROUND (3D Spatial Engineer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Target accessibility auditing libraries (axe-core, Playwright) are installed | `cat package.json \| jq '.devDependencies["@axe-core/playwright"]'` | Validates axe accessibility testing engine dependency | |
-| Existing accessibility guidelines or compliance specs are loaded | `find docs/04-testing/ -name "*accessibility*" -o -name "*wcag*"` | Lists existing lowercase, kebab-case accessibility documentation | |
-| Standardized QA/testing template is present under testing directory | `cat docs/04-testing/TEMPLATE-TEST-PLAN.md` | Verification of layout templates for accessibility logs | |
-| Active token budget boundaries are mapped for headless browser audits | `cat .forgewright/budget.yaml` | Displays configured API token cost and spend limits | |
+| Target scene assets/prefabs exist | `ls Assets/Prefabs` / engine tools | Lists prefabs for modular blockout | |
+| Metric system of target engine is known | Engine docs (Unity: Y-up LHS, Godot: Y-up RHS, Unreal: Z-up LHS) | Identifies coordinate orientation and units | |
+| LOD budgets and culling cells are defined | Check `.forgewright/3d-spatial-engineer/optimization-policy.md` | Verification of culling configuration | |
 
-## SOLVE Step 3: DECOMPOSE (Accessibility Engineer Domain Slots)
+## SOLVE Step 3: DECOMPOSE (3D Spatial Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. AUDIT | Run automated WCAG checks (axe-core) on target routes and components | Capture violation counts, impact levels (critical, serious, moderate), and affected selectors.
-2. REMEDIATE | Correct non-semantic markups, missing aria-states, and keyboard traps | Ensure interactive components receive proper keyboard focus and ARIA attributes (e.g., `aria-expanded`, `tabindex`).
-3. CONFIRM | Run manual or automated keyboard focus sequence traversals | Verify logical tab orders and focus-restoration rules for modal/dialog closures.
-4. SYNC | Document compliant status logs to `docs/04-testing/` and Obsidian | Write kebab-case summaries and trigger absolute symlink sync hooks to update the central wiki.
+1. BLOCKOUT | Construct layout using primitive metrics aligned to humanoid scale (1.75m) | Verify door clearance (2.2m) and corridor height (3m).
+2. TRANSFORMS | Solve parent-child scene graph matrix transformations | Recalculate local transforms relative to new parents: $T'_L = T_G^{-1} \cdot T_{world\_global\_of\_L}$.
+3. OPTIMIZE | Configure culling volumes, static batching, and LOD cutoffs | Verify draw call budget and LOD distance thresholds.
+4. SYNC | Write configuration to `.forgewright/3d-spatial-engineer/` and sync to Obsidian | Write kebab-case documentation summaries.
 
 ## Common Mistakes Checklist
-- **Keyboard Trap Ingestion**: Launching overlays or modals without capturing keyboard focus or forgetting to restore focus to the trigger button on close.
-- **Div-Soup Interactive Buttons**: Creating clickable actions using standard `<div>` or `<span>` elements without mapping keyboard listener fallbacks (Enter/Space keys) and `role="button"`.
-- **Contrast Ratio Degradation**: Implementing color schemas below WCAG AA thresholds (4.5:1 for normal text, 3:1 for large text) without verifying UI styling configurations.
-- **Alt-Text Redundancy**: Writing screen reader alt-texts starting with descriptive words like "image of" or "photo of" instead of semantic representations.
-- **Non-Compliant File Names**: Writing test results or design reports under `docs/` using CamelCase, spaces, or absolute paths instead of lowercase kebab-case.
+- **Cauldrons of Space**: Creating layouts that are cavernous or out of proportion with the player scale. Snap to standard humanoid scales (1.75m).
+- **Matrix Order Mismatch**: Multiplying matrices in local-to-projection order instead of the reversed pipeline: $V_{clip} = M_{projection} \cdot M_{view} \cdot M_{model} \cdot V_{local}$.
+- **Disjointed Scene Graph**: Moving child objects across parents without recalculating offset transforms relative to the new parent's inverse global transform.
+- **Draw Call Splitting**: Generating separate materials for similar meshes instead of combining textures into atlases and batching draw calls.
+- **Missing Occlusion Baking**: Letting the GPU render hidden interiors; bake occlusion cells or trigger levels dynamically.
 
 ## Worked Example
 
-### Step 1: Check accessibility test package integration and templates
-```bash
-cat package.json | grep -E "axe-core"
-cat docs/04-testing/TEMPLATE-TEST-PLAN.md
-```
-Output:
-```json
-    "@axe-core/playwright": "^4.9.0"
-```
-
-### Step 2: Remediate modal with accessible focus-trap and ARIA bindings in `src/AccessibleModal.tsx`
-```bash
-cat << 'EOF' > src/AccessibleModal.tsx
-import React, { useEffect, useRef } from 'react';
-
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-}
-
-export const AccessibleModal: React.FC<ModalProps> = ({ isOpen, onClose, title }) => {
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      closeButtonRef.current?.focus();
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div role="dialog" aria-modal="true" aria-labelledby="modal-title" className="modal-overlay">
-      <div className="modal-content">
-        <h2 id="modal-title">{title}</h2>
-        <button 
-          ref={closeButtonRef} 
-          onClick={onClose} 
-          aria-label="Close dialog"
-        >
-          X
-        </button>
-        <div className="modal-body">
-          <p>This content is fully navigable via screen readers and keyboard sequences.</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-EOF
-```
-
-### Step 3: Execute Playwright accessibility tests to confirm WCAG 2.1 AA compliance
-```bash
-npx playwright test tests/accessibility.spec.ts
-```
-Output:
-```
-[SUCCESS] Running axe-core accessibility scanner...
-[WCAG AA] 0 Critical Violations found.
-[SUCCESS] Generated docs/04-testing/wcag-accessibility-audit.md.
-```
-
-### Step 4: Synchronize audit reports to the Shared Obsidian Vault
-```bash
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Symlinked docs/04-testing/wcag-accessibility-audit.md to /workspace/shared-obsidian-vault/forgewright/04-testing/wcag-accessibility-audit.md.
+### Recalculate transform matrix on parent change
+```gdscript
+# Godot 4.x example: Detach node from old parent and attach to new parent while preserving global position
+func reparent_node(node: Node3D, new_parent: Node3D):
+    var global_transform = node.global_transform
+    node.get_parent().remove_child(node)
+    new_parent.add_child(node)
+    # Recalculate local transform relative to the new parent's inverse transform
+    node.transform = new_parent.global_transform.affine_inverse() * global_transform
 ```

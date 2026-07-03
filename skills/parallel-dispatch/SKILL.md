@@ -67,9 +67,18 @@ Based on the Forgewright task dependency graph:
 │   T6a: security-engineer  (workspace only)         │
 │   T6b: code-reviewer      (workspace only)         │
 └─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│ Group C — GAME BUILD Phase (after design approval)  │
+│   T_game_design: game-designer (GDD & economy)      │
+│   T_spatial_design: 3d-spatial-engineer (blockouts) │
+│   T_game_dev: game-engineer / physics-engineer      │
+│   T_art_vfx: technical-artist / game-asset-vfx      │
+│   T_audio: game-audio-engineer (sfx & music)         │
+└─────────────────────────────────────────────────────┘
 ```
 
-**Note:** T4 (DevOps) depends on T3a (Backend) for service discovery, so it starts after T3a.
+**Note:** T4 (DevOps) depends on T3a (Backend) for service discovery, so it starts after T3a. In Group C, T_game_dev and T_spatial_design run concurrently after T_game_design completes.
 
 ---
 
@@ -265,6 +274,45 @@ const t6bContract: TaskContract = {
     'Code quality score >= 7/10',
     'No blocking issues',
     'Review report generated',
+  ],
+};
+
+// T_game_dev (Gameplay Engineering)
+const tGameDevContract: TaskContract = {
+  taskId: 'T_game_dev',
+  skill: 'game-engineer',
+  inputs: ['Assets/', 'presets/gameplay/', '.forgewright/game-designer/'],
+  outputs: ['Assets/Scripts/', 'presets/gameplay/'],
+  forbidden: ['infrastructure/'],
+  constraints: {
+    maxDuration: 45,
+    maxMemoryMB: 512,
+    testRequirement: 'all',
+  },
+  acceptanceCriteria: [
+    'Character controllers implement smooth, frame-rate independent movement',
+    'Physics interactions use appropriate fixed-process delta values',
+    'Save/load systems use encrypted datatypes to prevent client-side hacks',
+    'Compilation checks run headlessly and verify zero compiler warnings',
+  ],
+};
+
+// T_spatial_design (3D Spatial Design & Blockouts)
+const tSpatialDesignContract: TaskContract = {
+  taskId: 'T_spatial_design',
+  skill: '3d-spatial-engineer',
+  inputs: ['Assets/', '.forgewright/game-designer/'],
+  outputs: ['Assets/Scenes/', 'Assets/Prefabs/'],
+  forbidden: ['Assets/Scripts/'],
+  constraints: {
+    maxDuration: 30,
+    maxMemoryMB: 512,
+    testRequirement: 'none',
+  },
+  acceptanceCriteria: [
+    'Layout blockouts snap strictly to humanoid metrics (1.75m scale)',
+    'Scene graphs detachments recalculate local transforms relative to parent inverse transforms',
+    'Material batching and culling volumes are configured for draw call optimization',
   ],
 };
 ```
