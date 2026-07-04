@@ -230,16 +230,9 @@ ${input.prompt}
   },
 
   gemini: async (input, spawnFn) => {
-    const args = [
-      "exec",
-      "--skip-git-repo-check",
-      "--model",
-      input.model,
-      "--sandbox",
-      "workspace-write",
-      "--ephemeral",
-      input.prompt,
-    ];
+    // Use actual Gemini CLI flags: -m/--model, -p/--prompt for non-interactive
+    // headless stdout mode, -y/--yolo to auto-approve all actions (safe in CI).
+    const args = ["-m", input.model, "-y", "-p", input.prompt];
 
     const startTime = Date.now();
     return new Promise((resolve, reject) => {
