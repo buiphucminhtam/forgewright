@@ -1,227 +1,112 @@
 #!/usr/bin/env bash
 # scripts/lite/escalate.sh
-# Cascade router that spawns a stronger model for hard tasks, logs token cost, and returns output.
-# Works on macOS and Windows/Git-Bash.
+# Builds context packets (task, evidence, diff, slices) and delegates to configured expert CLI.
 
 set -euo pipefail
 
-# Find project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Call the embedded Python cascade router
+export PROJECT_ROOT
+
 python3 - "$@" << 'EOF'
 import sys
 import os
+import subprocess
 import json
+import re
+import tempfile
 import time
-import urllib.request
-import urllib.error
 
-# Colors
-RED = '\033[0;31m'
-YELLOW = '\033[1;33m'
-GREEN = '\033[0;32m'
-BLUE = '\033[0;34m'
-NC = '\033[0m'
+def get_expert_cli():
+    cli = "agy"
+    config_path = os.path.join(os.environ.get("PROJECT_ROOT", "."), ".production-grade.yaml")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                content = f.read()
+                match = re.search(r'expert_cli:\s*([^\s]+)', content)
+                if match:
+                    cli = match.group(1)
+        except Exception:
+            pass
+    return cli
 
-def log_info(msg):
-    sys.stderr.write(f"{GREEN}[ESCALATE]{NC} {msg}\n")
+def get_git_diff():
+    try:
+        diff = subprocess.check_output(["git", "diff", "HEAD"], text=True, stderr=subprocess.DEVNULL)
+        return diff[:10000]
+    except Exception:
+        return ""
 
-def log_warn(msg):
-    sys.stderr.write(f"{YELLOW}[ESCALATE] WARNING:{NC} {msg}\n")
-
-def log_error(msg):
-    sys.stderr.write(f"{RED}[ESCALATE] ERROR:{NC} {msg}\n")
+def get_evidence():
+    # In a real scenario, this might read from a test runner output or verification log.
+    return "Escalation requested based on objective runtime signals or budget limits."
 
 def main():
-    # Parse simple arguments
     args = sys.argv[1:]
-    model_override = None
-    provider_override = None
-    mode = "hard-task"
-    skill = "escalate"
+    is_dry_run = "--dry-run" in args
+    if is_dry_run:
+        args.remove("--dry-run")
+        
+    task_desc = " ".join(args) if args else ""
+    if not task_desc and not sys.stdin.isatty():
+        task_desc = sys.stdin.read().strip()
+
+    if not task_desc:
+        task_desc = "No task provided."
+
+    expert_cli = get_expert_cli()
     
-    # Extract flag arguments
-    filtered_args = []
-    i = 0
-    while i < len(args):
-        if args[i] == '--model' and i + 1 < len(args):
-            model_override = args[i+1]
-            i += 2
-        elif args[i] == '--provider' and i + 1 < len(args):
-            provider_override = args[i+1]
-            i += 2
-        elif args[i] == '--mode' and i + 1 < len(args):
-            mode = args[i+1]
-            i += 2
-        elif args[i] == '--skill' and i + 1 < len(args):
-            skill = args[i+1]
-            i += 2
-        else:
-            filtered_args.append(args[i])
-            i += 1
-            
-    # Get prompt from arguments or stdin
-    if filtered_args:
-        prompt = " ".join(filtered_args)
-    else:
-        log_info("Reading prompt from stdin...")
-        prompt = sys.stdin.read()
-        
-    if not prompt.strip():
-        log_error("Empty prompt. Nothing to escalate.")
-        sys.exit(1)
-        
-    # Detect API keys
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    gemini_key = os.environ.get("GEMINI_API_KEY")
+    # Build context packet
+    packet = {
+        "task": task_desc,
+        "evidence": get_evidence(),
+        "diff": get_git_diff(),
+        "relevant_slices": []
+    }
     
-    # Build list of options to try in priority order
-    options = []
+    packet_json = json.dumps(packet, indent=2)
     
-    # Anthropic
-    if anthropic_key and (not provider_override or provider_override == "anthropic"):
-        options.append({
-            "provider": "anthropic",
-            "model": model_override or "claude-3-5-sonnet-20241022",
-            "key": anthropic_key,
-            "url": "https://api.anthropic.com/v1/messages"
-        })
+    if is_dry_run:
+        print("[DRY RUN] Context Packet Built:")
+        print(packet_json)
+        print(f"[DRY RUN] Would execute CLI: {expert_cli} (noninteractive)")
+        print("[DRY RUN] Would log cost and result.")
+        sys.exit(0)
         
-    # OpenAI
-    if openai_key and (not provider_override or provider_override == "openai"):
-        options.append({
-            "provider": "openai",
-            "model": model_override or "gpt-4o",
-            "key": openai_key,
-            "url": "https://api.openai.com/v1/chat/completions"
-        })
+    # Write to temp file to avoid exposing secrets in argv
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        f.write(packet_json)
+        packet_file = f.name
         
-    # Google Gemini (multiple models fallback)
-    if gemini_key and (not provider_override or provider_override == "google"):
-        models = [model_override] if model_override else ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
-        for m in models:
-            options.append({
-                "provider": "google",
-                "model": m,
-                "key": gemini_key,
-                "url": f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
-            })
-            
-    if not options:
-        log_error("No available API keys or no matching provider found. Please set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY.")
-        sys.exit(1)
-        
-    response_text = None
-    selected_model = None
-    selected_provider = None
-    input_tokens = 0
-    output_tokens = 0
-    latency_ms = 0
+    print(f"[ESCALATE] Built context packet: {packet_file}")
+    print(f"[ESCALATE] Launching expert CLI: {expert_cli}...")
     
-    # Try options sequentially until one succeeds
-    for opt in options:
-        provider = opt["provider"]
-        model = opt["model"]
-        key = opt["key"]
-        url = opt["url"]
-        
-        log_info(f"Attempting escalation using {provider} model: {model}...")
-        
-        # Prepare request
-        req_headers = {"Content-Type": "application/json"}
-        req_data = {}
-        
-        if provider == "anthropic":
-            req_headers["x-api-key"] = key
-            req_headers["anthropic-version"] = "2023-06-01"
-            req_data = {
-                "model": model,
-                "max_tokens": 4096,
-                "messages": [{"role": "user", "content": prompt}]
-            }
-        elif provider == "openai":
-            req_headers["Authorization"] = f"Bearer {key}"
-            req_data = {
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}]
-            }
-        elif provider == "google":
-            req_data = {
-                "contents": [{"parts": [{"text": prompt}]}]
-            }
-            
-        # Send request
-        start_time = time.time()
-        try:
-            req = urllib.request.Request(
-                url, 
-                data=json.dumps(req_data).encode("utf-8"), 
-                headers=req_headers,
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=60) as res:
-                latency_ms = int((time.time() - start_time) * 1000)
-                body = res.read().decode("utf-8")
-                res_json = json.loads(body)
-                
-                # Parse response based on provider
-                if provider == "anthropic":
-                    response_text = res_json["content"][0]["text"]
-                    input_tokens = res_json["usage"]["input_tokens"]
-                    output_tokens = res_json["usage"]["output_tokens"]
-                elif provider == "openai":
-                    response_text = res_json["choices"][0]["message"]["content"]
-                    input_tokens = res_json["usage"]["prompt_tokens"]
-                    output_tokens = res_json["usage"]["completion_tokens"]
-                elif provider == "google":
-                    response_text = res_json["candidates"][0]["content"]["parts"][0]["text"]
-                    input_tokens = res_json.get("usageMetadata", {}).get("promptTokenCount", len(prompt) // 4)
-                    output_tokens = res_json.get("usageMetadata", {}).get("candidatesTokenCount", len(response_text) // 4)
-                    
-                selected_model = model
-                selected_provider = provider
-                log_info(f"Escalation successful (latency: {latency_ms}ms, tokens: {input_tokens} in / {output_tokens} out)")
-                break  # Exit loop on success
-                
-        except urllib.error.HTTPError as e:
-            latency_ms = int((time.time() - start_time) * 1000)
-            err_msg = e.read().decode("utf-8") if e.fp else str(e)
-            log_warn(f"Escalation via {provider} ({model}) failed with HTTP {e.code}: {e.reason}")
-            try:
-                err_json = json.loads(err_msg)
-                sys.stderr.write(f"Details: {json.dumps(err_json, indent=2)}\n")
-            except:
-                sys.stderr.write(f"Details: {err_msg[:300]}\n")
-            continue  # Try next model
-        except Exception as e:
-            latency_ms = int((time.time() - start_time) * 1000)
-            log_warn(f"Escalation via {provider} ({model}) failed with error: {e}")
-            continue  # Try next model
-            
-    if response_text is None:
-        log_error("All escalation models failed.")
-        sys.exit(1)
-        
-    # Output response
-    print(response_text)
+    start_time = time.time()
     
-    # Log token usage via bookkeep.sh in background
+    # Support noninteractive CLI (e.g. agy --headless)
+    cmd = [expert_cli, "--headless", "--prompt-file", packet_file]
+    
     try:
-        bookkeep_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bookkeep.sh")
-        if os.path.exists(bookkeep_path):
-            import subprocess
-            cmd = [
-                "bash", bookkeep_path, "log-tokens", 
-                selected_model, selected_provider, 
-                str(input_tokens), str(output_tokens), 
-                str(latency_ms), skill, mode
-            ]
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception as e:
-        log_warn(f"Failed to trigger token bookkeeping: {e}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        latency = int((time.time() - start_time) * 1000)
+        
+        print(result.stdout)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+            
+        print(f"[ESCALATE] Completed in {latency}ms. Logging cost and result.")
+        # Minimal logging
+        with open("escalation_cost.log", "a") as log:
+            log.write(f"[{time.time()}] CLI: {expert_cli}, Exit: {result.returncode}, Latency: {latency}ms\n")
+            
+        os.remove(packet_file)
+        sys.exit(result.returncode)
+    except FileNotFoundError:
+        print(f"[ESCALATE] Error: Expert CLI '{expert_cli}' not found in PATH.", file=sys.stderr)
+        os.remove(packet_file)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

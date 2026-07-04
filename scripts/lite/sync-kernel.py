@@ -31,13 +31,8 @@ TARGETS = {
 
 
 def estimate_tokens(text):
-    # Standard approximation: 1 token ~ 4 characters
-    char_count = len(text)
-    word_count = len(text.split())
-    # Take the average of char-based and word-based estimation
-    # 1 token ~ 0.75 words, so words / 0.75 = words * 1.33
-    token_est = int((char_count / 4.0 + word_count * 1.33) / 2.0)
-    return token_est
+    # Deterministic token estimation
+    return len(text) // 4
 
 
 def sync():
@@ -52,9 +47,9 @@ def sync():
 
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read().strip()
-            # Clean up relative file links so they work from the project root
-            # Convert file:///Users/buiphucminhtam/GitHub/forgewright/kernel/X.md to file://./kernel/X.md or keep absolute
-            # Let's keep them absolute as generated or simplify them.
+            # Clean up links to kernel files so agents don't try to reread them
+            import re
+            content = re.sub(r'\[kernel/([A-Z]+)\.md\]\([^)]+\)', r'\1 section', content)
             kernel_contents.append(
                 f"<!-- START OF {filename} -->\n{content}\n<!-- END OF {filename} -->"
             )
@@ -63,6 +58,7 @@ def sync():
     total_kernel_tokens = estimate_tokens(combined_kernel)
     print(f"Kernel source files estimate: {total_kernel_tokens} tokens")
 
+    has_error = False
     for target_name, info in TARGETS.items():
         target_path = os.path.join(PROJECT_ROOT, target_name)
 
@@ -87,10 +83,13 @@ def sync():
 
         if target_tokens >= 7000:
             print(
-                f"Warning: {target_name} is near or above the 7k token budget limit!",
+                f"Error: {target_name} exceeds the 7k deterministic token budget limit!",
                 file=sys.stderr,
             )
+            has_error = True
 
+    if has_error:
+        sys.exit(1)
 
 if __name__ == "__main__":
     sync()

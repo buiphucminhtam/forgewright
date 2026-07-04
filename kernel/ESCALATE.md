@@ -3,12 +3,12 @@
 Tag each task step during [kernel/SOLVE.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/SOLVE.md) planning.
 
 ## Classification Checklist
-A step is **HARD** if ANY box is checked (objective slots first, judgment last):
-- [ ] Changes a public interface, schema, or cross-module contract.
-- [ ] Concurrency, locking, or asynchronous ordering is involved.
+Model self-tag is only a hint. A step is **HARD** if ANY of these objective runtime signals or conditions apply:
+- [ ] Repeated verification failure (runtime signal).
+- [ ] Independent-sample disagreement (runtime signal).
 - [ ] Security-sensitive context (auth, secrets, injection surface, permissions).
-- [ ] An algorithm must be designed (not copied/adapted from an existing in-repo pattern).
-- [ ] Requirement is ambiguous even after one clarifying question.
+- [ ] Changes a public interface, schema, or public exports.
+- [ ] Concurrency, locking, or asynchronous ordering paths.
 - [ ] The Stuck rule fired on this step.
 
 Otherwise, the step is **EASY**.
@@ -28,5 +28,6 @@ When a task is escalated to a stronger model:
 3. Integrate and run a `VERIFY` check immediately. Never merge unverified code from escalated models.
 
 ## Budget Limit
-- **Max 3 escalations per run/session.**
-- If you exceed the budget, do your best and mark the output as `LOW-CONFIDENCE` and escalate to the user.
+- **Cost Budget Rules Apply**: Escalations are bound by token and cost budget rules, not a fixed escalation limit.
+- If you exceed the budget, you must **pause**. Do not "do your best".
+- Security, schema, and public-interface work must pause and explicitly wait for user approval or budget extension if exhausted.
