@@ -8,12 +8,12 @@ tags: [code-review, quality, architecture, anti-patterns, tech-debt, maintainabi
 # Code Reviewer (LITE)
 
 ## SOLVE Step 2: GROUND (Code Reviewer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Changes in the current branch | Run `git diff main...` or list modified files | ... | Y/N |
-| Coding style guides exist | Look for ESLint, Prettier, or python configs | ... | Y/N |
-| Database access in API handlers | Search handlers directory for database queries | ... | Y/N |
-| Circular dependencies checker | Check for `madge` or similar tools | ... | Y/N |
+| Changes in the current branch | Run `git diff main...` or list modified files | ... | run the check command and paste output |
+| Coding style guides exist | Look for ESLint, Prettier, or python configs | ... | run the check command and paste output |
+| Database access in API handlers | Search handlers directory for database queries | ... | run the check command and paste output |
+| Circular dependencies checker | Check for `madge` or similar tools | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Code Reviewer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -25,7 +25,6 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Reviewing N+1 Queries in Orders loop
-
 ### 1. UNDERSTAND
 - **Task**: Review the newly added `getUserOrdersSummary` logic in `src/services/user-service.ts` for performance issues.
 - **What must be TRUE**: PR review file identifies N+1 issue, provides batched query solution using `IN` or `JOIN`, output is written.
@@ -34,13 +33,12 @@ Format: `n. ACTION | TARGET | CHECK`
 ### 2. GROUND
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Service code file exists | `ls src/services/user-service.ts` | File exists | Y |
-| Modified function exists | View file at suspected lines | Loop contains query | Y |
-
+| Service code file exists | `ls src/services/user-service.ts` | File exists | run the check command above |
+| Modified function exists | View file at suspected lines | Loop contains query | run the check command above |
 ### 3. DECOMPOSE
-1. ACTION (audit user-service.ts for loops and queries) | TARGET (src/services/user-service.ts) | CHECK (grep -rn "db.query" src/services/user-service.ts)
-2. ACTION (identify structural layer violations) | TARGET (src/services/user-service.ts) | CHECK (git diff main)
-3. ACTION (draft review notes with fix recommendations) | TARGET (docs/review-feedback.md) | CHECK (cat docs/review-feedback.md)
+1. ACTION (audit user-service.ts for loops and queries)   TARGET (src/services/user-service.ts)   CHECK (grep -rn "db.query" src/services/user-service.ts)
+2. ACTION (identify structural layer violations)   TARGET (src/services/user-service.ts)   CHECK (git diff main)
+3. ACTION (draft review notes with fix recommendations)   TARGET (docs/review-feedback.md)   CHECK (cat docs/review-feedback.md)
 
 ### 4. EXECUTE
 #### Step 1: Audit code
@@ -68,11 +66,4 @@ const orders = await db.query('SELECT user_id, COUNT(*) FROM orders WHERE user_i
 - CHECK: `cat docs/review-feedback.md` -> Printed review successfully.
 
 ### 5. VERIFY
-CLAIM: code review report successfully generated and saved
-COMMAND: cat docs/review-feedback.md
-OUTPUT:
-# Code Review Feedback
-- **Critical Performance Issue (N+1 Query)**: `getUserOrdersSummary` queries database inside `Promise.all(users.map(...))`.
-- **Recommendation**: Query orders in a single bulk query using `ANY` or `IN` operator.
-EXIT CODE: 0
-VERDICT: PASS
+Emit one `VERIFY` block per changed behavior per [kernel/VERIFY.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/VERIFY.md).

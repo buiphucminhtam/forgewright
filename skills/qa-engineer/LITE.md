@@ -8,12 +8,12 @@ tags: [qa, quality-assurance, testing, test-cases, automated-testing, regression
 # QA Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (QA Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Test framework configuration works | Read test config file or run a simple test | ... | Y/N |
-| API specs / Requirements are available | Read BRD or OpenAPI spec files | ... | Y/N |
-| Target code file exists | `ls` / View file path of code to be tested | ... | Y/N |
-| Mocking utilities exist / ready | Check test imports for mock libraries | ... | Y/N |
+| Test framework configuration works | Read test config file or run a simple test | ... | run the check command and paste output |
+| API specs / Requirements are available | Read BRD or OpenAPI spec files | ... | run the check command and paste output |
+| Target code file exists | `ls` / View file path of code to be tested | ... | run the check command and paste output |
+| Mocking utilities exist / ready | Check test imports for mock libraries | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (QA Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -23,8 +23,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (generate test coverage report) | TARGET (coverage/index.html) | CHECK (npm run test:coverage)`
 
 ---
-
-## Worked Example: Discount Calculator Validation
 
 ### 1. UNDERSTAND
 - **Task**: Design and write unit tests for `calculateDiscount(age: number, cartTotal: number): number` in `src/discount.ts`.
@@ -39,9 +37,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Test command is available | Read `package.json` scripts | `"test": "jest"` | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (design Gherkin test cases) | TARGET (docs/discount-tests.md) | CHECK (cat docs/discount-tests.md)
-2. ACTION (write unit test assertions) | TARGET (tests/discount.test.ts) | CHECK (npx jest tests/discount.test.ts)
-3. ACTION (run with coverage) | TARGET (coverage/) | CHECK (npx jest tests/discount.test.ts --coverage)
+1. ACTION (design Gherkin test cases)   TARGET (docs/discount-tests.md)   CHECK (cat docs/discount-tests.md)
+2. ACTION (write unit test assertions)   TARGET (tests/discount.test.ts)   CHECK (npx jest tests/discount.test.ts)
+3. ACTION (run with coverage)   TARGET (coverage/)   CHECK (npx jest tests/discount.test.ts --coverage)
 
 ### 4. EXECUTE
 #### Step 1: Design test cases
@@ -61,15 +59,14 @@ Format: `n. ACTION | TARGET | CHECK`
 ### 5. VERIFY
 CLAIM: discount calculator is fully validated for all boundary and error inputs
 COMMAND: npx jest tests/discount.test.ts --coverage
-OUTPUT:
 PASS  tests/discount.test.ts
 ✓ should apply senior discount
 ✓ should apply minor discount
 ✓ should reject negative values
-----------|---------|----------|---------|---------|
-File      | % Stmts | % Branch | % Funcs | % Lines |
-----------|---------|----------|---------|---------|
-discount.ts|     100 |      100 |     100 |     100 |
-----------|---------|----------|---------|---------|
+----------------------------------------------------
+File        % Stmts   % Branch   % Funcs   % Lines
+----------------------------------------------------
+discount.ts      100        100       100       100
+----------------------------------------------------
 EXIT CODE: 0
 VERDICT: PASS

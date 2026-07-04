@@ -8,12 +8,12 @@ tags: [api, rest, graphql, grpc, openapi, asyncapi, versioning, design, contract
 # API Designer (LITE)
 
 ## SOLVE Step 2: GROUND (API Designer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| OpenAPI spec path exists | Search directory for `openapi.yaml` or `swagger.json` | ... | Y/N |
-| Spec version format | Read file header of the OpenAPI spec | ... | Y/N |
-| API linting tool exists | Check for `spectral` or `swagger-cli` in `package.json` | ... | Y/N |
-| Error Schema Convention | Look for RFC 7807 references in docs/spec | ... | Y/N |
+| OpenAPI spec path exists | Search directory for `openapi.yaml` or `swagger.json` | ... | run the check command and paste output |
+| Spec version format | Read file header of the OpenAPI spec | ... | run the check command and paste output |
+| API linting tool exists | Check for `spectral` or `swagger-cli` in `package.json` | ... | run the check command and paste output |
+| Error Schema Convention | Look for RFC 7807 references in docs/spec | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (API Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -23,8 +23,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (validate spec compiles) | TARGET (api/openapi/spec.yaml) | CHECK (npx swagger-cli validate api/openapi/spec.yaml)`
 
 ---
-
-## Worked Example: Paginated Products API Specification
 
 ### 1. UNDERSTAND
 - **Task**: Design an OpenAPI 3.0 specification for GET `/v1/products` with pagination (`limit`, `cursor`) and versioning.
@@ -39,9 +37,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Main spec file exists | `ls api/openapi/spec.yaml` | File exists | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (define /v1/products route) | TARGET (api/openapi/spec.yaml) | CHECK (npx spectral lint api/openapi/spec.yaml)
-2. ACTION (define paginated schema response) | TARGET (api/openapi/spec.yaml) | CHECK (npx spectral lint api/openapi/spec.yaml)
-3. ACTION (validate API specification compilation) | TARGET (api/openapi/spec.yaml) | CHECK (npx swagger-cli validate api/openapi/spec.yaml)
+1. ACTION (define /v1/products route)   TARGET (api/openapi/spec.yaml)   CHECK (npx spectral lint api/openapi/spec.yaml)
+2. ACTION (define paginated schema response)   TARGET (api/openapi/spec.yaml)   CHECK (npx spectral lint api/openapi/spec.yaml)
+3. ACTION (validate API specification compilation)   TARGET (api/openapi/spec.yaml)   CHECK (npx swagger-cli validate api/openapi/spec.yaml)
 
 ### 4. EXECUTE
 #### Step 1: Define route
@@ -91,7 +89,6 @@ paths:
 ### 5. VERIFY
 CLAIM: products API spec compiles cleanly and complies with OpenAPI 3.0 rules
 COMMAND: npx swagger-cli validate api/openapi/spec.yaml
-OUTPUT:
 api/openapi/spec.yaml is valid
 EXIT CODE: 0
 VERDICT: PASS

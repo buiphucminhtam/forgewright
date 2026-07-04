@@ -8,12 +8,12 @@ tags: [frontend, react, nextjs, typescript, tailwindcss, state-management, api-c
 # Frontend Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Frontend Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Frontend structure / path | Check directories for `frontend/` or `src/` | ... | Y/N |
-| Framework and styling framework | Read `package.json` and CSS/config files | ... | Y/N |
-| API base URLs & client ready | Read `.env` or client service configuration | ... | Y/N |
-| Accessibility audit runner | Check for `jest-axe` or devtools config | ... | Y/N |
+| Frontend structure / path | Check directories for `frontend/` or `src/` | ... | run the check command and paste output |
+| Framework and styling framework | Read `package.json` and CSS/config files | ... | run the check command and paste output |
+| API base URLs & client ready | Read `.env` or client service configuration | ... | run the check command and paste output |
+| Accessibility audit runner | Check for `jest-axe` or devtools config | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Frontend Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -23,8 +23,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (integrate API service clients) | TARGET (src/services/api.ts) | CHECK (npm run build)`
 
 ---
-
-## Worked Example: Accessible React Login Form
 
 ### 1. UNDERSTAND
 - **Task**: Build a responsive and accessible Login Form using TailwindCSS and React.
@@ -39,9 +37,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | React is installed | Read `package.json` | React v18 | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (create LoginForm component) | TARGET (src/components/LoginForm.tsx) | CHECK (npm run build)
-2. ACTION (add validation & ARIA attributes) | TARGET (src/components/LoginForm.tsx) | CHECK (npx jest LoginForm.test.tsx)
-3. ACTION (verify layout responsiveness) | TARGET (src/components/LoginForm.tsx) | CHECK (npm run build)
+1. ACTION (create LoginForm component)   TARGET (src/components/LoginForm.tsx)   CHECK (npm run build)
+2. ACTION (add validation & ARIA attributes)   TARGET (src/components/LoginForm.tsx)   CHECK (npx jest LoginForm.test.tsx)
+3. ACTION (verify layout responsiveness)   TARGET (src/components/LoginForm.tsx)   CHECK (npm run build)
 
 ### 4. EXECUTE
 #### Step 1: Create LoginForm component
@@ -95,7 +93,6 @@ export function LoginForm() {
 ### 5. VERIFY
 CLAIM: login form is fully accessible and responsive with validation
 COMMAND: npm run build
-OUTPUT:
 > frontend@0.1.0 build
 > next build
 ✓ Creating an optimized production build...

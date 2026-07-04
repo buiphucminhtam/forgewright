@@ -7,12 +7,11 @@ version: 1.0.0
 # Interaction Designer (LITE)
 
 ## SOLVE Step 2: GROUND (Interaction Designer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target frontend libraries and styling frameworks are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("tailwind\|sass\|styled-components\|framer-motion")))'` | Identifies active layout, UI component libraries, and animation frameworks | |
-| Existing visual guidelines, mockups, or wireframe specs are indexed | `find docs/ -name "*design*" -o -name "*ux*" -o -name "*wireframe*"` | Identifies active lowercase, kebab-case user journey maps and UI specs [1] | |
-| Visual regression test (VRT) suites or screenshots are configured | `cat playwright.config.ts \|\| ls -la tests/` | Confirms screenshot engines and pixelmatch regression configurations [2] | |
-| Active API expenditure parameters and cost ceilings are active | `cat .forgewright/budget.yaml` | Displays configured spend tracking limits to control design runs [3, 4] | |
+| Target frontend libraries and styling frameworks are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("tailwind\|sass\|styled-components\|framer-motion")))'` | ... | run the check command and paste output |
+| Existing visual guidelines, mockups, or wireframe specs are indexed | `find docs/ -name "*design*" -o -name "*ux*" -o -name "*wireframe*"` | ... | run the check command and paste output |
+| Visual regression test (VRT) suites or screenshots are configured | `cat playwright.config.ts \|\| ls -la tests/` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Interaction Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -20,29 +19,16 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Scan target component layouts, responsive breakpoints, and WCAG accessibility tags | Verify contrast ratios pass AAA/AA standards and screen elements utilize appropriate role and aria-label attributes.
 2. CONSTRUCT | Implement interactive components utilizing responsive styling, state machines, and animations | Ensure proper loading indicators, disabled actions during API calls, and error boundaries are configured.
 3. MAP | Build comprehensive visual sequence maps, user journeys, or Mermaid sequence charts | Confirm execution paths show intuitive user interactions and are saved using kebab-case under docs/.
-4. SYNC | Propagate design specifications and interface documentation to Obsidian | Run post-skill synchronization scripts to establish absolute symlinks under the Shared Obsidian Vault [5, 6].
 
 ## Common Mistakes Checklist
 - **Keyboard Traps & Missing ARIA Tags**: Creating custom modal dialogs, slide-overs, or interactive tabs without focus traps or correct `aria-expanded` and `aria-label` properties, breaking screen readers.
-- **Missing Loading & Disabled States**: Letting interactive buttons trigger async operations without showing active spinners, skeleton loading screens, or disabling further inputs, leading to duplicate submissions.
 - **Unoptimized CLS (Cumulative Layout Shift)**: Rendering dynamic components without pre-allocating height or bounding box dimensions, causing sudden jumps and layout shifts on load.
-- **Non-Compliant File Structures**: Creating design assets, style guides, or interface wireframes under `docs/` using CamelCase, spaces, or absolute paths instead of strictly lowercase kebab-case (e.g., `docs/01-product/InteractiveCard.md` instead of `docs/01-product/interactive-card.md`) [1].
-- **Unverified Token Budgets**: Executing massive CSS/Tailwind generation prompts or recursive UI variant iterations without checking active session budgets inside `.forgewright/budget.yaml` [3].
-
-## Worked Example
+- **Non-Compliant File Structures**: Creating design assets, style guides, or interface wireframes under `docs/` using CamelCase, spaces, or absolute paths instead of strictly lowercase kebab-case (e.g., `docs/01-product/InteractiveCard.md` instead of `docs/01-product/interactive-card.md`).
 
 ### Step 1: Ground target styling frameworks and project status
 ```bash
 cat .forgewright/project-profile.json
 cat package.json | grep -E "(tailwind|framer-motion)"
-```
-Output:
-```json
-{
-  "project_name": "forgewright-design-system",
-  "tech_stack": ["React", "TypeScript", "Tailwind CSS"],
-  "health_status": "PASS"
-}
 ```
 ```json
     "tailwindcss": "^3.4.1",
@@ -100,28 +86,4 @@ export const InteractiveAccordion: React.FC<AccordionProps> = ({ title, content 
     </div>
   );
 };
-```
-
-### Step 3: Document interaction specification and trigger Shared Obsidian Vault sync
-```bash
-# Save specification conforming to standard lowercase kebab-case naming guidelines
-cat << 'EOF' > docs/01-product/accordion-interaction-spec.md
-# Feature: Accessible Interactive Accordion
-
-## 1. Executive Summary
-Responsive collapsible accordion container optimized for WCAG 2.1 screen reader compliance.
-
-## 2. Accessibility Mapping
-- Trigger Button: `aria-expanded` tracks open state, `aria-controls` links to content container.
-- Content: `role="region"` for screen reader landmark indexing.
-- Keyboards: Clean default `focus:ring-2` outline visibility.
-EOF
-
-# Execute standard post-skill sync hook to propagate files to Obsidian
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Verified naming convention compliance for accordion-interaction-spec.md.
-[SUCCESS] Symlinked docs/01-product/accordion-interaction-spec.md to /workspace/shared-obsidian-vault/forgewright/01-product/accordion-interaction-spec.md.
 ```

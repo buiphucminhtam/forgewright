@@ -8,12 +8,12 @@ tags: [backend, server, api, rest, authentication, middleware, routing]
 # Backend Developer (LITE)
 
 ## SOLVE Step 2: GROUND (Backend Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Web framework is installed | Read package configuration (`package.json`, `go.mod`) | ... | Y/N |
-| DB connection configuration exists | Check `.env` files or database config module | ... | Y/N |
-| API router base path | Search for routing file or router registration | ... | Y/N |
-| Auth strategy / secrets set | Read environment setup for token secrets | ... | Y/N |
+| Web framework is installed | Read package configuration (`package.json`, `go.mod`) | ... | run the check command and paste output |
+| DB connection configuration exists | Check `.env` files or database config module | ... | run the check command and paste output |
+| API router base path | Search for routing file or router registration | ... | run the check command and paste output |
+| Auth strategy / secrets set | Read environment setup for token secrets | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Backend Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -23,8 +23,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (run integration tests) | TARGET (tests/api.test.ts) | CHECK (npm test)`
 
 ---
-
-## Worked Example: Express JWT Authentication Middleware
 
 ### 1. UNDERSTAND
 - **Task**: Implement a secure JWT authentication middleware and apply it to a `/api/profile` Express route.
@@ -39,9 +37,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Server routing file exists | `ls src/server.ts` | File exists | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (write unit test for middleware) | TARGET (tests/auth.test.ts) | CHECK (npx jest tests/auth.test.ts)
-2. ACTION (implement authMiddleware) | TARGET (src/middleware/auth.ts) | CHECK (npx jest tests/auth.test.ts)
-3. ACTION (register route with middleware) | TARGET (src/server.ts) | CHECK (npm test)
+1. ACTION (write unit test for middleware)   TARGET (tests/auth.test.ts)   CHECK (npx jest tests/auth.test.ts)
+2. ACTION (implement authMiddleware)   TARGET (src/middleware/auth.ts)   CHECK (npx jest tests/auth.test.ts)
+3. ACTION (register route with middleware)   TARGET (src/server.ts)   CHECK (npm test)
 
 ### 4. EXECUTE
 #### Step 1: Write test
@@ -61,7 +59,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: Missing token' });
   }
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.split(' ');
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     (req as any).user = payload;
@@ -80,7 +78,6 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 ### 5. VERIFY
 CLAIM: profile endpoint requires valid JWT authentication
 COMMAND: npx jest tests/auth.test.ts
-OUTPUT:
 PASS  tests/auth.test.ts
 ✓ should block request without authorization header (401)
 ✓ should block request with invalid signature (401)

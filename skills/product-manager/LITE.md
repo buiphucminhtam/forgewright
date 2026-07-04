@@ -7,12 +7,12 @@ version: 2.0.0
 # Product Manager (LITE)
 
 ## SOLVE Step 2: GROUND (Product Manager Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target requirements document | Locate existing BRD / PRD / feature specs | ... | Y/N |
-| Target audience & persona | Read docs for defined user personas | ... | Y/N |
-| Key performance indicators (KPI) | Search for success metrics or tracking requirements | ... | Y/N |
-| Out of scope limits | Identify boundaries in existing issue description | ... | Y/N |
+| Target requirements document | Locate existing BRD / PRD / feature specs | ... | run the check command and paste output |
+| Target audience & persona | Read docs for defined user personas | ... | run the check command and paste output |
+| Key performance indicators (KPI) | Search for success metrics or tracking requirements | ... | run the check command and paste output |
+| Out of scope limits | Identify boundaries in existing issue description | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Product Manager Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -22,8 +22,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (define telemetry tracking spec) | TARGET (docs/requirements/analytics.md) | CHECK (cat docs/requirements/analytics.md)`
 
 ---
-
-## Worked Example: Password Reset Feature Specification
 
 ### 1. UNDERSTAND
 - **Task**: Author requirements and Gherkin user stories for a "Password Reset via Email" feature.
@@ -37,9 +35,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Out-of-scope security constraint | View project guidelines | "Do not reveal if email exists during reset" | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (draft Password Reset BRD) | TARGET (docs/requirements/BRD.md) | CHECK (cat docs/requirements/BRD.md)
-2. ACTION (write Gherkin user stories) | TARGET (docs/requirements/stories.md) | CHECK (cat docs/requirements/stories.md)
-3. ACTION (document metrics/success KPIs) | TARGET (docs/requirements/analytics.md) | CHECK (cat docs/requirements/analytics.md)
+1. ACTION (draft Password Reset BRD)   TARGET (docs/requirements/BRD.md)   CHECK (cat docs/requirements/BRD.md)
+2. ACTION (write Gherkin user stories)   TARGET (docs/requirements/stories.md)   CHECK (cat docs/requirements/stories.md)
+3. ACTION (document metrics/success KPIs)   TARGET (docs/requirements/analytics.md)   CHECK (cat docs/requirements/analytics.md)
 
 ### 4. EXECUTE
 #### Step 1: Draft BRD
@@ -70,7 +68,6 @@ Format: `n. ACTION | TARGET | CHECK`
 ### 5. VERIFY
 CLAIM: password reset requirements are drafted and Gherkin validated
 COMMAND: cat docs/requirements/stories.md
-OUTPUT:
 Feature: User Password Reset
 ...
   Scenario: Requesting a reset link successfully
