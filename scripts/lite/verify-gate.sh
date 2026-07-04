@@ -64,6 +64,56 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Normalize platform labels. Installed hook configs have historically used
+# uppercase values (CODEX/CLAUDE/etc.); keep the script tolerant so old cached
+# hook commands do not fail before reaching the validator.
+if [[ -n "$PLATFORM" ]]; then
+  PLATFORM="$(printf '%s' "$PLATFORM" | tr '[:upper:]' '[:lower:]')"
+fi
+
+# Codex Stop hooks require a JSON object on stdout. Human-readable logs on
+# stdout make Codex report "invalid stop hook JSON output". Detect Codex either
+# from --platform codex or from CODEX_* env vars for older cached commands that
+# invoked this script without --platform.
+CODEX_HOOK=0
+if [[ "$PLATFORM" == "codex" || -n "${CODEX_THREAD_ID:-}" || -n "${CODEX_CI:-}" ]]; then
+  CODEX_HOOK=1
+  exec 3>&1
+  exec 1>&2
+fi
+
+_codex_json() {
+  local decision="$1"
+  local reason="${2:-}"
+  python3 - "$decision" "$reason" <<'PYEOF'
+import json
+import sys
+
+decision = sys.argv[1]
+reason = sys.argv[2] if len(sys.argv) > 2 else ""
+if decision == "continue":
+    print(json.dumps({"continue": True}))
+else:
+    print(json.dumps({"decision": "block", "reason": reason or "Forgewright verify gate blocked stop."}))
+PYEOF
+}
+
+gate_continue() {
+  if [[ "$CODEX_HOOK" -eq 1 ]]; then
+    _codex_json continue >&3
+  fi
+  exit 0
+}
+
+gate_block() {
+  local reason="${1:-Forgewright verify gate blocked stop.}"
+  if [[ "$CODEX_HOOK" -eq 1 ]]; then
+    _codex_json block "$reason" >&3
+    exit 0
+  fi
+  exit 1
+}
+
 # Validate platform
 VALID_PLATFORMS=("claude" "gemini" "cursor" "codex" "")
 PLATFORM_VALID=0
@@ -72,7 +122,7 @@ for p in "${VALID_PLATFORMS[@]}"; do
 done
 if [[ "$PLATFORM_VALID" -eq 0 ]]; then
   log_error "Unknown platform '${PLATFORM}'. Valid: claude, gemini, cursor, codex"
-  exit 1
+  gate_block "Unknown verify-gate platform '${PLATFORM}'."
 fi
 
 [[ -n "$PLATFORM" ]] && log_info "Platform: ${PLATFORM}"
@@ -221,7 +271,7 @@ has_code_edits() {
 
 if ! has_code_edits; then
   log_info "No code changes detected — gate OPEN (no VERIFY block required)"
-  exit 0
+  gate_continue
 fi
 
 log_info "Code changes detected. Running verification gate checks..."
@@ -239,7 +289,7 @@ GATE_RC=$?
 
 if [[ $GATE_RC -ne 0 ]]; then
   log_error "Evidence validation FAILED — gate BLOCKED"
-  exit 1
+  gate_block "Forgewright evidence validation failed. Review hook stderr for details."
 fi
 
 # ── check response content for a valid VERIFY block ──────────────────────────
@@ -258,14 +308,14 @@ _has_verify_block() {
 if [[ -z "$RESPONSE_CONTENT" ]]; then
   log_warn "No response content provided (stdin was empty / no payload)."
   log_error "VERIFY block REQUIRED when code changes exist."
-  exit 1
+  gate_block "VERIFY block required when code changes exist."
 fi
 
 if _has_verify_block "$RESPONSE_CONTENT"; then
   log_info "Valid VERIFY block found — gate OPEN"
-  exit 0
+  gate_continue
 else
   log_error "Missing VERIFY block in response."
   log_error "Include a VERIFY section (e.g. \`VERIFY:\` or \`\`\`verify\`\`\` block) when modifying code."
-  exit 1
+  gate_block "Missing VERIFY block in response after code changes."
 fi
