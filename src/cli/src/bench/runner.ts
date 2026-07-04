@@ -7,9 +7,9 @@ import {
   writeFileSync,
   renameSync,
   statSync,
+  mkdirSync,
 } from "node:fs";
 import { resolve, dirname, join } from "node:path";
-import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
 import { BenchmarkSuiteSchema } from "./types.js";
 import type {
@@ -426,8 +426,11 @@ export async function runBenchmarkSuite(
       let attemptWorkspace = resolvedWorkspace;
       let cleanupFn = () => {};
 
+      const projectTmpDir = "/Users/buiphucminhtam/forgewright/tmp";
+      mkdirSync(projectTmpDir, { recursive: true });
+
       if (resolvedWorkspace && existsSync(resolvedWorkspace)) {
-        const tempBase = join(tmpdir(), `forge-bench-${task.id}-`);
+        const tempBase = join(projectTmpDir, `forge-bench-${task.id}-`);
         attemptWorkspace = mkdtempSync(tempBase);
         cpSync(resolvedWorkspace, attemptWorkspace, { recursive: true });
         cleanupFn = () => {
@@ -438,7 +441,7 @@ export async function runBenchmarkSuite(
           }
         };
       } else {
-        const tempBase = join(tmpdir(), `forge-bench-empty-${task.id}-`);
+        const tempBase = join(projectTmpDir, `forge-bench-empty-${task.id}-`);
         attemptWorkspace = mkdtempSync(tempBase);
         cleanupFn = () => {
           try {

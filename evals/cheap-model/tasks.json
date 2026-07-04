@@ -3,8 +3,8 @@
   "name": "Forgewright Lite Performance Validation",
   "description": "Golden evaluation suite for Forgewright Lite performance validation using a cheap model",
   "defaultProviderSettings": {
-    "provider": "minimax",
-    "model": "MiniMax-M2.7"
+    "provider": "agy",
+    "model": "Gemini 3.5 Flash (High)"
   },
   "defaultAttempts": 1,
   "defaultTimeoutMs": 60000,

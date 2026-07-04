@@ -236,7 +236,7 @@ if [[ -f "$GEMINI_SETTINGS" ]]; then
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$GEMINI_SETTINGS', 'utf8'));
 if (!cfg.hooks) cfg.hooks = {};
-cfg.hooks.AfterAgent = ['bash $GATE_SCRIPT --platform GEMINI'];
+cfg.hooks.AfterAgent = [{ matcher: '*', hooks: [{ type: 'command', command: 'bash ' + '$GATE_SCRIPT' + ' --platform GEMINI' }] }];
 fs.writeFileSync('$GEMINI_SETTINGS', JSON.stringify(cfg, null, 2));
 "
             log_info "  → Fixed: Added AfterAgent hook array to Gemini settings"
@@ -250,7 +250,15 @@ else
 {
   "hooks": {
     "AfterAgent": [
-      "bash $GATE_SCRIPT --platform GEMINI"
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $GATE_SCRIPT --platform GEMINI"
+          }
+        ]
+      }
     ]
   }
 }
