@@ -9,8 +9,20 @@ from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-API_KEY = os.environ.get("MINIMAX_API_KEY")
-BASE_URL = "https://api.minimax.io/v1/text/chatcompletion_v2"
+# Repo-relative paths — derived from this script's own location.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
+
+# Provider / model are read exclusively from env vars so that the harness
+# controls them without needing to hard-code any model name in this file.
+_PROVIDER = os.environ.get("FORGEWRIGHT_PROVIDER", "")
+_MODEL = os.environ.get("FORGEWRIGHT_MODEL", "")
+
+# MiniMax-specific config is optional and only used when provider == "minimax".
+_MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
+_MINIMAX_BASE_URL = os.environ.get(
+    "MINIMAX_BASE_URL", "https://api.minimax.io/v1/text/chatcompletion_v2"
+)
 
 
 class ForgewrightAgent:
@@ -20,17 +32,24 @@ class ForgewrightAgent:
         self.messages = []
 
     def _call_minimax(self, tools: List[Dict]) -> Dict:
+        """Call the MiniMax chat API using the model from FORGEWRIGHT_MODEL env."""
+        if not _MINIMAX_API_KEY:
+            print("[!] MINIMAX_API_KEY env var is not set.")
+            sys.exit(1)
+        if not _MODEL:
+            print("[!] FORGEWRIGHT_MODEL env var is not set.")
+            sys.exit(1)
         headers = {
-            "Authorization": f"Bearer {API_KEY}",
+            "Authorization": f"Bearer {_MINIMAX_API_KEY}",
             "Content-Type": "application/json",
         }
 
-        data = {"model": "MiniMax-M2.7", "messages": self.messages, "temperature": 0.1}
+        data = {"model": _MODEL, "messages": self.messages, "temperature": 0.1}
         if tools:
             data["tools"] = tools
 
-        print(f"[*] Calling MiniMax (Messages: {len(self.messages)})...")
-        resp = requests.post(BASE_URL, headers=headers, json=data, timeout=120)
+        print(f"[*] Calling {_PROVIDER}/{_MODEL} (Messages: {len(self.messages)})...")
+        resp = requests.post(_MINIMAX_BASE_URL, headers=headers, json=data, timeout=120)
         resp_json = resp.json()
 
         if "choices" not in resp_json:
@@ -53,9 +72,13 @@ class ForgewrightAgent:
             print(
                 f"[*] Missing MCP Manifest in '{self.code_dir}'. Running auto-setup..."
             )
+            # Use the repo-relative mcp-setup script.
+            mcp_setup_script = os.path.join(
+                _REPO_ROOT, "scripts", "forgewright-mcp-setup.sh"
+            )
             try:
                 subprocess.run(
-                    ["bash", "/root/openclaw/scripts/forgewright-mcp-setup.sh"],
+                    ["bash", mcp_setup_script],
                     cwd=self.code_dir,
                     check=True,
                 )
@@ -95,12 +118,16 @@ class ForgewrightAgent:
         ) or os.path.exists(
             os.path.join(self.code_dir, "..", ".forgewright", "mcp-manifest.json")
         ):
+            # Use the repo-relative launcher script.
+            mcp_launcher = os.path.join(
+                _REPO_ROOT, "scripts", "forgewright-mcp-launcher.sh"
+            )
             mcp_servers.append(
                 {
                     "name": "forgewright",
                     "params": StdioServerParameters(
                         command="bash",
-                        args=["/root/openclaw/scripts/forgewright-mcp-launcher.sh"],
+                        args=[mcp_launcher],
                         env={**os.environ, "FORGEWRIGHT_WORKSPACE": self.code_dir},
                     ),
                 }
@@ -417,7 +444,12 @@ if __name__ == "__main__":
 
     pid = sys.argv[1]
     task_desc = sys.argv[2]
-    cdir = sys.argv[3] if len(sys.argv) > 3 else f"/root/projects/{pid}/code"
+    # Default to a subdirectory inside the repo root rather than /root/projects.
+    cdir = (
+        sys.argv[3]
+        if len(sys.argv) > 3
+        else os.path.join(_REPO_ROOT, "projects", pid, "code")
+    )
 
     agent = ForgewrightAgent(pid, cdir)
     asyncio.run(agent.run(task_desc))

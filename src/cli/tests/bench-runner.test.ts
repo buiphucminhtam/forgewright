@@ -322,13 +322,10 @@ describe("Benchmark runner", () => {
     const geminiCall = spawnCallsGemini.find((c) => c.program === "gemini");
     expect(geminiCall).toBeDefined();
     expect(geminiCall?.args).toEqual([
-      "exec",
-      "--skip-git-repo-check",
-      "--model",
+      "-m",
       "Gemini-3.1",
-      "--sandbox",
-      "workspace-write",
-      "--ephemeral",
+      "-y",
+      "-p",
       "Hello Prompt",
     ]);
 

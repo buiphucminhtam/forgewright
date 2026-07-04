@@ -238,7 +238,7 @@ import re
 
 def run_ping(hostname):
     # Secure implementation without shell=True
-    if not re.match(r"^[a-zA-Z0-9\.]+$", hostname):
+    if not re.match(r"^[a-zA-Z0-9\\.]+$", hostname):
         raise ValueError("Invalid characters in hostname")
     res = subprocess.run(["ping", "-c", "1", hostname], capture_output=True, text=True)
     return res.stdout
@@ -258,6 +258,7 @@ def sanitize_log(message):
 
 
 def print_comparison(legacy_path, lite_path):
+    """Compare two result files, rejecting non-comparable pairs."""
     if not os.path.exists(legacy_path):
         log_error(
             f"Legacy results file not found at {legacy_path}. Run evals with --legacy --live first."
@@ -278,6 +279,69 @@ def print_comparison(legacy_path, lite_path):
         log_error(f"Failed to read results: {e}")
         return False
 
+    # -----------------------------------------------------------------------
+    # Comparable-run gate: reject pairs that cannot be fairly compared.
+    # -----------------------------------------------------------------------
+    errors = []
+
+    leg_mode = legacy_data.get("mode", "")
+    lit_mode = lite_data.get("mode", "")
+    if leg_mode == "mock" or lit_mode == "mock":
+        errors.append(
+            f"Mock runs are not comparable to live runs "
+            f"(legacy mode='{leg_mode}', lite mode='{lit_mode}'). "
+            "Re-run both with --live."
+        )
+
+    leg_model = legacy_data.get("model", "")
+    lit_model = lite_data.get("model", "")
+    if leg_model != lit_model and not errors:  # already reported if mock
+        errors.append(
+            f"Model mismatch: legacy='{leg_model}', lite='{lit_model}'. "
+            "Both runs must use the same model so only the kernel/prompt changes."
+        )
+
+    leg_provider = legacy_data.get("provider", "")
+    lit_provider = lite_data.get("provider", "")
+    if leg_provider != lit_provider:
+        errors.append(
+            f"Provider mismatch: legacy='{leg_provider}', lite='{lit_provider}'. "
+            "Both runs must use the same provider."
+        )
+
+    leg_tasks = legacy_data.get("summary", {}).get("totalTasks", -1)
+    lit_tasks = lite_data.get("summary", {}).get("totalTasks", -2)
+    if leg_tasks != lit_tasks:
+        errors.append(
+            f"Task count mismatch: legacy={leg_tasks}, lite={lit_tasks}. "
+            "Both runs must evaluate the same task suite."
+        )
+
+    leg_attempts = legacy_data.get("defaultAttempts", -1)
+    lit_attempts = lite_data.get("defaultAttempts", -2)
+    if leg_attempts != lit_attempts:
+        errors.append(
+            f"Attempt count mismatch: legacy k={leg_attempts}, lite k={lit_attempts}. "
+            "Both runs must use the same k."
+        )
+
+    leg_ver = legacy_data.get("verifierVersion", "")
+    lit_ver = lite_data.get("verifierVersion", "")
+    if leg_ver and lit_ver and leg_ver != lit_ver:
+        errors.append(
+            f"Verifier version mismatch: legacy='{leg_ver}', lite='{lit_ver}'. "
+            "One run used stale verifiers — re-run both with the same verifier suite."
+        )
+
+    if errors:
+        log_error("Cannot compare: the two result files are not comparable.")
+        for err in errors:
+            log_error(f"  • {err}")
+        return False
+
+    # -----------------------------------------------------------------------
+    # Render the side-by-side comparison table.
+    # -----------------------------------------------------------------------
     print(
         f"\n{BOLD}{CYAN}======================================================================{RESET}"
     )
@@ -424,8 +488,8 @@ def parse_args():
     parser.add_argument(
         "--model",
         type=str,
-        default="MiniMax-M2.7",
-        help="Model to use in live execution",
+        default="",
+        help="Model to use in live execution (required for --live; set via FORGEWRIGHT_MODEL env var)",
     )
     parser.add_argument(
         "--verbose",
@@ -489,6 +553,13 @@ def main():
             "Neither --mock nor --live was specified. Running in MOCK mode to safely verify harness validity."
         )
         args.mock = True
+
+    if args.live and not args.model:
+        # Fall back to the env var used by the orchestrator.
+        args.model = os.environ.get("FORGEWRIGHT_MODEL", "")
+    if args.live and not args.model:
+        log_error("--model (or FORGEWRIGHT_MODEL env var) is required for --live runs.")
+        sys.exit(1)
 
     results = []
     category_summary = {}
@@ -664,6 +735,9 @@ def main():
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "mode": "mock" if args.mock else "live",
         "model": args.model if not args.mock else "mocked",
+        "provider": os.environ.get("FORGEWRIGHT_PROVIDER", ""),
+        "defaultAttempts": suite.get("defaultAttempts", 1),
+        "verifierVersion": suite.get("verifierVersion", "1"),
         "summary": {
             "totalTasks": total_tasks,
             "passedTasks": passed_tasks,
