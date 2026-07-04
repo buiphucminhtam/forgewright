@@ -8,7 +8,7 @@
 
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { basename, join, resolve, sep } from 'node:path';
 import type { ToolContext, ToolResult } from './types.js';
 
 export interface ContextOffloadConfig {
@@ -78,10 +78,14 @@ const REDACT_PATTERNS: RegExp[] = [
 const STATUS_CLASSES = new Set<OffloadStatus>(['queued', 'running', 'done', 'error', 'skipped']);
 
 function stripAnsi(text: string): string {
-  return text
-    .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
-    .replace(/\x1b\(B/g, '')
-    .replace(/\r$/g, '');
+  return (
+    text
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b\(B/g, '')
+      .replace(/\r$/g, '')
+  );
 }
 
 function redactSecrets(text: string): string {
@@ -138,7 +142,7 @@ function summarize(text: string, maxSummarySize: number): string {
 function ensureWithin(baseDir: string, targetPath: string): void {
   const resolvedBase = resolve(baseDir);
   const resolvedTarget = resolve(targetPath);
-  if (resolvedTarget !== resolvedBase && !resolvedTarget.startsWith(resolvedBase + '/')) {
+  if (resolvedTarget !== resolvedBase && !resolvedTarget.startsWith(resolvedBase + sep)) {
     throw new Error(`Unsafe offload path: ${resolvedTarget}`);
   }
 }
