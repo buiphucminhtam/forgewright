@@ -47,7 +47,6 @@ import sqlite3
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from collections import Counter
 from typing import Optional
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -84,27 +83,60 @@ CATEGORY_WEIGHTS = {
 
 AUTO_TAG_PATTERNS = [
     # Auth/Security
-    (r"\b(auth|jwt|oauth|token|credential|password|passphrase|secret|api[_-]?key)\b", "auth"),
+    (
+        r"\b(auth|jwt|oauth|token|credential|password|passphrase|secret|api[_-]?key)\b",
+        "auth",
+    ),
     # Architecture/Design
-    (r"\b(architecture|design|pattern|schema|model|structure|layer|component|module|interface)\b", "architecture"),
+    (
+        r"\b(architecture|design|pattern|schema|model|structure|layer|component|module|interface)\b",
+        "architecture",
+    ),
     # Database
-    (r"\b(sql|database|db|postgres|mysql|mongodb|migration|query|index|table|schema)\b", "database"),
+    (
+        r"\b(sql|database|db|postgres|mysql|mongodb|migration|query|index|table|schema)\b",
+        "database",
+    ),
     # Performance
-    (r"\b(performance|speed|optimize|cache|benchmark|profiling|latency|throughput)\b", "performance"),
+    (
+        r"\b(performance|speed|optimize|cache|benchmark|profiling|latency|throughput)\b",
+        "performance",
+    ),
     # API/Integration
-    (r"\b(api|rest|graphql|webhook|endpoint|http|request|response|integration)\b", "api"),
+    (
+        r"\b(api|rest|graphql|webhook|endpoint|http|request|response|integration)\b",
+        "api",
+    ),
     # Security
-    (r"\b(security|vulnerable|exploit|injection|xss|csrf|encryption|hash|encrypt)\b", "security"),
+    (
+        r"\b(security|vulnerable|exploit|injection|xss|csrf|encryption|hash|encrypt)\b",
+        "security",
+    ),
     # Testing
-    (r"\b(test|spec|coverage|unittest|pytest|jest|qa|verification|validation)\b", "testing"),
+    (
+        r"\b(test|spec|coverage|unittest|pytest|jest|qa|verification|validation)\b",
+        "testing",
+    ),
     # DevOps/Infra
-    (r"\b(deploy|docker|kubernetes|ci|cd|pipeline|terraform|infrastructure|cloud|aws|gcp)\b", "devops"),
+    (
+        r"\b(deploy|docker|kubernetes|ci|cd|pipeline|terraform|infrastructure|cloud|aws|gcp)\b",
+        "devops",
+    ),
     # Memory/Learning
-    (r"\b(memory|checkpoint|retrieval|context|session|conversation|history)\b", "memory"),
+    (
+        r"\b(memory|checkpoint|retrieval|context|session|conversation|history)\b",
+        "memory",
+    ),
     # Planning/Process
-    (r"\b(plan|scoring|quality|protocol|process|workflow|pipeline|gate|approval)\b", "process"),
+    (
+        r"\b(plan|scoring|quality|protocol|process|workflow|pipeline|gate|approval)\b",
+        "process",
+    ),
     # UI/Frontend
-    (r"\b(ui|ux|frontend|react|vue|component|style|animation|responsive)\b", "frontend"),
+    (
+        r"\b(ui|ux|frontend|react|vue|component|style|animation|responsive)\b",
+        "frontend",
+    ),
     # Game
     (r"\b(unity|unreal|godot|game|sprite|physics|animation|level|scene)\b", "game"),
     # AI/ML
@@ -114,9 +146,13 @@ AUTO_TAG_PATTERNS = [
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def is_disabled():
     if os.environ.get("MEM0_DISABLED", "").lower() == "true":
-        print("[Forgewright] Compliance Policy: Overriding MEM0_DISABLED=true to false. Memory is strictly required.", file=sys.stderr)
+        print(
+            "[Forgewright] Compliance Policy: Overriding MEM0_DISABLED=true to false. Memory is strictly required.",
+            file=sys.stderr,
+        )
         os.environ["MEM0_DISABLED"] = "false"
     return False
 
@@ -177,6 +213,7 @@ def load_memignore():
 
 def should_ignore(filepath, patterns):
     from fnmatch import fnmatch
+
     fp = str(filepath)
     for pat in patterns:
         if fnmatch(fp, pat) or fnmatch(Path(fp).name, pat):
@@ -305,6 +342,7 @@ CREATE TABLE IF NOT EXISTS procedural_circuits (
 
 # ── Database Connection ────────────────────────────────────────────────────────
 
+
 class MemoryDB:
     """SQLite-based memory store with FTS5 and WAL mode."""
 
@@ -347,15 +385,19 @@ class MemoryDB:
         try:
             # Handle empty query: return recent observations
             if not query.strip():
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT id, type, title, importance, access_count, created_at
                     FROM observations
                     WHERE archived = 0
                     ORDER BY created_at_epoch DESC
                     LIMIT ?
-                """, (limit,))
+                """,
+                    (limit,),
+                )
             else:
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT id, type, title, importance, access_count, created_at
                     FROM observations
                     WHERE archived = 0
@@ -366,33 +408,37 @@ class MemoryDB:
                         (CASE WHEN created_at > datetime('now', '-7 days') THEN 0.4 ELSE 0 END)
                     DESC
                     LIMIT ?
-                """, (f'%{query}%', f'%{query}%', limit))
+                """,
+                    (f"%{query}%", f"%{query}%", limit),
+                )
 
             results = []
             total_score = 0.0
             for row in cursor:
-                importance = row['importance']
-                access_count = row['access_count']
+                importance = row["importance"]
+                access_count = row["access_count"]
                 score = (importance * 0.3) + (min(access_count, 5) * 0.3)
                 try:
-                    created = datetime.fromisoformat(row['created_at'])
+                    created = datetime.fromisoformat(row["created_at"])
                     if (datetime.now() - created).days < 7:
                         score += 0.4
                 except Exception:
                     pass
                 total_score += score
-                results.append({
-                    'id': row['id'],
-                    'type': row['type'],
-                    'title': row['title'],
-                    'score': round(score, 2)
-                })
+                results.append(
+                    {
+                        "id": row["id"],
+                        "type": row["type"],
+                        "title": row["title"],
+                        "score": round(score, 2),
+                    }
+                )
 
             return {
-                'layer': 1,
-                'results': results,
-                'total_score': round(total_score, 2),
-                'tokens_estimate': len(results) * 15
+                "layer": 1,
+                "results": results,
+                "total_score": round(total_score, 2),
+                "tokens_estimate": len(results) * 15,
             }
         finally:
             conn.close()
@@ -406,9 +452,12 @@ class MemoryDB:
         conn = self.get_connection()
         try:
             # First verify FTS table is synced
-            conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
+            conn.execute(
+                "INSERT INTO observations_fts(observations_fts) VALUES('rebuild')"
+            )
 
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT
                     o.id, o.type, o.title, o.content, o.symbol, o.file_path,
                     bm25(observations_fts) as rank
@@ -418,35 +467,39 @@ class MemoryDB:
                   AND o.archived = 0
                 ORDER BY rank
                 LIMIT ?
-            """, (query, limit))
+            """,
+                (query, limit),
+            )
 
             results = []
             for row in cursor:
-                content = row['content'] if row['content'] else ''
-                summary = content[:200] + ('...' if len(content) > 200 else '')
-                results.append({
-                    'id': row['id'],
-                    'type': row['type'],
-                    'title': row['title'],
-                    'summary': summary,
-                    'symbol': row['symbol'],
-                    'file': row['file_path'],
-                    'rank': row['rank']
-                })
+                content = row["content"] if row["content"] else ""
+                summary = content[:200] + ("..." if len(content) > 200 else "")
+                results.append(
+                    {
+                        "id": row["id"],
+                        "type": row["type"],
+                        "title": row["title"],
+                        "summary": summary,
+                        "symbol": row["symbol"],
+                        "file": row["file_path"],
+                        "rank": row["rank"],
+                    }
+                )
 
             # Update access counts
             for r in results:
                 conn.execute(
                     "UPDATE observations SET access_count = access_count + 1, last_accessed_epoch = unixepoch() WHERE id = ?",
-                    (r['id'],)
+                    (r["id"],),
                 )
             conn.commit()
 
             return {
-                'layer': 2,
-                'results': results,
-                'total': len(results),
-                'tokens_estimate': len(results) * 60 + 50
+                "layer": 2,
+                "results": results,
+                "total": len(results),
+                "tokens_estimate": len(results) * 60 + 50,
             }
         finally:
             conn.close()
@@ -460,42 +513,58 @@ class MemoryDB:
         """
         conn = self.get_connection()
         try:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM observations WHERE id = ? AND archived = 0
-            """, (obs_id,))
+            """,
+                (obs_id,),
+            )
             row = cursor.fetchone()
             if not row:
                 return None
 
             # Get links
-            links_cursor = conn.execute("""
+            links_cursor = conn.execute(
+                """
                 SELECT o.id, o.type, o.title, ol.link_type
                 FROM observation_links ol
                 JOIN observations o ON o.id = ol.target_id
                 WHERE ol.source_id = ?
-            """, (obs_id,))
+            """,
+                (obs_id,),
+            )
 
             links = []
             for link_row in links_cursor:
-                links.append({
-                    'id': link_row['id'],
-                    'type': link_row['type'],
-                    'title': link_row['title'],
-                    'link_type': link_row['link_type']
-                })
+                links.append(
+                    {
+                        "id": link_row["id"],
+                        "type": link_row["type"],
+                        "title": link_row["title"],
+                        "link_type": link_row["link_type"],
+                    }
+                )
 
             obs = dict(row)
-            obs['links'] = links
-            obs['tokens_estimate'] = estimate_tokens(json.dumps(obs))
+            obs["links"] = links
+            obs["tokens_estimate"] = estimate_tokens(
+                json.dumps(obs, ensure_ascii=False)
+            )
             return obs
         finally:
             conn.close()
 
     # ── CRUD Operations ─────────────────────────────────────────────────────
 
-    def add(self, text: str, category: str = "general", source: str = "manual",
-            title: Optional[str] = None, tags: Optional[list] = None,
-            importance: int = 5) -> Optional[dict]:
+    def add(
+        self,
+        text: str,
+        category: str = "general",
+        source: str = "manual",
+        title: Optional[str] = None,
+        tags: Optional[list] = None,
+        importance: int = 5,
+    ) -> Optional[dict]:
         """Add a new observation."""
         text = redact_secrets(text)
         content_hash = make_hash(text)
@@ -504,35 +573,54 @@ class MemoryDB:
         conn = self.get_connection()
         try:
             # Check for duplicate
-            existing = conn.execute("""
+            existing = conn.execute(
+                """
                 SELECT id FROM observations WHERE content_hash = ? AND project_root = ?
-            """, (content_hash, project_root)).fetchone()
+            """,
+                (content_hash, project_root),
+            ).fetchone()
             if existing:
-                return {'id': existing['id'], 'duplicate': True}
+                return {"id": existing["id"], "duplicate": True}
 
             if title is None:
-                title = text[:100].replace('\n', ' ')
+                title = text[:100].replace("\n", " ")
 
-            tags_json = json.dumps(tags or [])
+            tags_json = json.dumps(tags or [], ensure_ascii=False)
 
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO observations (
                     project_root, type, title, content, content_hash,
                     source, tags, importance
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (project_root, category, title, text, content_hash, source, tags_json, importance))
+            """,
+                (
+                    project_root,
+                    category,
+                    title,
+                    text,
+                    content_hash,
+                    source,
+                    tags_json,
+                    importance,
+                ),
+            )
             obs_id = cursor.lastrowid
             conn.commit()
 
             # Sync to FTS
-            conn.execute("INSERT INTO observations_fts(id, title, content, tags) VALUES (?, ?, ?, ?)",
-                        (obs_id, title, text, tags_json))
+            conn.execute(
+                "INSERT INTO observations_fts(id, title, content, tags) VALUES (?, ?, ?, ?)",
+                (obs_id, title, text, tags_json),
+            )
 
             # Rebuild FTS index (background job in production)
-            conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
+            conn.execute(
+                "INSERT INTO observations_fts(observations_fts) VALUES('rebuild')"
+            )
             conn.commit()
 
-            return {'id': obs_id, 'duplicate': False}
+            return {"id": obs_id, "duplicate": False}
         finally:
             conn.close()
 
@@ -542,18 +630,22 @@ class MemoryDB:
         Splits multi-word queries into individual terms for better matching.
         """
         # Split query into terms for better matching
-        terms = re.sub(r'[^\w\s]', ' ', query).split()
+        terms = re.sub(r"[^\w\s]", " ", query).split()
         terms = [t.strip() for t in terms if len(t.strip()) >= 2]
         if not terms:
             return []
 
         # Build LIKE conditions for each term
         conditions = " OR ".join(["(title LIKE ? OR content LIKE ?)" for _ in terms])
-        params = [f'%{t}%' for t in terms] * 2  # Each term appears twice (title + content)
+        params = []
+        for term in terms:
+            like = f"%{term}%"
+            params.extend([like, like])  # Each term appears twice (title + content)
 
         conn = self.get_connection()
         try:
-            cursor = conn.execute(f"""
+            cursor = conn.execute(
+                f"""
                 SELECT id, type, title, content, symbol, file_path,
                        importance, access_count, created_at
                 FROM observations
@@ -565,19 +657,23 @@ class MemoryDB:
                     (CASE WHEN created_at > datetime('now', '-7 days') THEN 0.4 ELSE 0 END)
                 DESC
                 LIMIT ?
-            """, (*params, limit))
+            """,
+                (*params, limit),
+            )
 
             results = []
             for row in cursor:
-                content = row['content'] if row['content'] else ''
-                summary = content[:200] + ('...' if len(content) > 200 else '')
-                results.append({
-                    'id': row['id'],
-                    'type': row['type'],
-                    'title': row['title'],
-                    'memory': summary,
-                    'category': row['type']
-                })
+                content = row["content"] if row["content"] else ""
+                summary = content[:200] + ("..." if len(content) > 200 else "")
+                results.append(
+                    {
+                        "id": row["id"],
+                        "type": row["type"],
+                        "title": row["title"],
+                        "memory": summary,
+                        "category": row["type"],
+                    }
+                )
             return results
         finally:
             conn.close()
@@ -587,33 +683,41 @@ class MemoryDB:
         conn = self.get_connection()
         try:
             if category:
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT id, type, title, content, source, created_at
                     FROM observations
                     WHERE archived = 0 AND type = ?
                     ORDER BY created_at_epoch DESC
                     LIMIT ?
-                """, (category, limit))
+                """,
+                    (category, limit),
+                )
             else:
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT id, type, title, content, source, created_at
                     FROM observations
                     WHERE archived = 0
                     ORDER BY created_at_epoch DESC
                     LIMIT ?
-                """, (limit,))
+                """,
+                    (limit,),
+                )
 
             results = []
             for row in cursor:
-                content = row['content'] if row['content'] else ''
-                results.append({
-                    'id': row['id'],
-                    'type': row['type'],
-                    'title': row['title'],
-                    'memory': content[:500],
-                    'source': row['source'],
-                    'created': row['created_at']
-                })
+                content = row["content"] if row["content"] else ""
+                results.append(
+                    {
+                        "id": row["id"],
+                        "type": row["type"],
+                        "title": row["title"],
+                        "memory": content[:500],
+                        "source": row["source"],
+                        "created": row["created_at"],
+                    }
+                )
             return results
         finally:
             conn.close()
@@ -622,11 +726,14 @@ class MemoryDB:
         """Archive an observation (soft delete)."""
         conn = self.get_connection()
         try:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 UPDATE observations
                 SET archived = 1, archived_at = datetime('now')
                 WHERE id = ?
-            """, (obs_id,))
+            """,
+                (obs_id,),
+            )
             conn.commit()
             return cursor.rowcount > 0
         finally:
@@ -636,8 +743,10 @@ class MemoryDB:
         """Count active observations."""
         conn = self.get_connection()
         try:
-            cursor = conn.execute("SELECT COUNT(*) as cnt FROM observations WHERE archived = 0")
-            return cursor.fetchone()['cnt']
+            cursor = conn.execute(
+                "SELECT COUNT(*) as cnt FROM observations WHERE archived = 0"
+            )
+            return cursor.fetchone()["cnt"]
         finally:
             conn.close()
 
@@ -650,7 +759,9 @@ class MemoryDB:
         """Get memory statistics."""
         conn = self.get_connection()
         try:
-            total = conn.execute("SELECT COUNT(*) as cnt FROM observations WHERE archived = 0").fetchone()['cnt']
+            total = conn.execute(
+                "SELECT COUNT(*) as cnt FROM observations WHERE archived = 0"
+            ).fetchone()["cnt"]
 
             by_type = {}
             cursor = conn.execute("""
@@ -659,24 +770,30 @@ class MemoryDB:
                 GROUP BY type
             """)
             for row in cursor:
-                by_type[row['type']] = row['cnt']
+                by_type[row["type"]] = row["cnt"]
 
             # Graph Layer Stats (TSK-09)
-            node_count = conn.execute("SELECT COUNT(*) as cnt FROM flux_nodes").fetchone()['cnt']
-            edge_count = conn.execute("SELECT COUNT(*) as cnt FROM flux_edges").fetchone()['cnt']
+            node_count = conn.execute(
+                "SELECT COUNT(*) as cnt FROM flux_nodes"
+            ).fetchone()["cnt"]
+            edge_count = conn.execute(
+                "SELECT COUNT(*) as cnt FROM flux_edges"
+            ).fetchone()["cnt"]
             by_layer = {}
-            layer_cursor = conn.execute("SELECT layer, COUNT(*) as cnt FROM flux_nodes GROUP BY layer")
+            layer_cursor = conn.execute(
+                "SELECT layer, COUNT(*) as cnt FROM flux_nodes GROUP BY layer"
+            )
             for row in layer_cursor:
-                by_layer[row['layer']] = row['cnt']
+                by_layer[row["layer"]] = row["cnt"]
 
             return {
-                'total': total,
-                'by_type': by_type,
-                'graph_nodes': node_count,
-                'graph_edges': edge_count,
-                'graph_by_layer': by_layer,
-                'size_bytes': self.size_bytes(),
-                'tokens_estimate': self.size_bytes() // 4
+                "total": total,
+                "by_type": by_type,
+                "graph_nodes": node_count,
+                "graph_edges": edge_count,
+                "graph_by_layer": by_layer,
+                "size_bytes": self.size_bytes(),
+                "tokens_estimate": self.size_bytes() // 4,
             }
         finally:
             conn.close()
@@ -698,7 +815,8 @@ class MemoryDB:
             # Get weights as JSON for SQL
             weights = json.dumps(CATEGORY_WEIGHTS)
 
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT id, type, pinned, created_at_epoch
                 FROM observations
                 WHERE archived = 0 AND pinned = 0
@@ -707,15 +825,20 @@ class MemoryDB:
                     (1.0 - MIN((unixepoch() - created_at_epoch) / 2592000.0, 1.0)) * 0.5
                 ) ASC
                 LIMIT ?
-            """, (weights, total - max_o))
+            """,
+                (weights, total - max_o),
+            )
 
             removed = 0
             for row in cursor:
-                conn.execute("""
+                conn.execute(
+                    """
                     UPDATE observations
                     SET archived = 1, archived_at = datetime('now')
                     WHERE id = ?
-                """, (row['id'],))
+                """,
+                    (row["id"],),
+                )
                 removed += 1
 
             conn.commit()
@@ -735,7 +858,7 @@ class MemoryDB:
 
         for rows in ranked_lists:
             for rank, item in enumerate(rows, start=1):
-                oid = item.get('id')
+                oid = item.get("id")
                 if oid is None:
                     continue
                 scores[oid] = scores.get(oid, 0.0) + 1.0 / (k + rank)
@@ -751,7 +874,7 @@ class MemoryDB:
     def migrate_from_jsonl(self, jsonl_path: str = MEMORY_JSONL) -> dict:
         """Migrate from legacy JSONL format to SQLite."""
         if not Path(jsonl_path).exists():
-            return {'migrated': 0, 'skipped': 0}
+            return {"migrated": 0, "skipped": 0}
 
         conn = self.get_connection()
         migrated = 0
@@ -768,32 +891,35 @@ class MemoryDB:
                     skipped += 1
                     continue
 
-                text = entry.get('memory', entry.get('content', ''))
+                text = entry.get("memory", entry.get("content", ""))
                 if not text:
                     skipped += 1
                     continue
 
-                category = entry.get('category', entry.get('type', 'general'))
-                source = entry.get('source', 'migrated')
-                created = entry.get('created', datetime.now().isoformat())
+                category = entry.get("category", entry.get("type", "general"))
+                source = entry.get("source", "migrated")
+                created = entry.get("created", datetime.now().isoformat())
                 content_hash = make_hash(text)
 
                 try:
-                    conn.execute("""
+                    conn.execute(
+                        """
                         INSERT OR IGNORE INTO observations (
                             project_root, type, title, content, content_hash,
                             source, created_at, created_at_epoch
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        get_project_id(),
-                        category,
-                        text[:100].replace('\n', ' '),
-                        text,
-                        content_hash,
-                        source,
-                        created,
-                        int(datetime.fromisoformat(created).timestamp())
-                    ))
+                    """,
+                        (
+                            get_project_id(),
+                            category,
+                            text[:100].replace("\n", " "),
+                            text,
+                            content_hash,
+                            source,
+                            created,
+                            int(datetime.fromisoformat(created).timestamp()),
+                        ),
+                    )
                     migrated += 1
                 except sqlite3.Error:
                     skipped += 1
@@ -801,20 +927,25 @@ class MemoryDB:
             conn.commit()
 
             # Rebuild FTS index
-            conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
+            conn.execute(
+                "INSERT INTO observations_fts(observations_fts) VALUES('rebuild')"
+            )
             conn.commit()
 
-            return {'migrated': migrated, 'skipped': skipped}
+            return {"migrated": migrated, "skipped": skipped}
         finally:
             conn.close()
 
     # ── Layer 2: Relational Graph APIs (FluxMem Integration) ──────────────────
 
-    def add_node(self, node_id: str, layer: str, title: str, content: str, pes_score: float = 0.0) -> bool:
+    def add_node(
+        self, node_id: str, layer: str, title: str, content: str, pes_score: float = 0.0
+    ) -> bool:
         """Add or update a node in the L2 cognitive graph."""
         conn = self.get_connection()
         try:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO flux_nodes (id, layer, title, content, pes_score)
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
@@ -822,7 +953,9 @@ class MemoryDB:
                     title = excluded.title,
                     content = excluded.content,
                     pes_score = excluded.pes_score
-            """, (node_id, layer, title, content, pes_score))
+            """,
+                (node_id, layer, title, content, pes_score),
+            )
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -831,17 +964,26 @@ class MemoryDB:
         finally:
             conn.close()
 
-    def add_edge(self, source_id: str, target_id: str, weight: float = 1.0, edge_type: str = "relates_to") -> bool:
+    def add_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        weight: float = 1.0,
+        edge_type: str = "relates_to",
+    ) -> bool:
         """Add or update an edge in the L2 cognitive graph."""
         conn = self.get_connection()
         try:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO flux_edges (source_id, target_id, weight, edge_type, updated_at)
                 VALUES (?, ?, ?, ?, datetime('now'))
                 ON CONFLICT(source_id, target_id, edge_type) DO UPDATE SET
                     weight = excluded.weight,
                     updated_at = datetime('now')
-            """, (source_id, target_id, weight, edge_type))
+            """,
+                (source_id, target_id, weight, edge_type),
+            )
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -850,23 +992,35 @@ class MemoryDB:
         finally:
             conn.close()
 
-    def decay_edge(self, source_id: str, target_id: str, edge_type: str = "relates_to", factor: float = 0.5) -> bool:
+    def decay_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        edge_type: str = "relates_to",
+        factor: float = 0.5,
+    ) -> bool:
         """Decay the weight of an edge (used on failure paths)."""
         conn = self.get_connection()
         try:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT weight FROM flux_edges
                 WHERE source_id = ? AND target_id = ? AND edge_type = ?
-            """, (source_id, target_id, edge_type))
+            """,
+                (source_id, target_id, edge_type),
+            )
             row = cursor.fetchone()
             if not row:
                 return False
-            new_weight = max(0.1, round(row['weight'] * factor, 2))
-            conn.execute("""
+            new_weight = max(0.1, round(row["weight"] * factor, 2))
+            conn.execute(
+                """
                 UPDATE flux_edges
                 SET weight = ?, updated_at = datetime('now')
                 WHERE source_id = ? AND target_id = ? AND edge_type = ?
-            """, (new_weight, source_id, target_id, edge_type))
+            """,
+                (new_weight, source_id, target_id, edge_type),
+            )
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -875,23 +1029,35 @@ class MemoryDB:
         finally:
             conn.close()
 
-    def reinforce_edge(self, source_id: str, target_id: str, edge_type: str = "relates_to", factor: float = 1.2) -> bool:
+    def reinforce_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        edge_type: str = "relates_to",
+        factor: float = 1.2,
+    ) -> bool:
         """Reinforce the weight of an edge (used on success paths)."""
         conn = self.get_connection()
         try:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT weight FROM flux_edges
                 WHERE source_id = ? AND target_id = ? AND edge_type = ?
-            """, (source_id, target_id, edge_type))
+            """,
+                (source_id, target_id, edge_type),
+            )
             row = cursor.fetchone()
             if not row:
                 return False
-            new_weight = min(5.0, round(row['weight'] * factor, 2))
-            conn.execute("""
+            new_weight = min(5.0, round(row["weight"] * factor, 2))
+            conn.execute(
+                """
                 UPDATE flux_edges
                 SET weight = ?, updated_at = datetime('now')
                 WHERE source_id = ? AND target_id = ? AND edge_type = ?
-            """, (new_weight, source_id, target_id, edge_type))
+            """,
+                (new_weight, source_id, target_id, edge_type),
+            )
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -904,26 +1070,31 @@ class MemoryDB:
         """Retrieve active neighbors of a node with weights."""
         conn = self.get_connection()
         try:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT n.id, n.layer, n.title, n.content, n.pes_score, e.weight, e.edge_type
                 FROM flux_edges e
                 JOIN flux_nodes n ON n.id = e.target_id
                 WHERE e.source_id = ?
                 ORDER BY e.weight DESC
                 LIMIT ?
-            """, (node_id, limit))
-            
+            """,
+                (node_id, limit),
+            )
+
             results = []
             for row in cursor:
-                results.append({
-                    'id': row['id'],
-                    'layer': row['layer'],
-                    'title': row['title'],
-                    'content': row['content'],
-                    'pes_score': row['pes_score'],
-                    'weight': row['weight'],
-                    'edge_type': row['edge_type']
-                })
+                results.append(
+                    {
+                        "id": row["id"],
+                        "layer": row["layer"],
+                        "title": row["title"],
+                        "content": row["content"],
+                        "pes_score": row["pes_score"],
+                        "weight": row["weight"],
+                        "edge_type": row["edge_type"],
+                    }
+                )
             return results
         except sqlite3.Error as e:
             print(f"Error getting neighbors: {e}", file=sys.stderr)
@@ -931,18 +1102,23 @@ class MemoryDB:
         finally:
             conn.close()
 
-    def save_procedural_circuit(self, circuit_id: str, name: str, steps_json: str, pems_score: float) -> bool:
+    def save_procedural_circuit(
+        self, circuit_id: str, name: str, steps_json: str, pems_score: float
+    ) -> bool:
         """Consolidate high-performance procedural workflows."""
         conn = self.get_connection()
         try:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO procedural_circuits (id, name, steps_json, pems_score, runs_count, created_at)
                 VALUES (?, ?, ?, ?, 1, datetime('now'))
                 ON CONFLICT(id) DO UPDATE SET
                     steps_json = excluded.steps_json,
                     pems_score = excluded.pems_score,
                     runs_count = runs_count + 1
-            """, (circuit_id, name, steps_json, pems_score))
+            """,
+                (circuit_id, name, steps_json, pems_score),
+            )
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -955,21 +1131,24 @@ class MemoryDB:
         """Retrieve established procedural path or circuit."""
         conn = self.get_connection()
         try:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT id, name, steps_json, pems_score, runs_count, success_count, created_at
                 FROM procedural_circuits
                 WHERE id = ?
-            """, (circuit_id,))
+            """,
+                (circuit_id,),
+            )
             row = cursor.fetchone()
             if row:
                 return {
-                    'id': row['id'],
-                    'name': row['name'],
-                    'steps_json': row['steps_json'],
-                    'pems_score': row['pems_score'],
-                    'runs_count': row['runs_count'],
-                    'success_count': row['success_count'],
-                    'created_at': row['created_at']
+                    "id": row["id"],
+                    "name": row["name"],
+                    "steps_json": row["steps_json"],
+                    "pems_score": row["pems_score"],
+                    "runs_count": row["runs_count"],
+                    "success_count": row["success_count"],
+                    "created_at": row["created_at"],
                 }
             return None
         except sqlite3.Error as e:
@@ -982,11 +1161,14 @@ class MemoryDB:
         """Increment the success count for a procedural circuit."""
         conn = self.get_connection()
         try:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE procedural_circuits
                 SET success_count = success_count + 1
                 WHERE id = ?
-            """, (circuit_id,))
+            """,
+                (circuit_id,),
+            )
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -997,6 +1179,7 @@ class MemoryDB:
 
 
 # ── Commands ─────────────────────────────────────────────────────────────────
+
 
 def get_db() -> MemoryDB:
     return MemoryDB()
@@ -1024,10 +1207,10 @@ def cmd_search(args):
     if fmt == "compact":
         for m in results:
             cat = f"[{m.get('category', '')}] " if m.get("category") else ""
-            mem_text = m.get('memory', m.get('title', '')).replace("\n", " ")[:200]
+            mem_text = m.get("memory", m.get("title", "")).replace("\n", " ")[:200]
             print(f"  • {cat}{mem_text}")
     else:
-        print(json.dumps(results, indent=2, default=str))
+        print(json.dumps(results, indent=2, default=str, ensure_ascii=False))
 
 
 def cmd_index(args):
@@ -1044,13 +1227,15 @@ def cmd_index(args):
     db = get_db()
     result = db.memory_index(query, limit=limit)
     print(f"Layer 1 Index ({result['tokens_estimate']} tokens est.):")
-    for r in result['results']:
+    for r in result["results"]:
         print(f"  [{r['id']}] {r['type']}: {r['title'][:80]} (score={r['score']})")
 
 
 def cmd_add(args):
     if len(args) < 1:
-        print("Usage: mem0-v2.py add <text> [--category <cat>] [--title <title>] [--tags <tag1,tag2>] [--importance <1-10>]")
+        print(
+            "Usage: mem0-v2.py add <text> [--category <cat>] [--title <title>] [--tags <tag1,tag2>] [--importance <1-10>]"
+        )
         return
     text = args[0]
     category = "general"
@@ -1063,7 +1248,7 @@ def cmd_add(args):
         if a == "--title" and i + 1 < len(args):
             title = args[i + 1]
         if a == "--tags" and i + 1 < len(args):
-            tags = args[i + 1].split(',')
+            tags = args[i + 1].split(",")
         if a == "--importance" and i + 1 < len(args):
             importance = max(1, min(10, int(args[i + 1])))
 
@@ -1072,13 +1257,17 @@ def cmd_add(args):
         tags = auto_extract_tags(text)
 
     db = get_db()
-    entry = db.add(text, category=category, title=title, tags=tags, importance=importance)
+    entry = db.add(
+        text, category=category, title=title, tags=tags, importance=importance
+    )
     if entry:
-        if entry.get('duplicate'):
+        if entry.get("duplicate"):
             print(f"ℹ️  Memory already exists [id={entry['id']}]")
         else:
             tag_info = f" tags:{','.join(tags)}" if tags else ""
-            print(f"✅ Memory added [id={entry['id']}] ({category}, importance={importance}{tag_info})")
+            print(
+                f"✅ Memory added [id={entry['id']}] ({category}, importance={importance}{tag_info})"
+            )
     else:
         print("❌ Failed to add memory")
 
@@ -1094,7 +1283,7 @@ def cmd_get(args):
     if not obs:
         print(f"Observation {obs_id} not found.")
         return
-    print(json.dumps(obs, indent=2, default=str))
+    print(json.dumps(obs, indent=2, default=str, ensure_ascii=False))
 
 
 def cmd_list(args):
@@ -1114,7 +1303,7 @@ def cmd_list(args):
 
     for m in entries:
         cat = f"[{m.get('type', '')}]" if m.get("type") else ""
-        title = m.get('title', m.get('memory', ''))[:120]
+        title = m.get("title", m.get("memory", ""))[:120]
         print(f"  [{m['id']}] {cat} {title}")
     print(f"\nTotal: {len(entries)}")
 
@@ -1142,9 +1331,9 @@ def cmd_stats(args):
     print(f"  Tokens (est.): {stats['tokens_estimate']:,}")
     print(f"  Max before GC: {os.environ.get('MEM0_MAX_OBS', MAX_OBS_DEFAULT)}")
 
-    if stats['by_type']:
+    if stats["by_type"]:
         print("  Categories:")
-        for cat, count in sorted(stats['by_type'].items(), key=lambda x: -x[1]):
+        for cat, count in sorted(stats["by_type"].items(), key=lambda x: -x[1]):
             weight = CATEGORY_WEIGHTS.get(cat, 3)
             print(f"    {cat}: {count} (weight: {weight})")
 
@@ -1152,9 +1341,11 @@ def cmd_stats(args):
     print("\n🌐 Cognitive Graph Stats (L2 Memory):")
     print(f"  Graph Nodes: {stats.get('graph_nodes', 0)}")
     print(f"  Graph Edges: {stats.get('graph_edges', 0)}")
-    if stats.get('graph_by_layer'):
+    if stats.get("graph_by_layer"):
         print("  By Layer:")
-        for layer, count in sorted(stats['graph_by_layer'].items(), key=lambda x: -x[1]):
+        for layer, count in sorted(
+            stats["graph_by_layer"].items(), key=lambda x: -x[1]
+        ):
             print(f"    {layer}: {count}")
 
 
@@ -1172,7 +1363,9 @@ def cmd_migrate(args):
     db = get_db()
     print("🔄 Migrating from JSONL to SQLite...")
     result = db.migrate_from_jsonl()
-    print(f"✅ Migration complete: {result['migrated']} migrated, {result['skipped']} skipped")
+    print(
+        f"✅ Migration complete: {result['migrated']} migrated, {result['skipped']} skipped"
+    )
     print(f"   Total observations: {db.count()}")
 
 
@@ -1196,15 +1389,17 @@ def cmd_setup(args):
         print(f"\n  ℹ️  Found legacy {MEMORY_JSONL}")
         print("     Run 'mem0-v2.py migrate' to import existing memories")
 
-    print(f"\n✅ Setup complete!")
-    print(f"   Storage: SQLite + FTS5 (WAL mode)")
-    print(f"   Search: BM25 ranking + progressive disclosure")
+    print("\n✅ Setup complete!")
+    print("   Storage: SQLite + FTS5 (WAL mode)")
+    print("   Search: BM25 ranking + progressive disclosure")
     print(f"   GC: value-weighted | Max: {MAX_OBS_DEFAULT}")
 
 
 def cmd_graph_add_node(args):
     if len(args) < 4:
-        print("Usage: mem0-v2.py graph-add-node <id> <layer> <title> <content> [--pes <score>]")
+        print(
+            "Usage: mem0-v2.py graph-add-node <id> <layer> <title> <content> [--pes <score>]"
+        )
         return
     node_id = args[0]
     layer = args[1]
@@ -1214,7 +1409,7 @@ def cmd_graph_add_node(args):
     for i, a in enumerate(args[4:], 4):
         if a == "--pes" and i + 1 < len(args):
             pes_score = float(args[i + 1])
-    
+
     db = get_db()
     if db.add_node(node_id, layer, title, content, pes_score):
         print(f"✅ Node added [id={node_id}] (layer={layer})")
@@ -1224,7 +1419,9 @@ def cmd_graph_add_node(args):
 
 def cmd_graph_link(args):
     if len(args) < 2:
-        print("Usage: mem0-v2.py graph-link <source_id> <target_id> [--weight <W>] [--type <type>]")
+        print(
+            "Usage: mem0-v2.py graph-link <source_id> <target_id> [--weight <W>] [--type <type>]"
+        )
         return
     source_id = args[0]
     target_id = args[1]
@@ -1235,17 +1432,21 @@ def cmd_graph_link(args):
             weight = float(args[i + 1])
         if a == "--type" and i + 1 < len(args):
             edge_type = args[i + 1]
-            
+
     db = get_db()
     if db.add_edge(source_id, target_id, weight, edge_type):
-        print(f"✅ Edge linked [source={source_id}] ──({edge_type}, weight={weight})──► [target={target_id}]")
+        print(
+            f"✅ Edge linked [source={source_id}] ──({edge_type}, weight={weight})──► [target={target_id}]"
+        )
     else:
         print("❌ Failed to link edge")
 
 
 def cmd_graph_decay(args):
     if len(args) < 2:
-        print("Usage: mem0-v2.py graph-decay <source_id> <target_id> [--type <type>] [--factor <F>]")
+        print(
+            "Usage: mem0-v2.py graph-decay <source_id> <target_id> [--type <type>] [--factor <F>]"
+        )
         return
     source_id = args[0]
     target_id = args[1]
@@ -1256,17 +1457,21 @@ def cmd_graph_decay(args):
             edge_type = args[i + 1]
         if a == "--factor" and i + 1 < len(args):
             factor = float(args[i + 1])
-            
+
     db = get_db()
     if db.decay_edge(source_id, target_id, edge_type, factor):
-        print(f"✅ Edge decayed [source={source_id}] ──({edge_type})──► [target={target_id}]")
+        print(
+            f"✅ Edge decayed [source={source_id}] ──({edge_type})──► [target={target_id}]"
+        )
     else:
         print("❌ Failed to decay edge")
 
 
 def cmd_graph_reinforce(args):
     if len(args) < 2:
-        print("Usage: mem0-v2.py graph-reinforce <source_id> <target_id> [--type <type>] [--factor <F>]")
+        print(
+            "Usage: mem0-v2.py graph-reinforce <source_id> <target_id> [--type <type>] [--factor <F>]"
+        )
         return
     source_id = args[0]
     target_id = args[1]
@@ -1277,10 +1482,12 @@ def cmd_graph_reinforce(args):
             edge_type = args[i + 1]
         if a == "--factor" and i + 1 < len(args):
             factor = float(args[i + 1])
-            
+
     db = get_db()
     if db.reinforce_edge(source_id, target_id, edge_type, factor):
-        print(f"✅ Edge reinforced [source={source_id}] ──({edge_type})──► [target={target_id}]")
+        print(
+            f"✅ Edge reinforced [source={source_id}] ──({edge_type})──► [target={target_id}]"
+        )
     else:
         print("❌ Failed to reinforce edge")
 
@@ -1294,7 +1501,7 @@ def cmd_graph_neighbors(args):
     for i, a in enumerate(args[1:], 1):
         if a == "--limit" and i + 1 < len(args):
             limit = int(args[i + 1])
-            
+
     db = get_db()
     results = db.get_neighbors(node_id, limit)
     if not results:
@@ -1302,13 +1509,17 @@ def cmd_graph_neighbors(args):
         return
     print(f"Graph Neighbors for [{node_id}]:")
     for r in results:
-        pes_info = f" (PES={r['pes_score']})" if r['pes_score'] > 0 else ""
-        print(f"  ──({r['edge_type']}, weight={r['weight']})──► [{r['id']}] {r['layer']}{pes_info}: {r['title'][:80]}")
+        pes_info = f" (PES={r['pes_score']})" if r["pes_score"] > 0 else ""
+        print(
+            f"  ──({r['edge_type']}, weight={r['weight']})──► [{r['id']}] {r['layer']}{pes_info}: {r['title'][:80]}"
+        )
 
 
 def cmd_graph_save_circuit(args):
     if len(args) < 4:
-        print("Usage: mem0-v2.py graph-save-circuit <id> <name> <steps_json> <pems_score>")
+        print(
+            "Usage: mem0-v2.py graph-save-circuit <id> <name> <steps_json> <pems_score>"
+        )
         return
     circuit_id, name, steps_json = args[0], args[1], args[2]
     try:
@@ -1316,7 +1527,7 @@ def cmd_graph_save_circuit(args):
     except ValueError:
         print("Error: pems_score must be a float")
         return
-        
+
     db = get_db()
     if db.save_procedural_circuit(circuit_id, name, steps_json, pems_score):
         print(f"✓ Consolidated procedural circuit '{circuit_id}'")
@@ -1341,7 +1552,7 @@ def cmd_graph_get_circuit(args):
     print(f"  Success Count: {res['success_count']}")
     print(f"  Created At:    {res['created_at']}")
     print("  Steps JSON:")
-    print(res['steps_json'])
+    print(res["steps_json"])
 
 
 def cmd_graph_inc_circuit(args):

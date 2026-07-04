@@ -3,11 +3,14 @@
 test_mem0_v2.py — Tests for mem0-v2.py core functionality
 Specifically: search fix (multi-word), auto-tagging, adaptive ranking
 """
+
 import sys
 import os
+import io
 import json
 import tempfile
 import unittest
+import contextlib
 import importlib.util
 from pathlib import Path
 
@@ -24,6 +27,7 @@ class TestAutoTagging(unittest.TestCase):
 
     def test_auth_tag(self):
         from mem0_v2 import auto_extract_tags
+
         text = "JWT authentication middleware with token validation"
         tags = auto_extract_tags(text)
         self.assertIn("auth", tags)
@@ -31,52 +35,61 @@ class TestAutoTagging(unittest.TestCase):
 
     def test_architecture_tag(self):
         from mem0_v2 import auto_extract_tags
+
         text = "Architecture redesign using microservices pattern"
         tags = auto_extract_tags(text)
         self.assertIn("architecture", tags)
 
     def test_database_tag(self):
         from mem0_v2 import auto_extract_tags
+
         text = "PostgreSQL database migration with query optimization"
         tags = auto_extract_tags(text)
         self.assertIn("database", tags)
 
     def test_performance_tag(self):
         from mem0_v2 import auto_extract_tags
+
         text = "Performance optimization with Redis caching"
         tags = auto_extract_tags(text)
         self.assertIn("performance", tags)
 
     def test_api_tag(self):
         from mem0_v2 import auto_extract_tags
+
         text = "REST API endpoint with GraphQL wrapper"
         tags = auto_extract_tags(text)
         self.assertIn("api", tags)
 
     def test_security_tag(self):
         from mem0_v2 import auto_extract_tags
+
         text = "SQL injection vulnerability fixed"
         tags = auto_extract_tags(text)
         self.assertIn("security", tags)
 
     def test_multiple_tags(self):
         from mem0_v2 import auto_extract_tags
+
         text = "JWT auth with PostgreSQL database and Redis cache"
         tags = auto_extract_tags(text)
         self.assertGreaterEqual(len(tags), 3)
 
     def test_empty_text(self):
         from mem0_v2 import auto_extract_tags
+
         tags = auto_extract_tags("")
         self.assertEqual(tags, [])
 
     def test_no_match(self):
         from mem0_v2 import auto_extract_tags
+
         tags = auto_extract_tags("This is a random sentence with no keywords")
         self.assertEqual(tags, [])
 
     def test_case_insensitive(self):
         from mem0_v2 import auto_extract_tags
+
         text = "JWT AUTHENTICATION with DATABASE"
         tags = auto_extract_tags(text)
         self.assertIn("auth", tags)
@@ -88,6 +101,7 @@ class TestSearchMultiWord(unittest.TestCase):
 
     def setUp(self):
         import tempfile
+
         tmpdir = tempfile.mkdtemp()
         os.environ["MEM0_DB_PATH"] = os.path.join(tmpdir, "memory.db")
         _spec = importlib.util.spec_from_file_location("m", SCRIPTS_DIR / "mem0-v2.py")
@@ -136,13 +150,66 @@ class TestSearchMultiWord(unittest.TestCase):
         self.assertNotIn(obs_id, ids)
 
     def test_search_ranking(self):
-        self.db.add("Memory system architecture decision", category="decisions", importance=10)
+        self.db.add(
+            "Memory system architecture decision", category="decisions", importance=10
+        )
         self.db.add("Memory system simple note", category="general", importance=3)
         results = self.db.search("memory system", limit=5)
         if len(results) >= 2:
             high_imp = next((r for r in results if r["id"] == 1), None)
-            low_imp = next((r for r in results if r["id"] == 2), None)
             self.assertIsNotNone(high_imp)
+
+    def test_multi_word_search_checks_each_term_against_title_and_content(self):
+        self.db.add("Unrelated content", category="general", title="khách hàng")
+        results = self.db.search("tiếng khách", limit=5)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["title"], "khách hàng")
+
+
+class TestVietnameseMemoryOutput(unittest.TestCase):
+    """Tests for Vietnamese text persistence and CLI JSON output."""
+
+    def setUp(self):
+        tmpdir = tempfile.mkdtemp()
+        spec = importlib.util.spec_from_file_location(
+            "m_vietnamese", SCRIPTS_DIR / "mem0-v2.py"
+        )
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+        self.db = self.module.MemoryDB(os.path.join(tmpdir, "memory.db"))
+
+    def test_full_search_json_preserves_vietnamese_characters(self):
+        self.db.add(
+            "Cần lưu bộ nhớ tiếng Việt: khách hàng muốn hiển thị tiếng Việt có dấu",
+            category="conversation",
+            tags=["tiếng-việt", "khách-hàng"],
+        )
+        self.module.get_db = lambda: self.db
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.module.cmd_search(["tiếng Việt", "--format", "full"])
+
+        rendered = output.getvalue()
+        self.assertIn("tiếng Việt", rendered)
+        self.assertNotIn("\\u", rendered)
+
+    def test_get_json_preserves_vietnamese_characters(self):
+        obs_id = self.db.add(
+            "Bộ nhớ tiếng Việt phải giữ nguyên dấu khi xuất JSON",
+            category="conversation",
+            tags=["tiếng-việt"],
+        )["id"]
+        self.module.get_db = lambda: self.db
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.module.cmd_get([str(obs_id)])
+
+        rendered = output.getvalue()
+        self.assertIn("tiếng Việt", rendered)
+        self.assertIn("tiếng-việt", rendered)
+        self.assertNotIn("\\u", rendered)
 
 
 class TestAddWithImportance(unittest.TestCase):
@@ -150,6 +217,7 @@ class TestAddWithImportance(unittest.TestCase):
 
     def setUp(self):
         import tempfile
+
         tmpdir = tempfile.mkdtemp()
         _spec = importlib.util.spec_from_file_location("m", SCRIPTS_DIR / "mem0-v2.py")
         _m = importlib.util.module_from_spec(_spec)
@@ -184,6 +252,7 @@ class TestRedaction(unittest.TestCase):
 
     def test_redacts_api_key(self):
         from mem0_v2 import redact_secrets
+
         text = "API key: sk-1234567890abcdefghijklmn"
         redacted = redact_secrets(text)
         self.assertNotIn("sk-1234567890abcdefghijklmn", redacted)
@@ -191,6 +260,7 @@ class TestRedaction(unittest.TestCase):
 
     def test_redacts_bearer_token(self):
         from mem0_v2 import redact_secrets
+
         text = "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9"
         redacted = redact_secrets(text)
         self.assertNotIn("Bearer eyJ", redacted)
@@ -198,12 +268,14 @@ class TestRedaction(unittest.TestCase):
 
     def test_redacts_password(self):
         from mem0_v2 import redact_secrets
+
         text = "password=supersecret123"
         redacted = redact_secrets(text)
         self.assertNotIn("supersecret123", redacted)
 
     def test_redacts_postgres_connection(self):
         from mem0_v2 import redact_secrets
+
         text = "postgres://user:password123@localhost/db"
         redacted = redact_secrets(text)
         self.assertNotIn("password123", redacted)
@@ -211,6 +283,7 @@ class TestRedaction(unittest.TestCase):
 
     def test_preserves_normal_text(self):
         from mem0_v2 import redact_secrets
+
         text = "This is a normal sentence about authentication"
         redacted = redact_secrets(text)
         self.assertEqual(text, redacted)
@@ -221,6 +294,7 @@ class TestGC(unittest.TestCase):
 
     def setUp(self):
         import tempfile
+
         tmpdir = tempfile.mkdtemp()
         _spec = importlib.util.spec_from_file_location("m", SCRIPTS_DIR / "mem0-v2.py")
         _m = importlib.util.module_from_spec(_spec)
@@ -246,6 +320,7 @@ class TestProceduralCircuits(unittest.TestCase):
 
     def setUp(self):
         import tempfile
+
         tmpdir = tempfile.mkdtemp()
         _spec = importlib.util.spec_from_file_location("m", SCRIPTS_DIR / "mem0-v2.py")
         _m = importlib.util.module_from_spec(_spec)
@@ -254,65 +329,71 @@ class TestProceduralCircuits(unittest.TestCase):
         self.db = _m.MemoryDB(os.path.join(tmpdir, "graph_test.db"))
 
     def test_add_graph_node(self):
-        success = self.db.add_node("node-1", "semantic", "Test Node", "Some content", 8.5)
+        success = self.db.add_node(
+            "node-1", "semantic", "Test Node", "Some content", 8.5
+        )
         self.assertTrue(success)
-        
+
         # Test fetching/neighbors or queries
         conn = self.db.get_connection()
         row = conn.execute("SELECT * FROM flux_nodes WHERE id = 'node-1'").fetchone()
         self.assertIsNotNone(row)
-        self.assertEqual(row['layer'], 'semantic')
-        self.assertEqual(row['title'], 'Test Node')
-        self.assertEqual(row['pes_score'], 8.5)
+        self.assertEqual(row["layer"], "semantic")
+        self.assertEqual(row["title"], "Test Node")
+        self.assertEqual(row["pes_score"], 8.5)
         conn.close()
 
     def test_link_decay_reinforce_edges(self):
         self.db.add_node("n-1", "semantic", "N1", "Content 1")
         self.db.add_node("n-2", "procedural", "N2", "Content 2")
-        
+
         # Link edge
         success = self.db.add_edge("n-1", "n-2", weight=1.0, edge_type="relates_to")
         self.assertTrue(success)
-        
+
         # Check neighbors
         neighbors = self.db.get_neighbors("n-1")
         self.assertEqual(len(neighbors), 1)
-        self.assertEqual(neighbors[0]['id'], 'n-2')
-        self.assertEqual(neighbors[0]['weight'], 1.0)
-        
+        self.assertEqual(neighbors[0]["id"], "n-2")
+        self.assertEqual(neighbors[0]["weight"], 1.0)
+
         # Decay
         self.db.decay_edge("n-1", "n-2", edge_type="relates_to", factor=0.5)
         neighbors = self.db.get_neighbors("n-1")
-        self.assertEqual(neighbors[0]['weight'], 0.5)
-        
+        self.assertEqual(neighbors[0]["weight"], 0.5)
+
         # Reinforce
         self.db.reinforce_edge("n-1", "n-2", edge_type="relates_to", factor=1.5)
         neighbors = self.db.get_neighbors("n-1")
-        self.assertEqual(neighbors[0]['weight'], 0.75) # 0.5 * 1.5 = 0.75
+        self.assertEqual(neighbors[0]["weight"], 0.75)  # 0.5 * 1.5 = 0.75
 
     def test_procedural_circuits(self):
-        steps = json.dumps([{"step": 1, "action": "test"}, {"step": 2, "action": "deploy"}])
-        success = self.db.save_procedural_circuit("circuit-100", "Deploy Circuit", steps, 9.2)
+        steps = json.dumps(
+            [{"step": 1, "action": "test"}, {"step": 2, "action": "deploy"}]
+        )
+        success = self.db.save_procedural_circuit(
+            "circuit-100", "Deploy Circuit", steps, 9.2
+        )
         self.assertTrue(success)
-        
+
         # Retrieve
         circuit = self.db.get_procedural_circuit("circuit-100")
         self.assertIsNotNone(circuit)
-        self.assertEqual(circuit['name'], "Deploy Circuit")
-        self.assertEqual(circuit['pems_score'], 9.2)
-        self.assertEqual(circuit['runs_count'], 1)
-        self.assertEqual(circuit['success_count'], 0)
-        
+        self.assertEqual(circuit["name"], "Deploy Circuit")
+        self.assertEqual(circuit["pems_score"], 9.2)
+        self.assertEqual(circuit["runs_count"], 1)
+        self.assertEqual(circuit["success_count"], 0)
+
         # Increment runs
         self.db.save_procedural_circuit("circuit-100", "Deploy Circuit", steps, 9.5)
         circuit = self.db.get_procedural_circuit("circuit-100")
-        self.assertEqual(circuit['runs_count'], 2)
-        self.assertEqual(circuit['pems_score'], 9.5)
-        
+        self.assertEqual(circuit["runs_count"], 2)
+        self.assertEqual(circuit["pems_score"], 9.5)
+
         # Increment success
         self.db.increment_circuit_success("circuit-100")
         circuit = self.db.get_procedural_circuit("circuit-100")
-        self.assertEqual(circuit['success_count'], 1)
+        self.assertEqual(circuit["success_count"], 1)
 
 
 if __name__ == "__main__":
