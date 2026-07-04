@@ -29,6 +29,21 @@ export class HttpWebhookEventPublisher implements IEventPublisher {
     return null;
   }
 
+  private getWebhookToken(): string | null {
+    if (process.env.FORGEWRIGHT_WEBHOOK_TOKEN) {
+      return process.env.FORGEWRIGHT_WEBHOOK_TOKEN;
+    }
+    try {
+      const tokenFile = path.join(os.homedir(), '.forgewright-console', 'webhook-token.txt');
+      if (fs.existsSync(tokenFile)) {
+        return fs.readFileSync(tokenFile, 'utf8').trim();
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  }
+
   publish(eventName: string, payload: unknown): void {
     const baseUrl = this.getWebhookUrl();
     if (!baseUrl) return;
@@ -48,14 +63,21 @@ export class HttpWebhookEventPublisher implements IEventPublisher {
 
     try {
       const fullUrl = new URL(endpoint, baseUrl);
+      const headers: Record<string, string | number> = {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      };
+      
+      const token = this.getWebhookToken();
+      if (token) {
+        headers['X-Forgewright-Token'] = token;
+      }
+
       const req = http.request(
         fullUrl,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(body),
-          },
+          headers,
         },
         (res) => {
           res.resume();
