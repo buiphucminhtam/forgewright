@@ -85,6 +85,13 @@ Forgewright đóng vai trò là một Harness phân phối phần mềm chuẩn 
 *   **Hệ thống phòng vệ chủ động**: Tự động quét lỗ hổng bảo mật, tích hợp kiểm thử CI/CD và bảo vệ các thư mục nhạy cảm, ngăn các ảo giác của AI đưa lỗ hổng bảo mật vào dự án.
 *   **Quy trình kiểm thử Hybrid BDD-First**: Tự động phân loại độ phức tạp của tác vụ dựa trên số liệu của GitNexus. Bắt buộc thực hiện theo luồng BDD/TDD-first (`BA (BDD) -> QA (Stubs) -> Build -> Test`) cho các tác vụ phức tạp, và cho phép kiểm thử sau (test-after) đối với các hotfix rủi ro thấp.
 *   **Tối ưu hóa Gemini 3.x Native**: Hỗ trợ tối ưu hoàn toàn cho Gemini 3.5 Flash (cho các luồng điều phối nhanh với `thinking_level: MINIMAL` và strict grounding) và Gemini 3.1 Pro (cho lập luận phức tạp với `thinking_level: HIGH` và temperature 1.0). Tránh việc ép buộc Temperature 1.0 đồng loạt để giữ ổn định cho các tác vụ deterministic của Claude/GPT, đồng thời bảo toàn Thought Signatures (tránh lỗi API 400) và tự động kích hoạt Context Caching cho ngữ cảnh lớn hơn 4,096 tokens.
+*   **⚡ Forgewright Lite — Nhân Điều Hướng Evidence-Gated (Nâng cấp v3)**: Thiết kế đặc biệt cho các mô hình nhỏ và nhanh (ví dụ: Gemini Flash), loại bỏ các câu từ rườm rà để tập trung vào nhân lập luận gọn nhẹ kết hợp với kiểm chứng lớp script, giúp tăng đáng kể độ chính xác lập trình trên cùng một mô hình.
+    *   **Evidence-Gated Turn Checks**: Việc hoàn thành lượt (turn) được kiểm soát thông qua xác thực lớp script đối với các file bằng chứng (`.forgewright/verify/<turn>.json`), loại bỏ ảo giác và thiên kiến tự chứng thực (self-attested).
+    *   **Turn-level Platform Hooks**: Cấu hình ăn liền (out-of-the-box) cho Claude Code, Gemini CLI, Cursor, và Codex CLI để tự động chặn đứng việc thực thi nếu kiểm chứng thất bại.
+    *   **Giới hạn Boot ≤7k**: Giới hạn ngữ cảnh khởi động dưới 7,000 tokens thông qua việc tải lũy tiến các kỹ năng (skill-overlay loading), giúp giữ tác vụ trong vùng nhớ đáng tin cậy của mô hình.
+    *   **Leo thang Tác vụ Tự động (Objective Escalations)**: Các trigger hệ thống (như quét grep đường dẫn đối với các thay đổi về bảo mật/đồng thời/schema hoặc lỗi kiểm thử liên tiếp) sẽ tự động chuyển tác vụ cho các mô hình mạnh hơn (Sonnet/Opus).
+    *   **Kiểm chứng Giao diện & Hình ảnh (Vision)**: Đối với bất kỳ tác vụ nào liên quan đến UI hoặc thiết kế trực quan, AI bắt buộc phải chụp ảnh màn hình hoặc ghi lại kết quả hiển thị, và sử dụng khả năng phân tích hình ảnh (vision) của mô hình để kiểm chứng bố cục, độ chính xác và tính thẩm mỹ.
+    *   **Bộ Đánh Giá 13 Tác Vụ**: Khung đánh giá chuẩn hóa giúp đo lường tỷ lệ vượt qua kiểm thử (pass rates), thời gian thực thi và mức độ tiết kiệm chi phí.
 
 
 ---

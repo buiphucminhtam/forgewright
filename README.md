@@ -79,6 +79,7 @@ Forgewright acts as a production-grade software delivery harness for AI coding a
     *   **Turn-level Platform Hooks**: Out-of-the-box configurations for Claude Code, Gemini CLI, Cursor, and Codex CLI to hard-block execution on verification failure.
     *   **Strict ≤7k Boot Budget**: Restricts the boot context to under 7,000 tokens through progressive skill-overlay loading, keeping the task in the model's reliable-recall window.
     *   **Objective Escalations**: System-side triggers (like path grep on security/concurrency/schema edits or consecutive test failures) to cascade tasks to Sonnet/Opus models automatically.
+    *   **UI & Visual Verification (Vision)**: For any task involving UI or visual designs, the AI must take a screenshot or capture the visual output, and use its vision capabilities to verify layout alignment, correctness, and aesthetics.
     *   **13-Task Golden Eval**: Standardized benchmark harness measuring pass rates, execution durations, and cost improvements.
 
 
