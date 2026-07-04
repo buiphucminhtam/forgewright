@@ -8,8 +8,8 @@ SCORE=100
 if [ ! -f ".claude/settings.json" ]; then
   echo "[-] Local .claude/settings.json missing"
   SCORE=$((SCORE-20))
-elif ! grep -q "verify-gate.sh" ".claude/settings.json" 2>/dev/null; then
-  echo "[-] Claude settings stop hook not configured with verify-gate.sh"
+elif ! grep -q "verify-gate.sh --platform CLAUDE" ".claude/settings.json" 2>/dev/null; then
+  echo "[-] Claude settings stop hook not configured with verify-gate.sh --platform CLAUDE"
   SCORE=$((SCORE-10))
 fi
 
@@ -17,8 +17,8 @@ fi
 if [ ! -f ".gemini/settings.json" ]; then
   echo "[-] Local .gemini/settings.json missing"
   SCORE=$((SCORE-20))
-elif ! grep -q "verify-gate.sh" ".gemini/settings.json" 2>/dev/null; then
-  echo "[-] Gemini settings AfterAgent hook not configured with verify-gate.sh"
+elif ! grep -q "verify-gate.sh --platform GEMINI" ".gemini/settings.json" 2>/dev/null; then
+  echo "[-] Gemini settings AfterAgent hook not configured with verify-gate.sh --platform GEMINI"
   SCORE=$((SCORE-10))
 fi
 
@@ -26,8 +26,8 @@ fi
 if [ ! -f ".cursor/hooks.json" ]; then
   echo "[-] Local .cursor/hooks.json missing"
   SCORE=$((SCORE-20))
-elif ! grep -q "followup_message" ".cursor/hooks.json" 2>/dev/null; then
-  echo "[-] Cursor hooks stop hook not configured with followup_message"
+elif ! grep -q "verify-gate.sh --platform CURSOR" ".cursor/hooks.json" 2>/dev/null; then
+  echo "[-] Cursor hooks stop hook not configured with verify-gate.sh --platform CURSOR"
   SCORE=$((SCORE-10))
 fi
 
@@ -35,8 +35,8 @@ fi
 if [ ! -f ".codex/config.toml" ]; then
   echo "[-] Local .codex/config.toml missing"
   SCORE=$((SCORE-20))
-elif ! grep -q "verify-gate.sh" ".codex/config.toml" 2>/dev/null; then
-  echo "[-] Codex config Stop hook not configured with verify-gate.sh"
+elif ! grep -q "verify-gate.sh --platform CODEX" ".codex/config.toml" 2>/dev/null; then
+  echo "[-] Codex config Stop hook not configured with verify-gate.sh --platform CODEX"
   SCORE=$((SCORE-10))
 fi
 

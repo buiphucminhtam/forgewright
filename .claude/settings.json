@@ -1,0 +1,5 @@
+{
+  "hooks": {
+    "stop": "bash scripts/lite/verify-gate.sh --platform CLAUDE"
+  }
+}

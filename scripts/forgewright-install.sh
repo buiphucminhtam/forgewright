@@ -352,34 +352,121 @@ install_hooks() {
         return
     fi
 
-    # Claude Code Settings
-    if [[ -f "$source_dir/.claude/settings.json" ]]; then
-        mkdir -p "$HOME/.claude"
-        cp "$source_dir/.claude/settings.json" "$HOME/.claude/settings.json"
-        log_success "Installed .claude/settings.json"
-    fi
+    # Installed (global) configs use the absolute gate path so they work from any cwd.
+    local gate_script="${FORGEWRIGHT_DIR}/scripts/lite/verify-gate.sh"
 
-    # Gemini Settings
-    if [[ -f "$source_dir/.gemini/settings.json" ]]; then
-        mkdir -p "$HOME/.gemini"
-        cp "$source_dir/.gemini/settings.json" "$HOME/.gemini/settings.json"
-        log_success "Installed .gemini/settings.json"
-    fi
-
-    # Cursor Hooks
-    if [[ -f "$source_dir/.cursor/hooks.json" ]]; then
-        mkdir -p "$HOME/.cursor"
-        cp "$source_dir/.cursor/hooks.json" "$HOME/.cursor/hooks.json"
-        log_success "Installed .cursor/hooks.json"
-    fi
-
-    # Codex Config
-    if [[ -f "$source_dir/.codex/config.toml" ]]; then
-        mkdir -p "$HOME/.codex"
-        cp "$source_dir/.codex/config.toml" "$HOME/.codex/config.toml"
-        log_success "Installed .codex/config.toml"
-    fi
+    # ── Claude Code Settings ──────────────────────────────────────────────────
+    # Real schema: hooks.Stop is an array of matcher-group objects, each with a
+    # nested hooks array of {type, command} objects.  hooks.stop (lowercase) is
+    # NOT a valid key and is silently ignored by Claude Code.
+    mkdir -p "$HOME/.claude"
+    node -e "
+var fs = require('fs');
+var file = '${HOME}/.claude/settings.json';
+var cfg = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+if (!cfg.hooks) cfg.hooks = {};
+// Remove any stale string-form stop key left by previous installs
+delete cfg.hooks.stop;
+// Idempotent merge: only add if our command is not already present
+var Stop = Array.isArray(cfg.hooks.Stop) ? cfg.hooks.Stop : [];
+var already = Stop.some(function(g){
+  return Array.isArray(g.hooks) && g.hooks.some(function(h){ return typeof h.command === 'string' && h.command.indexOf('verify-gate.sh') !== -1 && h.command.indexOf('CLAUDE') !== -1; });
+});
+if (!already) {
+  Stop.push({ hooks: [{ type: 'command', command: 'bash ${gate_script} --platform CLAUDE' }] });
 }
+cfg.hooks.Stop = Stop;
+fs.writeFileSync(file, JSON.stringify(cfg, null, 2));
+"
+    log_success "Installed .claude/settings.json"
+
+    # ── Gemini Settings ───────────────────────────────────────────────────────
+    # Real schema (HookDefinitionArray): AfterAgent must be an array of objects
+    # of the form { matcher?: string, hooks: [{ type, command, ... }] }.
+    # An array of bare strings causes: "Expected object, received string".
+    mkdir -p "$HOME/.gemini"
+    node -e "
+var fs = require('fs');
+var file = '${HOME}/.gemini/settings.json';
+var cfg = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+if (!cfg.hooks) cfg.hooks = {};
+// Remove stale bare-string array if present
+if (Array.isArray(cfg.hooks.AfterAgent) && cfg.hooks.AfterAgent.length > 0 && typeof cfg.hooks.AfterAgent[0] === 'string') {
+  cfg.hooks.AfterAgent = [];
+}
+var AA = Array.isArray(cfg.hooks.AfterAgent) ? cfg.hooks.AfterAgent : [];
+var already = AA.some(function(g){
+  return Array.isArray(g.hooks) && g.hooks.some(function(h){ return typeof h.command === 'string' && h.command.indexOf('verify-gate.sh') !== -1 && h.command.indexOf('GEMINI') !== -1; });
+});
+if (!already) {
+  AA.push({ matcher: '*', hooks: [{ type: 'command', command: 'bash ${gate_script} --platform GEMINI' }] });
+}
+cfg.hooks.AfterAgent = AA;
+fs.writeFileSync(file, JSON.stringify(cfg, null, 2));
+"
+    log_success "Installed .gemini/settings.json"
+
+    # ── Cursor Hooks ──────────────────────────────────────────────────────────
+    # Real schema (version 1): hooks.stop must be an array of {command} objects,
+    # not a bare string.  version field is required.
+    mkdir -p "$HOME/.cursor"
+    node -e "
+var fs = require('fs');
+var file = '${HOME}/.cursor/hooks.json';
+var cfg = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+cfg.version = 1;
+if (!cfg.hooks) cfg.hooks = {};
+// Remove stale string-form stop key
+if (typeof cfg.hooks.stop === 'string') delete cfg.hooks.stop;
+var stop = Array.isArray(cfg.hooks.stop) ? cfg.hooks.stop : [];
+var already = stop.some(function(h){ return typeof h.command === 'string' && h.command.indexOf('verify-gate.sh') !== -1 && h.command.indexOf('CURSOR') !== -1; });
+if (!already) {
+  stop.push({ command: 'bash ${gate_script} --platform CURSOR' });
+}
+cfg.hooks.stop = stop;
+fs.writeFileSync(file, JSON.stringify(cfg, null, 2));
+"
+    log_success "Installed .cursor/hooks.json"
+
+    # ── Codex Config (TOML) ───────────────────────────────────────────────────
+    # Idempotent: only append if verify-gate.sh is not already present.
+    # Also guard against duplicating [features] and [hooks] section headers.
+    mkdir -p "$HOME/.codex"
+    local codex_file="${HOME}/.codex/config.toml"
+    if [[ ! -f "$codex_file" ]]; then
+        cat <<EOF > "$codex_file"
+[features]
+hooks = true
+
+[hooks]
+
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+command = "bash ${gate_script} --platform CODEX"
+EOF
+    elif ! grep -qF "verify-gate.sh" "$codex_file" 2>/dev/null; then
+        # File exists but our hook is not present yet.
+        # Only append the [[hooks.Stop]] stanza; skip [features]/[hooks] headers
+        # if they already exist to avoid TOML duplicate-key errors.
+        local needs_features=true needs_hooks=true
+        grep -qF '[features]' "$codex_file" 2>/dev/null && needs_features=false
+        grep -qF '[hooks]' "$codex_file" 2>/dev/null && needs_hooks=false
+        {
+            echo ""
+            $needs_features && echo '[features]' && echo 'hooks = true' && echo ""
+            $needs_hooks && echo '[hooks]' && echo ""
+            cat <<'HOOKBLOCK'
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+HOOKBLOCK
+            echo "command = \"bash ${gate_script} --platform CODEX\""
+        } >> "$codex_file"
+    fi
+    log_success "Installed .codex/config.toml"
     echo ""
 }
 

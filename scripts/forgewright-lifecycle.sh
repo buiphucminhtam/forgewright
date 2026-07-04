@@ -184,7 +184,7 @@ check_hooks() {
     # Claude Code
     if [[ -f "$HOME/.claude/settings.json" ]]; then
         log_success "  ✓ Claude Code settings exist"
-        if grep -q "verify-gate.sh" "$HOME/.claude/settings.json" 2>/dev/null; then
+        if grep -q "verify-gate.sh --platform CLAUDE" "$HOME/.claude/settings.json" 2>/dev/null; then
             log_success "    ✓ verify-gate.sh stop hook configured"
         else
             log_warn "    ✗ verify-gate.sh stop hook missing"
@@ -196,7 +196,7 @@ check_hooks() {
     # Gemini
     if [[ -f "$HOME/.gemini/settings.json" ]]; then
         log_success "  ✓ Gemini settings exist"
-        if grep -q "verify-gate.sh" "$HOME/.gemini/settings.json" 2>/dev/null; then
+        if grep -q "verify-gate.sh --platform GEMINI" "$HOME/.gemini/settings.json" 2>/dev/null; then
             log_success "    ✓ verify-gate.sh AfterAgent hook configured"
         else
             log_warn "    ✗ verify-gate.sh AfterAgent hook missing"
@@ -208,10 +208,10 @@ check_hooks() {
     # Cursor
     if [[ -f "$HOME/.cursor/hooks.json" ]]; then
         log_success "  ✓ Cursor hooks exist"
-        if grep -q "followup_message" "$HOME/.cursor/hooks.json" 2>/dev/null; then
-            log_success "    ✓ followup_message stop hook configured"
+        if grep -q "verify-gate.sh --platform CURSOR" "$HOME/.cursor/hooks.json" 2>/dev/null; then
+            log_success "    ✓ Cursor stop hook configured"
         else
-            log_warn "    ✗ followup_message stop hook missing"
+            log_warn "    ✗ Cursor stop hook missing"
         fi
     else
         log_warn "  ✗ Cursor hooks not found"
@@ -220,7 +220,7 @@ check_hooks() {
     # Codex
     if [[ -f "$HOME/.codex/config.toml" ]]; then
         log_success "  ✓ Codex config exists"
-        if grep -q "verify-gate.sh" "$HOME/.codex/config.toml" 2>/dev/null; then
+        if grep -q "verify-gate.sh --platform CODEX" "$HOME/.codex/config.toml" 2>/dev/null; then
             log_success "    ✓ verify-gate.sh Stop hook configured"
         else
             log_warn "    ✗ verify-gate.sh Stop hook missing"

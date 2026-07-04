@@ -1,5 +1,5 @@
 {
   "hooks": {
-    "stop": "echo '{\"followup_message\": \"followup_message\"}'"
+    "stop": "bash scripts/lite/verify-gate.sh --platform CURSOR"
   }
 }

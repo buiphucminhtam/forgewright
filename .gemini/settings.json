@@ -1,5 +1,15 @@
 {
   "hooks": {
-    "AfterAgent": "scripts/lite/verify-gate.sh"
+    "AfterAgent": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/lite/verify-gate.sh --platform GEMINI"
+          }
+        ]
+      }
+    ]
   }
 }
