@@ -9,10 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Game Asset Vfx Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Target game development framework and graphics libraries are installed | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | Identifies active runtime framework and version settings | |
-| Existing shader assets, material files, or particle JSON setups exist | `find assets/ -name "*vfx*" -o -name "*particle*" -o -name "*.glsl"` | Lists existing visual effect profiles and shader assets | |
-| Standardized product/feature design specifications templates are present | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | Verification of layout templates for functional BDD specs | |
-| Local token trackers and budget ceiling boundaries are configured | `cat .forgewright/budget.yaml` | Active budget specifications to limit heavy asset computation | |
+| Target game development framework and graphics libraries are installed | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | Y/N |
+| Existing shader assets, material files, or particle JSON setups exist | `find assets/ -name "*vfx*" -o -name "*particle*" -o -name "*.glsl"` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Game Asset Vfx Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -30,14 +28,12 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Non-Compliant Naming Standards**: Storing VFX metadata documents under `docs/` using uppercase, camelCase, or space naming structures instead of strictly lowercase kebab-case.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Ground runtime framework and asset location
 ```bash
 cat package.json | grep -E "(phaser|three)"
-```
-Output:
-```json
-    "phaser": "^3.80.0"
 ```
 
 ### Step 2: Create a high-performance, recycled particle effect configuration in `src/vfx/fire-burst.ts`
@@ -73,25 +69,3 @@ export class FireBurstVFX {
 }
 ```
 
-### Step 3: Document visual effect configurations and trigger live sync
-```bash
-# Save specification conforming to standard naming guidelines
-cat << 'EOF' > docs/01-product/fire-burst-vfx.md
-# Feature: Fire Burst VFX
-
-## 1. Executive Summary
-Responsive additive flame burst VFX to signal player spell casting.
-
-## 2. Technical Profile
-- Engine: Phaser WebGL
-- Blend Mode: Additive glow
-- Memory: Object pooled, maximum 50 concurrent particles.
-EOF
-
-# Execute standard post-skill sync hook
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Symlinked docs/01-product/fire-burst-vfx.md to /workspace/shared-obsidian-vault/forgewright/01-product/fire-burst-vfx.md.
-```

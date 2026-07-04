@@ -25,6 +25,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Remediating SQL Injection
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Fix a SQL injection vulnerability in the login user lookup inside `src/user.ts`.
@@ -39,9 +41,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Vulnerable file exists | `ls src/user.ts` | File exists | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (write security test simulating SQLi attack) | TARGET (tests/security.test.ts) | CHECK (npx jest tests/security.test.ts)
-2. ACTION (parameterize the database query) | TARGET (src/user.ts) | CHECK (npx jest tests/security.test.ts)
-3. ACTION (run full security/unit test suite) | TARGET (tests/) | CHECK (npm test)
+1. ACTION (write security test simulating SQLi attack)   TARGET (tests/security.test.ts)   CHECK (npx jest tests/security.test.ts)
+2. ACTION (parameterize the database query)   TARGET (src/user.ts)   CHECK (npx jest tests/security.test.ts)
+3. ACTION (run full security/unit test suite)   TARGET (tests/)   CHECK (npm test)
 
 ### 4. EXECUTE
 #### Step 1: Write SQLi test
@@ -56,7 +58,7 @@ Format: `n. ACTION | TARGET | CHECK`
 export async function authenticateUser(email: string, passwordHash: string) {
   const sql = `SELECT * FROM users WHERE email = $1 AND password = $2`;
   const result = await db.query(sql, [email, passwordHash]);
-  return result.rows[0];
+  return result.rows;
 }
 ```
 - CHECK: `npx jest tests/security.test.ts` -> Passed (denied access with SQLi payload).
@@ -67,7 +69,6 @@ export async function authenticateUser(email: string, passwordHash: string) {
 ### 5. VERIFY
 CLAIM: login query is secured against SQL injection using parameterization
 COMMAND: npx jest tests/security.test.ts
-OUTPUT:
 PASS  tests/security.test.ts
 ✓ should deny authentication with standard sql injection payloads
 EXIT CODE: 0

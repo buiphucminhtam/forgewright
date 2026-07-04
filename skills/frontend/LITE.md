@@ -25,6 +25,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Accessible React Login Form
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Build a responsive and accessible Login Form using TailwindCSS and React.
@@ -39,9 +41,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | React is installed | Read `package.json` | React v18 | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (create LoginForm component) | TARGET (src/components/LoginForm.tsx) | CHECK (npm run build)
-2. ACTION (add validation & ARIA attributes) | TARGET (src/components/LoginForm.tsx) | CHECK (npx jest LoginForm.test.tsx)
-3. ACTION (verify layout responsiveness) | TARGET (src/components/LoginForm.tsx) | CHECK (npm run build)
+1. ACTION (create LoginForm component)   TARGET (src/components/LoginForm.tsx)   CHECK (npm run build)
+2. ACTION (add validation & ARIA attributes)   TARGET (src/components/LoginForm.tsx)   CHECK (npx jest LoginForm.test.tsx)
+3. ACTION (verify layout responsiveness)   TARGET (src/components/LoginForm.tsx)   CHECK (npm run build)
 
 ### 4. EXECUTE
 #### Step 1: Create LoginForm component
@@ -95,7 +97,6 @@ export function LoginForm() {
 ### 5. VERIFY
 CLAIM: login form is fully accessible and responsive with validation
 COMMAND: npm run build
-OUTPUT:
 > frontend@0.1.0 build
 > next build
 ✓ Creating an optimized production build...

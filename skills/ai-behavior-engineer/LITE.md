@@ -9,42 +9,31 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Ai Behavior Engineer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Project stack and baseline profile are onboarded and defined | `cat .forgewright/project-profile.json` | Project profile JSON with tech stack and health status | [1] |
-| Gemini and Anthropic model configurations or thinking levels are defined | `cat .production-grade.yaml` | Active orchestrator behavioral rules, temperature settings, and thinking thresholds | [2, 3] |
-| Active memory auto-tagging or cognitive settings are indexed | `cat .agents/workflows/` or check `mem0-v2.py` presence | Verifies RAG-grounding scripts and category rules | [3, 4] |
-| Running budget limits and cost ceilings are configured | `cat .forgewright/budget.yaml` | Displays session token budgets and provider-specific cost thresholds | [2, 5] |
+| Project stack and baseline profile are onboarded and defined | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Gemini and Anthropic model configurations or thinking levels are defined | `cat .production-grade.yaml` | ... | Y/N |
+| Active memory auto-tagging or cognitive settings are indexed | `cat .agents/workflows/` or check `mem0-v2.py` presence | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Ai Behavior Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. ROUTE | Map incoming task complexity to the optimal model and thinking level | Verify high-stakes planning routes to Pro models (`thinking_level: HIGH`) while low-risk tasks use Flash (`thinking_level: MINIMAL`) [2].
-2. CONFIGURE | Enforce parameter rules, specifically Temperature 1.0 and Thought Signatures preservation | Ensure intermediate middleware layers do not strip Thought Signatures to prevent API 400 error codes [2].
-3. AUDIT | Evaluate generator outputs via the Skeptic Agent and confidence scoring | Validate that output calibrations meet Expected Calibration Error (ECE) metrics of `< 0.10` [3].
-4. CACHE | Trigger passive idle checks and context offloading on token threshold hits | Confirm context volumes exceeding 1200 tokens are offloaded to `.forgewright/offload/` using trace handles [6].
+1. ROUTE | Map incoming task complexity to the optimal model and thinking level | Verify high-stakes planning routes to Pro models (`thinking_level: HIGH`) while low-risk tasks use Flash (`thinking_level: MINIMAL`).
+2. CONFIGURE | Enforce parameter rules, specifically Temperature 1.0 and Thought Signatures preservation | Ensure intermediate middleware layers do not strip Thought Signatures to prevent API 400 error codes.
+3. AUDIT | Evaluate generator outputs via the Skeptic Agent and confidence scoring | Validate that output calibrations meet Expected Calibration Error (ECE) metrics of `< 0.10`.
+4. CACHE | Trigger passive idle checks and context offloading on token threshold hits | Confirm context volumes exceeding 1200 tokens are offloaded to `.forgewright/offload/` using trace handles.
 
 ## Common Mistakes Checklist
-- **Thought Signature Stripping**: Modifying API response streams or stripping thought signatures via regex in post-processing, triggering immediate API 400 bad request failures [2].
-- **Invalid Temperature Scaling**: Overriding the mandatory Temperature 1.0 rule during logical tasks, causing unstable code paths or hallucinations [2].
-- **Skeptic Agent Bypass**: Allowing output generation to skip confidence scoring or ECE validation, letting unverified model outputs bypass safety gates [3].
+- **Thought Signature Stripping**: Modifying API response streams or stripping thought signatures via regex in post-processing, triggering immediate API 400 bad request failures.
+- **Invalid Temperature Scaling**: Overriding the mandatory Temperature 1.0 rule during logical tasks, causing unstable code paths or hallucinations.
+- **Skeptic Agent Bypass**: Allowing output generation to skip confidence scoring or ECE validation, letting unverified model outputs bypass safety gates.
 - **Thinking Level Mismatch**: Configuring `thinking_level: HIGH` on model models that do not natively support thinking parameters, leading to execution timeouts.
-- **Context Bloat Overload**: Failing to leverage progressive disclosure or offloading on long sessions, causing high token spend and memory loss [7, 8].
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Verify model parameters in the production config
 ```bash
 cat .production-grade.yaml
-```
-Output:
-```yaml
-gemini_config:
-  model: "gemini-3.1-pro"
-  temperature: 1.0
-  thinking_level: "HIGH"
-  preserve_thought_signatures: true
-skeptic_agent:
-  ece_threshold: 0.10
-  enabled: true
 ```
 
 ### Step 2: Implement a behavior guardrail class `src/GeminiGuardrail.ts`
@@ -88,11 +77,4 @@ export class GeminiGuardrail {
 ### Step 3: Run the execution flow to test the custom AI behavior setup
 ```bash
 node scripts/test-gemini-behavior.js
-```
-Output:
-```
-[INFO] Initializing GeminiGuardrail with gemini-3.1-pro...
-[SUCCESS] Payload configured: Temperature=1.0, ThoughtSignatures=Preserved.
-[AUDIT] Skeptic Agent evaluation: Confidence=0.94 (ECE=0.06).
-[SUCCESS] Behavior verified: Output complies with production-grade E3 safety parameters.
 ```

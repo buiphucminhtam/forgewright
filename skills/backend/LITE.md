@@ -25,6 +25,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Express JWT Authentication Middleware
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Implement a secure JWT authentication middleware and apply it to a `/api/profile` Express route.
@@ -39,9 +41,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Server routing file exists | `ls src/server.ts` | File exists | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (write unit test for middleware) | TARGET (tests/auth.test.ts) | CHECK (npx jest tests/auth.test.ts)
-2. ACTION (implement authMiddleware) | TARGET (src/middleware/auth.ts) | CHECK (npx jest tests/auth.test.ts)
-3. ACTION (register route with middleware) | TARGET (src/server.ts) | CHECK (npm test)
+1. ACTION (write unit test for middleware)   TARGET (tests/auth.test.ts)   CHECK (npx jest tests/auth.test.ts)
+2. ACTION (implement authMiddleware)   TARGET (src/middleware/auth.ts)   CHECK (npx jest tests/auth.test.ts)
+3. ACTION (register route with middleware)   TARGET (src/server.ts)   CHECK (npm test)
 
 ### 4. EXECUTE
 #### Step 1: Write test
@@ -61,7 +63,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: Missing token' });
   }
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.split(' ');
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     (req as any).user = payload;
@@ -80,7 +82,6 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 ### 5. VERIFY
 CLAIM: profile endpoint requires valid JWT authentication
 COMMAND: npx jest tests/auth.test.ts
-OUTPUT:
 PASS  tests/auth.test.ts
 ✓ should block request without authorization header (401)
 ✓ should block request with invalid signature (401)

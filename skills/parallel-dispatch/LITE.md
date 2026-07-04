@@ -9,10 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Parallel Dispatch Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Git is installed and supports worktrees | `git worktree list` | List of active git worktrees and branches | |
-| Parallel worker configuration or script exists | `find scripts/ -name "*worktree*" -o -name "*dispatch*"` | Locates the worktree dispatch scripts | |
-| Project stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | Project profile JSON with tech stack | |
-| Active token budget and cost control settings are configured | `cat .forgewright/budget.yaml` | Displays configured parallel execution budgets and limits | |
+| Git is installed and supports worktrees | `git worktree list` | ... | Y/N |
+| Parallel worker configuration or script exists | `find scripts/ -name "*worktree*" -o -name "*dispatch*"` | ... | Y/N |
+| Project stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Parallel Dispatch Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -30,14 +29,12 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Ignoring gitnexus impact risk**: Skipping the mandatory impact analysis on shared repository dependencies, causing merged changes from separate parallel workers to conflict or break on main.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Check active git worktrees
 ```bash
 git worktree list
-```
-Output:
-```
-/workspace/forgewright   096c695 [main]
 ```
 
 ### Step 2: Dispatch two concurrent workers for isolated feature tasks
@@ -46,26 +43,11 @@ Output:
 git worktree add ../forgewright-worker-1 -b feature/auth-worker
 git worktree add ../forgewright-worker-2 -b feature/db-worker
 ```
-Output:
-```
-Preparing worktree (new branch 'feature/auth-worker')
-HEAD is now at 096c695 feat(gemini): upgrade orchestrator rules
-Preparing worktree (new branch 'feature/db-worker')
-HEAD is now at 096c695 feat(gemini): upgrade orchestrator rules
-```
 
 ### Step 3: Run the parallel dispatch execution harness
 ```bash
 # Execute concurrent worker tasks (simulated parallel agent harness execution)
 python3 scripts/parallel-dispatch-runner.py --worktrees "../forgewright-worker-1,../forgewright-worker-2"
-```
-Output:
-```
-[INFO] Dispatching 2 concurrent workers...
-[WORKER-1] Running task: 'implement auth validation'
-[WORKER-2] Running task: 'optimize sqlite cache'
-[SUCCESS] Worker-1 completed successfully.
-[SUCCESS] Worker-2 completed successfully.
 ```
 
 ### Step 4: Merge results and prune outstanding worktrees safely
@@ -74,8 +56,4 @@ Output:
 git worktree remove ../forgewright-worker-1
 git worktree remove ../forgewright-worker-2
 git worktree prune
-```
-Output:
-```
-[SUCCESS] Worktree directories pruned. Workspace returned to single main branch.
 ```

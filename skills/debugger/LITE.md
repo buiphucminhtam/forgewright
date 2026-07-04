@@ -29,6 +29,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Node.js TypeError Investigation
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Fix `TypeError: Cannot read properties of undefined (reading 'split')` at `src/utils/parser.ts:24`.
@@ -43,9 +45,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Input type in signature | `sed -n '20,23p' src/utils/parser.ts` | `function parse(input?: string)` | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (reproduce crash) | TARGET (tests/parser.test.ts) | CHECK (npx jest tests/parser.test.ts)
-2. ACTION (add nullish check) | TARGET (src/utils/parser.ts:24) | CHECK (npx jest tests/parser.test.ts)
-3. ACTION (run full suite) | TARGET (tests/) | CHECK (npm test)
+1. ACTION (reproduce crash)   TARGET (tests/parser.test.ts)   CHECK (npx jest tests/parser.test.ts)
+2. ACTION (add nullish check)   TARGET (src/utils/parser.ts:24)   CHECK (npx jest tests/parser.test.ts)
+3. ACTION (run full suite)   TARGET (tests/)   CHECK (npm test)
 
 ### 4. EXECUTE
 #### Step 1: Reproduce crash
@@ -69,7 +71,6 @@ function parse(input?: string) {
 ### 5. VERIFY
 CLAIM: parser handles undefined safely without crashing
 COMMAND: npx jest tests/parser.test.ts
-OUTPUT:
 PASS  tests/parser.test.ts
 ✓ should parse string comma values
 ✓ should handle undefined input gracefully

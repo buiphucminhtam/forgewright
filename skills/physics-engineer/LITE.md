@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Physics Engineer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Engine's gravity and physics delta-time parameters are known | Check project settings / `which` engine | Identifies base physics rate (e.g. 50Hz, 60Hz) | |
-| Collision matrix configuration is documented | Read `physics-matrix.md` or editor settings | Identifies active collision layers and masks | |
-| Rigidbody types (Dynamic, Kinematic, Static) are assigned correctly | Verify component definitions in code | Ensures proper collision event response | |
+| Engine's gravity and physics delta-time parameters are known | Check project settings / `which` engine | ... | Y/N |
+| Collision matrix configuration is documented | Read `physics-matrix.md` or editor settings | ... | Y/N |
+| Rigidbody types (Dynamic, Kinematic, Static) are assigned correctly | Verify component definitions in code | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Physics Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -28,6 +28,8 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Raycast Performance Degradation**: Executing raycasts with infinite length and without specifying target layer masks.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Unity C# Framerate-Independent Movement
 ```csharp

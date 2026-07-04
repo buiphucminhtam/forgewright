@@ -9,10 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Fullstack Engineer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Project tech stack and language alignments are fully onboarded | `cat .forgewright/project-profile.json` | JSON mapping front-end, back-end, and database technologies | |
-| Active database schema, migrations, or model directories exist | `find src/ -name "schema*" -o -name "*.prisma" -o -name "models"` | Lists database schema definitions and active model configurations | |
-| GitNexus code intelligence is indexed and active for symbol graph analysis | `gitnexus analyze` or `cat .gitnexus/config` | Validates that symbol and relationships counts are fresh | |
-| Token billing and local tracking are active for heavy code generations | `cat .forgewright/budget.yaml` | Displays current spend limits and provider configurations | |
+| Project tech stack and language alignments are fully onboarded | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Active database schema, migrations, or model directories exist | `find src/ -name "schema*" -o -name "*.prisma" -o -name "models"` | ... | Y/N |
+| GitNexus code intelligence is indexed and active for symbol graph analysis | `gitnexus analyze` or `cat .gitnexus/config` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Fullstack Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -26,20 +25,16 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Unverified Schema Changes**: Editing shared database schemas or endpoints without running `gitnexus_impact` first, causing breakages in distant client-side components.
 - **Credential Leaks**: Hardcoding server connection strings, API tokens, or secrets directly in front-end files instead of utilizing local `.env` variables filtered by the Middleware ④c Sandbox.
 - **Context Overload**: Printing massive raw database JSON dumps in standard terminal stdout, triggering token bloat instead of storing files under `.forgewright/offload/`.
-- **Desynchronized Documentation**: Forgetting to update client-server sequence diagrams after altering REST route layouts or parameters.
 - **Disorganized File Structure**: Placing source code outside designated client-server directories, violating modular project-profile blueprints.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Execute GitNexus impact analysis on the shared user model
 ```bash
 # Analyze risk of changing the core User interface
 gitnexus_impact --target "User" --direction "both"
-```
-Output:
-```
-[WARNING] Upstream impact risk is HIGH. 
-The symbol 'User' is used by 14 files across 'src/client/hooks/useUser.ts' and 'src/server/routes/auth.ts'.
 ```
 
 ### Step 2: Build client-server feature files safely with modular environment checks
@@ -81,10 +76,4 @@ export function useBilling() {
 ```bash
 # Execute sequence diagram generator using GitNexus call-graphs
 python3 scripts/sequence-flow-generator.py --client src/client/ --server src/server/
-```
-Output:
-```
-[SUCCESS] Traced client-server relationships:
-  useBilling.ts -> GET /api/billing/usage -> billing.ts
-[SUCCESS] Saved Mermaid sequence diagram to docs/architecture/flows/billing-flow.md.
 ```

@@ -9,10 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Notebooklm Researcher Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| NotebookLM CLI utility is installed and responsive | `nlm --version` | Verifies nlm compiler and CLI version configurations | |
-| Session tracker exists to monitor attempt counts | `ls -la scripts/forgewright-session-tracker.sh` | Confirms session tracker is present to monitor failure triggers | |
-| Active lessons log exists under the local state directory | `cat .forgewright/lessons.md` | Locates central markdown file for writing learned behaviors | |
-| Spend limits and API token tracking are configured | `cat .forgewright/budget.yaml` | Displays current spend bounds and provider configurations | |
+| NotebookLM CLI utility is installed and responsive | `nlm --version` | ... | Y/N |
+| Session tracker exists to monitor attempt counts | `ls -la scripts/forgewright-session-tracker.sh` | ... | Y/N |
+| Active lessons log exists under the local state directory | `cat .forgewright/lessons.md` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Notebooklm Researcher Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -26,21 +25,16 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Skipping CLI verification**: Attempting deep research workflows without validating `nlm` compiler installation, leading to silent tool failures.
 - **Accepting uncalibrated outputs**: Accepting synthesis reports with high hallucination risk (ECE >= 0.10) or missing explicit citations.
 - **Bypassing the failure tracker**: Resolving pipeline failures manually without updating `forgewright-session-tracker.sh`, preventing the orchestrator from learning.
-- **Unbounded web crawls**: Initiating deep web queries without verifying spend limits in `.forgewright/budget.yaml` or turning on local token tracking.
 - **Non-compliant naming conventions**: Saving compiled research summaries under `docs/` using CamelCase, spaces, or uppercase letters instead of strictly lowercase kebab-case.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Verify the NotebookLM CLI and active budget configurations
 ```bash
 nlm --version
 cat .forgewright/budget.yaml
-```
-Output:
-```
-NotebookLM CLI Tool (nlm) v2.4.0
-budget: 15.00
-currency: USD
 ```
 
 ### Step 2: Execute automated Research Gate sequence on complex task failure
@@ -48,39 +42,9 @@ currency: USD
 # Simulating tracker recording 2 failed attempts and triggering the Research Gate
 ./scripts/forgewright-session-tracker.sh --record-failure --task "optimize-sqlite-cache"
 ```
-Output:
-```
-[WARNING] 2 consecutive failures detected for task: 'optimize-sqlite-cache'.
-[INFO] Activating mandatory Research Gate (v8.4.0)...
-[INFO] Querying local notebook context...
-[SUCCESS] Ingested 4 relevant grounding passages.
-```
 
 ### Step 3: Execute nlm research query and run skeptic agent calibration
 ```bash
 nlm query "SQLite write-ahead logging performance parameters" --calibrate
 ```
-Output:
-```
-[SUCCESS] Research synthesis complete.
-[SKEPTIC] Calculating calibration metrics:
-  - Expected Calibration Error (ECE): 0.04 (PASS, threshold < 0.10)
-  - Extracted Grounded Citations: 5
-```
 
-### Step 4: Write distilled findings to local lessons and sync with Obsidian Vault
-```bash
-cat << 'EOF' >> .forgewright/lessons.md
-
-## Lesson: SQLite Write-Ahead Logging Optimization
-- **Problem**: Large database transactions trigger concurrent execution lockups.
-- **Solution**: Activating WAL mode (`PRAGMA journal_mode=WAL;`) decreases lock contention and provides sub-second execution path caching. [1, 2]
-EOF
-
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Appended new heuristics to .forgewright/lessons.md.
-[SUCCESS] Symlinked .forgewright/lessons.md to /workspace/shared-obsidian-vault/forgewright/lessons.md.
-```

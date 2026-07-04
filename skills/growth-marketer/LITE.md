@@ -9,10 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Growth Marketer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Target landing pages, copy configs, or funnel assets are indexed | `find docs/01-product/ -name "*marketing*" -o -name "*landing*" -o -name "*funnel*"` | Identifies active marketing specifications and copy assets | |
-| Analytics tracking libraries (Plausible, Mixpanel, Google Analytics) are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("plausible\|mixpanel\|analytics")))'` | Confirms active frontend analytical frameworks and versions | |
-| Active project tech stack and onboarding status profile are defined | `cat .forgewright/project-profile.json` | Displays onboarded tech stacks (e.g., Next.js, React) and health indicators [1] | |
-| Active session spend trackers and token budget thresholds are configured | `cat .forgewright/budget.yaml` | Verifies cost boundaries prior to initiating heavy copy variants [2, 3] | |
+| Target landing pages, copy configs, or funnel assets are indexed | `find docs/01-product/ -name "*marketing*" -o -name "*landing*" -o -name "*funnel*"` | ... | Y/N |
+| Analytics tracking libraries (Plausible, Mixpanel, Google Analytics) are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("plausible\|mixpanel\|analytics")))'` | ... | Y/N |
+| Active project tech stack and onboarding status profile are defined | `cat .forgewright/project-profile.json` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Growth Marketer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -26,23 +25,16 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Missing Tracking Hooks**: Redesigning landing pages or CTA copy without adding explicit conversion tracking event triggers, making subsequent performance analysis impossible.
 - **Hardcoded Campaign Parameters**: Hardcoding campaign variables, UTM source keys, or partner credentials directly inside components instead of using runtime config variables.
 - **Heavy Media Attachments**: Placing uncompressed, massive image assets or high-resolution video banners directly on high-traffic landing pages, destroying mobile load speed metrics.
-- **Non-Compliant File Names**: Storing acquisition funnel maps, design assets, or copy guidelines under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/01-product/GrowthStrategy.md` instead of `docs/01-product/growth-strategy.md`) [5].
-- **Unverified AI Token Spending**: Generating dozens of procedural landing page copywriting iterations without verifying active session budgets inside `.forgewright/budget.yaml` [2, 3].
+- **Non-Compliant File Names**: Storing acquisition funnel maps, design assets, or copy guidelines under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/01-product/GrowthStrategy.md` instead of `docs/01-product/growth-strategy.md`).
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Ground the target platform stack and analytics settings
 ```bash
 cat .forgewright/project-profile.json
 cat package.json | grep -E "(plausible|mixpanel)"
-```
-Output:
-```json
-{
-  "project_name": "forgewright-saas-landing",
-  "tech_stack": ["Next.js", "TypeScript", "Tailwind CSS"],
-  "health_status": "PASS"
-}
 ```
 ```json
     "plausible-tracker": "^0.3.8"
@@ -96,13 +88,3 @@ export const DeployButton = () => {
 };
 ```
 
-### Step 4: Run the post-skill synchronization script to link docs to Obsidian
-```bash
-# Execute synchronization hook to align docs with the Shared Obsidian Vault
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Verified naming convention compliance for landing-page-copy.md.
-[SUCCESS] Symlinked docs/01-product/landing-page-copy.md to /workspace/shared-obsidian-vault/forgewright/01-product/landing-page-copy.md.
-```

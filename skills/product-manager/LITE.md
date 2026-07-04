@@ -24,6 +24,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Password Reset Feature Specification
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Author requirements and Gherkin user stories for a "Password Reset via Email" feature.
@@ -37,9 +39,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Out-of-scope security constraint | View project guidelines | "Do not reveal if email exists during reset" | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (draft Password Reset BRD) | TARGET (docs/requirements/BRD.md) | CHECK (cat docs/requirements/BRD.md)
-2. ACTION (write Gherkin user stories) | TARGET (docs/requirements/stories.md) | CHECK (cat docs/requirements/stories.md)
-3. ACTION (document metrics/success KPIs) | TARGET (docs/requirements/analytics.md) | CHECK (cat docs/requirements/analytics.md)
+1. ACTION (draft Password Reset BRD)   TARGET (docs/requirements/BRD.md)   CHECK (cat docs/requirements/BRD.md)
+2. ACTION (write Gherkin user stories)   TARGET (docs/requirements/stories.md)   CHECK (cat docs/requirements/stories.md)
+3. ACTION (document metrics/success KPIs)   TARGET (docs/requirements/analytics.md)   CHECK (cat docs/requirements/analytics.md)
 
 ### 4. EXECUTE
 #### Step 1: Draft BRD
@@ -70,7 +72,6 @@ Format: `n. ACTION | TARGET | CHECK`
 ### 5. VERIFY
 CLAIM: password reset requirements are drafted and Gherkin validated
 COMMAND: cat docs/requirements/stories.md
-OUTPUT:
 Feature: User Password Reset
 ...
   Scenario: Requesting a reset link successfully

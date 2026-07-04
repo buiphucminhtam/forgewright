@@ -25,6 +25,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Reviewing N+1 Queries in Orders loop
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Review the newly added `getUserOrdersSummary` logic in `src/services/user-service.ts` for performance issues.
@@ -38,9 +40,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Modified function exists | View file at suspected lines | Loop contains query | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (audit user-service.ts for loops and queries) | TARGET (src/services/user-service.ts) | CHECK (grep -rn "db.query" src/services/user-service.ts)
-2. ACTION (identify structural layer violations) | TARGET (src/services/user-service.ts) | CHECK (git diff main)
-3. ACTION (draft review notes with fix recommendations) | TARGET (docs/review-feedback.md) | CHECK (cat docs/review-feedback.md)
+1. ACTION (audit user-service.ts for loops and queries)   TARGET (src/services/user-service.ts)   CHECK (grep -rn "db.query" src/services/user-service.ts)
+2. ACTION (identify structural layer violations)   TARGET (src/services/user-service.ts)   CHECK (git diff main)
+3. ACTION (draft review notes with fix recommendations)   TARGET (docs/review-feedback.md)   CHECK (cat docs/review-feedback.md)
 
 ### 4. EXECUTE
 #### Step 1: Audit code
@@ -70,7 +72,6 @@ const orders = await db.query('SELECT user_id, COUNT(*) FROM orders WHERE user_i
 ### 5. VERIFY
 CLAIM: code review report successfully generated and saved
 COMMAND: cat docs/review-feedback.md
-OUTPUT:
 # Code Review Feedback
 - **Critical Performance Issue (N+1 Query)**: `getUserOrdersSummary` queries database inside `Promise.all(users.map(...))`.
 - **Recommendation**: Query orders in a single bulk query using `ANY` or `IN` operator.

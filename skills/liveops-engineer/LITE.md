@@ -9,10 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Liveops Engineer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Project tech stack, operational profile, and status are active | `cat .forgewright/project-profile.json` | Identifies primary environment frameworks and health baseline | |
-| Live environment configs, feature flags, or server variables are indexed | `find . -name "*.env" -o -name "config*.json" -o -name "docker-compose*.yml"` | Locates active environment configurations and network layouts | |
-| Standardized product templates and operations runbooks exist | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | Ensures feature specifications and BDD-first layouts are loaded | |
-| Active API expenditure limit rules and token trackers are configured | `cat .forgewright/budget.yaml` | Verifies current session spend parameters and warning thresholds | |
+| Project tech stack, operational profile, and status are active | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Live environment configs, feature flags, or server variables are indexed | `find . -name "*.env" -o -name "config*.json" -o -name "docker-compose*.yml"` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Liveops Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -27,22 +25,15 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Hardcoding Dynamic Environment Variables**: Hardcoding server URLs, feature flags, or integration tokens within source code instead of referencing environment files or secure vault stores.
 - **Dangling Connections and Resource Leaks**: Launching a hotfix that opens new database socket threads or process loops without implementing clean socket terminations, causing server memory exhaustion.
 - **Non-Compliant Incident File Naming**: Saving server post-mortems, system logs, or hotfix records under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/05-operations/LiveOpsHotfix.md` instead of `docs/05-operations/liveops-hotfix.md`).
-- **Unverified AI Token Spending**: Initiating automated incident logs extraction or large-scale operational reviews without verifying active budget limits in `.forgewright/budget.yaml`.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Ground active environment settings and service profile
 ```bash
 cat .forgewright/project-profile.json
 cat .forgewright/budget.yaml
-```
-Output:
-```json
-{
-  "project_name": "forgewright-saas-platform",
-  "tech_stack": ["Node.js", "Express", "PostgreSQL"],
-  "health_status": "PASS"
-}
 ```
 ```yaml
 budget: 25.00
@@ -70,30 +61,4 @@ psql -f scripts/migrations/patch-user-index.sql --dry-run
 # Run local smoke tests on the API health endpoint
 curl -f http://localhost:3000/api/health
 ```
-Output:
-```
-[INFO] Schema migration syntax verified. (DRY-RUN SUCCESS)
-{"status": "ok", "database": "connected", "redis": "connected"}
-```
 
-### Step 4: Write compliant incident post-mortem logs and run the sync script
-```bash
-cat << 'EOF' > docs/05-operations/latency-hotfix-report.md
-# Incident Post-Mortem: User Query Latency Resolving
-
-## 1. Executive Summary
-Resolved high production query latency on user dashboard loads by creating a concurrent database index.
-
-## 2. Technical Profile
-- Target Database: PostgreSQL
-- Applied Script: `scripts/migrations/patch-user-index.sql`
-- Performance Impact: Query response times reduced from 1.2s to 12ms.
-EOF
-
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Verified naming convention compliance for latency-hotfix-report.md.
-[SUCCESS] Symlinked docs/05-operations/latency-hotfix-report.md to /workspace/shared-obsidian-vault/forgewright/05-operations/latency-hotfix-report.md.
-```

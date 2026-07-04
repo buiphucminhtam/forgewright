@@ -26,6 +26,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Idempotent Payment processing Service
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Implement an idempotent `processPayment` method in `PaymentService` to prevent double-charging.
@@ -40,9 +42,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Test framework works | `npm test -- --version` | Jest v29.0.0 | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (write failing idempotency test) | TARGET (tests/payment.test.ts) | CHECK (npx jest tests/payment.test.ts)
-2. ACTION (implement idempotency lock & check) | TARGET (src/services/payment.ts) | CHECK (npx jest tests/payment.test.ts)
-3. ACTION (run full test suite) | TARGET (tests/) | CHECK (npm test)
+1. ACTION (write failing idempotency test)   TARGET (tests/payment.test.ts)   CHECK (npx jest tests/payment.test.ts)
+2. ACTION (implement idempotency lock & check)   TARGET (src/services/payment.ts)   CHECK (npx jest tests/payment.test.ts)
+3. ACTION (run full test suite)   TARGET (tests/)   CHECK (npm test)
 
 ### 4. EXECUTE
 #### Step 1: Write failing test
@@ -75,7 +77,6 @@ export class PaymentService {
 ### 5. VERIFY
 CLAIM: payment processing is idempotent and safe from double charges
 COMMAND: npx jest tests/payment.test.ts
-OUTPUT:
 PASS  tests/payment.test.ts
 ✓ should process payment successfully
 ✓ should return cached result for duplicate idempotency key

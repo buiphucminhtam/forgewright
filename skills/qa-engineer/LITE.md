@@ -25,6 +25,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Discount Calculator Validation
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Design and write unit tests for `calculateDiscount(age: number, cartTotal: number): number` in `src/discount.ts`.
@@ -39,9 +41,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Test command is available | Read `package.json` scripts | `"test": "jest"` | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (design Gherkin test cases) | TARGET (docs/discount-tests.md) | CHECK (cat docs/discount-tests.md)
-2. ACTION (write unit test assertions) | TARGET (tests/discount.test.ts) | CHECK (npx jest tests/discount.test.ts)
-3. ACTION (run with coverage) | TARGET (coverage/) | CHECK (npx jest tests/discount.test.ts --coverage)
+1. ACTION (design Gherkin test cases)   TARGET (docs/discount-tests.md)   CHECK (cat docs/discount-tests.md)
+2. ACTION (write unit test assertions)   TARGET (tests/discount.test.ts)   CHECK (npx jest tests/discount.test.ts)
+3. ACTION (run with coverage)   TARGET (coverage/)   CHECK (npx jest tests/discount.test.ts --coverage)
 
 ### 4. EXECUTE
 #### Step 1: Design test cases
@@ -61,15 +63,14 @@ Format: `n. ACTION | TARGET | CHECK`
 ### 5. VERIFY
 CLAIM: discount calculator is fully validated for all boundary and error inputs
 COMMAND: npx jest tests/discount.test.ts --coverage
-OUTPUT:
 PASS  tests/discount.test.ts
 ✓ should apply senior discount
 ✓ should apply minor discount
 ✓ should reject negative values
-----------|---------|----------|---------|---------|
-File      | % Stmts | % Branch | % Funcs | % Lines |
-----------|---------|----------|---------|---------|
-discount.ts|     100 |      100 |     100 |     100 |
-----------|---------|----------|---------|---------|
+----------------------------------------------------
+File        % Stmts   % Branch   % Funcs   % Lines  
+----------------------------------------------------
+discount.ts      100        100       100       100  
+----------------------------------------------------
 EXIT CODE: 0
 VERDICT: PASS

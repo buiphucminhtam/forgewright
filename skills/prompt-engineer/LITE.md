@@ -9,10 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Prompt Engineer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Target model configs and optimization levels are active | `cat .production-grade.yaml` | Validates model routing, thought signatures, and temperature configurations | |
-| Existing system prompts or template instructions are indexed | `find src/ -name "*prompt*" -o -name "*instruction*" -o -name "*template*"` | Identifies active system prompts, instruction files, or template layouts | |
-| Standardized product specification templates are loaded | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | Verification of layout templates for functional BDD specs | |
-| Active session spend tracker parameters and token limits are configured | `cat .forgewright/budget.yaml` | Displays configured budget cap rules to restrict agent task loops | |
+| Target model configs and optimization levels are active | `cat .production-grade.yaml` | ... | Y/N |
+| Existing system prompts or template instructions are indexed | `find src/ -name "*prompt*" -o -name "*instruction*" -o -name "*template*"` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Prompt Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -30,18 +28,12 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Non-Compliant File Names**: Storing prompt guides or optimization reports under `docs/` using CamelCase, spaces, or uppercase letters instead of strictly lowercase kebab-case.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Ground the model configuration rules
 ```bash
 cat .production-grade.yaml
-```
-Output:
-```yaml
-gemini_config:
-  model: "gemini-3.1-pro"
-  temperature: 1.0
-  thinking_level: "HIGH"
-  preserve_thought_signatures: true
 ```
 
 ### Step 2: Implement a secure, token-optimized system prompt template generator in `src/prompts/prompt-generator.ts`
@@ -61,7 +53,6 @@ You are an expert Forgewright Assistant. You must act strictly as a grounded dev
 
 ## Few-shot Example:
 Input: Create a script for task tracking.
-Output: Use "docs/05-operations/task-tracker.md". Do not use CamelCase.
 `;
 
   public static generatePrompt(techStack: string, temp: number): string {
@@ -80,33 +71,7 @@ const { PromptGenerator } = require('./src/prompts/prompt-generator');
 const prompt = PromptGenerator.generatePrompt('TypeScript', 1.0);
 console.log('[AUDIT] Generated prompt character length:', prompt.length);
 if (prompt.includes('{{')) throw new Error('Unreplaced template variables detected!');
-console.log('[SUCCESS] Prompt pre-flight check passed.');
+console.log('Success: Prompt pre-flight check passed.');
 "
 ```
-Output:
-```
-[AUDIT] Generated prompt character length: 486
-[SUCCESS] Prompt pre-flight check passed.
-```
 
-### Step 4: Write prompt guidelines and trigger the Shared Obsidian Vault sync
-```bash
-cat << 'EOF' > docs/03-guides/prompt-guidelines.md
-# Prompt Engineering Guidelines
-
-## 1. Executive Summary
-Standardized system instruction guidelines to optimize model accuracy and reduce context token waste.
-
-## 2. Mandatory Constraints
-- Native Temperature: 1.0 (enforces reasoning consistency)
-- Thought Signatures: Must be preserved (do not strip from raw outputs)
-- Output File Names: Strictly lowercase kebab-case
-EOF
-
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Verified naming convention compliance for prompt-guidelines.md.
-[SUCCESS] Symlinked docs/03-guides/prompt-guidelines.md to /workspace/shared-obsidian-vault/forgewright/03-guides/prompt-guidelines.md.
-```

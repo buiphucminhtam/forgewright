@@ -9,10 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Goal Driven Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Project-specific tech stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | Project profile mapping tech stack and health baseline | |
-| Standard task list or target execution checklist is initialized | `cat TASKS.md \|\| cat docs/05-operations/tasks.md` | Locates central, lowercase kebab-case task checklist file | |
-| Live session execution graph is initialized to monitor progress | `cat .forgewright/offload/canvas.mmd` | Displays active Mermaid.js status diagram for running tasks | |
-| Active API expenditure limit rules and token trackers are configured | `cat .forgewright/budget.yaml` | Verifies current session spend threshold rules and ceilings | |
+| Project-specific tech stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Standard task list or target execution checklist is initialized | `cat TASKS.md \|\| cat docs/05-operations/tasks.md` | ... | Y/N |
+| Live session execution graph is initialized to monitor progress | `cat .forgewright/offload/canvas.mmd` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Goal Driven Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -30,18 +29,12 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Non-Compliant File Names**: Storing task checklists or planning logs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `project-roadmap.md`).
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Ground the active project scope and baseline status
 ```bash
 cat .forgewright/project-profile.json
-```
-Output:
-```json
-{
-  "project_name": "forgewright-core-onboarding",
-  "tech_stack": ["TypeScript", "Node.js"],
-  "health_status": "PASS"
-}
 ```
 
 ### Step 2: Initialize a compliant, lowercase kebab-case goal-tracking checklist `docs/05-operations/tasks.md`
@@ -60,31 +53,4 @@ EOF
 # Run local build and validation check to enforce the verification gate
 npm run build && npm test tests/db-service.spec.ts
 ```
-Output:
-```
-> forgewright-core-onboarding@1.0.0 build
-> tsc
 
-[SUCCESS] Compilation complete. 0 errors.
-
-[SUCCESS] Running tests/db-service.spec.ts...
-  ✓ Connection pool successfully initialized with SQLite WAL mode.
-  ✓ Transaction-safe edge adjustments pass.
-
-[SUCCESS] 2/2 tests passed. Task 'Build service layer' verified.
-```
-
-### Step 4: Update the progress checklist and synchronize to the Shared Obsidian Vault
-```bash
-# Update task statuses to reflect completed work
-sed -i 's/- \[\/\] Build service layer/- \[x\] Build service layer/g' docs/05-operations/tasks.md
-sed -i 's/- \[ \] Establish testing harness/- \[\/\] Establish testing harness/g' docs/05-operations/tasks.md
-
-# Execute standard post-skill sync hook
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Verified naming convention compliance for tasks.md.
-[SUCCESS] Symlinked docs/05-operations/tasks.md to /workspace/shared-obsidian-vault/forgewright/05-operations/tasks.md.
-```

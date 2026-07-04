@@ -25,6 +25,8 @@ Format: `n. ACTION | TARGET | CHECK`
 ---
 
 ## Worked Example: Paginated Products API Specification
+> [!NOTE]
+> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Design an OpenAPI 3.0 specification for GET `/v1/products` with pagination (`limit`, `cursor`) and versioning.
@@ -39,9 +41,9 @@ Format: `n. ACTION | TARGET | CHECK`
 | Main spec file exists | `ls api/openapi/spec.yaml` | File exists | Y |
 
 ### 3. DECOMPOSE
-1. ACTION (define /v1/products route) | TARGET (api/openapi/spec.yaml) | CHECK (npx spectral lint api/openapi/spec.yaml)
-2. ACTION (define paginated schema response) | TARGET (api/openapi/spec.yaml) | CHECK (npx spectral lint api/openapi/spec.yaml)
-3. ACTION (validate API specification compilation) | TARGET (api/openapi/spec.yaml) | CHECK (npx swagger-cli validate api/openapi/spec.yaml)
+1. ACTION (define /v1/products route)   TARGET (api/openapi/spec.yaml)   CHECK (npx spectral lint api/openapi/spec.yaml)
+2. ACTION (define paginated schema response)   TARGET (api/openapi/spec.yaml)   CHECK (npx spectral lint api/openapi/spec.yaml)
+3. ACTION (validate API specification compilation)   TARGET (api/openapi/spec.yaml)   CHECK (npx swagger-cli validate api/openapi/spec.yaml)
 
 ### 4. EXECUTE
 #### Step 1: Define route
@@ -91,7 +93,6 @@ paths:
 ### 5. VERIFY
 CLAIM: products API spec compiles cleanly and complies with OpenAPI 3.0 rules
 COMMAND: npx swagger-cli validate api/openapi/spec.yaml
-OUTPUT:
 api/openapi/spec.yaml is valid
 EXIT CODE: 0
 VERDICT: PASS

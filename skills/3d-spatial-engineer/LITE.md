@@ -9,9 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (3D Spatial Engineer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Target scene assets/prefabs exist | `ls Assets/Prefabs` / engine tools | Lists prefabs for modular blockout | |
-| Metric system of target engine is known | Engine docs (Unity: Y-up LHS, Godot: Y-up RHS, Unreal: Z-up LHS) | Identifies coordinate orientation and units | |
-| LOD budgets and culling cells are defined | Check `.forgewright/3d-spatial-engineer/optimization-policy.md` | Verification of culling configuration | |
+| Target scene assets/prefabs exist | `ls Assets/Prefabs` / engine tools | ... | Y/N |
+| Metric system of target engine is known | Engine docs (Unity: Y-up LHS, Godot: Y-up RHS, Unreal: Z-up LHS) | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (3D Spatial Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -29,6 +28,8 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Missing Occlusion Baking**: Letting the GPU render hidden interiors; bake occlusion cells or trigger levels dynamically.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Recalculate transform matrix on parent change
 ```gdscript

@@ -9,10 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Game Designer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Target game development framework and visual stacks are defined | `cat .forgewright/project-profile.json` | Confirms target engine environment (e.g., Phaser, Three.js, Unity) | |
-| Existing game design documents (GDD) or features are indexed | `find docs/01-product/ -name "*gdd*" -o -name "*mechanics*"` | Lists active lowercase, kebab-case game design requirements | |
-| Standard feature specification and template rules are loaded | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | Ensures design specifications conform to the standard layout format | |
-| Running token tracker budget and cost limits are configured | `cat .forgewright/budget.yaml` | Active budget bounds to control generation costs of procedural concepts | |
+| Target game development framework and visual stacks are defined | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Existing game design documents (GDD) or features are indexed | `find docs/01-product/ -name "*gdd*" -o -name "*mechanics*"` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Game Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -27,21 +25,14 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Feature creep prior to core loop validation**: Specifying high-level secondary systems (e.g., unlockable cosmetics, leaderboard UI) before verifying and solidifying the basic 3-second and 30-second core gameplay loop.
 - **Hardcoded game balance variables**: Outlining progression curves, enemy health pool, or damage coefficients directly within code logic instead of offloading config profiles to external datasets (JSON, YAML, CSV).
 - **Ignoring hardware performance budgets**: Formulating high-overhead mechanics (e.g., thousand-entity collision sweeps) without validating mesh instancing or collision optimization rules.
-- **Unverified budget exhaustion**: Initiating large-scale procedural level designs or massive storyline generations without validating token tracker parameters in `.forgewright/budget.yaml`.
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Ground the target game stack and baseline settings
 ```bash
 cat .forgewright/project-profile.json
-```
-Output:
-```json
-{
-  "project_name": "forgewright-webgl-rpg",
-  "tech_stack": ["Three.js", "TypeScript"],
-  "health_status": "PASS"
-}
 ```
 
 ### Step 2: Create a standard, lowercase kebab-case mechanics document `docs/01-product/combat-loop-mechanics.md`
@@ -68,13 +59,3 @@ Scenario: Successful strike triggers visual feedback
 EOF
 ```
 
-### Step 3: Automatically sync design documents to the Shared Obsidian Vault
-```bash
-# Executing the post-skill sync hook to populate the central wiki
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[INFO] Scanning for standardized documentation in docs/...
-[SUCCESS] Linked docs/01-product/combat-loop-mechanics.md to /workspace/shared-obsidian-vault/forgewright/01-product/combat-loop-mechanics.md.
-```

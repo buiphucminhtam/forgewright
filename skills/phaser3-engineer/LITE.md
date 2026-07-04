@@ -9,40 +9,30 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Phaser3 Engineer Domain Slots)
 | Assumption | Check command / file read | Result | VERIFIED? |
 |---|---|---|---|
-| Target Phaser 3 package is configured as a dependency in the workspace | `cat package.json \| jq '.dependencies["phaser"]'` | Confirms Phaser 3 library version and package status [1, 2] | |
-| Existing game configurations or scene files are indexed under source directories | `find src/ -name "*game*" -o -name "*scene*" -o -name "*phaser*"` | Identifies active game configs, core entrypoints, and state machines | |
-| Standardized product requirements and feature spec templates are loaded | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | Ensures design specifications conform to the standard layout format [3] | |
-| Active API expenditure parameters and cost ceilings are configured | `cat .forgewright/budget.yaml` | Verifies current session spend threshold rules [4] | |
+| Target Phaser 3 package is configured as a dependency in the workspace | `cat package.json \| jq '.dependencies["phaser"]'` | ... | Y/N |
+| Existing game configurations or scene files are indexed under source directories | `find src/ -name "*game*" -o -name "*scene*" -o -name "*phaser*"` | ... | Y/N |
 
 ## SOLVE Step 3: DECOMPOSE (Phaser3 Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. AUDIT | Assess Phaser game config settings, render pipelines, and asset paths | Verify canvas width/height parameters, asset loading sequences, scaling modes, and anti-aliasing configurations.
-2. CONSTRUCT | Implement responsive Phaser Scenes, custom physics bodies, or high-frequency update loops | Ensure game updates utilize frame-independent delta-time calculations and object pools [5].
+2. CONSTRUCT | Implement responsive Phaser Scenes, custom physics bodies, or high-frequency update loops | Ensure game updates utilize frame-independent delta-time calculations and object pools.
 3. POOL | Set up custom Game Object pools for active sprites (e.g., bullets, enemies) | Ensure entities are recycled using standard Phaser Groups to prevent garbage collection execution spikes.
 4. SYNC | Document implementation blueprints and run the sync-obsidian hook | Verify file name compliance (lowercase kebab-case) and establish absolute symlinks to Obsidian [3, 6].
 
 ## Common Mistakes Checklist
 - **Memory Leak via Dangling Event Listeners**: Failing to unsubscribe custom event buses, keyboard inputs, or pointer listeners on scene shutdowns, causing duplicate triggers on scene restarts.
 - **Unpooled Entity Allocations (GC Spikes)**: Creating fresh sprite objects continuously inside high-frequency update loops instead of utilizing pre-allocated Phaser Groups, causing high Garbage Collection pauses.
-- **Unhandled Suspended AudioContext**: Attempting to play background tracks or sound effects prior to checking browser-level autoplay configurations, causing blocked Web Audio pipelines.
-- **Non-Compliant File Names**: Creating scene configurations, asset catalogs, or guides under `docs/` using CamelCase, spaces, or uppercase naming patterns instead of strictly lowercase kebab-case (e.g. `player-physics-setup.md`) [3].
-- **Unverified AI Token Budgets**: Initiating large-scale procedural asset configurations or logic generation loops without validating current spend caps in `.forgewright/budget.yaml` [4].
+- **Non-Compliant File Names**: Creating scene configurations, asset catalogs, or guides under `docs/` using CamelCase, spaces, or uppercase naming patterns instead of strictly lowercase kebab-case (e.g. `player-physics-setup.md`).
 
 ## Worked Example
+> [!NOTE]
+> The following example is illustrative.
 
 ### Step 1: Verify the Phaser dependency and project profile
 ```bash
 cat .forgewright/project-profile.json
 cat package.json | grep phaser
-```
-Output:
-```json
-{
-  "project_name": "forgewright-phaser-game",
-  "tech_stack": ["Phaser", "TypeScript"],
-  "health_status": "PASS"
-}
 ```
 ```json
     "phaser": "^3.80.0"
@@ -103,25 +93,3 @@ export class GameScene extends Phaser.Scene {
 }
 ```
 
-### Step 3: Document game specifications and sync files with the Shared Obsidian Vault
-```bash
-# Save specification conforming to standard lowercase kebab-case naming guidelines
-cat << 'EOF' > docs/01-product/projectile-mechanics.md
-# Feature: Frame-Independent Projectile System
-
-## 1. Executive Summary
-Responsive, object-pooled projectile mechanics for the main game canvas scene.
-
-## 2. Technical Profile
-- Engine: Phaser 3 with Arcade Physics
-- Constraints: Maximum 30 active projectiles, relative asset loading pathing.
-EOF
-
-# Execute standard post-skill sync hook to propagate files to Obsidian
-./scripts/sync-obsidian.sh
-```
-Output:
-```
-[SUCCESS] Verified naming convention compliance for projectile-mechanics.md.
-[SUCCESS] Symlinked docs/01-product/projectile-mechanics.md to /workspace/shared-obsidian-vault/forgewright/01-product/projectile-mechanics.md.
-```
