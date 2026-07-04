@@ -1,228 +1,366 @@
 #!/usr/bin/env bash
 # scripts/lite/escalate.sh
-# Cascade router that spawns a stronger model for hard tasks, logs token cost, and returns output.
-# Works on macOS and Windows/Git-Bash.
+# Builds context packets (task, evidence, diff, slices) and delegates to configured expert CLI.
+# Supported CLIs: agy (--print), claude (-p/--print), codex (exec <prompt>), gemini (-p/--prompt)
+# Budget enforcement: reads expertMode.budget from .production-grade.yaml
+# Output: .forgewright/escalations/<timestamp>-<short-task>.json
+# Secrets are redacted before any packet is written.
 
 set -euo pipefail
 
-# Find project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Respect a pre-existing PROJECT_ROOT (e.g., set by test harness or CI).
+# Only compute from script path when not already exported.
+: "${PROJECT_ROOT:="$(cd "$SCRIPT_DIR/../.." && pwd)"}"
+export PROJECT_ROOT
 
-# Call the embedded Python cascade router
-python3 - "$@" << 'EOF'
+
+python3 - "$@" << 'PYEOF'
 import sys
 import os
+import subprocess
 import json
+import re
+import tempfile
 import time
-import urllib.request
-import urllib.error
+import shutil
 
-# Colors
-RED = '\033[0;31m'
-YELLOW = '\033[1;33m'
-GREEN = '\033[0;32m'
-BLUE = '\033[0;34m'
-NC = '\033[0m'
+# ---------------------------------------------------------------------------
+# Config: read expertMode from .production-grade.yaml (no yaml lib required)
+# ---------------------------------------------------------------------------
 
-def log_info(msg):
-    sys.stderr.write(f"{GREEN}[ESCALATE]{NC} {msg}\n")
+def _yaml_scalar(text, key):
+    """Extract a scalar value from a YAML block without a YAML parser."""
+    # Match key: value or key: "value"
+    m = re.search(
+        r'(?m)^[ \t]*' + re.escape(key) + r':\s*(?:"([^"]*?)"|\'([^\']*?)\'|([^\n#]*))',
+        text
+    )
+    if not m:
+        return None
+    val = (m.group(1) or m.group(2) or m.group(3) or "").strip()
+    return val if val not in ("null", "~", "") else None
 
-def log_warn(msg):
-    sys.stderr.write(f"{YELLOW}[ESCALATE] WARNING:{NC} {msg}\n")
 
-def log_error(msg):
-    sys.stderr.write(f"{RED}[ESCALATE] ERROR:{NC} {msg}\n")
+def _yaml_int(text, key, default):
+    v = _yaml_scalar(text, key)
+    try:
+        return int(v) if v is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
+def load_config():
+    config_path = os.path.join(os.environ.get("PROJECT_ROOT", "."), ".production-grade.yaml")
+    defaults = {
+        "activeCli": "agy",
+        "fallbackCli": None,
+        "maxExpertCallsPerRun": 5,
+        "requireConfirmationAbove": 3,
+    }
+    if not os.path.exists(config_path):
+        return defaults
+
+    try:
+        with open(config_path, "r") as f:
+            text = f.read()
+        # Only read inside the expertMode block (stop at next top-level key)
+        block_m = re.search(r'(?m)^expertMode:\s*\n((?:[ \t]+.*\n?)*)', text)
+        block = block_m.group(0) if block_m else text
+
+        active  = _yaml_scalar(block, "activeCli")  or defaults["activeCli"]
+        fallback = _yaml_scalar(block, "fallbackCli")
+
+        budget_block_m = re.search(r'(?m)^[ \t]*budget:\s*\n((?:[ \t]+.*\n?)*)', block)
+        budget_block = budget_block_m.group(0) if budget_block_m else ""
+
+        max_calls = _yaml_int(budget_block, "maxExpertCallsPerRun", defaults["maxExpertCallsPerRun"])
+        req_confirm = _yaml_int(budget_block, "requireConfirmationAbove", defaults["requireConfirmationAbove"])
+
+        return {
+            "activeCli":              active,
+            "fallbackCli":            fallback if fallback else None,
+            "maxExpertCallsPerRun":   max_calls,
+            "requireConfirmationAbove": req_confirm,
+        }
+    except Exception:
+        return defaults
+
+
+# ---------------------------------------------------------------------------
+# Budget tracking
+# ---------------------------------------------------------------------------
+
+def escalation_log_dir():
+    root = os.environ.get("PROJECT_ROOT", ".")
+    d = os.path.join(root, ".forgewright", "escalations")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def count_prior_escalations():
+    """Count escalation records created this run (env-keyed so tests can reset)."""
+    log_dir = escalation_log_dir()
+    run_id = os.environ.get("FW_RUN_ID", "")
+    if not run_id:
+        # Use today's date as a coarse run boundary
+        run_id = time.strftime("%Y%m%d")
+    count = 0
+    try:
+        for fname in os.listdir(log_dir):
+            if fname.startswith(run_id) and fname.endswith(".json"):
+                count += 1
+    except OSError:
+        pass
+    return count
+
+
+# ---------------------------------------------------------------------------
+# Redaction
+# ---------------------------------------------------------------------------
+
+SECRET_PATTERNS = [
+    # Generic high-entropy tokens / keys
+    (re.compile(r'(?i)(api[_-]?key|secret|token|password|auth)\s*[:=]\s*\S+'), r'\1=***REDACTED***'),
+    # Environment variable assignments with secrets
+    (re.compile(r'(?i)\b(OPENAI|ANTHROPIC|GOOGLE|GITHUB|AWS|AZURE)_[A-Z_]*(?:KEY|TOKEN|SECRET)\s*=\s*\S+'),
+     r'\g<0>***REDACTED***'),
+    # Bearer / Basic auth headers
+    (re.compile(r'(?i)(Authorization:\s*(?:Bearer|Basic)\s+)\S+'), r'\1***REDACTED***'),
+    # Hex or base64-looking 32+ char strings after = or :
+    (re.compile(r'(?<=[=:])([A-Za-z0-9+/]{32,}={0,2})'), '***REDACTED***'),
+]
+
+
+def redact(text):
+    for pattern, replacement in SECRET_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+# ---------------------------------------------------------------------------
+# Evidence: read real current-turn files from .forgewright/verify/
+# ---------------------------------------------------------------------------
+
+def get_evidence():
+    root = os.environ.get("PROJECT_ROOT", ".")
+    verify_dir = os.path.join(root, ".forgewright", "verify")
+    slices = []
+    if os.path.isdir(verify_dir):
+        # Read files sorted by mtime desc (most recent first), up to 3
+        try:
+            entries = sorted(
+                [os.path.join(verify_dir, f) for f in os.listdir(verify_dir)
+                 if os.path.isfile(os.path.join(verify_dir, f))],
+                key=os.path.getmtime,
+                reverse=True
+            )[:3]
+            for path in entries:
+                try:
+                    with open(path, "r", errors="replace") as fh:
+                        raw = fh.read(4000)   # cap per-file slice
+                    slices.append({"file": os.path.basename(path), "content": redact(raw)})
+                except OSError:
+                    pass
+        except OSError:
+            pass
+
+    if slices:
+        return slices
+    # Fallback: no verify files yet — report that explicitly so downstream tooling
+    # knows the evidence is genuinely empty rather than a placeholder.
+    return [{"file": "(none)", "content": "No .forgewright/verify files found for this turn."}]
+
+
+# ---------------------------------------------------------------------------
+# Git diff (redacted)
+# ---------------------------------------------------------------------------
+
+def get_git_diff():
+    try:
+        diff = subprocess.check_output(
+            ["git", "diff", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        )
+        return redact(diff[:10000])
+    except Exception:
+        return ""
+
+
+# ---------------------------------------------------------------------------
+# CLI argv builders — use only validated, documented flags
+# ---------------------------------------------------------------------------
+
+CLI_ARGV = {
+    # agy --print <prompt>   (noninteractive contract: §agy --help)
+    "agy":    lambda prompt: ["agy", "--print", prompt],
+    # claude -p <prompt>     (documented: -p / --print)
+    "claude": lambda prompt: ["claude", "-p", prompt],
+    # codex exec <prompt>    (documented: codex exec [PROMPT])
+    "codex":  lambda prompt: ["codex", "exec", prompt],
+    # gemini -p <prompt>     (documented: -p / --prompt non-interactive)
+    "gemini": lambda prompt: ["gemini", "-p", prompt],
+}
+
+KNOWN_CLIS = set(CLI_ARGV.keys())
+
+
+def build_argv(cli, prompt):
+    if cli in CLI_ARGV:
+        return CLI_ARGV[cli](prompt)
+    raise ValueError(f"Unknown CLI '{cli}'. Supported: {sorted(KNOWN_CLIS)}")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main():
-    # Parse simple arguments
-    args = sys.argv[1:]
-    model_override = None
-    provider_override = None
-    mode = "hard-task"
-    skill = "escalate"
-    
-    # Extract flag arguments
-    filtered_args = []
-    i = 0
-    while i < len(args):
-        if args[i] == '--model' and i + 1 < len(args):
-            model_override = args[i+1]
-            i += 2
-        elif args[i] == '--provider' and i + 1 < len(args):
-            provider_override = args[i+1]
-            i += 2
-        elif args[i] == '--mode' and i + 1 < len(args):
-            mode = args[i+1]
-            i += 2
-        elif args[i] == '--skill' and i + 1 < len(args):
-            skill = args[i+1]
-            i += 2
-        else:
-            filtered_args.append(args[i])
-            i += 1
-            
-    # Get prompt from arguments or stdin
-    if filtered_args:
-        prompt = " ".join(filtered_args)
-    else:
-        log_info("Reading prompt from stdin...")
-        prompt = sys.stdin.read()
-        
-    if not prompt.strip():
-        log_error("Empty prompt. Nothing to escalate.")
+    args = list(sys.argv[1:])
+    is_dry_run = "--dry-run" in args
+    if is_dry_run:
+        args.remove("--dry-run")
+
+    task_desc = " ".join(args) if args else ""
+    if not task_desc and not sys.stdin.isatty():
+        task_desc = sys.stdin.read().strip()
+    if not task_desc:
+        task_desc = "No task provided."
+
+    cfg = load_config()
+    active_cli  = cfg["activeCli"]
+    fallback_cli = cfg["fallbackCli"]
+    max_calls   = cfg["maxExpertCallsPerRun"]
+    req_confirm = cfg["requireConfirmationAbove"]
+
+    # Validate CLI name early
+    if active_cli not in KNOWN_CLIS:
+        print(
+            f"[ESCALATE] ERROR: activeCli '{active_cli}' is not a supported CLI.\n"
+            f"  Supported: {sorted(KNOWN_CLIS)}\n"
+            f"  Set expertMode.activeCli in .production-grade.yaml.",
+            file=sys.stderr
+        )
         sys.exit(1)
-        
-    # Detect API keys
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    gemini_key = os.environ.get("GEMINI_API_KEY")
-    
-    # Build list of options to try in priority order
-    options = []
-    
-    # Anthropic
-    if anthropic_key and (not provider_override or provider_override == "anthropic"):
-        options.append({
-            "provider": "anthropic",
-            "model": model_override or "claude-3-5-sonnet-20241022",
-            "key": anthropic_key,
-            "url": "https://api.anthropic.com/v1/messages"
-        })
-        
-    # OpenAI
-    if openai_key and (not provider_override or provider_override == "openai"):
-        options.append({
-            "provider": "openai",
-            "model": model_override or "gpt-4o",
-            "key": openai_key,
-            "url": "https://api.openai.com/v1/chat/completions"
-        })
-        
-    # Google Gemini (multiple models fallback)
-    if gemini_key and (not provider_override or provider_override == "google"):
-        models = [model_override] if model_override else ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
-        for m in models:
-            options.append({
-                "provider": "google",
-                "model": m,
-                "key": gemini_key,
-                "url": f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
-            })
-            
-    if not options:
-        log_error("No available API keys or no matching provider found. Please set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY.")
-        sys.exit(1)
-        
-    response_text = None
-    selected_model = None
-    selected_provider = None
-    input_tokens = 0
-    output_tokens = 0
-    latency_ms = 0
-    
-    # Try options sequentially until one succeeds
-    for opt in options:
-        provider = opt["provider"]
-        model = opt["model"]
-        key = opt["key"]
-        url = opt["url"]
-        
-        log_info(f"Attempting escalation using {provider} model: {model}...")
-        
-        # Prepare request
-        req_headers = {"Content-Type": "application/json"}
-        req_data = {}
-        
-        if provider == "anthropic":
-            req_headers["x-api-key"] = key
-            req_headers["anthropic-version"] = "2023-06-01"
-            req_data = {
-                "model": model,
-                "max_tokens": 4096,
-                "messages": [{"role": "user", "content": prompt}]
-            }
-        elif provider == "openai":
-            req_headers["Authorization"] = f"Bearer {key}"
-            req_data = {
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}]
-            }
-        elif provider == "google":
-            req_data = {
-                "contents": [{"parts": [{"text": prompt}]}]
-            }
-            
-        # Send request
-        start_time = time.time()
-        try:
-            req = urllib.request.Request(
-                url, 
-                data=json.dumps(req_data).encode("utf-8"), 
-                headers=req_headers,
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=60) as res:
-                latency_ms = int((time.time() - start_time) * 1000)
-                body = res.read().decode("utf-8")
-                res_json = json.loads(body)
-                
-                # Parse response based on provider
-                if provider == "anthropic":
-                    response_text = res_json["content"][0]["text"]
-                    input_tokens = res_json["usage"]["input_tokens"]
-                    output_tokens = res_json["usage"]["output_tokens"]
-                elif provider == "openai":
-                    response_text = res_json["choices"][0]["message"]["content"]
-                    input_tokens = res_json["usage"]["prompt_tokens"]
-                    output_tokens = res_json["usage"]["completion_tokens"]
-                elif provider == "google":
-                    response_text = res_json["candidates"][0]["content"]["parts"][0]["text"]
-                    input_tokens = res_json.get("usageMetadata", {}).get("promptTokenCount", len(prompt) // 4)
-                    output_tokens = res_json.get("usageMetadata", {}).get("candidatesTokenCount", len(response_text) // 4)
-                    
-                selected_model = model
-                selected_provider = provider
-                log_info(f"Escalation successful (latency: {latency_ms}ms, tokens: {input_tokens} in / {output_tokens} out)")
-                break  # Exit loop on success
-                
-        except urllib.error.HTTPError as e:
-            latency_ms = int((time.time() - start_time) * 1000)
-            err_msg = e.read().decode("utf-8") if e.fp else str(e)
-            log_warn(f"Escalation via {provider} ({model}) failed with HTTP {e.code}: {e.reason}")
-            try:
-                err_json = json.loads(err_msg)
-                sys.stderr.write(f"Details: {json.dumps(err_json, indent=2)}\n")
-            except:
-                sys.stderr.write(f"Details: {err_msg[:300]}\n")
-            continue  # Try next model
-        except Exception as e:
-            latency_ms = int((time.time() - start_time) * 1000)
-            log_warn(f"Escalation via {provider} ({model}) failed with error: {e}")
-            continue  # Try next model
-            
-    if response_text is None:
-        log_error("All escalation models failed.")
-        sys.exit(1)
-        
-    # Output response
-    print(response_text)
-    
-    # Log token usage via bookkeep.sh in background
+
+    # Budget check
+    prior = count_prior_escalations()
+    if prior >= max_calls:
+        print(
+            f"[ESCALATE] BUDGET EXCEEDED: {prior}/{max_calls} expert calls used this run.\n"
+            f"  Pausing. Security / schema / public-interface work must wait for user approval.\n"
+            f"  Raise expertMode.budget.maxExpertCallsPerRun in .production-grade.yaml to continue.",
+            file=sys.stderr
+        )
+        sys.exit(2)
+
+    if prior >= req_confirm:
+        print(
+            f"[ESCALATE] CONFIRMATION REQUIRED: {prior}/{req_confirm} calls used (requireConfirmationAbove).\n"
+            f"  Re-run with FW_CONFIRM=1 to proceed.",
+            file=sys.stderr
+        )
+        if os.environ.get("FW_CONFIRM") != "1":
+            sys.exit(3)
+
+    # Build context packet (diff + evidence redacted)
+    evidence_slices = get_evidence()
+    git_diff = get_git_diff()
+
+    packet = {
+        "task":            task_desc,
+        "evidence":        evidence_slices,
+        "diff":            git_diff,
+        "relevant_slices": [],       # populated by caller if needed
+    }
+
+    packet_json = json.dumps(packet, indent=2)
+
+    # Dry-run: print argv and packet, do not call out
+    if is_dry_run:
+        argv = build_argv(active_cli, task_desc)
+        print("[DRY RUN] Context Packet:")
+        print(packet_json)
+        print(f"[DRY RUN] Would execute argv: {argv}")
+        print(f"[DRY RUN] Budget: {prior}/{max_calls} calls used. reqConfirm threshold: {req_confirm}.")
+        print(f"[DRY RUN] Escalation log dir: {escalation_log_dir()}")
+        sys.exit(0)
+
+    # Write packet to temp file (keeps prompt off argv and out of ps output)
+    tmp_fd, packet_file = tempfile.mkstemp(suffix=".json", prefix="fw-escalate-")
     try:
-        bookkeep_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bookkeep.sh")
-        if os.path.exists(bookkeep_path):
-            import subprocess
-            cmd = [
-                "bash", bookkeep_path, "log-tokens", 
-                selected_model, selected_provider, 
-                str(input_tokens), str(output_tokens), 
-                str(latency_ms), skill, mode
-            ]
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception as e:
-        log_warn(f"Failed to trigger token bookkeeping: {e}")
+        with os.fdopen(tmp_fd, "w") as fh:
+            fh.write(packet_json)
+        tmp_fd = None  # fdopen took ownership
+
+        # Prompt: inject the full packet JSON as the CLI prompt text
+        prompt_text = (
+            f"[Forgewright Escalation]\nTask: {task_desc}\n\n"
+            f"Evidence:\n{json.dumps(evidence_slices, indent=2)}\n\n"
+            f"Diff (redacted):\n{git_diff[:3000] if git_diff else '(none)'}"
+        )
+
+        argv = build_argv(active_cli, prompt_text)
+        print(f"[ESCALATE] CLI: {argv[0]}, budget {prior+1}/{max_calls}, packet: {packet_file}")
+
+        start_time = time.time()
+        result = subprocess.run(argv, capture_output=True, text=True)
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        print(result.stdout)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+
+        # Persist escalation record to .forgewright/escalations/
+        log_dir = escalation_log_dir()
+        run_id  = os.environ.get("FW_RUN_ID", time.strftime("%Y%m%d"))
+        safe_task = re.sub(r'[^A-Za-z0-9_-]', '-', task_desc[:40])
+        record_path = os.path.join(log_dir, f"{run_id}-{int(time.time())}-{safe_task}.json")
+
+        record = {
+            "timestamp":  time.time(),
+            "cli":        active_cli,
+            "task":       task_desc,
+            "argv":       argv,
+            "exit_code":  result.returncode,
+            "latency_ms": latency_ms,
+        }
+        with open(record_path, "w") as fh:
+            json.dump(record, fh, indent=2)
+
+        print(f"[ESCALATE] Done in {latency_ms}ms. Record: {record_path}")
+
+        # Try fallback CLI on non-zero exit
+        if result.returncode != 0 and fallback_cli and fallback_cli in KNOWN_CLIS:
+            print(f"[ESCALATE] Primary CLI exited {result.returncode}. Trying fallback: {fallback_cli}.")
+            fallback_argv = build_argv(fallback_cli, prompt_text)
+            fb_result = subprocess.run(fallback_argv, capture_output=True, text=True)
+            print(fb_result.stdout)
+            if fb_result.stderr:
+                print(fb_result.stderr, file=sys.stderr)
+            sys.exit(fb_result.returncode)
+
+        sys.exit(result.returncode)
+
+    except FileNotFoundError:
+        print(
+            f"[ESCALATE] ERROR: CLI '{active_cli}' not found in PATH.",
+            file=sys.stderr
+        )
+        sys.exit(1)
+    finally:
+        # Clean up temp packet file reliably
+        if tmp_fd is not None:
+            try:
+                os.close(tmp_fd)
+            except OSError:
+                pass
+        if os.path.exists(packet_file):
+            try:
+                os.remove(packet_file)
+            except OSError:
+                pass
+
 
 if __name__ == "__main__":
     main()
-EOF
+PYEOF

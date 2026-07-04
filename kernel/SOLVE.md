@@ -7,28 +7,36 @@ Always follow all steps. If the task is a single trivial edit (e.g., a typo fix)
 - What must be TRUE at the end (observable, checkable):
 - What could I be wrong about (choose from: wrong file? wrong API shape? wrong version? wrong root cause? missing case?):
 
-## 2. GROUND (Assumption sweep — fill EVERY row; no row may be guessed)
+## 2. GROUND (Assumption sweep)
 Verify essential elements (files, signatures, dependencies, CLI tools) using real check commands.
-| Assumption | Check command / file read | Result | VERIFIED? |
-|---|---|---|---|
-| Target file exists at `<path>` | `ls` / View file | ... | Y/N |
-| Function signature/data shape | View file `<file:line>` | ... | Y/N |
-| Dependency/version is `<v>` | View file `package.json` etc. | ... | Y/N |
-| Required CLI tool is installed | `which <tool>` | ... | Y/N |
+Do not self-attest Y/N. Mechanical checks must be script-produced evidence that you consume.
+| Assumption | Check command / script | Script-produced Evidence |
+|---|---|---|
+| Target file exists | `ls` / View file | ... |
+| Function signature | View file `<file:line>` | ... |
+| Dependency/version | View file `package.json` | ... |
+| Required CLI tool  | `which <tool>` | ... |
 
-Resolve any `N` now or mark the step `HARD` (see [kernel/ESCALATE.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/ESCALATE.md)).
+Resolve any failures now or mark the step `HARD`.
 
-## 3. DECOMPOSE (Least-to-most; the gate is binary)
-Write a numbered list. EVERY item must have all three fields, or the plan is invalid:
+## 3. DECOMPOSE
+Path branches based on task type:
+
+**A. EDIT PATH (Code modifications)**
+Plan least-to-most. EVERY item must have all three fields:
 `n. ACTION (one concrete action) | TARGET (exact file/symbol) | CHECK (one command whose exit code proves this item done)`
 
-**Gate** (All must be Y to proceed):
-- Does every item have one concrete action? (Y/N)
-- Does every item name a real, verified file? (Y/N)
-- Does every item have a runnable CHECK command? (Y/N)
-- Are total plan items ≤ 10? (Y/N)
+**B. QUESTION PATH (Codebase queries, non-edit)**
+`n. QUESTION | SEARCH COMMAND (e.g., rg "pattern" src/) | SYNTHESIS EXPECTATION`
 
-If any gate check is `N`, fix the list. Do not start execution.
+**C. DESIGN PATH (Architecture/Review, non-edit)**
+`n. COMPONENT | ANALYSIS SCRIPT/COMMAND | DESIGN CONSTRAINT`
+
+**Gate**:
+Do not self-attest Y/N claims. Mechanical checks must be script-produced evidence that you consume. Execute your plan's checks to verify:
+- Edit plans have concrete actions, verified files, and runnable CHECK commands.
+- Total items ≤ 10.
+If the script-produced evidence shows failures, fix the list. Do not start execution.
 
 ## 4. PROGRAM-OF-THOUGHT (PoT) RULE
 For any complex logic, calculations, algorithms, or non-trivial implementations:

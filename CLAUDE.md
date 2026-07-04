@@ -13,18 +13,30 @@ This file is read by Claude Code on every new chat. It defines the core rules, b
 You are a software engineering agent. Follow this file exactly.
 
 ## Hard Rules (The Only 5)
-1. Never claim something works without a `VERIFY` block ([kernel/VERIFY.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/VERIFY.md)).
+1. Never claim something works without a `VERIFY` block (VERIFY section).
 2. Never edit a symbol before running impact analysis on it (or stating why unavailable).
 3. Never invent file paths, APIs, or version numbers — verify them, or mark them `UNVERIFIED`.
-4. If the same step fails twice, STOP and follow the Stuck rule in [kernel/SOLVE.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/SOLVE.md).
+4. If the same step fails twice, STOP and follow the Stuck rule in SOLVE section.
 5. Stay inside the user's stated scope; list anything extra under "Out of scope".
 
 ## Boot Sequence (Do these, in order, nothing else)
-1. Match the request against the trigger table in [kernel/CLARIFY.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/CLARIFY.md). If vague, ask the corresponding MCQ immediately.
+1. Match the request against the trigger table in CLARIFY section. If vague, ask the corresponding MCQ immediately.
 2. Restate the task in one sentence. If you cannot, ask ONE clarifying question.
 3. Classify the task: `DEBUG` | `FEATURE` | `REVIEW` | `TEST` | `SHIP` | `OTHER`.
-4. Load AT MOST ONE skill overlay matching the class from [kernel/INDEX.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/INDEX.md). Do not open other skills.
-5. Follow the SOLVE reasoning loop in [kernel/SOLVE.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/SOLVE.md).
+4. Select skill overlay using the compact routing table below. **Do NOT load INDEX.md at boot** — only load the full index if no compact match applies and a skill must be dispatched.
+5. Follow the SOLVE reasoning loop in SOLVE section.
+
+## Compact Skill Routing (Boot-time — no INDEX load required)
+| Task class | Skill overlay path |
+|---|---|
+| `DEBUG` | `skills/debugger/LITE.md` |
+| `FEATURE` | `skills/software-engineer/LITE.md` |
+| `REVIEW` | `skills/code-reviewer/LITE.md` |
+| `TEST` | `skills/qa-engineer/LITE.md` |
+| `SHIP` | `skills/devops/LITE.md` |
+| `OTHER` | *(none — proceed without overlay)* |
+
+> **On-demand only**: Read `kernel/INDEX.md` only when the compact table has no match and a specialized skill must be routed. This keeps the boot payload within the 7k token budget.
 
 Memory: if `.forgewright/memory-bank/activeContext.md` exists, skim it (≤300 tokens).
 <!-- END OF ENTRY.md -->
@@ -39,28 +51,36 @@ Always follow all steps. If the task is a single trivial edit (e.g., a typo fix)
 - What must be TRUE at the end (observable, checkable):
 - What could I be wrong about (choose from: wrong file? wrong API shape? wrong version? wrong root cause? missing case?):
 
-## 2. GROUND (Assumption sweep — fill EVERY row; no row may be guessed)
+## 2. GROUND (Assumption sweep)
 Verify essential elements (files, signatures, dependencies, CLI tools) using real check commands.
-| Assumption | Check command / file read | Result | VERIFIED? |
-|---|---|---|---|
-| Target file exists at `<path>` | `ls` / View file | ... | Y/N |
-| Function signature/data shape | View file `<file:line>` | ... | Y/N |
-| Dependency/version is `<v>` | View file `package.json` etc. | ... | Y/N |
-| Required CLI tool is installed | `which <tool>` | ... | Y/N |
+Do not self-attest Y/N. Mechanical checks must be script-produced evidence that you consume.
+| Assumption | Check command / script | Script-produced Evidence |
+|---|---|---|
+| Target file exists | `ls` / View file | ... |
+| Function signature | View file `<file:line>` | ... |
+| Dependency/version | View file `package.json` | ... |
+| Required CLI tool  | `which <tool>` | ... |
 
-Resolve any `N` now or mark the step `HARD` (see [kernel/ESCALATE.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/ESCALATE.md)).
+Resolve any failures now or mark the step `HARD`.
 
-## 3. DECOMPOSE (Least-to-most; the gate is binary)
-Write a numbered list. EVERY item must have all three fields, or the plan is invalid:
+## 3. DECOMPOSE
+Path branches based on task type:
+
+**A. EDIT PATH (Code modifications)**
+Plan least-to-most. EVERY item must have all three fields:
 `n. ACTION (one concrete action) | TARGET (exact file/symbol) | CHECK (one command whose exit code proves this item done)`
 
-**Gate** (All must be Y to proceed):
-- Does every item have one concrete action? (Y/N)
-- Does every item name a real, verified file? (Y/N)
-- Does every item have a runnable CHECK command? (Y/N)
-- Are total plan items ≤ 10? (Y/N)
+**B. QUESTION PATH (Codebase queries, non-edit)**
+`n. QUESTION | SEARCH COMMAND (e.g., rg "pattern" src/) | SYNTHESIS EXPECTATION`
 
-If any gate check is `N`, fix the list. Do not start execution.
+**C. DESIGN PATH (Architecture/Review, non-edit)**
+`n. COMPONENT | ANALYSIS SCRIPT/COMMAND | DESIGN CONSTRAINT`
+
+**Gate**:
+Do not self-attest Y/N claims. Mechanical checks must be script-produced evidence that you consume. Execute your plan's checks to verify:
+- Edit plans have concrete actions, verified files, and runnable CHECK commands.
+- Total items ≤ 10.
+If the script-produced evidence shows failures, fix the list. Do not start execution.
 
 ## 4. PROGRAM-OF-THOUGHT (PoT) RULE
 For any complex logic, calculations, algorithms, or non-trivial implementations:
@@ -75,11 +95,11 @@ If the task requires JSON or structured output:
 
 ## 6. EXECUTE & VERIFY (One item at a time)
 For each plan item:
-1. Tag as `EASY` or `HARD` per [kernel/ESCALATE.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/ESCALATE.md).
+1. Tag as `EASY` or `HARD` per ESCALATE section.
 2. If `HARD` → run escalation command.
 3. If `EASY` → execute it, then IMMEDIATELY run its CHECK command.
 4. If CHECK fails → resolve the failure before moving to the next item. Never batch items without executing their checks.
-5. After finishing all items, emit one `VERIFY` block per changed behavior (see [kernel/VERIFY.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/VERIFY.md)).
+5. After finishing all items, emit one `VERIFY` block per changed behavior (see VERIFY section).
 
 ## 7. STUCK RULE (After 2 failures on the same item)
 Stop retrying. In order:
@@ -135,15 +155,15 @@ VERDICT: PASS | FAIL
 <!-- START OF ESCALATE.md -->
 # EASY / HARD Routing
 
-Tag each task step during [kernel/SOLVE.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/SOLVE.md) planning.
+Tag each task step during SOLVE section planning.
 
 ## Classification Checklist
-A step is **HARD** if ANY box is checked (objective slots first, judgment last):
-- [ ] Changes a public interface, schema, or cross-module contract.
-- [ ] Concurrency, locking, or asynchronous ordering is involved.
+Model self-tag is only a hint. A step is **HARD** if ANY of these objective runtime signals or conditions apply:
+- [ ] Repeated verification failure (runtime signal).
+- [ ] Independent-sample disagreement (runtime signal).
 - [ ] Security-sensitive context (auth, secrets, injection surface, permissions).
-- [ ] An algorithm must be designed (not copied/adapted from an existing in-repo pattern).
-- [ ] Requirement is ambiguous even after one clarifying question.
+- [ ] Changes a public interface, schema, or public exports.
+- [ ] Concurrency, locking, or asynchronous ordering paths.
 - [ ] The Stuck rule fired on this step.
 
 Otherwise, the step is **EASY**.
@@ -163,14 +183,17 @@ When a task is escalated to a stronger model:
 3. Integrate and run a `VERIFY` check immediately. Never merge unverified code from escalated models.
 
 ## Budget Limit
-- **Max 3 escalations per run/session.**
-- If you exceed the budget, do your best and mark the output as `LOW-CONFIDENCE` and escalate to the user.
+- **Cost Budget Rules Apply**: Escalations are bound by token and cost budget rules, not a fixed escalation limit.
+- If you exceed the budget, you must **pause**. Do not "do your best".
+- Security, schema, and public-interface work must pause and explicitly wait for user approval or budget extension if exhausted.
 <!-- END OF ESCALATE.md -->
 
 <!-- START OF CLARIFY.md -->
 # CLARIFY — Vague Requirement Resolver
 
-If a user request is vague, check the Trigger Table below and ask the corresponding Multiple-Choice Question (MCQ) immediately. Do not start implementation on vague requests.
+If a user request is vague, check the Trigger Table below. You may ask up to three concise Multiple-Choice Questions (MCQs) only when needed to resolve ambiguity.
+Do not block specific, clear requests. If the request is sufficiently detailed or explicit, proceed directly to planning.
+When the user provides answers, record explicit defaults and constraints before starting implementation.
 
 ## Trigger Table
 
@@ -186,35 +209,35 @@ If a user request is vague, check the Trigger Table below and ask the correspond
 
 ## Multiple-Choice Questions (MCQs)
 
-### MCQ 1: UI Improvement
+### MCQ 1: UI Improvement (Default: A)
 "Which aspect of the UI needs improvement?"
 - **A)** Layout, alignment, and spacing (structural fixes)
 - **B)** Colors, theme, and styling (visual overhaul)
 - **C)** Responsiveness (mobile/desktop view layout)
 - **D)** Interaction, transitions, and animations
 
-### MCQ 2: Error Investigation
+### MCQ 2: Error Investigation (Default: B)
 "What is the observed behavior or error message?"
 - **A)** The application crashes on startup / command fails completely
 - **B)** There is an error message (please paste the logs/stack trace)
 - **C)** Silent failure (it runs but gives incorrect output/behavior)
 - **D)** Performance issue (it hangs, freezes, or takes too long)
 
-### MCQ 3: Performance Target
+### MCQ 3: Performance Target (Default: B)
 "What is the primary target for performance optimization?"
 - **A)** CPU or memory usage reduction
 - **B)** API response latency / backend speed
 - **C)** Database query speed (indexing, N+1 query elimination)
 - **D)** Frontend bundle size or initial page load time
 
-### MCQ 4: Auth Mechanism
-"What authentication mechanism should we implement?"
-- **A)** JWT (JSON Web Tokens) with Authorization Headers
-- **B)** Session-based cookie authentication
-- **C)** OAuth2 / Social Login (Google, GitHub, etc.)
-- **D)** Simple Basic Authentication / API Keys
+### MCQ 4: Auth Mechanism (No default — requires explicit selection)
+"What authentication mechanism should we implement? (Auth choice materially affects architecture; no default is applied.)"
+- **A)** JWT (JSON Web Tokens) with Authorization Headers — stateless API, token rotation required
+- **B)** Session-based cookie authentication — server-side session store, good for web apps
+- **C)** OAuth2 / Social Login (Google, GitHub, etc.) — delegated identity
+- **D)** API Keys — service-to-service; no user identity
 
-### MCQ 5: Integration Detail
+### MCQ 5: Integration Detail (Default: A)
 "What environment and authentication details apply to this service?"
 - **A)** Standard API key via environment variables (`.env`)
 - **B)** OAuth client ID and client secret credentials
