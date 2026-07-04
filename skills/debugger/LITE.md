@@ -7,12 +7,12 @@ version: 2.0.0
 # Debugger — Systematic Root-Cause Analysis Specialist (LITE)
 
 ## SOLVE Step 2: GROUND (Debugger Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Bug reproduces on main/branch | Run tests or execute repro script | ... | Y/N |
-| Location of error trace / log | Read log file or check CLI output | ... | Y/N |
-| Target file exists at `<path>` | `ls` / View file `<path>` | ... | Y/N |
-| Current state of offending variables | View file / add print/debug statement | ... | Y/N |
+| Bug reproduces on main/branch | Run tests or execute repro script | ... | run the check command and paste output |
+| Location of error trace / log | Read log file or check CLI output | ... | run the check command and paste output |
+| Target file exists at `<path>` | `ls` / View file `<path>` | ... | run the check command and paste output |
+| Current state of offending variables | View file / add print/debug statement | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Debugger Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -27,10 +27,6 @@ Format: `n. ACTION | TARGET | CHECK`
 | e.g. Variable X is null | High | Stacktrace at line 42 | `grep -n "X =" src/main.py` | Open |
 
 ---
-
-## Worked Example: Node.js TypeError Investigation
-> [!NOTE]
-> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Fix `TypeError: Cannot read properties of undefined (reading 'split')` at `src/utils/parser.ts:24`.

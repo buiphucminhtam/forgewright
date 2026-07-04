@@ -68,9 +68,9 @@ def test_validate_table():
 def test_ground_table_assertions():
     # Valid ground table
     good_ground = [
-        (1, "| Assumption | Check command / file read | Result | VERIFIED? |"),
+        (1, "| Assumption | Check command / file read | Result | Script-produced evidence |"),
         (2, "|---|---|---|---|"),
-        (3, "| File exists | ls file.txt | ... | Y/N |"),
+        (3, "| File exists | ls file.txt | ... | run the check command and paste output |"),
         (4, "| Config exists | cat config.json | | |")
     ]
     errors = validate_table(good_ground, is_ground_table=True)
@@ -78,14 +78,14 @@ def test_ground_table_assertions():
 
     # Invalid ground table asserting results
     bad_ground = [
-        (1, "| Assumption | Check command / file read | Result | VERIFIED? |"),
+        (1, "| Assumption | Check command / file read | Result | Script-produced evidence |"),
         (2, "|---|---|---|---|"),
         (3, "| File exists | ls file.txt | Exists | Y |")
     ]
     errors = validate_table(bad_ground, is_ground_table=True)
     assert len(errors) == 2
     assert "asserts result" in errors[0]
-    assert "verified flag" in errors[1]
+    assert "self-attested evidence" in errors[1]
 
 def test_validate_file_constraints():
     with tempfile.NamedTemporaryFile(suffix=".md", mode="w", delete=False) as f:
@@ -95,9 +95,9 @@ description: "A temporary skill"
 version: 1.0.0
 ---
 ## SOLVE Step 2: GROUND
-| Assumption | Check command | Result | VERIFIED? |
+| Assumption | Check command | Result | Script-produced evidence |
 |---|---|---|---|
-| File exists | ls | ... | Y/N |
+| File exists | ls | ... | run the check command and paste output |
 
 ## Worked Example
 > [!NOTE]

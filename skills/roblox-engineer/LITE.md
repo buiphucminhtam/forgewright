@@ -7,10 +7,10 @@ version: 1.0.0
 # Roblox Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Roblox Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Rojo project configuration file is active | `cat default.project.json` | ... | Y/N |
-| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Rojo project configuration file is active | `cat default.project.json` | ... | run the check command and paste output |
+| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Roblox Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,17 +18,12 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Validate client-server RemoteEvents, replication logic, and Rojo directory partition maps | Ensure that net events validate client parameters and are partitioned under ServerScriptService vs ReplicatedStorage.
 2. CONSTRUCT | Author Luau scripts utilizing modern structural syntax, object-pooling, or state machines | Confirm frame-independent calculations run inside `RunService.RenderStepped` or `RunService.Heartbeat` loops.
 3. TEST | Execute automated unit tests using TestEZ CLI frameworks or local runner scripts | Ensure testing assertions resolve cleanly with zero errors before Rojo project compilation.
-4. SYNC | Propagate game assets, script updates, or architectural specs to Obsidian and run sync scripts | Confirm file name compliance (lowercase kebab-case) and establish absolute symlinks to the Shared Obsidian Vault [3, 5].
 
 ## Common Mistakes Checklist
 - **Client-Authoritative Server Actions**: Trusting client payloads inside `RemoteEvents` or `RemoteFunctions` (e.g., allowing clients to specify damage amounts or purchase items without server validation).
 - **Ignoring RunService Delta-Time (Frame-rate dependence)**: Writing physics-based translations, custom lerps, or lerp-based animations inside `Heartbeat` or `RenderStepped` loops without scaling by the delta-time parameter.
 - **Memory leaks from dangling Event Connections**: Neglecting to disconnect RBXScriptConnections (like `.Touched`, `:GetPropertyChangedSignal`, or RemoteEvent handlers) on instance destruction, causing severe memory leaks.
 - **Non-Compliant File Names**: Storing design document specs or gameplay system notes under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/01-product/PlayerDatastore.md` instead of `docs/01-product/player-datastore.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the Roblox Rojo workspace settings
 ```bash
@@ -55,11 +50,11 @@ local DamageEvent = NetworkFolder:WaitForChild("ApplyDamage") :: RemoteEvent
 local function onDamageRequested(player: Player, targetCharacter: Model)
 	local playerCharacter = player.Character
 	if not playerCharacter or not targetCharacter then return end
-	
+
 	local playerHumanoidRoot = playerCharacter:FindFirstChild("HumanoidRootPart") :: BasePart
 	local targetHumanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
 	local targetHumanoidRoot = targetCharacter:FindFirstChild("HumanoidRootPart") :: BasePart
-	
+
 	if playerHumanoidRoot and targetHumanoid and targetHumanoidRoot then
 		-- Guard: Verify distance to prevent exploitation/teleportation attacks
 		local distance = (playerHumanoidRoot.Position - targetHumanoidRoot.Position).Magnitude
@@ -74,4 +69,3 @@ end
 
 DamageEvent.OnServerEvent:Connect(onDamageRequested)
 ```
-

@@ -7,10 +7,10 @@ version: 1.0.0
 # Game Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Game Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target game development libraries or frameworks are defined | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | Y/N |
-| Active project stack and health status profile are onboarded | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Target game development libraries or frameworks are defined | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | run the check command and paste output |
+| Active project stack and health status profile are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Game Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,17 +18,12 @@ Format: `n. ACTION | TARGET | CHECK`
 1. INTEGRATE | Code physics updates and core entity loops using delta-time scaling | Ensure frame rate independent calculations to prevent speed scaling fluctuations on varying monitors.
 2. POOL | Set up reusable object pools for high-frequency game entities (e.g., projectiles) | Verify that entities are recycled dynamically to minimize garbage collection stutter and CPU spikes.
 3. HARNESS | Implement custom collision systems and bounding-box overlap validation rules | Verify that collision sweeps are optimized to avoid nested O(n²) calculation bottlenecks.
-4. SYNC | Generate implementation blueprints and execute the sync-obsidian hook | Verify file name compliance (lowercase kebab-case) and establish absolute symlinks to Obsidian [1, 3].
 
 ## Common Mistakes Checklist
 - **FPS-Dependent Physics Scaling**: Calculating physical movements (e.g., gravity, acceleration) without multiplying values by delta-time components, resulting in game speed shifts on different refresh rate monitors.
 - **Dynamic Entity Allocations (GC Spikes)**: Continually instantiating short-lived game objects (bullets, damage numbers, explosion visualizers) at runtime rather than utilizing a pre-allocated Object Pool, causing severe Garbage Collection pauses.
 - **Dangling Event Listeners**: Neglecting to unsubscribe keyboard, mouse, or controller listener handlers on scene teardown, producing cumulative memory leaks and duplicated input executions.
 - **Non-Compliant File Structures**: Creating game mechanics specs or documentation files under `docs/` using CamelCase, spaces, or uppercase naming patterns instead of strictly lowercase kebab-case (e.g., `bullet-physics-system.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Verify the game dev stack from the project profile
 ```bash
@@ -57,7 +52,7 @@ export class ProjectileManager {
     if (bullet) {
       bullet.setActive(true);
       bullet.setVisible(true);
-      
+
       // Verified: Scaled with frame delta-time to ensure hardware performance parity
       const targetVelocity = speed * deltaTime;
       bullet.body.setVelocityY(-targetVelocity);
@@ -74,4 +69,3 @@ export class ProjectileManager {
   }
 }
 ```
-

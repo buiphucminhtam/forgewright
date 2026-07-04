@@ -7,29 +7,24 @@ version: 1.0.0
 # Devops (LITE)
 
 ## SOLVE Step 2: GROUND (Devops Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack, operational profile, and status are active | `cat .forgewright/project-profile.json` | ... | Y/N |
-| Existing CI/CD workflows, Docker configs, or deployment templates are indexed | `find .github/workflows/ -name "*.yml" -o -name "*.yaml" -o -name "Dockerfile*" -o -name "docker-compose*.yml"` | ... | Y/N |
+| Project tech stack, operational profile, and status are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Existing CI/CD workflows, Docker configs, or deployment templates are indexed | `find .github/workflows/ -name "*.yml" -o -name "*.yaml" -o -name "Dockerfile*" -o -name "docker-compose*.yml"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Devops Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. AUDIT | Review pipeline workflows, container parameters, and environment definitions | Verify that credentials are not exposed in workflow YAMLs and target environments use secrets.
-2. CONSTRUCT | Implement automated pipeline steps, Dockerfiles, or runner configurations | Ensure code compiles, tests run cleanly in isolation, and mutation or coverage gates are met [10, 11].
+2. CONSTRUCT | Implement automated pipeline steps, Dockerfiles, or runner configurations | Ensure code compiles, tests run cleanly in isolation, and mutation or coverage gates are met.
 3. VERIFY | Validate pipeline execution flows using dry-run tools or syntax validators | Confirm that YAML file configurations pass linting checks and use stable image tag versions.
-4. SYNC | Compile deployment runbooks as lowercase kebab-case and run post-skill sync hooks | Verify file names conform under `docs/05-operations/` and symlink them to the Shared Obsidian Vault [7, 12].
 
 ## Common Mistakes Checklist
 - **Exposing Secrets in Plaintext**: Hardcoding database passwords, deployment API tokens, or encryption keys directly inside GitHub workflow files, Dockerfiles, or environment files instead of using repository Secrets.
 - **Using Unpinned Dynamic Image Tags**: Pulling container bases using generic `latest` tags (e.g., `FROM node:latest`), causing unpredictable pipeline breakages when base images receive upstream updates.
-- **Untracked CI Token Budgets**: Running expensive automated E2E tests, extensive parallel runners, or multiple matrix builds repeatedly without tracking operational expenditures [6, 8].
+- **Untracked CI Token Budgets**: Running expensive automated E2E tests, extensive parallel runners, or multiple matrix builds repeatedly without tracking operational expenditures.
 - **Non-Compliant Operations File Naming**: Saving deployment runbooks, server topology diagrams, or post-mortems under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/05-operations/DockerSetup.md` instead of `docs/05-operations/docker-setup.md`).
 - **Missing Container Health Checks**: Running backend Docker services in production or CI without defining health check parameters, causing containers to route traffic while failing to start up.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground target project environment and verify active profiles
 ```bash
@@ -84,4 +79,3 @@ jobs:
 # Verify the syntax of the generated YAML configuration file
 yamllint .github/workflows/ci-pipeline.yml
 ```
-

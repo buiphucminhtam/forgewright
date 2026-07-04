@@ -8,12 +8,12 @@ tags: [backend, api, services, implementation, clean-architecture, tdd]
 # Software Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Software Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Service interface or types defined | View file containing service/model types | ... | Y/N |
-| Data repository / DB table exists | View schema file or run DB check | ... | Y/N |
-| Dependency packages are installed | Read `package.json` or `go.mod` etc. | ... | Y/N |
-| Test suite runs and is green | Run existing test command | ... | Y/N |
+| Service interface or types defined | View file containing service/model types | ... | run the check command and paste output |
+| Data repository / DB table exists | View schema file or run DB check | ... | run the check command and paste output |
+| Dependency packages are installed | Read `package.json` or `go.mod` etc. | ... | run the check command and paste output |
+| Test suite runs and is green | Run existing test command | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Software Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -24,10 +24,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (run full tests) | TARGET (tests/) | CHECK (npm test)`
 
 ---
-
-## Worked Example: Idempotent Payment processing Service
-> [!NOTE]
-> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Implement an idempotent `processPayment` method in `PaymentService` to prevent double-charging.
@@ -59,7 +55,7 @@ export class PaymentService {
     return await this.db.transaction(async (tx) => {
       const existing = await tx.paymentLog.findUnique({ where: { key } });
       if (existing) return existing;
-      
+
       const payment = await tx.paymentLog.create({
         data: { key, amount, status: 'SUCCESS' }
       });

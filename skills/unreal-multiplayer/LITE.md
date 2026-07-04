@@ -7,10 +7,10 @@ version: 1.0.0
 # Unreal Multiplayer (LITE)
 
 ## SOLVE Step 2: GROUND (Unreal Multiplayer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Active Unreal project configuration file exists | `find . -maxdepth 2 -name "*.uproject"` | ... | Y/N |
-| Project-specific tech stack and profile settings are active | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Active Unreal project configuration file exists | `find . -maxdepth 2 -name "*.uproject"` | ... | run the check command and paste output |
+| Project-specific tech stack and profile settings are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Unreal Multiplayer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,17 +18,12 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Analyze network ownership, replication conditions, and property replication specs | Verify variables use `Replicated` or `ReplicatedUsing` and lifetime replication is registered in `GetLifetimeReplicatedProps`.
 2. SYNCHRONIZE | Author C++ network methods utilizing UFUNCTION validation specifiers | Ensure Server RPCs utilize `WithValidation` to prevent arbitrary client injection or cheating.
 3. CONSTRAIN | Manage actor spawning, network roles, and NetUpdateFrequency parameters | Confirm multiplayer actor spawning occurs authoritatively on the server via `SpawnActor`.
-4. SYNC | Propagate network configurations and logs to the Shared Obsidian Vault | Verify file name compliance (lowercase kebab-case) and establish absolute symlinks to the Shared Obsidian Vault [3, 6].
 
 ## Common Mistakes Checklist
 - **Missing GetLifetimeReplicatedProps Registration**: Declaring properties as replicated (`UPROPERTY(Replicated)`) without registering them in `GetLifetimeReplicatedProps()`, resulting in silent replication failures.
 - **Client-Authoritative Server RPCs without Validation**: Creating Server RPCs without using the `WithValidation` specifier tag, allowing compromised client packets to execute malicious logic on the server without validation checks.
 - **Spamming Multicast RPCs**: Invoking Multicast RPCs for high-frequency events (like tick-based movement or rotation updates) instead of utilizing smoothed replicated variables, causing immediate network congestion.
 - **Non-Compliant Resource Directories**: Storing network documentation or specs under `docs/` using CamelCase instead of strictly lowercase kebab-case (e.g., `docs/01-product/MultiplayerSetup.md` instead of `docs/01-product/multiplayer-setup.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground target project settings
 ```bash
@@ -105,4 +100,3 @@ void AMyNetCharacter::Server_ApplyDamage_Implementation(float DamageAmount)
     }
 }
 ```
-

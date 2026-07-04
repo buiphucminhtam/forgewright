@@ -7,10 +7,10 @@ version: 1.0.0
 # Phaser3 Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Phaser3 Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Phaser 3 package is configured as a dependency in the workspace | `cat package.json \| jq '.dependencies["phaser"]'` | ... | Y/N |
-| Existing game configurations or scene files are indexed under source directories | `find src/ -name "*game*" -o -name "*scene*" -o -name "*phaser*"` | ... | Y/N |
+| Target Phaser 3 package is configured as a dependency in the workspace | `cat package.json \| jq '.dependencies["phaser"]'` | ... | run the check command and paste output |
+| Existing game configurations or scene files are indexed under source directories | `find src/ -name "*game*" -o -name "*scene*" -o -name "*phaser*"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Phaser3 Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,16 +18,11 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Assess Phaser game config settings, render pipelines, and asset paths | Verify canvas width/height parameters, asset loading sequences, scaling modes, and anti-aliasing configurations.
 2. CONSTRUCT | Implement responsive Phaser Scenes, custom physics bodies, or high-frequency update loops | Ensure game updates utilize frame-independent delta-time calculations and object pools.
 3. POOL | Set up custom Game Object pools for active sprites (e.g., bullets, enemies) | Ensure entities are recycled using standard Phaser Groups to prevent garbage collection execution spikes.
-4. SYNC | Document implementation blueprints and run the sync-obsidian hook | Verify file name compliance (lowercase kebab-case) and establish absolute symlinks to Obsidian [3, 6].
 
 ## Common Mistakes Checklist
 - **Memory Leak via Dangling Event Listeners**: Failing to unsubscribe custom event buses, keyboard inputs, or pointer listeners on scene shutdowns, causing duplicate triggers on scene restarts.
 - **Unpooled Entity Allocations (GC Spikes)**: Creating fresh sprite objects continuously inside high-frequency update loops instead of utilizing pre-allocated Phaser Groups, causing high Garbage Collection pauses.
 - **Non-Compliant File Names**: Creating scene configurations, asset catalogs, or guides under `docs/` using CamelCase, spaces, or uppercase naming patterns instead of strictly lowercase kebab-case (e.g. `player-physics-setup.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Verify the Phaser dependency and project profile
 ```bash
@@ -92,4 +87,3 @@ export class GameScene extends Phaser.Scene {
   }
 }
 ```
-

@@ -7,18 +7,17 @@ version: 1.0.0
 # Ai Behavior Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Ai Behavior Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project stack and baseline profile are onboarded and defined | `cat .forgewright/project-profile.json` | ... | Y/N |
-| Gemini and Anthropic model configurations or thinking levels are defined | `cat .production-grade.yaml` | ... | Y/N |
-| Active memory auto-tagging or cognitive settings are indexed | `cat .agents/workflows/` or check `mem0-v2.py` presence | ... | Y/N |
+| Project stack and baseline profile are onboarded and defined | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Gemini and Anthropic model configurations or thinking levels are defined | `cat .production-grade.yaml` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Ai Behavior Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. ROUTE | Map incoming task complexity to the optimal model and thinking level | Verify high-stakes planning routes to Pro models (`thinking_level: HIGH`) while low-risk tasks use Flash (`thinking_level: MINIMAL`).
-2. CONFIGURE | Enforce parameter rules, specifically Temperature 1.0 and Thought Signatures preservation | Ensure intermediate middleware layers do not strip Thought Signatures to prevent API 400 error codes.
-3. AUDIT | Evaluate generator outputs via the Skeptic Agent and confidence scoring | Validate that output calibrations meet Expected Calibration Error (ECE) metrics of `< 0.10`.
+2. CONFIGURE | Enforce parameter rules Thought Signatures preservation | Ensure intermediate middleware layers do not strip Thought Signatures to prevent API 400 error codes.
+3. AUDIT | Evaluate generator outputs via the Skeptic Agent and confidence scoring | Validate that output calibrations meet Expected Calibration Error (
 4. CACHE | Trigger passive idle checks and context offloading on token threshold hits | Confirm context volumes exceeding 1200 tokens are offloaded to `.forgewright/offload/` using trace handles.
 
 ## Common Mistakes Checklist
@@ -26,10 +25,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Invalid Temperature Scaling**: Overriding the mandatory Temperature 1.0 rule during logical tasks, causing unstable code paths or hallucinations.
 - **Skeptic Agent Bypass**: Allowing output generation to skip confidence scoring or ECE validation, letting unverified model outputs bypass safety gates.
 - **Thinking Level Mismatch**: Configuring `thinking_level: HIGH` on model models that do not natively support thinking parameters, leading to execution timeouts.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Verify model parameters in the production config
 ```bash
@@ -52,7 +47,7 @@ export class GeminiGuardrail {
     return {
       model: this.config.gemini_config.model,
       // Mandatory: Temperature 1.0 enforced for Gemini 3.x Native optimization
-      temperature: 1.0, 
+      temperature: 1.0,
       thinking_config: {
         thinking_budget: this.config.gemini_config.thinking_level === 'HIGH' ? 1024 : 0
       },

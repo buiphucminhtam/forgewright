@@ -7,19 +7,18 @@ version: 1.0.0
 # Ui Designer (LITE)
 
 ## SOLVE Step 2: GROUND (Ui Designer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target UI framework (Tailwind CSS, React, or custom CSS) is installed | `cat package.json \| jq '.dependencies["tailwindcss"] // .dependencies["react"]'` | ... | Y/N |
-| Active design_dna contracts or visual tokens exist under workspace paths | `find .agents/ -name "*design*" -o -name "*dna*"` | ... | Y/N |
-| Playwright visual regression test configurations are onboarded | `cat playwright.config.ts` | ... | Y/N |
+| Target UI framework (Tailwind CSS, React, or custom CSS) is installed | `cat package.json \| jq '.dependencies["tailwindcss"] // .dependencies["react"]'` | ... | run the check command and paste output |
+| Active design_dna contracts or visual tokens exist under workspace paths | `find .agents/ -name "*design*" -o -name "*dna*"` | ... | run the check command and paste output |
+| Playwright visual regression test configurations are onboarded | `cat playwright.config.ts` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Ui Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. AUDIT | Analyze layout components, responsive media queries, and spacing grids | Verify that components do not overflow bounding boxes on standard responsive breakpoints.
 2. ALIGN | Map custom component layouts to the active design_dna contract variables | Ensure colors, fonts, margins, and borders strictly inherit design system specifications.
-3. SNAP | Capture rendering layouts via headless Playwright visual regression (VRT) | Compare active UI screens against baseline snapshots to verify zero pixel-level drift.
-4. SYNC | Propagate design specifications and interface documentation to Obsidian | Run post-skill hooks to symlink design specification files to the Shared Obsidian Vault.
+3. SNAP | Capture rendering layouts via headless Playwright visual regression (VRT) | Compare active UI screens against baseline snapshots to verify zero layout drift
 
 ## Common Mistakes Checklist
 - **Hardcoded Style Overrides**: Writing explicit, hardcoded hex colors or inline style properties inside TSX/JSX instead of leveraging standard Tailwind utility classes.
@@ -27,10 +26,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **VRT Platform Discrepancies**: Running local visual regression tests across different OS render engines without executing tests inside a consistent Docker environment.
 - **Broken Media Breakpoints**: Omitting responsive class prefixes (e.g., `md:`, `lg:`), causing mobile device viewports to suffer layout clippings or severe wrap issues.
 - **Non-Compliant Resource Directories**: Saving UI designs, style charts, or layout specs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Verify the UI styling framework and active design guidelines
 ```bash
@@ -68,4 +63,3 @@ export const CardWidget = ({ title, description }: { title: string; description:
 ```bash
 npx playwright test tests/visual-regression.spec.ts
 ```
-

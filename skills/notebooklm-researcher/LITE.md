@@ -7,29 +7,25 @@ version: 1.0.0
 # Notebooklm Researcher (LITE)
 
 ## SOLVE Step 2: GROUND (Notebooklm Researcher Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| NotebookLM CLI utility is installed and responsive | `nlm --version` | ... | Y/N |
-| Session tracker exists to monitor attempt counts | `ls -la scripts/forgewright-session-tracker.sh` | ... | Y/N |
-| Active lessons log exists under the local state directory | `cat .forgewright/lessons.md` | ... | Y/N |
+| NotebookLM CLI utility is installed and responsive | `nlm --version` | ... | run the check command and paste output |
+| Session tracker exists to monitor attempt counts | `ls -la scripts/forgewright-session-tracker.sh` | ... | run the check command and paste output |
+| Active lessons log exists under the local state directory | `cat .forgewright/lessons.md` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Notebooklm Researcher Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. EVALUATE | Check consecutive failures in the session tracker | If failures >= 2, intercept pipeline execution and force the activation of the Research Gate.
 2. INGEST | Run local `nlm` query against notebook sources with Web Search fallback | Extract relevant grounding passages and query web search APIs if local sources are thin.
-3. SYNTHESIZE | Apply skeptic agent filtering, compute confidence scores, and extract citations | Enforce Expected Calibration Error (ECE) < 0.10 to prevent AI hallucinations.
+3. SYNTHESIZE | Apply skeptic agent filtering, compute confidence scores, and extract citations | Enforce
 4. INTEGRATE | Save distilled lessons under `.forgewright/lessons.md` and trigger sync | Run the post-skill hooks to symlink generated documentation to the Shared Obsidian Vault.
 
 ## Common Mistakes Checklist
 - **Skipping CLI verification**: Attempting deep research workflows without validating `nlm` compiler installation, leading to silent tool failures.
-- **Accepting uncalibrated outputs**: Accepting synthesis reports with high hallucination risk (ECE >= 0.10) or missing explicit citations.
+- **Accepting uncalibrated outputs**: Accepting synthesis reports with high hallucination risk (
 - **Bypassing the failure tracker**: Resolving pipeline failures manually without updating `forgewright-session-tracker.sh`, preventing the orchestrator from learning.
 - **Non-compliant naming conventions**: Saving compiled research summaries under `docs/` using CamelCase, spaces, or uppercase letters instead of strictly lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Verify the NotebookLM CLI and active budget configurations
 ```bash
@@ -47,4 +43,3 @@ cat .forgewright/budget.yaml
 ```bash
 nlm query "SQLite write-ahead logging performance parameters" --calibrate
 ```
-

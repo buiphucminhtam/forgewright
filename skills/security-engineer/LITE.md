@@ -8,12 +8,12 @@ tags: [security, owasp, pentest, threat-modeling, compliance, hardening, audit]
 # Security Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Security Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Dependency vulnerabilities | Run package manager audit command | ... | Y/N |
-| Static analysis scanner ready | Check if `semgrep` or `bandit` is installed | ... | Y/N |
-| Raw SQL queries exist | Search codebase for string concatenation in SQL | ... | Y/N |
-| Encryption standards used | Check passwords hashing algorithm in code | ... | Y/N |
+| Dependency vulnerabilities | Run package manager audit command | ... | run the check command and paste output |
+| Static analysis scanner ready | Check if `semgrep` or `bandit` is installed | ... | run the check command and paste output |
+| Raw SQL queries exist | Search codebase for string concatenation in SQL | ... | run the check command and paste output |
+| Encryption standards used | Check passwords hashing algorithm in code | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Security Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -23,10 +23,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (update hashing algorithm) | TARGET (src/auth.ts) | CHECK (npm test)`
 
 ---
-
-## Worked Example: Remediating SQL Injection
-> [!NOTE]
-> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Fix a SQL injection vulnerability in the login user lookup inside `src/user.ts`.

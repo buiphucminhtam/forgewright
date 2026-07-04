@@ -7,10 +7,10 @@ version: 1.0.0
 # Godot Multiplayer (LITE)
 
 ## SOLVE Step 2: GROUND (Godot Multiplayer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project is initialized with a valid Godot config | `cat project.godot` | ... | Y/N |
-| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Project is initialized with a valid Godot config | `cat project.godot` | ... | run the check command and paste output |
+| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Godot Multiplayer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,16 +18,11 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Inspect SceneReplicationConfig resources and node synchronization parameters | Verify that serialized property replication intervals are optimized and only authoritative variables sync.
 2. SYNCHRONIZE | Implement GDScript network objects utilizing `@rpc` annotations | Verify that RPC configs (e.g., `any_peer`, `authority`, `call_local`) enforce server validation on client inputs.
 3. SCALE | Set up MultiplayerSpawner and MultiplayerSynchronizer node paths in scene `.tscn` files | Confirm dynamically spawned entities automatically replicate across connected peers without manual instance tracking.
-4. SYNC | Propagate network architectures and logs to the Shared Obsidian Vault | Run standard post-skill sync scripts to establish absolute symlinks for documentation.
 
 ## Common Mistakes Checklist
 - **Client-Authoritative RPC Processing**: Allowing clients to trigger state-altering parameters (e.g., modifying health arrays, damage indicators) on the server using `@rpc("any_peer")` without validating sender peer IDs.
 - **Dangling Network Peer Disconnections**: Neglecting to unsubscribe local callback handlers from `peer_connected`, `peer_disconnected`, or `server_disconnected` on scene unload, triggering memory leaks.
 - **Non-Compliant Resource Directories**: Saving multiplayer topologies, networking diagrams, or deployment runbooks under `docs/` using CamelCase instead of lowercase kebab-case (e.g., `docs/01-product/multiplayer-specs.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Verify the game dev project configuration
 ```bash
@@ -68,4 +63,3 @@ func transmit_input_server(direction: Vector2) -> void:
 		move_and_slide()
 		sync_position = global_position
 ```
-

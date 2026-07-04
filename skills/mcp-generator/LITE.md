@@ -7,29 +7,25 @@ version: 1.0.0
 # Mcp Generator (LITE)
 
 ## SOLVE Step 2: GROUND (Mcp Generator Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| **Active MCP server dependencies** are declared | `cat mcp/package.json` | ... | Y/N |
-| **Workspace-level or global registrations** exist | `cat ~/.cursor/mcp.json \|\| cat default.project.json` | ... | Y/N |
-| **Model optimization settings and thresholds** are active | `cat .production-grade.yaml` | ... | Y/N |
+| **Active MCP server dependencies** are declared | `cat mcp/package.json` | ... | run the check command and paste output |
+| **Workspace-level or global registrations** exist | `cat ~/.cursor/mcp.json \|\| cat default.project.json` | ... | run the check command and paste output |
+| **Model optimization settings and thresholds** are active | `cat .production-grade.yaml` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Mcp Generator Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. **SCAFFOLD** | Construct custom MCP tool schemas and TypeScript handler functions | Ensure that parameter descriptions utilize precise JSON-schema validation formats [8, 9].
+1. **SCAFFOLD** | Construct custom MCP tool schemas and TypeScript handler functions | Ensure that parameter descriptions utilize precise JSON-schema validation formats.
 2. **AUDIT** | Route custom tool outputs through the Tool Sandbox (Middleware ④c) safety filter | Ensure credentials, keys, or bearer tokens are redacted and ANSI colors are stripped.
 3. **REGISTER** | Map the TypeScript execution binaries within Cursor or Claude Desktop configurations | Verify that registrations utilize `npx tsx` and `${workspaceFolder}` parameters for isolation.
-4. **SYNC** | Save specifications as lowercase kebab-case under `docs/` and run sync hooks | Confirm that documentation symlinks update successfully inside the Shared Obsidian Vault [10, 11].
+4. **SYNC** | Save specifications as lowercase kebab-case under `docs/` and run sync hooks | Confirm that documentation symlinks update successfully inside the Shared Obsidian Vault.
 
 ## Common Mistakes Checklist
 - **Exposing Credentials in Tool Logs**: Neglecting to register regex filters inside the Tool Sandbox middleware, letting database URIs or raw API tokens leak into the active LLM context.
 - **Unmanaged Output Token Bloat**: Sending massive execution responses back to the model context instead of wrapping outputs exceeding 1200 tokens through Context Offload (Middleware ④d).
 - **Hardcoding Absolute Paths in Registry**: Specifying static local paths in `mcp.json` instead of using `${workspaceFolder}` parameters, breaking multi-project isolation behaviors.
 - **Non-Compliant Resource File Names**: Storing tool specifications, manifests, or JSON guides under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/02-architecture/McpTool.md` instead of `docs/02-architecture/mcp-tool-spec.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the active MCP workspace profile settings
 ```bash
@@ -63,15 +59,15 @@ server.tool(
     // Intercepted by Middleware ④c to strip API keys, bearer tokens, or secrets
     const sanitizedEndpoint = endpoint.replace(/api_key=[^&]+/g, "api_key=REDACTED");
     console.log(`[SANDBOX] Secure request routed to: ${sanitizedEndpoint}`);
-    
+
     const response = await fetch(endpoint);
     const data = await response.text();
-    
+
     // Check for large outputs (> 1200 tokens) to trigger Context Offload
     if (data.length > 5000) {
       console.log("Offload: Output exceeds threshold. Generating short trace handle.");
     }
-    
+
     return {
       content: [{ type: "text", text: data }]
     };
@@ -94,4 +90,3 @@ Append configuration to `~/.cursor/mcp.json`:
   }
 }
 ```
-

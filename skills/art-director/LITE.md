@@ -7,19 +7,17 @@ version: 1.0.0
 # Art Director (LITE)
 
 ## SOLVE Step 2: GROUND (Art Director Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Master style guide or design DNA configuration is active | `cat .agents/workflows/design_dna.json` | ... | Y/N |
-| Project tech stack and rendering configurations are onboarded | `cat .forgewright/project-profile.json` | ... | Y/N |
-| Asset catalog directory is structured correctly | `find assets/ -name "*style*" -o -name "*palette*" -o -name "*theme*"` | ... | Y/N |
+| Project tech stack and rendering configurations are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Asset catalog directory is structured correctly | `find assets/ -name "*style*" -o -name "*palette*" -o -name "*theme*"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Art Director Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. AUDIT | Review layout mockups, graphic assets, and theme configurations against the design DNA | Verify color contrast ratios, font hierarchies, and texture compression rules conform to the master style guide.
 2. ENFORCE | Standardize asset names, formats, and structural layouts | Confirm visual assets under `assets/` strictly use lowercase kebab-case with zero spaces.
-3. ALIGN | Inject style constraints into UI component templates, canvas scenes, or graphics shaders | Ensure all elements dynamically inherit global themes rather than using hardcoded values [5, 7].
-4. SYNC | Propagate style spec changes and review logs to Obsidian | Trigger post-skill hooks to symlink the updated style logs to the Shared Obsidian Vault.
+3. ALIGN | Inject style constraints into UI component templates, canvas scenes, or graphics shaders | Ensure all elements dynamically inherit global themes rather than using hardcoded values.
 
 ## Common Mistakes Checklist
 - **Style Guide Deviations**: Using hardcoded colors (e.g., custom hex colors) instead of approved Tailwind CSS classes or theme-aware tokens defined in the `design_dna.json` contract.
@@ -27,10 +25,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Lowercase kebab-case naming violations**: Naming theme files or design documentation under `docs/` using CamelCase, spaces, or absolute paths (e.g., `docs/01-product/ArtStyleGuide.md` instead of `docs/01-product/art-style-guide.md`).
 - **Unverified UI Breakpoints**: Forgetting to audit visual components on responsive layouts, leading to container clippings or overlapping text.
 - **Ignoring asset memory limits**: Overloading 3D scenes or web views with uncompressed high-resolution textures, triggering WebGL out-of-memory errors on target devices.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the target game stack and baseline settings
 ```bash
@@ -68,4 +62,3 @@ export const ArtThemeCard = ({ title, description }: { title: string; descriptio
 ```bash
 npx playwright test tests/visual-regression.spec.ts
 ```
-

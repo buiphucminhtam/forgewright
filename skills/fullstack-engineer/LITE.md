@@ -7,11 +7,11 @@ version: 1.0.0
 # Fullstack Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Fullstack Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack and language alignments are fully onboarded | `cat .forgewright/project-profile.json` | ... | Y/N |
-| Active database schema, migrations, or model directories exist | `find src/ -name "schema*" -o -name "*.prisma" -o -name "models"` | ... | Y/N |
-| GitNexus code intelligence is indexed and active for symbol graph analysis | `gitnexus analyze` or `cat .gitnexus/config` | ... | Y/N |
+| Project tech stack and language alignments are fully onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Active database schema, migrations, or model directories exist | `find src/ -name "schema*" -o -name "*.prisma" -o -name "models"` | ... | run the check command and paste output |
+| GitNexus code intelligence is indexed and active for symbol graph analysis | `gitnexus analyze` or `cat .gitnexus/config` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Fullstack Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -26,10 +26,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Credential Leaks**: Hardcoding server connection strings, API tokens, or secrets directly in front-end files instead of utilizing local `.env` variables filtered by the Middleware ④c Sandbox.
 - **Context Overload**: Printing massive raw database JSON dumps in standard terminal stdout, triggering token bloat instead of storing files under `.forgewright/offload/`.
 - **Disorganized File Structure**: Placing source code outside designated client-server directories, violating modular project-profile blueprints.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Execute GitNexus impact analysis on the shared user model
 ```bash

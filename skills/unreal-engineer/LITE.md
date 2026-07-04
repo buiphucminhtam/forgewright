@@ -7,10 +7,10 @@ version: 1.0.0
 # Unreal Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Unreal Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Active Unreal project configuration file exists | `find . -maxdepth 2 -name "*.uproject"` | ... | Y/N |
-| Project-specific tech stack and profile settings are active | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Active Unreal project configuration file exists | `find . -maxdepth 2 -name "*.uproject"` | ... | run the check command and paste output |
+| Project-specific tech stack and profile settings are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Unreal Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,17 +18,12 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Validate C++ codebase files, reflection patterns, and plugin configurations | Ensure that C++ class definitions match target Unreal Build Tool formats and generated headers exist.
 2. IMPLEMENT | Author or update player movement and physics calculations with delta-time scaling | Verify that calculations in `Tick(float DeltaTime)` apply the `DeltaTime` multiplier to preserve frame-rate parity.
 3. GC_SAFE | Declare raw pointer pointers to custom UObjects utilizing GC-retained macros | Enforce that object references are flagged with `UPROPERTY()` or tracked via `TWeakObjectPtr` to prevent GC dangling crashes.
-4. SYNC | Document implementation blueprints and run the sync-obsidian hook | Verify file name compliance (lowercase kebab-case) and establish absolute symlinks to the Shared Obsidian Vault.
 
 ## Common Mistakes Checklist
 - **Garbage Collection Crashes**: Storing raw unmanaged pointers to `UObject` derivatives in C++ class structures without designating them as `UPROPERTY()`, allowing the engine to sweep and deallocate active objects.
 - **FPS-Dependent Tick Scaling**: Computing transformations or adding vector forces inside the `Tick()` callback without scaling inputs by `DeltaTime`, causing movement speed variance on differing hardware refresh rates.
 - **Corrupted Generated Headers**: Placing include directives for custom files below `#include "MyClass.generated.h"` inside headers, causing Unreal Header Tool (UHT) parsing and compilation blocks.
 - **Non-Compliant File Structures**: Creating custom actor plans or specs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/01-product/PlayerMovementSpec.md` instead of `docs/01-product/player-movement-spec.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the target game configurations
 ```bash
@@ -84,7 +79,7 @@ void AMyPlayerCharacter::BeginPlay()
 void AMyPlayerCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    
+
     // Scale vectors frame-independently with DeltaTime
     float ForwardInput = GetInputAxisValue("MoveForward");
     if (FMath::Abs(ForwardInput) > 0.01f)
@@ -94,4 +89,3 @@ void AMyPlayerCharacter::Tick(float DeltaTime)
     }
 }
 ```
-

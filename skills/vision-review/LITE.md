@@ -7,11 +7,11 @@ version: 1.0.0
 # Vision Review (LITE)
 
 ## SOLVE Step 2: GROUND (Vision Review Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack and language profile are established | `cat .forgewright/project-profile.json` | ... | Y/N |
-| Visual regression or E2E testing package configurations exist | `cat package.json \| jq '.devDependencies \| keys' \| grep -E \"(playwright\|puppeteer\|cypress\|midscene)\"` | ... | Y/N |
-| Playwright viewport dimensions and VRT config options are defined | `cat playwright.config.ts \|\| cat playwright.config.js` | ... | Y/N |
+| Project tech stack and language profile are established | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Visual regression or E2E testing package configurations exist | `cat package.json \| jq '.devDependencies \| keys' \| grep -E \"(playwright\|puppeteer\|cypress\|midscene)\"` | ... | run the check command and paste output |
+| Playwright viewport dimensions and VRT config options are defined | `cat playwright.config.ts \|\| cat playwright.config.js` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Vision Review Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -19,16 +19,11 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Scan target component layouts, responsive media queries, and viewport scale thresholds | Verify that color contrast ratios meet WCAG guidelines and elements don't shift layout bounds during load.
 2. CAPTURE | Generate local screenshots or trigger E2E visual captures under specific resolutions | Ensure that snapshots are taken only after the page reaches network idle status to prevent flaky animations.
 3. COMPARE | Execute pixelmatch comparisons between active screenshots and established reference base images | Confirm that pixel mismatch ratios do not exceed the max allowed threshold configured for the suite.
-4. SYNC | Compile visual audit results, save lowercase kebab-case reports, and run sync hooks | Verify file names conform to conventions under `docs/04-testing/` and symlink them to the Obsidian vault.
 
 ## Common Mistakes Checklist
 - **Cross-Platform Mismatch Divergences**: Comparing baseline screenshots generated locally on MacOS directly against test outputs generated on Linux/CI, causing minor text rendering mismatches. Always run VRT inside an official headless Docker test container to guarantee rendering consistency.
 - **Unbounded Mismatch Thresholds**: Setting the pixelmatch mismatch threshold (`maxDiffPixels` or `maxDiffPixelRatio`) too low (failing on irrelevant anti-aliasing variations) or too high (ignoring broken CSS rules).
 - **Non-Compliant Asset Directory Names**: Storing screenshot bases, visual audit report sheets, or user review logs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/04-testing/VisualReport.md` instead of `docs/04-testing/visual-review-report.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground target styling frameworks and testing settings
 ```bash
@@ -67,4 +62,3 @@ test('landing page layout matches the visual baseline', async ({ page }) => {
 ```bash
 npx playwright test tests/visual-audit.spec.ts
 ```
-

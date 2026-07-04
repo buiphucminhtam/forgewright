@@ -7,11 +7,11 @@ version: 1.0.0
 # Performance Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Performance Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Local dockerized performance monitoring stack (k6, InfluxDB, Grafana) is active | `docker ps --filter "name=perf-stack" --format "{{.Names}}"` | ... | Y/N |
-| Metric tracking and load script configurations exist in the performance stack | `find docker/perf-stack/ -name "*.js" -o -name "*.json"` | ... | Y/N |
-| Baseline performance runbooks are documented in operations folder | `find docs/05-operations/ -name "*performance*" -o -name "*benchmark*"` | ... | Y/N |
+| Local dockerized performance monitoring stack (k6, InfluxDB, Grafana) is active | `docker ps --filter "name=perf-stack" --format "{{.Names}}"` | ... | run the check command and paste output |
+| Metric tracking and load script configurations exist in the performance stack | `find docker/perf-stack/ -name "*.js" -o -name "*.json"` | ... | run the check command and paste output |
+| Baseline performance runbooks are documented in operations folder | `find docs/05-operations/ -name "*performance*" -o -name "*benchmark*"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Performance Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -19,7 +19,6 @@ Format: `n. ACTION | TARGET | CHECK`
 1. PROFILE | Run bundle-size audits or CPU/memory trace analysis on active modules | Verify that JS/TS chunks, WebGL textures, and server execution loops conform to size/timing boundaries.
 2. LOAD | Execute API load benchmarks using k6 CLI test profiles | Measure RPS (Requests Per Second), error rates, and p95/p99 latency thresholds against active baselines.
 3. REMEDIATE | Apply database index strategies, response caching, or asset compression | Confirm optimized endpoints pass validation tests without regressions or API deviations.
-4. SYNC | Export benchmark markdown logs to `docs/05-operations/` and run sync hooks | Trigger post-skill script execution to symlink the output files to the Shared Obsidian Vault.
 
 ## Common Mistakes Checklist
 - **Unbounded load spikes in production**: Running high-volume k6 stress tests directly against production systems instead of isolated docker test environments.
@@ -27,10 +26,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Context window metric dumps**: Appending raw, heavy k6 output JSON or raw heap dump tables directly into the active chat session instead of saving summaries.
 - **Missing baseline comparisons**: Reporting p95/p99 metrics as standalone figures without comparing them to previous baseline performance profiles.
 - **Non-compliant report file naming**: Saving performance logs inside `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `performance-benchmark-v1.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ensure local k6 load-testing stack is initialized and running
 ```bash

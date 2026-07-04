@@ -7,10 +7,10 @@ version: 1.0.0
 # Game Asset Vfx (LITE)
 
 ## SOLVE Step 2: GROUND (Game Asset Vfx Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target game development framework and graphics libraries are installed | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | Y/N |
-| Existing shader assets, material files, or particle JSON setups exist | `find assets/ -name "*vfx*" -o -name "*particle*" -o -name "*.glsl"` | ... | Y/N |
+| Target game development framework and graphics libraries are installed | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | run the check command and paste output |
+| Existing shader assets, material files, or particle JSON setups exist | `find assets/ -name "*vfx*" -o -name "*particle*" -o -name "*.glsl"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Game Asset Vfx Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,7 +18,6 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Analyze renderer blend modes (e.g., Additive, Screen) and context capacity | Verify engine and viewport properties allow alpha transparency overlay without black boundaries.
 2. GENERATE | Write custom fragment/vertex GLSL shaders or design JSON emitter properties | Ensure mathematical formulas in the GPU pipeline are optimized to prevent mobile/XR stuttering.
 3. INTEGRATE | Attach visual effects triggers and emitter pools to game loop events | Verify instantiation uses recycling (Object Pools) rather than continuously creating active objects.
-4. SYNC | Propagate effect specifications and metadata logs to Shared Obsidian Vault | Execute post-skill synchronization scripts to establish absolute symlinks for doc alignments.
 
 ## Common Mistakes Checklist
 - **Dynamic Emitter Allocation**: Creating new Particle Emitter instances inside the game update loop or on every event trigger instead of utilizing a recycled Object Pool, causing high garbage collection stutter.
@@ -26,10 +25,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Transparent Canvas Artifacts**: Applying additive blend settings on elements without activating transparent canvas configurations, resulting in unrendered solid black backing frames.
 - **No-Reset Particle Destructors**: Failing to dispose of materials, textures, and vertex array buffers on shader or state transitions, triggering WebGL context loss errors.
 - **Non-Compliant Naming Standards**: Storing VFX metadata documents under `docs/` using uppercase, camelCase, or space naming structures instead of strictly lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground runtime framework and asset location
 ```bash
@@ -68,4 +63,3 @@ export class FireBurstVFX {
   }
 }
 ```
-

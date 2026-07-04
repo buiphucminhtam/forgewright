@@ -7,18 +7,17 @@ version: 1.0.0
 # Software Engineer Python (LITE)
 
 ## SOLVE Step 2: GROUND (Software Engineer Python Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Python environment, dependencies, and modules are defined | `cat requirements.txt \|\| cat pyproject.toml \|\| cat setup.cfg` | ... | Y/N |
-| GitNexus symbol index and call graphs are present and initialized [3, 4] | `gitnexus analyze --status \|\| find . -name \"*.gitnexus\"` | ... | Y/N |
+| Target Python environment, dependencies, and modules are defined | `cat requirements.txt \|\| cat pyproject.toml \|\| cat setup.cfg` | ... | run the check command and paste output |
+| GitNexus symbol index and call graphs are present and initialized | `gitnexus analyze --status \|\| find . -name \"*.gitnexus\"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Software Engineer Python Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. IMPACT | Analyze symbol blast-radius and upstream dependency impacts via GitNexus | Warn the user if the impact analysis returns a HIGH or CRITICAL risk level.
 2. IMPLEMENT | Author modular Python classes, function routines, and type annotations | Ensure code adheres strictly to PEP 8, implements context managers, and has zero hardcoded credentials.
-3. STRESS-TEST | Execute property-based (Hypothesis) and mutation tests (mutmut) | Confirm the testing suite passes cleanly and the code quality score achieves Grade A (>90) [9, 10].
-4. SYNC | Save specifications as lowercase kebab-case under docs/ and run sync hooks [5, 11] | Confirm file name compliance and run post-skill sync to update the Shared Obsidian Vault.
+3. STRESS-TEST | Execute property-based (Hypothesis) and mutation tests (mutmut) | Confirm the testing suite passes cleanly and the code quality score achieves Grade A (>90).
 
 ## Common Mistakes Checklist
 - **Mutable Default Parameters**: Using mutable structures as defaults (e.g., `def append(item, container=[])`) leading to shared reference leaks across calls.
@@ -26,10 +25,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Silent Exception Swallowing**: Implementing broad, non-specific try-except blocks (e.g., `except Exception: pass`) that mask critical runtime exceptions or traceback logs.
 - **Modifying High-Risk Symbols Directly**: Modifying shared interfaces without first evaluating upstream impact metrics via GitNexus symbol diagnostics (`gitnexus_impact`).
 - **Non-Compliant Resource Directories**: Saving design documents, API specifications, or logs under `docs/` using CamelCase instead of lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground target project settings and environment engine
 ```bash
@@ -56,7 +51,7 @@ class DataExporter:
     def export_records_json(self, filepath: str, records: List[dict]) -> bool:
         if not records:
             return False
-            
+
         try:
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump({"metadata": self.metadata, "data": records}, f, indent=2)
@@ -71,4 +66,3 @@ class DataExporter:
 ```bash
 pytest -v tests/test_data_exporter.py
 ```
-

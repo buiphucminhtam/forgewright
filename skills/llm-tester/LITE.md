@@ -7,10 +7,10 @@ version: 1.0.0
 # Llm Tester (LITE)
 
 ## SOLVE Step 2: GROUND (Llm Tester Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target model configurations and API provider bindings are defined | `cat .production-grade.yaml` | ... | Y/N |
-| Existing prompt test cases, mock responses, or assertion files are indexed | `find tests/ -name "*test-llm*" -o -name "*assert*"` | ... | Y/N |
+| Target model configurations and API provider bindings are defined | `cat .production-grade.yaml` | ... | run the check command and paste output |
+| Existing prompt test cases, mock responses, or assertion files are indexed | `find tests/ -name "*test-llm*" -o -name "*assert*"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Llm Tester Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,17 +18,12 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Validate system prompts, model temperature overrides, and output schema assertions | Ensure temperature limits (e.g., 1.0 for Gemini) and JSON schema formats are structurally compliant.
 2. COMPILE | Execute automated unit and integration assertion loops on target prompt interfaces | Verify that model outputs adhere to schema structures and pass semantic safety constraints.
 3. PROFILE | Evaluate token overhead, API execution latency, and session cost metrics | Confirm that token footprints are tracked via `.forgewright/usage/` logs and stay under budget bounds.
-4. SYNC | Compile LLM test audit records and synchronize reports with the Shared Obsidian Vault | Verify file name compliance (lowercase kebab-case) and run post-skill sync scripts.
 
 ## Common Mistakes Checklist
 - **Temperature & Thought Signature Mismatch**: Overriding temperature configurations away from model-specific bounds (like 1.0 on Gemini) or stripping Thought Signatures, triggering unexpected API 400 errors.
 - **Bypassing Output Schema Assertions**: Trusting that the LLM will return perfectly formed JSON structures without implementing rigorous validation gates, causing parsing crashes.
 - **Non-Compliant File Names**: Storing prompt evaluations, benchmark results, or review notes under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/04-testing/LLMTesterResult.md` instead of `docs/04-testing/llm-tester-result.md`).
 - **Context Window Exhaustion**: Feeding full raw API responses or massive trace outputs back into the model context instead of summarizing or utilizing Context Offload mechanisms.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground target model settings and token budget tracking status
 ```bash
@@ -71,4 +66,3 @@ verify_model_completion('{"decision": "PROCEED", "confidence": 0.95, "reasoning"
 python3 tests/validate_completion.py
 forge token status || cat ~/.forgewright/usage/summary.json
 ```
-

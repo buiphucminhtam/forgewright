@@ -1,17 +1,17 @@
 ---
 name: threejs-engineer
-description: "Orchestrates WebGL rendering pipelines, scene graphs, custom shaders, and 3D asset loaders via Three.js. Use when the user requests 3D interactive visualizations, browser-based games, custom GPU shaders, GLTF/GLB assets integration, or WebGL performance optimizations [1, 2]."
+description: "Orchestrates WebGL rendering pipelines, scene graphs, custom shaders, and 3D asset loaders via Three.js. Use when the user requests 3D interactive visualizations, browser-based games, custom GPU shaders, GLTF/GLB assets integration, or WebGL performance optimizations."
 version: 1.0.0
 ---
 
 # Threejs Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Threejs Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Three.js and associated packages are installed in the workspace | `cat package.json \| jq '.dependencies["three"]'` | ... | Y/N |
-| Existing WebGL components, canvases, or scenes are indexed | `find src/ -name "*canvas*" -o -name "*three*" -o -name "*scene*"` | ... | Y/N |
-| Playwright test harness is configured for Visual Regression Testing (VRT) | `cat playwright.config.ts` | ... | Y/N |
+| Target Three.js and associated packages are installed in the workspace | `cat package.json \| jq '.dependencies["three"]'` | ... | run the check command and paste output |
+| Existing WebGL components, canvases, or scenes are indexed | `find src/ -name "*canvas*" -o -name "*three*" -o -name "*scene*"` | ... | run the check command and paste output |
+| Playwright test harness is configured for Visual Regression Testing (VRT) | `cat playwright.config.ts` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Threejs Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -27,10 +27,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Mismatched light and material types**: Implementing PBR materials (e.g., `MeshStandardMaterial`) without configuring active lighting in the scene, resulting in fully black renders.
 - **Non-compliant naming patterns**: Saving documentation, test assets, or shader files using uppercase letters, camelCase, or spaces instead of strictly lowercase kebab-case (e.g., `threejs-renderer-audit.md`).
 
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
-
 ### Step 1: Check Three.js dependency version in package.json
 ```bash
 cat package.json | grep -E "three"
@@ -44,11 +40,11 @@ export function createInteractiveScene(canvas: HTMLCanvasElement) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-  
+
   // Set up standard lighting for PBR material compatibility
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
-  
+
   const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
   directionalLight.position.set(5, 5, 5);
   scene.add(directionalLight);
@@ -58,7 +54,7 @@ export function createInteractiveScene(canvas: HTMLCanvasElement) {
   const material = new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.4 });
   const cube = new THREE.Mesh(geometry, material);
   scene.add(cube);
-  
+
   camera.position.z = 5;
 
   let animationFrameId: number;
@@ -70,7 +66,7 @@ export function createInteractiveScene(canvas: HTMLCanvasElement) {
     cube.rotation.y += 0.01;
     renderer.render(scene, camera);
   };
-  
+
   animate();
 
   // Return explicit teardown hooks to prevent WebGL context memory leaks

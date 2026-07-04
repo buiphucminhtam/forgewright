@@ -7,11 +7,11 @@ version: 1.0.0
 # Goal Driven (LITE)
 
 ## SOLVE Step 2: GROUND (Goal Driven Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project-specific tech stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | ... | Y/N |
-| Standard task list or target execution checklist is initialized | `cat TASKS.md \|\| cat docs/05-operations/tasks.md` | ... | Y/N |
-| Live session execution graph is initialized to monitor progress | `cat .forgewright/offload/canvas.mmd` | ... | Y/N |
+| Project-specific tech stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Standard task list or target execution checklist is initialized | `cat TASKS.md \|\| cat docs/05-operations/tasks.md` | ... | run the check command and paste output |
+| Live session execution graph is initialized to monitor progress | `cat .forgewright/offload/canvas.mmd` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Goal Driven Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -27,10 +27,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Infinite Loop Brute-Forcing**: Retrying a failing implementation path more than twice without triggering the mandatory Research Gate and updating `.forgewright/lessons.md`.
 - **Ignoring Token Caching Thresholds**: Running massive multi-step plan loops without utilizing context offloading, causing immediate token bloat and context memory exhaustion.
 - **Non-Compliant File Names**: Storing task checklists or planning logs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `project-roadmap.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the active project scope and baseline status
 ```bash
@@ -53,4 +49,3 @@ EOF
 # Run local build and validation check to enforce the verification gate
 npm run build && npm test tests/db-service.spec.ts
 ```
-

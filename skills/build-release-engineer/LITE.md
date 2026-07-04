@@ -7,11 +7,11 @@ version: 1.0.0
 # Build Release Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Build Release Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack and onboarding status profile are established | `cat .forgewright/project-profile.json` | ... | Y/N |
-| CI/CD workflow directory and configuration files exist | `ls -la .github/workflows/` | ... | Y/N |
-| Local build scripts or compilation commands are defined | `cat package.json \| jq '.scripts.build // .scripts.compile'` | ... | Y/N |
+| Project tech stack and onboarding status profile are established | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| CI/CD workflow directory and configuration files exist | `ls -la .github/workflows/` | ... | run the check command and paste output |
+| Local build scripts or compilation commands are defined | `cat package.json \| jq '.scripts.build // .scripts.compile'` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Build Release Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -27,10 +27,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Bloated Container Images**: Failing to optimize multi-stage Docker builds or bundler settings, leading to massive build image sizes and slow pipeline run rates.
 - **Untracked Build Failure States**: Failing to route critical compilation crashes or failed unit tests to exit codes, allowing broken builds to progress to deployment stages.
 - **Non-Compliant Release Docs**: Storing release logs, migration guides, or deployment notes under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the target build configurations and active pipeline settings
 ```bash
@@ -72,4 +68,3 @@ npm run build
 docker build -t forgewright-service:latest .
 docker images forgewright-service:latest
 ```
-

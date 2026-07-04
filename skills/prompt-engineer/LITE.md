@@ -7,10 +7,10 @@ version: 1.0.0
 # Prompt Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Prompt Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target model configs and optimization levels are active | `cat .production-grade.yaml` | ... | Y/N |
-| Existing system prompts or template instructions are indexed | `find src/ -name "*prompt*" -o -name "*instruction*" -o -name "*template*"` | ... | Y/N |
+| Target model configs and optimization levels are active | `cat .production-grade.yaml` | ... | run the check command and paste output |
+| Existing system prompts or template instructions are indexed | `find src/ -name "*prompt*" -o -name "*instruction*" -o -name "*template*"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Prompt Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,18 +18,13 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Analyze system instructions against prompt injections and secret leak vectors | Ensure strict credential redactors and Middleware ④c rules are defined to filter API keys.
 2. OPTIMIZE | Structure system prompts with explicit few-shot examples and variable inputs | Ensure prompts are optimized under 1200 tokens or set up progressive disclosure to avoid context bloat.
 3. PRESERVE | Enforce Gemini 3.x native configurations (Temperature 1.0, high reasoning budget) | Verify prompt processing does not strip model-generated Thought Signatures, avoiding API 400 bad requests.
-4. SYNC | Save optimized templates as lowercase kebab-case under `docs/03-guides/` | Trigger standard post-skill sync scripts to establish absolute symlinks for documentation.
 
 ## Common Mistakes Checklist
 - **Stripping Thought Signatures**: Writing custom regex, string trimmers, or JSON parsers on model outputs that accidentally strip thought signatures, causing Gemini API 400 bad requests.
 - **Hardcoding Secrets in Prompts**: Placing raw API keys, bearer tokens, or connection URIs directly inside system prompts or few-shot examples, risking context leaks.
 - **Ignoring Context Bloat Guidelines**: Feeding extremely large database dumps or raw codebases directly into the prompt context instead of leveraging progressive summaries or minimal signature layouts.
-- **Hardcoding Overridden Temperatures**: Specifying a static, lower temperature (e.g., 0.0 or 0.2) for creative or complex reasoning tasks, violating the optimal Temperature 1.0 native configuration for Gemini 3.x.
+- **Hardcoding Overridden Temperatures**: Specifying a static, lower temperature (e.g., 0.0 or 0.2) for creative or complex reasoning tasks, violating
 - **Non-Compliant File Names**: Storing prompt guides or optimization reports under `docs/` using CamelCase, spaces, or uppercase letters instead of strictly lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the model configuration rules
 ```bash
@@ -74,4 +69,3 @@ if (prompt.includes('{{')) throw new Error('Unreplaced template variables detect
 console.log('Success: Prompt pre-flight check passed.');
 "
 ```
-

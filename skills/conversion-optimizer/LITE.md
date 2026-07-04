@@ -7,11 +7,11 @@ version: 1.0.0
 # Conversion Optimizer (LITE)
 
 ## SOLVE Step 2: GROUND (Conversion Optimizer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target conversion pages, checkout flows, or landing page configs are indexed | `find docs/01-product/ -name \"*conversion*\" -o -name \"*checkout*\" -o -name \"*cta*\"` | ... | Y/N |
-| Analytics tracking dependencies and scripts are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match(\"plausible\\|mixpanel\\|analytics\\|segment\")))'` | ... | Y/N |
-| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Target conversion pages, checkout flows, or landing page configs are indexed | `find docs/01-product/ -name \"*conversion*\" -o -name \"*checkout*\" -o -name \"*cta*\"` | ... | run the check command and paste output |
+| Analytics tracking dependencies and scripts are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match(\"plausible\\|mixpanel\\|analytics\\|segment\")))'` | ... | run the check command and paste output |
+| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Conversion Optimizer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -19,17 +19,12 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Analyze checkout flow steps, form validation loops, and drop-off points | Verify form fields are minimized and any friction-inducing steps (e.g., redundant password steps) are flagged.
 2. CONSTRUCT | Implement high-converting call-to-action (CTA) buttons, checkout forms, or copy variants | Ensure copywriting structures align with persuasive frameworks (e.g., AIDA) and strictly avoid hardcoded pricing values.
 3. INSTRUMENT | Integrate analytics tracking event triggers or custom pixel scripts into CTA actions | Confirm that checkout submissions and page views successfully emit custom event metrics to analytics providers.
-4. SYNC | Save optimization specifications under `docs/01-product/` and trigger sync | Verify file name compliance (lowercase kebab-case) and establish absolute symlinks to the Shared Obsidian Vault.
 
 ## Common Mistakes Checklist
 - **CTA Overhauls without Event Telemetry**: Modifying buttons, sign-up cards, or checkout logic without writing equivalent tracking triggers, leaving conversion metrics blind.
 - **Hardcoding Partner Keys and Campaign Secrets**: Saving Google Analytics IDs, Plausible tracking tokens, or UTM tracking variables directly inside frontend source files instead of utilizing environment variables.
 - **Form Field Bloat & Friction Points**: Requiring users to fill out non-essential inputs or forcing immediate account registrations during billing steps, leading to high cart-abandonment rates.
 - **Non-Compliant File Names**: Storing landing page copy maps, A/B test setups, or optimization audit logs under `docs/` using CamelCase instead of strictly lowercase kebab-case (e.g., `docs/01-product/ConversionCheck.md` instead of `docs/01-product/conversion-check.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the active project profile and tracking dependencies
 ```bash
@@ -54,11 +49,11 @@ export const CheckoutForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    
+
     setIsSubmitting(true);
     // Secure conversion tracking instrumentation
     trackEvent('checkout_submitted', { props: { email_domain: email.split('@') } });
-    
+
     setTimeout(() => {
       setIsSubmitting(false);
       trackEvent('checkout_success');
@@ -91,4 +86,3 @@ export const CheckoutForm = () => {
   );
 };
 ```
-

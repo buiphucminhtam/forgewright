@@ -7,11 +7,11 @@ version: 1.0.0
 # Parallel Dispatch (LITE)
 
 ## SOLVE Step 2: GROUND (Parallel Dispatch Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Git is installed and supports worktrees | `git worktree list` | ... | Y/N |
-| Parallel worker configuration or script exists | `find scripts/ -name "*worktree*" -o -name "*dispatch*"` | ... | Y/N |
-| Project stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Git is installed and supports worktrees | `git worktree list` | ... | run the check command and paste output |
+| Parallel worker configuration or script exists | `find scripts/ -name "*worktree*" -o -name "*dispatch*"` | ... | run the check command and paste output |
+| Project stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Parallel Dispatch Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -19,7 +19,6 @@ Format: `n. ACTION | TARGET | CHECK`
 1. PREPARE | Create target git worktrees for each parallel worker branch | Verify the target worktree directories do not conflict with active session branches.
 2. DISPATCH | Spin up parallel AI agents across isolated worktree instances | Monitor concurrent agent processes and log exits or resource allocations to prevent deadlocks.
 3. CONSOLIDATE | Merge completed worktree branches and resolve conflicts back to main | Ensure all changes are safely integrated and reviewed through testing pipelines prior to committing.
-4. SYNC | Propagate parallel run metrics and task outcomes to Shared Obsidian Vault | Execute the post-skill sync script to generate unified markdown reports and symlink to Obsidian.
 
 ## Common Mistakes Checklist
 - **Worktree path conflicts**: Creating parallel worktree directories at overlapping paths or utilizing dirty uncommitted branch states as clean baseline checkouts.
@@ -27,10 +26,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **API rate limit exhaustion**: Dispatching multiple concurrent workers with high model budgets simultaneously without configuring rate-limit mitigations or using high-throughput endpoints (e.g., MiniMax).
 - **Orphaned worktrees**: Leaving background worktree checkouts active on local disks after tasks are finished without cleanups (e.g., neglecting `git worktree prune`).
 - **Ignoring gitnexus impact risk**: Skipping the mandatory impact analysis on shared repository dependencies, causing merged changes from separate parallel workers to conflict or break on main.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Check active git worktrees
 ```bash

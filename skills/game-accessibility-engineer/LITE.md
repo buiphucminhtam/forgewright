@@ -7,11 +7,11 @@ version: 1.0.0
 # Game Accessibility Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Game Accessibility Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target game development framework and visual packages are defined | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | Y/N |
-| Keyboard, gamepad, and input map configurations are active | `find src/input/ -name "*map*" -o -name "*binding*"` | ... | Y/N |
-| Project-specific tech stack and game assets directory structure are mapped | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Target game development framework and visual packages are defined | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | run the check command and paste output |
+| Keyboard, gamepad, and input map configurations are active | `find src/input/ -name "*map*" -o -name "*binding*"` | ... | run the check command and paste output |
+| Project-specific tech stack and game assets directory structure are mapped | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Game Accessibility Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -19,7 +19,6 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Inspect canvas scaling, color contrast ratios, and visual readability | Verify that all game HUD components render in high-contrast modes without text clipping or overlaps.
 2. REMAP | Map abstract action models over hardcoded physical input controls | Confirm that all control bindings are completely re-mappable by the player via an input-mapping configuration layer.
 3. CC | Build closed-captions and adjustable subtitle rendering handlers | Ensure captions display speaking character names, sound effect alerts, and customizable background opacity settings.
-4. SYNC | Propagate game accessibility testing reports to the Obsidian Vault | Run the post-skill synchronization script to generate absolute symlinks under the unified workspace.
 
 ## Common Mistakes Checklist
 - **Hardcoded Input Triggers**: Reading keyboard event codes directly (e.g., `event.code === 'KeyW'`) inside update loops, blocking alternative controller or single-switch device mappings.
@@ -27,10 +26,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Fixed Font Canvas Scaling**: Rendering HUD text at hardcoded pixel dimensions within game loops, causing text to blur or clip when players select large-font overlays.
 - **Modal Input Focus Traps**: Failing to trap menu focus inside in-game pause overlays or dialog boxes, letting players trigger underlying game-world inputs via keyboard actions.
 - **Non-Compliant Naming Conventions**: Creating testing results or logs inside `docs/` using CamelCase, spaces, or absolute links instead of strictly lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Verify the game engine environment and budget baseline
 ```bash
@@ -71,4 +66,3 @@ export class AccessibleInputManager {
   }
 }
 ```
-

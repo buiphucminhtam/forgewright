@@ -7,29 +7,24 @@ version: 1.0.0
 # Sre (LITE)
 
 ## SOLVE Step 2: GROUND (Sre Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Active project tech stack and development profile are established | `cat .forgewright/project-profile.json` | ... | Y/N |
-| Performance monitoring stack (k6/InfluxDB/Grafana) configurations exist | `find docker/perf-stack/ -name \"*.yml\" -o -name \"*.json\" \|\| ls -la docker-compose.test.yml` [2, 3] | ... | Y/N |
-| Deployment workflow and staged-rollout automation scripts exist | `find .github/workflows/ -name \"*.yml\"` [3, 4] | ... | Y/N |
+| Active project tech stack and development profile are established | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Performance monitoring stack (k6/InfluxDB/Grafana) configurations exist | `find docker/perf-stack/ -name \"*.yml\" -o -name \"*.json\" \|\| ls -la docker-compose.test.yml` | ... | run the check command and paste output |
+| Deployment workflow and staged-rollout automation scripts exist | `find .github/workflows/ -name \"*.yml\"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Sre Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. AUDIT | Review deployment workflows, container structures, and monitoring endpoints [2, 4] | Ensure that health check thresholds, rate-limiting policies, and connection pool bounds are defined.
-2. CONSTRUCT | Author robust k6 performance testing scripts, Docker configurations, or CI/CD pipelines [2, 4] | Verify that load test targets and deployment scripts compile without syntax errors.
+1. AUDIT | Review deployment workflows, container structures, and monitoring endpoints | Ensure that health check thresholds, rate-limiting policies, and connection pool bounds are defined.
+2. CONSTRUCT | Author robust k6 performance testing scripts, Docker configurations, or CI/CD pipelines | Verify that load test targets and deployment scripts compile without syntax errors.
 3. BENCHMARK | Execute automated performance stress-tests and evaluate latency metrics | Confirm that system average latencies, error rates, and resource profiles stay within SLO budgets under simulated loads.
-4. SYNC | Compile SRE reports as lowercase kebab-case and trigger sync hooks [8, 9] | Run post-skill hooks to sync reliability summaries and establish absolute symlinks to Obsidian [8, 9].
 
 ## Common Mistakes Checklist
 - **Running High-Load Stress Tests Directly Against Production**: Triggering unthrottled k6 load tests directly against live production systems, risking unmanaged service denial.
 - **Hardcoding Deployment Credentials & API Keys**: Embedding plain-text secrets, container registries passwords, or API tokens inside workflow files or docker-compose manifests instead of referencing secure secrets.
 - **Unbounded Resource Allocation in Containers**: Failing to restrict container CPU and memory bounds inside Docker definitions, leading to host resource exhaustion under heavy test loads.
 - **Non-Compliant File Names for Runbooks**: Storing deploy runbooks, incident reports, or benchmark logs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/05-operations/SreRunbook.md` instead of `docs/05-operations/sre-runbook.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground target project settings and CI/CD benchmarks
 ```bash
@@ -75,4 +70,3 @@ docker-compose -f docker-compose.test.yml up -d
 # Execute k6 load test runner
 k6 run tests/performance/k6-load-test.js
 ```
-

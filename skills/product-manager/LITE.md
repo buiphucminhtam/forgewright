@@ -7,12 +7,12 @@ version: 2.0.0
 # Product Manager (LITE)
 
 ## SOLVE Step 2: GROUND (Product Manager Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target requirements document | Locate existing BRD / PRD / feature specs | ... | Y/N |
-| Target audience & persona | Read docs for defined user personas | ... | Y/N |
-| Key performance indicators (KPI) | Search for success metrics or tracking requirements | ... | Y/N |
-| Out of scope limits | Identify boundaries in existing issue description | ... | Y/N |
+| Target requirements document | Locate existing BRD / PRD / feature specs | ... | run the check command and paste output |
+| Target audience & persona | Read docs for defined user personas | ... | run the check command and paste output |
+| Key performance indicators (KPI) | Search for success metrics or tracking requirements | ... | run the check command and paste output |
+| Out of scope limits | Identify boundaries in existing issue description | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Product Manager Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -22,10 +22,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (define telemetry tracking spec) | TARGET (docs/requirements/analytics.md) | CHECK (cat docs/requirements/analytics.md)`
 
 ---
-
-## Worked Example: Password Reset Feature Specification
-> [!NOTE]
-> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Author requirements and Gherkin user stories for a "Password Reset via Email" feature.

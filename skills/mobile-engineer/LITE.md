@@ -7,10 +7,10 @@ version: 1.0.0
 # Mobile Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Mobile Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target mobile project dependencies and scripts exist | `cat package.json \|\| find . -name "App.tsx" -o -name "App.js"` | ... | Y/N |
-| Local emulator creation and mobile test scripts are present | `find scripts/ -name "*emulator*" -o -name "*publish*"` | ... | Y/N |
+| Target mobile project dependencies and scripts exist | `cat package.json \|\| find . -name "App.tsx" -o -name "App.js"` | ... | run the check command and paste output |
+| Local emulator creation and mobile test scripts are present | `find scripts/ -name "*emulator*" -o -name "*publish*"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Mobile Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,17 +18,12 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Validate React Native UI structures, styling layouts, and module packaging imports | Verify that native bundle settings, asset linkages, and platform-specific code divisions are clean.
 2. CONSTRUCT | Set up local-only mobile E2E test scripts utilizing Maestro YAML actions or Midscene.js | Confirm tests execute successfully against local Android Emulators or iOS Simulators.
 3. DEPLOY | Configure automated App Store and Google Play publishing profiles via EAS or Fastlane | Ensure release configurations, bundle targets, and credential secrets are securely segmented.
-4. SYNC | Save specifications as lowercase kebab-case under docs/ and run post-skill sync-obsidian hooks | Verify that documentation links propagate cleanly to the Shared Obsidian Vault [5, 6].
 
 ## Common Mistakes Checklist
 - **Hardcoding Local API Endpoints**: Specifying hardcoded `localhost` inside API fetch definitions instead of utilizing environment-specific loopbacks (such as `10.0.2.2` for Android Emulators), preventing dynamic server access.
 - **Unpinned Native Package Boundaries**: Specifying dynamic gradle or cocoapods dependencies in mobile configs, triggering native compilation crashes when libraries update.
 - **Testing against SaaS Cloud Device Pools**: Routing test suites through expensive SaaS visual cloud networks instead of running localized Maestro E2E profiles against local emulators.
 - **Non-Compliant Documentation File Names**: Storing mobile specs, fastlane configurations, or testing logs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/04-testing/MobileTest.md` instead of `docs/04-testing/mobile-test.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the active React Native workspace configurations
 ```bash
@@ -58,4 +53,3 @@ appId: com.forgewright.mobileclient
 # Run local Maestro test suite
 maestro test .maestro/login-flow.yaml
 ```
-

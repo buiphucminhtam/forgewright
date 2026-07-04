@@ -7,30 +7,25 @@ version: 1.0.0
 # Prompt Optimizer (LITE)
 
 ## SOLVE Step 2: GROUND (Prompt Optimizer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Token tracking and budget alerts are active | `cat .forgewright/budget.yaml` | ... | Y/N |
-| Local token trackers and usage logs are initialized | `ls -la ~/.forgewright/usage/` | ... | Y/N |
-| Context Offload (DeerFlow IV) and Tool Sandbox thresholds are set | `cat .production-grade.yaml` | ... | Y/N |
+| Token tracking and budget alerts are active | `cat .forgewright/budget.yaml` | ... | run the check command and paste output |
+| Local token trackers and usage logs are initialized | `ls -la ~/.forgewright/usage/` | ... | run the check command and paste output |
+| Context Offload (DeerFlow IV) and Tool Sandbox thresholds are set | `cat .production-grade.yaml` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Prompt Optimizer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. AUDIT | Scan active agent workflows for redundant queries and heavy payloads | Compare active outputs against previous execution hashes to identify token waste.
 2. COMPRESS | Route large tool execution outputs (>1200 tokens) to offloaded references | Replace bulky text with a short trace handle under `.forgewright/offload/`.
-3. DEDUP | Enforce SHA-256 hashing to eliminate duplicate query iterations | Ensure duplicate calls return cached responses instead of invoking remote API calls [2, 6].
-4. SYNC | Compile token optimization reports and synchronize docs with Obsidian | Verify file names are lowercase kebab-case and run post-skill hooks to link documentation [5, 7].
+3. DEDUP | Enforce SHA-256 hashing to eliminate duplicate query iterations | Ensure duplicate calls return cached responses instead of invoking remote API calls.
 
 ## Common Mistakes Checklist
-- **Context Window Flooding**: Passing entire code files or raw db schemas directly into active prompt contexts instead of using minimal signatures or progressive disclosure [2, 8].
+- **Context Window Flooding**: Passing entire code files or raw db schemas directly into active prompt contexts instead of using minimal signatures or progressive disclosure.
 - **Bypassing the 1200-Token Threshold**: Permitting custom tool scripts to feed unchecked outputs directly to the model context without offloading traces to disk.
 - **Insecure Few-Shot Examples**: Hardcoding credentials, API keys, or database URIs inside system prompt templates instead of using strict regex redactions.
-- **Unverified Token Budget Execution**: Running long-running parallel workflows without enabling budget track gates or validating `.forgewright/budget.yaml` limits [3, 8].
+- **Unverified Token Budget Execution**: Running long-running parallel workflows without enabling budget track gates or validating `.forgewright/budget.yaml` limits.
 - **Non-Compliant Report Names**: Storing cost reports or optimization logs under `docs/` using CamelCase, spaces, or absolute paths instead of lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground prompt configurations and verify token tracking status
 ```bash
@@ -51,4 +46,3 @@ node scripts/simulate-heavy-tool.js
 node scripts/run-prompt.js --query "Explain the ASIP feedback loop"
 node scripts/run-prompt.js --query "Explain the ASIP feedback loop"
 ```
-

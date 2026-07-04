@@ -7,10 +7,10 @@ version: 1.0.0
 # 3D Spatial Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (3D Spatial Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target scene assets/prefabs exist | `ls Assets/Prefabs` / engine tools | ... | Y/N |
-| Metric system of target engine is known | Engine docs (Unity: Y-up LHS, Godot: Y-up RHS, Unreal: Z-up LHS) | ... | Y/N |
+| Target scene assets/prefabs exist | `ls Assets/Prefabs` / engine tools | ... | run the check command and paste output |
+| Metric system of target engine is known | Engine docs (Unity: Y-up LHS, Godot: Y-up RHS, Unreal: Z-up LHS) | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (3D Spatial Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,7 +18,6 @@ Format: `n. ACTION | TARGET | CHECK`
 1. BLOCKOUT | Construct layout using primitive metrics aligned to humanoid scale (1.75m) | Verify door clearance (2.2m) and corridor height (3m).
 2. TRANSFORMS | Solve parent-child scene graph matrix transformations | Recalculate local transforms relative to new parents: $T'_L = T_G^{-1} \cdot T_{world\_global\_of\_L}$.
 3. OPTIMIZE | Configure culling volumes, static batching, and LOD cutoffs | Verify draw call budget and LOD distance thresholds.
-4. SYNC | Write configuration to `.forgewright/3d-spatial-engineer/` and sync to Obsidian | Write kebab-case documentation summaries.
 
 ## Common Mistakes Checklist
 - **Cauldrons of Space**: Creating layouts that are cavernous or out of proportion with the player scale. Snap to standard humanoid scales (1.75m).
@@ -26,10 +25,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Disjointed Scene Graph**: Moving child objects across parents without recalculating offset transforms relative to the new parent's inverse global transform.
 - **Draw Call Splitting**: Generating separate materials for similar meshes instead of combining textures into atlases and batching draw calls.
 - **Missing Occlusion Baking**: Letting the GPU render hidden interiors; bake occlusion cells or trigger levels dynamically.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Recalculate transform matrix on parent change
 ```gdscript

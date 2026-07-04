@@ -7,11 +7,11 @@ version: 1.0.0
 # Physics Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Physics Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Engine's gravity and physics delta-time parameters are known | Check project settings / `which` engine | ... | Y/N |
-| Collision matrix configuration is documented | Read `physics-matrix.md` or editor settings | ... | Y/N |
-| Rigidbody types (Dynamic, Kinematic, Static) are assigned correctly | Verify component definitions in code | ... | Y/N |
+| Engine's gravity and physics delta-time parameters are known | Check project settings / `which` engine | ... | run the check command and paste output |
+| Collision matrix configuration is documented | Read `physics-matrix.md` or editor settings | ... | run the check command and paste output |
+| Rigidbody types (Dynamic, Kinematic, Static) are assigned correctly | Verify component definitions in code | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Physics Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -26,10 +26,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Missing Delta Multiplying**: Accumulating forces or velocity transitions without multiplying by the fixed delta step.
 - **Unconstrained Character Controller Rotation**: Forgetting to lock rotation axes (X, Z) on character bodies, causing them to fall over when hitting obstacles.
 - **Raycast Performance Degradation**: Executing raycasts with infinite length and without specifying target layer masks.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Unity C# Framerate-Independent Movement
 ```csharp

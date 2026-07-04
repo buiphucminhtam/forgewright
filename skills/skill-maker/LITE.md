@@ -7,10 +7,10 @@ version: 1.0.0
 # Skill Maker (LITE)
 
 ## SOLVE Step 2: GROUND (Skill Maker Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Master skills directory and existing custom skills are indexed | `find skills/ -maxdepth 2 -name "SKILL.md" \| sort` | ... | Y/N |
-| Project-specific tech stack and base configuration are loaded | `cat .forgewright/project-profile.json` | ... | Y/N |
+| Master skills directory and existing custom skills are indexed | `find skills/ -maxdepth 2 -name "SKILL.md" \| sort` | ... | run the check command and paste output |
+| Project-specific tech stack and base configuration are loaded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Skill Maker Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,17 +18,12 @@ Format: `n. ACTION | TARGET | CHECK`
 1. SCAFFOLD | Construct the target skill directory and the initial compliant `SKILL.md` template | Verify that the target path under `skills/` is constructed with a valid markdown header.
 2. VALIDATE | Run semantic formatting audits to verify naming conventions and check for placeholders | Verify that all files use lowercase kebab-case and contain no unreplaced template bracket variables.
 3. REGISTER | Add the newly created custom skill to the global agent skills registry | Verify that the orchestrator loads the new skill definition without schema parsing errors.
-4. SYNC | Export skill specifications to Obsidian and trigger the post-skill sync hook | Run standard sync scripts to establish absolute symlinks under the Shared Obsidian Vault [5, 6].
 
 ## Common Mistakes Checklist
 - **Incorrect Directory Structure**: Creating new skills outside the standard `skills/` directory or omitting the mandatory `SKILL.md` entrypoint file.
 - **CamelCase or Space-Filled Naming**: Using spaces, uppercase characters, or CamelCase in folder or skill names instead of strictly lowercase kebab-case (e.g., `skills/MyNewSkill` instead of `skills/my-new-skill`).
 - **Unresolved Template Placeholders**: Leaving unresolved template brackets (`{{variable}}` or `<placeholder>`) inside the active markdown profile, causing agent parsing crashes.
 - **Dangling Tool Mappings**: Declaring local executable CLI commands or script tools in the skill description without verifying their paths are globally mapped or in the sandbox.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground the active skills setup and verify the project profile
 ```bash
@@ -72,4 +67,3 @@ if (/[A-Z\s]/.test(skillDir)) {
 console.log('Success: Skill name check passed.');
 "
 ```
-

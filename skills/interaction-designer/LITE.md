@@ -7,11 +7,11 @@ version: 1.0.0
 # Interaction Designer (LITE)
 
 ## SOLVE Step 2: GROUND (Interaction Designer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target frontend libraries and styling frameworks are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("tailwind\|sass\|styled-components\|framer-motion")))'` | ... | Y/N |
-| Existing visual guidelines, mockups, or wireframe specs are indexed | `find docs/ -name "*design*" -o -name "*ux*" -o -name "*wireframe*"` | ... | Y/N |
-| Visual regression test (VRT) suites or screenshots are configured | `cat playwright.config.ts \|\| ls -la tests/` | ... | Y/N |
+| Target frontend libraries and styling frameworks are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("tailwind\|sass\|styled-components\|framer-motion")))'` | ... | run the check command and paste output |
+| Existing visual guidelines, mockups, or wireframe specs are indexed | `find docs/ -name "*design*" -o -name "*ux*" -o -name "*wireframe*"` | ... | run the check command and paste output |
+| Visual regression test (VRT) suites or screenshots are configured | `cat playwright.config.ts \|\| ls -la tests/` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Interaction Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -19,16 +19,11 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Scan target component layouts, responsive breakpoints, and WCAG accessibility tags | Verify contrast ratios pass AAA/AA standards and screen elements utilize appropriate role and aria-label attributes.
 2. CONSTRUCT | Implement interactive components utilizing responsive styling, state machines, and animations | Ensure proper loading indicators, disabled actions during API calls, and error boundaries are configured.
 3. MAP | Build comprehensive visual sequence maps, user journeys, or Mermaid sequence charts | Confirm execution paths show intuitive user interactions and are saved using kebab-case under docs/.
-4. SYNC | Propagate design specifications and interface documentation to Obsidian | Run post-skill synchronization scripts to establish absolute symlinks under the Shared Obsidian Vault [5, 6].
 
 ## Common Mistakes Checklist
 - **Keyboard Traps & Missing ARIA Tags**: Creating custom modal dialogs, slide-overs, or interactive tabs without focus traps or correct `aria-expanded` and `aria-label` properties, breaking screen readers.
 - **Unoptimized CLS (Cumulative Layout Shift)**: Rendering dynamic components without pre-allocating height or bounding box dimensions, causing sudden jumps and layout shifts on load.
 - **Non-Compliant File Structures**: Creating design assets, style guides, or interface wireframes under `docs/` using CamelCase, spaces, or absolute paths instead of strictly lowercase kebab-case (e.g., `docs/01-product/InteractiveCard.md` instead of `docs/01-product/interactive-card.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground target styling frameworks and project status
 ```bash
@@ -92,4 +87,3 @@ export const InteractiveAccordion: React.FC<AccordionProps> = ({ title, content 
   );
 };
 ```
-

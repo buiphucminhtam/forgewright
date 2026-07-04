@@ -7,10 +7,10 @@ version: 1.0.0
 # Unity Shader Artist (LITE)
 
 ## SOLVE Step 2: GROUND (Unity Shader Artist Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target render pipeline (URP, HDRP, or Built-in) is defined in dependencies | `cat Packages/manifest.json \| grep -E "(render-pipeline\|core-pipeline)"` | ... | Y/N |
-| Existing shader assets, HLSL libraries, or Shader Graphs are indexed | `find Assets/ -name "*.shader" -o -name "*.hlsl" -o -name "*.shadergraph"` | ... | Y/N |
+| Target render pipeline (URP, HDRP, or Built-in) is defined in dependencies | `cat Packages/manifest.json \| grep -E "(render-pipeline\|core-pipeline)"` | ... | run the check command and paste output |
+| Existing shader assets, HLSL libraries, or Shader Graphs are indexed | `find Assets/ -name "*.shader" -o -name "*.hlsl" -o -name "*.shadergraph"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Unity Shader Artist Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,7 +18,6 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Analyze shader property mappings, rendering passes, and blending states | Verify properties exist in the inspector, subshader tags match the target pipeline queue (e.g., Transparent), and fallbacks are set.
 2. COMPILE | Implement vertex and fragment shading operations in HLSL/ShaderLab | Ensure math calculations use optimized GPU operations and avoid dynamic branch conditions inside the fragment kernel.
 3. OPTIMIZE | Reduce register pressure and multi-pass draw overhead via precision scoping | Confirm floating-point precisions (float, half, fixed) are bounded correctly to maximize performance on mobile/XR devices.
-4. SYNC | Write compliant kebab-case architecture logs under docs/ and run sync hooks | Confirm file name compliance (lowercase kebab-case) and run sync script to update the Shared Obsidian Vault [2, 4].
 
 ## Common Mistakes Checklist
 - **Magenta Shader Fallback Failure**: Attempting to compile legacy Built-in Multi-pass shaders in modern Universal Render Pipeline (URP) configurations, resulting in immediate renderer failures and hot pink/magenta materials.
@@ -26,10 +25,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Unbounded Precision Bloat**: Standardizing all HLSL vectors as 32-bit `float` instead of utilizing `half` (16-bit) for normals/UVs or `fixed` (11-bit) for colors, leading to high register usage and memory bandwidth bottlenecks.
 - **Ignoring Depth Testing & Queue Sorting**: Omitting the correct `"Queue"="Transparent"` tag or `"IgnoreProjector"="True"` settings on transparent materials, producing depth sorting bugs.
 - **Non-Compliant File Names**: Storing custom shader specifications or architectural logs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/02-architecture/PostProcessShader.md` instead of `docs/02-architecture/post-process-shader.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground active rendering pipeline configuration
 ```bash
@@ -93,7 +88,7 @@ Shader "Custom/URPHologram"
                 // Transform position to clip space
                 VertexPositionInputs positionInputs = GetVertexPositionInputs(input.positionOS.xyz);
                 output.positionCS = positionInputs.positionCS;
-                
+
                 // Safe: Transform normal and track view direction
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.viewDirWS = GetWorldSpaceViewDir(TransformObjectToWorld(input.positionOS.xyz).xyz);
@@ -104,7 +99,7 @@ Shader "Custom/URPHologram"
             half4 frag(Varyings input) : SV_Target
             {
                 half4 texColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
-                
+
                 // Vector-safe calculations for Fresnel effect (Fringe power)
                 half3 normal = normalize(input.normalWS);
                 half3 viewDir = normalize(input.viewDirWS);
@@ -122,4 +117,3 @@ Shader "Custom/URPHologram"
     FallBack "Hidden/Universal Render Pipeline/FallbackError"
 }
 ```
-

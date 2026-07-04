@@ -7,12 +7,12 @@ version: 1.0.0
 # Technical Writer (LITE)
 
 ## SOLVE Step 2: GROUND (Technical Writer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Centralized Shared Obsidian Vault destination path is active or configured | `echo $OBSIDIAN_VAULT_PATH` | ... | Y/N |
-| Numeric-prefixed standardized documentation directories exist under docs/ | `find docs/ -maxdepth 1 -type d \| sort` | ... | Y/N |
-| Standard documentation layout templates are available for alignment | `find docs/ -name "TEMPLATE*.md"` | ... | Y/N |
-| Post-skill synchronization scripts are installed and executable | `ls -la scripts/sync-obsidian.sh` | ... | Y/N |
+| Centralized Shared Obsidian Vault destination path is active or configured | `echo $OBSIDIAN_VAULT_PATH` | ... | run the check command and paste output |
+| Numeric-prefixed standardized documentation directories exist under docs/ | `find docs/ -maxdepth 1 -type d \| sort` | ... | run the check command and paste output |
+| Standard documentation layout templates are available for alignment | `find docs/ -name "TEMPLATE*.md"` | ... | run the check command and paste output |
+| Post-skill synchronization scripts are installed and executable | `ls -la scripts/sync-obsidian.sh` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Technical Writer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -28,10 +28,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Hard Copy Duplication**: Copying raw files physically to the Shared Obsidian Vault, causing context duplication and sync drift, instead of employing absolute symlinks.
 - **Template Omission**: Creating architectural logs or technical specifications from scratch without inheriting sections from standard repository templates.
 - **Unverified Broken Links**: Adding cross-document file links or relative images without verifying paths, breaking rendering on Obsidian Graph Views.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground existing documentation directory structure and templates
 ```bash
@@ -59,4 +55,3 @@ We will migrate memory storage layers to an isolated SQLite database using `flux
 - Concurrent and transaction-safe operations.
 EOF
 ```
-

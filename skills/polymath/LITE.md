@@ -7,28 +7,23 @@ version: 1.0.0
 # Polymath (LITE)
 
 ## SOLVE Step 2: GROUND (Polymath Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target documentation, source articles, or RAG assets are indexed | `find docs/ -name "*.md" \| sort` | ... | Y/N |
-| Local NotebookLM compiler or CLI tools are installed and active | `nlm --version` | ... | Y/N |
+| Target documentation, source articles, or RAG assets are indexed | `find docs/ -name "*.md" \| sort` | ... | run the check command and paste output |
+| Local NotebookLM compiler or CLI tools are installed and active | `nlm --version` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Polymath Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. INGEST | Scan and validate target research inputs, schemas, or raw markdown repositories | Verify input files conform to standard folder structures and lowercase kebab-case naming limits.
 2. SYNTHESIZE | Execute multi-source semantic cross-referencing and RAG retrieval queries | Ensure compiled conclusions are strictly grounded in source passages with explicit citations.
-3. CRITIQUE | Run the Skeptic Agent confidence scorer and error calibrations on compiled logs | Validate that output calibrations meet Expected Calibration Error (ECE) metrics of `< 0.10`.
-4. SYNC | Propagate distilled research logs to `docs/05-operations/` and trigger sync hook | Run standard post-skill sync scripts to establish absolute symlinks to Obsidian.
+3. CRITIQUE | Run the Skeptic Agent confidence scorer and error calibrations on compiled logs | Validate that output calibrations meet Expected Calibration Error (
 
 ## Common Mistakes Checklist
 - **Missing Citation Mappings**: Delivering compiled research or answering deep queries without specific, traceable citation links, violating core source-grounding rules.
 - **Context Window Flooding**: Parsing massive raw source transcripts or entire PDFs directly into the chat context instead of using progressive summaries or offloading traces.
 - **Skeptic Gate Bypass**: Accepting synthesis reports that skip confidence scoring, allowing uncalibrated or hallucinated model outputs to pass.
 - **Non-Compliant Document Naming**: Storing research logs, findings, or bibliographies under `docs/` using CamelCase, spaces, or uppercase naming patterns instead of strictly lowercase kebab-case (e.g., `RAG-analysis.md` instead of `rag-analysis.md`).
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Ground RAG files and CLI tooling
 ```bash
@@ -59,4 +54,3 @@ Comparative analysis of memory scaling patterns in long-running AI sessions.
 - .forgewright/lessons.md
 EOF
 ```
-

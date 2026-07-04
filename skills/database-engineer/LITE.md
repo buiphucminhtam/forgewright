@@ -8,12 +8,12 @@ tags: [database, postgresql, mysql, mongodb, redis, schema, indexing, migration,
 # Database Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Database Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Database dialect / version | Connect to DB and run version query, or check config | ... | Y/N |
-| Migration engine is set up | Check `package.json` or schema directory structure | ... | Y/N |
-| Slow query log or query plan | Run `EXPLAIN` on the target SQL query | ... | Y/N |
-| Indexes present on table | Query db system tables/information schema | ... | Y/N |
+| Database dialect / version | Connect to DB and run version query, or check config | ... | run the check command and paste output |
+| Migration engine is set up | Check `package.json` or schema directory structure | ... | run the check command and paste output |
+| Slow query log or query plan | Run `EXPLAIN` on the target SQL query | ... | run the check command and paste output |
+| Indexes present on table | Query db system tables/information schema | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Database Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -23,10 +23,6 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (create composite index) | TARGET (prisma/schema.prisma) | CHECK (npx prisma migrate dev)`
 
 ---
-
-## Worked Example: Optimizing Slow Tenant Queries
-> [!NOTE]
-> The following example is illustrative.
 
 ### 1. UNDERSTAND
 - **Task**: Optimize a slow query on the `orders` table filtering by `tenant_id` and sorted by `created_at` DESC.

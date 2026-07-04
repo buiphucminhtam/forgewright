@@ -70,16 +70,25 @@ def validate_table(table_lines, is_ground_table):
         
     if is_ground_table:
         for idx, (line_num, count, line) in enumerate(pipe_counts):
-            if idx in (0, 1):
-                continue
             cells = [c.strip() for c in re.split(r'(?<!\\)(?<!\|)\|(?!\|)', line)]
-            if len(cells) >= 5:
+            if idx == 0:
+                header_text = " | ".join(cells).lower()
+                if "script-produced evidence" not in header_text:
+                    errors.append(
+                        f"Ground table line {line_num} must use 'Script-produced evidence' instead of a self-attested VERIFIED? column."
+                    )
+                continue
+            if idx == 1:
+                continue
+            if len(cells) >= 6:
                 res_cell = cells[3]  # 3rd cell in markdown (| is index 0, so cells[0] is empty if line starts with |)
-                ver_cell = cells[4]  # 4th cell
+                evidence_cell = cells[4]  # 4th cell
                 if res_cell not in ('...', ''):
                     errors.append(f"Ground table line {line_num} asserts result '{res_cell}' instead of using '...' or empty.")
-                if ver_cell not in ('Y/N', ''):
-                    errors.append(f"Ground table line {line_num} has verified flag '{ver_cell}' instead of 'Y/N' or empty.")
+                if evidence_cell in ('Y', 'N', 'Y/N', 'true', 'false', 'VERIFIED'):
+                    errors.append(
+                        f"Ground table line {line_num} has self-attested evidence '{evidence_cell}' instead of script-produced evidence instructions."
+                    )
                     
     return errors
 

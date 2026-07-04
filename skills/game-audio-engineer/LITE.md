@@ -7,10 +7,10 @@ version: 1.0.0
 # Game Audio Engineer (LITE)
 
 ## SOLVE Step 2: GROUND (Game Audio Engineer Domain Slots)
-| Assumption | Check command / file read | Result | VERIFIED? |
+| Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target game framework (Phaser, Three.js) or Web Audio library is configured | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | Y/N |
-| Audio assets directory structure exists with compatible file formats | `find public/assets/audio/ -name "*.mp3" -o -name "*.ogg" -o -name "*.wav"` | ... | Y/N |
+| Target game framework (Phaser, Three.js) or Web Audio library is configured | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | run the check command and paste output |
+| Audio assets directory structure exists with compatible file formats | `find public/assets/audio/ -name "*.mp3" -o -name "*.ogg" -o -name "*.wav"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Game Audio Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -18,16 +18,11 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Verify asset compression rates, stereo/mono profiles, and memory footprint | Confirm that background tracks use optimized `.mp3`/`.ogg` compressions, and 3D spatial sounds use mono sources for accurate panning.
 2. ORCHESTRATE | Build centralized, pooled volume mixers and dynamic audio managers | Verify sound allocation uses recycled audio instances or channels to prevent high Web Audio API overhead.
 3. ATTENUATE | Configure spatial audio listeners and 3D positional panners in-engine | Ensure rolloff curves, max/ref distances, and listener positions are updated dynamically relative to the camera vector.
-4. SYNC | Propagate audio configuration blueprints and testing logs to Obsidian | Execute post-skill synchronization scripts to establish absolute symlinks for doc alignments [5, 6].
 
 ## Common Mistakes Checklist
 - **Leaked Spatial Nodes**: Failing to disconnect and dispose of custom `PannerNode`, `GainNode`, or Web Audio buffers when unloading sound objects, causing GPU/CPU execution stutter and Web Audio memory leaks.
 - **Multichannel 3D Spatial Audio**: Attempting to play stereo or multichannel audio assets as spatial 3D positional sound sources, preventing correct panning calculations (which require mono sources).
 - **Non-Compliant File Names**: Storing sound architecture specs or design reports under `docs/` using CamelCase, spaces, or absolute paths instead of strictly lowercase kebab-case.
-
-## Worked Example
-> [!NOTE]
-> The following example is illustrative.
 
 ### Step 1: Verify audio asset layout and project profile
 ```bash
@@ -59,7 +54,7 @@ export class SpatialSoundManager {
       this.panner.setMaxDistance(15.0);
       this.panner.setRolloffFactor(1.5);
       this.panner.setLoop(true);
-      
+
       mesh.add(this.panner);
       console.log(`[AUDIO] Positioned spatial sound attached to mesh.`);
     });
@@ -85,4 +80,3 @@ export class SpatialSoundManager {
   }
 }
 ```
-
