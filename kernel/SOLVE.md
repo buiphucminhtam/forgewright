@@ -27,7 +27,7 @@ Plan least-to-most. EVERY item must have all three fields:
 `n. ACTION (one concrete action) | TARGET (exact file/symbol) | CHECK (one command whose exit code proves this item done)`
 
 **B. QUESTION PATH (Codebase queries, non-edit)**
-`n. QUESTION | SEARCH COMMAND (e.g., grep_search) | SYNTHESIS EXPECTATION`
+`n. QUESTION | SEARCH COMMAND (e.g., rg "pattern" src/) | SYNTHESIS EXPECTATION`
 
 **C. DESIGN PATH (Architecture/Review, non-edit)**
 `n. COMPONENT | ANALYSIS SCRIPT/COMMAND | DESIGN CONSTRAINT`

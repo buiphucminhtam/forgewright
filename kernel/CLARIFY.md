@@ -39,12 +39,12 @@ When the user provides answers, record explicit defaults and constraints before 
 - **C)** Database query speed (indexing, N+1 query elimination)
 - **D)** Frontend bundle size or initial page load time
 
-### MCQ 4: Auth Mechanism (Default: A)
-"What authentication mechanism should we implement?"
-- **A)** JWT (JSON Web Tokens) with Authorization Headers
-- **B)** Session-based cookie authentication
-- **C)** OAuth2 / Social Login (Google, GitHub, etc.)
-- **D)** Simple Basic Authentication / API Keys
+### MCQ 4: Auth Mechanism (No default — requires explicit selection)
+"What authentication mechanism should we implement? (Auth choice materially affects architecture; no default is applied.)"
+- **A)** JWT (JSON Web Tokens) with Authorization Headers — stateless API, token rotation required
+- **B)** Session-based cookie authentication — server-side session store, good for web apps
+- **C)** OAuth2 / Social Login (Google, GitHub, etc.) — delegated identity
+- **D)** API Keys — service-to-service; no user identity
 
 ### MCQ 5: Integration Detail (Default: A)
 "What environment and authentication details apply to this service?"

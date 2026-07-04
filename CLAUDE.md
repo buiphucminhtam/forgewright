@@ -23,8 +23,20 @@ You are a software engineering agent. Follow this file exactly.
 1. Match the request against the trigger table in CLARIFY section. If vague, ask the corresponding MCQ immediately.
 2. Restate the task in one sentence. If you cannot, ask ONE clarifying question.
 3. Classify the task: `DEBUG` | `FEATURE` | `REVIEW` | `TEST` | `SHIP` | `OTHER`.
-4. Load AT MOST ONE skill overlay matching the class from INDEX section. Do not open other skills.
+4. Select skill overlay using the compact routing table below. **Do NOT load INDEX.md at boot** — only load the full index if no compact match applies and a skill must be dispatched.
 5. Follow the SOLVE reasoning loop in SOLVE section.
+
+## Compact Skill Routing (Boot-time — no INDEX load required)
+| Task class | Skill overlay path |
+|---|---|
+| `DEBUG` | `skills/debugger/LITE.md` |
+| `FEATURE` | `skills/software-engineer/LITE.md` |
+| `REVIEW` | `skills/code-reviewer/LITE.md` |
+| `TEST` | `skills/qa-engineer/LITE.md` |
+| `SHIP` | `skills/devops/LITE.md` |
+| `OTHER` | *(none — proceed without overlay)* |
+
+> **On-demand only**: Read `kernel/INDEX.md` only when the compact table has no match and a specialized skill must be routed. This keeps the boot payload within the 7k token budget.
 
 Memory: if `.forgewright/memory-bank/activeContext.md` exists, skim it (≤300 tokens).
 <!-- END OF ENTRY.md -->
@@ -59,7 +71,7 @@ Plan least-to-most. EVERY item must have all three fields:
 `n. ACTION (one concrete action) | TARGET (exact file/symbol) | CHECK (one command whose exit code proves this item done)`
 
 **B. QUESTION PATH (Codebase queries, non-edit)**
-`n. QUESTION | SEARCH COMMAND (e.g., grep_search) | SYNTHESIS EXPECTATION`
+`n. QUESTION | SEARCH COMMAND (e.g., rg "pattern" src/) | SYNTHESIS EXPECTATION`
 
 **C. DESIGN PATH (Architecture/Review, non-edit)**
 `n. COMPONENT | ANALYSIS SCRIPT/COMMAND | DESIGN CONSTRAINT`
@@ -218,12 +230,12 @@ When the user provides answers, record explicit defaults and constraints before 
 - **C)** Database query speed (indexing, N+1 query elimination)
 - **D)** Frontend bundle size or initial page load time
 
-### MCQ 4: Auth Mechanism (Default: A)
-"What authentication mechanism should we implement?"
-- **A)** JWT (JSON Web Tokens) with Authorization Headers
-- **B)** Session-based cookie authentication
-- **C)** OAuth2 / Social Login (Google, GitHub, etc.)
-- **D)** Simple Basic Authentication / API Keys
+### MCQ 4: Auth Mechanism (No default — requires explicit selection)
+"What authentication mechanism should we implement? (Auth choice materially affects architecture; no default is applied.)"
+- **A)** JWT (JSON Web Tokens) with Authorization Headers — stateless API, token rotation required
+- **B)** Session-based cookie authentication — server-side session store, good for web apps
+- **C)** OAuth2 / Social Login (Google, GitHub, etc.) — delegated identity
+- **D)** API Keys — service-to-service; no user identity
 
 ### MCQ 5: Integration Detail (Default: A)
 "What environment and authentication details apply to this service?"
