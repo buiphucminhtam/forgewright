@@ -7,4 +7,4 @@ hooks = true
 matcher = "*"
 [[hooks.Stop.hooks]]
 type = "command"
-command = "scripts/lite/verify-gate.sh"
+command = "bash scripts/lite/verify-gate.sh --platform CODEX"

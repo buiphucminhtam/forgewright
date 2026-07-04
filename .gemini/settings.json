@@ -1,5 +1,7 @@
 {
   "hooks": {
-    "AfterAgent": "scripts/lite/verify-gate.sh"
+    "AfterAgent": [
+      "bash scripts/lite/verify-gate.sh --platform GEMINI"
+    ]
   }
 }

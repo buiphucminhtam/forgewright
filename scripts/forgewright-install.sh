@@ -352,34 +352,76 @@ install_hooks() {
         return
     fi
 
+    local gate_script="$FORGEWRIGHT_DIR/scripts/lite/verify-gate.sh"
+
     # Claude Code Settings
-    if [[ -f "$source_dir/.claude/settings.json" ]]; then
-        mkdir -p "$HOME/.claude"
-        cp "$source_dir/.claude/settings.json" "$HOME/.claude/settings.json"
-        log_success "Installed .claude/settings.json"
-    fi
+    mkdir -p "$HOME/.claude"
+    node -e "
+var fs = require('fs');
+var file = '$HOME/.claude/settings.json';
+var cfg = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+if (!cfg.hooks) cfg.hooks = {};
+cfg.hooks.stop = 'bash $gate_script --platform CLAUDE';
+fs.writeFileSync(file, JSON.stringify(cfg, null, 2));
+"
+    log_success "Installed .claude/settings.json"
 
     # Gemini Settings
-    if [[ -f "$source_dir/.gemini/settings.json" ]]; then
-        mkdir -p "$HOME/.gemini"
-        cp "$source_dir/.gemini/settings.json" "$HOME/.gemini/settings.json"
-        log_success "Installed .gemini/settings.json"
-    fi
+    mkdir -p "$HOME/.gemini"
+    node -e "
+var fs = require('fs');
+var file = '$HOME/.gemini/settings.json';
+var cfg = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+if (!cfg.hooks) cfg.hooks = {};
+cfg.hooks.AfterAgent = ['bash $gate_script --platform GEMINI'];
+fs.writeFileSync(file, JSON.stringify(cfg, null, 2));
+"
+    log_success "Installed .gemini/settings.json"
 
     # Cursor Hooks
-    if [[ -f "$source_dir/.cursor/hooks.json" ]]; then
-        mkdir -p "$HOME/.cursor"
-        cp "$source_dir/.cursor/hooks.json" "$HOME/.cursor/hooks.json"
-        log_success "Installed .cursor/hooks.json"
-    fi
+    mkdir -p "$HOME/.cursor"
+    node -e "
+var fs = require('fs');
+var file = '$HOME/.cursor/hooks.json';
+var cfg = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+if (!cfg.hooks) cfg.hooks = {};
+cfg.hooks.stop = 'bash $gate_script --platform CURSOR';
+fs.writeFileSync(file, JSON.stringify(cfg, null, 2));
+"
+    log_success "Installed .cursor/hooks.json"
 
     # Codex Config
-    if [[ -f "$source_dir/.codex/config.toml" ]]; then
-        mkdir -p "$HOME/.codex"
-        cp "$source_dir/.codex/config.toml" "$HOME/.codex/config.toml"
-        log_success "Installed .codex/config.toml"
+    mkdir -p "$HOME/.codex"
+    local codex_file="$HOME/.codex/config.toml"
+    if [[ ! -f "$codex_file" ]]; then
+        cat <<EOF > "$codex_file"
+[features]
+hooks = true
+
+[hooks]
+
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+command = "bash $gate_script --platform CODEX"
+EOF
+    elif ! grep -q "verify-gate.sh" "$codex_file" 2>/dev/null; then
+        cat <<EOF >> "$codex_file"
+
+[features]
+hooks = true
+
+[hooks]
+
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+command = "bash $gate_script --platform CODEX"
+EOF
     fi
-}
+    log_success "Installed .codex/config.toml"
     echo ""
 }
 

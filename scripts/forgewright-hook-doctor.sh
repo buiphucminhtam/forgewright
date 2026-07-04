@@ -190,7 +190,7 @@ GATE_SCRIPT="${PROJECT_ROOT}/scripts/lite/verify-gate.sh"
 CLAUDE_SETTINGS="${HOME}/.claude/settings.json"
 if [[ -f "$CLAUDE_SETTINGS" ]]; then
     log_pass "Claude Code settings file exists"
-    if grep -q "verify-gate.sh" "$CLAUDE_SETTINGS" 2>/dev/null; then
+    if grep -q "verify-gate.sh --platform CLAUDE" "$CLAUDE_SETTINGS" 2>/dev/null; then
         log_pass "Claude stop hook configured with verify-gate.sh"
     else
         log_warn "Claude stop hook NOT configured with verify-gate.sh"
@@ -200,7 +200,7 @@ if [[ -f "$CLAUDE_SETTINGS" ]]; then
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$CLAUDE_SETTINGS', 'utf8'));
 if (!cfg.hooks) cfg.hooks = {};
-cfg.hooks.stop = '$GATE_SCRIPT';
+cfg.hooks.stop = 'bash $GATE_SCRIPT --platform CLAUDE';
 fs.writeFileSync('$CLAUDE_SETTINGS', JSON.stringify(cfg, null, 2));
 "
             log_info "  → Fixed: Added stop hook to Claude settings"
@@ -213,7 +213,7 @@ else
         cat <<EOF > "$CLAUDE_SETTINGS"
 {
   "hooks": {
-    "stop": "$GATE_SCRIPT"
+    "stop": "bash $GATE_SCRIPT --platform CLAUDE"
   }
 }
 EOF
@@ -225,20 +225,21 @@ fi
 GEMINI_SETTINGS="${HOME}/.gemini/settings.json"
 if [[ -f "$GEMINI_SETTINGS" ]]; then
     log_pass "Gemini settings file exists"
-    if grep -q "verify-gate.sh" "$GEMINI_SETTINGS" 2>/dev/null; then
-        log_pass "Gemini AfterAgent hook configured with verify-gate.sh"
+    is_array=$(node -e "var c=JSON.parse(require('fs').readFileSync('$GEMINI_SETTINGS')); console.log(Array.isArray(c.hooks && c.hooks.AfterAgent));" 2>/dev/null || echo "false")
+    if [[ "$is_array" == "true" ]] && grep -q "verify-gate.sh --platform GEMINI" "$GEMINI_SETTINGS" 2>/dev/null; then
+        log_pass "Gemini AfterAgent hook is array and configured correctly"
     else
-        log_warn "Gemini AfterAgent hook NOT configured with verify-gate.sh"
+        log_warn "Gemini AfterAgent hook NOT configured correctly (must be array)"
         if [[ "$AUTO_FIX" == "true" ]]; then
             cp "$GEMINI_SETTINGS" "${GEMINI_SETTINGS}.bak.$(date +%Y%m%d%H%M%S)"
             node -e "
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$GEMINI_SETTINGS', 'utf8'));
 if (!cfg.hooks) cfg.hooks = {};
-cfg.hooks.AfterAgent = '$GATE_SCRIPT';
+cfg.hooks.AfterAgent = ['bash $GATE_SCRIPT --platform GEMINI'];
 fs.writeFileSync('$GEMINI_SETTINGS', JSON.stringify(cfg, null, 2));
 "
-            log_info "  → Fixed: Added AfterAgent hook to Gemini settings"
+            log_info "  → Fixed: Added AfterAgent hook array to Gemini settings"
         fi
     fi
 else
@@ -248,7 +249,9 @@ else
         cat <<EOF > "$GEMINI_SETTINGS"
 {
   "hooks": {
-    "AfterAgent": "$GATE_SCRIPT"
+    "AfterAgent": [
+      "bash $GATE_SCRIPT --platform GEMINI"
+    ]
   }
 }
 EOF
@@ -260,17 +263,17 @@ fi
 CURSOR_HOOKS="${HOME}/.cursor/hooks.json"
 if [[ -f "$CURSOR_HOOKS" ]]; then
     log_pass "Cursor hooks file exists"
-    if grep -q "followup_message" "$CURSOR_HOOKS" 2>/dev/null; then
-        log_pass "Cursor stop hook configured with followup_message"
+    if grep -q "verify-gate.sh --platform CURSOR" "$CURSOR_HOOKS" 2>/dev/null; then
+        log_pass "Cursor stop hook configured correctly"
     else
-        log_warn "Cursor stop hook NOT configured with followup_message"
+        log_warn "Cursor stop hook NOT configured correctly"
         if [[ "$AUTO_FIX" == "true" ]]; then
             cp "$CURSOR_HOOKS" "${CURSOR_HOOKS}.bak.$(date +%Y%m%d%H%M%S)"
             node -e "
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$CURSOR_HOOKS', 'utf8'));
 if (!cfg.hooks) cfg.hooks = {};
-cfg.hooks.stop = 'echo \x27{\"followup_message\": \"followup_message\"}\x27';
+cfg.hooks.stop = 'bash $GATE_SCRIPT --platform CURSOR';
 fs.writeFileSync('$CURSOR_HOOKS', JSON.stringify(cfg, null, 2));
 "
             log_info "  → Fixed: Added stop hook to Cursor hooks config"
@@ -280,10 +283,10 @@ else
     log_warn "Cursor hooks file not found: $CURSOR_HOOKS"
     if [[ "$AUTO_FIX" == "true" ]]; then
         mkdir -p "$(dirname "$CURSOR_HOOKS")"
-        cat <<'EOF' > "$CURSOR_HOOKS"
+        cat <<EOF > "$CURSOR_HOOKS"
 {
   "hooks": {
-    "stop": "echo '{\"followup_message\": \"followup_message\"}'"
+    "stop": "bash $GATE_SCRIPT --platform CURSOR"
   }
 }
 EOF
@@ -295,10 +298,10 @@ fi
 CODEX_CONFIG="${HOME}/.codex/config.toml"
 if [[ -f "$CODEX_CONFIG" ]]; then
     log_pass "Codex config file exists"
-    if grep -q "verify-gate.sh" "$CODEX_CONFIG" 2>/dev/null; then
-        log_pass "Codex Stop hook configured with verify-gate.sh"
+    if grep -q "verify-gate.sh --platform CODEX" "$CODEX_CONFIG" 2>/dev/null; then
+        log_pass "Codex Stop hook configured correctly"
     else
-        log_warn "Codex Stop hook NOT configured with verify-gate.sh"
+        log_warn "Codex Stop hook NOT configured correctly"
         if [[ "$AUTO_FIX" == "true" ]]; then
             cp "$CODEX_CONFIG" "${CODEX_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
             cat <<EOF >> "$CODEX_CONFIG"
@@ -312,7 +315,7 @@ hooks = true
 matcher = "*"
 [[hooks.Stop.hooks]]
 type = "command"
-command = "$GATE_SCRIPT"
+command = "bash $GATE_SCRIPT --platform CODEX"
 EOF
             log_info "  → Fixed: Added hooks block to Codex config"
         fi
@@ -331,7 +334,7 @@ hooks = true
 matcher = "*"
 [[hooks.Stop.hooks]]
 type = "command"
-command = "$GATE_SCRIPT"
+command = "bash $GATE_SCRIPT --platform CODEX"
 EOF
         log_info "  → Fixed: Created Codex config with Stop hook"
     fi
