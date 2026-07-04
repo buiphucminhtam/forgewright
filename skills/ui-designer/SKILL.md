@@ -22,6 +22,7 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 !`cat skills/_shared/protocols/game-test-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/quality-gate.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/task-validator.md 2>/dev/null || true`
+!`cat skills/_shared/protocols/design-mindset-and-rules.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback:** Work continuously. Print progress constantly.

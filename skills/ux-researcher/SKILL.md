@@ -15,6 +15,7 @@ tags: [ux, research, usability, personas, journey-mapping, interviews, heuristic
 ## Protocols
 
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
+!`cat skills/_shared/protocols/design-mindset-and-rules.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback:** Use notify_user with options, "Chat about this" last, recommended first.
