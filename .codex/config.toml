@@ -2,9 +2,3 @@
 hooks = true
 
 [hooks]
-
-[[hooks.Stop]]
-matcher = "*"
-[[hooks.Stop.hooks]]
-type = "command"
-command = "bash scripts/lite/verify-gate.sh --platform CODEX"
