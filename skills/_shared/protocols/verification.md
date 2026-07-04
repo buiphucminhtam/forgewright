@@ -84,6 +84,7 @@ Depending on the complexity of the task, apply the correct verification level:
 1.  **Never assume success from a lack of errors:** A compiler not throwing errors does not mean the logic is correct.
 2.  **Verify the correct environment:** Verify against the active workspace, not template directories.
 3.  **Document the Evidence Trail:** When concluding a skill, list the evidence collected (e.g. "Verified that `/src/auth.ts` has `validateToken` by reading lines 12-45 in `view_file`").
+4.  **UI & Visual Verification (Vision):** Whenever a task touches UI, layouts, or visual components, the AI must take a screenshot or capture the visual output, and use its vision capabilities to verify the rendering correctness, alignment, and appearance.
 
 ---
 

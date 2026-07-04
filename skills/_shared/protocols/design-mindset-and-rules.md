@@ -96,6 +96,7 @@ Inclusive design is a technical specification, not a suggestion.
 - **Doherty Threshold:** System responses must occur within **400ms**. If a task exceeds this, a **progress bar** is mandatory.
 - **Fitts’s Optimization:** Primary CTAs must be in the ergonomic "Thumb Zone" to minimize the Index of Difficulty.
 - **Constructive Errors:** All error states must provide a solution-oriented "fix" path.
+- **Visual Verification (Vision):** For any task involving UI or visual designs, the AI must take a screenshot or capture the visual output, and use its vision capabilities to verify layout alignment, correctness, and aesthetics.
 
 ### Constraint Rule
 - All instructions must be in plain text. Prohibit non-textual elements like flowcharts or mermaid diagrams.
