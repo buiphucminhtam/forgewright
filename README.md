@@ -486,9 +486,9 @@ The biggest issue with long AI sessions is **context bloat** — the AI forgets 
 
 **FluxMem (Memory V4)** solves this by using a hybrid Graph-Vector memory architecture:
 
-1. **SQLite Cognitive Graph (`flux_nodes` & `flux_edges`)**: All episodic checkpoints, semantic decisions, and procedural skills are stored as nodes in a relational SQLite database. This ensures crash-safe concurrent operations and eliminates massive JSON parsing overhead.
+1. **SQLite Cognitive Graph (`memory.db` containing `flux_nodes` & `flux_edges`)**: All episodic checkpoints, semantic decisions, and procedural skills are stored as nodes in a relational SQLite database. This ensures crash-safe concurrent operations and eliminates massive JSON parsing overhead.
 2. **Procedural Circuits**: Caches successful agent execution trajectories (completed session tasks) inside `procedural_circuits` with a PES (Performance Evaluation Score), allowing sub-second recovery of optimized action plans.
-3. **ASIP Edge Decay**: When a plan score falls below 9.0 or an execution blocker occurs, ASIP automatically decays affected graph relation weights by a factor of **0.5**, mathematically training the orchestrator to avoid failing paths.
+3. **ASIP Edge Decay (`mem0-v2.py graph-decay`)**: When a plan score falls below 9.0 or an execution blocker occurs, ASIP automatically decays affected graph relation weights by a factor of **0.5**, mathematically training the orchestrator to avoid failing paths.
 4. **ASIP Edge Reinforcement & Lesson Ingestion**: Upon a successful run, weights are reinforced by a factor of **1.2**. Lessons migrated from NotebookLM are saved as semantic graph nodes and linked to procedural skills (`edge_type: improves`, weight `1.5`).
 5. **Passive Idle Trigger**: Automatically triggers a checkpoint after **10 minutes** of inactivity if there are uncommitted session messages, protecting agent state from IDE disconnects.
 

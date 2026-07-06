@@ -9,7 +9,7 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Memory Manager Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Relational SQLite cognitive graph database exists and contains active tables | `sqlite3 .forgewright/fluxmem.db ".tables"` | ... | run the check command and paste output |
+| Relational SQLite cognitive graph database exists and contains active tables | `sqlite3 .forgewright/memory.db ".tables"` | ... | run the check command and paste output |
 | Core project-specific memory files and directories are present | `find .forgewright/ -maxdepth 2 -name "lessons.md" -o -name "architecture.md" -o -name "memory-bank"` | ... | run the check command and paste output |
 | Twin-middleware execution properties and context thresholds are configured | `cat .production-grade.yaml` | ... | run the check command and paste output |
 
@@ -28,7 +28,7 @@ Format: `n. ACTION | TARGET | CHECK`
 
 ### Step 1: Ground the active memory SQLite database and configurations
 ```bash
-sqlite3 .forgewright/fluxmem.db "SELECT count(*) FROM flux_nodes;"
+sqlite3 .forgewright/memory.db "SELECT count(*) FROM flux_nodes;"
 find .forgewright/ -maxdepth 2 -name "lessons.md"
 ```
 

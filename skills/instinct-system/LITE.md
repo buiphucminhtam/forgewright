@@ -9,7 +9,7 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Instinct System Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| SQLite Layer 2 Cognitive Graph database (`flux_nodes` and `flux_edges`) is active | `sqlite3 .forgewright/fluxmem.db ".tables"` | ... | run the check command and paste output |
+| SQLite Layer 2 Cognitive Graph database (`flux_nodes` and `flux_edges`) is active | `sqlite3 .forgewright/memory.db ".tables"` | ... | run the check command and paste output |
 | Memory bank structures (persona and scenario layers) are initialized | `find .forgewright/memory-bank/ -name "*.md"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Instinct System Domain Slots)
@@ -28,16 +28,16 @@ Format: `n. ACTION | TARGET | CHECK`
 
 ### Step 1: Ground the active memory database structure
 ```bash
-sqlite3 .forgewright/fluxmem.db ".tables"
+sqlite3 .forgewright/memory.db ".tables"
 ```
 
 ### Step 2: Query the Cognitive Graph database for a high-scoring past execution path (Procedural Circuit)
 ```bash
-sqlite3 .forgewright/fluxmem.db "SELECT circuit_id, pes, trajectory_hash FROM procedural_circuits WHERE pes >= 90 ORDER BY pes DESC LIMIT 1;"
+sqlite3 .forgewright/memory.db "SELECT circuit_id, pes, trajectory_hash FROM procedural_circuits WHERE pes >= 90 ORDER BY pes DESC LIMIT 1;"
 ```
 
 ### Step 3: Execute ASIP edge adjustment (decay) after a detected compilation failure
 ```bash
 # Simulating an execution blocker on a specific database query edge
-node scripts/asip-decay.js --edge-id "edge-db-conn"
+python3 scripts/mem0-v2.py graph-decay "source-node" "edge-db-conn"
 ```
