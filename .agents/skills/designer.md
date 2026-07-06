@@ -13,6 +13,7 @@ This skill guides the agent in handling high-end visual design, layout planning,
 2. **Mockups First**: Generate a high-resolution mockup using Nano Banana and obtain visual approval from the user before writing HTML/CSS/Tailwind code.
 3. **Structured Prompting**: Always prompt Nano Banana using the **SCALIST** framework and structured JSON prompting.
 4. **Accessibility (WCAG AA)**: Ensure contrast ratios (minimum 4.5:1), keyboard focus navigation, and descriptive ARIA/alt labels are implemented for all generated interfaces.
+5. **UI Design Gate**: Generate a design contract containing the responsive behavior matrix, component states, and token audit before any implementation begins.
 
 ## The SCALIST Framework
 

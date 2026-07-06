@@ -7,7 +7,7 @@
 - **Every tool call** during any skill execution
 - **Every file write** during parallel dispatch workers
 - **Every command execution** proposed by any skill
-- **NOT applied** to read-only operations by default (configurable)
+- **NOT applied** to read-only operations **except** for sensitive file access (Rule 2, configurable)
 
 ## Configuration
 
@@ -52,6 +52,7 @@ WARN Rules:
   - Pattern: *.env, *.env.*, .env.local, .env.production
   - Pattern: *.key, *.pem, *.cert, *.p12
   - Pattern: credentials/*, secrets/*, .ssh/*
+  - Pattern: .git/config, .git-credentials, .gitconfig (may contain credentials in remote URLs)
   - Pattern: *password*, *secret*, *token* (in filenames)
   - Pattern: ~/.aws/*, ~/.gcp/*, ~/.azure/*
   - Scope: read AND write
@@ -117,7 +118,109 @@ Dry Run Rules:
   - IF operation=WRITE (write_to_file, multi_replace_file_content) → WARN_DRYRUN_MOCK
   - IF operation=EXECUTE (run_command that mutates) → WARN_DRYRUN_MOCK
   - Reason: "Global Dry Run is enabled. File modification blocked."
-  - Action: Intercept call, return simulated success `[DRY RUN] Thực thi thành công trong môi trường ảo`, and instruct the agent to generate a `.diff` patch artifact instead.
+  - Action: Intercept call, return simulated success `[DRY RUN] Executed successfully in virtual environment`, and instruct the agent to generate a `.diff` patch artifact instead.
+```
+
+### 7. Path Traversal — DENY
+
+Block file operations targeting paths outside the project workspace:
+
+```
+DENY Rules:
+  - Pattern: ../ or ..\\ in file write paths (relative traversal)
+  - Pattern: Absolute paths outside workspace root (e.g., /etc/*, /usr/*, C:\Windows\*)
+  - Pattern: write_to_file or replace_file_content targeting paths above project root
+  - Reason: "Path traversal detected — all writes must stay within the project workspace"
+  - Action: BLOCK + notify user
+```
+
+### 8. Symlink Safety — WARN
+
+Alert when file operations target symbolic links that may resolve outside the workspace:
+
+```
+WARN Rules:
+  - Check: Before any file write, verify target is not a symlink pointing outside workspace
+  - Command: readlink -f <target> | check if resolved path is within workspace
+  - Reason: "Symlink target resolves outside workspace — verify intent before proceeding"
+  - Action: LOG warning + request user confirmation for writes
+```
+
+### 9. Credential Content Detection — DENY
+
+Block writes containing hardcoded secrets or credentials in file content:
+
+```
+DENY Rules:
+  - Pattern: sk-[a-zA-Z0-9]{20,} (OpenAI API keys)
+  - Pattern: ghp_[a-zA-Z0-9]{36,} (GitHub personal access tokens)
+  - Pattern: AKIA[A-Z0-9]{16} (AWS access key IDs)
+  - Pattern: -----BEGIN\s+(RSA|EC|DSA|OPENSSH)?\s*PRIVATE KEY----- (private keys in content)
+  - Pattern: password\s*[:=]\s*["'][^"']{8,}["'] (hardcoded passwords)
+  - Pattern: Bearer\s+[a-zA-Z0-9\-._~+/]+=* (bearer tokens in source code)
+  - Scope: write only (content inspection on file writes)
+  - Reason: "Hardcoded credential detected in file content — use environment variables"
+  - Action: BLOCK + suggest .env pattern
+```
+
+### 10. Resource Exhaustion — DENY
+
+Block operations that could exhaust system resources:
+
+```
+DENY Rules:
+  - Pattern: File writes > 10MB (configurable via guardrail.max_write_size_mb)
+  - Pattern: :(){ :|:& };: (fork bomb)
+  - Pattern: yes | (pipe to infinite output)
+  - Pattern: dd if=/dev/zero (disk fill)
+  - Pattern: while true; do (infinite loops in shell)
+  - Reason: "Resource exhaustion risk — operation exceeds safe limits"
+  - Action: BLOCK + suggest safer alternative
+```
+
+### 11. Environment Persistence — DENY
+
+Block modifications to shell profile files that persist across sessions:
+
+```
+DENY Rules:
+  - Pattern: write to ~/.bashrc, ~/.zshrc, ~/.profile, ~/.bash_profile
+  - Pattern: write to /etc/environment, /etc/profile, /etc/bash.bashrc
+  - Pattern: echo >> ~/.bashrc (append to shell profile via command)
+  - Pattern: export in shell profiles (permanent env var modification)
+  - Reason: "Environment persistence — modifying shell profiles affects all future sessions"
+  - Action: BLOCK + suggest .env file or project-local config
+```
+
+### 12. Network Exfiltration — WARN
+
+Alert on commands that send data to external endpoints:
+
+```
+WARN Rules:
+  - Pattern: curl -X POST -d * (POST with data)
+  - Pattern: curl --data, curl --data-binary, curl --data-urlencode
+  - Pattern: wget --post-data, wget --post-file
+  - Pattern: nc -l, ncat, netcat (network listeners)
+  - Pattern: bash -i >& /dev/tcp/* (reverse shell)
+  - Pattern: python -c "import socket" (socket creation in one-liners)
+  - Reason: "Network data transfer detected — verify destination and data sensitivity"
+  - Action: LOG warning + continue (legitimate API calls are common)
+```
+
+### 13. Supply Chain Safety — WARN
+
+Alert on package installations from non-standard sources:
+
+```
+WARN Rules:
+  - Pattern: pip install --index-url (non-PyPI source)
+  - Pattern: pip install -e git+ (editable install from git)
+  - Pattern: npm install <url> (install from URL, not registry)
+  - Pattern: npm install <github-shorthand> (install from GitHub without lockfile)
+  - Pattern: cargo install --git (install from git repo)
+  - Reason: "Non-standard package source — verify package authenticity"
+  - Action: LOG warning + continue
 ```
 
 ## Decision Matrix
@@ -131,6 +234,13 @@ Dry Run Rules:
 | **Destructive commands** | — | — | DENY | — |
 | **Publishing commands** | — | — | ESCALATE | — |
 | **Dry Run Mode** | ALLOW | WARN_DRYRUN_MOCK | WARN_DRYRUN_MOCK | WARN_DRYRUN_MOCK |
+| **Path traversal** (Rule 7) | — | DENY | — | DENY |
+| **Symlink targets** (Rule 8) | WARN | WARN | — | WARN |
+| **Credential in content** (Rule 9) | — | DENY | — | — |
+| **Resource exhaustion** (Rule 10) | — | DENY | DENY | — |
+| **Env persistence** (Rule 11) | — | DENY | DENY | — |
+| **Network exfiltration** (Rule 12) | — | — | WARN | — |
+| **Supply chain** (Rule 13) | — | — | WARN | — |
 
 ## Response Format
 
@@ -249,9 +359,13 @@ guardrail:
 ```
 IF guardrail rule evaluation fails (regex error, config parse error):
   1. Log error: "⚠ Guardrail rule evaluation failed: [rule_name]"
-  2. Default to ALLOW (fail-open for non-security rules)
-  3. Default to DENY (fail-closed for security rules marked critical: true)
+  2. For NON-SECURITY custom rules: Default to ALLOW (fail-open)
+  3. For SECURITY rules (Rules 1–4, 7–12, and custom rules with critical: true): Default to DENY (fail-closed)
   4. Continue pipeline — NEVER block pipeline on guardrail internal error
+
+Note: "Fail-open" applies ONLY to non-security custom rules in .production-grade.yaml.
+All built-in security rules (1–4, 7–12) ALWAYS fail-closed (DENY on error).
+Consistent with middleware-chain.md Rule 3: Guardrail is the kill switch.
 ```
 
 ## Path-Scoped Coding Standards (CCGS Pattern)
@@ -266,14 +380,13 @@ Automatically load and enforce coding standards based on file location. See `rul
 
 | Path Pattern | Rules File | Enforcement |
 |--------------|------------|-------------|
-| `src/gameplay/**` | `rules/gameplay-standards.md` | Warn |
-| `src/core/**` | `rules/core-standards.md` | Warn |
-| `src/ui/**` | `rules/ui-standards.md` | Warn |
-| `frontend/src/**` | `rules/ui-standards.md` | Warn |
-| `api/**` | `rules/api-standards.md` | Block |
-| `services/**` | `rules/api-standards.md` | Block |
+| `src/**` | `rules/src-standards.md` | Warn |
+| `src/ui/**`, `frontend/**` | `rules/ui-standards.md` | Warn |
+| `api/**`, `services/**` | `rules/api-standards.md` | Block |
 | `tests/**` | `rules/test-standards.md` | Warn |
 | `docs/**` | `rules/doc-standards.md` | Suggest |
+
+> **Note:** Path-to-rule mappings are project-specific. Configure in `.production-grade.yaml` under `guardrail.path_rules`. The above are examples — adjust to match your project structure.
 
 ### Enforcement Flow
 

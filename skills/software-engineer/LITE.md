@@ -22,6 +22,7 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (implement business logic) | TARGET (src/services/feature.ts) | CHECK (npm test tests/feature.test.ts)`
 - `n. ACTION (wire handler/controller) | TARGET (src/controllers/feature.ts) | CHECK (npm test tests/feature.test.ts)`
 - `n. ACTION (run full tests) | TARGET (tests/) | CHECK (npm test)`
+- For multi-file edits: run AUDIT step (kernel/AUDIT.md) before delivery — re-read all changed files, build coverage matrix.
 
 ---
 

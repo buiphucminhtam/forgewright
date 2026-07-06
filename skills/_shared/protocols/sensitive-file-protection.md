@@ -85,4 +85,14 @@ All skills that perform file operations MUST follow this protocol:
 - **Database Engineer** — connection strings
 - **Debugger** — log analysis may expose secrets
 
+## Relationship to Guardrail
+
+This protocol defines the **detection patterns** and **redaction rules**. Guardrail (Middleware ④) provides **enforcement**:
+- Guardrail Rule 2 (Sensitive File Access) uses these patterns for WARN/DENY decisions.
+- Guardrail Rule 9 (Credential Content Detection) blocks hardcoded secrets in file writes.
+- This protocol adds **redaction rules** that guardrail does not cover — ensuring secrets are never echoed in output.
+- Both must be consulted: guardrail blocks access, this protocol ensures redaction.
+
+See `skills/_shared/protocols/guardrail.md` for the full enforcement specification.
+
 > Inspired by ClaudeKit's privacy-block pattern, adapted as instruction-based protocol for agent-agnostic portability.

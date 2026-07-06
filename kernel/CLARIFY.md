@@ -25,6 +25,8 @@ When the user provides answers, record explicit defaults and constraints before 
 - **C)** Responsiveness (mobile/desktop view layout)
 - **D)** Interaction, transitions, and animations
 
+*Invariant Rule: The selected aesthetic objective does not make responsiveness, accessibility, or design-system consistency optional.*
+
 ### MCQ 2: Error Investigation (Default: B)
 "What is the observed behavior or error message?"
 - **A)** The application crashes on startup / command fails completely

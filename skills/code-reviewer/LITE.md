@@ -21,6 +21,7 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (scan for db queries in views) | TARGET (src/controllers/) | CHECK (grep -r "db." src/controllers/)`
 - `n. ACTION (detect loop database queries) | TARGET (src/services/) | CHECK (grep -rn "forEach" src/services/)`
 - `n. ACTION (draft code review feedback) | TARGET (docs/review-comments.md) | CHECK (cat docs/review-comments.md)`
+- After review: run AUDIT step (kernel/AUDIT.md) — verify all review items are addressed in the coverage matrix.
 
 ---
 

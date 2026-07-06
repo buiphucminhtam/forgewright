@@ -10,6 +10,7 @@ Model self-tag is only a hint. A step is **HARD** if ANY of these objective runt
 - [ ] Changes a public interface, schema, or public exports.
 - [ ] Concurrency, locking, or asynchronous ordering paths.
 - [ ] The Stuck rule fired on this step.
+- [ ] Guardrail flagged a DENY or WARN on this step.
 
 Otherwise, the step is **EASY**.
 

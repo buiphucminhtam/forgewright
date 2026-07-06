@@ -13,11 +13,19 @@ VERDICT: PASS | FAIL
 ```
 
 ## Template 2: UI / Visual Verification
-Use this for frontend, HTML/CSS, or user interface modifications.
+Use this for frontend, HTML/CSS, or user interface modifications. A successful build alone must not prove responsiveness.
 ```text
 CLAIM: <what layout/DOM changes were made>
 DOM CHECK COMMAND: <command or Chrome DevTools query to verify elements exist>
 DOM OUTPUT: <pasted DOM query result/HTML snippet>
+EVIDENCE:
+- Project breakpoints/fallback viewports tested: <details>
+- Horizontal overflow checked: <details>
+- Content wrapping and hierarchy verified: <details>
+- Keyboard/focus behavior verified: <details>
+- Component states (loading, empty, error, disabled) verified: <details>
+- Token/design-system conformance verified: <details>
+- Screenshots/VRT results: <details>
 VISUAL VERDICT: STRUCTURALLY VERIFIED (requires user visual confirmation)
 ```
 
@@ -37,3 +45,7 @@ VERDICT: PASS | FAIL
 2. For UI/visual changes: cap confidence at "structurally verified" and ask the user to confirm the actual visual appearance.
 3. Provide exactly one block per changed behavior.
 4. `FAIL` verdicts must be reported immediately and never hidden.
+5. VERIFY proves code works. [AUDIT](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/AUDIT.md) proves all requirements are covered. Both are mandatory.
+6. Narrative claims ("I updated the file", "this should work now") without a VERIFY block are automatically FALSE. The check must be a runnable command whose output you paste.
+7. Prefer deterministic checks (test suites, linters, build exit codes) over manual inspection. If no automated check exists, create one before claiming success.
+

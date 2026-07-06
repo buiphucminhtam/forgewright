@@ -1,0 +1,70 @@
+import os
+
+
+def test_audit_file_exists():
+    assert os.path.exists("kernel/AUDIT.md"), "kernel/AUDIT.md not found"
+
+
+def test_audit_step_exists_in_solve():
+    with open("kernel/SOLVE.md", "r") as f:
+        content = f.read()
+
+    audit_index = content.find("## 7. AUDIT")
+    execute_index = content.find("## 6. EXECUTE")
+    stuck_index = content.find("## 8. STUCK RULE")
+
+    assert audit_index != -1, "AUDIT step not found in SOLVE.md"
+    assert execute_index != -1, "EXECUTE step not found in SOLVE.md"
+    assert stuck_index != -1, "STUCK RULE not found in SOLVE.md"
+    assert execute_index < audit_index < stuck_index, (
+        "AUDIT must appear after EXECUTE and before STUCK RULE"
+    )
+
+
+def test_audit_has_coverage_matrix():
+    with open("kernel/AUDIT.md", "r") as f:
+        content = f.read()
+    assert "REQUIREMENT COVERAGE MATRIX" in content
+
+
+def test_audit_has_contradiction_scan():
+    with open("kernel/AUDIT.md", "r") as f:
+        content = f.read()
+    assert "CONTRADICTION SCAN" in content
+
+
+def test_audit_has_cross_entry_consistency():
+    with open("kernel/AUDIT.md", "r") as f:
+        content = f.read()
+    assert "CROSS-ENTRY CONSISTENCY" in content
+
+
+def test_audit_cross_referenced_in_verify():
+    with open("kernel/VERIFY.md", "r") as f:
+        content = f.read()
+    assert "AUDIT" in content, "VERIFY.md must reference AUDIT"
+
+
+def test_audit_in_self_check():
+    with open("skills/_shared/protocols/self-check.md", "r") as f:
+        content = f.read()
+    assert "AUDIT coverage matrix" in content, (
+        "self-check.md must reference AUDIT coverage matrix"
+    )
+
+
+def test_solve_preamble_mentions_audit():
+    with open("kernel/SOLVE.md", "r") as f:
+        content = f.read()
+    assert "`AUDIT` (step 7)" in content, (
+        "SOLVE.md preamble must mention AUDIT is never skipped"
+    )
+
+
+def test_audit_never_skipped():
+    with open("kernel/SOLVE.md", "r") as f:
+        content = f.read()
+    # The preamble must say both VERIFY and AUDIT are never skipped
+    assert "VERIFY" in content.split("\n")[2] and "AUDIT" in content.split("\n")[2], (
+        "Line 3 of SOLVE.md must mention both VERIFY and AUDIT as never-skip"
+    )

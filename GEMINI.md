@@ -18,6 +18,7 @@ You are a software engineering agent. Follow this file exactly.
 3. Never invent file paths, APIs, or version numbers — verify them, or mark them `UNVERIFIED`.
 4. If the same step fails twice, STOP and follow the Stuck rule in SOLVE section.
 5. Stay inside the user's stated scope; list anything extra under "Out of scope".
+6. Never bypass guardrail rules for destructive or security-sensitive operations — Middleware ④ (`skills/_shared/protocols/guardrail.md`).
 
 ## Boot Sequence (Do these, in order, nothing else)
 1. Match the request against the trigger table in CLARIFY section. If vague, ask the corresponding MCQ immediately.
@@ -30,7 +31,8 @@ You are a software engineering agent. Follow this file exactly.
 | Task class | Skill overlay path |
 |---|---|
 | `DEBUG` | `skills/debugger/LITE.md` |
-| `FEATURE` | `skills/software-engineer/LITE.md` |
+| `FEATURE affecting UI` | `skills/ui-designer/LITE.md` |
+| `FEATURE otherwise` | `skills/software-engineer/LITE.md` |
 | `REVIEW` | `skills/code-reviewer/LITE.md` |
 | `TEST` | `skills/qa-engineer/LITE.md` |
 | `SHIP` | `skills/devops/LITE.md` |
@@ -44,7 +46,7 @@ Memory: if `.forgewright/memory-bank/activeContext.md` exists, skim it (≤300 t
 <!-- START OF SOLVE.md -->
 # SOLVE — The Reasoning Loop
 
-Always follow all steps. If the task is a single trivial edit (e.g., a typo fix), steps 2–3 may collapse to one row/one item — but `VERIFY` (step 6) is never skipped.
+Always follow all steps. If the task is a single trivial edit (e.g., a typo fix), steps 2–3 may collapse to one row/one item — but `VERIFY` (step 6) and `AUDIT` (step 7) are never skipped.
 
 ## 1. UNDERSTAND (Write this scratchpad before anything else)
 - Task in one sentence:
@@ -76,6 +78,18 @@ Plan least-to-most. EVERY item must have all three fields:
 **C. DESIGN PATH (Architecture/Review, non-edit)**
 `n. COMPONENT | ANALYSIS SCRIPT/COMMAND | DESIGN CONSTRAINT`
 
+**D. UI DESIGN GATE (Frontend Edits)**
+Before any frontend UI implementation, generate a design contract containing:
+- User goal and primary action
+- Content hierarchy and layout rationale
+- Existing design-system audit
+- Tokens: color, typography, spacing, radius, elevation, motion
+- Component states: default, hover, focus, disabled, loading, empty, error
+- Responsive behavior matrix for narrow, medium, and wide viewports
+- Accessibility and reduced-motion requirements
+- Wireframe, mockup, or written layout specification
+*Note: Major screens/redesigns require user approval. Small UI fixes require an inline design contract but may proceed without blocking.*
+
 **Gate**:
 Do not self-attest Y/N claims. Mechanical checks must be script-produced evidence that you consume. Execute your plan's checks to verify:
 - Edit plans have concrete actions, verified files, and runnable CHECK commands.
@@ -94,20 +108,28 @@ If the task requires JSON or structured output:
 - Only output the final clean JSON/structured payload at the very end of the response.
 
 ## 6. EXECUTE & VERIFY (One item at a time)
+**Note:** Guardrail (Middleware ④) runs `before_tool()` on every tool call during execution. Destructive operations are blocked. See `skills/_shared/protocols/guardrail.md`.
+
 For each plan item:
 1. Tag as `EASY` or `HARD` per ESCALATE section.
 2. If `HARD` → run escalation command.
 3. If `EASY` → execute it, then IMMEDIATELY run its CHECK command.
-4. If CHECK fails → resolve the failure before moving to the next item. Never batch items without executing their checks.
-5. After finishing all items, emit one `VERIFY` block per changed behavior (see VERIFY section).
+4. **Reasoning checkpoint** (after each CHECK result): Before proceeding, write 1–2 sentences: *What did this result tell me? Does it change my plan?* Do not skip to the next item without this pause.
+5. If CHECK fails → resolve the failure before moving to the next item. Never batch items without executing their checks.
+6. After finishing all items, emit one `VERIFY` block per changed behavior (see VERIFY section).
+7. **Adversarial review** (for FEATURE/DEBUG tasks with ≥3 changed files): Spawn a reviewer that sees ONLY the diff + original requirements — not your reasoning context. A fresh perspective catches blind spots.
 
-## 7. STUCK RULE (After 2 failures on the same item)
-Stop retrying. In order:
+## 7. AUDIT (Requirement Coverage)
+Re-read all changed files in full. Build a requirement coverage matrix, scan for contradictions between rules and examples, and check cross-entry consistency. See AUDIT section. GAPS FOUND → fix before delivery.
+
+## 8. STUCK RULE (After 2 failures on the same item)
+Stop retrying the same approach. A variant of a failed fix is still the same fix. In order:
 1. Write a minimal script/test to isolate and test the assumption, then run it.
 2. Search the codebase for a working example of the same pattern.
 3. Research external documentation or sources.
-4. If still stuck → mark the item as `HARD` and escalate.
-5. If escalation is unavailable → report the blocker along with all gathered evidence. Never attempt a third time on the same fix.
+4. **Reset context**: If accumulated corrections are polluting reasoning, start fresh — restate the goal from scratch with lessons learned, rather than building on failed attempts.
+5. If still stuck → mark the item as `HARD` and escalate.
+6. If escalation is unavailable → report the blocker along with all gathered evidence. Never attempt a third time on the same fix.
 <!-- END OF SOLVE.md -->
 
 <!-- START OF VERIFY.md -->
@@ -126,11 +148,19 @@ VERDICT: PASS | FAIL
 ```
 
 ## Template 2: UI / Visual Verification
-Use this for frontend, HTML/CSS, or user interface modifications.
+Use this for frontend, HTML/CSS, or user interface modifications. A successful build alone must not prove responsiveness.
 ```text
 CLAIM: <what layout/DOM changes were made>
 DOM CHECK COMMAND: <command or Chrome DevTools query to verify elements exist>
 DOM OUTPUT: <pasted DOM query result/HTML snippet>
+EVIDENCE:
+- Project breakpoints/fallback viewports tested: <details>
+- Horizontal overflow checked: <details>
+- Content wrapping and hierarchy verified: <details>
+- Keyboard/focus behavior verified: <details>
+- Component states (loading, empty, error, disabled) verified: <details>
+- Token/design-system conformance verified: <details>
+- Screenshots/VRT results: <details>
 VISUAL VERDICT: STRUCTURALLY VERIFIED (requires user visual confirmation)
 ```
 
@@ -150,6 +180,9 @@ VERDICT: PASS | FAIL
 2. For UI/visual changes: cap confidence at "structurally verified" and ask the user to confirm the actual visual appearance.
 3. Provide exactly one block per changed behavior.
 4. `FAIL` verdicts must be reported immediately and never hidden.
+5. VERIFY proves code works. [AUDIT](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/AUDIT.md) proves all requirements are covered. Both are mandatory.
+6. Narrative claims ("I updated the file", "this should work now") without a VERIFY block are automatically FALSE. The check must be a runnable command whose output you paste.
+7. Prefer deterministic checks (test suites, linters, build exit codes) over manual inspection. If no automated check exists, create one before claiming success.
 <!-- END OF VERIFY.md -->
 
 <!-- START OF ESCALATE.md -->
@@ -165,6 +198,7 @@ Model self-tag is only a hint. A step is **HARD** if ANY of these objective runt
 - [ ] Changes a public interface, schema, or public exports.
 - [ ] Concurrency, locking, or asynchronous ordering paths.
 - [ ] The Stuck rule fired on this step.
+- [ ] Guardrail flagged a DENY or WARN on this step.
 
 Otherwise, the step is **EASY**.
 
@@ -215,6 +249,8 @@ When the user provides answers, record explicit defaults and constraints before 
 - **B)** Colors, theme, and styling (visual overhaul)
 - **C)** Responsiveness (mobile/desktop view layout)
 - **D)** Interaction, transitions, and animations
+
+*Invariant Rule: The selected aesthetic objective does not make responsiveness, accessibility, or design-system consistency optional.*
 
 ### MCQ 2: Error Investigation (Default: B)
 "What is the observed behavior or error message?"

@@ -800,7 +800,7 @@ Forgewright supports a 100% free, open-source local testing stack designed to el
 
 > **v8.5.0 UPDATE:** ForgeNexus has been migrated to **GitNexus** — the recommended code intelligence tool. GitNexus provides 38K+ stars, npm installation, auto-setup for all editors, and 16 MCP tools for deep code understanding.
 
-This project is indexed by GitNexus as **forgewright** (20,138 symbols, 28,557 relationships, 269 execution flows).
+This project is indexed by GitNexus as **forgewright** (19,409 symbols, 25,388 relationships, 300 execution flows).
 
 ### Why GitNexus?
 
@@ -1176,6 +1176,19 @@ bash scripts/forgewright-mcp-setup.sh --force
 ---
 
 ## Changelog
+### v8.8.0 (July 2026) — AI Reasoning Research & Kernel Hardening
+**Major Changes:**
+- **🧠 AI Reasoning Research Integration**: Deep NotebookLM research across 14 sources (OpenAI o1/o3 docs, Anthropic extended thinking, Claude Code best practices) produced 15 actionable lessons. Top 5 HIGH-IMPACT lessons implemented directly into the kernel.
+- **Reasoning Checkpoint (Lesson 1)**: SOLVE Step 6.4 now mandates a 1–2 sentence reasoning pause after every CHECK result — inspired by Claude's "think tool" which improved policy compliance from 25% to 80%+.
+- **Adversarial Review (Lesson 2)**: SOLVE Step 6.7 spawns a fresh-context reviewer (only sees diff + requirements) for FEATURE/DEBUG tasks touching ≥3 files — inspired by Claude Code's `/code-review`.
+- **Anti-Narrative Verification (Lesson 3)**: VERIFY Rules 6-7 now explicitly mark narrative claims ("I updated the file") as automatically FALSE without command output, and prefer deterministic checks.
+- **Tests-First Ordering (Lesson 4)**: Self-check protocol now enforces test stubs BEFORE implementation for complex tasks.
+- **Context Reset (Lesson 5)**: STUCK rule expanded with Step 4 "Reset context" — a variant of a failed fix is still the same fix; start fresh instead of building on failed attempts.
+- **🔒 Guardrail Hardening**: 13 rule categories integrated into Middleware ④ (`guardrail.md`), with cross-references in all 5 kernel files, 3 related protocols, and 17 regression tests.
+- **🎨 UI Design Gate**: Mandatory design contract (tokens, states, responsive matrix, accessibility) required before any frontend edit in SOLVE Step 3.D.
+- **📊 58 Regression Tests**: 19 AI reasoning + 17 guardrail + 13 UI design gate + 9 audit tests, all green.
+- **Token Budget**: Kernel boot payload at 5,445 / 7,000 tokens (1,555 headroom).
+
 ### v8.7.0 (July 2026) — Evidence-Gated Kernel & Parallel Skill Distillation
 **Major Changes:**
 - **⚡ Forgewright Lite — Evidence-Gated Kernel (Upgraded v3)**: Integrated a lightweight reasoning kernel optimized for fast models (Gemini Flash), featuring turn-level script verification via `.forgewright/verify/<turn>.json` evidence files, turn-blocking platform hooks, ≤7k tokens boot budget, and objective escalations to Sonnet/Opus models.
