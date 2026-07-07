@@ -1,0 +1,20 @@
+Research for Voodoo game 'The Almanac' (com.voodoo.almanac):
+
+Overview:
+The Almanac is a minimalist brain-training puzzle app designed as a "workout for your brain" to break habits of mindless scrolling by offering short, engaging logic and spatial reasoning puzzles.
+
+Gameplay Mechanics:
+- Learn-by-doing approach: Tutorials are integrated directly into the first level of each new game type, avoiding front-loaded instructions.
+- Puzzle Types: Variety of logic-based challenges, including Shikaku-style rectangle-drawing puzzles and pipe-connection games.
+- Interaction: Highly minimalist interface. Players observe a puzzle, test a move, and adjust based on the results.
+- Sessions: Designed for flexibility. Rounds can be completed in short bursts (e.g., 5 minutes) or longer, more focused sessions.
+- Progression: Linear level progression map that provides a clear sense of journey. Includes features like "Journey Mode" and "Training Mode" with some "hard mode" variants and "impossible" difficulty tiers.
+
+Design & UI:
+- Minimalist Design: Clean, distraction-free environment.
+- Aesthetics: Calm, paper-like background with simple line art. Uncluttered UI to keep the player focused on problem-solving.
+
+Animation & Visuals:
+- Feedback Animations: Smooth, rewarding animations provided upon completing a puzzle.
+- Celebratory text prompts (e.g., "Impressive!") and performance statistics comparing the user to others.
+- Minimal transitions between levels.

@@ -535,6 +535,41 @@ export function createSlider(
 }
 ```
 
+## Advanced UI/UX & Interaction Principles
+
+### 1. Minimize Cognitive Load
+* **Progressive Disclosure**: Reveal complex interface information sequentially and only as needed. Group fields and minimize actions to streamline step-by-step flows and reduce decision fatigue.
+* **Fitts’s Law**: Size and space interactive elements appropriately. Position primary action buttons within easy reach and provide generous spacing to accelerate interaction and eliminate accidental taps.
+* **Hick’s Law**: Reduce extraneous cognitive load by categorizing options and limiting the volume of choices visible at any given moment.
+* **Miller’s Law**: Do not exceed the limits of human working memory; chunk complex data sets into smaller, manageable groups of seven (±two) items.
+* **Gestalt Principles**: Group related elements visually using consistent colors, shapes, and proximity to establish an intuitive hierarchy.
+
+### 2. Modern Typography & VW Scaling
+* **Variable Fonts**: Implement variable fonts (WOFF2) rather than static families to load an entire range of weights, widths, and optical sizes within a single compact file. Map these attributes dynamically to screen sizes for responsive hierarchy.
+* **Viewport-Scaled Architecture**: Elevate bold typography to the primary architectural layout layer by utilizing viewport-scaled (vw) text. Let typography carry the visual weight to replace heavy hero photography and minimize server requests.
+* **Kinetic CSS Typography**: Avoid heavy JavaScript animations. Map font weight and width alterations to the user's scroll position, or apply lightweight CSS transitions to reveal text elegantly without lagging processors.
+
+### 3. Advanced Layout Strategies
+* **Strategic Grid Breaking**: Group design elements into overlapping container boxes that repurpose margins, providing clean structure while breaking traditional grid symmetry.
+* **Bento Grid Reflow**: Do not duplicate the DOM to create separate bento grid layouts for desktop and mobile. Utilize state-aware CSS specifications (like native masonry) so dense information panels reflow dynamically into single-column mobile layouts without performance penalties.
+* **Maximinimalism**: Combine minimalist utility foundations with energetic accents. Establish simple layouts with low element counts, but overlay high-impact features such as bright colors, strong imagery, and highly personalized, casual copywriting.
+* **Carbon-Aware Interfaces**: Implement "Dark-First" default modes utilizing true black (#000000) to save OLED battery power. Substitute heavy photography with scalable vector graphics (SVGs) and pure CSS filters (like SVG noise/film grain) to synthesize tactile depth.
+
+### 4. Game HUD Architectural Taxonomy
+* **Diegetic HUD**: Place crucial status information directly within the 3D geometry and story fiction (e.g., health bar on a spacesuit spine) to maximize immersion and eliminate 2D overlays.
+* **Meta HUD**: Position status indicators on the 2D screen plane that are directly linked to the narrative state but do not exist in the 3D geometry (e.g., blood splatters for health loss).
+* **Spatial HUD**: Situate non-diegetic typography directly within the 3D environment (e.g., projecting mission objectives onto concrete walls or a glowing guide trail) to prevent breaking immersion with full-screen menus.
+* **Non-Diegetic HUD**: Traditional customizable menus on the 2D plane separated from the game's story. Restrict their use to scenarios where other models fail to provide necessary legibility (e.g., deep inventory management).
+
+### 5. Interface Learnability
+* **Just-In-Time Reminders**: Trigger contextual prompts dynamically in response to specific, in-the-moment situations (e.g., showing a "climb down" cue only when hanging from a ledge).
+* **The Invisible Hand**: Guide navigation seamlessly using organic, diegetic indicators blended into the environment (e.g., yellow tape on destructible objects or white markings on climbable surfaces).
+* **Sandbox Practice**: When introducing a complex workflow, guide the user through a structured lesson and immediately direct them into an isolated sandbox where they must successfully execute the mechanic before progressing.
+
+### 6. Structured Prompt Engineering for AI Motion
+* **Chain-of-Thought Motion**: Construct interactive behaviors (like micro-animations on hover/click) using step-by-step logic frameworks.
+* **Simplicity over Layering**: Favor synchronized transitions (where color changes, text updates, and scaling occur simultaneously) as they feel simple and natural, avoiding over-layered, multi-step sequential animations that increase cognitive load.
+
 ## Platform-Specific Ergonomics & UX Constraints
 
 Ensure all game user interfaces are tailored to the physical constraints, viewing distances, and input limitations of the target platform:
