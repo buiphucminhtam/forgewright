@@ -149,10 +149,10 @@ check_mcp() {
         log_success "MCP server directory exists"
 
         # Check for main files
-        if [[ -f "$MCP_DIR/server.ts" ]]; then
-            log_success "  ✓ server.ts"
+        if [[ -f "$MCP_DIR/src/index.ts" ]]; then
+            log_success "  ✓ src/index.ts"
         else
-            log_warn "  ✗ server.ts (missing)"
+            log_warn "  ✗ src/index.ts (missing)"
         fi
     else
         log_warn "MCP server not installed"
@@ -389,7 +389,7 @@ fix_common_issues() {
     fi
 
     # Fix 6: Re-run MCP setup if needed
-    if [[ -d "$MCP_DIR" ]] && [[ -f "$MCP_DIR/server.ts" ]]; then
+    if [[ -d "$MCP_DIR" ]] && [[ -f "$MCP_DIR/src/index.ts" ]]; then
         log_fix "Running MCP setup..."
         "$FORGEWRIGHT_DIR/scripts/forgewright-mcp-setup.sh" --claude-code 2>/dev/null || true
         "$FORGEWRIGHT_DIR/scripts/forgewright-mcp-setup.sh" --cursor 2>/dev/null || true

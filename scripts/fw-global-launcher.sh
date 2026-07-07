@@ -305,27 +305,27 @@ find_mcp_server() {
     
     # Priority 1: Global MCP server
     if [[ -d "${GLOBAL_CONFIG_DIR}/mcp-server" ]]; then
-        if [[ -f "${GLOBAL_CONFIG_DIR}/mcp-server/server.ts" ]]; then
-            server_path="${GLOBAL_CONFIG_DIR}/mcp-server/server.ts"
+        if [[ -f "${GLOBAL_CONFIG_DIR}/mcp-server/src/index.ts" ]]; then
+            server_path="${GLOBAL_CONFIG_DIR}/mcp-server/src/index.ts"
             log_debug "  → Global MCP server: $server_path"
         fi
     fi
     
     # Priority 2: Forgewright's own MCP server
-    if [[ -z "$server_path" ]] && [[ -f "${forgewright}/mcp-server/server.ts" ]]; then
-        server_path="${forgewright}/mcp-server/server.ts"
+    if [[ -z "$server_path" ]] && [[ -f "${forgewright}/mcp-server/src/index.ts" ]]; then
+        server_path="${forgewright}/mcp-server/src/index.ts"
         log_debug "  → Forgewright MCP server: $server_path"
     fi
     
     # Priority 3: Project's MCP server
-    if [[ -z "$server_path" ]] && [[ -f "$workspace/.forgewright/mcp-server/server.ts" ]]; then
-        server_path="$workspace/.forgewright/mcp-server/server.ts"
+    if [[ -z "$server_path" ]] && [[ -f "$workspace/.forgewright/mcp-server/src/index.ts" ]]; then
+        server_path="$workspace/.forgewright/mcp-server/src/index.ts"
         log_debug "  → Project MCP server: $server_path"
     fi
     
     # Priority 4: Legacy forgewright MCP server path
-    if [[ -z "$server_path" ]] && [[ -f "${forgewright}/mcp/server.ts" ]]; then
-        server_path="${forgewright}/mcp/server.ts"
+    if [[ -z "$server_path" ]] && [[ -f "${forgewright}/mcp/src/index.ts" ]]; then
+        server_path="${forgewright}/mcp/src/index.ts"
         log_debug "  → Legacy MCP server: $server_path"
     fi
     

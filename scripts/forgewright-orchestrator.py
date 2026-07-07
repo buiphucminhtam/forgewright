@@ -15,14 +15,18 @@ _REPO_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
 
 # Provider / model are read exclusively from env vars so that the harness
 # controls them without needing to hard-code any model name in this file.
-_PROVIDER = os.environ.get("FORGEWRIGHT_PROVIDER", "")
-_MODEL = os.environ.get("FORGEWRIGHT_MODEL", "")
+_PROVIDER = os.environ.get("FORGEWRIGHT_PROVIDER", "OpenClaw")
+_MODEL = os.environ.get("NINEROUTER_MODEL", "OpenClaw")
 
 # MiniMax-specific config is optional and only used when provider == "minimax".
-_MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
-_MINIMAX_BASE_URL = os.environ.get(
-    "MINIMAX_BASE_URL", "https://api.minimax.io/v1/text/chatcompletion_v2"
-)
+_API_KEY = os.environ.get("NINEROUTER_API_KEY", os.environ.get("MINIMAX_API_KEY", ""))
+_BASE_URL = os.environ.get("NINEROUTER_BASE_URL")
+if not _BASE_URL:
+    _BASE_URL = "https://api.minimax.io/v1/text/chatcompletion_v2"
+if not _BASE_URL.endswith("/chat/completions"):
+    if not _BASE_URL.endswith("/"):
+        _BASE_URL += "/"
+    _BASE_URL += "chat/completions"
 
 
 class ForgewrightAgent:
@@ -31,16 +35,16 @@ class ForgewrightAgent:
         self.code_dir = code_dir
         self.messages = []
 
-    def _call_minimax(self, tools: List[Dict]) -> Dict:
-        """Call the MiniMax chat API using the model from FORGEWRIGHT_MODEL env."""
-        if not _MINIMAX_API_KEY:
-            print("[!] MINIMAX_API_KEY env var is not set.")
+    def _call_api(self, tools: List[Dict]) -> Dict:
+        """Call the Chat Completions API."""
+        if not _API_KEY:
+            print("[!] NINEROUTER_API_KEY or MINIMAX_API_KEY env var is not set.")
             sys.exit(1)
         if not _MODEL:
-            print("[!] FORGEWRIGHT_MODEL env var is not set.")
+            print("[!] NINEROUTER_MODEL env var is not set.")
             sys.exit(1)
         headers = {
-            "Authorization": f"Bearer {_MINIMAX_API_KEY}",
+            "Authorization": f"Bearer {_API_KEY}",
             "Content-Type": "application/json",
         }
 
@@ -49,14 +53,56 @@ class ForgewrightAgent:
             data["tools"] = tools
 
         print(f"[*] Calling {_PROVIDER}/{_MODEL} (Messages: {len(self.messages)})...")
-        resp = requests.post(_MINIMAX_BASE_URL, headers=headers, json=data, timeout=120)
-        resp_json = resp.json()
+        resp = requests.post(_BASE_URL, headers=headers, json=data, timeout=120)
+        resp.encoding = "utf-8"
+        
+        import json
+        if resp.text.startswith("data: "):
+            lines = resp.text.split("\n")
+            content = ""
+            tool_calls = {}
+            for line in lines:
+                line = line.strip()
+                if line.startswith("data: ") and line != "data: [DONE]":
+                    try:
+                        chunk = json.loads(line[6:])
+                        if not chunk.get("choices"):
+                            continue
+                        delta = chunk["choices"][0].get("delta", {})
+                        if "content" in delta and delta["content"]:
+                            content += delta["content"]
+                        if "tool_calls" in delta:
+                            for tc in delta["tool_calls"]:
+                                tc_index = tc.get("index")
+                                if tc_index not in tool_calls:
+                                    tool_calls[tc_index] = {"id": tc.get("id"), "type": tc.get("type", "function"), "function": {"name": "", "arguments": ""}}
+                                if tc.get("function"):
+                                    if "name" in tc["function"] and tc["function"]["name"]:
+                                        tool_calls[tc_index]["function"]["name"] += tc["function"]["name"]
+                                    if "arguments" in tc["function"] and tc["function"]["arguments"]:
+                                        tool_calls[tc_index]["function"]["arguments"] += tc["function"]["arguments"]
+                    except:
+                        pass
+            
+            message = {"role": "assistant"}
+            if content:
+                message["content"] = content
+            if tool_calls:
+                message["tool_calls"] = [tool_calls[idx] for idx in sorted(tool_calls.keys())]
+            return message
+        else:
+            try:
+                text = resp.text.replace("data: [DONE]", "").strip()
+                resp_json = json.loads(text)
+            except Exception:
+                print(f"[!] API Error, non-JSON response: {repr(resp.text)}")
+                sys.exit(1)
 
-        if "choices" not in resp_json:
-            print(f"[!] API Error: {resp_json}")
-            sys.exit(1)
+            if "choices" not in resp_json:
+                print(f"[!] API Error: {resp_json}")
+                sys.exit(1)
 
-        return resp_json["choices"][0]["message"]
+            return resp_json["choices"][0]["message"]
 
     async def run(self, task: str):
         import subprocess
@@ -96,6 +142,15 @@ class ForgewrightAgent:
         gitnexus_env["GITNEXUS_DB"] = gitnexus_db_path
 
         mcp_servers = [
+            {
+                "name": "filesystem",
+                "params": StdioServerParameters(
+                    command="npx",
+                    args=["-y", "@modelcontextprotocol/server-filesystem", "/workspace"],
+                    env=gitnexus_env,
+                ),
+            },
+
             {
                 "name": "gitnexus",
                 "params": StdioServerParameters(
@@ -389,7 +444,7 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
                             print(f"[!] Error querying tools from {srv_name}: {e}")
 
                     # 2. ReAct reasoning with MiniMax
-                    reply = self._call_minimax(tools_payload)
+                    reply = self._call_api(tools_payload)
                     self.messages.append(reply)
 
                     # 3. Tool Execution Phase

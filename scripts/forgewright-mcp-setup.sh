@@ -215,7 +215,7 @@ check_prerequisites() {
     if [[ -f "${script_dir}/mcp-generate.sh" ]]; then
         log_ok "MCP generation script found"
     else
-        log_warn "MCP generation script not found (will use existing server.ts)"
+        log_warn "MCP generation script not found (will use existing src/index.ts)"
     fi
     log_ok "Forgewright found at $FORGEWRIGHT_DIR"
 }
@@ -279,7 +279,7 @@ setup_mcp_server() {
             exit 1
         fi
     else
-        log_warn "mcp-generate.sh not found, skipping regeneration (using existing server.ts)"
+        log_warn "mcp-generate.sh not found, skipping regeneration (using existing src/index.ts)"
     fi
 
     # Generate manifest
@@ -339,7 +339,7 @@ EOF
 # The canonical MCP server lives at ~/.forgewright/mcp-server/
 # ALL global configs (Cursor, Claude Code) MUST point here — NEVER a submodule path.
 # Submodule projects get their own .antigravity/mcp-manifest.json but the server
-# they reference is always the canonical ~/.forgewright/mcp-server/server.ts.
+# they reference is always the canonical ~/.forgewright/mcp-server/src/index.ts.
 
 CANONICAL_SERVER_DIR="$HOME/.forgewright/mcp-server"
 CANONICAL_SERVER_TS="$CANONICAL_SERVER_DIR/src/index.ts"
@@ -1061,7 +1061,7 @@ verify_installation() {
     local server_dir="${PROJECT_ROOT}/.forgewright/mcp-server"
 
     ((checks++)); [[ -d "$server_dir" ]] && ((passed++)) && log_ok "Server dir" || log_error "Server dir missing"
-    ((checks++)); [[ -f "$server_dir/server.ts" ]] && ((passed++)) && log_ok "server.ts" || log_error "server.ts missing"
+    ((checks++)); [[ -f "$server_dir/src/index.ts" ]] && ((passed++)) && log_ok "src/index.ts" || log_error "src/index.ts missing"
     ((checks++)); [[ -f "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh" ]] && ((passed++)) && log_ok "Launcher script" || log_error "Launcher script missing"
     ((checks++)); [[ -f "${PROJECT_ROOT}/.antigravity/mcp-manifest.json" ]] && ((passed++)) && log_ok "Manifest" || log_error "Manifest missing"
 

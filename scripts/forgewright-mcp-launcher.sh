@@ -202,21 +202,28 @@ find_forgewright() {
 
     log_debug "Searching for forgewright in $workspace..."
 
-    # Pattern 1: .forgewright/ directory in workspace
+    # Pattern 1: Use FORGEWRIGHT_DIR (from script location)
+    if [[ -d "${FORGEWRIGHT_DIR}" ]]; then
+        log_debug "  → Using FORGEWRIGHT_DIR: $FORGEWRIGHT_DIR"
+        echo "$FORGEWRIGHT_DIR"
+        return 0
+    fi
+
+    # Pattern 2: .forgewright/ directory in workspace
     if [[ -d "$workspace/.forgewright" ]]; then
         log_debug "  → Found .forgewright in workspace"
         echo "$workspace/.forgewright"
         return 0
     fi
 
-    # Pattern 2: forgewright/ submodule
+    # Pattern 3: forgewright/ submodule
     if [[ -d "$workspace/forgewright" ]]; then
         log_debug "  → Found forgewright/ submodule"
         echo "$workspace/forgewright"
         return 0
     fi
 
-    # Pattern 3: Look up directory tree for forgewright
+    # Pattern 4: Look up directory tree for forgewright
     local current="$workspace"
     while [[ "$current" != "/" ]]; do
         if [[ -d "$current/.forgewright" ]]; then
@@ -232,13 +239,6 @@ find_forgewright() {
         fi
         current="$(dirname "$current")"
     done
-
-    # Pattern 4: Use FORGEWRIGHT_DIR (from script location)
-    if [[ -d "${FORGEWRIGHT_DIR}" ]]; then
-        log_debug "  → Using FORGEWRIGHT_DIR: $FORGEWRIGHT_DIR"
-        echo "$FORGEWRIGHT_DIR"
-        return 0
-    fi
 
     log_debug "  → No forgewright found"
     echo ""
@@ -267,12 +267,18 @@ var path = require('path');
 try {
   var m = JSON.parse(fs.readFileSync('$manifest', 'utf8'));
   var server = (m.servers || []).find(function(s){
-    return s.type === 'forgewright-mcp-server' && s.enabled !== false && s.auto_start !== false;
+    return (s.type === 'forgewright-mcp-server' || s.name === 'forgewright') && s.enabled !== false && s.auto_start !== false;
   });
   if (server) {
-    var sp = path.join('$workspace', '.forgewright', 'mcp-server', 'server.ts');
-    if (fs.existsSync(sp)) {
-        process.stdout.write(sp);
+    var sp = server.command;
+    if (!sp) {
+      process.exit(1);
+    }
+    // Command is usually 'npx tsx /path/to/server.ts', we want the path
+    var parts = sp.split(' ');
+    var scriptPath = parts[parts.length - 1];
+    if (fs.existsSync(scriptPath)) {
+        process.stdout.write(scriptPath);
     } else {
         process.exit(1);
     }
@@ -292,7 +298,7 @@ try {
     # ── Path B: Scan for forgewright and find MCP server ──────────
 
     if [[ -n "$forgewright" ]]; then
-        local mcp_server="$forgewright/mcp-server/server.ts"
+        local mcp_server="$forgewright/mcp/src/index.ts"
         if [[ -f "$mcp_server" ]]; then
             log_debug "  → Found MCP server at: $mcp_server"
             echo "npx tsx $mcp_server"
@@ -300,7 +306,7 @@ try {
         fi
 
         # Try forgewright MCP server (project has its own)
-        local project_mcp="$workspace/.forgewright/mcp-server/server.ts"
+        local project_mcp="$workspace/.forgewright/mcp/src/index.ts"
         if [[ -f "$project_mcp" ]]; then
             log_debug "  → Found project MCP server: $project_mcp"
             echo "npx tsx $project_mcp"
@@ -311,9 +317,9 @@ try {
     # ── Path C: Try common locations ──────────────────────────────
 
     local common_paths=(
-        "$workspace/.forgewright/mcp-server/server.ts"
-        "$workspace/mcp/server.ts"
-        "$workspace/forgewright/mcp-server/server.ts"
+        "$workspace/.forgewright/mcp/src/index.ts"
+        "$workspace/mcp/src/index.ts"
+        "$workspace/forgewright/mcp/src/index.ts"
     )
 
     for path in "${common_paths[@]}"; do
