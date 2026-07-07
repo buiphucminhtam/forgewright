@@ -1,7 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { theme } from '../theme/theme';
+import { View, Text, StyleSheet, Dimensions, ScrollView, Pressable } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { theme } from '../theme/theme';
+
+const { width } = Dimensions.get('window');
+// Simple Viewport width scale function
+const vw = (percent: number) => (width * percent) / 100;
 
 export type RootStackParamList = {
   MainMenu: undefined;
@@ -15,74 +20,133 @@ type Props = {
   navigation: MainMenuScreenNavigationProp;
 };
 
+const BentoCard = ({ 
+  title, 
+  subtitle, 
+  color, 
+  onPress, 
+  locked = false,
+  wide = false 
+}: { 
+  title: string, 
+  subtitle: string, 
+  color: string, 
+  onPress: () => void,
+  locked?: boolean,
+  wide?: boolean
+}) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
+
+  return (
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.95); }}
+      onPressOut={() => { scale.value = withSpring(1); }}
+      onPress={locked ? undefined : onPress}
+      style={[styles.cardWrapper, { width: wide ? '100%' : '48%' }]}
+    >
+      <Animated.View style={[
+        styles.card, 
+        animatedStyle, 
+        { backgroundColor: locked ? theme.colors.surface : color },
+        locked && styles.lockedCard
+      ]}>
+        <Text style={[styles.cardTitle, { fontFamily: 'Inter_900Black', color: locked ? theme.colors.border : '#fff' }]}>
+          {title}
+        </Text>
+        <Text style={[styles.cardSubtitle, { fontFamily: 'Inter_400Regular', color: locked ? theme.colors.border : 'rgba(255,255,255,0.8)' }]}>
+          {locked ? 'Locked' : subtitle}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+};
+
 export function MainMenuScreen({ navigation }: Props) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Journey Map</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <Text style={styles.headerTitle}>Select Level</Text>
+      <Text style={styles.headerSubtitle}>Discover logic puzzles</Text>
       
-      <View style={styles.mapContainer}>
-        <TouchableOpacity 
-          style={styles.levelNode} 
-          onPress={() => navigation.navigate('RectangleLevels')}
-        >
-          <Text style={styles.levelText}>1</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.pathLine} />
-        
-        <TouchableOpacity 
-          style={[styles.levelNode, styles.levelNodeSecondary]} 
-          onPress={() => navigation.navigate('PipeLevels')}
-        >
-          <Text style={styles.levelText}>2</Text>
-        </TouchableOpacity>
+      <View style={styles.bentoGrid}>
+        <BentoCard 
+          title="Rectangles" 
+          subtitle="Geometry logic" 
+          color={theme.colors.primary} 
+          wide={true}
+          onPress={() => navigation.navigate('RectangleLevels')} 
+        />
+        <BentoCard 
+          title="Pipes" 
+          subtitle="Flow puzzles" 
+          color={theme.colors.secondary} 
+          onPress={() => navigation.navigate('PipeLevels')} 
+        />
+        <BentoCard 
+          title="Circuit" 
+          subtitle="Coming Soon" 
+          color="#333" 
+          locked={true}
+          onPress={() => {}} 
+        />
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#0a0a0a',
   },
-  title: {
-    fontSize: theme.typography.sizes.h1,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xxl,
+  scrollContent: {
+    padding: vw(5),
+    paddingTop: vw(15),
+    paddingBottom: vw(10),
   },
-  mapContainer: {
+  headerTitle: {
+    fontSize: vw(10),
+    fontFamily: 'Inter_900Black',
+    color: '#ffffff',
+    marginBottom: vw(2),
+  },
+  headerSubtitle: {
+    fontSize: vw(4.5),
+    fontFamily: 'Inter_400Regular',
+    color: '#888888',
+    marginBottom: vw(8),
+  },
+  bentoGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: vw(4),
   },
-  levelNode: {
-    width: 60,
-    height: 60,
-    borderRadius: theme.borderRadius.pill,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  cardWrapper: {
+    marginBottom: vw(4),
   },
-  levelNodeSecondary: {
-    backgroundColor: theme.colors.secondary,
+  card: {
+    padding: vw(6),
+    borderRadius: vw(6),
+    minHeight: vw(40),
+    justifyContent: 'flex-end',
+    // Fitts's Law applied: Min touch target via minHeight & padding
   },
-  levelText: {
-    color: theme.colors.surface,
-    fontSize: theme.typography.sizes.h2,
-    fontWeight: theme.typography.weights.bold,
+  lockedCard: {
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    backgroundColor: 'transparent',
   },
-  pathLine: {
-    width: 80,
-    height: 4,
-    backgroundColor: theme.colors.border,
+  cardTitle: {
+    fontSize: vw(7),
+    marginBottom: vw(1),
+  },
+  cardSubtitle: {
+    fontSize: vw(4),
   }
 });
