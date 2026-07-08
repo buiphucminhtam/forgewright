@@ -56,10 +56,10 @@ const BentoCard = ({
         { backgroundColor: locked ? theme.colors.surface : color },
         locked && styles.lockedCard
       ]}>
-        <Text style={[styles.cardTitle, { fontFamily: 'Inter_900Black', color: locked ? theme.colors.border : '#fff' }]}>
+        <Text style={[styles.cardTitle, { fontFamily: 'Inter_900Black', color: locked ? theme.colors.secondary : '#fff' }]}>
           {title}
         </Text>
-        <Text style={[styles.cardSubtitle, { fontFamily: 'Inter_400Regular', color: locked ? theme.colors.border : 'rgba(255,255,255,0.8)' }]}>
+        <Text style={[styles.cardSubtitle, { fontFamily: 'Inter_400Regular', color: locked ? theme.colors.secondary : 'rgba(255,255,255,0.9)' }]}>
           {locked ? 'Locked' : subtitle}
         </Text>
       </Animated.View>
@@ -102,7 +102,7 @@ export function MainMenuScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: theme.colors.background,
   },
   scrollContent: {
     padding: vw(5),
@@ -112,13 +112,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: vw(10),
     fontFamily: 'Inter_900Black',
-    color: '#ffffff',
+    color: theme.colors.text,
     marginBottom: vw(2),
   },
   headerSubtitle: {
     fontSize: vw(4.5),
     fontFamily: 'Inter_400Regular',
-    color: '#888888',
+    color: theme.colors.secondary,
     marginBottom: vw(8),
   },
   bentoGrid: {

@@ -1,17 +1,19 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, PanResponder, TouchableOpacity } from 'react-native';
 import { Clue, Rectangle, RectangleValidator } from '../logic/RectanglePuzzle';
+import { theme } from '../theme/theme';
 
 interface Props {
   width: number;
   height: number;
   clues: Clue[];
+  currentTheme?: typeof theme.colors;
   onComplete?: () => void;
 }
 
 const CELL_SIZE = 60;
 
-export default function RectanglePuzzleBoard({ width, height, clues, onComplete }: Props) {
+export default function RectanglePuzzleBoard({ width, height, clues, currentTheme = theme.colors, onComplete }: Props) {
   const [rectangles, setRectangles] = useState<Rectangle[]>([]);
   const [currentDrag, setCurrentDrag] = useState<Rectangle | null>(null);
 
@@ -54,7 +56,6 @@ export default function RectanglePuzzleBoard({ width, height, clues, onComplete 
       },
       onPanResponderRelease: () => {
         if (currentDrag) {
-          // If tap (1x1), we might be removing an existing rectangle
           const isTap = currentDrag.width === 1 && currentDrag.height === 1;
           
           let updatedRects = [...rectangles];
@@ -72,7 +73,6 @@ export default function RectanglePuzzleBoard({ width, height, clues, onComplete 
           }
 
           if (!removed) {
-            // Remove any overlapping rectangles before adding the new one
             updatedRects = updatedRects.filter(r => {
               const overlapX = Math.max(0, Math.min(r.x + r.width, currentDrag.x + currentDrag.width) - Math.max(r.x, currentDrag.x));
               const overlapY = Math.max(0, Math.min(r.y + r.height, currentDrag.y + currentDrag.height) - Math.max(r.y, currentDrag.y));
@@ -96,45 +96,43 @@ export default function RectanglePuzzleBoard({ width, height, clues, onComplete 
     <View style={styles.container}>
       <View 
         ref={containerRef}
-        style={[styles.board, { width: width * CELL_SIZE, height: height * CELL_SIZE }]}
-        onLayout={(e) => {
+        style={[styles.board, { width: width * CELL_SIZE, height: height * CELL_SIZE, backgroundColor: currentTheme.surface }]}
+        onLayout={() => {
           containerRef.current?.measure((x, y, w, h, pageX, pageY) => {
             setBoardLayout({ x: pageX, y: pageY });
           });
         }}
         {...panResponder.panHandlers}
       >
-        {/* Grid cells */}
         {Array.from({ length: height }).map((_, y) => 
           Array.from({ length: width }).map((_, x) => (
-            <View key={`cell-${x}-${y}`} style={[styles.cell, { left: x * CELL_SIZE, top: y * CELL_SIZE }]} />
+            <View key={`cell-${x}-${y}`} style={[styles.gridCell, { left: x * CELL_SIZE, top: y * CELL_SIZE, borderColor: currentTheme.border }]} />
           ))
         )}
 
-        {/* Clues */}
         {clues.map((clue, idx) => (
           <View key={`clue-${idx}`} style={[styles.clueContainer, { left: clue.x * CELL_SIZE, top: clue.y * CELL_SIZE }]}>
             <Text style={styles.clueText}>{clue.value}</Text>
           </View>
         ))}
 
-        {/* Drawn Rectangles */}
         {rectangles.map((rect, idx) => (
           <View 
             key={`rect-${idx}`} 
             style={[
-              styles.rectangle, 
+              styles.drawnRectangle, 
               { 
                 left: rect.x * CELL_SIZE, 
                 top: rect.y * CELL_SIZE, 
                 width: rect.width * CELL_SIZE, 
-                height: rect.height * CELL_SIZE 
+                height: rect.height * CELL_SIZE,
+                borderColor: currentTheme.primary,
+                backgroundColor: currentTheme.primary + '33'
               }
             ]} 
           />
         ))}
 
-        {/* Current Dragging Rectangle */}
         {currentDrag && (
           <View 
             style={[
@@ -162,17 +160,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   board: {
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#333',
-    position: 'relative',
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    ...theme.shadows.soft,
   },
-  cell: {
+  gridCell: {
     position: 'absolute',
     width: CELL_SIZE,
     height: CELL_SIZE,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderWidth: 0.5,
   },
   clueContainer: {
     position: 'absolute',
@@ -183,15 +179,14 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   clueText: {
+    fontFamily: 'Inter_900Black',
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    color: '#334155',
   },
-  rectangle: {
+  drawnRectangle: {
     position: 'absolute',
     borderWidth: 3,
-    borderColor: '#4A90E2',
-    backgroundColor: 'rgba(74, 144, 226, 0.2)',
+    borderRadius: theme.borderRadius.sm,
     zIndex: 2,
     pointerEvents: 'none',
   },

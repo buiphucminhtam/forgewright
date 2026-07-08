@@ -7,18 +7,21 @@ interface Props {
   width: number;
   height: number;
   initialTiles: PipeTile[];
+  currentTheme?: typeof theme.colors;
   onComplete?: () => void;
 }
 
-export default function PipePuzzleBoard({ width, height, initialTiles, onComplete }: Props) {
+export default function PipePuzzleBoard({ width, height, initialTiles, currentTheme = theme.colors, onComplete }: Props) {
   const [tiles, setTiles] = useState<PipeTile[]>([]);
 
   useEffect(() => {
-    // Deep clone initial tiles
     setTiles(initialTiles.map(t => ({ ...t })));
   }, [initialTiles]);
 
-  // Use a fixed board size based on screen width
+  // Compute flow state on every render
+  const flowState = PipeValidator.getFlowState(width, height, tiles);
+  const filledTiles = flowState.filled;
+
   const screenWidth = Dimensions.get('window').width;
   const padding = theme.spacing.md;
   const boardSize = Math.min(screenWidth - theme.spacing.lg * 2, 400);
@@ -38,16 +41,33 @@ export default function PipePuzzleBoard({ width, height, initialTiles, onComplet
   };
 
   useEffect(() => {
-    if (tiles.length > 0) {
-      if (PipeValidator.isValid(width, height, tiles)) {
-        onComplete?.();
-      }
+    if (tiles.length > 0 && flowState.isSolved) {
+      onComplete?.();
     }
-  }, [tiles, width, height, onComplete]);
+  }, [tiles, flowState.isSolved, onComplete]);
 
   return (
-    <View style={[styles.board, { width: boardSize, height: (cellSize * height) + padding * 2 }]}>
+    <View style={[styles.board, { 
+      backgroundColor: currentTheme.surface, 
+      width: boardSize, 
+      height: (cellSize * height) + padding * 2 
+    }]}>
       {tiles.map((tile, index) => {
+        // Is this tile filled with fluid?
+        const isFilled = filledTiles.has(tile);
+        
+        // Determine colors based on type and filled state
+        let pipeColor = isFilled ? currentTheme.primary : currentTheme.emptyPipe;
+        let centerColor = isFilled ? currentTheme.primary : currentTheme.emptyPipe;
+        
+        if (tile.type === 'source') {
+          centerColor = currentTheme.source;
+          pipeColor = currentTheme.source;
+        } else if (tile.type === 'sink') {
+          centerColor = isFilled ? currentTheme.sink : currentTheme.secondary;
+          pipeColor = isFilled ? currentTheme.sink : currentTheme.emptyPipe;
+        }
+
         return (
           <TouchableOpacity
             key={`tile-${tile.x}-${tile.y}`}
@@ -71,13 +91,18 @@ export default function PipePuzzleBoard({ width, height, initialTiles, onComplet
               ]}
             >
               {/* Center node */}
-              <View style={styles.centerNode} />
+              <View style={[
+                styles.centerNode, 
+                { backgroundColor: centerColor },
+                tile.type === 'source' && styles.sourceNode,
+                tile.type === 'sink' && styles.sinkNode,
+              ]} />
               
               {/* Pipe arms */}
-              {tile.baseConnections[0] && <View style={[styles.pipeArm, styles.pipeTop]} />}
-              {tile.baseConnections[1] && <View style={[styles.pipeArm, styles.pipeRight]} />}
-              {tile.baseConnections[2] && <View style={[styles.pipeArm, styles.pipeBottom]} />}
-              {tile.baseConnections[3] && <View style={[styles.pipeArm, styles.pipeLeft]} />}
+              {tile.baseConnections[0] && <View style={[styles.pipeArm, styles.pipeTop, { backgroundColor: pipeColor }]} />}
+              {tile.baseConnections[1] && <View style={[styles.pipeArm, styles.pipeRight, { backgroundColor: pipeColor }]} />}
+              {tile.baseConnections[2] && <View style={[styles.pipeArm, styles.pipeBottom, { backgroundColor: pipeColor }]} />}
+              {tile.baseConnections[3] && <View style={[styles.pipeArm, styles.pipeLeft, { backgroundColor: pipeColor }]} />}
             </View>
           </TouchableOpacity>
         );
@@ -88,39 +113,45 @@ export default function PipePuzzleBoard({ width, height, initialTiles, onComplet
 
 const styles = StyleSheet.create({
   board: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.xl,
     position: 'relative',
-    ...theme.shadows.clay,
+    ...theme.shadows.soft,
   },
   tileWrapper: {
     position: 'absolute',
-    // removed hard borders
   },
   tileInner: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent', // Let board background show through
+    backgroundColor: 'transparent',
     borderRadius: theme.borderRadius.md,
   },
   tileLocked: {
-    backgroundColor: 'rgba(235, 235, 235, 0.4)', // subtle visual distinction
+    backgroundColor: 'rgba(200, 200, 200, 0.15)',
   },
   centerNode: {
     position: 'absolute',
     width: '40%',
     height: '40%',
-    backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.pill,
     zIndex: 2,
-    ...theme.shadows.claySoft,
+  },
+  sourceNode: {
+    width: '50%',
+    height: '50%',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.8)',
+    ...theme.shadows.innerPulse,
+  },
+  sinkNode: {
+    width: '50%',
+    height: '50%',
+    borderRadius: 8, // Square-ish for sink
   },
   pipeArm: {
     position: 'absolute',
-    backgroundColor: theme.colors.primary,
     zIndex: 1,
-    ...theme.shadows.claySoft,
   },
   pipeTop: {
     width: '40%',

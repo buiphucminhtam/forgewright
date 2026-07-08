@@ -1,159 +1,185 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
-import { theme } from '../theme/theme';
+import { theme, PALETTES } from '../theme/theme';
 import PipePuzzleBoard from '../components/PipePuzzleBoard';
 import { PipeTile } from '../logic/PipePuzzle';
+import { PipeGenerator } from '../logic/PipeGenerator';
 
 const { width } = Dimensions.get('window');
 const vw = (percent: number) => (width * percent) / 100;
 
-const LEVEL_WIDTH = 3;
-const LEVEL_HEIGHT = 3;
-
-// A complete 3x3 connected loop with a cross in the center, properly scrambled.
-const INITIAL_TILES: PipeTile[] = [
-  { x: 0, y: 0, baseConnections: [false, true, true, false], rotation: 1, isLocked: false },
-  { x: 1, y: 0, baseConnections: [false, true, true, true], rotation: 2, isLocked: false },
-  { x: 2, y: 0, baseConnections: [false, true, true, false], rotation: 0, isLocked: false },
-  
-  { x: 0, y: 1, baseConnections: [false, true, true, true], rotation: 1, isLocked: false },
-  { x: 1, y: 1, baseConnections: [true, true, true, true], rotation: 0, isLocked: true },
-  { x: 2, y: 1, baseConnections: [false, true, true, true], rotation: 3, isLocked: false },
-  
-  { x: 0, y: 2, baseConnections: [false, true, true, false], rotation: 2, isLocked: false },
-  { x: 1, y: 2, baseConnections: [false, true, true, true], rotation: 0, isLocked: false },
-  { x: 2, y: 2, baseConnections: [false, true, true, false], rotation: 1, isLocked: false },
-];
-
 export function PipeLevelsScreen({ navigation }: any) {
   const [completed, setCompleted] = useState(false);
+  const [levelSize, setLevelSize] = useState(3);
+  const [tiles, setTiles] = useState<PipeTile[]>([]);
   const [resetKey, setResetKey] = useState(0);
+  const [currentTheme, setCurrentTheme] = useState(PALETTES[0]);
+
+  useEffect(() => {
+    // Generate a new level when resetKey or levelSize changes
+    const newTiles = PipeGenerator.generateLevel(levelSize, levelSize);
+    setTiles(newTiles);
+    setCompleted(false);
+    
+    // Pick a random theme!
+    const randomTheme = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+    setCurrentTheme(randomTheme);
+  }, [resetKey, levelSize]);
 
   return (
-    <View style={styles.container}>
-      {/* Meta HUD: Floating Top Bar */}
-      <SafeAreaView style={styles.metaHudTop}>
-        <TouchableOpacity style={styles.hudButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.hudButtonText}>BACK</Text>
-        </TouchableOpacity>
-        <View style={styles.hudCenter}>
-          <Text style={styles.hudTitle}>PIPES</Text>
-          <Text style={styles.hudSubtitle}>SEC 2-A</Text>
-        </View>
-        <TouchableOpacity style={styles.hudButton} onPress={() => {}}>
-          <Text style={styles.hudButtonText}>HINT</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-
-      <View style={styles.boardContainer}>
-        <PipePuzzleBoard 
-          key={resetKey}
-          width={LEVEL_WIDTH} 
-          height={LEVEL_HEIGHT} 
-          initialTiles={INITIAL_TILES} 
-          onComplete={() => setCompleted(true)} 
-        />
-      </View>
-
-      {/* Meta HUD: Floating Bottom Controls */}
-      <SafeAreaView style={styles.metaHudBottom}>
-        <TouchableOpacity 
-          style={styles.hudButton} 
-          onPress={() => {
-            setCompleted(false);
-            setResetKey(k => k + 1);
-          }}
-        >
-          <Text style={styles.hudButtonText}>RESET</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: currentTheme.background }]}>
+      <View style={[styles.container, { backgroundColor: currentTheme.background }]}>
         
-        {completed && (
-          <View style={styles.successMessage}>
-            <Text style={styles.successText}>SOLVED</Text>
+        {/* TOP HUD */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.hudButton} onPress={() => navigation.goBack()}>
+            <Text style={[styles.hudButtonText, { color: currentTheme.secondary }]}>Back</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.hudCenter}>
+            <Text style={[styles.hudTitle, { color: currentTheme.text }]}>WATER FLOW</Text>
+            <Text style={[styles.hudSubtitle, { color: currentTheme.secondary }]}>{levelSize}x{levelSize} GRID</Text>
           </View>
-        )}
+          
+          <TouchableOpacity style={styles.hudButton} onPress={() => {}}>
+            <Text style={[styles.hudButtonText, { color: currentTheme.secondary }]}>Hint</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity style={[styles.hudButton, !completed && styles.hudButtonDisabled]} disabled={!completed}>
-          <Text style={styles.hudButtonText}>NEXT</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    </View>
+        {/* BOARD AREA */}
+        <View style={styles.boardContainer}>
+          {tiles.length > 0 && (
+            <PipePuzzleBoard 
+              key={`${levelSize}-${resetKey}`}
+              width={levelSize} 
+              height={levelSize} 
+              initialTiles={tiles} 
+              currentTheme={currentTheme}
+              onComplete={() => setCompleted(true)} 
+            />
+          )}
+          
+          {completed && (
+            <View style={[styles.successMessage, { backgroundColor: currentTheme.sink }]}>
+              <Text style={styles.successText}>LEVEL COMPLETE!</Text>
+            </View>
+          )}
+        </View>
+
+        {/* BOTTOM CONTROLS */}
+        <View style={styles.footer}>
+          <TouchableOpacity 
+            style={[styles.hudButton, styles.footerButton, { backgroundColor: currentTheme.surface }]} 
+            onPress={() => setResetKey(k => k + 1)}
+          >
+            <Text style={[styles.footerButtonText, { color: currentTheme.text }]}>RETRY</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[
+              styles.hudButton, 
+              styles.footerButton, 
+              { backgroundColor: currentTheme.surface },
+              !completed && styles.hudButtonDisabled, 
+              completed && { backgroundColor: currentTheme.primary }
+            ]} 
+            disabled={!completed}
+            onPress={() => {
+              // Increase difficulty slowly
+              if (levelSize < 8) setLevelSize(s => s + 1);
+              else setResetKey(k => k + 1);
+            }}
+          >
+            <Text style={[styles.footerButtonText, { color: currentTheme.text }, completed && styles.nextButtonTextActive]}>NEXT LEVEL</Text>
+          </TouchableOpacity>
+        </View>
+
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    justifyContent: 'space-between', // Push header to top, footer to bottom
   },
-  metaHudTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: vw(5),
-    paddingTop: vw(10),
-    zIndex: 10,
+    paddingTop: vw(4),
+    paddingBottom: vw(2),
   },
   hudCenter: {
     alignItems: 'center',
   },
   hudTitle: {
     fontFamily: 'Inter_900Black',
-    color: '#ffffff',
     fontSize: vw(5),
     letterSpacing: 2,
   },
   hudSubtitle: {
-    fontFamily: 'Inter_400Regular',
-    color: theme.colors.secondary,
+    fontFamily: 'Inter_500Medium',
     fontSize: vw(3.5),
     marginTop: 2,
+    letterSpacing: 1,
   },
   hudButton: {
-    minWidth: vw(15),
-    minHeight: vw(12),
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   hudButtonText: {
     fontFamily: 'Inter_700Bold',
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: vw(3.5),
-    letterSpacing: 1,
-  },
-  hudButtonDisabled: {
-    opacity: 0.2,
+    fontSize: vw(4),
   },
   boardContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  metaHudBottom: {
-    position: 'absolute',
-    bottom: vw(10),
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: vw(5),
-    zIndex: 10,
-  },
   successMessage: {
-    paddingVertical: vw(2),
-    paddingHorizontal: vw(4),
-    backgroundColor: theme.colors.secondary,
-    borderRadius: vw(2),
+    position: 'absolute',
+    top: 20, // Above the board
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: theme.borderRadius.pill,
+    ...theme.shadows.soft,
   },
   successText: {
     color: '#fff',
     fontFamily: 'Inter_900Black',
-    fontSize: vw(3.5),
-    letterSpacing: 2,
+    fontSize: 16,
+    letterSpacing: 1,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: vw(5),
+    paddingBottom: vw(8),
+    paddingTop: vw(4),
+  },
+  footerButton: {
+    borderRadius: theme.borderRadius.pill,
+    paddingHorizontal: 24,
+    ...theme.shadows.soft,
+  },
+  footerButtonText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    letterSpacing: 1,
+  },
+  hudButtonDisabled: {
+    opacity: 0.3,
+  },
+  nextButtonTextActive: {
+    color: '#fff',
   }
 });
