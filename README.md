@@ -160,13 +160,77 @@ Use it for failed plan reviews, architecture gates, security reviews, production
 
 **Pipeline flow:**
 
-```
-INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
-     ↓
-  1. Classify mode (Feature, Build, Debug, etc.)
-  2. Plan with quality score ≥ 9.0/10
-  3. Execute via appropriate skills
-  4. Quality gate verification
+```mermaid
+flowchart TD
+    classDef phase fill:#1a1a2e,stroke:#e94560,color:#fff,font-weight:bold,stroke-width:2px;
+    classDef action fill:#1a5276,stroke:#3498db,color:#fff;
+    classDef gate fill:#c0392b,stroke:#e74c3c,color:#fff,font-weight:bold;
+    classDef check fill:#1e8449,stroke:#2ecc71,color:#fff;
+    classDef doc fill:#d35400,stroke:#e67e22,color:#fff;
+
+    START(("User Request")) --> PHASE1
+    
+    subgraph PHASE1["1. INTERPRET & DEFINE (Step 0)"]
+        direction TB
+        ORCH["Orchestrator Skill"] --> CLASSIFY["Classify Request Mode"]
+        CLASSIFY --> |"Vague Request?"| CLARIFY["Ask MCQ / Clarifying Questions"]
+        CLARIFY -.-> |"User Replies"| CLASSIFY
+        CLASSIFY --> |"Clear Scope"| BA["Business Analyst (BDD Scope)"]
+    end
+    
+    PHASE1 --> PHASE2
+    
+    subgraph PHASE2["2. PLAN & SCORE (Plan Quality Loop)"]
+        direction TB
+        PLAN["Generate Execution Plan"] --> SCORE{"Score ≥ 9.0 ?"}
+        SCORE -->|"No (<9.0)"| RESEARCH["NotebookLM / Web Research"]
+        RESEARCH --> UPDATE_LESSON["Update Plan Lessons"]
+        UPDATE_LESSON --> PLAN
+    end
+
+    PHASE2 --> |"Yes (Pass)"| PHASE3
+    
+    subgraph PHASE3["3. BUILD & EXECUTE (Parallel Dispatch)"]
+        direction TB
+        ROUTE["Route to Specialized Skills"]
+        ROUTE --> SKILL1["Frontend Engineer"]
+        ROUTE --> SKILL2["Backend / DevOps"]
+        ROUTE --> SKILL3["Game / Mobile Dev"]
+        
+        SKILL1 --> CODE["Generate / Edit Code"]
+        SKILL2 --> CODE
+        SKILL3 --> CODE
+        CODE --> IMPACT["GitNexus Impact Analysis"]
+    end
+    
+    PHASE3 --> PHASE4
+    
+    subgraph PHASE4["4. HARDEN (Testing & Quality)"]
+        direction TB
+        QA["QA Engineer (Auto-Test)"] --> MUTATION["Mutation / Property-Based Testing"]
+        MUTATION --> SEC["Security / Linter Audit"]
+    end
+    
+    PHASE4 --> GATE{"Quality Gate Passed?"}
+    GATE --> |"No (Failed)"| FAIL["ASIP Self-Healing Loop"]
+    FAIL -.-> |"Extract Error / Decay weights"| PHASE2
+    
+    GATE --> |"Yes"| PHASE5
+    
+    subgraph PHASE5["5. SHIP & SUSTAIN"]
+        direction TB
+        SYNC["Wiki / GitNexus Sync"] --> COMMIT["Commit & Push"]
+        COMMIT --> DEPLOY["DevOps Deploy"]
+        DEPLOY --> LEARN["Reinforce Graph Weights (1.2x)"]
+    end
+    
+    PHASE5 --> DONE(("Task Complete"))
+
+    class PHASE1,PHASE2,PHASE3,PHASE4,PHASE5 phase;
+    class ORCH,CLASSIFY,BA,PLAN,RESEARCH,UPDATE_LESSON,ROUTE,SKILL1,SKILL2,SKILL3,CODE,IMPACT,QA,MUTATION,SEC,SYNC,COMMIT,DEPLOY,LEARN action;
+    class CLARIFY,SCORE,GATE,FAIL gate;
+    class DONE check;
+    class START doc;
 ```
 
 ---
