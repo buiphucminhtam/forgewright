@@ -47,6 +47,16 @@ You do NOT design UX. You implement designs.
 | **Empty states** | Show meaningful content, not blanks | Prevent confusion |
 | **Accessibility** | ARIA, keyboard nav, contrast | Inclusive by default |
 
+### Anti-Generic AI Aesthetic (The "Anti-Purple" Rule)
+
+> **[MANDATORY VISUAL CONSTRAINT]**
+> You must strictly avoid the generic AI default aesthetic (often called the "AI Purple Problem").
+> - **BAN LIST:** No gradients on text, buttons, or surfaces. No violet, indigo, purple, or neon magenta.
+> - **BACKGROUNDS:** Must be solid clean white (`#FFFFFF`) or very light slate (`#F8FAFC`). No gradient backgrounds.
+> - **TEXT:** Primary text must be dark charcoal (`#0F172A`).
+> - **ACCENTS:** Only use a solid, single-color structural accent (e.g., deep emerald green `#059669` or classic navy `#1E40AF`) for active buttons and links.
+> - **TYPOGRAPHY:** Avoid generic defaults (Inter, Roboto) in favor of distinct pairings unless explicitly overridden.
+
 ### Component Architecture
 
 ```

@@ -20,8 +20,10 @@ export default function PipePuzzleBoard({ width, height, initialTiles, onComplet
 
   // Use a fixed board size based on screen width
   const screenWidth = Dimensions.get('window').width;
+  const padding = theme.spacing.md;
   const boardSize = Math.min(screenWidth - theme.spacing.lg * 2, 400);
-  const cellSize = boardSize / Math.max(width, height);
+  const innerBoardSize = boardSize - padding * 2;
+  const cellSize = innerBoardSize / Math.max(width, height);
 
   const handleTilePress = (index: number) => {
     setTiles(prevTiles => {
@@ -44,7 +46,7 @@ export default function PipePuzzleBoard({ width, height, initialTiles, onComplet
   }, [tiles, width, height, onComplete]);
 
   return (
-    <View style={[styles.board, { width: cellSize * width, height: cellSize * height }]}>
+    <View style={[styles.board, { width: boardSize, height: (cellSize * height) + padding * 2 }]}>
       {tiles.map((tile, index) => {
         return (
           <TouchableOpacity
@@ -54,8 +56,8 @@ export default function PipePuzzleBoard({ width, height, initialTiles, onComplet
             style={[
               styles.tileWrapper,
               {
-                left: tile.x * cellSize,
-                top: tile.y * cellSize,
+                left: tile.x * cellSize + padding,
+                top: tile.y * cellSize + padding,
                 width: cellSize,
                 height: cellSize,
               }
@@ -87,57 +89,65 @@ export default function PipePuzzleBoard({ width, height, initialTiles, onComplet
 const styles = StyleSheet.create({
   board: {
     backgroundColor: theme.colors.surface,
-    borderWidth: 2,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    overflow: 'hidden',
+    borderRadius: theme.borderRadius.lg,
     position: 'relative',
+    ...theme.shadows.clay,
   },
   tileWrapper: {
     position: 'absolute',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    // removed hard borders
   },
   tileInner: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'transparent', // Let board background show through
+    borderRadius: theme.borderRadius.md,
   },
   tileLocked: {
-    backgroundColor: '#EBEBEB',
+    backgroundColor: 'rgba(235, 235, 235, 0.4)', // subtle visual distinction
   },
   centerNode: {
     position: 'absolute',
-    width: '30%',
-    height: '30%',
+    width: '40%',
+    height: '40%',
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.pill,
     zIndex: 2,
+    ...theme.shadows.claySoft,
   },
   pipeArm: {
     position: 'absolute',
     backgroundColor: theme.colors.primary,
     zIndex: 1,
+    ...theme.shadows.claySoft,
   },
   pipeTop: {
-    width: '30%',
+    width: '40%',
     height: '50%',
     top: 0,
+    borderTopLeftRadius: theme.borderRadius.sm,
+    borderTopRightRadius: theme.borderRadius.sm,
   },
   pipeRight: {
     width: '50%',
-    height: '30%',
+    height: '40%',
     right: 0,
+    borderTopRightRadius: theme.borderRadius.sm,
+    borderBottomRightRadius: theme.borderRadius.sm,
   },
   pipeBottom: {
-    width: '30%',
+    width: '40%',
     height: '50%',
     bottom: 0,
+    borderBottomLeftRadius: theme.borderRadius.sm,
+    borderBottomRightRadius: theme.borderRadius.sm,
   },
   pipeLeft: {
     width: '50%',
-    height: '30%',
+    height: '40%',
     left: 0,
+    borderTopLeftRadius: theme.borderRadius.sm,
+    borderBottomLeftRadius: theme.borderRadius.sm,
   },
 });
