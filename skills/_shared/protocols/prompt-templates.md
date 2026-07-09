@@ -1,3 +1,16 @@
+---
+id: prompt-templates
+title: Prompt Templates (from prompt-master)
+summary: Core protocol for prompt templates.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Prompt Templates (from prompt-master)
 
 > Auto-selected based on task type and target tool. Read the relevant template when needed. Do not load all at once.

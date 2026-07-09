@@ -1,0 +1,532 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Forgewright Skills Registry — Single Source of Truth
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# This file is the canonical registry for all Forgewright skills.
+# Verification scripts read from this file to determine expected counts.
+#
+# Types:
+#   canonical — A standalone skill with its own SKILL.md
+#   alias     — A routing shim that delegates to a canonical skill
+#
+# Regenerate: bash scripts/verify-skill-count.sh
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Directories excluded from skill counting:
+excluded_dirs:
+  - _shared
+  - _test
+  - generated
+
+skills:
+  - name: 3d-spatial-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: accessibility-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: ai-behavior-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: ai-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: animation-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: api-designer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: art-director
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: auto-publish
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: autonomous-testing
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: backend
+    type: alias
+    alias_target: software-engineer
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: build-release-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: business-analyst
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: code-quality-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: code-reviewer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: code-reviewer-go
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: code-reviewer-python
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: code-reviewer-rust
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: conversion-optimizer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: data-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: data-scientist
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: database-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: debugger
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: devops
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: eval-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: frontend
+    type: alias
+    alias_target: frontend-engineer
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: frontend-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: fullstack-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: game-accessibility-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: game-asset-vfx
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: game-audio-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: game-designer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: game-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: goal-driven
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: godot-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: godot-multiplayer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: growth-marketer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: instinct-system
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: interaction-designer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: level-designer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: liveops-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: llm-tester
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: mcp-generator
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: memory-manager
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: mobile-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: mobile-tester
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: narrative-designer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: notebooklm-researcher
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: parallel-dispatch
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: performance-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: phaser3-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: physics-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: polymath
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: product-manager
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: production-grade
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: project-manager
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: prompt-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: prompt-optimizer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: qa-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: roblox-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: security-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: skill-maker
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: software-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: software-engineer-go
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: software-engineer-python
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: software-engineer-rust
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: solution-architect
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: sre
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: strategic-compaction
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: technical-artist
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: technical-writer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: threejs-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: token-tracker
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: ui-designer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: unity-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: unity-mcp
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: unity-multiplayer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: unity-shader-artist
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: unreal-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: unreal-multiplayer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: unreal-technical-artist
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: ux-researcher
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: vision-review
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: web-scraper
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: xlsx-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: xr-engineer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0

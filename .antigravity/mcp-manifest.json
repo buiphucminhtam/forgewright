@@ -2,7 +2,7 @@
   "manifest_version": "1.0",
   "workspace": "/Users/buiphucminhtam/GitHub/forgewright",
   "forgewright": {
-    "version": "8.2.0",
+    "version": "8.7.0",
     "canonical": "/Users/buiphucminhtam/.forgewright",
     "server": "/Users/buiphucminhtam/.forgewright/mcp-server/src/index.ts"
   },
@@ -32,5 +32,5 @@
     "claude_code": "/Users/buiphucminhtam/.claude/settings.json",
     "antigravity": "not_found"
   },
-  "generated_at": "2026-07-01T11:30:00Z"
+  "generated_at": "2026-07-08T11:27:56Z"
 }

@@ -1,3 +1,16 @@
+---
+id: middleware-chain
+title: Middleware Chain Protocol
+summary: Core protocol for middleware chain.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Middleware Chain Protocol
 
 > **Purpose:** Guarantee deterministic, ordered execution of cross-cutting concerns before and after every skill invocation. Replaces the current ad-hoc protocol reading pattern with a fixed-order chain. Inspired by DeerFlow 2.0's 12-middleware architecture.

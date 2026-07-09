@@ -1,3 +1,16 @@
+---
+id: guardrail
+title: Guardrail Protocol
+summary: Core protocol for guardrail.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Guardrail Protocol
 
 > **Purpose:** Pre-authorize every tool call before execution. Blocks destructive operations, warns on sensitive access, and enforces scope discipline. Runs as Middleware ④ in the chain — the only middleware that can halt skill execution.

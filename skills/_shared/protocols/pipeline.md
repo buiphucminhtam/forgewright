@@ -1,3 +1,16 @@
+---
+id: pipeline
+title: Forgewright Pipeline
+summary: Core protocol for pipeline.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Forgewright Pipeline
 
 <!-- source: skills/_shared/protocols/pipeline.md -->

@@ -1,3 +1,16 @@
+---
+id: brownfield-safety
+title: Brownfield Safety Net Protocol
+summary: Core protocol for brownfield safety.
+status: deprecated
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Brownfield Safety Net Protocol
 
 **Protects existing projects from unintended changes. Creates safety layers including git branching, baseline snapshots, change tracking, and rollback capability.**

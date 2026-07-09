@@ -1,3 +1,16 @@
+---
+id: code-intelligence
+title: Code Intelligence Protocol
+summary: Core protocol for code intelligence.
+status: deprecated
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Code Intelligence Protocol
 
 **Gives skills deep codebase awareness via knowledge graph analysis. Powered by [GitNexus](https://github.com/gitnexus/GitNexus) — indexes AST relationships, call chains, and functional communities.**

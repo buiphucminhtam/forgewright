@@ -1,0 +1,283 @@
+:root {
+  --arch-surface: #ffffff;
+  --arch-surface-alt: #f8f9fa;
+  --arch-border: #dee2e6;
+  --arch-layer-accent: #0d6efd;
+  --arch-text: #212529;
+  --arch-text-muted: #6c757d;
+  --arch-spacing: 1rem;
+  --arch-radius: 6px;
+  --arch-focus: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  --arch-connector: #ced4da;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --arch-surface: #212529;
+    --arch-surface-alt: #343a40;
+    --arch-border: #495057;
+    --arch-layer-accent: #3d8bfd;
+    --arch-text: #f8f9fa;
+    --arch-text-muted: #adb5bd;
+    --arch-connector: #495057;
+  }
+}
+
+.architecture-diagram {
+  margin: 2rem 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--arch-text);
+  background: var(--arch-surface);
+  line-height: 1.5;
+}
+
+.architecture-diagram *, .architecture-diagram *::before, .architecture-diagram *::after {
+  box-sizing: border-box;
+}
+
+.diagram-description {
+  margin-bottom: var(--arch-spacing);
+  padding: calc(var(--arch-spacing) / 2) var(--arch-spacing);
+  background: var(--arch-surface-alt);
+  border-radius: var(--arch-radius);
+  border: 1px solid var(--arch-border);
+}
+
+.diagram-description summary {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.diagram-description summary:focus-visible {
+  outline: none;
+  box-shadow: var(--arch-focus);
+  border-radius: 3px;
+}
+
+/* Architecture Stack */
+.architecture-stack ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--arch-spacing);
+}
+
+.architecture-stack .layer-card {
+  display: flex;
+  align-items: center;
+  padding: var(--arch-spacing);
+  border: 1px solid var(--arch-border);
+  border-radius: var(--arch-radius);
+  background: var(--arch-surface-alt);
+  border-left: 4px solid var(--arch-layer-accent);
+}
+
+.architecture-stack .layer-badge {
+  background: var(--arch-layer-accent);
+  color: #fff;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: var(--arch-spacing);
+  flex-shrink: 0;
+}
+
+.architecture-stack .layer-content h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+}
+
+.architecture-stack .layer-content p {
+  margin: 0;
+  color: var(--arch-text-muted);
+  font-size: 0.875rem;
+}
+
+/* Architecture Flow and Pipeline */
+.flow-list, .pipeline-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.flow-step, .pipeline-step, .pipeline-retry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  width: 100%;
+}
+
+.flow-step:not(:last-child)::after, .pipeline-step:not(:last-child)::after {
+  content: "";
+  display: block;
+  width: 2px;
+  height: 1.5rem;
+  background: var(--arch-connector);
+  position: absolute;
+  bottom: -1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.step-box, .gate-box {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--arch-border);
+  border-radius: var(--arch-radius);
+  background: var(--arch-surface-alt);
+  min-width: 200px;
+  max-width: 100%;
+}
+
+.step-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+  font-size: 0.875rem;
+  color: var(--arch-text-muted);
+}
+
+.step-annotation, .retry-annotation {
+  font-size: 0.875rem;
+  color: var(--arch-text-muted);
+  margin-top: 0.5rem;
+}
+
+.gate-box {
+  border-style: double;
+  border-width: 3px;
+  border-color: var(--arch-layer-accent);
+  font-weight: bold;
+}
+
+.retry-loop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  border: 1px dashed var(--arch-connector);
+  border-radius: var(--arch-radius);
+  margin: 1rem 0;
+  width: 100%;
+  max-width: 400px;
+}
+
+.asip-box {
+  border-color: #ffc107;
+}
+
+@media (min-width: 768px) {
+  .flow-step, .pipeline-step {
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--arch-spacing);
+  }
+  .step-annotation {
+    margin-top: 0;
+    text-align: left;
+    width: 200px;
+  }
+}
+
+/* Architecture FluxMem */
+.fluxmem-grid {
+  display: grid;
+  gap: var(--arch-spacing);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .fluxmem-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.fluxmem-panel {
+  padding: var(--arch-spacing);
+  border: 1px solid var(--arch-border);
+  border-radius: var(--arch-radius);
+  background: var(--arch-surface-alt);
+}
+
+.fluxmem-panel h3 {
+  margin: 0 0 var(--arch-spacing) 0;
+  padding-bottom: calc(var(--arch-spacing) / 2);
+  border-bottom: 1px solid var(--arch-border);
+}
+
+.fluxmem-panel ul {
+  padding-left: 1.5rem;
+  margin: 0;
+}
+
+.fluxmem-panel span {
+  color: var(--arch-text-muted);
+}
+
+/* Architecture Worktrees */
+.worktree-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.worktree-branches {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+  width: 100%;
+  align-items: center;
+}
+
+.worktree-node {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--arch-border);
+  border-radius: var(--arch-radius);
+  background: var(--arch-surface-alt);
+  text-align: center;
+}
+
+.arbiter-node {
+  border-style: dashed;
+}
+
+@media (min-width: 768px) {
+  .worktree-branches {
+    flex-direction: row;
+    justify-content: center;
+  }
+  
+  .worktree-flow::before, .worktree-flow::after {
+    display: none;
+  }
+  
+  .main-node::after {
+    content: "";
+    display: block;
+    width: 2px;
+    height: 1.5rem;
+    background: var(--arch-connector);
+    margin: 0 auto;
+    position: absolute;
+    bottom: -1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .architecture-diagram * {
+    transition: none !important;
+  }
+}

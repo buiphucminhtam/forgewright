@@ -20,13 +20,7 @@ export interface QualityGateState {
 export interface PhaseState {
   key: 'interpret' | 'define' | 'build' | 'harden' | 'ship';
   status:
-    | 'not_started'
-    | 'running'
-    | 'waiting_review'
-    | 'passed'
-    | 'failed'
-    | 'skipped'
-    | 'blocked';
+    'not_started' | 'running' | 'waiting_review' | 'passed' | 'failed' | 'skipped' | 'blocked';
   progress: number; // 0.0 to 1.0
   activeAction?: string | null;
   startedAt?: string | null;

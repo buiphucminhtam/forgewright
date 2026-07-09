@@ -1,3 +1,16 @@
+---
+id: merge-arbiter
+title: Merge Arbiter Protocol
+summary: Core protocol for merge arbiter.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Merge Arbiter Protocol
 
 **Manages the merge of validated parallel worker branches into the main branch. Handles conflicts, integration testing, and rollback.**

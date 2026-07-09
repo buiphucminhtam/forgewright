@@ -1,0 +1,199 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Security Scanner
+        id: scanner
+        run: |
+          # Determine base branch for comparison
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_REF="${{ github.base_ref }}"
+          else
+            BASE_REF="origin/main"
+          fi
+
+          echo "Scanning changes from $BASE_REF..."
+          npx tsx .forgewright/security/scanner.ts \
+            --base "$BASE_REF" \
+            --output github \
+            > scanner-output.json 2>&1 || true
+
+          # Parse output
+          if [ -f scanner-output.json ]; then
+            echo "conclusion=$(cat scanner-output.json | jq -r '.conclusion // "success"')" >> $GITHUB_OUTPUT
+            echo "summary=$(cat scanner-output.json | jq -r '.output.summary // ""')" >> $GITHUB_OUTPUT
+            echo "text=$(cat scanner-output.json | jq -r '.output.text // ""')" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post comment to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = JSON.parse(fs.readFileSync('scanner-output.json', 'utf8'));
+
+            // Get current PR comments
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            // Find existing security scan comment
+            const existingComment = comments.data.find(
+              c => c.user.login === 'github-actions[bot]' &&
+                   c.body.includes('Forgewright Security Scan')
+            );
+
+            const commentBody = `## 🔒 Forgewright Security Scan
+
+${output.output?.summary || 'Scan completed'}
+
+${output.output?.text || ''}
+
+---
+
+*Powered by Forgewright AgentShield*`;
+
+            if (existingComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: commentBody
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+
+      - name: Update commit status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let conclusion = 'success';
+            let output = { title: 'Security Scan', summary: 'No issues found' };
+
+            try {
+              const scanOutput = JSON.parse(fs.readFileSync('scanner-output.json', 'utf8'));
+              conclusion = scanOutput.conclusion || 'success';
+              output = scanOutput.output || output;
+            } catch (e) {
+              console.log('Could not parse scanner output');
+            }
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: conclusion === 'failure' ? 'failure' : 'success',
+              target_url: context.payload.pull_request?.html_url || context.payload.compare,
+              description: output.summary?.substring(0, 140) || 'Security scan completed',
+              context: 'forgewright/security'
+            });
+
+      - name: Create GitHub Check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let conclusion = 'success';
+            let output = { title: 'Security Scan', summary: 'No issues found', text: '' };
+
+            try {
+              const scanOutput = JSON.parse(fs.readFileSync('scanner-output.json', 'utf8'));
+              conclusion = scanOutput.conclusion || 'success';
+              output = scanOutput.output || output;
+            } catch (e) {
+              console.log('Could not parse scanner output');
+            }
+
+            // Use checks API for more detailed annotations
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              check_name: 'forgewright/security'
+            });
+
+            const existingCheck = checks.check_runs?.[0];
+
+            if (existingCheck) {
+              await github.rest.checks.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                check_run_id: existingCheck.id,
+                conclusion: conclusion,
+                output: {
+                  title: output.title,
+                  summary: output.summary,
+                  text: output.text || 'No detailed findings'
+                }
+              });
+            } else {
+              await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'forgewright/security',
+                head_sha: context.sha,
+                conclusion: conclusion,
+                output: {
+                  title: output.title,
+                  summary: output.summary,
+                  text: output.text || 'No detailed findings'
+                }
+              });
+            }
+
+      - name: Show scan output
+        run: |
+          if [ -f scanner-output.json ]; then
+            echo "=== Security Scan Results ==="
+            cat scanner-output.json | jq -r '.output.summary // empty' || cat scanner-output.json
+          fi
+
+      - name: Fail on security issues
+        if: steps.scanner.outputs.conclusion == 'failure'
+        run: |
+          echo "Security scan found critical issues. Merge blocked."
+          exit 1

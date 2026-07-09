@@ -1,3 +1,16 @@
+---
+id: prompt-techniques
+title: Safe Prompt Techniques (from prompt-master)
+summary: Core protocol for prompt techniques.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Safe Prompt Techniques (from prompt-master)
 
 > 5 techniques with reliable, bounded effects. Methods that cause hallucinations or unpredictable output are explicitly excluded.

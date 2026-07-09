@@ -1,3 +1,16 @@
+---
+id: shell-filter
+title: Shell Output Filter Protocol
+summary: Core protocol for shell filter.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Shell Output Filter Protocol
 
 > **When:** Every Bash tool execution that produces output > 500 characters.

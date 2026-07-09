@@ -1,3 +1,16 @@
+---
+id: graceful-failure
+title: Graceful Failure Protocol
+summary: Core protocol for graceful failure.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Graceful Failure Protocol
 
 > **Purpose:** Prevents skills from looping on impossible tasks. Provides stuck detection, retry limits, graceful exit, and failure classification.

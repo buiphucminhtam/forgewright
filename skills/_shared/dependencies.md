@@ -225,7 +225,7 @@ digraph forgewright_deps {
 
 ```bash
 # Verify no cycles before committing
-./scripts/dep-graph.sh --check-cycles
+./scripts/utilities/dep-graph.sh --check-cycles
 ```
 
 ### Rule 2: Document Dependencies
@@ -260,24 +260,24 @@ dependencies:
 
 ## Implementation
 
-See `scripts/dep-graph.sh` for automated dependency graph generation.
+See `scripts/utilities/dep-graph.sh` for automated dependency graph generation.
 
 ## Usage
 
 ```bash
 # Generate dependency graph
-./scripts/dep-graph.sh generate
+./scripts/utilities/dep-graph.sh generate
 
 # Check for circular dependencies
-./scripts/dep-graph.sh check-cycles
+./scripts/utilities/dep-graph.sh check-cycles
 
 # Analyze impact of changing a skill
-./scripts/dep-graph.sh impact <skill-name>
+./scripts/utilities/dep-graph.sh impact <skill-name>
 
 # Export graph in various formats
-./scripts/dep-graph.sh export dot
-./scripts/dep-graph.sh export json
-./scripts/dep-graph.sh export mermaid
+./scripts/utilities/dep-graph.sh export dot
+./scripts/utilities/dep-graph.sh export json
+./scripts/utilities/dep-graph.sh export mermaid
 ```
 
 ---

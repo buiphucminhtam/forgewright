@@ -1,3 +1,16 @@
+---
+id: session-deduplication
+title: Session Deduplication — Middleware Protocol
+summary: Core protocol for session deduplication.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Session Deduplication — Middleware Protocol
 
 > **Purpose:** Prevent repeated identical tool calls from bloating LLM context. When the same `toolName + args` is invoked within a deduplication window, return a cached result instead of re-executing. This saves ~90% of tokens on repeated commands like `git status`, `ls`, `find`, etc.
@@ -195,6 +208,6 @@ interface DedupMetrics {
 
 ## References
 
-- I-NEW-1.2 in `docs/improvement-roadmap-v2.md`
+- I-NEW-1.2 in `docs/archive/improvement-roadmap-v2.md`
 - Middleware Chain: `middleware-chain.md`
 - Shell Filter: `shell-filter.md`

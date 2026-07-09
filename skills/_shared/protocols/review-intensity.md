@@ -1,3 +1,16 @@
+---
+id: review-intensity
+title: Review Intensity Protocol
+summary: Core protocol for review intensity.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Review Intensity Protocol
 
 > **Purpose:** Control how much design/architecture review happens at each step of the pipeline. Users choose their review depth once, and the system adapts automatically.

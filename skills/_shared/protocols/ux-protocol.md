@@ -1,3 +1,16 @@
+---
+id: ux-protocol
+title: UX Protocol — Single Source of Truth
+summary: Core protocol for ux protocol.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # UX Protocol — Single Source of Truth
 
 **Every skill in this plugin MUST follow these 6 rules for ALL user interactions.**

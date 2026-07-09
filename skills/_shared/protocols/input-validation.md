@@ -1,3 +1,16 @@
+---
+id: input-validation
+title: Input Validation & Graceful Degradation Protocol
+summary: Core protocol for input validation.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Input Validation & Graceful Degradation Protocol
 
 **Every skill MUST validate its inputs before starting work.** This prevents skills from failing silently or producing incomplete outputs when upstream artifacts are missing.

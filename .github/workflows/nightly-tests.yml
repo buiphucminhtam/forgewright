@@ -55,11 +55,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: mcp/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install Node dependencies
         run: npm ci
-        working-directory: mcp
 
       - name: Run Stryker Mutation Testing
         run: npx stryker run

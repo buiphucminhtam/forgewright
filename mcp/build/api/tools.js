@@ -1,5 +1,5 @@
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { startPipeline, getState, advancePhase, requestGateApproval, approveGate, updateSubTask, updateSelfHealing, failPipeline, logTokenUsage, PIPELINE_PHASES, } from '../state/pipeline-manager.js';
+import { startPipeline, getState, advancePhase, requestGateApproval, approveGate, updateSubTask, updateSelfHealing, failPipeline, logTokenUsage, checkPipelineCompliance, PIPELINE_PHASES, } from '../state/pipeline-manager.js';
 export function registerTools(server) {
     server.setRequestHandler(ListToolsRequestSchema, async () => {
         return {
@@ -169,6 +169,19 @@ export function registerTools(server) {
                         required: ['inputTokens', 'outputTokens', 'model', 'provider', 'skill'],
                     },
                 },
+                {
+                    name: 'fw_check_pipeline_compliance',
+                    description: 'Check whether Forgewright pipeline activation state is healthy and not stale. Use before closing substantial work.',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {
+                            maxStateAgeMinutes: {
+                                type: 'number',
+                                description: 'Maximum acceptable active pipeline state age in minutes.',
+                            },
+                        },
+                    },
+                },
             ],
         };
     });
@@ -303,6 +316,11 @@ export function registerTools(server) {
                         },
                     ],
                 };
+            }
+            if (request.params.name === 'fw_check_pipeline_compliance') {
+                const maxStateAgeMinutes = request.params.arguments?.maxStateAgeMinutes ?? 120;
+                const report = await checkPipelineCompliance(maxStateAgeMinutes);
+                return { content: [{ type: 'text', text: JSON.stringify(report, null, 2) }] };
             }
             throw new Error(`Tool not found: ${request.params.name}`);
         }

@@ -1,0 +1,191 @@
+# Injection Security Rules
+# OWASP A03:2021 - Injection
+# Covers: SQL, NoSQL, Command, LDAP, OS, and Prompt Injection
+# NOTE: Rules are designed to minimize false positives. Each pattern requires context.
+
+rules:
+  # ============================================
+  # SQL INJECTION - Requires SQL keyword context
+  # ============================================
+  - id: inj-sql-001
+    name: "SQL Query with String Concatenation"
+    pattern: "SELECT.*\\+.*FROM|UPDATE.*\\+.*SET|DELETE.*\\+.*FROM|INSERT.*\\+.*INTO"
+    severity: critical
+    description: "SQL query constructed using string concatenation — vulnerable to SQL injection"
+    cwe: "CWE-89"
+    owasp: "A03:2021"
+    remediation: "Use parameterized queries or prepared statements instead of string concatenation"
+
+  - id: inj-sql-002
+    name: "Query Builder with Raw SQL"
+    pattern: "\\.query\\s*\\(['\u0022].*\\$\\{.*\\}|raw\\s*\\(['\u0022].*\\$\\{.*\\}"
+    severity: critical
+    description: "Database query using raw() or query() with string interpolation"
+    cwe: "CWE-89"
+    owasp: "A03:2021"
+    remediation: "Use parameterized queries with bound variables"
+
+  - id: inj-sql-003
+    name: "Knex/Bookshelf Raw Query with Interpolation"
+    pattern: "knex\\.raw\\s*\\(['\u0022].*\\$\\{|\\.whereRaw\\s*\\(['\u0022].*\\$\\{"
+    severity: critical
+    description: "Knex raw query with string interpolation"
+    cwe: "CWE-89"
+    owasp: "A03:2021"
+    remediation: "Use knex query builder with bindings"
+
+  # ============================================
+  # COMMAND INJECTION - Generally unsafe patterns
+  # ============================================
+  - id: inj-cmd-001
+    name: "Shell Command Injection via exec()"
+    pattern: "exec\\s*\\(\\s*['\u0022`].*\\$\\{"
+    severity: critical
+    description: "Dynamic command execution from user input — allows arbitrary shell commands"
+    cwe: "CWE-78"
+    owasp: "A03:2021"
+    remediation: "Use execFile() with validated arguments array, or avoid shell execution entirely"
+
+  - id: inj-cmd-002
+    name: "Spawn with Shell Enabled and Concatenation"
+    pattern: "spawn\\s*\\([^)]*['\u0022].*\\$\\{[^)]*shell\\s*:\\s*true"
+    severity: critical
+    description: "Process spawning with shell enabled and string concatenation"
+    cwe: "CWE-78"
+    owasp: "A03:2021"
+    remediation: "Pass arguments as array, disable shell option, validate all inputs"
+
+  - id: inj-cmd-003
+    name: "Eval with Variable Input"
+    pattern: "eval\\s*\\([^)]*\\$\\{|new\\s+Function\\s*\\([^)]*\\$\\{"
+    severity: critical
+    description: "Dynamic code execution from user input — full arbitrary code execution risk"
+    cwe: "CWE-95"
+    owasp: "A03:2021"
+    remediation: "Never use eval() with user input. Use safe alternatives like switch statements"
+
+  - id: inj-cmd-004
+    name: "Shell Metacharacters in execSync"
+    pattern: "execSync\\s*\\(['\u0022].*\\$|child_process.*execSync\\s*\\(`"
+    severity: critical
+    description: "execSync with string that may contain shell metacharacters"
+    cwe: "CWE-78"
+    owasp: "A03:2021"
+    remediation: "Use execFileSync with argument array. Validate input strictly."
+
+  # ============================================
+  # NoSQL INJECTION - MongoDB specific
+  # ============================================
+  - id: inj-nosql-001
+    name: "MongoDB $where with User Input"
+    pattern: "\\$where\\s*:\\s*['\u0022].*\\$\\{|\\$where:\\s*function.*\\$\\{"
+    severity: critical
+    description: "MongoDB $where operator with user input — code injection risk"
+    cwe: "CWE-943"
+    owasp: "A03:2021"
+    remediation: "Never use $where with user input. Use query operators instead."
+
+  - id: inj-nosql-002
+    name: "MongoDB $eval Operator"
+    pattern: "\\$eval\\s*:"
+    severity: critical
+    description: "MongoDB $eval executes arbitrary JavaScript — never use with user input"
+    cwe: "CWE-943"
+    owasp: "A03:2021"
+    remediation: "Remove $eval usage. Use aggregation pipeline operators."
+
+  - id: inj-nosql-003
+    name: "Dynamic MongoDB Query Construction"
+    pattern: "collection\\.find\\s*\\(\\s*\\{[^}]*\\$\\{|collection\\.update\\s*\\([^)]*\\$\\{"
+    severity: high
+    description: "MongoDB query built with string interpolation in query object"
+    cwe: "CWE-943"
+    owasp: "A03:2021"
+    remediation: "Use typed query objects with validated parameters"
+
+  # ============================================
+  # LDAP INJECTION
+  # ============================================
+  - id: inj-ldap-001
+    name: "LDAP Search with String Concatenation"
+    pattern: "ldap.*search\\s*\\(['\u0022].*\\+.*user|ldap.*search\\s*\\(`.*\\$\\{"
+    severity: high
+    description: "LDAP query concatenating user input — vulnerable to LDAP injection"
+    cwe: "CWE-90"
+    owasp: "A03:2021"
+    remediation: "Sanitize LDAP special characters (*, (, ), \\, NUL) from user input"
+
+  # ============================================
+  # PATH TRAVERSAL
+  # ============================================
+  - id: inj-path-001
+    name: "Path Traversal via User Input"
+    pattern: "readFile\\s*\\([^)]*(req|body|query|params)\\.[^)]*\\+|readFileSync\\s*\\([^)]*\\.\\.\\/"
+    severity: high
+    description: "File path constructed with user input — allows reading arbitrary files"
+    cwe: "CWE-22"
+    owasp: "A03:2021"
+    remediation: "Use path.resolve() and validate paths are within allowed directory"
+
+  - id: inj-path-002
+    name: "Dynamic Path with ../ Sequence"
+    pattern: "path\\.join\\s*\\([^)]*\\.\\.\\/|resolve\\s*\\([^)]*\\+[^)]*\\.\\.\\/"
+    severity: high
+    description: "Path operation with potential directory traversal"
+    cwe: "CWE-22"
+    owasp: "A03:2021"
+    remediation: "Validate resolved path stays within allowed directory"
+
+  # ============================================
+  # XSS (Cross-Site Scripting)
+  # ============================================
+  - id: inj-xss-001
+    name: "Direct innerHTML Assignment"
+    pattern: "innerHTML\\s*=\\s*[^;]*\\$\\{"
+    severity: high
+    description: "Direct HTML insertion with variable data — vulnerable to XSS"
+    cwe: "CWE-79"
+    owasp: "A03:2021"
+    remediation: "Use textContent for plain text, or DOMPurify before innerHTML"
+
+  - id: inj-xss-002
+    name: "React dangerouslySetInnerHTML"
+    pattern: "dangerouslySetInnerHTML\\s*:\\s*\\{"
+    severity: medium
+    description: "React dangerouslySetInnerHTML usage — verify sanitization"
+    cwe: "CWE-79"
+    owasp: "A03:2021"
+    remediation: "Always sanitize with DOMPurify before using dangerouslySetInnerHTML"
+
+  - id: inj-xss-003
+    name: "document.write with Variable"
+    pattern: "document\\.write\\s*\\([^)]*\\$\\{"
+    severity: high
+    description: "document.write with variable content — classic XSS vector"
+    cwe: "CWE-79"
+    owasp: "A03:2021"
+    remediation: "Use textContent or DOMPurify instead of document.write"
+
+  # ============================================
+  # SERVER-SIDE TEMPLATE INJECTION (SSTI)
+  # ============================================
+  - id: inj-ssti-001
+    name: "Template Expression with Variable"
+    pattern: "\\{\\{\\s*[^}]*\\$\\{[^}]*\\}\\s*\\}|templateString\\s*\\.replace.*\\$\\{"
+    severity: critical
+    description: "Template with expression injection — SSTI vulnerability"
+    cwe: "CWE-1336"
+    owasp: "A03:2021"
+    remediation: "Never render user input as template expressions. Escape all user data."
+
+  # ============================================
+  # CODE INJECTION
+  # ============================================
+  - id: inj-code-001
+    name: "SetTimeout with String"
+    pattern: "setTimeout\\s*\\(['\u0022].*\\$\\{|setInterval\\s*\\(['\u0022].*\\$\\{"
+    severity: medium
+    description: "setTimeout/setInterval with string argument and interpolation"
+    cwe: "CWE-94"
+    owasp: "A03:2021"
+    remediation: "Use function references instead of string arguments"

@@ -1,3 +1,16 @@
+---
+id: self-check
+title: Self-Check Protocol
+summary: Core protocol for self check.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Self-Check Protocol
 
 <!-- source: skills/_shared/protocols/self-check.md -->

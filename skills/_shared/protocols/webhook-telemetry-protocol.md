@@ -1,3 +1,16 @@
+---
+id: webhook-telemetry-protocol
+title: Webhook State & Telemetry Protocol
+summary: Core protocol for webhook telemetry protocol.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Webhook State & Telemetry Protocol
 
 > **Lưu ý:** Giao thức này thay thế hoàn toàn hệ thống OSC và WebSocket RPC cũ. Tất cả các báo cáo trạng thái Pipeline và Token Usage phải được thực hiện thông qua Local Webhook HTTP POST.

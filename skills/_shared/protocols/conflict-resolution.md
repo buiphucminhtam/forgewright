@@ -1,3 +1,16 @@
+---
+id: conflict-resolution
+title: Conflict Resolution Protocol
+summary: Core protocol for conflict resolution.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Conflict Resolution Protocol
 
 **When two skills produce overlapping or contradictory outputs, this protocol determines which output takes authority.**

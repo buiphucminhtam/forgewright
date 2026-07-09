@@ -1,3 +1,16 @@
+---
+id: dryrun-interceptor
+title: DryRun Interceptor Protocol
+summary: Core protocol for dryrun interceptor.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # DryRun Interceptor Protocol
 
 > **Purpose:** Integrates "Global Dry Run" context into the AI Agent's thought loop from the very beginning. Runs as Middleware ③b in the chain. Working in tandem with Guardrail layer to ensure zero side-effects combined with token-efficient behavior.

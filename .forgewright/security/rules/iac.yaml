@@ -1,0 +1,247 @@
+# Infrastructure as Code Security Rules
+# Covers: Terraform, Kubernetes, Docker, CloudFormation, Pulumi
+# Based on OWASP Cloud Security, CIS Benchmarks, CSPM best practices
+
+rules:
+  # ============================================
+  # TERRAFORM / IaC SECRETS
+  # ============================================
+  - id: iac-tf-001
+    name: "Terraform Hardcoded AWS Access Key"
+    pattern: "access_key\\s*=\\s*['\u0022]AKIA[a-zA-Z0-9]{16}"
+    severity: critical
+    description: "AWS access key hardcoded in Terraform — credentials will be exposed"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Use IAM roles or instance profiles. Reference: aws_access_key_id data source"
+
+  - id: iac-tf-002
+    name: "Terraform Hardcoded Secret Value"
+    pattern: "(secret|password)\\s*=\\s*['\u0022][^'\u0022]{8,}['\u0022](?!\\s*#)"
+    severity: critical
+    description: "Secret value hardcoded in Terraform configuration"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Use secret management: AWS Secrets Manager, HashiCorp Vault, or environment variables"
+
+  - id: iac-tf-003
+    name: "Terraform Database Password Plaintext"
+    pattern: "(admin_password|master_password)\\s*=\\s*['\u0022]"
+    severity: critical
+    description: "Database admin password hardcoded in Terraform"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Use random_password resource or reference secrets from vault"
+
+  # ============================================
+  # KUBERNETES SECURITY
+  # ============================================
+  - id: iac-k8s-001
+    name: "Privileged Container"
+    pattern: "privileged\\s*:\\s*true"
+    severity: critical
+    description: "Privileged container can access host resources — full root access"
+    cwe: "CWE-250"
+    owasp: "A05:2021"
+    remediation: "Remove privileged mode. Use securityContext for minimal capabilities"
+
+  - id: iac-k8s-002
+    name: "Container Running as Root"
+    pattern: "(runAsUser\\s*:\\s*0|runAsNonRoot\\s*:\\s*false)"
+    severity: high
+    description: "Container runs as root user — if compromised, full host access"
+    cwe: "CWE-284"
+    owasp: "A05:2021"
+    remediation: "Set runAsNonRoot: true and runAsUser to non-privileged UID (10000+)"
+
+  - id: iac-k8s-003
+    name: "Host Path Volume Mount"
+    pattern: "hostPath:\\s*path:\\s*['\u0022]\\/"
+    severity: high
+    description: "Host path mounted into container — potential container escape"
+    cwe: "CWE-250"
+    owasp: "A05:2021"
+    remediation: "Use emptyDir or persistentVolumeClaim instead of hostPath"
+
+  - id: iac-k8s-004
+    name: "Kubernetes Secret in Plaintext YAML"
+    pattern: "kind\\s*:\\s*Secret|data\\s*:"
+    severity: high
+    description: "Kubernetes Secret in YAML — base64 encoded, not encrypted by default"
+    cwe: "CWE-312"
+    owasp: "A02:2021"
+    remediation: "Use external secrets (AWS Secrets Store CSI, HashiCorp Vault provider)"
+
+  - id: iac-k8s-005
+    name: "Missing NetworkPolicy"
+    pattern: "kind\\s*:\\s*NetworkPolicy(?!\\s*#)"
+    severity: medium
+    description: "No NetworkPolicy found — pods can communicate freely"
+    cwe: "CWE-16"
+    owasp: "A05:2021"
+    remediation: "Implement NetworkPolicy to restrict pod-to-pod communication"
+
+  - id: iac-k8s-006
+    name: "Service Account Token Auto-Mount"
+    pattern: "automountServiceAccountToken\\s*:\\s*true"
+    severity: medium
+    description: "Service account token auto-mounted — unnecessary exposure"
+    cwe: "CWE-284"
+    owasp: "A05:2021"
+    remediation: "Set automountServiceAccountToken: false for pods that don't need it"
+
+  # ============================================
+  # DOCKER SECURITY
+  # ============================================
+  - id: iac-docker-001
+    name: "Docker USER root"
+    pattern: "USER\\s+root"
+    severity: high
+    description: "Docker container runs as root — if compromised, host access"
+    cwe: "CWE-284"
+    owasp: "A05:2021"
+    remediation: "Use non-root user: USER appuser in Dockerfile"
+
+  - id: iac-docker-002
+    name: "Docker Socket Mount"
+    pattern: "type:\\s*['\u0022]bind['\u0022]|bind:\\s*\\[.*docker\\.sock"
+    severity: critical
+    description: "Docker socket mount configuration — potential container escape"
+    cwe: "CWE-284"
+    owasp: "A05:2021"
+    remediation: "Never mount docker.sock in containers. Use Docker API via TLS."
+
+  - id: iac-docker-003
+    name: "Sensitive Port Exposed"
+    pattern: "EXPOSE\\s+(22|3306|5432|27017|6379|9200)"
+    severity: medium
+    description: "Administrative or database port exposed in Dockerfile"
+    cwe: "CWE-16"
+    owasp: "A05:2021"
+    remediation: "Expose only necessary application ports. Use docker network isolation."
+
+  - id: iac-docker-004
+    name: "Latest Tag in Dockerfile"
+    pattern: "FROM\\s+\\w+:latest"
+    severity: medium
+    description: "Using 'latest' tag — unpredictable builds, potential vulnerabilities"
+    cwe: "CWE-1385"
+    owasp: "A06:2021"
+    remediation: "Pin to specific version tags: FROM node:18-alpine"
+
+  - id: iac-docker-005
+    name: "Running Container as Root User"
+    pattern: "--user\\s+0|chmod\\s+\\+\\s*s"
+    severity: high
+    description: "Container processes running as root"
+    cwe: "CWE-284"
+    owasp: "A05:2021"
+    remediation: "Create and use non-root user in Dockerfile"
+
+  # ============================================
+  # CLOUD FORMATION / SERVERLESS
+  # ============================================
+  - id: iac-cloud-001
+    name: "Public S3 Bucket"
+    pattern: "PublicAccessBlockConfiguration\\s*:\\s*false|AclPublicRead"
+    severity: critical
+    description: "S3 bucket configured as public — all objects accessible to internet"
+    cwe: "CWE-284"
+    owasp: "A01:2021"
+    remediation: "Set PublicAccessBlockConfiguration to true for all buckets"
+
+  - id: iac-cloud-002
+    name: "Unencrypted S3 Bucket"
+    pattern: "ServerSideEncryptionConfiguration|encrypted\\s*:\\s*false"
+    severity: high
+    description: "S3 bucket without encryption at rest"
+    cwe: "CWE-311"
+    owasp: "A02:2021"
+    remediation: "Enable default encryption (AES-256 or KMS) on all buckets"
+
+  - id: iac-cloud-003
+    name: "Security Group Open to All Traffic"
+    pattern: "CidrIp\\s*:\\s*['\u0022]0\\.0\\.0\\.0\\/[0]+['\u0022]"
+    severity: critical
+    description: "Security group allows all traffic (0.0.0.0/0) — server fully exposed"
+    cwe: "CWE-284"
+    owasp: "A01:2021"
+    remediation: "Restrict to specific IP ranges. Use least privilege for security groups."
+
+  - id: iac-cloud-004
+    name: "Lambda Environment with Secrets"
+    pattern: "Environment\\s*:.*Variables\\s*:.*(API_KEY|TOKEN|SECRET|PASSWORD)"
+    severity: high
+    description: "Lambda environment variables may contain sensitive data"
+    cwe: "CWE-312"
+    owasp: "A07:2021"
+    remediation: "Use AWS Secrets Manager or Parameter Store for Lambda secrets"
+
+  - id: iac-cloud-005
+    name: "CloudWatch Log Without Encryption"
+    pattern: "KmsKeyId\\s*:\\s*null"
+    severity: medium
+    description: "CloudWatch log group without KMS encryption"
+    cwe: "CWE-311"
+    owasp: "A02:2021"
+    remediation: "Enable KMS encryption for CloudWatch log groups"
+
+  # ============================================
+  # CI/CD SECURITY
+  # ============================================
+  - id: iac-cicd-001
+    name: "CI/CD with Plaintext Secret"
+    pattern: "(AWS_SECRET|GITHUB_TOKEN|API_KEY)\\s*=\\s*['\u0022]{2}"
+    severity: high
+    description: "Empty secret value in CI/CD — may indicate misconfiguration"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Set secrets via environment variables or secret management"
+
+  - id: iac-cicd-002
+    name: "Terraform State File Committed"
+    pattern: "\\.tfstate"
+    severity: high
+    description: "Terraform state file — may contain sensitive data"
+    cwe: "CWE-312"
+    owasp: "A07:2021"
+    remediation: "Use remote backend (S3 with DynamoDB lock). Never commit state files."
+
+  - id: iac-cicd-003
+    name: "Git Credentials in URL"
+    pattern: "https?://[^:]+:.*@github"
+    severity: high
+    description: "Git credentials embedded in URL — will be exposed"
+    cwe: "CWE-312"
+    owasp: "A07:2021"
+    remediation: "Use SSH keys, GitHub App, or deploy tokens instead"
+
+  # ============================================
+  # GENERAL IaC BEST PRACTICES
+  # ============================================
+  - id: iac-gen-001
+    name: "Missing Resource Limits"
+    pattern: "resources\\s*:\\s*\\{\\s*\\}|limits\\s*:\\s*null"
+    severity: low
+    description: "No resource limits defined — potential DoS from resource exhaustion"
+    cwe: "CWE-400"
+    owasp: "A05:2021"
+    remediation: "Always set CPU and memory requests and limits"
+
+  - id: iac-gen-002
+    name: "Privileged Pod Security Context"
+    pattern: "securityContext\\s*:\\s*\\{\\s*privileged\\s*:\\s*true"
+    severity: critical
+    description: "Pod with privileged security context — full host access"
+    cwe: "CWE-250"
+    owasp: "A05:2021"
+    remediation: "Remove privileged mode. Use least-privilege security context."
+
+  - id: iac-gen-003
+    name: "Empty Security Group Rule"
+    pattern: "securityGroupIds\\s*:\\s*\\[\\s*\\]|fromPort\\s*:\\s*0"
+    severity: medium
+    description: "Security group with open or empty rules"
+    cwe: "CWE-284"
+    owasp: "A01:2021"
+    remediation: "Define explicit ingress/egress rules with minimal permissions"

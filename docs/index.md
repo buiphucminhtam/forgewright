@@ -28,8 +28,8 @@ Welcome to Forgewright — an adaptive orchestrator with 70 AI skills covering t
 - **[Architecture Overview](architecture.md)** — System design and component interactions
 
 ### Migration & Troubleshooting
-- **[Migration Guide](migration/v8-to-v9.md)** — Upgrade from v8 to v9
-- **[Breaking Changes](migration/breaking-changes.md)** — What's changed in v9
+- **[Migration Guide](migration/v8-to-v9.md)** — Upgrade from v8 to v9 `[Planned]`
+- **[Breaking Changes](migration/breaking-changes.md)** — What's changed in v9 `[Planned]`
 - **[Common Issues](troubleshooting/common-issues.md)** — Solutions to frequent problems
 
 ## What's New
@@ -75,8 +75,8 @@ See the [Technical Writer skill](../skills/technical-writer/SKILL.md) for docume
 
 ## Version
 
-Current version: **9.0**
-Last updated: 2026-05-29
+Current version: **8.7.0**
+Last updated: 2026-07-09
 
 ---
 

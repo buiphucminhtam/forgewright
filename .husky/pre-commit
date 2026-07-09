@@ -7,7 +7,7 @@ echo "Running pre-commit checks..."
 
 # ── Wave 0: Documentation Consistency & Drift check ───────────────────────
 echo "[0/4] Running Wiki Drift & Conflict checks..."
-bash scripts/verify-wiki-drift.sh --threshold 0.3
+bash scripts/ci/verify-wiki-drift.sh --threshold 0.3
 if [ $? -ne 0 ]; then
   echo "Wiki Drift or Contradiction check failed! Commit blocked."
   exit 1
@@ -24,7 +24,7 @@ if [ -n "$LOGIC_CHANGES" ]; then
   gitnexus analyze || echo "⚠️ GitNexus analyze failed, skipping index update."
   
   # 2. Update sequence diagrams
-  npx tsx scripts/generate-sequence.ts || echo "⚠️ Sequence diagram generation failed, skipping diagram update."
+  npx tsx scripts/utilities/generate-sequence.ts || echo "⚠️ Sequence diagram generation failed, skipping diagram update."
   
   # 3. Stage updated files
   git add docs/architecture/flows/ || true

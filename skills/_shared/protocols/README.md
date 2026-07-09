@@ -4,14 +4,16 @@
 
 ## Files in this Directory
 
-| File | Content | Used By |
-|------|---------|---------|
-| `evidence-first.md` | Evidence-First Thinking (Anti-Hallucination) | AGENTS.md, CLAUDE.md |
-| `pipeline.md` | INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN | AGENTS.md, CLAUDE.md |
-| `plan-quality-loop.md` | 9-criteria scoring rubric | AGENTS.md, CLAUDE.md |
-| `expert-cli-mode.md` | Optional Claude/Codex CLI escalation and token controls | production-grade, CLI |
-| `self-check.md` | Pre-completion checklist | AGENTS.md, CLAUDE.md |
-| `research-gate.md` | Research flow for low-scoring plans | AGENTS.md, CLAUDE.md |
+The list of all protocols, their triggers, consumers, and lifecycle states has been migrated to a generated catalog.
+
+👉 **[View the Protocol Catalog](../../../docs/reference/protocol-catalog.md)**
+
+### Source of Truth Rules
+
+- **Do not manually maintain protocol lists.** The protocol catalog is generated automatically from the YAML frontmatter of the markdown files in this directory.
+- To add a new protocol, create a `.md` file here with valid YAML frontmatter conforming to `schemas/protocol.schema.json`.
+- Run `node scripts/catalog/generate-protocol-catalog.mjs` to regenerate the catalog.
+- If deprecating a protocol, set `status: deprecated` and optionally `superseded_by: [id]`. Do not just delete the file if it was widely referenced.
 
 ---
 

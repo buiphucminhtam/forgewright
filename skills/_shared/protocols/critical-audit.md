@@ -1,3 +1,16 @@
+---
+id: critical-audit
+title: Critical Self-Audit Protocol
+summary: Core protocol for critical audit.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Critical Self-Audit Protocol
 
 <!-- source: skills/_shared/protocols/critical-audit.md -->

@@ -1,3 +1,16 @@
+---
+id: qa-test-protocol
+title: QA Testing & Test Case Design Protocol — Shared Reference
+summary: Core protocol for qa test protocol.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # QA Testing & Test Case Design Protocol — Shared Reference
 
 > **Mọi game skill (qa-engineer, autonomous-testing, eval-engineer, software/frontend/mobile specialists) đều tham chiếu document này.** Cung cấp nền tảng lý thuyết kiểm thử, quy trình viết test case tối ưu độ bao phủ, cách viết kịch bản BDD/Gherkin chuẩn và các kỹ thuật Shift-Left/Shift-Right trong CI/CD.

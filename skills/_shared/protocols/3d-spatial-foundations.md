@@ -1,3 +1,16 @@
+---
+id: 3d-spatial-foundations
+title: 3D Spatial & Blockout Foundations — Shared Reference
+summary: Core protocol for 3d spatial foundations.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # 3D Spatial & Blockout Foundations — Shared Reference
 
 > **Mọi game skill (level designer, technical artist, engine engineers, web-3d specialist) đều tham chiếu document này.** Cung cấp nền tảng toán học hệ tọa độ, quy trình dựng khối blockout, và các kỹ thuật tối ưu hóa hiệu năng 3D.

@@ -31,7 +31,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -60,16 +59,30 @@ _SECRET_PATTERNS = [
 _STUB_PATTERN = re.compile(r"\b(TODO|FIXME|NotImplementedError)\b")
 
 _BINARY_EXTS = {
-    ".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf",
-    ".zip", ".tar", ".gz", ".bz2", ".whl", ".so", ".dylib",
-    ".exe", ".db", ".sqlite",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".ico",
+    ".pdf",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".bz2",
+    ".whl",
+    ".so",
+    ".dylib",
+    ".exe",
+    ".db",
+    ".sqlite",
 }
 
 _SKIP_STUB_PREFIXES = ("scripts/lite/", ".forgewright/", ".gitnexus/", ".forgenexus/")
-_SKIP_STUB_EXTS     = {".md", ".txt", ".json", ".yaml", ".yml", ".ini", ".cfg", ".toml"}
+_SKIP_STUB_EXTS = {".md", ".txt", ".json", ".yaml", ".yml", ".ini", ".cfg", ".toml"}
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _log(label: str, msg: str, *, err: bool = False) -> None:
     color = "\033[0;31m" if err else "\033[0;32m"
@@ -78,16 +91,25 @@ def _log(label: str, msg: str, *, err: bool = False) -> None:
     print(f"{color}[VERIFY-GATE]{reset} {label}: {msg}", file=stream)
 
 
-def _ok(msg: str)  -> None: _log("OK", msg)
-def _err(msg: str) -> None: _log("ERROR", msg, err=True)
-def _warn(msg: str)-> None: _log("WARNING", msg, err=True)
+def _ok(msg: str) -> None:
+    _log("OK", msg)
+
+
+def _err(msg: str) -> None:
+    _log("ERROR", msg, err=True)
+
+
+def _warn(msg: str) -> None:
+    _log("WARNING", msg, err=True)
 
 
 def _workspace() -> Path:
     try:
         r = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, timeout=5
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if r.returncode == 0:
             return Path(r.stdout.strip()).resolve()
@@ -100,31 +122,47 @@ def _current_tree_sha(workspace: Path) -> str:
     try:
         in_git = subprocess.run(
             ["git", "rev-parse", "--is-inside-work-tree"],
-            cwd=workspace, capture_output=True, timeout=5
+            cwd=workspace,
+            capture_output=True,
+            timeout=5,
         )
         if in_git.returncode != 0:
             return "NONGIT"
 
-        head = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=workspace, capture_output=True, text=True, timeout=5
-        ).stdout.strip() or "NOHEAD"
+        head = (
+            subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=workspace,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+            or "NOHEAD"
+        )
 
         status = subprocess.run(
             ["git", "status", "--porcelain", "--untracked-files=all"],
-            cwd=workspace, capture_output=True, text=True, timeout=5
+            cwd=workspace,
+            capture_output=True,
+            text=True,
+            timeout=5,
         ).stdout.splitlines()
 
         dirty = [
-            line for line in status
-            if not line[3:].startswith(".forgewright/verify/")
+            line for line in status if not line[3:].startswith(".forgewright/verify/")
         ]
 
         if dirty:
-            idx = subprocess.run(
-                ["git", "write-tree"],
-                cwd=workspace, capture_output=True, text=True, timeout=5
-            ).stdout.strip() or "NOIDX"
+            idx = (
+                subprocess.run(
+                    ["git", "write-tree"],
+                    cwd=workspace,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                ).stdout.strip()
+                or "NOIDX"
+            )
             return f"DIRTY:{head[:12]}:{idx[:12]}"
         return head
     except Exception:
@@ -133,24 +171,30 @@ def _current_tree_sha(workspace: Path) -> str:
 
 # ── 1. Find the evidence file ─────────────────────────────────────────────────
 
+
 def _find_evidence(project_root: Path, turn_env: str) -> Path | None:
     verify_dir = project_root / ".forgewright" / "verify"
     if turn_env:
         p = verify_dir / f"{turn_env}.json"
         return p if p.is_file() else None
     if verify_dir.is_dir():
-        files = sorted(verify_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+        files = sorted(
+            verify_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True
+        )
         return files[0] if files else None
     return None
 
 
 # ── 2. Parse & validate evidence ─────────────────────────────────────────────
 
+
 def _validate_schema(ev: dict) -> list[str]:
     """Return list of FORGED/structural errors."""
     errors: list[str] = []
     if ev.get("schema_version") != "1":
-        errors.append(f"FORGED: schema_version must be '1', got {ev.get('schema_version')!r}")
+        errors.append(
+            f"FORGED: schema_version must be '1', got {ev.get('schema_version')!r}"
+        )
     if not isinstance(ev.get("command"), list) or not ev["command"]:
         errors.append("FORGED: 'command' must be a non-empty list")
     if not isinstance(ev.get("turn"), str) or not ev["turn"]:
@@ -170,11 +214,15 @@ def _validate_output(ev: dict) -> list[str]:
     # Check for forged-shaped patterns
     for pat in _FORGED_OUTPUT_PATTERNS:
         if pat.search(output):
-            errors.append(f"FORGED: output matches forged-shape pattern {pat.pattern!r}")
+            errors.append(
+                f"FORGED: output matches forged-shape pattern {pat.pattern!r}"
+            )
     # Check for unredacted secrets in evidence output
     for pat in _SECRET_PATTERNS:
         if pat.search(output):
-            errors.append(f"SECRETS: evidence output contains unredacted secret matching {pat.pattern!r}")
+            errors.append(
+                f"SECRETS: evidence output contains unredacted secret matching {pat.pattern!r}"
+            )
     return errors
 
 
@@ -189,9 +237,13 @@ def _validate_staleness(ev: dict) -> list[str]:
         now = datetime.now(timezone.utc)
         age_secs = (now - ev_time).total_seconds()
         if age_secs < 0:
-            return [f"FORGED: evidence timestamp is in the future ({age_secs:.0f}s ahead)"]
+            return [
+                f"FORGED: evidence timestamp is in the future ({age_secs:.0f}s ahead)"
+            ]
         if age_secs > STALENESS_SECS:
-            return [f"STALE: evidence is {age_secs:.0f}s old (limit: {STALENESS_SECS}s)"]
+            return [
+                f"STALE: evidence is {age_secs:.0f}s old (limit: {STALENESS_SECS}s)"
+            ]
     except ValueError as e:
         return [f"STALE: cannot parse timestamp_utc {ts_str!r}: {e}"]
     return []
@@ -220,8 +272,8 @@ def _validate_tree(ev: dict, current_tree: str) -> list[str]:
 
     # Both DIRTY prefixed: compare HEAD part only (index may have evolved)
     if ev_tree.startswith("DIRTY:") and current_tree.startswith("DIRTY:"):
-        ev_head   = ev_tree.split(":")[1]
-        cur_head  = current_tree.split(":")[1]
+        ev_head = ev_tree.split(":")[1]
+        cur_head = current_tree.split(":")[1]
         if ev_head == cur_head:
             return []  # Same commit, different index — acceptable
 
@@ -245,6 +297,7 @@ def _validate_exit_code(ev: dict) -> list[str]:
 
 
 # ── 3. Stub check (never mutates source) ─────────────────────────────────────
+
 
 def _check_stubs(files: list[str]) -> list[str]:
     errors: list[str] = []
@@ -273,6 +326,7 @@ _STUB_EXTS = _SKIP_STUB_EXTS  # same skip list
 
 # ── 4. Lint plan CHECK commands ───────────────────────────────────────────────
 
+
 def _lint_text(text: str, name: str) -> list[str]:
     errors: list[str] = []
     for idx, line in enumerate(text.splitlines(), 1):
@@ -283,14 +337,20 @@ def _lint_text(text: str, name: str) -> list[str]:
                 try:
                     r = subprocess.run(
                         ["bash", "-c", f"set -n; {cmd}"],
-                        capture_output=True, text=True, timeout=2
+                        capture_output=True,
+                        text=True,
+                        timeout=2,
                     )
                     if r.returncode != 0:
-                        errors.append(f"  {name}:{idx}: bash syntax error in `{cmd}`: {r.stderr.strip()}")
+                        errors.append(
+                            f"  {name}:{idx}: bash syntax error in `{cmd}`: {r.stderr.strip()}"
+                        )
                 except Exception:
                     pass
                 if "->" not in line:
-                    errors.append(f"  {name}:{idx}: missing '->' transition in: {line.strip()}")
+                    errors.append(
+                        f"  {name}:{idx}: missing '->' transition in: {line.strip()}"
+                    )
     return errors
 
 
@@ -313,6 +373,7 @@ def _lint_check_commands(files: list[str], response_content: str) -> list[str]:
 # This function is intentionally a no-op kept for compatibility with the
 # earlier call site and to make source immutability explicit.
 
+
 def _redact_source_file(fp: Path) -> bool:
     """Return False without mutating source files."""
     return False
@@ -320,24 +381,27 @@ def _redact_source_file(fp: Path) -> bool:
 
 # ── selftest mode ─────────────────────────────────────────────────────────────
 
+
 def _selftest(project_root: Path) -> int:
     """Quick smoke-test: write a fake evidence file and validate it."""
-    import tempfile, shutil
+    import tempfile
+    import shutil
+
     tmp = Path(tempfile.mkdtemp())
     try:
         ev_dir = tmp / ".forgewright" / "verify"
         ev_dir.mkdir(parents=True)
         turn = "selftest_001"
         ev: dict = {
-            "schema_version":   "1",
-            "turn":             turn,
-            "command":          ["echo", "selftest"],
-            "exit_code":        0,
-            "output":           "selftest\n",
+            "schema_version": "1",
+            "turn": turn,
+            "command": ["echo", "selftest"],
+            "exit_code": 0,
+            "output": "selftest\n",
             "output_truncated": False,
-            "timestamp_utc":    datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "workspace":        str(tmp),
-            "tree_sha":         "NONGIT:selftest",
+            "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "workspace": str(tmp),
+            "tree_sha": "NONGIT:selftest",
         }
         (ev_dir / f"{turn}.json").write_text(json.dumps(ev, indent=2))
 
@@ -359,12 +423,13 @@ def _selftest(project_root: Path) -> int:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     if "--selftest" in sys.argv:
         sys.exit(_selftest(Path.cwd()))
 
     response_content = os.environ.get("RESPONSE_CONTENT", "")
-    files_str        = os.environ.get("FILES_TO_CHECK_STR", "")
+    files_str = os.environ.get("FILES_TO_CHECK_STR", "")
     # Handle filenames with spaces: they're NUL-separated if FILES_TO_CHECK_NUL is set
     if os.environ.get("FILES_TO_CHECK_NUL"):
         files_to_check = [f for f in files_str.split("\0") if f.strip()]
@@ -372,8 +437,8 @@ def main() -> None:
         # Fall back to newline-separated (set by verify-gate.sh)
         files_to_check = [f for f in files_str.splitlines() if f.strip()]
 
-    turn_env      = os.environ.get("FORGEWRIGHT_TURN", os.environ.get("TURN", ""))
-    project_root  = _workspace()
+    turn_env = os.environ.get("FORGEWRIGHT_TURN", os.environ.get("TURN", ""))
+    project_root = _workspace()
 
     all_errors: list[str] = []
 
@@ -402,8 +467,14 @@ def main() -> None:
     ev_path = _find_evidence(project_root, turn_env)
     if ev_path is None:
         _err("MISSING: No evidence file under .forgewright/verify/")
-        print("   Code changes must be gated by a machine-written evidence file.", file=sys.stderr)
-        print("   Run: bash scripts/lite/run-check.sh -- <your-check-cmd>", file=sys.stderr)
+        print(
+            "   Code changes must be gated by a machine-written evidence file.",
+            file=sys.stderr,
+        )
+        print(
+            "   Run: bash scripts/lite/run-check.sh -- <your-check-cmd>",
+            file=sys.stderr,
+        )
         all_errors.append("MISSING")
     else:
         print(f"   - Evidence file: {ev_path.relative_to(project_root)}")
@@ -416,15 +487,15 @@ def main() -> None:
 
         if ev:
             current_workspace = project_root
-            current_tree      = _current_tree_sha(project_root)
+            current_tree = _current_tree_sha(project_root)
 
             for check_fn, label in [
-                (lambda: _validate_schema(ev),                          "schema"),
-                (lambda: _validate_output(ev),                         "output"),
-                (lambda: _validate_staleness(ev),                      "staleness"),
-                (lambda: _validate_workspace(ev, current_workspace),   "workspace"),
-                (lambda: _validate_tree(ev, current_tree),             "tree"),
-                (lambda: _validate_exit_code(ev),                      "exit_code"),
+                (lambda: _validate_schema(ev), "schema"),
+                (lambda: _validate_output(ev), "output"),
+                (lambda: _validate_staleness(ev), "staleness"),
+                (lambda: _validate_workspace(ev, current_workspace), "workspace"),
+                (lambda: _validate_tree(ev, current_tree), "tree"),
+                (lambda: _validate_exit_code(ev), "exit_code"),
             ]:
                 errs = check_fn()
                 if errs:

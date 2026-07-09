@@ -67,7 +67,7 @@ export class HttpWebhookEventPublisher implements IEventPublisher {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body),
       };
-      
+
       const token = this.getWebhookToken();
       if (token) {
         headers['X-Forgewright-Token'] = token;

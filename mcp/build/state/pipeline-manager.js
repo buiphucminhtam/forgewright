@@ -2,7 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS, } from '../core/models/PipelineState.js';
+import { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS } from '../core/models/PipelineState.js';
 import { PipelineService } from '../core/services/PipelineService.js';
 import { StateQueryService } from '../core/services/StateQueryService.js';
 import { FileSystemStateRepository } from '../infrastructure/adapters/FileSystemStateRepository.js';
@@ -11,7 +11,7 @@ import { FileLogEventPublisher } from '../infrastructure/adapters/FileLogEventPu
 import { HttpWebhookEventPublisher } from '../infrastructure/adapters/HttpWebhookEventPublisher.js';
 import { CombinedEventPublisher } from '../infrastructure/adapters/CombinedEventPublisher.js';
 // Re-export models for backward compatibility
-export { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS, };
+export { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS };
 // ─── Forgewright Root Detection ──────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,6 +138,51 @@ export async function updateSelfHealing(selfHealing) {
 export async function failPipeline(reason) {
     const { pipelineService } = getServices();
     return pipelineService.failPipeline(reason);
+}
+export async function checkPipelineCompliance(maxStateAgeMinutes = 120) {
+    const wsRoot = getWorkspaceRoot();
+    const state = await getState();
+    const stateFile = path.join(wsRoot, '.forgewright', 'pipeline-state.json');
+    const issues = [];
+    const warnings = [];
+    const recommendations = [];
+    let stateAgeMinutes = null;
+    if (fs.existsSync(stateFile)) {
+        const ageMs = Date.now() - fs.statSync(stateFile).mtimeMs;
+        stateAgeMinutes = Math.max(0, Math.floor(ageMs / 60000));
+    }
+    else {
+        warnings.push('pipeline-state.json does not exist yet');
+        recommendations.push('Call fw_start_pipeline at the start of the next user request.');
+    }
+    if (state.status === 'IDLE') {
+        warnings.push('pipeline is idle');
+        recommendations.push('Call fw_start_pipeline before executing user work.');
+    }
+    if (state.status === 'IN_PROGRESS' && !state.currentMode) {
+        issues.push('pipeline is in progress without a current mode');
+        recommendations.push('Restart the pipeline with fw_start_pipeline and a concrete mode.');
+    }
+    if (state.status === 'IN_PROGRESS' &&
+        stateAgeMinutes !== null &&
+        stateAgeMinutes > maxStateAgeMinutes) {
+        issues.push(`pipeline state is stale (${stateAgeMinutes}m > ${maxStateAgeMinutes}m)`);
+        recommendations.push('Update progress with fw_update_subtask or close the pipeline phase.');
+    }
+    if (state.status === 'WAITING_FOR_GATE') {
+        warnings.push('pipeline is waiting for human gate approval');
+        recommendations.push('Do not advance phases until the user approves the gate.');
+    }
+    return {
+        ok: issues.length === 0,
+        status: state.status,
+        currentMode: state.currentMode,
+        currentPhase: state.currentPhase,
+        stateAgeMinutes,
+        issues,
+        warnings,
+        recommendations,
+    };
 }
 export function logTokenUsage(entry) {
     const wsRoot = getWorkspaceRoot();

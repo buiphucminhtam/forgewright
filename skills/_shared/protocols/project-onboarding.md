@@ -1,3 +1,16 @@
+---
+id: project-onboarding
+title: Project Onboarding Protocol
+summary: Core protocol for project onboarding.
+status: deprecated
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Project Onboarding Protocol
 
 **Every new project installation MUST run this protocol to create a comprehensive project fingerprint.** This applies to both greenfield and brownfield projects, adapting depth based on what exists.

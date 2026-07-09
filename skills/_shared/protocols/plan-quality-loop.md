@@ -1,3 +1,16 @@
+---
+id: plan-quality-loop
+title: Plan Quality Loop Protocol
+summary: Core protocol for plan quality loop.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Plan Quality Loop Protocol
 
 <!-- source: skills/_shared/protocols/plan-quality-loop.md -->

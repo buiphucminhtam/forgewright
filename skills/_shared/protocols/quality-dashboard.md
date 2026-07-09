@@ -1,3 +1,16 @@
+---
+id: quality-dashboard
+title: Quality Dashboard Protocol
+summary: Core protocol for quality dashboard.
+status: deprecated
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Quality Dashboard Protocol
 
 **Produces a comprehensive, machine-readable quality report at pipeline completion. Replaces the simple text summary with a rich dashboard that tracks quality across sessions.**

@@ -1,3 +1,16 @@
+---
+id: sensitive-file-protection
+title: Sensitive File Protection Protocol
+summary: Core protocol for sensitive file protection.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Sensitive File Protection Protocol
 
 > **Purpose:** Prevent accidental exposure of credentials, secrets, and sensitive data during AI-assisted development.

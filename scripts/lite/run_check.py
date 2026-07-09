@@ -25,14 +25,17 @@ from datetime import datetime, timezone
 
 # ── secret patterns for in-memory redaction ───────────────────────────────────
 _SECRET_PATTERNS = [
-    (re.compile(r"sk-[a-zA-Z0-9]{20,}"),          "sk-[REDACTED]"),
-    (re.compile(r"ghp_[a-zA-Z0-9]{20,}"),         "ghp_[REDACTED]"),
-    (re.compile(r"AKIA[A-Z0-9]{16}"),              "AKIA[REDACTED]"),
-    (re.compile(r"xoxb-[0-9A-Za-z\-]{20,}"),      "xoxb-[REDACTED]"),
-    (re.compile(
-        r"-----BEGIN(?:\s+[A-Z]+)?\s+PRIVATE KEY-----[\s\S]+?"
-        r"-----END(?:\s+[A-Z]+)?\s+PRIVATE KEY-----"
-    ), "-----BEGIN PRIVATE KEY-----\n[REDACTED]\n-----END PRIVATE KEY-----"),
+    (re.compile(r"sk-[a-zA-Z0-9]{20,}"), "sk-[REDACTED]"),
+    (re.compile(r"ghp_[a-zA-Z0-9]{20,}"), "ghp_[REDACTED]"),
+    (re.compile(r"AKIA[A-Z0-9]{16}"), "AKIA[REDACTED]"),
+    (re.compile(r"xoxb-[0-9A-Za-z\-]{20,}"), "xoxb-[REDACTED]"),
+    (
+        re.compile(
+            r"-----BEGIN(?:\s+[A-Z]+)?\s+PRIVATE KEY-----[\s\S]+?"
+            r"-----END(?:\s+[A-Z]+)?\s+PRIVATE KEY-----"
+        ),
+        "-----BEGIN PRIVATE KEY-----\n[REDACTED]\n-----END PRIVATE KEY-----",
+    ),
 ]
 
 _OUTPUT_MAX = 16_384  # 16 KB
@@ -50,13 +53,21 @@ def _tree_sha(workspace: Path) -> str:
     try:
         subprocess.run(
             ["git", "rev-parse", "--is-inside-work-tree"],
-            cwd=workspace, capture_output=True, timeout=5, check=True
+            cwd=workspace,
+            capture_output=True,
+            timeout=5,
+            check=True,
         )
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+    except (
+        subprocess.CalledProcessError,
+        FileNotFoundError,
+        subprocess.TimeoutExpired,
+    ):
         # Non-git: hash the directory listing
         try:
             listing = "\n".join(sorted(str(p) for p in workspace.iterdir()))
             import hashlib
+
             h = hashlib.sha256(listing.encode()).hexdigest()[:16]
         except Exception:
             h = "UNKNOWN"
@@ -64,21 +75,36 @@ def _tree_sha(workspace: Path) -> str:
 
     # Inside git
     try:
-        head = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=workspace, capture_output=True, text=True, timeout=5
-        ).stdout.strip() or "NOHEAD"
+        head = (
+            subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=workspace,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+            or "NOHEAD"
+        )
 
         dirty = subprocess.run(
             ["git", "status", "--porcelain"],
-            cwd=workspace, capture_output=True, text=True, timeout=5
+            cwd=workspace,
+            capture_output=True,
+            text=True,
+            timeout=5,
         ).stdout.strip()
 
         if dirty:
-            idx = subprocess.run(
-                ["git", "write-tree"],
-                cwd=workspace, capture_output=True, text=True, timeout=5
-            ).stdout.strip() or "NOIDX"
+            idx = (
+                subprocess.run(
+                    ["git", "write-tree"],
+                    cwd=workspace,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                ).stdout.strip()
+                or "NOIDX"
+            )
             return f"DIRTY:{head[:12]}:{idx[:12]}"
         return head
     except Exception:
@@ -89,7 +115,9 @@ def _workspace() -> Path:
     try:
         r = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, timeout=5
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if r.returncode == 0:
             return Path(r.stdout.strip()).resolve()
@@ -100,9 +128,9 @@ def _workspace() -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--turn",     default=None)
-    parser.add_argument("--out",      default=None)
-    parser.add_argument("--redact",   default="1")
+    parser.add_argument("--turn", default=None)
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--redact", default="1")
     parser.add_argument("--help", "-h", action="store_true")
     parser.add_argument("cmd", nargs=argparse.REMAINDER)
 
@@ -123,8 +151,8 @@ def main() -> None:
 
     do_redact = args.redact not in ("0", "false", "no")
     workspace = _workspace()
-    out_dir   = Path(args.out) if args.out else workspace / ".forgewright" / "verify"
-    turn      = args.turn or (
+    out_dir = Path(args.out) if args.out else workspace / ".forgewright" / "verify"
+    turn = args.turn or (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + f"_{os.getpid()}"
     )
 
@@ -161,21 +189,19 @@ def main() -> None:
     evidence_file = out_dir / f"{turn}.json"
 
     ev = {
-        "schema_version":   "1",
-        "turn":             turn,
-        "command":          cmd_argv,
-        "exit_code":        exit_code,
-        "output":           output,
+        "schema_version": "1",
+        "turn": turn,
+        "command": cmd_argv,
+        "exit_code": exit_code,
+        "output": output,
         "output_truncated": output_truncated,
-        "timestamp_utc":    timestamp_utc,
-        "workspace":        str(workspace),
-        "tree_sha":         tree_sha,
+        "timestamp_utc": timestamp_utc,
+        "workspace": str(workspace),
+        "tree_sha": tree_sha,
     }
 
     # Atomic write: temp then rename
-    fd, tmp_path = tempfile.mkstemp(
-        prefix=".ev_", suffix=".json", dir=str(out_dir)
-    )
+    fd, tmp_path = tempfile.mkstemp(prefix=".ev_", suffix=".json", dir=str(out_dir))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(ev, f, indent=2, ensure_ascii=False)

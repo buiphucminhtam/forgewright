@@ -1,3 +1,16 @@
+---
+id: circuit-breaker
+title: Circuit Breaker Protocol
+summary: Core protocol for circuit breaker.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Circuit Breaker Protocol
 
 > **Purpose:** Prevent cascading failures in parallel execution by stopping requests to failing workers.

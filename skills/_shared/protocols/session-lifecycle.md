@@ -1,3 +1,16 @@
+---
+id: session-lifecycle
+title: Session Lifecycle Protocol
+summary: Core protocol for session lifecycle.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Session Lifecycle Protocol
 
 **Manages cross-session continuity so the pipeline remembers what happened, can resume interrupted work, and doesn't re-discover context already known.**

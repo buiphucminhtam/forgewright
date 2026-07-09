@@ -1,3 +1,16 @@
+---
+id: design-mindset-and-rules
+title: "Design Mindsets and Rules: A Unified Framework for Game, Web, and Mobile App Design"
+summary: Core protocol for design mindset and rules.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Design Mindsets and Rules: A Unified Framework for Game, Web, and Mobile App Design
 
 ## 1. The Trinity of Modern Design Mindsets

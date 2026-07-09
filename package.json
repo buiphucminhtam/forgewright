@@ -3,12 +3,16 @@
   "version": "8.7.0",
   "description": "Adaptive AI Orchestrator — 52 skills, 19 modes. SaaS, game dev, XR, AI/ML, data engineering. Pipeline: DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW",
   "private": true,
+  "workspaces": [
+    "mcp",
+    "src/cli"
+  ],
   "scripts": {
     "prepare": "husky install",
     "build": "cd mcp && npm run build",
     "test": "cd mcp && npm run test",
     "lint": "cd mcp && npm run lint",
-    "build:cli": "cd src/cli && npm install && npm run build",
+    "build:cli": "npm run build --workspace src/cli",
     "dev:cli": "cd src/cli && npm run dev",
     "typecheck:cli": "cd src/cli && npx tsc --noEmit"
   },
@@ -44,7 +48,7 @@
       "ruff format"
     ],
     "scripts/**/*.sh": [
-      "bash -n"
+      "shellcheck -e SC2296,SC2034,SC2155,SC2329,SC2005,SC2206,SC2221,SC2222,SC2030,SC2031,SC2295,SC2148,SC1037,SC2012,SC2016,SC2001,SC2086,SC2115,SC2126,SC2064,SC2015,SC2162,SC2207,SC2129,SC2038,SC2116,SC2044,SC2059,SC2120,SC2119,SC2216,SC2320,SC2181,SC2178,SC2128,SC2164"
     ]
   }
 }

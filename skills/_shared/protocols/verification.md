@@ -1,3 +1,16 @@
+---
+id: verification
+title: Verification Protocol (Evidence-First Verification)
+summary: Core protocol for verification.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Verification Protocol (Evidence-First Verification)
 
 <!-- source: skills/_shared/protocols/verification.md -->

@@ -4,11 +4,7 @@ Unit tests for TokenAPI and related classes.
 Tests API server logic and cost estimation.
 """
 
-import pytest
-import json
-import sys
 import importlib.util
-from datetime import datetime, timedelta
 from pathlib import Path
 
 # Load token-api-server.py (has hyphen in name, need importlib)
@@ -17,8 +13,7 @@ _project_root = _test_file.parent.parent.parent
 _scripts = _project_root / "scripts"
 
 _spec = importlib.util.spec_from_file_location(
-    "token_api_server",
-    _scripts / "token-api-server.py"
+    "token_api_server", _scripts / "telemetry" / "token-api-server.py"
 )
 _token_api = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_token_api)
@@ -57,11 +52,11 @@ class TestTokenAPI:
         """Test get_usage with no data."""
         api = TokenAPI()
         usage = api.get_usage("nonexistent-project-xyz-456", period=7)
-        
-        assert usage['project'] == "nonexistent-project-xyz-456"
-        assert usage['summary']['total_tokens'] == 0
-        assert usage['summary']['total_calls'] == 0
-        assert usage['summary']['total_cost_usd'] == 0
+
+        assert usage["project"] == "nonexistent-project-xyz-456"
+        assert usage["summary"]["total_tokens"] == 0
+        assert usage["summary"]["total_calls"] == 0
+        assert usage["summary"]["total_cost_usd"] == 0
 
     def test_calculate_cost(self):
         """Test cost calculation."""
@@ -72,7 +67,7 @@ class TestTokenAPI:
             input_tokens=1_000_000,
             output_tokens=500_000,
         )
-        
+
         # 1M input @ $3/M = $3, 500K output @ $15/M = $7.50
         expected = 3.0 + 7.5
         assert abs(cost - expected) < 0.01
@@ -85,26 +80,26 @@ class TestPricingFunctions:
         """Test exact model match returns valid pricing."""
         pricing = get_pricing_for_model("claude-3-5-sonnet-20241022")
         # get_pricing_for_model does prefix matching, may return different model
-        assert 'input' in pricing
-        assert 'output' in pricing
-        assert pricing['input'] >= 0
-        assert pricing['output'] >= 0
+        assert "input" in pricing
+        assert "output" in pricing
+        assert pricing["input"] >= 0
+        assert pricing["output"] >= 0
 
     def test_get_pricing_partial_match(self):
         """Test partial model name match returns valid pricing."""
         pricing = get_pricing_for_model("claude-3-5-sonnet")
         # Should return some valid pricing
-        assert 'input' in pricing
-        assert 'output' in pricing
+        assert "input" in pricing
+        assert "output" in pricing
 
     def test_get_pricing_unknown_model(self):
         """Test unknown model returns default."""
         pricing = get_pricing_for_model("completely-unknown-model-xyz")
-        assert 'input' in pricing
-        assert 'output' in pricing
+        assert "input" in pricing
+        assert "output" in pricing
         # Should return default estimate
-        assert pricing['input'] == 5.0
-        assert pricing['output'] == 20.0
+        assert pricing["input"] == 5.0
+        assert pricing["output"] == 20.0
 
     def test_estimate_cost_claude(self):
         """Test cost estimation for Claude."""
@@ -198,37 +193,37 @@ class TestUnifiedAggregator:
     def test_init(self):
         """Test aggregator initialization."""
         agg = UnifiedAggregator()
-        assert hasattr(agg, 'cursor_reader')
-        assert hasattr(agg, 'claude_reader')
+        assert hasattr(agg, "cursor_reader")
+        assert hasattr(agg, "claude_reader")
 
     def test_get_summary_structure(self):
         """Test summary has expected structure."""
         agg = UnifiedAggregator()
         summary = agg.get_summary()
-        
-        assert 'platforms' in summary
-        assert 'cursor' in summary['platforms']
-        assert 'claude-code' in summary['platforms']
-        assert 'forgewright' in summary['platforms']
-        assert 'total_estimated_cost' in summary
+
+        assert "platforms" in summary
+        assert "cursor" in summary["platforms"]
+        assert "claude-code" in summary["platforms"]
+        assert "forgewright" in summary["platforms"]
+        assert "total_estimated_cost" in summary
 
     def test_get_summary_platforms_have_required_fields(self):
         """Test all platforms have required fields."""
         agg = UnifiedAggregator()
         summary = agg.get_summary()
-        
-        for platform, data in summary['platforms'].items():
-            assert 'available' in data
-            assert isinstance(data['available'], bool)
+
+        for platform, data in summary["platforms"].items():
+            assert "available" in data
+            assert isinstance(data["available"], bool)
 
     def test_get_by_platform(self):
         """Test get_by_platform returns dict."""
         agg = UnifiedAggregator()
         result = agg.get_by_platform()
-        
+
         assert isinstance(result, dict)
-        assert 'cursor' in result
-        assert 'claude' in result
+        assert "cursor" in result
+        assert "claude" in result
 
 
 class TestPricingCoverage:
@@ -249,7 +244,7 @@ class TestPricingCoverage:
             ("google", "gemini-2-pro"),
             ("google", "gemini-2-flash"),
         ]
-        
+
         for provider, model in major_models:
             assert provider in PRICING, f"Missing provider: {provider}"
             assert model in PRICING[provider], f"Missing model: {provider}/{model}"
@@ -259,9 +254,13 @@ class TestPricingCoverage:
         for provider, models in PRICING.items():
             for model, prices in models.items():
                 # Input should be between $0 and $100/M tokens
-                assert 0 <= prices['input'] <= 100, f"{provider}/{model} input price unreasonable"
+                assert 0 <= prices["input"] <= 100, (
+                    f"{provider}/{model} input price unreasonable"
+                )
                 # Output should be between $0 and $200/M tokens
-                assert 0 <= prices['output'] <= 200, f"{provider}/{model} output price unreasonable"
+                assert 0 <= prices["output"] <= 200, (
+                    f"{provider}/{model} output price unreasonable"
+                )
 
 
 class TestEdgeCases:
@@ -308,5 +307,5 @@ class TestEdgeCases:
         pricing1 = get_pricing_for_model("CLAUDE-3-5-SONNET")
         pricing2 = get_pricing_for_model("claude-3-5-sonnet")
         # Both should return valid pricing
-        assert 'input' in pricing1
-        assert 'input' in pricing2
+        assert "input" in pricing1
+        assert "input" in pricing2

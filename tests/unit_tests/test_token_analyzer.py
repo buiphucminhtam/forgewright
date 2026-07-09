@@ -4,9 +4,6 @@ Unit tests for TokenAnalyzer.
 Tests token usage analysis and cost calculation.
 """
 
-import pytest
-import json
-import sys
 import importlib.util
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -17,8 +14,7 @@ _project_root = _test_file.parent.parent.parent
 _scripts = _project_root / "scripts"
 
 _spec = importlib.util.spec_from_file_location(
-    "token_analyzer",
-    _scripts / "token-analyzer.py"
+    "token_analyzer", _scripts / "telemetry" / "token-analyzer.py"
 )
 _token_analyzer = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_token_analyzer)
@@ -146,10 +142,10 @@ class TestSummaryGeneration:
         analyzer = TokenAnalyzer()
         summary = analyzer.generate_summary([])
 
-        assert summary['project'] == analyzer.project_name
-        assert summary['summary']['total_tokens'] == 0
-        assert summary['summary']['total_calls'] == 0
-        assert summary['summary']['total_cost_usd'] == 0.0
+        assert summary["project"] == analyzer.project_name
+        assert summary["summary"]["total_tokens"] == 0
+        assert summary["summary"]["total_calls"] == 0
+        assert summary["summary"]["total_cost_usd"] == 0.0
 
     def test_generate_summary_single_record(self):
         """Test summary with single record."""
@@ -170,11 +166,11 @@ class TestSummaryGeneration:
         analyzer = TokenAnalyzer()
         summary = analyzer.generate_summary(records)
 
-        assert summary['summary']['total_input_tokens'] == 1000
-        assert summary['summary']['total_output_tokens'] == 500
-        assert summary['summary']['total_tokens'] == 1500
-        assert summary['summary']['total_calls'] == 1
-        assert summary['summary']['avg_tokens_per_call'] == 1500
+        assert summary["summary"]["total_input_tokens"] == 1000
+        assert summary["summary"]["total_output_tokens"] == 500
+        assert summary["summary"]["total_tokens"] == 1500
+        assert summary["summary"]["total_calls"] == 1
+        assert summary["summary"]["avg_tokens_per_call"] == 1500
 
     def test_generate_summary_by_provider(self):
         """Test summary aggregates by provider."""
@@ -206,10 +202,10 @@ class TestSummaryGeneration:
         analyzer = TokenAnalyzer()
         summary = analyzer.generate_summary(records)
 
-        assert 'anthropic' in summary['by_provider']
-        assert 'openai' in summary['by_provider']
-        assert summary['by_provider']['anthropic']['calls'] == 1
-        assert summary['by_provider']['openai']['calls'] == 1
+        assert "anthropic" in summary["by_provider"]
+        assert "openai" in summary["by_provider"]
+        assert summary["by_provider"]["anthropic"]["calls"] == 1
+        assert summary["by_provider"]["openai"]["calls"] == 1
 
     def test_generate_summary_by_skill(self):
         """Test summary aggregates by skill."""
@@ -243,8 +239,8 @@ class TestSummaryGeneration:
         analyzer = TokenAnalyzer()
         summary = analyzer.generate_summary(records)
 
-        assert 'software-engineer' in summary['by_skill']
-        assert 'qa-engineer' in summary['by_skill']
+        assert "software-engineer" in summary["by_skill"]
+        assert "qa-engineer" in summary["by_skill"]
 
 
 class TestDailyUsage:
@@ -257,9 +253,9 @@ class TestDailyUsage:
 
         assert len(daily) == 7
         for d in daily:
-            assert d['input_tokens'] == 0
-            assert d['output_tokens'] == 0
-            assert d['total_tokens'] == 0
+            assert d["input_tokens"] == 0
+            assert d["output_tokens"] == 0
+            assert d["total_tokens"] == 0
 
     def test_get_daily_usage_with_records(self):
         """Test daily usage with records."""
@@ -296,7 +292,7 @@ class TestDailyUsage:
 
         assert len(daily) == 2
         # Check that total matches
-        total = sum(d['total_tokens'] for d in daily)
+        total = sum(d["total_tokens"] for d in daily)
         assert total == 4500
 
 
@@ -305,33 +301,33 @@ class TestPricingConstants:
 
     def test_pricing_has_required_providers(self):
         """Test pricing has all major providers."""
-        assert 'anthropic' in PRICING
-        assert 'openai' in PRICING
-        assert 'google' in PRICING
+        assert "anthropic" in PRICING
+        assert "openai" in PRICING
+        assert "google" in PRICING
 
     def test_pricing_models_have_input_output(self):
         """Test all models have input and output prices."""
         for provider, models in PRICING.items():
             for model, prices in models.items():
-                assert 'input' in prices, f"{provider}/{model} missing input price"
-                assert 'output' in prices, f"{provider}/{model} missing output price"
-                assert prices['input'] >= 0
-                assert prices['output'] >= 0
+                assert "input" in prices, f"{provider}/{model} missing input price"
+                assert "output" in prices, f"{provider}/{model} missing output price"
+                assert prices["input"] >= 0
+                assert prices["output"] >= 0
 
     def test_pricing_claude_sonnet(self):
         """Test Claude Sonnet pricing is reasonable."""
-        prices = PRICING['anthropic']['claude-3-5-sonnet-20241022']
-        assert prices['input'] == 3.0
-        assert prices['output'] == 15.0
+        prices = PRICING["anthropic"]["claude-3-5-sonnet-20241022"]
+        assert prices["input"] == 3.0
+        assert prices["output"] == 15.0
 
     def test_pricing_gpt4o(self):
         """Test GPT-4o pricing is reasonable."""
-        prices = PRICING['openai']['gpt-4o']
-        assert prices['input'] == 2.5
-        assert prices['output'] == 10.0
+        prices = PRICING["openai"]["gpt-4o"]
+        assert prices["input"] == 2.5
+        assert prices["output"] == 10.0
 
     def test_pricing_gemini_flash(self):
         """Test Gemini Flash pricing is reasonable."""
-        prices = PRICING['google']['gemini-2.5-flash']
-        assert prices['input'] == 0.075
-        assert prices['output'] == 0.30
+        prices = PRICING["google"]["gemini-2.5-flash"]
+        assert prices["input"] == 0.075
+        assert prices["output"] == 0.30

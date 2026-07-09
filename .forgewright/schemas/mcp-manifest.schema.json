@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Forgewright MCP Manifest Schema",
+  "description": "JSON Schema for .forgewright/mcp-manifest.json - MCP server workspace isolation configuration",
+  "type": "object",
+  "required": ["manifest_version", "workspace", "forgewright", "servers"],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Manifest schema version (e.g., '1.0')"
+    },
+    "workspace": {
+      "type": "string",
+      "description": "Absolute path to the workspace root"
+    },
+    "forgewright": {
+      "type": "object",
+      "required": ["version", "canonical", "server"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Forgewright version"
+        },
+        "canonical": {
+          "type": "string",
+          "description": "Path to canonical Forgewright installation"
+        },
+        "server": {
+          "type": "string",
+          "description": "Path to MCP server entry point"
+        }
+      }
+    },
+    "servers": {
+      "type": "array",
+      "minItems": 1,
+      "description": "List of MCP servers configured for this workspace",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Server identifier"
+          },
+          "type": {
+            "type": "string",
+            "description": "Server type (e.g., 'forgewright-mcp-server', 'gitnexus')"
+          },
+          "path": {
+            "type": "string",
+            "description": "Path to server implementation"
+          },
+          "command": {
+            "type": "string",
+            "description": "Command to launch server (alternative to path)"
+          },
+          "args": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Arguments for command"
+          },
+          "auto_start": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "description": "Optional workspace-specific settings",
+      "additionalProperties": true,
+      "properties": {
+        "mcp_compatibility": {
+          "type": "string",
+          "enum": ["strict", "loose", "legacy"],
+          "default": "loose"
+        },
+        "workspace_detection": {
+          "type": "string",
+          "enum": ["git-root", "env-var", "manual"],
+          "default": "git-root"
+        }
+      }
+    },
+    "platforms": {
+      "type": "object",
+      "description": "Platforms where MCP server is configured",
+      "additionalProperties": true
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when manifest was generated"
+    }
+  }
+}

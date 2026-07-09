@@ -1,3 +1,16 @@
+---
+id: pipeline-activation
+title: Pipeline Activation Protocol
+summary: Core protocol for pipeline activation.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Pipeline Activation Protocol
 
 <!-- source: skills/_shared/protocols/pipeline-activation.md -->

@@ -1,3 +1,16 @@
+---
+id: task-contract
+title: Task Contract Protocol
+summary: Core protocol for task contract.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Task Contract Protocol
 
 **Every parallel worker MUST receive a Task Contract before execution. The contract defines exactly what the worker can read, write, and must deliver.**

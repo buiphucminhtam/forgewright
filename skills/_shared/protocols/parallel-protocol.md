@@ -1,3 +1,16 @@
+---
+id: parallel-protocol
+title: Parallel Subagent Protocol
+summary: Core protocol for parallel protocol.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Parallel Subagent Protocol
 
 > **Purpose:** Formalize how to spawn and coordinate subagents based on dependency analysis. Inspired by CCGS `coordination-rules.md`.

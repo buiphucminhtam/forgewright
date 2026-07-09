@@ -196,6 +196,28 @@ describe('Pipeline Manager', () => {
         expect(state.selfHealing).toBeNull();
         expect(state.qualityGate).toBeNull();
     });
+    it('checkPipelineCompliance passes for a fresh active pipeline', async () => {
+        const { startPipeline, checkPipelineCompliance, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
+        resetWorkspaceRoot();
+        cleanState();
+        await startPipeline('Harden');
+        const report = await checkPipelineCompliance(120);
+        expect(report.ok).toBe(true);
+        expect(report.status).toBe('IN_PROGRESS');
+        expect(report.currentMode).toBe('Harden');
+        expect(report.issues).toEqual([]);
+    });
+    it('checkPipelineCompliance flags stale active pipeline state', async () => {
+        const { startPipeline, checkPipelineCompliance, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
+        resetWorkspaceRoot();
+        cleanState();
+        await startPipeline('Harden');
+        const staleDate = new Date(Date.now() - 10 * 60 * 1000);
+        fs.utimesSync(STATE_FILE, staleDate, staleDate);
+        const report = await checkPipelineCompliance(1);
+        expect(report.ok).toBe(false);
+        expect(report.issues.some((issue) => issue.includes('stale'))).toBe(true);
+    });
     it('logTokenUsage logs usage in JSON Lines format to ~/.forgewright/usage/<folderName>/usage.log', async () => {
         const { logTokenUsage, resetWorkspaceRoot, getWorkspaceRoot } = await import('../state/pipeline-manager.js');
         resetWorkspaceRoot();

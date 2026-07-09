@@ -1,3 +1,16 @@
+---
+id: model-tier
+title: Model Tier Assignment Protocol
+summary: Core protocol for model tier.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Model Tier Assignment Protocol
 
 > **Purpose:** Assign an appropriate model tier to each skill invocation based on task complexity. Optimizes cost and latency while maintaining quality.

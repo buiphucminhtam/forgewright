@@ -1,33 +1,16 @@
 #!/usr/bin/env bash
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Skills Count Verification — prevents count oscillation
-# Run: bash scripts/verify-skill-count.sh
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-set -euo pipefail
-
-EXPECTED=80
-ACTUAL=$(ls -1p skills/ | grep '/$' | grep -v '_shared/' | grep -v '_test/' | wc -l | tr -d ' ')
-
-echo "━━━ Skills Count Verification ━━━"
-echo "  Expected: $EXPECTED"
-echo "  Actual:   $ACTUAL"
-echo ""
-
-# Show all skills for transparency
-echo "  Skills list:"
-ls -1p skills/ | grep '/$' | grep -v '_shared/' | sort | sed 's/^/    /'
-
-if [ "$ACTUAL" -eq "$EXPECTED" ]; then
-  echo ""
-  echo "✓ Skill count matches ($ACTUAL skills)"
-  exit 0
+# THIS_FILE_IS_A_MIGRATION_SHIM
+echo "WARNING: verify-skill-count.sh has been moved to ci/verify-skill-count.sh. This shim will be removed in the next release." >&2
+if [ -n "${BASH_SOURCE[0]:-}" ]; then
+    _SHIM_SOURCE="${BASH_SOURCE[0]}"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    _SHIM_SOURCE="${(%):-%N}"
 else
-  echo ""
-  echo "✗ SKILL COUNT MISMATCH!"
-  echo "  Expected: $EXPECTED, got: $ACTUAL"
-  echo ""
-  echo "  Fix: Add or remove skills to match expected count of $EXPECTED"
-  echo "  Then update AGENTS.md skill count and SKILL.md header."
-  exit 1
+    _SHIM_SOURCE="$0"
+fi
+DIR="$( cd "$( dirname "$_SHIM_SOURCE" )" && pwd )"
+if [[ "$_SHIM_SOURCE" != "${0}" ]]; then
+    source "$DIR/ci/verify-skill-count.sh" "$@"
+else
+    exec "$DIR/ci/verify-skill-count.sh" "$@"
 fi

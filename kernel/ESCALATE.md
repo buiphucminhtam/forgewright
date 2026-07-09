@@ -1,6 +1,6 @@
 # EASY / HARD Routing
 
-Tag each task step during [kernel/SOLVE.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/SOLVE.md) planning.
+Tag each task step during [SOLVE.md](SOLVE.md) planning.
 
 ## Classification Checklist
 Model self-tag is only a hint. A step is **HARD** if ANY of these objective runtime signals or conditions apply:

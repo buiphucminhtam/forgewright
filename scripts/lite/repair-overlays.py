@@ -18,7 +18,6 @@ Fixes all LITE.md skill overlays per Kernel v3 requirements:
 import os
 import re
 import sys
-import shutil
 
 DRY_RUN = "--dry-run" in sys.argv
 VERBOSE = "--verbose" in sys.argv or DRY_RUN
@@ -28,12 +27,11 @@ SKILLS_DIR = "skills"
 # ── Patterns ──────────────────────────────────────────────────────────────────
 
 # Inline orphan citations: [1], [2, 5], [1, 2, 3] but NOT [link text](url) style
-CITATION_INLINE = re.compile(r'\s*\[(\d+(?:,\s*\d+)*)\](?!\s*[:\(])')
+CITATION_INLINE = re.compile(r"\s*\[(\d+(?:,\s*\d+)*)\](?!\s*[:\(])")
 
 # The > [!NOTE] / > The following example is illustrative block
 ILLUSTRATIVE_NOTE = re.compile(
-    r'>\s*\[!NOTE\]\s*\n>\s*The following example is illustrative\.\s*\n?',
-    re.MULTILINE
+    r">\s*\[!NOTE\]\s*\n>\s*The following example is illustrative\.\s*\n?", re.MULTILINE
 )
 
 # Fake SDK / fake paths / fake commands that must not appear
@@ -48,8 +46,18 @@ BANNED_FREETEXT = [
     # mandatory Temperature 1.0 claim
     (re.compile(r",?\s*specifically Temperature 1\.0 and"), ""),
     (re.compile(r",?\s*focusing on Temperature 1\.0 and"), ""),
-    (re.compile(r"(mandatory |the optimal )?Temperature 1\.0 (rule |native configuration )?for Gemini 3\.x[^\n]*"), ""),
-    (re.compile(r"Hardcoding (Overridden )?Temperatures[^\n]*Temperature[^\n]*(1\.0|0\.7)[^\n]*\n"), ""),
+    (
+        re.compile(
+            r"(mandatory |the optimal )?Temperature 1\.0 (rule |native configuration )?for Gemini 3\.x[^\n]*"
+        ),
+        "",
+    ),
+    (
+        re.compile(
+            r"Hardcoding (Overridden )?Temperatures[^\n]*Temperature[^\n]*(1\.0|0\.7)[^\n]*\n"
+        ),
+        "",
+    ),
     # ECE thresholds
     (re.compile(r"Expected Calibration Error \(ECE\)\s*[<>=]+\s*0\.10[^\n]*"), ""),
     (re.compile(r"ECE[^\n]*0\.10[^\n]*"), ""),
@@ -60,25 +68,21 @@ BANNED_FREETEXT = [
 ]
 
 # sync-obsidian SYNC step patterns (entire step line)
-SYNC_STEP_LINE = re.compile(
-    r'^(\d+)\.\s+SYNC\s*\|[^\n]+\n?',
-    re.MULTILINE
-)
+SYNC_STEP_LINE = re.compile(r"^(\d+)\.\s+SYNC\s*\|[^\n]+\n?", re.MULTILINE)
 
 # .agents/workflows guaranteed path in prose
 AGENTS_WORKFLOWS_GROUND = re.compile(
-    r'\|\s*[^|]+\|\s*`cat \.agents/workflows/`[^|]*\|[^\n]+\|[^\n]+\|?\s*\n?'
+    r"\|\s*[^|]+\|\s*`cat \.agents/workflows/`[^|]*\|[^\n]+\|[^\n]+\|?\s*\n?"
 )
 
 # project-profile.json as a guaranteed file row in GROUND table
 PROJECT_PROFILE_GROUND = re.compile(
-    r'\|\s*[Pp]roject stack[^|]*profile[^|]*\|\s*`cat \.forgewright/project-profile\.json`[^|]*\|[^\n]+\n?'
+    r"\|\s*[Pp]roject stack[^|]*profile[^|]*\|\s*`cat \.forgewright/project-profile\.json`[^|]*\|[^\n]+\n?"
 )
 
 # Worked Example section (entire section through EOF or next ##)
 WORKED_EXAMPLE_SECTION = re.compile(
-    r'## Worked Example.*?(?=^##|\Z)',
-    re.DOTALL | re.MULTILINE
+    r"## Worked Example.*?(?=^##|\Z)", re.DOTALL | re.MULTILINE
 )
 
 # Files that are allowed to keep Worked Example (code-reviewer has a valid one
@@ -88,35 +92,30 @@ KEEP_WORKED_EXAMPLE_SKILLS = {"code-reviewer"}
 
 # Fake VERIFY block inside code-reviewer worked example:
 # The "VERIFY" section with pasted output and EXIT CODE: 0 / VERDICT: PASS
-FAKE_VERIFY_BLOCK = re.compile(
-    r'### 5\. VERIFY\n.*?VERDICT: PASS\n?',
-    re.DOTALL
-)
+FAKE_VERIFY_BLOCK = re.compile(r"### 5\. VERIFY\n.*?VERDICT: PASS\n?", re.DOTALL)
 
 # Self-attested Y column in ground tables within worked examples
 SELF_ATTESTED_Y = re.compile(
-    r'(\|[^|]+\|[^|]+\|[^|]+\|)\s*Y\s*(\|?)\s*\n',
+    r"(\|[^|]+\|[^|]+\|[^|]+\|)\s*Y\s*(\|?)\s*\n",
 )
 
 # "Result | VERIFIED?" header → "Script-produced evidence"
-VERIFIED_HEADER_LINE = re.compile(
-    r'\|\s*Result\s*\|\s*VERIFIED\?\s*\|',
-    re.IGNORECASE
-)
+VERIFIED_HEADER_LINE = re.compile(r"\|\s*Result\s*\|\s*VERIFIED\?\s*\|", re.IGNORECASE)
 
 VERIFIED_SEP_LINE = re.compile(
-    r'(\|---\|---\|---\|)---\|',
+    r"(\|---\|---\|---\|)---\|",
 )
 
 GROUND_DATA_ROW = re.compile(
-    r'(\|[^|]+\|[^|]+\|)\s*\.\.\.\s*\|\s*Y/N\s*\|',
+    r"(\|[^|]+\|[^|]+\|)\s*\.\.\.\s*\|\s*Y/N\s*\|",
 )
 
 GROUND_DATA_ROW_INLINE = re.compile(
-    r'(\|[^|]+\|[^|]+\|[^|]+)\|\s*Y/N\s*\|',
+    r"(\|[^|]+\|[^|]+\|[^|]+)\|\s*Y/N\s*\|",
 )
 
 # ── Per-file repairs ───────────────────────────────────────────────────────────
+
 
 def skill_name_from_path(filepath):
     parts = filepath.replace("\\", "/").split("/")
@@ -144,58 +143,71 @@ def fix_ground_table(content):
         # Track section
         if stripped.startswith("#"):
             current_section = stripped.lower()
-            in_ground = "solve step 2" in current_section and "ground" in current_section
+            in_ground = (
+                "solve step 2" in current_section and "ground" in current_section
+            )
             out.append(line)
             continue
 
         if in_ground and "|" in line:
             # Repair headers already collapsed by earlier versions:
             # | Assumption | Check command / file read | Script-produced evidence |
-            if re.search(r'\|\s*Assumption\s*\|\s*Check command / file read\s*\|\s*Script-produced evidence\s*\|', line, re.IGNORECASE):
+            if re.search(
+                r"\|\s*Assumption\s*\|\s*Check command / file read\s*\|\s*Script-produced evidence\s*\|",
+                line,
+                re.IGNORECASE,
+            ):
                 line = re.sub(
-                    r'\|\s*Assumption\s*\|\s*Check command / file read\s*\|\s*Script-produced evidence\s*\|',
-                    '| Assumption | Check command / file read | Result | Script-produced evidence |',
-                    line, flags=re.IGNORECASE
+                    r"\|\s*Assumption\s*\|\s*Check command / file read\s*\|\s*Script-produced evidence\s*\|",
+                    "| Assumption | Check command / file read | Result | Script-produced evidence |",
+                    line,
+                    flags=re.IGNORECASE,
                 )
             # Header: replace Result | VERIFIED? with Script-produced evidence
-            elif re.search(r'\|\s*Result\s*\|\s*VERIFIED\?\s*\|', line, re.IGNORECASE):
+            elif re.search(r"\|\s*Result\s*\|\s*VERIFIED\?\s*\|", line, re.IGNORECASE):
                 line = re.sub(
-                    r'\|\s*Result\s*\|\s*VERIFIED\?\s*\|',
-                    '| Result | Script-produced evidence |',
-                    line, flags=re.IGNORECASE
+                    r"\|\s*Result\s*\|\s*VERIFIED\?\s*\|",
+                    "| Result | Script-produced evidence |",
+                    line,
+                    flags=re.IGNORECASE,
                 )
             # Repair rows already collapsed by earlier versions of this script:
             # | assumption | check | run the check command above |
-            elif re.search(r'\|\s*run the check command above\s*\|', line):
-                cells = re.split(r'(?<!\\)(?<!\|)\|(?!\|)', line)
-                if len(cells) == 5 and cells[3].strip() == "run the check command above":
+            elif re.search(r"\|\s*run the check command above\s*\|", line):
+                cells = re.split(r"(?<!\\)(?<!\|)\|(?!\|)", line)
+                if (
+                    len(cells) == 5
+                    and cells[3].strip() == "run the check command above"
+                ):
                     line = (
                         f"| {cells[1].strip()} | {cells[2].strip()} | ... | "
                         "run the check command and paste output |"
                     )
                 else:
                     line = re.sub(
-                        r'\|\s*run the check command above\s*\|',
-                        '| ... | run the check command and paste output |',
-                        line
+                        r"\|\s*run the check command above\s*\|",
+                        "| ... | run the check command and paste output |",
+                        line,
                     )
             # Data rows: ... | Y/N | → run the check command above |
-            elif re.search(r'\|\s*\.\.\.\s*\|\s*Y/N\s*\|', line):
+            elif re.search(r"\|\s*\.\.\.\s*\|\s*Y/N\s*\|", line):
                 line = re.sub(
-                    r'\|\s*\.\.\.\s*\|\s*Y/N\s*\|',
-                    '| ... | run the check command and paste output |',
-                    line
+                    r"\|\s*\.\.\.\s*\|\s*Y/N\s*\|",
+                    "| ... | run the check command and paste output |",
+                    line,
                 )
             # Also handle: | ... | Y | (self-attested)
-            elif re.search(r'\|\s*\.\.\.\s*\|\s*Y\s*\|', line):
+            elif re.search(r"\|\s*\.\.\.\s*\|\s*Y\s*\|", line):
                 line = re.sub(
-                    r'\|\s*\.\.\.\s*\|\s*Y\s*\|',
-                    '| ... | run the check command and paste output |',
-                    line
+                    r"\|\s*\.\.\.\s*\|\s*Y\s*\|",
+                    "| ... | run the check command and paste output |",
+                    line,
                 )
             # Handle rows that have a result cell and Y/N
-            elif re.search(r'\|\s*Y/N\s*\|', line):
-                line = re.sub(r'\|\s*Y/N\s*\|', '| run the check command and paste output |', line)
+            elif re.search(r"\|\s*Y/N\s*\|", line):
+                line = re.sub(
+                    r"\|\s*Y/N\s*\|", "| run the check command and paste output |", line
+                )
 
         out.append(line)
 
@@ -226,8 +238,10 @@ def remove_sync_step(content):
     out = []
     for line in lines:
         lower = line.lower()
-        if re.match(r'^\d+\.\s+SYNC\s*\|', line.strip()):
-            if any(kw in lower for kw in ["obsidian", "sync-obsidian", "symlink", "vault"]):
+        if re.match(r"^\d+\.\s+SYNC\s*\|", line.strip()):
+            if any(
+                kw in lower for kw in ["obsidian", "sync-obsidian", "symlink", "vault"]
+            ):
                 continue  # drop this step
         out.append(line)
     return "\n".join(out)
@@ -245,7 +259,7 @@ def remove_banned_freetext(content):
             for pat, replacement in BANNED_FREETEXT:
                 line = pat.sub(replacement, line)
             # Clean up empty mistake bullets
-            if re.match(r'^-\s+\*\*[^*]+\*\*:\s*$', line.strip()):
+            if re.match(r"^-\s+\*\*[^*]+\*\*:\s*$", line.strip()):
                 continue
         out.append(line)
     return "\n".join(out)
@@ -264,13 +278,13 @@ def remove_worked_example_section(content, skill_name):
         # Fix self-attested Y rows in ground tables inside the worked example
         content = SELF_ATTESTED_Y.sub(
             lambda m: m.group(1) + " run the check command above " + m.group(2) + "\n",
-            content
+            content,
         )
         # Remove fake VERIFY block with pasted output
         content = FAKE_VERIFY_BLOCK.sub(
             "### 5. VERIFY\n"
             "Emit one `VERIFY` block per changed behavior per [kernel/VERIFY.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/VERIFY.md).\n",
-            content
+            content,
         )
         # Fix header inside worked example ground table
         content = fix_ground_table(content)
@@ -290,7 +304,12 @@ def remove_banned_paths(content):
     out = []
     for line in lines:
         # Drop ground table rows mentioning .agents/workflows
-        if ".agents/workflows" in line and "|" in line and "Check command" not in line and "---|" not in line:
+        if (
+            ".agents/workflows" in line
+            and "|" in line
+            and "Check command" not in line
+            and "---|" not in line
+        ):
             continue
         out.append(line)
     return "\n".join(out)
@@ -371,7 +390,7 @@ def main():
                 if repair_file(filepath):
                     changed_files.append(filepath)
 
-    print(f"\n--- Repair Summary ---")
+    print("\n--- Repair Summary ---")
     print(f"Total overlays scanned: {total}")
     print(f"Files patched: {len(changed_files)}")
     if DRY_RUN:

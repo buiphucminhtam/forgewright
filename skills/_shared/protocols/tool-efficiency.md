@@ -1,3 +1,16 @@
+---
+id: tool-efficiency
+title: Tool Efficiency Protocol
+summary: Core protocol for tool efficiency.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Tool Efficiency Protocol
 
 **Every skill MUST follow these tool usage rules to minimize token consumption and maximize speed.**

@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Usage Dashboard - ForgeWright</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    /* Google Material Design 3 (Material You) */
+    :root {
+      /* Primary palette - Blue */
+      --md-primary: #4285f4;
+      --md-primary-container: #d3e3fd;
+      --md-on-primary: #ffffff;
+      --md-on-primary-container: #041e49;
+      
+      /* Secondary palette - Violet */
+      --md-secondary: #7d5260;
+      --md-secondary-container: #ffd8e4;
+      --md-on-secondary: #ffffff;
+      --md-on-secondary-container: #370b1e;
+      
+      /* Tertiary palette - Teal */
+      --md-tertiary: #006874;
+      --md-tertiary-container: #97f0ff;
+      --md-on-tertiary: #ffffff;
+      --md-on-tertiary-container: #001f24;
+      
+      /* Error */
+      --md-error: #ba1a1a;
+      --md-error-container: #ffdad6;
+      --md-on-error: #ffffff;
+      --md-on-error-container: #410002;
+      
+      /* Surface & Background */
+      --md-surface: #fef7ff;
+      --md-surface-dim: #ded8e1;
+      --md-surface-container-lowest: #ffffff;
+      --md-surface-container-low: #f7f2fa;
+      --md-surface-container: #f3edf7;
+      --md-surface-container-high: #ede7f2;
+      --md-surface-container-highest: #e7e0ec;
+      --md-on-surface: #1d1b20;
+      --md-on-surface-variant: #49454f;
+      --md-outline: #7a757f;
+      --md-outline-variant: #cac4d0;
+      
+      /* Custom tokens */
+      --md-sys-elevation-1: 0px 1px 2px rgba(0,0,0,0.3), 0px 1px 3px 1px rgba(0,0,0,0.15);
+      --md-sys-elevation-2: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15);
+      --md-sys-elevation-3: 0px 4px 8px 3px rgba(0,0,0,0.15), 0px 1px 3px rgba(0,0,0,0.3);
+      
+      --md-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+      --md-motion-duration-short1: 50ms;
+      --md-motion-duration-short2: 100ms;
+      --md-motion-duration-short3: 150ms;
+      --md-motion-duration-medium1: 200ms;
+      --md-motion-duration-medium2: 250ms;
+      
+      /* Semantic colors */
+      --success: #1b873f;
+      --success-container: #a8f5b5;
+      --warning: #b86e00;
+      --warning-container: #ffe0a0;
+    }
+    
+    /* Dark theme */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --md-primary: #a8c7fa;
+        --md-primary-container: #0842a0;
+        --md-on-primary: #043280;
+        --md-on-primary-container: #d3e3fd;
+        
+        --md-secondary: #efb8c8;
+        --md-secondary-container: #633b48;
+        --md-on-secondary: #492532;
+        --md-on-secondary-container: #ffd8e4;
+        
+        --md-tertiary: #4dd9ec;
+        --md-tertiary-container: #004d58;
+        --md-on-tertiary: #00363d;
+        --md-on-tertiary-container: #97f0ff;
+        
+        --md-error: #ffb4ab;
+        --md-error-container: #93000a;
+        --md-on-error: #690005;
+        --md-on-error-container: #ffdad6;
+        
+        --md-surface: #141218;
+        --md-surface-dim: #252429;
+        --md-surface-container-lowest: #0f0d13;
+        --md-surface-container-low: #1d1b20;
+        --md-surface-container: #211f26;
+        --md-surface-container-high: #2b2930;
+        --md-surface-container-highest: #36343b;
+        --md-on-surface: #e6e0e9;
+        --md-on-surface-variant: #cac4d0;
+        --md-outline: #948f99;
+        --md-outline-variant: #49454f;
+        
+        --success: #5ed474;
+        --success-container: #005324;
+        --warning: #ffc847;
+        --warning-container: #5c3e00;
+      }
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Google Sans', 'Roboto', sans-serif;
+      background: #ffffff;
+      color: var(--md-on-surface);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    
+    /* Top App Bar */
+    .top-app-bar {
+      display: flex;
+      align-items: center;
+      height: 64px;
+      padding: 0 24px;
+      background: var(--md-surface);
+      border-bottom: 1px solid var(--md-outline-variant);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .top-app-bar .leading {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-right: 24px;
+    }
+    
+    .top-app-bar .leading-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--md-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--md-on-primary);
+    }
+    
+    .top-app-bar .title {
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--md-on-surface);
+    }
+    
+    .top-app-bar .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    
+    /* Segmented Button (chips) */
+    .segmented-button {
+      display: inline-flex;
+      background: var(--md-surface-container-high);
+      border-radius: 18px;
+      padding: 4px;
+      gap: 4px;
+    }
+    
+    .segmented-button button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 14px;
+      background: transparent;
+      color: var(--md-on-surface-variant);
+      cursor: pointer;
+      transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+    }
+    
+    .segmented-button button:hover {
+      background: var(--md-surface-container-highest);
+    }
+    
+    .segmented-button button.selected {
+      background: var(--md-on-surface);
+      color: var(--md-surface);
+      box-shadow: var(--md-sys-elevation-1);
+    }
+    
+    /* Select */
+    .select {
+      position: relative;
+    }
+    
+    .select select {
+      font-family: inherit;
+      font-size: 14px;
+      padding: 10px 40px 10px 16px;
+      border: 1px solid var(--md-outline);
+      border-radius: 4px 4px 0 0;
+      background: var(--md-surface);
+      color: var(--md-on-surface);
+      appearance: none;
+      cursor: pointer;
+      min-width: 160px;
+    }
+    
+    .select::after {
+      content: 'expand_more';
+      font-family: 'Material Icons';
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--md-on-surface-variant);
+      pointer-events: none;
+    }
+    
+    /* FAB */
+    .fab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      height: 40px;
+      border: none;
+      border-radius: 20px;
+      background: var(--md-primary-container);
+      color: var(--md-on-primary-container);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+      box-shadow: var(--md-sys-elevation-2);
+    }
+    
+    .fab:hover {
+      box-shadow: var(--md-sys-elevation-3);
+    }
+    
+    .fab .material-icons {
+      font-size: 18px;
+    }
+    
+    /* Main Content */
+    .main-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    
+    /* Cards Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .card {
+      background: var(--md-surface);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--md-sys-elevation-1);
+      transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+    }
+    
+    .card:hover {
+      box-shadow: var(--md-sys-elevation-2);
+    }
+    
+    .card .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .card .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .card .card-icon .material-icons {
+      font-size: 24px;
+    }
+    
+    .card .card-icon.primary {
+      background: var(--md-primary-container);
+      color: var(--md-on-primary-container);
+    }
+    
+    .card .card-icon.tertiary {
+      background: var(--md-tertiary-container);
+      color: var(--md-on-tertiary-container);
+    }
+    
+    .card .card-icon.secondary {
+      background: var(--md-secondary-container);
+      color: var(--md-on-secondary-container);
+    }
+    
+    .card .card-icon.success {
+      background: var(--success-container);
+      color: var(--success);
+    }
+    
+    .card .label {
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--md-on-surface-variant);
+    }
+    
+    .card .value {
+      font-size: 32px;
+      font-weight: 500;
+      color: var(--md-on-surface);
+      line-height: 1.2;
+    }
+    
+    .card .value.primary { color: var(--md-primary); }
+    .card .value.tertiary { color: var(--md-tertiary); }
+    .card .value.secondary { color: var(--md-secondary); }
+    .card .value.success { color: var(--success); }
+    
+    .card .meta {
+      font-size: 12px;
+      color: var(--md-on-surface-variant);
+      margin-top: 4px;
+    }
+    
+    /* Charts Section */
+    .charts-section {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .card.chart-card {
+      padding: 20px;
+      min-height: 300px;
+    }
+    
+    .card.chart-card canvas {
+      width: 100% !important;
+      height: 260px !important;
+    }
+    
+    .card .card-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--md-on-surface);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .card .card-title::before {
+      content: '';
+      width: 4px;
+      height: 16px;
+      border-radius: 2px;
+      background: var(--md-primary);
+    }
+    
+    /* Bottom Section */
+    .bottom-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    
+    /* Model List */
+    .model-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .model-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--md-surface-container-low);
+      border-radius: 12px;
+      transition: background var(--md-motion-duration-short1);
+    }
+    
+    .model-item:hover {
+      background: var(--md-surface-container-high);
+    }
+    
+    .model-item .model-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .model-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .model-badge.anthropic {
+      background: rgba(255, 115, 0, 0.15);
+      color: #c56000;
+    }
+    
+    .model-badge.openai {
+      background: rgba(16, 163, 74, 0.15);
+      color: #0a6630;
+    }
+    
+    .model-badge.google {
+      background: rgba(26, 115, 232, 0.15);
+      color: #1967d2;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .model-badge.anthropic { background: rgba(255, 115, 0, 0.25); color: #ff9a45; }
+      .model-badge.openai { background: rgba(16, 163, 74, 0.25); color: #5ed474; }
+      .model-badge.google { background: rgba(26, 115, 232, 0.25); color: #8ab4f8; }
+    }
+    
+    .model-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--md-on-surface);
+      word-break: break-word;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 12px;
+    }
+    
+    .model-stats {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--md-on-surface-variant);
+    }
+    
+    .model-stats .value {
+      color: var(--md-on-surface);
+      font-weight: 500;
+    }
+    
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--md-on-surface-variant);
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--md-outline-variant);
+    }
+    
+    td {
+      font-size: 14px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--md-outline-variant);
+      color: var(--md-on-surface);
+    }
+    
+    tbody tr {
+      transition: background var(--md-motion-duration-short1);
+    }
+    
+    tbody tr:hover {
+      background: var(--md-surface-container-low);
+    }
+    
+    .session-id {
+      font-size: 12px;
+      color: var(--md-on-surface-variant);
+    }
+    
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      color: var(--md-on-surface-variant);
+    }
+    
+    .loading .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--md-outline-variant);
+      border-top-color: var(--md-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 12px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Snackbar */
+    .snackbar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 14px 16px;
+      background: var(--md-on-surface);
+      color: var(--md-surface);
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: var(--md-sys-elevation-3);
+      transition: transform var(--md-motion-duration-medium2) var(--md-motion-easing-standard);
+      z-index: 1000;
+    }
+    
+    .snackbar.show {
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .cards-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-section, .bottom-section { grid-template-columns: 1fr; }
+    }
+    
+    @media (max-width: 600px) {
+      .top-app-bar { padding: 0 16px; }
+      .main-content { padding: 16px; }
+      .cards-grid { grid-template-columns: 1fr; }
+      .top-app-bar .title { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top App Bar -->
+  <header class="top-app-bar">
+    <div class="leading">
+      <div class="leading-icon">
+        <span class="material-icons">analytics</span>
+      </div>
+      <span class="title">Token Usage Dashboard</span>
+    </div>
+    <div class="actions">
+      <div class="select">
+        <select id="project">
+          <option value="">Loading...</option>
+        </select>
+      </div>
+      <div class="segmented-button" id="sourceTabs">
+        <button id="source-all" class="selected" onclick="setSource('all')">All</button>
+        <button id="source-cursor" onclick="setSource('cursor')">Cursor</button>
+        <button id="source-claude" onclick="setSource('claude')">Claude Code</button>
+        <button id="source-forgewright" onclick="setSource('forgewright')">Forgewright</button>
+      </div>
+      <div class="segmented-button">
+        <button id="period-1" onclick="setPeriod(1)">Today</button>
+        <button id="period-7" class="selected" onclick="setPeriod(7)">7 Days</button>
+        <button id="period-30" onclick="setPeriod(30)">30 Days</button>
+      </div>
+      <button class="fab" onclick="refreshData()">
+        <span class="material-icons">refresh</span>
+        Refresh
+      </button>
+    </div>
+  </header>
+  
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Stats Cards -->
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon primary">
+            <span class="material-icons">data_usage</span>
+          </div>
+          <span class="label">Total Tokens</span>
+        </div>
+        <div class="value primary" id="totalTokens">-</div>
+        <div class="meta" id="tokenMeta">-</div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon tertiary">
+            <span class="material-icons">payments</span>
+          </div>
+          <span class="label">Total Cost</span>
+        </div>
+        <div class="value tertiary" id="totalCost">-</div>
+        <div class="meta" id="costMeta">This period</div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon secondary">
+            <span class="material-icons">call</span>
+          </div>
+          <span class="label">LLM Calls</span>
+        </div>
+        <div class="value secondary" id="totalCalls">-</div>
+        <div class="meta" id="callsMeta">-</div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon success">
+            <span class="material-icons">speed</span>
+          </div>
+          <span class="label">Avg Latency</span>
+        </div>
+        <div class="value success" id="avgLatency">-</div>
+        <div class="meta">P50 latency</div>
+      </div>
+    </div>
+    
+    <!-- Charts -->
+    <div class="charts-section">
+      <div class="card chart-card">
+        <div class="card-title">Token Usage Over Time</div>
+        <canvas id="trendChart"></canvas>
+      </div>
+      <div class="card chart-card">
+        <div class="card-title">Cost by Provider</div>
+        <canvas id="providerChart"></canvas>
+      </div>
+      <div class="card chart-card">
+        <div class="card-title">Model Comparison</div>
+        <canvas id="modelChart"></canvas>
+      </div>
+      <div class="card chart-card">
+        <div class="card-title">Top Projects</div>
+        <canvas id="projectChart"></canvas>
+      </div>
+      <div class="card chart-card">
+        <div class="card-title">Platform Usage</div>
+        <canvas id="platformChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Bottom Section -->
+    <div class="bottom-section">
+      <div class="card">
+        <div class="card-title">Top Models</div>
+        <div class="model-list" id="modelList">
+          <div class="loading"><div class="spinner"></div>Loading...</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Recent Sessions</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Session</th>
+              <th>Model</th>
+              <th>Tokens</th>
+              <th>Cost</th>
+            </tr>
+          </thead>
+          <tbody id="sessionsTable">
+            <tr><td colspan="4" class="loading">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  
+  <!-- Snackbar -->
+  <div class="snackbar" id="snackbar">Data refreshed</div>
+  
+  <script>
+    let trendChart = null;
+    let providerChart = null;
+    let modelChart = null;
+    let projectChart = null;
+    let platformChart = null;
+    let currentData = null;
+    let cursorData = null;
+    let claudeData = null;
+    let unifiedData = null;
+    let currentPeriod = 7;
+    let currentSource = 'all';
+    const API_BASE = 'http://localhost:8895';
+
+    function formatNumber(n) {
+      if (!n && n !== 0) return '-';
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return n.toString();
+    }
+
+    function getProviderBadge(provider) {
+      return provider === 'anthropic' ? 'anthropic' 
+           : provider === 'openai' ? 'openai' 
+           : 'google';
+    }
+
+    function setPeriod(days) {
+      document.querySelectorAll('#sourceTabs ~ .segmented-button button').forEach(b => b.classList.remove('selected'));
+      document.getElementById(`period-${days}`).classList.add('selected');
+      currentPeriod = days;
+      refreshData();
+    }
+
+    function setSource(source) {
+      document.querySelectorAll('#sourceTabs button').forEach(b => b.classList.remove('selected'));
+      document.getElementById(`source-${source}`).classList.add('selected');
+      currentSource = source;
+      refreshData();
+    }
+
+    async function loadProjects() {
+      try {
+        const res = await fetch(API_BASE + '/api/projects');
+        if (!res.ok) throw new Error('API not available');
+        const projects = await res.json();
+        const select = document.getElementById('project');
+        select.innerHTML = projects.map(p => `<option value="${p}">${p}</option>`).join('');
+        if (projects.length > 0) {
+          select.value = projects[0];
+          refreshData();
+        } else {
+          showEmptyState();
+        }
+      } catch (e) {
+        console.error('Failed to load projects:', e);
+        showEmptyState();
+      }
+    }
+    
+    function showEmptyState() {
+      document.getElementById('totalTokens').textContent = '0';
+      document.getElementById('totalCost').textContent = '$0';
+      document.getElementById('totalCalls').textContent = '0';
+      document.getElementById('avgLatency').textContent = '0ms';
+      document.getElementById('tokenMeta').textContent = 'No data available';
+      document.getElementById('callsMeta').textContent = 'Start using LLM to see stats';
+      document.getElementById('modelList').innerHTML = '<div class="loading">No usage data yet</div>';
+      document.getElementById('sessionsTable').innerHTML = '<tr><td colspan="4" class="loading">No sessions</td></tr>';
+    }
+
+    async function refreshData() {
+      const project = document.getElementById('project').value;
+      if (!project) return;
+
+      try {
+        // Load Forgewright data
+        const res = await fetch(API_BASE + `/api/usage?project=${project}&period=${currentPeriod}`);
+        if (res.ok) {
+          currentData = await res.json();
+        }
+
+        // Load Cursor data
+        const cursorRes = await fetch(API_BASE + '/api/cursor/models');
+        if (cursorRes.ok) {
+          cursorData = await cursorRes.json();
+        }
+
+        // Load Cursor projects
+        const projectsRes = await fetch(API_BASE + '/api/cursor/projects');
+        if (projectsRes.ok) {
+          cursorData = cursorData || {};
+          cursorData.projects = (await projectsRes.json()).projects;
+        }
+
+        // Load Claude Code data
+        const claudeRes = await fetch(API_BASE + '/api/claude/sessions');
+        if (claudeRes.ok) {
+          claudeData = await claudeRes.json();
+        }
+
+        // Load unified summary
+        const unifiedRes = await fetch(API_BASE + '/api/unified/summary');
+        if (unifiedRes.ok) {
+          unifiedData = await unifiedRes.json();
+        }
+
+        updateDashboard();
+        showSnackbar('Data refreshed');
+      } catch (e) {
+        console.error('Failed to fetch data:', e);
+        showSnackbar('Failed to load data - check if server is running');
+      }
+    }
+
+    function updateDashboard() {
+      // Handle different sources
+      if (currentSource === 'claude') {
+        updateClaudeDashboard();
+      } else if (currentSource === 'cursor') {
+        updateCursorDashboard();
+      } else if (currentSource === 'forgewright') {
+        updateForgewrightDashboard();
+      } else {
+        updateUnifiedDashboard();
+      }
+    }
+
+    function updateCursorDashboard() {
+      if (!cursorData || !cursorData.models) {
+        document.getElementById('totalTokens').textContent = '-';
+        document.getElementById('totalCost').textContent = '-';
+        document.getElementById('totalCalls').textContent = cursorData?.available ? '0' : 'N/A';
+        return;
+      }
+
+      const models = cursorData.models;
+      const totalCalls = models.reduce((sum, m) => sum + m.call_count, 0);
+      const totalConversations = new Set(models.map(m => m.conversations)).size;
+
+      document.getElementById('totalTokens').textContent = formatNumber(totalCalls);
+      document.getElementById('totalCost').textContent = '~';
+      document.getElementById('totalCalls').textContent = formatNumber(totalCalls);
+      document.getElementById('avgLatency').textContent = '-';
+      document.getElementById('tokenMeta').textContent = `${models.length} models, ${totalConversations} conversations`;
+
+      const totalEstimatedCost = models.reduce((sum, m) => sum + (m.estimated_cost || 0), 0);
+      document.getElementById('totalCost').textContent = '~$' + totalEstimatedCost.toFixed(2);
+
+      updateModelList(models.slice(0, 10).map(m => ({
+        name: m.model,
+        tokens: m.call_count,
+        cost: m.estimated_cost || 0,
+        provider: m.provider || 'unknown'
+      })));
+
+      updateModelChart(models.slice(0, 8).map(m => ({
+        name: m.model,
+        tokens: m.call_count,
+        provider: m.model.includes('claude') ? 'anthropic' : m.model.includes('gpt') ? 'openai' : 'unknown'
+      })));
+    }
+
+    function updateClaudeDashboard() {
+      if (!claudeData || !claudeData.sessions) {
+        document.getElementById('totalTokens').textContent = '-';
+        document.getElementById('totalCost').textContent = '-';
+        document.getElementById('totalCalls').textContent = claudeData?.available ? '0' : 'N/A';
+        return;
+      }
+
+      const sessions = claudeData.sessions;
+      const models = claudeData.models || [];
+
+      document.getElementById('totalTokens').textContent = formatNumber(sessions.length);
+      document.getElementById('totalCost').textContent = '~';
+      document.getElementById('totalCalls').textContent = formatNumber(sessions.length);
+      document.getElementById('avgLatency').textContent = '-';
+      document.getElementById('tokenMeta').textContent = `${models.length} models, ${sessions.length} sessions`;
+
+      updateModelList(models.slice(0, 10).map(m => ({
+        name: m.model,
+        tokens: m.session_count,
+        cost: 0,
+        provider: m.model.includes('claude') ? 'anthropic' : m.model.includes('gpt') ? 'openai' : 'unknown'
+      })));
+
+      updateModelChart(models.slice(0, 8).map(m => ({
+        name: m.model,
+        tokens: m.session_count,
+        provider: m.model.includes('claude') ? 'anthropic' : m.model.includes('gpt') ? 'openai' : 'unknown'
+      })));
+    }
+
+    function updateForgewrightDashboard() {
+      if (!currentData || !currentData.summary) return;
+      const s = currentData.summary;
+
+      document.getElementById('totalTokens').textContent = formatNumber(s.total_tokens);
+      document.getElementById('totalCost').textContent = '$' + s.total_cost_usd.toFixed(4);
+      document.getElementById('totalCalls').textContent = formatNumber(s.total_calls);
+      document.getElementById('avgLatency').textContent = Math.round(s.avg_latency_ms) + 'ms';
+      document.getElementById('tokenMeta').textContent = 'Forgewright only';
+
+      updateModelList(Object.entries(currentData.by_model || {})
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => (b.cost || 0) - (a.cost || 0))
+        .slice(0, 5));
+      updateModelChart(Object.entries(currentData.by_model || {})
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.tokens - a.tokens)
+        .slice(0, 8));
+    }
+
+    function updateUnifiedDashboard() {
+      // Combined view
+      let totalTokens = 0;
+      let totalCost = 0;
+      let totalCalls = 0;
+
+      if (currentData?.summary) {
+        totalTokens = currentData.summary.total_tokens;
+        totalCost = currentData.summary.total_cost_usd;
+        totalCalls = currentData.summary.total_calls;
+      }
+
+      let cursorEstimatedCost = 0;
+      if (cursorData?.models) {
+        cursorEstimatedCost = cursorData.models.reduce((sum, m) => sum + (m.estimated_cost || 0), 0);
+        totalCalls += cursorData.models.reduce((sum, m) => sum + m.call_count, 0);
+      }
+
+      document.getElementById('totalTokens').textContent = formatNumber(totalTokens);
+      document.getElementById('totalCost').textContent = '$' + (totalCost + cursorEstimatedCost).toFixed(2) + ' ~';
+      document.getElementById('totalCalls').textContent = formatNumber(totalCalls);
+      document.getElementById('avgLatency').textContent = currentData?.summary ? Math.round(currentData.summary.avg_latency_ms) + 'ms' : '-';
+      document.getElementById('tokenMeta').textContent = cursorData?.available ? 'All sources' : 'Forgewright only';
+
+      // Combine model lists
+      const allModels = [];
+
+      if (cursorData?.models) {
+        cursorData.models.forEach(m => {
+          allModels.push({
+            name: m.model,
+            tokens: m.call_count,
+            cost: 0,
+            provider: m.model.includes('claude') ? 'anthropic' : m.model.includes('gpt') ? 'openai' : 'unknown'
+          });
+        });
+      }
+
+      if (currentData?.by_model) {
+        Object.entries(currentData.by_model).forEach(([name, data]) => {
+          allModels.push({ name, ...data });
+        });
+      }
+
+      // Aggregate by model name prefix
+      const aggregated = {};
+      allModels.forEach(m => {
+        const key = m.name.split('-').slice(0, 3).join('-');
+        if (!aggregated[key] || aggregated[key].tokens < m.tokens) {
+          aggregated[key] = m;
+        }
+      });
+
+      updateModelList(Object.values(aggregated).sort((a, b) => b.tokens - a.tokens).slice(0, 10));
+      updateModelChart(Object.values(aggregated).sort((a, b) => b.tokens - a.tokens).slice(0, 10));
+      if (cursorData?.projects) {
+        updateProjectChart(cursorData.projects);
+        updatePlatformChart();
+      }
+    }
+
+    function updateTrendChart(trend) {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      if (trendChart) trendChart.destroy();
+      
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: trend?.labels || [],
+          datasets: [
+            {
+              label: 'Input',
+              data: trend?.inputTokens || [],
+              borderColor: '#4285f4',
+              backgroundColor: 'rgba(66, 133, 244, 0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+            },
+            {
+              label: 'Output',
+              data: trend?.outputTokens || [],
+              borderColor: '#7d5260',
+              backgroundColor: 'rgba(125, 82, 96, 0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 500 },
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { color: '#49454f', usePointStyle: true, padding: 20 }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { color: '#49454f' }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { color: '#49454f', callback: v => formatNumber(v) }
+            }
+          }
+        }
+      });
+    }
+
+    function updateProviderChart(providers) {
+      const ctx = document.getElementById('providerChart').getContext('2d');
+      if (providerChart) providerChart.destroy();
+      
+      if (!providers || Object.keys(providers).length === 0) return;
+      
+      const labels = Object.keys(providers).map(p => p.charAt(0).toUpperCase() + p.slice(1));
+      const costs = Object.values(providers).map(p => p.cost);
+      
+      providerChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data: costs,
+            backgroundColor: ['#ea4335', '#34a853', '#fbbc04', '#4285f4'],
+            borderWidth: 0,
+            hoverOffset: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#49454f', usePointStyle: true, padding: 16 }
+            }
+          }
+        }
+      });
+    }
+
+    function updateModelChart(models) {
+      const ctx = document.getElementById('modelChart');
+      if (!ctx) return;
+      if (modelChart) modelChart.destroy();
+
+      if (!models || models.length === 0) return;
+
+      const topModels = models.slice(0, 8);
+      const labels = topModels.map(m => m.name.split('-').slice(0, 3).join('-'));
+      const data = topModels.map(m => m.tokens || m.call_count || 0);
+
+      modelChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Usage Count',
+            data,
+            backgroundColor: [
+              'rgba(66, 133, 244, 0.7)',
+              'rgba(52, 168, 83, 0.7)',
+              'rgba(251, 188, 4, 0.7)',
+              'rgba(234, 67, 53, 0.7)',
+              'rgba(125, 82, 96, 0.7)',
+              'rgba(0, 104, 116, 0.7)',
+              'rgba(158, 109, 14, 0.7)',
+              'rgba(46, 125, 50, 0.7)',
+            ],
+            borderRadius: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${formatNumber(ctx.raw)} calls`
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { color: '#49454f', callback: v => formatNumber(v) }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#49454f', font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    function updateProjectChart(projects) {
+      const ctx = document.getElementById('projectChart');
+      if (!ctx) return;
+      if (projectChart) projectChart.destroy();
+
+      if (!projects || projects.length === 0) return;
+
+      const topProjects = projects.slice(0, 8);
+      const labels = topProjects.map(p => p.name);
+      const data = topProjects.map(p => p.total_changes || 0);
+      const costs = topProjects.map(p => p.estimated_cost || 0);
+
+      projectChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Changes',
+              data,
+              backgroundColor: 'rgba(66, 133, 244, 0.7)',
+              borderRadius: 8,
+              yAxisID: 'y',
+            },
+            {
+              label: 'Est. Cost ($)',
+              data: costs,
+              backgroundColor: 'rgba(251, 188, 4, 0.7)',
+              borderRadius: 8,
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#49454f', usePointStyle: true, padding: 16 }
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: ${ctx.dataset.label.includes('Cost') ? '$' : ''}${ctx.raw.toFixed(2)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#49454f', font: { size: 10 }, maxRotation: 45 }
+            },
+            y: {
+              position: 'left',
+              beginAtZero: true,
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { color: '#49454f', callback: v => formatNumber(v) }
+            },
+            y1: {
+              position: 'right',
+              beginAtZero: true,
+              grid: { display: false },
+              ticks: { color: '#49454f', callback: v => '$' + v.toFixed(2) }
+            }
+          }
+        }
+      });
+    }
+
+    function updatePlatformChart() {
+      const ctx = document.getElementById('platformChart');
+      if (!ctx) return;
+      if (platformChart) platformChart.destroy();
+
+      if (!unifiedData || !unifiedData.platforms) return;
+
+      const platforms = unifiedData.platforms;
+      const labels = [];
+      const callsData = [];
+      const costsData = [];
+
+      if (platforms.cursor?.available) {
+        labels.push('Cursor');
+        callsData.push(platforms.cursor.calls || 0);
+        costsData.push(platforms.cursor.estimated_cost || 0);
+      }
+      if (platforms['claude-code']?.available) {
+        labels.push('Claude Code');
+        callsData.push(platforms['claude-code'].sessions || 0);
+        costsData.push(0);
+      }
+      if (platforms.forgewright?.available) {
+        labels.push('Forgewright');
+        callsData.push(platforms.forgewright.calls || 0);
+        costsData.push(platforms.forgewright.cost || 0);
+      }
+
+      if (labels.length === 0) return;
+
+      platformChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Calls',
+              data: callsData,
+              backgroundColor: 'rgba(66, 133, 244, 0.7)',
+              borderRadius: 8,
+              yAxisID: 'y',
+            },
+            {
+              label: 'Est. Cost ($)',
+              data: costsData,
+              backgroundColor: 'rgba(251, 188, 4, 0.7)',
+              borderRadius: 8,
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'x',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#49454f', usePointStyle: true, padding: 16 }
+            }
+          },
+          scales: {
+            y: {
+              position: 'left',
+              beginAtZero: true,
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { color: '#49454f', callback: v => formatNumber(v) }
+            },
+            y1: {
+              position: 'right',
+              beginAtZero: true,
+              grid: { display: false },
+              ticks: { color: '#49454f', callback: v => '$' + v.toFixed(2) }
+            }
+          }
+        }
+      });
+    }
+
+    function updateModelList(models) {
+      const container = document.getElementById('modelList');
+      if (!models || Object.keys(models).length === 0) {
+        container.innerHTML = '<div class="loading">No data available</div>';
+        return;
+      }
+      
+      const sorted = Object.entries(models)
+        .sort((a, b) => (b[1].cost || 0) - (a[1].cost || 0))
+        .slice(0, 5);
+      
+      container.innerHTML = sorted.map(([name, data]) => `
+        <div class="model-item">
+          <div class="model-info">
+            <span class="model-badge ${getProviderBadge(data.provider || 'anthropic')}">${(data.provider || 'anthropic').slice(0, 4)}</span>
+            <span class="model-name">${name}</span>
+          </div>
+          <div class="model-stats">
+            <span><span class="value">${formatNumber(data.tokens)}</span> tokens</span>
+            <span><span class="value">$${(data.cost || 0).toFixed(4)}</span></span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateSessionsTable(data) {
+      const tbody = document.getElementById('sessionsTable');
+      const sessions = data.recent_sessions || [];
+      
+      if (sessions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">No sessions</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = sessions.slice(0, 5).map(s => `
+        <tr>
+          <td><span class="session-id">${(s.session_id || 'unknown').slice(0, 12)}...</span></td>
+          <td>${(s.model || 'unknown').split('-').slice(0, 2).join('-')}</td>
+          <td>${formatNumber(s.tokens)}</td>
+          <td>$${(s.cost || 0).toFixed(4)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function showSnackbar(message) {
+      const snackbar = document.getElementById('snackbar');
+      snackbar.textContent = message;
+      snackbar.classList.add('show');
+      setTimeout(() => snackbar.classList.remove('show'), 3000);
+    }
+
+    document.getElementById('project').addEventListener('change', refreshData);
+    
+    loadProjects().then(refreshData);
+  </script>
+</body>
+</html>

@@ -26,3 +26,6 @@ CNAME
 logo*
 favicon*
 assets/!(donate)
+!adr/
+!archive/
+!active-roadmap.md

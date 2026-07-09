@@ -1,3 +1,16 @@
+---
+id: self-improving-loop
+title: Adaptive Self-Improving Loop Protocol (ASIP)
+summary: Core protocol for self improving loop.
+status: deprecated
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Adaptive Self-Improving Loop Protocol (ASIP)
 
 > **Purpose:** CANONICAL self-improvement loop. Mandatory 2-failure-then-research that forces knowledge acquisition before retry. Builds project-specific, adaptive skill knowledge over time.

@@ -1,3 +1,16 @@
+---
+id: summarization
+title: Context Summarization Protocol
+summary: Core protocol for summarization.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Context Summarization Protocol
 
 > **Purpose:** Prevent token limit exhaustion during long pipeline sessions by automatically compressing completed sub-task context. Inspired by DeerFlow 2.0's summarization middleware which maintains conversation coherence at scale.

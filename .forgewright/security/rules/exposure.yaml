@@ -1,0 +1,223 @@
+# Data Exposure & Privacy Security Rules
+# OWASP A01:2021 - Broken Access Control, A02:2021 - Cryptographic Failures
+# Covers: PII exposure, data leaks, sensitive file exposure, logging issues
+
+rules:
+  # ============================================
+  # PII & SENSITIVE DATA EXPOSURE
+  # ============================================
+  - id: exp-pii-001
+    name: "SSN with 'ssn' Context"
+    pattern: "(?:ssn|social|social_security)\\s*[:=].*\\b\\d{3}-\\d{2}-\\d{4}\\b"
+    severity: critical
+    description: "SSN in code with context — potential PII mishandling"
+    cwe: "CWE-359"
+    owasp: "A02:2021"
+    remediation: "Never store SSN. Use tokenization if required. Encrypt at rest and mask in responses."
+
+  - id: exp-pii-002
+    name: "Credit Card Number with 'card' Context"
+    pattern: "(?:card|card_number|cc_number|credit_card)\\s*[:=].*\\b\\d{4}[-\\s]?\\d{4}[-\\s]?\\d{4}[-\\s]?\\d{4}\\b"
+    severity: critical
+    description: "Credit card number in variable context — PCI-DSS violation"
+    cwe: "CWE-359"
+    owasp: "A02:2021"
+    remediation: "Never store card numbers. Use tokenization (Stripe, Braintree)."
+
+  - id: exp-pii-003
+    name: "Sensitive Data in Console Log"
+    pattern: "console\\.(log|debug)\\s*\\([^)]*\\b(password|passwd|secret|token|auth|ssn|card|credit)\\b"
+    severity: high
+    description: "Sensitive information logged to console — will appear in logs"
+    cwe: "CWE-532"
+    owasp: "A09:2021"
+    remediation: "Never log credentials. Use structured logging with field allowlists."
+
+  - id: exp-pii-004
+    name: "Sensitive Data in LocalStorage"
+    pattern: "localStorage\\.(setItem|getItem)\\s*\\(['\u0022](?:password|secret|key|ssn|card)"
+    severity: high
+    description: "Sensitive data stored in localStorage — vulnerable to XSS"
+    cwe: "CWE-922"
+    owasp: "A05:2021"
+    remediation: "Use HttpOnly cookies or sessionStorage for sensitive data"
+
+  # ============================================
+  # SENSITIVE FILE EXPOSURE
+  # ============================================
+  - id: exp-file-001
+    name: "Debug/Backup File Pattern"
+    pattern: "\\.(bak|backup|old|orig|original|tmp|temp|swp)$"
+    severity: medium
+    description: "Backup or debug file in codebase — may contain sensitive data"
+    cwe: "CWE-552"
+    owasp: "A05:2021"
+    remediation: "Remove backup files. Add to .gitignore. Block access in production."
+
+  - id: exp-file-002
+    name: "Log File Pattern"
+    pattern: "\\.log$"
+    severity: low
+    description: "Log file may be committed — verify .gitignore excludes logs"
+    cwe: "CWE-532"
+    owasp: "A05:2021"
+    remediation: "Ensure .log files are in .gitignore. Never commit log files."
+
+  - id: exp-file-003
+    name: "Source Map in Production"
+    pattern: "\\.map\\b"
+    severity: medium
+    description: "Source map may expose original source code in production"
+    cwe: "CWE-16"
+    owasp: "A05:2021"
+    remediation: "Disable source maps in production builds"
+
+  - id: exp-file-004
+    name: "Database Dump Pattern"
+    pattern: "\\.(sql|dump|backup)$"
+    severity: high
+    description: "Database file may be committed — contains all data"
+    cwe: "CWE-552"
+    owasp: "A03:2021"
+    remediation: "Block .sql/.dump files. Never commit database dumps."
+
+  # ============================================
+  # INSECURE CRYPTOGRAPHY
+  # ============================================
+  - id: exp-crypto-001
+    name: "Insecure Random (Math.random)"
+    pattern: "Math\\.random\\s*\\(\\s*\\)"
+    severity: medium
+    description: "Non-cryptographic random used — not suitable for security"
+    cwe: "CWE-338"
+    owasp: "A02:2021"
+    remediation: "Use crypto.randomBytes() or crypto.randomUUID() for security purposes"
+
+  - id: exp-crypto-002
+    name: "Disabled TLS Certificate Validation"
+    pattern: "(rejectUnauthorized\\s*:\\s*false|secure\\s*:\\s*false)"
+    severity: critical
+    description: "TLS certificate verification disabled — vulnerable to MITM attacks"
+    cwe: "CWE-295"
+    owasp: "A02:2021"
+    remediation: "Enable proper certificate validation. Never disable in production."
+
+  - id: exp-crypto-003
+    name: "Weak Encryption (DES/RC4)"
+    pattern: "\\b(?:DES|RC4|des|rc4)\\b"
+    severity: high
+    description: "Weak or deprecated encryption algorithm used"
+    cwe: "CWE-327"
+    owasp: "A02:2021"
+    remediation: "Use AES-256-GCM or ChaCha20-Poly1305 for modern cryptography"
+
+  - id: exp-crypto-004
+    name: "MD5 for Non-Cryptographic Hash"
+    pattern: "createHash\\s*\\(\\s*['\u0022]md5['\u0022]\\)"
+    severity: low
+    description: "MD5 used for hashing — verify it's not for security purposes"
+    cwe: "CWE-327"
+    owasp: "A02:2021"
+    remediation: "Use SHA-256+ for cryptographic purposes. MD5 is acceptable for checksums only."
+
+  # ============================================
+  # INFORMATION DISCLOSURE
+  # ============================================
+  - id: exp-info-001
+    name: "Debug Mode Enabled"
+    pattern: "debug\\s*:\\s*(true|1)|DEBUG\\s*[=:]\\s*(true|1)"
+    severity: medium
+    description: "Debug mode enabled — exposes internal system details"
+    cwe: "CWE-11"
+    owasp: "A05:2021"
+    remediation: "Disable debug mode in production. Use environment-specific configs."
+
+  - id: exp-info-002
+    name: "Stack Trace Exposure"
+    pattern: "error\\.stack|err\\.stack"
+    severity: medium
+    description: "Stack traces may expose internal file paths and code structure"
+    cwe: "CWE-209"
+    owasp: "A05:2021"
+    remediation: "Log error messages only. Return generic errors to clients."
+
+  - id: exp-info-003
+    name: "Version Disclosure"
+    pattern: "X-Powered-By|Server\\s*[=:]"
+    severity: low
+    description: "Server technology version disclosed — helps attackers target known CVEs"
+    cwe: "CWE-200"
+    owasp: "A05:2021"
+    remediation: "Remove or customize server headers. Use helmet middleware."
+
+  - id: exp-info-004
+    name: "Detailed Error Messages to Client"
+    pattern: "res\\.status\\s*\\(\\s*\\d+\\s*\\)\\s*\\.json\\s*\\(\\s*err\\s*\\)|error\\.send\\s*\\(\\s*err\\s*\\)"
+    severity: medium
+    description: "Error object sent to client — may expose sensitive details"
+    cwe: "CWE-209"
+    owasp: "A05:2021"
+    remediation: "Return generic error messages. Log detailed errors server-side only."
+
+  # ============================================
+  # MISSING SECURITY HEADERS
+  # ============================================
+  - id: exp-headers-001
+    name: "Security Headers Not Configured"
+    pattern: "app\\.use\\s*\\(\\s*helmet\\s*\\)"
+    severity: low
+    description: "Helmet middleware found — verify it includes all necessary security headers"
+    cwe: "CWE-693"
+    owasp: "A05:2021"
+    remediation: "Configure comprehensive security headers with helmet()"
+
+  - id: exp-headers-002
+    name: "Missing CORS Configuration"
+    pattern: "app\\.use\\s*\\(\\s*cors\\s*\\)"
+    severity: low
+    description: "CORS middleware without configuration — may allow all origins"
+    cwe: "CWE-942"
+    owasp: "A05:2021"
+    remediation: "Configure CORS with specific allowed origins"
+
+  # ============================================
+  # DATA ENCRYPTION AT REST
+  # ============================================
+  - id: exp-encrypt-001
+    name: "Sensitive Data Without Encryption"
+    pattern: "(ssn|social.*security|credit.*card|card.*number).*(?!encrypt|hash|crypto)"
+    severity: medium
+    description: "Sensitive data processed without encryption indication"
+    cwe: "CWE-311"
+    owasp: "A02:2021"
+    remediation: "Encrypt sensitive data at rest. Use field-level encryption where needed."
+
+  - id: exp-encrypt-002
+    name: "Plaintext Database Password"
+    pattern: "(DB_PASSWORD|DB_PASS|DATABASE_PASSWORD).*(?!process\\.env)"
+    severity: high
+    description: "Database password not using environment variables"
+    cwe: "CWE-312"
+    owasp: "A07:2021"
+    remediation: "Load database credentials from environment variables or secret management"
+
+  # ============================================
+  # CACHE & STORAGE ISSUES
+  # ============================================
+  - id: exp-cache-001
+    name: "Sensitive Data in Cache Key"
+    pattern: "cache\\.(set|get)\\s*\\(['\u0022].*\\b(password|token|secret|key)\\b"
+    severity: high
+    description: "Sensitive data used in cache keys — may leak to cache storage"
+    cwe: "CWE-524"
+    owasp: "A04:2021"
+    remediation: "Never use sensitive data in cache keys. Use non-sensitive identifiers."
+
+  - id: exp-cache-002
+    name: "No Cache-Control for Sensitive Data"
+    pattern: "res\\.setHeader\\s*\\(['\u0022]Cache-Control['\u0022]\\s*,\\s*['\u0022]public"
+    severity: medium
+    description: "Cache-Control set to public for response that may contain sensitive data"
+    cwe: "CWE-525"
+    owasp: "A04:2021"
+    remediation: "Set Cache-Control: no-store, no-cache for sensitive responses"

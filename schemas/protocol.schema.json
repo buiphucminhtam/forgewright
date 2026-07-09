@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "status": { "type": "string", "enum": ["active", "experimental", "deprecated"] },
+    "version": { "type": "string" },
+    "owners": { "type": "array", "items": { "type": "string" } },
+    "triggers": { "type": "array", "items": { "type": "string" } },
+    "used_by": { "type": "array", "items": { "type": "string" } },
+    "related": { "type": "array", "items": { "type": "string" } },
+    "supersedes": { "type": "array", "items": { "type": "string" } },
+    "superseded_by": { "type": ["string", "null"] }
+  },
+  "required": ["id", "title", "summary", "status", "owners", "used_by"]
+}

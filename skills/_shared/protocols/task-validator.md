@@ -1,3 +1,16 @@
+---
+id: task-validator
+title: Task Validator Protocol
+summary: Core protocol for task validator.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Task Validator Protocol
 
 **Run after each worker completes, before merge. Validates delivery against the Task Contract.**

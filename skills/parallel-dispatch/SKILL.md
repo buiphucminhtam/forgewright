@@ -323,12 +323,12 @@ const tSpatialDesignContract: TaskContract = {
 
 ```bash
 # For each task in current wave:
-scripts/worktree-manager.sh create <task_id> parallel/<task_id>-<name>
+scripts/runtime/worktree-manager.sh create <task_id> parallel/<task_id>-<name>
 
 # Example:
-scripts/worktree-manager.sh create T3a parallel/T3a-backend
-scripts/worktree-manager.sh create T3b parallel/T3b-frontend
-scripts/worktree-manager.sh create T3c parallel/T3c-mobile
+scripts/runtime/worktree-manager.sh create T3a parallel/T3a-backend
+scripts/runtime/worktree-manager.sh create T3b parallel/T3b-frontend
+scripts/runtime/worktree-manager.sh create T3c parallel/T3c-mobile
 
 # Copy CONTRACT.json into worktree root
 cp .forgewright/contracts/T3a.json parallel/T3a-backend/CONTRACT.json
@@ -341,7 +341,7 @@ cp -r schemas parallel/T3a-backend/
 cp skills/software-engineer/SKILL.md parallel/T3a-backend/SKILL.md
 
 # Verify worktree is ready
-scripts/worktree-manager.sh status parallel/T3a-backend
+scripts/runtime/worktree-manager.sh status parallel/T3a-backend
 ```
 
 ---
@@ -399,7 +399,7 @@ Workers attempting to write outside their contract outputs → **DENY**
 CIRCUIT_FILE="${CIRCUIT_FILE:-.forgewright/circuits.json}"
 
 # Source circuit breaker functions
-source scripts/circuit-breaker.sh
+source scripts/runtime/circuit-breaker.sh
 
 # Check circuit state for each worker
 for task in T3a T3b T3c T4 T5 T6a T6b; do
@@ -453,7 +453,7 @@ BULKHEAD_CPU="${BULKHEAD_CPU_PERCENT:-80}"
 BULKHEAD_DURATION="${BULKHEAD_DURATION_MINUTES:-30}"
 
 # Apply bulkhead limits to this shell
-scripts/worktree-manager.sh bulkhead-limits "$BULKHEAD_MEMORY" "$BULKHEAD_CPU" "$BULKHEAD_DURATION"
+scripts/runtime/worktree-manager.sh bulkhead-limits "$BULKHEAD_MEMORY" "$BULKHEAD_CPU" "$BULKHEAD_DURATION"
 
 # Per-worker resource limits
 declare -A WORKER_LIMITS=(
@@ -504,7 +504,7 @@ for task in T3a T3b T3c; do
   INSTRUCTIONS
 
   # Dispatch worker with watchdog
-  scripts/worktree-manager.sh bulkhead-watchdog "$task" "$worktree_path" "$mem_mb" "$duration_min" &
+  scripts/runtime/worktree-manager.sh bulkhead-watchdog "$task" "$worktree_path" "$mem_mb" "$duration_min" &
   echo "Worker ${task} dispatched"
 done
 
@@ -699,7 +699,7 @@ echo "## Merge Log" >> .forgewright/merge-log.md
 echo "$(date): T3a, T3b merged successfully" >> .forgewright/merge-log.md
 
 # Step 5: Clean up worktrees
-scripts/worktree-manager.sh cleanup-all
+scripts/runtime/worktree-manager.sh cleanup-all
 ```
 
 ### Merge Conflict Handling
@@ -722,7 +722,7 @@ git checkout main
 git pull
 
 # Create new worktrees for Wave 2
-scripts/worktree-manager.sh create T4 parallel/T4-devops
+scripts/runtime/worktree-manager.sh create T4 parallel/T4-devops
 
 # These worktrees see T3a's output (it's in main)
 # Repeat Phases 2-6 for Wave 2
@@ -762,7 +762,7 @@ Each worker's state is preserved:
 To resume a failed task:
 
 ```bash
-scripts/worktree-manager.sh resume T3a
+scripts/runtime/worktree-manager.sh resume T3a
 # Worker re-reads CONTRACT.json + VALIDATION.json feedback
 # Fixes issues and regenerates DELIVERY.json
 ```

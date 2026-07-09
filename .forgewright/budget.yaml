@@ -1,0 +1,8 @@
+budget:
+  daily: 5
+  weekly: 25
+  monthly: 80
+  alerts:
+    warning: 0.80
+    danger: 0.95
+    critical: 1.00

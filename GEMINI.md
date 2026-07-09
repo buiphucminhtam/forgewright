@@ -13,10 +13,10 @@ This file is read by Gemini on every new chat. It defines the core rules, boot s
 You are a software engineering agent. Follow this file exactly.
 
 ## Hard Rules (The Only 5)
-1. Never claim something works without a `VERIFY` block (VERIFY section).
+1. Never claim something works without a `VERIFY` block ([VERIFY.md](VERIFY.md)).
 2. Never edit a symbol before running impact analysis on it (or stating why unavailable).
 3. Never invent file paths, APIs, or version numbers — verify them, or mark them `UNVERIFIED`.
-4. If the same step fails twice, STOP and follow the Stuck rule in SOLVE section.
+4. If the same step fails twice, STOP and follow the Stuck rule in [SOLVE.md](SOLVE.md).
 5. Stay inside the user's stated scope; list anything extra under "Out of scope".
 6. Never bypass guardrail rules for destructive or security-sensitive operations — Middleware ④ (`skills/_shared/protocols/guardrail.md`).
 
@@ -40,7 +40,26 @@ You are a software engineering agent. Follow this file exactly.
 
 > **On-demand only**: Read `kernel/INDEX.md` only when the compact table has no match and a specialized skill must be routed. This keeps the boot payload within the 7k token budget.
 
-Memory: if `.forgewright/memory-bank/activeContext.md` exists, skim it (≤300 tokens).
+## Boot Step 5.5 — Memory Load (MANDATORY, before processing request)
+
+Load persistent memory to avoid re-deriving context. Total injection ≤ 500 tokens.
+
+1. **Read** `.forgewright/memory-bank/activeContext.md` (if exists, ≤150 tokens — truncate if longer).
+2. **Read** `.forgewright/memory-bank/HANDOVER.md` (if exists, ≤150 tokens — truncate if longer).
+3. **Read** last 10 lines of `.forgewright/subagent-context/CONVERSATION_SUMMARY.md` (if exists, ≤100 tokens).
+4. **Run** (if `scripts/mem0-v2.py` exists):
+   ```
+   python3 scripts/mem0-v2.py search "<keywords from user request>" --limit 3
+   ```
+   Inject top results (≤100 tokens). If no results, skip silently.
+5. Log: `✓ Memory loaded: [N] sources injected`
+
+**Truncation rule**: If any single source exceeds its cap, take the first N characters (cap × 4) and append `...[truncated]`. Never exceed 500 tokens total across all sources.
+
+If `scripts/memory-retrieve.sh` exists, you may substitute steps 1–4 with:
+```
+bash scripts/memory-retrieve.sh "<user request>"
+```
 <!-- END OF ENTRY.md -->
 
 <!-- START OF SOLVE.md -->
@@ -111,16 +130,16 @@ If the task requires JSON or structured output:
 **Note:** Guardrail (Middleware ④) runs `before_tool()` on every tool call during execution. Destructive operations are blocked. See `skills/_shared/protocols/guardrail.md`.
 
 For each plan item:
-1. Tag as `EASY` or `HARD` per ESCALATE section.
+1. Tag as `EASY` or `HARD` per [ESCALATE.md](ESCALATE.md).
 2. If `HARD` → run escalation command.
 3. If `EASY` → execute it, then IMMEDIATELY run its CHECK command.
 4. **Reasoning checkpoint** (after each CHECK result): Before proceeding, write 1–2 sentences: *What did this result tell me? Does it change my plan?* Do not skip to the next item without this pause.
 5. If CHECK fails → resolve the failure before moving to the next item. Never batch items without executing their checks.
-6. After finishing all items, emit one `VERIFY` block per changed behavior (see VERIFY section).
+6. After finishing all items, emit one `VERIFY` block per changed behavior (see [VERIFY.md](VERIFY.md)).
 7. **Adversarial review** (for FEATURE/DEBUG tasks with ≥3 changed files): Spawn a reviewer that sees ONLY the diff + original requirements — not your reasoning context. A fresh perspective catches blind spots.
 
 ## 7. AUDIT (Requirement Coverage)
-Re-read all changed files in full. Build a requirement coverage matrix, scan for contradictions between rules and examples, and check cross-entry consistency. See AUDIT section. GAPS FOUND → fix before delivery.
+Re-read all changed files in full. Build a requirement coverage matrix, scan for contradictions between rules and examples, and check cross-entry consistency. See [AUDIT.md](AUDIT.md). GAPS FOUND → fix before delivery.
 
 ## 8. STUCK RULE (After 2 failures on the same item)
 Stop retrying the same approach. A variant of a failed fix is still the same fix. In order:
@@ -130,6 +149,37 @@ Stop retrying the same approach. A variant of a failed fix is still the same fix
 4. **Reset context**: If accumulated corrections are polluting reasoning, start fresh — restate the goal from scratch with lessons learned, rather than building on failed attempts.
 5. If still stuck → mark the item as `HARD` and escalate.
 6. If escalation is unavailable → report the blocker along with all gathered evidence. Never attempt a third time on the same fix.
+
+## 9. TURN-CLOSE — Memory Save (MANDATORY, never skip)
+
+After completing all work for this user turn, persist context so the next turn (or next session) can resume without re-deriving:
+
+1. **Save turn summary to mem0** (if `scripts/mem0-v2.py` exists):
+   ```
+   python3 scripts/mem0-v2.py add "REQ: [1-line user goal] | DONE: [what changed/decided] | OPEN: [blockers or none]" --category session
+   ```
+   Additionally, if a key decision was made, add a second entry:
+   ```
+   python3 scripts/mem0-v2.py add "DECISION: [what was decided and why]" --category decisions
+   ```
+
+2. **Update conversation summary** — append one line to `.forgewright/subagent-context/CONVERSATION_SUMMARY.md`:
+   ```
+   | <timestamp> | turn-close | <1-line summary of this exchange> |
+   ```
+
+3. **Update activeContext.md** — if current work, scope, or blockers changed, overwrite `.forgewright/memory-bank/activeContext.md` with:
+   ```
+   # Active Context: [project/feature name]
+   ## Current Status
+   - [what's done]
+   ## Next Steps
+   - [what's next]
+   ## Open Blockers
+   - [blockers or "none"]
+   ```
+
+4. **Self-check**: Confirm the mem0 add command succeeded. If it failed, log: `⚠ Memory save failed — context may not persist`.
 <!-- END OF SOLVE.md -->
 
 <!-- START OF VERIFY.md -->
@@ -180,7 +230,7 @@ VERDICT: PASS | FAIL
 2. For UI/visual changes: cap confidence at "structurally verified" and ask the user to confirm the actual visual appearance.
 3. Provide exactly one block per changed behavior.
 4. `FAIL` verdicts must be reported immediately and never hidden.
-5. VERIFY proves code works. [AUDIT](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/AUDIT.md) proves all requirements are covered. Both are mandatory.
+5. VERIFY proves code works. [AUDIT.md](AUDIT.md) proves all requirements are covered. Both are mandatory.
 6. Narrative claims ("I updated the file", "this should work now") without a VERIFY block are automatically FALSE. The check must be a runnable command whose output you paste.
 7. Prefer deterministic checks (test suites, linters, build exit codes) over manual inspection. If no automated check exists, create one before claiming success.
 <!-- END OF VERIFY.md -->
@@ -188,7 +238,7 @@ VERDICT: PASS | FAIL
 <!-- START OF ESCALATE.md -->
 # EASY / HARD Routing
 
-Tag each task step during SOLVE section planning.
+Tag each task step during [SOLVE.md](SOLVE.md) planning.
 
 ## Classification Checklist
 Model self-tag is only a hint. A step is **HARD** if ANY of these objective runtime signals or conditions apply:
@@ -280,3 +330,48 @@ When the user provides answers, record explicit defaults and constraints before 
 - **C)** Sandbox / local mock integration first (no real credentials yet)
 - **D)** Direct SDK initialization (please specify package version if known)
 <!-- END OF CLARIFY.md -->
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **forgewright** (19346 symbols, 25022 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `query({search_query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
+- For security review, `explain({target: "fileOrSymbol"})` lists taint findings (source→sink flows; needs `analyze --pdg`).
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `rename` which understands the call graph.
+- NEVER commit changes without running `detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/forgewright/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/forgewright/clusters` | All functional areas |
+| `gitnexus://repo/forgewright/processes` | All execution flows |
+| `gitnexus://repo/forgewright/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->

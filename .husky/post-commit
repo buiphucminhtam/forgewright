@@ -21,8 +21,8 @@ if git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^(src/|mcp/|scrip
   echo "🔍 [Forgewright] Phát hiện thay đổi logic files. Đang chạy phân tích luồng ngầm (background)..."
   (
     npx gitnexus analyze > /dev/null 2>&1
-    if [ -f "./scripts/generate-sequence.ts" ]; then
-      npx tsx ./scripts/generate-sequence.ts > /dev/null 2>&1
+    if [ -f "./scripts/utilities/generate-sequence.ts" ]; then
+      npx tsx ./scripts/utilities/generate-sequence.ts > /dev/null 2>&1
     fi
   ) &
 fi

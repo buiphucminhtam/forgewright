@@ -1,10 +1,15 @@
 ---
-name: paperclip-integration
-description: >
-  Protocol for Forgewright skills operating under Paperclip orchestration.
-  Defines how skills detect, interact with, and report to Paperclip's
-  ticket system, heartbeat cycle, and budget controls.
+id: paperclip-integration
+title: Paperclip Integration Protocol
+summary: Protocol for Forgewright skills operating under Paperclip orchestration.
+status: active
 version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
 ---
 
 # Paperclip Integration Protocol

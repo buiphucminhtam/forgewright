@@ -1,3 +1,16 @@
+---
+id: game-test-protocol
+title: Game Test Protocol
+summary: Core protocol for game test protocol.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Game Test Protocol
 
 **Game-specific testing pipeline integrated with the universal Quality Gate and Task Validator.** Applies to ALL game engines (Unity, Unreal, Godot, Roblox) and Game Build mode.

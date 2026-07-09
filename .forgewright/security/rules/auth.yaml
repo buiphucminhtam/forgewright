@@ -1,0 +1,193 @@
+# Authentication & Authorization Security Rules
+# OWASP A07:2021 - Identification and Authentication Failures
+# Covers: Hardcoded secrets, weak auth, token issues, credential exposure
+
+rules:
+  # ============================================
+  # HARDCODED SECRETS & CREDENTIALS - High confidence patterns
+  # ============================================
+  - id: auth-secret-001
+    name: "Hardcoded Password String"
+    pattern: "password\\s*[:=]\\s*['\u0022][a-zA-Z0-9@#$%^&*!]{8,32}['\u0022]"
+    severity: critical
+    description: "Hardcoded password detected — credentials will be exposed in repositories"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Move secrets to environment variables or secret management systems"
+
+  - id: auth-secret-002
+    name: "Hardcoded API Key Pattern"
+    pattern: "(api_key|apiKey|API_KEY)\\s*[:=]\\s*['\u0022][a-zA-Z0-9_-]{20,}['\u0022]"
+    severity: critical
+    description: "Hardcoded API key detected — will be exposed in version control"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Use environment variables or secret management (AWS Secrets Manager, HashiCorp Vault)"
+
+  - id: auth-secret-003
+    name: "Private Key in Source"
+    pattern: "-----BEGIN.*PRIVATE KEY-----"
+    severity: critical
+    description: "Private key embedded in source code — critical security exposure"
+    cwe: "CWE-321"
+    owasp: "A07:2021"
+    remediation: "Remove immediately. Use key management systems, never commit keys to source control"
+
+  - id: auth-secret-004
+    name: "AWS Access Key ID Pattern"
+    pattern: "AKIA[0-9A-Z]{16}"
+    severity: critical
+    description: "AWS Access Key ID detected in source — credentials will be exposed"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Rotate keys immediately. Use IAM roles or service accounts instead."
+
+  - id: auth-secret-005
+    name: "Database Connection with Embedded Password"
+    pattern: "(mysql|postgres|mongodb|redis)://[^:]+:[^@]+@"
+    severity: critical
+    description: "Database connection string with embedded credentials"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Use connection string builders with environment variables for credentials"
+
+  # ============================================
+  # WEAK CRYPTOGRAPHY
+  # ============================================
+  - id: auth-crypto-001
+    name: "Weak Password Hashing (MD5)"
+    pattern: "createHash\\s*\\(\\s*['\u0022]md5['\u0022]"
+    severity: high
+    description: "MD5 hash used for passwords — vulnerable to collision and rainbow table attacks"
+    cwe: "CWE-327"
+    owasp: "A07:2021"
+    remediation: "Use bcrypt, scrypt, Argon2, or PBKDF2 with appropriate work factors"
+
+  - id: auth-crypto-002
+    name: "Weak Password Hashing (SHA1)"
+    pattern: "createHash\\s*\\(\\s*['\u0022]sha1['\u0022]"
+    severity: high
+    description: "SHA1 hash used for passwords — deprecated for security purposes"
+    cwe: "CWE-327"
+    owasp: "A07:2021"
+    remediation: "Use bcrypt, scrypt, Argon2, or PBKDF2 with appropriate work factors"
+
+  - id: auth-crypto-003
+    name: "JWT with Symmetric Algorithm"
+    pattern: "algorithm\\s*:\\s*['\u0022]HS(256|384|512)['\u0022]"
+    severity: high
+    description: "JWT using symmetric (HS*) algorithm — vulnerable to algorithm confusion"
+    cwe: "CWE-347"
+    owasp: "A07:2021"
+    remediation: "Use RS256 or ES256 asymmetric algorithms. Validate algorithm explicitly."
+
+  - id: auth-crypto-004
+    name: "JWT Without Expiration"
+    pattern: "jwt\\.sign\\s*\\([^)]*\\{[^}]*expiresIn\\s*:\\s*['\u0022]?none['\u0022]?\\s*\\}"
+    severity: high
+    description: "JWT token without expiration — allows unlimited session replay"
+    cwe: "CWE-613"
+    owasp: "A07:2021"
+    remediation: "Always set reasonable expiresIn value (15-60 minutes for access tokens)"
+
+  # ============================================
+  # INSECURE AUTHENTICATION PATTERNS
+  # ============================================
+  - id: auth-bypass-001
+    name: "Admin Route Without Auth Check"
+    pattern: "(router|app)\\.(get|post|put|delete)\\s*\\(\\s*['\u0022][/'\\w]*(admin|dashboard)[/'\\w]*['\u0022]\\s*,\\s*(?!.*auth|.*require|.*middleware)"
+    severity: critical
+    description: "Admin route without authentication middleware — unauthorized access possible"
+    cwe: "CWE-306"
+    owasp: "A07:2021"
+    remediation: "Add authentication and authorization middleware to all protected routes"
+
+  - id: auth-bypass-002
+    name: "Skip Auth Check Comment Pattern"
+    pattern: "//\\s*(?:skip|bypass|disable|ignore)\\s+(?:auth|login|verify)"
+    severity: high
+    description: "Comment indicating auth check was disabled"
+    cwe: "CWE-285"
+    owasp: "A07:2021"
+    remediation: "Remove bypass. Auth checks should never be disabled in production code."
+
+  - id: auth-bypass-003
+    name: "User ID from Request Without Verification"
+    pattern: "User\\.findById\\s*\\(\\s*req\\.params\\.id\\s*\\)(?!\\s*[\\.\\w]*\\(\\s*\\)\\s*\\{[^}]*if)"
+    severity: high
+    description: "User lookup by ID from request without ownership verification"
+    cwe: "CWE-639"
+    owasp: "A01:2021"
+    remediation: "Verify resource ownership: query WHERE user_id = currentUser AND id = requestedId"
+
+  # ============================================
+  # INSECURE SESSION/COOKIE
+  # ============================================
+  - id: auth-session-001
+    name: "Session Secret Too Short"
+    pattern: "secret\\s*:\\s*['\u0022][^'\u0022]{1,31}['\u0022]"
+    severity: medium
+    description: "Session secret too short — vulnerable to brute force"
+    cwe: "CWE-308"
+    owasp: "A07:2021"
+    remediation: "Use cryptographically random secrets of at least 256 bits (32+ characters)"
+
+  - id: auth-session-002
+    name: "Cookie Without HttpOnly Flag"
+    pattern: "cookie\\s*\\(.*['\u0022][^'\u0022]*['\u0022](?!.*httpOnly)"
+    severity: medium
+    description: "Cookie without HttpOnly flag — vulnerable to XSS cookie theft"
+    cwe: "CWE-1004"
+    owasp: "A05:2021"
+    remediation: "Always set httpOnly: true for session cookies"
+
+  - id: auth-session-003
+    name: "CORS Allow All Origins"
+    pattern: "origin\\s*:\\s*['\u0022]\\*['\u0022]"
+    severity: high
+    description: "CORS allows all origins — sensitive data accessible from any website"
+    cwe: "CWE-942"
+    owasp: "A05:2021"
+    remediation: "Use specific allowed origins. Implement dynamic origin validation."
+
+  # ============================================
+  # INSECURE TOKEN HANDLING
+  # ============================================
+  - id: auth-token-001
+    name: "Token in URL Query String"
+    pattern: "\\?(?:token|auth|key)\\s*=\\s*\\$\\{|url\\s*\\+.*(?:token|auth|key)"
+    severity: medium
+    description: "Authentication token transmitted in URL — will be logged"
+    cwe: "CWE-598"
+    owasp: "A07:2021"
+    remediation: "Send tokens in Authorization header or request body"
+
+  - id: auth-token-002
+    name: "Sensitive Data in LocalStorage"
+    pattern: "localStorage\\.setItem\\s*\\(['\u0022](?:token|auth|secret|password|key)"
+    severity: high
+    description: "Sensitive data stored in localStorage — vulnerable to XSS"
+    cwe: "CWE-922"
+    owasp: "A05:2021"
+    remediation: "Use HttpOnly cookies for tokens. Use sessionStorage for temporary data."
+
+  # ============================================
+  # DEBUG/HARDCODED AUTH PATTERNS
+  # ============================================
+  - id: auth-debug-001
+    name: "Hardcoded Credentials in Code"
+    pattern: "(?:password|passwd|secret)\\s*[:=]\\s*['\u0022][a-zA-Z0-9@#$%^&*!]{4,32}['\u0022]"
+    severity: critical
+    description: "Hardcoded username/password combination detected"
+    cwe: "CWE-798"
+    owasp: "A07:2021"
+    remediation: "Never hardcode credentials. Use environment variables or secret management."
+
+  - id: auth-debug-002
+    name: "Basic Auth in URL"
+    pattern: "https?://[^:]+:[^@]+@[^/]+"
+    severity: high
+    description: "Basic authentication credentials embedded in URL"
+    cwe: "CWE-598"
+    owasp: "A07:2021"
+    remediation: "Use proper authentication headers instead of embedding credentials in URLs"

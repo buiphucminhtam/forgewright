@@ -1,3 +1,16 @@
+---
+id: tool-sandbox
+title: Tool Output Sandboxing — Middleware Protocol
+summary: Core protocol for tool sandbox.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Tool Output Sandboxing — Middleware Protocol
 
 > **Purpose:** Intercept every tool's output before it enters LLM context. Capture full output to audit log. Inject a structured summary instead of raw text. Combined with session deduplication, prevents repeated tool calls from re-entering context.
@@ -171,6 +184,6 @@ Result Summary → LLM Context
 
 ## References
 
-- I2 in `docs/improvement-roadmap-v2.md`
+- I2 in `docs/archive/improvement-roadmap-v2.md`
 - Session Deduplication: `session-deduplication.md`
 - Middleware Chain: `middleware-chain.md`

@@ -1,3 +1,16 @@
+---
+id: quality-gate
+title: Universal Quality Gate Protocol
+summary: Core protocol for quality gate.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Universal Quality Gate Protocol
 
 **Applies to ALL modes (sequential AND parallel). Every skill output goes through this validation before the pipeline advances. This replaces ad-hoc validation with a consistent, measurable quality standard.**

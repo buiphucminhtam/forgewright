@@ -1,3 +1,16 @@
+---
+id: expert-cli-mode
+title: Expert CLI Mode Protocol
+summary: Core protocol for expert cli mode.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 <!-- source: skills/_shared/protocols/expert-cli-mode.md -->
 
 # Expert CLI Mode Protocol

@@ -1,3 +1,16 @@
+---
+id: self-healing-execution
+title: Self-Healing Execution Protocol (Autonomous Sandbox)
+summary: Core protocol for self healing execution.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Self-Healing Execution Protocol (Autonomous Sandbox)
 
 > **Purpose:** For Non-Technical User pipelines, the AI must act as an autonomous sandbox. The user cannot and will not fix compilation errors, dependency conflicts, or configuration issues in the terminal. The AI must resolve these internally.

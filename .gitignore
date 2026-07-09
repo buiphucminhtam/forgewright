@@ -3,7 +3,6 @@
 # Memory / embedding caches
 .forge17/
 .embeddings/
-.forgewright/
 .forgenexus/
 .gitnexus/
 
@@ -15,7 +14,6 @@ node_modules/
 
 # ForgeNexus / legacy auto-generated Claude Code files — Antigravity uses its own protocols
 .claude/
-CLAUDE.md
 
 # Build output
 build/
@@ -52,13 +50,33 @@ scripts/cf-dns-remove.sh
 *.xlsx
 *.xls
 
-# Forgewright local state and binary memory databases
+# Forgewright local state, vendored deps, and generated artifacts
+.forgewright/mcp-server/node_modules/
+.forgewright/memory.db-wal
+.forgewright/memory.db-shm
 .forgewright/memory.db*
 .forgewright/session-log.json
 .forgewright/quality-history.json
 .forgewright/quality-report-*.json
 .forgewright/baseline-*.json
 .forgewright/change-manifest-*.json
+.forgewright/logs/
+.forgewright/metrics/
+.forgewright/reports/
+.forgewright/cache/
+.forgewright/memory-bank/
+.forgewright/subagent-context/
+.forgewright/bookkeep.log
+.forgewright/events.log
+.forgewright/session-track.json
+.forgewright/session-tracker-v2.json
+.forgewright/asip-state.json
+.forgewright/asip-metrics.json
+.forgewright/pipeline-state.json
+.forgewright/git-baseline.json
+.forgewright/settings.env
+.forgewright/marketing-research-notebook-id.txt
+.forgewright/active-goal.json
 
 # Root-level SQLite database
 memory.db
@@ -68,3 +86,5 @@ memory.db
 reports/
 mutants/
 .mutmut-cache
+.forgewright/mcp-manifest.json
+ruff_errors.json

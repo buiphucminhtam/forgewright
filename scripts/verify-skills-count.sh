@@ -1,46 +1,16 @@
-#!/bin/bash
-# Skills count verification script
-
-set -e
-
-echo "=== Forgewright Skills Count Verification ==="
-echo ""
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS_DIR="$SCRIPT_DIR/../skills"
-
-total=0
-missing=0
-
-for dir in "$SKILLS_DIR"/*/; do
-    name=$(basename "$dir")
-    
-    if [ "$name" == "_shared" ] || [ "$name" == "generated" ]; then
-        continue
-    fi
-    
-    if [ -f "$dir/SKILL.md" ]; then
-        echo "✓ $name"
-        total=$((total + 1))
-    else
-        echo "✗ $name MISSING SKILL.md"
-        missing=$((missing + 1))
-    fi
-done
-
-echo ""
-echo "=== Summary ==="
-echo "Total skills: $total"
-echo "Missing SKILL.md: $missing"
-
-if [ $total -ne 55 ]; then
-    echo "⚠️  WARNING: Expected 55 skills, found $total"
+#!/usr/bin/env bash
+# THIS_FILE_IS_A_MIGRATION_SHIM
+echo "WARNING: verify-skills-count.sh has been moved to ci/verify-skills-count.sh. This shim will be removed in the next release." >&2
+if [ -n "${BASH_SOURCE[0]:-}" ]; then
+    _SHIM_SOURCE="${BASH_SOURCE[0]}"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    _SHIM_SOURCE="${(%):-%N}"
+else
+    _SHIM_SOURCE="$0"
 fi
-
-if [ $missing -gt 0 ]; then
-    echo "⚠️  ERROR: Missing SKILL.md files"
-    exit 1
+DIR="$( cd "$( dirname "$_SHIM_SOURCE" )" && pwd )"
+if [[ "$_SHIM_SOURCE" != "${0}" ]]; then
+    source "$DIR/ci/verify-skills-count.sh" "$@"
+else
+    exec "$DIR/ci/verify-skills-count.sh" "$@"
 fi
-
-echo ""
-echo "✅ All 55 skills verified"

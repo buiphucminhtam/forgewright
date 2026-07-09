@@ -2,6 +2,118 @@
 
 All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewright).
 
+## [Unreleased]
+
+> Features targeting v8.8.0 and beyond. Not yet released.
+
+### Added
+- **AI Reasoning Research Integration** — Deep NotebookLM research across 14 sources (OpenAI o1/o3, Anthropic extended thinking, Claude Code best practices) producing 15 actionable lessons (reconstructed from docs).
+- **Reasoning Checkpoint** — SOLVE Step 6.4 mandates a 1–2 sentence reasoning pause after every CHECK result (reconstructed from docs).
+- **Adversarial Review** — SOLVE Step 6.7 spawns a fresh-context reviewer for FEATURE/DEBUG tasks touching ≥3 files (reconstructed from docs).
+- **Anti-Narrative Verification** — VERIFY Rules 6-7 mark narrative claims as automatically FALSE without command output (reconstructed from docs).
+- **Tests-First Ordering** — Self-check protocol enforces test stubs BEFORE implementation for complex tasks (reconstructed from docs).
+- **Context Reset** — STUCK rule expanded with Step 4 "Reset context" (reconstructed from docs).
+- **Guardrail Hardening** — 13 rule categories integrated into Middleware ④ with 17 regression tests (reconstructed from docs).
+- **UI Design Gate** — Mandatory design contract required before any frontend edit in SOLVE Step 3.D (reconstructed from docs).
+- **58 Regression Tests** — 19 AI reasoning + 17 guardrail + 13 UI design gate + 9 audit tests (reconstructed from docs).
+- **Client-Server Sequence Flow Generator** — Automated Mermaid sequence diagram generation powered by GitNexus static call-graphs (reconstructed from docs).
+
+### Changed
+- **Workflow Consolidation** — Archived overlapping GitHub Action workflows into `.github/workflows/archive/` and simplified `ci.yml`.
+- **Game Extraction** — Removed the `game/` directory from the repository structure to decouple game assets from orchestrator CI.
+- **NPM Workspaces** — Configured `mcp` and `src/cli` as NPM workspaces in the root `package.json` to deduplicate dependencies and share the lockfile.
+- **Pre-commit Hardening** — Replaced `bash -n` with `shellcheck` in `lint-staged` for stronger shell script validation.
+- **Script Reorganization** — Reorganized `scripts/` into subdirectories (`bootstrap`, `ci`, `docs`, `hooks`, `mcp`, `memory`, `release`, `runtime`, `skills`, `telemetry`, `testing`, `utilities`) and generated shims for backward compatibility.
+
+---
+
+## [8.7.0] — 2026-07-01
+
+> **v8.7 — Evidence-Gated Kernel & Parallel Skill Distillation**
+
+### Added
+- **Forgewright Lite — Evidence-Gated Kernel (Upgraded v3)**: Lightweight reasoning kernel for fast models (Gemini Flash), featuring turn-level script verification via `.forgewright/verify/<turn>.json`, turn-blocking platform hooks (Claude Code, Gemini CLI, Cursor, Codex CLI), ≤7k tokens boot budget, and objective escalations to Sonnet/Opus models.
+- **Automated Skill Distillation & Batch Upgrader**: `upgrade-skills.py` queries NotebookLM CLI in parallel via multi-agent subagents to distill all 83 skills to Lite overlays (`LITE.md`).
+- **Self-Healing Skill Indexing**: Dynamic generation of `kernel/INDEX.md` by scanning all `LITE.md` overlays, automatically mapping triggers and paths.
+- **Agent Benchmark Command** (`forge agent benchmark`): CLI command for evaluating agent performance.
+- **Expert CLI Mode**: Optional premium model escalation for high-stakes planning, architecture, security, and gate decisions via local Claude CLI or Codex CLI (reconstructed from docs).
+- **Token Tracking by Default**: `token_tracking` enabled by default for all pipelines.
+- **Webhook State & Telemetry Protocol**: Replaces OSC/MCP event mechanism with HTTP Webhook for token and state reporting.
+- **Momentum Breaker Protocol**: Detects and documents LLM psychological traps during execution.
+- **99% Empirical Confidence & UI Visual Gate**: Protocol for high-confidence assertions and visual verification.
+- **GraphRAG Memory V4 (FluxMem)**: SQLite relational cognitive graph (`flux_nodes` & `flux_edges`) replacing JSON files. Includes Procedural Circuits caching, ASIP edge decay (0.5) / reinforcement (1.2), and passive 10m idle checkpointing (reconstructed from docs).
+
+### Changed
+- **Gemini 3.x Native Optimization**: Direct support for Gemini 3.5 Flash (`thinking_level: MINIMAL`) and Gemini 3.1 Pro (`thinking_level: HIGH`, temperature 1.0). Scoped temperature policy by task.
+- **Hexagonal & CQRS Migration**: PipelineState refactored to Hexagonal architecture with CQRS pattern.
+- **WebSocket → HTTP Webhook**: MCP state reporting migrated from WebSocket to HTTP Webhook.
+- **Marketing & Conversion Skills**: Upgraded with 2026 AI/CRO trends and Kelly Criterion.
+- **Orchestration**: Complexity-scaled evaluation, escalation ladder, normalized step numbering.
+- **Skill count** — 83 skills (from 57).
+
+### Fixed
+- **Gemini temperature policy** scoped by task type to prevent blanket temperature 1.0 enforcement.
+- **MCP workspace detection** handles unresolved IDE template variables.
+- **RPC event queuing** during WebSocket connection.
+- **Compliance enforcement** for GitNexus analyze and sequence update in post-commit.
+
+## [8.6.0] — 2026-06-10
+
+> **v8.6 — GraphRAG Memory V3 & IDE MCP Unification**
+
+### Added
+- **GraphRAG Memory V3**: NetworkX-based graph memory with clustering, auto-pruning, and pattern learning (reconstructed from docs).
+- **Unified IDE MCP Setup** (`fw-mcp.sh`): Single script to configure MCP for all editors (reconstructed from docs).
+
+### Changed
+- **ForgeNexus deprecated**: Added DEPRECATED notice; all new projects should use GitNexus (reconstructed from docs).
+- **Post-commit hook**: Auto-reindexes GitNexus on commit (reconstructed from docs).
+
+## [8.5.0] — 2026-05-29
+
+> **v8.5 — GitNexus Migration**
+
+### Added
+- **GitNexus Integration**: Migrated code intelligence from ForgeNexus to GitNexus (38K+ stars, npm install, auto-setup for all editors, 16 MCP tools) (reconstructed from docs).
+- **forgewright-mcp-setup.sh v3.0.0**: Unified setup script configuring both `forgewright` and `gitnexus` MCP servers.
+- **Multi-repo Support**: New `gitnexus group` for cross-repo analysis.
+
+### Breaking
+- `npx forgenexus analyze` → `gitnexus analyze`
+- `forgenexus_*` MCP tools → `gitnexus_*` MCP tools
+- `fw-mcp.sh forgenexus` → `gitnexus setup` (GitNexus) + `forgewright-mcp-setup.sh` (ForgeWright)
+
+## [8.4.0] — 2026-05-10
+
+> **v8.4 — Mandatory Pipeline Rule & Enhanced ASIP**
+
+### Added
+- **Mandatory Forgewright Rule**: EVERY user request MUST go through the Forgewright pipeline after installation. Added enforcement box to README and AGENTS.md (reconstructed from docs).
+- **Enhanced Research Gate**: ASIP Research Gate now checks NotebookLM availability first, falls back to Web Search, synthesizes insights, and updates session tracker (reconstructed from docs).
+- **Session Tracker** (`scripts/forgewright-session-tracker.sh`): Tracks consecutive plan failures; ≥2 consecutive failures trigger mandatory Research Gate (reconstructed from docs).
+- **Plan Quality Tracking**: Mandatory `plan → score → meta-evaluate → check ≥9 → execute` loop with max 3 iterations.
+
+### Changed
+- **ForgeNexus community detection threshold** increased to 20K.
+- **MCP setup flow** simplified for multi-project use.
+- **Memory optimization** (round 2) for ForgeNexus indexer.
+
+## [8.3.0] — 2026-04-24
+
+> **v8.3 — Adaptive Self-Improving Protocol (ASIP)**
+
+### Added
+- **Adaptive Self-Improving Protocol (ASIP)** (`skills/_shared/protocols/asip.md`): Combines Plan Quality Loop + Execution Blocker Loop. Mandatory 2-failure-then-research with NotebookLM. Skills improve over time based on real failures (reconstructed from docs).
+- **ASIP Middleware** (`skills/production-grade/middleware/10-asip.md`): Enforcement middleware for ASIP protocol.
+- **ASIP Metrics** (`.forgewright/asip-metrics.json`): Tracking file for ASIP protocol performance.
+- **Lessons file** (`.forgewright/lessons.md`): Project-specific learnings from ASIP failures.
+- **Multica Hub Token Stats**: Token statistics component added to status dashboard (reconstructed from docs).
+- **Token Tracking & Cost Analytics**: `forge token on`, budget management, real-time tracking, and cost dashboard (reconstructed from docs).
+
+### Changed
+- **Middleware chain** updated with ASIP integration.
+- **Production-grade SKILL.md** updated with execution learnings.
+
 ## [8.2.0] — 2026-06-25
 
 > **v8.2 — Test Coverage Reporting & State Isolation**
@@ -56,10 +168,6 @@ All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewrig
 ### Internal
 
 - 15 phase and cross-cutting audits completed with 150+ findings. All P0 issues resolved. Breaking changes: 0.
-
-# Changelog
-
-All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewright).
 
 ## [7.8.2] — 2026-04-09
 

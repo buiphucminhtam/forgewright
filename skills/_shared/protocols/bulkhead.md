@@ -1,3 +1,16 @@
+---
+id: bulkhead
+title: Bulkhead Isolation Protocol
+summary: Core protocol for bulkhead.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Bulkhead Isolation Protocol
 
 > **Purpose:** Isolate worker failures to prevent cascading crashes. Inspired by the Bulkhead pattern from *Release It!* (Michael Nygard) — named after watertight compartments in ships that prevent flooding from spreading.

@@ -1,3 +1,16 @@
+---
+id: evidence-first
+title: Evidence-First Thinking (Anti-Hallucination)
+summary: Core protocol for evidence first.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Evidence-First Thinking (Anti-Hallucination)
 
 <!-- source: skills/_shared/protocols/evidence-first.md -->

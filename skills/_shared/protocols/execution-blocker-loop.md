@@ -1,3 +1,16 @@
+---
+id: execution-blocker-loop
+title: Execution Blocker Loop Protocol
+summary: Core protocol for execution blocker loop.
+status: deprecated
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: self-improving-loop
+---
 # Execution Blocker Loop Protocol
 
 > **DEPRECATED — Use `self-improving-loop.md` (ASIP) instead.**

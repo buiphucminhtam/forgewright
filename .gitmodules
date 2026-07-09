@@ -1,4 +1,0 @@
-[submodule "forgewright"]
-	path = forgewright
-	url = https://github.com/buiphucminhtam/forgewright.git
-	branch = main

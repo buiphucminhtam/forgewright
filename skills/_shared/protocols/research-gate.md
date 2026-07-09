@@ -1,3 +1,16 @@
+---
+id: research-gate
+title: Research Gate Protocol
+summary: Core protocol for research gate.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Research Gate Protocol
 
 <!-- source: skills/_shared/protocols/research-gate.md -->

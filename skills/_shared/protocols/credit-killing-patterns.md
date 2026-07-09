@@ -1,3 +1,16 @@
+---
+id: credit-killing-patterns
+title: Credit-Killing Patterns (from prompt-master)
+summary: Core protocol for credit killing patterns.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: []
+used_by: [all]
+related: []
+supersedes: []
+superseded_by: null
+---
 # Credit-Killing Patterns (from prompt-master)
 
 > 35 patterns that waste tokens and cause re-prompts. Use this file when diagnosing why a prompt is underperforming or when improving existing prompts.
