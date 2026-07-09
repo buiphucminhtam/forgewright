@@ -11,6 +11,7 @@ import {
 } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { BenchmarkSuiteSchema } from "./types.js";
 import type {
   TaskResult,
@@ -426,7 +427,7 @@ export async function runBenchmarkSuite(
       let attemptWorkspace = resolvedWorkspace;
       let cleanupFn = () => {};
 
-      const projectTmpDir = "/Users/buiphucminhtam/forgewright/tmp";
+      const projectTmpDir = join(tmpdir(), "forgewright-bench");
       mkdirSync(projectTmpDir, { recursive: true });
 
       if (resolvedWorkspace && existsSync(resolvedWorkspace)) {

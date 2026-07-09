@@ -37,8 +37,13 @@ RECALCULATE_MACRO = """<?xml version="1.0" encoding="UTF-8"?>
 </script:module>"""
 
 EXCEL_ERRORS = [
-    "#VALUE!", "#DIV/0!", "#REF!", "#NAME?",
-    "#NULL!", "#NUM!", "#N/A",
+    "#VALUE!",
+    "#DIV/0!",
+    "#REF!",
+    "#NAME?",
+    "#NULL!",
+    "#NUM!",
+    "#N/A",
 ]
 
 
@@ -47,7 +52,9 @@ def has_timeout_cmd(cmd_name):
     try:
         subprocess.run(
             [cmd_name, "--version"],
-            capture_output=True, timeout=2, check=False,
+            capture_output=True,
+            timeout=2,
+            check=False,
         )
         return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -75,7 +82,9 @@ def setup_macro():
         try:
             subprocess.run(
                 ["soffice", "--headless", "--terminate_after_init"],
-                capture_output=True, timeout=15, env=get_soffice_env(),
+                capture_output=True,
+                timeout=15,
+                env=get_soffice_env(),
             )
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return False
@@ -120,8 +129,11 @@ def scan_errors(filename):
         ws = wb_f[sheet_name]
         for row in ws.iter_rows():
             for cell in row:
-                if (cell.value and isinstance(cell.value, str)
-                        and cell.value.startswith("=")):
+                if (
+                    cell.value
+                    and isinstance(cell.value, str)
+                    and cell.value.startswith("=")
+                ):
                     formula_count += 1
     wb_f.close()
 
@@ -155,7 +167,9 @@ def recalc(filename, timeout=30):
         return {"error": "Failed to setup LibreOffice macro. Is LibreOffice installed?"}
 
     cmd = [
-        "soffice", "--headless", "--norestore",
+        "soffice",
+        "--headless",
+        "--norestore",
         "vnd.sun.star.script:Standard.RecalcModule.RecalculateAndSave"
         "?language=Basic&location=application",
         abs_path,
@@ -169,7 +183,10 @@ def recalc(filename, timeout=30):
         cmd = ["gtimeout", str(timeout)] + cmd
 
     result = subprocess.run(
-        cmd, capture_output=True, text=True, env=get_soffice_env(),
+        cmd,
+        capture_output=True,
+        text=True,
+        env=get_soffice_env(),
     )
 
     # Return code 124 = timeout (acceptable — LO may hang after saving)

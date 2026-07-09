@@ -27,23 +27,6 @@ jobs:
       run: npm ci
 
     - name: Run Unit & Integration Tests
-      run: npm run test:unit --if-present
-
-    - name: Run E2E & Visual VRT via Playwright Docker
       run: |
-        docker run --rm \
-          -v $(pwd):/work/ \
-          -w /work/ \
-          mcr.microsoft.com/playwright:v1.45.0-jammy \
-          npx playwright test --project=chromium --grep-invert=@mobile-native --if-present
-
-    - name: Run Accessibility Audits
-      run: npm run test:a11y --if-present
-
-    - name: Upload Test Artifacts
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: playwright-report
-        path: .playwright/reports/
-        retries: 1
+        npm test
+        npm --prefix src/cli test

@@ -55,7 +55,9 @@ jobs:
           
           echo "Running GitNexus PR Review..."
           REPORT=$(npx gitnexus pr-review "$BASE_REF" HEAD $DRY_RUN 2>&1 || echo "⚠️ GitNexus analysis skipped — index may be stale or unavailable")
-          echo "report=$REPORT" >> $GITHUB_OUTPUT
+          echo "report<<EOF" >> $GITHUB_OUTPUT
+          echo "$REPORT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Post PR Comment
         if: github.event_name != 'workflow_dispatch' || inputs.dry_run != true

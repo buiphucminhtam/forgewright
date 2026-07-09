@@ -2,11 +2,13 @@ import networkx as nx
 import json
 import os
 
+
 class GraphMemory:
     """
     A biologically-inspired GraphRAG Memory system.
     Uses NetworkX as the in-memory graph engine, persisted to JSON.
     """
+
     def __init__(self, storage_path=".forgewright/memory-bank/graph_memory.json"):
         self.storage_path = storage_path
         self.graph = nx.DiGraph()
@@ -64,7 +66,7 @@ class GraphMemory:
         """Get neighboring nodes, optionally filtered by relationship type."""
         if not self.graph.has_node(node_id):
             return []
-        
+
         neighbors = []
         for target in self.graph.successors(node_id):
             edge_data = self.graph.edges[node_id, target]
@@ -88,14 +90,15 @@ class GraphMemory:
         Returns the number of nodes pruned.
         """
         nodes_to_remove = [
-            n for n, attr in self.graph.nodes(data=True) 
+            n
+            for n, attr in self.graph.nodes(data=True)
             if attr.get("weight", 1.0) < threshold
         ]
-        
+
         for n in nodes_to_remove:
             self.graph.remove_node(n)
-            
+
         if nodes_to_remove:
             self.save()
-            
+
         return len(nodes_to_remove)

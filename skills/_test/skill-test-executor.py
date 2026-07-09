@@ -6,21 +6,18 @@ Executes skill tests defined in skills/_test/skills/{skill}/test.yaml
 Validates output against expected criteria.
 """
 
-import os
 import sys
 import yaml
 import re
-import json
 from pathlib import Path
-from typing import Any
 
 # Colors
-RED = '\033[0;31m'
-GREEN = '\033[0;32m'
-YELLOW = '\033[1;33m'
-BLUE = '\033[0;34m'
-CYAN = '\033[0;36m'
-NC = '\033[0m'
+RED = "\033[0;31m"
+GREEN = "\033[0;32m"
+YELLOW = "\033[1;33m"
+BLUE = "\033[0;34m"
+CYAN = "\033[0;36m"
+NC = "\033[0m"
 
 # Paths
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -46,29 +43,29 @@ def log_skip(msg: str):
 
 def load_test_yaml(skill_name: str, test_id: str = None) -> list[dict]:
     """Load test definitions from skill's test.yaml"""
-    test_file = SKILL_TEST_DIR / 'skills' / skill_name / 'test.yaml'
-    
+    test_file = SKILL_TEST_DIR / "skills" / skill_name / "test.yaml"
+
     if not test_file.exists():
         return []
-    
+
     with open(test_file) as f:
         data = yaml.safe_load(f)
-    
-    tests = data.get('tests', [])
-    
+
+    tests = data.get("tests", [])
+
     if test_id:
-        return [t for t in tests if t.get('id') == test_id]
-    
+        return [t for t in tests if t.get("id") == test_id]
+
     return tests
 
 
 def get_skill_prompt(skill_name: str) -> str:
     """Get the skill's SKILL.md content"""
-    skill_file = SKILLS_DIR / skill_name / 'SKILL.md'
-    
+    skill_file = SKILLS_DIR / skill_name / "SKILL.md"
+
     if not skill_file.exists():
         return ""
-    
+
     with open(skill_file) as f:
         return f.read()
 
@@ -79,12 +76,12 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
     This simulates what a skill would output for testing purposes.
     """
     output_parts = []
-    test_type = test_input.get('type', '')
-    
+    test_type = test_input.get("type", "")
+
     # Route to skill-specific handlers
-    if skill_name == 'business-analyst':
-        tid = test_id or ''
-        if 'stakeholder' in tid:
+    if skill_name == "business-analyst":
+        tid = test_id or ""
+        if "stakeholder" in tid:
             output_parts = [
                 "# Stakeholder Analysis Matrix",
                 "",
@@ -94,7 +91,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "| Manager | High | Medium | Keep Informed |",
                 "| Developer | Low | High | Keep Engaged |",
             ]
-        elif 'feasibility' in tid:
+        elif "feasibility" in tid:
             output_parts = [
                 "# Feasibility Assessment",
                 "",
@@ -120,7 +117,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "## Overall Score: 7/10",
             ]
-        elif 'user-story' in tid:
+        elif "user-story" in tid:
             output_parts = [
                 "# User Stories",
                 "",
@@ -133,7 +130,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- When [action]",
                 "- Then [expected outcome]",
             ]
-        elif 'process' in tid:
+        elif "process" in tid:
             output_parts = [
                 "# Process Map - AS-IS",
                 "",
@@ -148,7 +145,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "## End State: Request completed",
             ]
-        elif 'gap' in tid:
+        elif "gap" in tid:
             output_parts = [
                 "# Gap Analysis",
                 "",
@@ -164,7 +161,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Missing components",
                 "- Recommended actions",
             ]
-        elif 'risk' in tid:
+        elif "risk" in tid:
             output_parts = [
                 "# Risk Assessment",
                 "",
@@ -179,7 +176,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Implement monitoring",
                 "- Create contingency plans",
             ]
-        elif 'contradiction' in tid:
+        elif "contradiction" in tid:
             output_parts = [
                 "# Contradiction Detection Report",
                 "",
@@ -223,10 +220,10 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Implementation approach",
                 "- Technical feasibility",
             ]
-    
-    elif skill_name == 'security-engineer':
-        tid = test_id or ''
-        if 'sql' in tid:
+
+    elif skill_name == "security-engineer":
+        tid = test_id or ""
+        if "sql" in tid:
             output_parts = [
                 "# Security Audit Report",
                 "",
@@ -245,7 +242,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Use parameterized query to prevent SQL injection",
                 "- Implement input validation",
             ]
-        elif 'xss' in tid:
+        elif "xss" in tid:
             output_parts = [
                 "# Security Audit Report",
                 "",
@@ -265,7 +262,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Use react-markdown instead",
                 "- Implement output encoding",
             ]
-        elif 'secrets' in tid or 'exposure' in tid:
+        elif "secrets" in tid or "exposure" in tid:
             output_parts = [
                 "# Security Audit Report",
                 "",
@@ -287,7 +284,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Use environment variable for secrets management",
                 "- Implement secrets management (Vault, AWS Secrets Manager)",
             ]
-        elif 'csrf' in tid:
+        elif "csrf" in tid:
             output_parts = [
                 "# Security Audit Report",
                 "",
@@ -306,7 +303,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Implement CSRF token validation",
                 "- Use SameSite cookies",
             ]
-        elif 'dependency' in tid or 'dependencies' in tid:
+        elif "dependency" in tid or "dependencies" in tid:
             output_parts = [
                 "# Security Audit Report",
                 "",
@@ -323,7 +320,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Update to lodash@4.17.21+ (outdated version is vulnerable)",
                 "- Run npm audit regularly",
             ]
-        elif 'cors' in tid:
+        elif "cors" in tid:
             output_parts = [
                 "# Security Audit Report",
                 "",
@@ -339,7 +336,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Specify allowed origins explicitly",
                 "- Don't use wildcard with credentials",
             ]
-        elif 'auth' in tid and 'bypass' in tid:
+        elif "auth" in tid and "bypass" in tid:
             output_parts = [
                 "# Security Audit Report",
                 "",
@@ -363,7 +360,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Use secure session management",
                 "- Add role-based access control (RBAC)",
             ]
-        elif 'validation' in tid or 'input' in tid:
+        elif "validation" in tid or "input" in tid:
             output_parts = [
                 "# Security Audit Report",
                 "",
@@ -399,10 +396,10 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Review and fix security issues",
                 "- Implement security best practices",
             ]
-    
-    elif skill_name == 'sre':
-        tid = test_id or ''
-        if 'slo' in tid:
+
+    elif skill_name == "sre":
+        tid = test_id or ""
+        if "slo" in tid:
             output_parts = [
                 "# Service Level Objectives",
                 "",
@@ -419,7 +416,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- error budget: 43.8 minutes per month",
                 "- Burn rate threshold: 14.4x",
             ]
-        elif 'runbook' in tid:
+        elif "runbook" in tid:
             output_parts = [
                 "# SRE Runbook",
                 "",
@@ -440,7 +437,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- PagerDuty alert",
                 "- On-call engineer notified",
             ]
-        elif 'alert' in tid:
+        elif "alert" in tid:
             output_parts = [
                 "# Prometheus Alerting Rules",
                 "",
@@ -463,7 +460,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "        annotations:",
                 "          summary: High latency detected",
             ]
-        elif 'chaos' in tid:
+        elif "chaos" in tid:
             output_parts = [
                 "# Chaos Engineering Experiment",
                 "",
@@ -483,7 +480,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "### Rollback",
                 "- Restore database connection",
             ]
-        elif 'capacity' in tid:
+        elif "capacity" in tid:
             output_parts = [
                 "# Capacity Planning Model",
                 "",
@@ -503,7 +500,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Autoscaling policy",
                 "- Load balancer capacity",
             ]
-        elif 'incident' in tid or 'severity' in tid:
+        elif "incident" in tid or "severity" in tid:
             output_parts = [
                 "# Incident Severity Classification",
                 "",
@@ -521,7 +518,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- User impact: 30%",
                 "- Duration: 30%",
             ]
-        elif 'error-budget' in tid or 'budget' in tid:
+        elif "error-budget" in tid or "budget" in tid:
             output_parts = [
                 "# Error Budget Policy",
                 "",
@@ -538,7 +535,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Weekly budget review",
                 "- Alert at 50% consumed",
             ]
-        elif 'oncall' in tid or 'rotation' in tid:
+        elif "oncall" in tid or "rotation" in tid:
             output_parts = [
                 "# On-Call Rotation Schedule",
                 "",
@@ -571,10 +568,10 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "## Error Budget",
                 "- Monthly budget: 43.8 minutes",
             ]
-    
-    elif skill_name == 'devops':
-        tid = test_id or ''
-        if 'dockerfile' in tid:
+
+    elif skill_name == "devops":
+        tid = test_id or ""
+        if "dockerfile" in tid:
             output_parts = [
                 "# Dockerfile - Production",
                 "",
@@ -602,9 +599,9 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "USER nodeuser",
                 "",
-                "CMD [\"node\", \"dist/index.js\"]",
+                'CMD ["node", "dist/index.js"]',
             ]
-        elif 'ci' in tid or 'pipeline' in tid:
+        elif "ci" in tid or "pipeline" in tid:
             output_parts = [
                 "# GitHub Actions CI Pipeline",
                 "",
@@ -642,7 +639,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "          name: dist",
                 "          path: dist",
             ]
-        elif 'kubernetes' in tid or 'k8s' in tid:
+        elif "kubernetes" in tid or "k8s" in tid:
             output_parts = [
                 "# Kubernetes Deployment",
                 "",
@@ -687,7 +684,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "    targetPort: 8080",
                 "  type: LoadBalancer",
             ]
-        elif 'terraform' in tid:
+        elif "terraform" in tid:
             output_parts = [
                 "# Terraform Lambda Module",
                 "",
@@ -768,7 +765,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  value      = aws_lambda_function.example.runtime",
                 "}",
             ]
-        elif 'compose' in tid:
+        elif "compose" in tid:
             output_parts = [
                 "# docker-compose.yml",
                 "",
@@ -803,7 +800,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  postgres_data:",
                 "  redis_data:",
             ]
-        elif 'monitoring' in tid or 'prometheus' in tid:
+        elif "monitoring" in tid or "prometheus" in tid:
             output_parts = [
                 "# Prometheus Configuration",
                 "",
@@ -824,7 +821,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "      - targets:",
                 "          - 'node-exporter:9100'",
             ]
-        elif 'helm' in tid:
+        elif "helm" in tid:
             output_parts = [
                 "# Helm Chart",
                 "",
@@ -912,18 +909,18 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "# templates/_helpers.tpl",
                 "{{/* Expand the name of the chart */}}",
                 "{{- define 'my-app.name' -}}",
-                "{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix \"-\" }}",
+                '{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}',
                 "{{- end -}}",
                 "",
                 "{{/* Create chart name and version */}}",
                 "{{- define 'my-app.fullname' -}}",
                 "{{- if .Values.fullnameOverride }}",
-                "{{- .Values.fullnameOverride | trunc 63 | trimSuffix \"-\" }}",
+                '{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}',
                 "{{- else }}",
                 "{{- $name := default .Chart.Name .Values.nameOverride }}",
                 "{{- end -}}",
             ]
-        elif 'secrets' in tid:
+        elif "secrets" in tid:
             output_parts = [
                 "# Vault Secrets Configuration",
                 "",
@@ -960,7 +957,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "vault kv put secret/stripe-key value='sk_test_xxxxxxxxxxxx'",
                 "",
                 "# Application secrets path",
-                "vault kv put secret/app-config value='{\"env\": \"production\"}'",
+                'vault kv put secret/app-config value=\'{"env": "production"}\'',
                 "",
                 "# Usage examples",
                 "vault kv get secret/database-url",
@@ -984,12 +981,12 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "EXPOSE 3000",
                 "",
-                "CMD [\"node\", \"dist/index.js\"]",
+                'CMD ["node", "dist/index.js"]',
             ]
-    
-    elif skill_name == 'qa-engineer':
-        tid = test_id or ''
-        if tid == 'test-unit-test-generation':
+
+    elif skill_name == "qa-engineer":
+        tid = test_id or ""
+        if tid == "test-unit-test-generation":
             output_parts = [
                 "import { describe, it, expect } from 'vitest';",
                 "",
@@ -1011,7 +1008,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  });",
                 "});",
             ]
-        elif tid == 'test-integration-test-generation':
+        elif tid == "test-integration-test-generation":
             output_parts = [
                 "import { describe, it, expect, request } from 'supertest';",
                 "",
@@ -1038,7 +1035,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  });",
                 "});",
             ]
-        elif tid == 'test-e2e-test-generation':
+        elif tid == "test-e2e-test-generation":
             output_parts = [
                 "import { test, expect } from '@playwright/test';",
                 "",
@@ -1052,7 +1049,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  });",
                 "});",
             ]
-        elif tid == 'test-mock-generation':
+        elif tid == "test-mock-generation":
             output_parts = [
                 "import { faker } from '@faker-js/faker';",
                 "",
@@ -1075,7 +1072,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  createdAt: faker.date.past(),",
                 "});",
             ]
-        elif tid == 'test-contract-testing':
+        elif tid == "test-contract-testing":
             output_parts = [
                 "import { Pact } from '@pact-foundation/pact';",
                 "",
@@ -1107,7 +1104,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  });",
                 "});",
             ]
-        elif tid == 'test-performance-test':
+        elif tid == "test-performance-test":
             output_parts = [
                 "import http from 'k6/http';",
                 "import { check, sleep } from 'k6';",
@@ -1133,7 +1130,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  sleep(1);",
                 "}",
             ]
-        elif tid == 'test-snapshot-testing':
+        elif tid == "test-snapshot-testing":
             output_parts = [
                 "import renderer from 'react-test-renderer';",
                 "import { UserCard } from './UserCard';",
@@ -1141,20 +1138,20 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "describe('UserCard snapshot tests', () => {",
                 "  it('renders correctly', () => {",
                 "    const component = renderer.create(",
-                "      <UserCard name=\"John Doe\" email=\"john@example.com\" />",
+                '      <UserCard name="John Doe" email="john@example.com" />',
                 "    );",
                 "    expect(component.toJSON()).toMatchSnapshot();",
                 "  });",
                 "",
                 "  it('renders with empty props', () => {",
                 "    const component = renderer.create(",
-                "      <UserCard name=\"\" email=\"\" />",
+                '      <UserCard name="" email="" />',
                 "    );",
                 "    expect(component.toJSON()).toMatchSnapshot();",
                 "  });",
                 "});",
             ]
-        elif tid == 'test-api-contract-test':
+        elif tid == "test-api-contract-test":
             output_parts = [
                 "import request from 'supertest';",
                 "import { describe, it, expect } from 'vitest';",
@@ -1181,7 +1178,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  });",
                 "});",
             ]
-        elif tid == 'test-mutation-testing':
+        elif tid == "test-mutation-testing":
             output_parts = [
                 "module.exports = {",
                 "  $schema: 'https://json.schemastore.org/stryker.conf.json',",
@@ -1209,10 +1206,10 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  });",
                 "}});",
             ]
-    
-    elif skill_name == 'code-reviewer':
-        tid = test_id or ''
-        if tid == 'test-basic-review':
+
+    elif skill_name == "code-reviewer":
+        tid = test_id or ""
+        if tid == "test-basic-review":
             output_parts = [
                 "# Code Review Report",
                 "",
@@ -1233,7 +1230,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Issues found: 2",
                 "- Severity: 1 HIGH, 1 MEDIUM",
             ]
-        elif tid == 'test-security-review':
+        elif tid == "test-security-review":
             output_parts = [
                 "# Security Review Report",
                 "",
@@ -1253,7 +1250,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- severity: 1 HIGH",
                 "- Recommendation: Use parameterized queries",
             ]
-        elif tid == 'test-performance-review':
+        elif tid == "test-performance-review":
             output_parts = [
                 "# Performance Review Report",
                 "",
@@ -1269,7 +1266,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Issues found: 1",
                 "- Severity: 1 MEDIUM",
             ]
-        elif tid == 'test-clean-architecture-review':
+        elif tid == "test-clean-architecture-review":
             output_parts = [
                 "# Architecture Review Report",
                 "",
@@ -1289,7 +1286,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Issues found: 2",
                 "- Recommendation: Apply clean architecture principles",
             ]
-        elif tid == 'test-xss-vulnerability-review':
+        elif tid == "test-xss-vulnerability-review":
             output_parts = [
                 "# XSS Security Review Report",
                 "",
@@ -1307,7 +1304,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- CVE: Potential XSS via unsanitized HTML",
                 "- Recommendation: Use DOMPurify or react-markdown",
             ]
-        elif tid == 'test-auth-review':
+        elif tid == "test-auth-review":
             output_parts = [
                 "# Auth Security Review Report",
                 "",
@@ -1324,7 +1321,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Issues found: 1",
                 "- Severity: 1 LOW",
             ]
-        elif tid == 'test-dependency-vuln-review':
+        elif tid == "test-dependency-vuln-review":
             output_parts = [
                 "# Dependency Security Review",
                 "",
@@ -1341,7 +1338,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Vulnerability: CVE-2019-10744 (prototype pollution)",
                 "- Recommendation: Run npm audit and update packages",
             ]
-        elif tid == 'test-api-security-review':
+        elif tid == "test-api-security-review":
             output_parts = [
                 "# API Security Review Report",
                 "",
@@ -1358,7 +1355,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Severity: 1 HIGH",
                 "- Recommendation: Parameterize the query",
             ]
-        elif tid == 'test-memory-leak-review':
+        elif tid == "test-memory-leak-review":
             output_parts = [
                 "# Memory Leak Review Report",
                 "",
@@ -1374,7 +1371,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Severity: 1 MEDIUM",
                 "- Recommendation: Add cache eviction policy",
             ]
-        elif tid == 'test-race-condition-review':
+        elif tid == "test-race-condition-review":
             output_parts = [
                 "# Race Condition Review Report",
                 "",
@@ -1418,10 +1415,10 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Issues found: 5",
                 "- Severity: 1 HIGH, 2 MEDIUM, 2 LOW",
             ]
-    
-    elif skill_name == 'product-manager':
-        tid = test_id or ''
-        if 'brd' in tid:
+
+    elif skill_name == "product-manager":
+        tid = test_id or ""
+        if "brd" in tid:
             output_parts = [
                 "# Business Requirements Document",
                 "",
@@ -1443,7 +1440,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "2. User logout functionality",
                 "3. Password reset flow",
             ]
-        elif 'user-story' in tid:
+        elif "user-story" in tid:
             output_parts = [
                 "# User Stories - Shopping Cart",
                 "",
@@ -1463,7 +1460,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "I want to update quantities,",
                 "So that I can adjust order amounts",
             ]
-        elif 'acceptance' in tid:
+        elif "acceptance" in tid:
             output_parts = [
                 "# Acceptance Criteria",
                 "",
@@ -1481,7 +1478,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "When the link is valid,",
                 "Then they are shown a new password form",
             ]
-        elif 'prd' in tid:
+        elif "prd" in tid:
             output_parts = [
                 "# Product Requirements Document",
                 "",
@@ -1503,7 +1500,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Concurrent users per document: 50+",
                 "- 99.9% uptime",
             ]
-        elif 'release' in tid or 'sprint' in tid:
+        elif "release" in tid or "sprint" in tid:
             output_parts = [
                 "# Release Planning",
                 "",
@@ -1524,7 +1521,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "## Milestone: MVP at Sprint 3",
             ]
-        elif 'feature' in tid:
+        elif "feature" in tid:
             output_parts = [
                 "# Feature Specification: Dark mode",
                 "",
@@ -1548,7 +1545,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Support reduced-motion preference",
                 "- Ensure WCAG AA contrast ratios",
             ]
-        elif 'kpi' in tid:
+        elif "kpi" in tid:
             output_parts = [
                 "# KPI Definitions - Checkout flow",
                 "",
@@ -1567,7 +1564,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "- Target: 3.0 minutes",
                 "- Measurement: avg(time_to_complete)",
             ]
-        elif 'moscow' in tid or 'prioritization' in tid:
+        elif "moscow" in tid or "prioritization" in tid:
             output_parts = [
                 "# MoSCoW Prioritization",
                 "",
@@ -1584,7 +1581,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "## Won't Have (this sprint)",
                 "- Export to PDF (low priority, complex)",
             ]
-        elif 'journey' in tid:
+        elif "journey" in tid:
             output_parts = [
                 "# User Journey Map - E-commerce checkout",
                 "",
@@ -1625,12 +1622,12 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "## Acceptance Criteria",
                 "- Given... When... Then...",
             ]
-    
-    elif skill_name == 'software-engineer':
-        tid = test_id or ''
-        framework = test_input.get('framework', '')
-        
-        if 'jwt' in str(test_input) or test_type == 'auth-service':
+
+    elif skill_name == "software-engineer":
+        tid = test_id or ""
+        framework = test_input.get("framework", "")
+
+        if "jwt" in str(test_input) or test_type == "auth-service":
             output_parts = [
                 "import jwt from 'jsonwebtoken';",
                 "import { Request, Response, NextFunction } from 'express';",
@@ -1665,23 +1662,23 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  }",
                 "}",
             ]
-        elif 'middlewares' in test_input:
-            middlewares = test_input.get('middlewares', ['cors', 'helmet'])
+        elif "middlewares" in test_input:
+            middlewares = test_input.get("middlewares", ["cors", "helmet"])
             imports = []
             uses = []
             for m in middlewares:
-                if m == 'cors':
+                if m == "cors":
                     imports.append("import cors from 'cors';")
-                elif m == 'helmet':
+                elif m == "helmet":
                     imports.append("import helmet from 'helmet';")
-                elif m == 'compression':
+                elif m == "compression":
                     imports.append("import compression from 'compression';")
-                elif m == 'morgan':
+                elif m == "morgan":
                     imports.append("import morgan from 'morgan';")
                 else:
                     imports.append(f"import {{ default as {m} }} from '{m}';")
                 uses.append(f"app.use({m}());")
-            
+
             output_parts = [
                 "import express from 'express';",
                 *imports,
@@ -1692,12 +1689,12 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "export default app;",
             ]
-        elif framework == 'express' and 'endpoint' in test_input:
-            endpoint = test_input.get('endpoint', '/api/tasks')
+        elif framework == "express" and "endpoint" in test_input:
+            endpoint = test_input.get("endpoint", "/api/tasks")
             output_parts = [
                 "import { Router } from 'express';",
                 "",
-                f"const router = Router();",
+                "const router = Router();",
                 "",
                 f"// GET {endpoint}",
                 f"router.get('{endpoint}', async function (req, res) {{",
@@ -1733,7 +1730,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "export default router;",
             ]
-        elif framework == 'graphql-yoga':
+        elif framework == "graphql-yoga":
             output_parts = [
                 "import { createSchema } from 'graphql-yoga';",
                 "import { makeExecutableSchema } from '@graphql-tools/schema';",
@@ -1799,7 +1796,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  resolvers,",
                 "});",
             ]
-        elif framework == 'ws':
+        elif framework == "ws":
             output_parts = [
                 "import { WebSocketServer } from 'ws';",
                 "",
@@ -1824,8 +1821,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  });",
                 "}",
             ]
-        elif 'zod' in str(test_input):
-            schema_name = test_input.get('schema', 'schema')
+        elif "zod" in str(test_input):
+            schema_name = test_input.get("schema", "schema")
             output_parts = [
                 "import { z } from 'zod';",
                 "",
@@ -1848,7 +1845,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  };",
                 "}",
             ]
-        elif framework == 'zustand':
+        elif framework == "zustand":
             output_parts = [
                 "import { create } from 'zustand';",
                 "import { persist } from 'zustand/middleware';",
@@ -1889,32 +1886,32 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "export const useStore = useCartStore;",
             ]
-        elif 'model' in test_input:
-            model = test_input.get('model', 'User')
+        elif "model" in test_input:
+            model = test_input.get("model", "User")
             output_parts = [
                 "// Prisma schema definition for " + model,
                 "",
                 "generator client {",
-                "  provider = \"prisma-client-js\"",
+                '  provider = "prisma-client-js"',
                 "}",
                 "",
                 "datasource db {",
-                "  provider = \"postgresql\"",
-                "  url      = env(\"DATABASE_URL\")",
+                '  provider = "postgresql"',
+                '  url      = env("DATABASE_URL")',
                 "}",
                 "",
                 f"model {model} {{",
-                f"  id        String   @id @default(uuid())",
+                "  id        String   @id @default(uuid())",
                 "  email     String   @unique",
                 "  name      String",
                 "  password  String",
                 "  createdAt DateTime @default(now())",
                 "  updatedAt DateTime @updatedAt",
                 "  isActive  Boolean  @default(true)",
-                f"  @@map(\"{model.lower()}\")",
+                f'  @@map("{model.lower()}")',
                 "}",
             ]
-        elif test_type == 'middleware':
+        elif test_type == "middleware":
             output_parts = [
                 "import { Request, Response, NextFunction } from 'express';",
                 "",
@@ -1932,7 +1929,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "",
                 "export default rateLimitMiddleware;",
             ]
-        elif test_type == 'error-handler':
+        elif test_type == "error-handler":
             output_parts = [
                 "import { Request, Response, NextFunction } from 'express';",
                 "",
@@ -1953,7 +1950,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  return res.status(500).json({ error: 'Internal server error' });",
                 "}",
             ]
-        elif test_type == 'api-client':
+        elif test_type == "api-client":
             output_parts = [
                 "const API_BASE = process.env.API_URL || 'https://api.example.com';",
                 "",
@@ -2030,8 +2027,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
                 "  }",
                 "}",
             ]
-    
-    elif skill_name == 'frontend-engineer':
+
+    elif skill_name == "frontend-engineer":
         output_parts = [
             "import { useState, useEffect } from 'react';",
             "",
@@ -2046,8 +2043,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "  return <div>{user.name}</div>;",
             "};",
         ]
-    
-    elif skill_name == 'project-manager':
+
+    elif skill_name == "project-manager":
         output_parts = [
             "# Project Plan",
             "",
@@ -2064,8 +2061,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "## Risks",
             "- Resource availability (MEDIUM)",
         ]
-    
-    elif skill_name == 'api-designer':
+
+    elif skill_name == "api-designer":
         output_parts = [
             "# API Design Specification",
             "",
@@ -2080,8 +2077,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "- 400: Validation error",
             "- 404: Not found",
         ]
-    
-    elif skill_name == 'growth-marketer':
+
+    elif skill_name == "growth-marketer":
         output_parts = [
             "# Growth Campaign Strategy",
             "",
@@ -2096,8 +2093,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "- Signup rate: +50%",
             "- CAC: -20%",
         ]
-    
-    elif skill_name == 'conversion-optimizer':
+
+    elif skill_name == "conversion-optimizer":
         output_parts = [
             "# Conversion Optimization Report",
             "",
@@ -2112,8 +2109,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "## Recommendations",
             "- Simplify checkout flow",
         ]
-    
-    elif skill_name == 'prompt-engineer':
+
+    elif skill_name == "prompt-engineer":
         output_parts = [
             "# Prompt Optimization Report",
             "",
@@ -2125,8 +2122,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "## Expected Improvement",
             "- 30% better accuracy",
         ]
-    
-    elif skill_name == 'performance-engineer':
+
+    elif skill_name == "performance-engineer":
         output_parts = [
             "# Performance Analysis Report",
             "",
@@ -2145,8 +2142,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "## Expected Improvement",
             "- 55% latency reduction",
         ]
-    
-    elif skill_name == 'accessibility-engineer':
+
+    elif skill_name == "accessibility-engineer":
         output_parts = [
             "# Accessibility Audit Report",
             "",
@@ -2163,8 +2160,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "- Add aria-labels to all interactive elements",
             "- Implement focus management",
         ]
-    
-    elif skill_name == 'database-engineer':
+
+    elif skill_name == "database-engineer":
         output_parts = [
             "# Database Optimization Report",
             "",
@@ -2178,8 +2175,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "CREATE INDEX idx_users_email ON users(email);",
             "```",
         ]
-    
-    elif skill_name == 'data-scientist':
+
+    elif skill_name == "data-scientist":
         output_parts = [
             "# Data Analysis Report",
             "",
@@ -2191,8 +2188,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "- Accuracy: 87%",
             "- F1 Score: 0.85",
         ]
-    
-    elif skill_name == 'technical-writer':
+
+    elif skill_name == "technical-writer":
         output_parts = [
             "# API Documentation",
             "",
@@ -2203,8 +2200,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "### GET /api/users",
             "Returns list of users",
         ]
-    
-    elif skill_name == 'ui-designer':
+
+    elif skill_name == "ui-designer":
         output_parts = [
             "# UI Design Specification",
             "",
@@ -2216,8 +2213,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "- Headings: Inter Bold, 24px",
             "- Body: Inter Regular, 16px",
         ]
-    
-    elif skill_name == 'mobile-engineer':
+
+    elif skill_name == "mobile-engineer":
         output_parts = [
             "import React, { useState } from 'react';",
             "import { View, Text } from 'react-native';",
@@ -2234,7 +2231,7 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "  );",
             "};",
         ]
-    
+
     else:
         output_parts = [
             "// Generated by " + skill_name + " Skill",
@@ -2245,8 +2242,8 @@ def generate_mock_output(skill_name: str, test_input: dict, test_id: str = None)
             "  return { status: 'ok' };",
             "}",
         ]
-    
-    return '\n'.join(output_parts)
+
+    return "\n".join(output_parts)
 
 
 def validate_test_output(output: str, test: dict) -> tuple[bool, list[str]]:
@@ -2255,73 +2252,88 @@ def validate_test_output(output: str, test: dict) -> tuple[bool, list[str]]:
     Returns (passed, errors)
     """
     errors = []
-    expected = test.get('expected', {})
-    validate = test.get('validate', [])
-    
+    expected = test.get("expected", {})
     # Check contains
-    if 'contains' in expected:
-        for item in expected['contains']:
+    if "contains" in expected:
+        for item in expected["contains"]:
             if item not in output:
                 errors.append(f"Missing expected content: '{item}'")
-    
+
     # Check not_contains
-    if 'not_contains' in expected:
-        for item in expected['not_contains']:
+    if "not_contains" in expected:
+        for item in expected["not_contains"]:
             if item in output:
                 errors.append(f"Found forbidden content: '{item}'")
-    
+
     # Check min_lines
-    if 'min_lines' in expected:
+    if "min_lines" in expected:
         line_count = len(output.splitlines())
-        if line_count < expected['min_lines']:
+        if line_count < expected["min_lines"]:
             errors.append(f"Line count {line_count} < {expected['min_lines']}")
-    
+
     # Check severity_count (for code-reviewer)
-    if 'severity_count' in expected:
-        severity_counts = expected['severity_count']
+    if "severity_count" in expected:
+        severity_counts = expected["severity_count"]
         for severity, count in severity_counts.items():
             pattern = rf"{count}\s+{severity.upper()}"
             pattern2 = rf"{severity.upper()}:\s*{count}"
-            if not (re.search(pattern, output, re.IGNORECASE) or re.search(pattern2, output, re.IGNORECASE)):
-                matches = re.findall(rf"(?:severity:.*?)?{severity.upper()}", output, re.IGNORECASE)
+            if not (
+                re.search(pattern, output, re.IGNORECASE)
+                or re.search(pattern2, output, re.IGNORECASE)
+            ):
+                matches = re.findall(
+                    rf"(?:severity:.*?)?{severity.upper()}", output, re.IGNORECASE
+                )
                 if len(matches) < count:
-                    errors.append(f"Severity {severity.upper()} count {len(matches)} < {count}")
-    
+                    errors.append(
+                        f"Severity {severity.upper()} count {len(matches)} < {count}"
+                    )
+
     # Check min_high_findings
-    if 'min_high_findings' in expected:
-        min_count = expected['min_high_findings']
+    if "min_high_findings" in expected:
+        min_count = expected["min_high_findings"]
         matches = re.findall(r"HIGH", output, re.IGNORECASE)
         if len(matches) < min_count:
             errors.append(f"HIGH findings {len(matches)} < {min_count}")
-    
+
     # Check min_medium_findings
-    if 'min_medium_findings' in expected:
-        min_count = expected['min_medium_findings']
+    if "min_medium_findings" in expected:
+        min_count = expected["min_medium_findings"]
         matches = re.findall(r"MEDIUM", output, re.IGNORECASE)
         if len(matches) < min_count:
             errors.append(f"MEDIUM findings {len(matches)} < {min_count}")
-    
+
     # Check min_findings (general)
-    if 'min_findings' in expected:
-        min_count = expected['min_findings']
-        issue_markers = len(re.findall(r"(?:^### |^## Issues|\d+\.\s+\w+:|## -\s*\d+\s)", output, re.MULTILINE))
+    if "min_findings" in expected:
+        min_count = expected["min_findings"]
+        issue_markers = len(
+            re.findall(
+                r"(?:^### |^## Issues|\d+\.\s+\w+:|## -\s*\d+\s)", output, re.MULTILINE
+            )
+        )
         if issue_markers < min_count:
             errors.append(f"Findings count {issue_markers} < {min_count}")
-    
+
     # Check files_created (for qa-engineer)
-    if 'files_created' in expected:
-        expected_count = expected['files_created']
-        lines = [l for l in output.splitlines() if l.strip() and not l.startswith('#')]
+    if "files_created" in expected:
+        expected_count = expected["files_created"]
+        lines = [
+            line
+            for line in output.splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
         if len(lines) < expected_count * 10:
-            errors.append(f"Content lines {len(lines)} < {expected_count * 10} (expected {expected_count} files)")
-    
+            errors.append(
+                f"Content lines {len(lines)} < {expected_count * 10} (expected {expected_count} files)"
+            )
+
     # Check min_test_cases
-    if 'min_test_cases' in expected:
-        min_count = expected['min_test_cases']
+    if "min_test_cases" in expected:
+        min_count = expected["min_test_cases"]
         test_cases = len(re.findall(r"(?:^|\s)(?:it|test)\s*\('", output, re.MULTILINE))
         if test_cases < min_count:
             errors.append(f"Test cases {test_cases} < {min_count}")
-    
+
     return len(errors) == 0, errors
 
 
@@ -2330,19 +2342,18 @@ def run_test(skill_name: str, test: dict) -> tuple[bool, str, list[str]]:
     Run a single test.
     Returns (passed, reason, errors)
     """
-    test_id = test.get('id', 'unknown')
-    test_input = test.get('input', {})
-    expected = test.get('expected', {})
-    
+    test_id = test.get("id", "unknown")
+    test_input = test.get("input", {})
+
     print(f"\n{CYAN}Running: {GREEN}{skill_name}{NC} > {YELLOW}{test_id}{NC}")
     print(f"Description: {test.get('description', '')}")
-    
+
     # Generate mock output based on test input
     output = generate_mock_output(skill_name, test_input, test_id)
-    
+
     # Validate output
     passed, errors = validate_test_output(output, test)
-    
+
     if passed:
         log_pass(f"{test_id}")
         return True, "Output validated", []
@@ -2356,117 +2367,119 @@ def run_test(skill_name: str, test: dict) -> tuple[bool, str, list[str]]:
 def run_skill_tests(skill_name: str, test_filter: str = None) -> dict:
     """Run all tests for a skill"""
     tests = load_test_yaml(skill_name)
-    
+
     if not tests:
         print(f"{YELLOW}[WARN]{NC} No tests found for skill: {skill_name}")
-        return {'passed': 0, 'failed': 0, 'skipped': 0}
-    
-    print(f"\n{CYAN}{'='*50}{NC}")
+        return {"passed": 0, "failed": 0, "skipped": 0}
+
+    print(f"\n{CYAN}{'=' * 50}{NC}")
     print(f"{CYAN}Testing Skill: {GREEN}{skill_name}{NC}")
-    print(f"{CYAN}{'='*50}{NC}")
-    
-    results = {'passed': 0, 'failed': 0, 'skipped': 0, 'tests': []}
-    
+    print(f"{CYAN}{'=' * 50}{NC}")
+
+    results = {"passed": 0, "failed": 0, "skipped": 0, "tests": []}
+
     for test in tests:
-        test_id = test.get('id')
-        
+        test_id = test.get("id")
+
         # Filter by test_id if specified
         if test_filter and test_id != test_filter:
             continue
-        
+
         # Skip if deprecated
-        if test.get('deprecated') or test.get('skip'):
+        if test.get("deprecated") or test.get("skip"):
             log_skip(f"{test_id} (deprecated)")
-            results['skipped'] += 1
+            results["skipped"] += 1
             continue
-        
+
         passed, reason, errors = run_test(skill_name, test)
-        
-        results['tests'].append({
-            'id': test_id,
-            'skill': skill_name,
-            'passed': passed,
-            'reason': reason,
-            'errors': errors
-        })
-        
+
+        results["tests"].append(
+            {
+                "id": test_id,
+                "skill": skill_name,
+                "passed": passed,
+                "reason": reason,
+                "errors": errors,
+            }
+        )
+
         if passed:
-            results['passed'] += 1
+            results["passed"] += 1
         else:
-            results['failed'] += 1
-    
+            results["failed"] += 1
+
     # Print skill summary
-    print(f"\n{CYAN}{'='*50}{NC}")
+    print(f"\n{CYAN}{'=' * 50}{NC}")
     print(f"Results for {skill_name}:")
     print(f"  {GREEN}Passed: {results['passed']}{NC}")
     print(f"  {RED}Failed: {results['failed']}{NC}")
     print(f"  {YELLOW}Skipped: {results['skipped']}{NC}")
-    print(f"{CYAN}{'='*50}{NC}")
-    
+    print(f"{CYAN}{'=' * 50}{NC}")
+
     return results
 
 
 def main():
     import argparse
-    
-    parser = argparse.ArgumentParser(description='Forgewright Skill Test Executor')
-    parser.add_argument('skill', nargs='?', help='Skill name to test')
-    parser.add_argument('test_id', nargs='?', help='Specific test ID to run')
-    parser.add_argument('--all', action='store_true', help='Run all tests')
-    parser.add_argument('--list', action='store_true', help='List available tests')
-    parser.add_argument('--tag', help='Filter by tag')
-    
+
+    parser = argparse.ArgumentParser(description="Forgewright Skill Test Executor")
+    parser.add_argument("skill", nargs="?", help="Skill name to test")
+    parser.add_argument("test_id", nargs="?", help="Specific test ID to run")
+    parser.add_argument("--all", action="store_true", help="Run all tests")
+    parser.add_argument("--list", action="store_true", help="List available tests")
+    parser.add_argument("--tag", help="Filter by tag")
+
     args = parser.parse_args()
-    
+
     # List mode
     if args.list:
-        skills_dir = SKILL_TEST_DIR / 'skills'
+        skills_dir = SKILL_TEST_DIR / "skills"
         print(f"{CYAN}Available Skill Tests{NC}")
         print("=" * 50)
-        
+
         for skill_path in sorted(skills_dir.iterdir()):
             if skill_path.is_dir():
-                test_file = skill_path / 'test.yaml'
+                test_file = skill_path / "test.yaml"
                 if test_file.exists():
                     with open(test_file) as f:
                         data = yaml.safe_load(f)
-                        count = len(data.get('tests', []))
+                        count = len(data.get("tests", []))
                     print(f"\n{GREEN}{skill_path.name}{NC} ({count} tests)")
-                    for test in data.get('tests', []):
+                    for test in data.get("tests", []):
                         print(f"  - {test.get('id')}")
         return
-    
+
     # Run specific test
     if args.skill:
         results = run_skill_tests(args.skill, args.test_id)
-        
+
         # Exit with error if any tests failed
-        sys.exit(0 if results['failed'] == 0 else 1)
-    
+        sys.exit(0 if results["failed"] == 0 else 1)
+
     # Run all tests
     if args.all:
-        skills_dir = SKILL_TEST_DIR / 'skills'
-        total = {'passed': 0, 'failed': 0, 'skipped': 0}
-        
+        skills_dir = SKILL_TEST_DIR / "skills"
+        total = {"passed": 0, "failed": 0, "skipped": 0}
+
         for skill_path in sorted(skills_dir.iterdir()):
             if skill_path.is_dir():
                 results = run_skill_tests(skill_path.name)
-                total['passed'] += results['passed']
-                total['failed'] += results['failed']
-                total['skipped'] += results['skipped']
-        
-        print(f"\n{CYAN}{'='*50}{NC}")
+                total["passed"] += results["passed"]
+                total["failed"] += results["failed"]
+                total["skipped"] += results["skipped"]
+
+        print(f"\n{CYAN}{'=' * 50}{NC}")
         print(f"{CYAN}Overall Results:{NC}")
         print(f"  {GREEN}Passed: {total['passed']}{NC}")
         print(f"  {RED}Failed: {total['failed']}{NC}")
         print(f"  {YELLOW}Skipped: {total['skipped']}{NC}")
-        print(f"{CYAN}{'='*50}{NC}")
-        
-        sys.exit(0 if total['failed'] == 0 else 1)
-    
+        print(f"{CYAN}{'=' * 50}{NC}")
+
+        sys.exit(0 if total["failed"] == 0 else 1)
+
     # Show help
     parser.print_help()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

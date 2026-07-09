@@ -30,53 +30,73 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import pytest
 
+# Ensure host environment variables do not bleed into subprocesses and trigger Codex-specific output
+for _env_var in ["CODEX_THREAD_ID", "CODEX_CI"]:
+    os.environ.pop(_env_var, None)
+
 # ── path to scripts ────────────────────────────────────────────────────────────
-REPO_ROOT   = Path(__file__).resolve().parent.parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = REPO_ROOT / "scripts" / "lite"
-RUN_CHECK   = SCRIPTS_DIR / "run_check.py"
-VERIFY_PY   = SCRIPTS_DIR / "verify_gate.py"
-GUARD_SH    = SCRIPTS_DIR / "guard.sh"
-VERIFY_SH   = SCRIPTS_DIR / "verify-gate.sh"
+RUN_CHECK = SCRIPTS_DIR / "run_check.py"
+VERIFY_PY = SCRIPTS_DIR / "verify_gate.py"
+GUARD_SH = SCRIPTS_DIR / "guard.sh"
+VERIFY_SH = SCRIPTS_DIR / "verify-gate.sh"
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-def _run_py(script: Path, args: list[str] = (), env: dict | None = None,
-            cwd: Path | None = None) -> subprocess.CompletedProcess:
+
+def _run_py(
+    script: Path, args: list[str] = (), env: dict | None = None, cwd: Path | None = None
+) -> subprocess.CompletedProcess:
     full_env = {**os.environ, **(env or {})}
     return subprocess.run(
         [sys.executable, str(script)] + list(args),
-        capture_output=True, text=True, timeout=30,
-        env=full_env, cwd=str(cwd or REPO_ROOT)
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=full_env,
+        cwd=str(cwd or REPO_ROOT),
     )
 
 
-def _run_sh(script: Path, args: list[str] = (), env: dict | None = None,
-            cwd: Path | None = None, stdin_text: str = "") -> subprocess.CompletedProcess:
+def _run_sh(
+    script: Path,
+    args: list[str] = (),
+    env: dict | None = None,
+    cwd: Path | None = None,
+    stdin_text: str = "",
+) -> subprocess.CompletedProcess:
     full_env = {**os.environ, **(env or {})}
     return subprocess.run(
         ["bash", str(script)] + list(args),
-        capture_output=True, text=True, timeout=30,
-        env=full_env, cwd=str(cwd or REPO_ROOT),
-        input=stdin_text
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=full_env,
+        cwd=str(cwd or REPO_ROOT),
+        input=stdin_text,
     )
 
 
 def _make_temp_git_repo() -> Path:
     """Create a deterministic temp git repo with one commit."""
     tmp = Path(tempfile.mkdtemp(prefix="fw_gate_test_"))
-    subprocess.run(["git", "init", "-b", "main"], cwd=tmp, capture_output=True, check=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp, capture_output=True)
-    subprocess.run(["git", "config", "user.name",  "Test"],          cwd=tmp, capture_output=True)
+    subprocess.run(
+        ["git", "init", "-b", "main"], cwd=tmp, capture_output=True, check=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp, capture_output=True
+    )
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp, capture_output=True)
     # Initial commit so HEAD exists
     (tmp / "README.md").write_text("# test\n")
-    subprocess.run(["git", "add", "."],          cwd=tmp, capture_output=True)
+    subprocess.run(["git", "add", "."], cwd=tmp, capture_output=True)
     subprocess.run(["git", "commit", "-m", "init"], cwd=tmp, capture_output=True)
     return tmp
 
@@ -89,7 +109,7 @@ def _make_evidence(
     command: list | None = None,
     exit_code: int = 0,
     output: str = "ok\n",
-    timestamp_offset_secs: int = 0,   # negative = older than now
+    timestamp_offset_secs: int = 0,  # negative = older than now
     workspace: str | None = None,
     tree_sha: str | None = None,
     output_truncated: bool = False,
@@ -99,20 +119,23 @@ def _make_evidence(
     ev_dir = tmp / ".forgewright" / "verify"
     ev_dir.mkdir(parents=True, exist_ok=True)
 
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=tmp, capture_output=True, text=True
-    ).stdout.strip() or "NOHEAD"
+    head = (
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, capture_output=True, text=True
+        ).stdout.strip()
+        or "NOHEAD"
+    )
 
     ev = {
-        "schema_version":   schema_version,
-        "turn":             turn,
-        "command":          command if command is not None else ["echo", "ok"],
-        "exit_code":        exit_code,
-        "output":           output,
+        "schema_version": schema_version,
+        "turn": turn,
+        "command": command if command is not None else ["echo", "ok"],
+        "exit_code": exit_code,
+        "output": output,
         "output_truncated": output_truncated,
-        "timestamp_utc":    ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "workspace":        workspace if workspace is not None else str(tmp),
-        "tree_sha":         tree_sha if tree_sha is not None else head,
+        "timestamp_utc": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "workspace": workspace if workspace is not None else str(tmp),
+        "tree_sha": tree_sha if tree_sha is not None else head,
     }
 
     ev_file = ev_dir / f"{turn}.json"
@@ -128,10 +151,10 @@ def _run_validate(
 ) -> subprocess.CompletedProcess:
     """Run verify_gate.py in a temp dir context."""
     env = {
-        "RESPONSE_CONTENT":  response,
+        "RESPONSE_CONTENT": response,
         "FILES_TO_CHECK_STR": files_str,
         "FILES_TO_CHECK_NUL": "1",
-        "FORGEWRIGHT_TURN":  turn,
+        "FORGEWRIGHT_TURN": turn,
         "FORGEWRIGHT_STALENESS_SECS": "3600",
     }
     return _run_py(VERIFY_PY, cwd=tmp, env=env)
@@ -141,8 +164,8 @@ def _run_validate(
 # A. Evidence validation: verify_gate.py
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestEvidenceValidation:
 
+class TestEvidenceValidation:
     def setup_method(self):
         self.tmp = _make_temp_git_repo()
 
@@ -183,12 +206,15 @@ class TestEvidenceValidation:
         assert "FORGED" in r.stderr
 
     # ── A6. Forgery: placeholder output patterns ──────────────────────────────
-    @pytest.mark.parametrize("output", [
-        "[REDACTED]",
-        "placeholder",
-        "N/A",
-        "TODO",
-    ])
+    @pytest.mark.parametrize(
+        "output",
+        [
+            "[REDACTED]",
+            "placeholder",
+            "N/A",
+            "TODO",
+        ],
+    )
     def test_forged_shape_output_blocked(self, output):
         _make_evidence(self.tmp, output=output)
         r = _run_validate(self.tmp)
@@ -231,11 +257,14 @@ class TestEvidenceValidation:
         assert "FAILED" in r.stderr
 
     # ── A12. Secrets in evidence output ──────────────────────────────────────
-    @pytest.mark.parametrize("secret", [
-        "sk-abc123xyz456def789ghi012jkl",   # OpenAI key (30 chars)
-        "ghp_abc123xyz456def789ghi012jkl3",  # GitHub PAT (31 chars)
-        "AKIAIOSFODNN7EXAMPLE",              # AWS key (20 chars)
-    ])
+    @pytest.mark.parametrize(
+        "secret",
+        [
+            "sk-abc123xyz456def789ghi012jkl",  # OpenAI key (30 chars)
+            "ghp_abc123xyz456def789ghi012jkl3",  # GitHub PAT (31 chars)
+            "AKIAIOSFODNN7EXAMPLE",  # AWS key (20 chars)
+        ],
+    )
     def test_secrets_in_evidence_output_blocked(self, secret):
         _make_evidence(self.tmp, output=f"token={secret}\n")
         r = _run_validate(self.tmp)
@@ -246,8 +275,7 @@ class TestEvidenceValidation:
     def test_dirty_tree_sha_accepted_same_head(self):
         """DIRTY evidence with matching HEAD part should be accepted."""
         head = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.tmp,
-            capture_output=True, text=True
+            ["git", "rev-parse", "HEAD"], cwd=self.tmp, capture_output=True, text=True
         ).stdout.strip()
         tree_sha = f"DIRTY:{head[:12]}:someidxhash"
         # Make the repo actually dirty so current tree_sha has DIRTY prefix
@@ -260,13 +288,14 @@ class TestEvidenceValidation:
     def test_stale_tree_sha_blocked(self):
         """Evidence with old HEAD SHA rejected after new commit."""
         old_head = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.tmp,
-            capture_output=True, text=True
+            ["git", "rev-parse", "HEAD"], cwd=self.tmp, capture_output=True, text=True
         ).stdout.strip()
         # Make a new commit
         (self.tmp / "newfile.txt").write_text("new\n")
-        subprocess.run(["git", "add", "."],               cwd=self.tmp, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "second"], cwd=self.tmp, capture_output=True)
+        subprocess.run(["git", "add", "."], cwd=self.tmp, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "second"], cwd=self.tmp, capture_output=True
+        )
         # Evidence has old head
         _make_evidence(self.tmp, tree_sha=old_head)
         r = _run_validate(self.tmp)
@@ -278,8 +307,8 @@ class TestEvidenceValidation:
 # B. Source immutability: run_check.py redaction
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestSourceImmutability:
 
+class TestSourceImmutability:
     def setup_method(self):
         self.tmp = _make_temp_git_repo()
 
@@ -297,8 +326,10 @@ class TestSourceImmutability:
 
         r = subprocess.run(
             [sys.executable, str(RUN_CHECK), "--", "bash", str(script)],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp)
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
         )
         assert r.returncode == 0, r.stderr
 
@@ -327,8 +358,10 @@ class TestSourceImmutability:
 
         r = subprocess.run(
             [sys.executable, str(RUN_CHECK), "--", "bash", str(script)],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp)
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
         )
         assert r.returncode == 0, r.stderr
 
@@ -345,8 +378,10 @@ class TestSourceImmutability:
         """All required schema_version-1 fields must be present and typed correctly."""
         r = subprocess.run(
             [sys.executable, str(RUN_CHECK), "--", "echo", "test"],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp)
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
         )
         assert r.returncode == 0, r.stderr
 
@@ -369,10 +404,14 @@ class TestSourceImmutability:
         """run_check.py records non-zero exit_code but itself exits 0."""
         r = subprocess.run(
             [sys.executable, str(RUN_CHECK), "--", "bash", "-c", "exit 42"],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp)
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
         )
-        assert r.returncode == 0, f"run_check.py should always exit 0, got {r.returncode}"
+        assert r.returncode == 0, (
+            f"run_check.py should always exit 0, got {r.returncode}"
+        )
 
         ev_dir = self.tmp / ".forgewright" / "verify"
         ev_files = list(ev_dir.glob("*.json"))
@@ -385,8 +424,8 @@ class TestSourceImmutability:
 # C. Dirty baseline (git state tracking)
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestDirtyBaseline:
 
+class TestDirtyBaseline:
     def setup_method(self):
         self.tmp = _make_temp_git_repo()
 
@@ -399,8 +438,10 @@ class TestDirtyBaseline:
 
         r = subprocess.run(
             [sys.executable, str(RUN_CHECK), "--", "echo", "dirty-test"],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp)
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
         )
         assert r.returncode == 0
 
@@ -414,8 +455,10 @@ class TestDirtyBaseline:
         """In a clean repo, tree_sha must be the HEAD commit SHA."""
         r = subprocess.run(
             [sys.executable, str(RUN_CHECK), "--", "echo", "clean-test"],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp)
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
         )
         assert r.returncode == 0
 
@@ -436,8 +479,10 @@ class TestDirtyBaseline:
 
         r = subprocess.run(
             [sys.executable, str(RUN_CHECK), "--", "echo", "untracked"],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp)
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
         )
         assert r.returncode == 0
 
@@ -452,8 +497,8 @@ class TestDirtyBaseline:
 # D. guard.sh tri-state protected paths and HARD signals
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestGuardSh:
 
+class TestGuardSh:
     def setup_method(self):
         self.tmp = _make_temp_git_repo()
         # Replicate guard.sh in the temp repo for testing
@@ -465,13 +510,18 @@ class TestGuardSh:
     def teardown_method(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def _guard(self, *files: str, env: dict | None = None) -> subprocess.CompletedProcess:
+    def _guard(
+        self, *files: str, env: dict | None = None
+    ) -> subprocess.CompletedProcess:
         guard = self.tmp / "scripts" / "lite" / "guard.sh"
         full_env = {**os.environ, **(env or {})}
         return subprocess.run(
             ["bash", str(guard)] + list(files),
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp), env=full_env
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
+            env=full_env,
         )
 
     # ── D1. CREATE of protected path is ALLOWED ───────────────────────────────
@@ -479,7 +529,9 @@ class TestGuardSh:
         """Creating a .env file (not yet in HEAD) should be ALLOWED."""
         # Don't create the file — it doesn't exist in HEAD, so action = CREATE
         r = self._guard(".env")
-        assert r.returncode in (0, 2), f"Expected 0 or 2 (HARD), got {r.returncode}\n{r.stderr}"
+        assert r.returncode in (0, 2), (
+            f"Expected 0 or 2 (HARD), got {r.returncode}\n{r.stderr}"
+        )
         assert "ALLOWED CREATE" in r.stdout
 
     # ── D2. MODIFY of protected path is BLOCKED ───────────────────────────────
@@ -488,8 +540,10 @@ class TestGuardSh:
         # Create and commit the file so it's in HEAD
         env_file = self.tmp / ".env"
         env_file.write_text("KEY=val\n")
-        subprocess.run(["git", "add", ".env"],            cwd=self.tmp, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "add env"], cwd=self.tmp, capture_output=True)
+        subprocess.run(["git", "add", ".env"], cwd=self.tmp, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "add env"], cwd=self.tmp, capture_output=True
+        )
         # Now it's in HEAD → action = MODIFY → should be BLOCKED
         env_file.write_text("KEY=changed\n")
         r = self._guard(".env")
@@ -500,14 +554,18 @@ class TestGuardSh:
     def test_hard_signal_for_auth_content(self):
         """File containing 'jwt' keyword should trigger exit code 2."""
         auth_file = self.tmp / "auth_handler.py"
-        auth_file.write_text(textwrap.dedent("""\
+        auth_file.write_text(
+            textwrap.dedent("""\
             # Auth handler
             import jwt
             def verify_jwt(token):
                 return jwt.decode(token, 'secret', algorithms=['HS256'])
-        """))
+        """)
+        )
         r = self._guard("auth_handler.py")
-        assert r.returncode == 2, f"Expected HARD exit 2, got {r.returncode}\n{r.stderr}"
+        assert r.returncode == 2, (
+            f"Expected HARD exit 2, got {r.returncode}\n{r.stderr}"
+        )
         assert "HARD" in r.stderr
 
     # ── D3b. Self-source guard exception ─────────────────────────────────────
@@ -536,7 +594,9 @@ class TestGuardSh:
         ok_file.write_text("#!/bin/sh\n# rm -rf /tmp  # do not run this!\necho ok\n")
         r = self._guard("safe.sh")
         # Should not be blocked for rm -rf (it's commented)
-        assert r.returncode in (0, 2), f"Expected 0 or 2, got {r.returncode}\n{r.stderr}"
+        assert r.returncode in (0, 2), (
+            f"Expected 0 or 2, got {r.returncode}\n{r.stderr}"
+        )
         assert "rm -rf" not in r.stderr or "Deny" not in r.stderr
 
     # ── D6. Filenames with spaces ─────────────────────────────────────────────
@@ -557,28 +617,35 @@ class TestGuardSh:
             "guard.sh hardcodes repo name 'forgewright' — use $(basename ${PROJECT_ROOT}) instead"
         )
         # Should use basename
-        assert "basename" in content, "guard.sh should use 'basename' to derive repo name"
+        assert "basename" in content, (
+            "guard.sh should use 'basename' to derive repo name"
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # E. verify-gate.sh --platform parsing
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestVerifyGateSh:
 
+class TestVerifyGateSh:
     def setup_method(self):
         self.tmp = _make_temp_git_repo()
 
     def teardown_method(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def _gate(self, platform: str = "claude", stdin_json: str = "",
-              env: dict | None = None) -> subprocess.CompletedProcess:
+    def _gate(
+        self, platform: str = "claude", stdin_json: str = "", env: dict | None = None
+    ) -> subprocess.CompletedProcess:
         full_env = {**os.environ, **(env or {})}
         return subprocess.run(
             ["bash", str(VERIFY_SH), "--platform", platform],
-            capture_output=True, text=True, timeout=30,
-            cwd=str(self.tmp), env=full_env, input=stdin_json
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=full_env,
+            input=stdin_json,
         )
 
     def test_no_code_changes_gate_open(self):
@@ -591,8 +658,10 @@ class TestVerifyGateSh:
         """Unknown platform name → gate blocks with error."""
         r = subprocess.run(
             ["bash", str(VERIFY_SH), "--platform", "unknownbot"],
-            capture_output=True, text=True, timeout=15,
-            cwd=str(self.tmp)
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=str(self.tmp),
         )
         assert r.returncode == 1
         assert "Unknown platform" in r.stderr
@@ -602,8 +671,10 @@ class TestVerifyGateSh:
         for platform in ("claude", "gemini", "cursor", "codex"):
             r = subprocess.run(
                 ["bash", str(VERIFY_SH), "--platform", platform],
-                capture_output=True, text=True, timeout=15,
-                cwd=str(self.tmp)
+                capture_output=True,
+                text=True,
+                timeout=15,
+                cwd=str(self.tmp),
             )
             # Clean repo → gate open (exit 0), no "Unknown platform" error
             assert r.returncode == 0, (
@@ -613,11 +684,13 @@ class TestVerifyGateSh:
 
     def test_platform_payload_json_parsed(self):
         """Payload JSON with response_content and turn is parsed correctly."""
-        payload = json.dumps({
-            "response_content": "VERIFY: echo passed",
-            "turn": "t_001",
-            "files": [],
-        })
+        payload = json.dumps(
+            {
+                "response_content": "VERIFY: echo passed",
+                "turn": "t_001",
+                "files": [],
+            }
+        )
         # Clean repo → no code changes → gate open regardless of payload
         r = self._gate(platform="gemini", stdin_json=payload)
         assert r.returncode == 0, r.stderr
@@ -625,24 +698,29 @@ class TestVerifyGateSh:
     def test_verify_gate_does_not_mutate_source_files(self):
         """verify-gate must validate source files without redacting/re-writing them."""
         source = self.tmp / "fixture.py"
-        source.write_text(textwrap.dedent("""\
+        source.write_text(
+            textwrap.dedent("""\
             PRIVATE_KEY_FIXTURE = '''-----BEGIN PRIVATE KEY-----
             fake-test-key-material
             -----END PRIVATE KEY-----'''
-        """))
+        """)
+        )
         original = source.read_text()
 
         head = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=self.tmp,
-            capture_output=True, text=True
+            ["git", "rev-parse", "HEAD"], cwd=self.tmp, capture_output=True, text=True
         ).stdout.strip()
-        _make_evidence(self.tmp, tree_sha=f"DIRTY:{head[:12]}:fixture", turn="t_mutation")
+        _make_evidence(
+            self.tmp, tree_sha=f"DIRTY:{head[:12]}:fixture", turn="t_mutation"
+        )
 
-        payload = json.dumps({
-            "response_content": "VERIFY: mutation check passed",
-            "turn": "t_mutation",
-            "files": ["fixture.py"],
-        })
+        payload = json.dumps(
+            {
+                "response_content": "VERIFY: mutation check passed",
+                "turn": "t_mutation",
+                "files": ["fixture.py"],
+            }
+        )
         r = self._gate(platform="codex", stdin_json=payload)
         assert r.returncode == 0, r.stderr
         assert source.read_text() == original
@@ -653,8 +731,11 @@ class TestVerifyGateSh:
         big_input = '{"response_content": "' + ("x" * (2 * 1024 * 1024)) + '"}'
         r = subprocess.run(
             ["bash", str(VERIFY_SH), "--platform", "claude"],
-            capture_output=True, text=True, timeout=20,
-            cwd=str(self.tmp), input=big_input
+            capture_output=True,
+            text=True,
+            timeout=20,
+            cwd=str(self.tmp),
+            input=big_input,
         )
         # Should complete within timeout — we just check it doesn't hang
         assert r.returncode in (0, 1), f"Expected 0 or 1, got {r.returncode}"
@@ -663,6 +744,7 @@ class TestVerifyGateSh:
 # ══════════════════════════════════════════════════════════════════════════════
 # F. verify_gate.py --selftest smoke test
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def test_verify_gate_selftest():
     r = _run_py(VERIFY_PY, args=["--selftest"])
@@ -673,6 +755,7 @@ def test_verify_gate_selftest():
 # ══════════════════════════════════════════════════════════════════════════════
 # G. Regression: verify_gate.py _STUB_EXTS reference
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def test_verify_gate_py_imports_cleanly():
     """verify_gate.py must be importable without errors (catches NameError etc.)."""

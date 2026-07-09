@@ -57,7 +57,10 @@ def create_session_log(path: Path) -> None:
                         "mode": "Feature",
                         "request_summary": "Upgrade memory retrieval",
                         "summary": "Added scenario and persona layers",
-                        "completed_tasks": ["Generated persona.md", "Generated scenario file"],
+                        "completed_tasks": [
+                            "Generated persona.md",
+                            "Generated scenario file",
+                        ],
                     }
                 ]
             }
