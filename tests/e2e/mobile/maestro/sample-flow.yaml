@@ -1,9 +1,0 @@
-# Forgewright — Maestro E2E Demo Flow
-# Run locally with: maestro test tests/e2e/mobile/maestro/sample-flow.yaml
-
-appId: ${appId}
----
-- launchApp
-- assertVisible: "Welcome"
-# - tapOn: "Log In"
-# - inputText: "test_user"
