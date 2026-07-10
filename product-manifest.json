@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "name": "Forgewright",
+    "version": "8.7.0"
+  },
+  "pipeline": {
+    "phases": [
+      "INTERPRET",
+      "DEFINE",
+      "BUILD",
+      "HARDEN",
+      "SHIP",
+      "SUSTAIN"
+    ]
+  },
+  "skills": {
+    "root": "skills",
+    "registry": "skills/skills-registry.yaml",
+    "canonicalCount": 83,
+    "aliasCount": 2,
+    "installedCount": 85,
+    "excludedDirectories": [
+      "_shared",
+      "_test",
+      "generated"
+    ]
+  },
+  "modes": {
+    "count": 24,
+    "source": "docs/mode-reference.md",
+    "headingLevel": 2,
+    "inventory": [
+      "Full Build",
+      "Feature",
+      "Review",
+      "Debug",
+      "Ship",
+      "Test",
+      "Harden",
+      "Architect",
+      "Document",
+      "Explore",
+      "Research",
+      "Optimize",
+      "Design",
+      "Mobile",
+      "Game Build",
+      "XR Build",
+      "Marketing",
+      "Grow",
+      "AI Build",
+      "Analyze",
+      "Migrate",
+      "Prompt",
+      "Goal",
+      "Custom Mode"
+    ],
+    "excludedHeadings": [
+      "Mode Overview",
+      "Mode Selection Flow"
+    ]
+  },
+  "maturityVocabulary": [
+    "stable",
+    "beta",
+    "experimental",
+    "docs-only"
+  ],
+  "supportedSurfaces": [
+    {
+      "id": "cursor",
+      "label": "Cursor",
+      "maturity": "stable",
+      "truthFile": "docs/product-overview.md",
+      "truthMarker": "| **Cursor** | `AGENTS.md` | ✅ Full | Stable |"
+    },
+    {
+      "id": "claude-code",
+      "label": "Claude Code",
+      "maturity": "stable",
+      "truthFile": "docs/product-overview.md",
+      "truthMarker": "| **Claude Code** | `CLAUDE.md` | ✅ Full | Stable |"
+    },
+    {
+      "id": "antigravity",
+      "label": "Antigravity",
+      "maturity": "stable",
+      "truthFile": "docs/product-overview.md",
+      "truthMarker": "| **Antigravity** | `AGENTS.md` | ✅ Full | Stable |"
+    },
+    {
+      "id": "gemini",
+      "label": "Gemini CLI/IDE",
+      "maturity": "stable",
+      "truthFile": "docs/product-overview.md",
+      "truthMarker": "| **Gemini (CLI/IDE)** | `GEMINI.md` | ✅ Full | Stable |"
+    },
+    {
+      "id": "codex",
+      "label": "Codex",
+      "maturity": "stable",
+      "truthFile": "docs/product-overview.md",
+      "truthMarker": "| **Codex (OpenAI)** | `AGENTS.md` | ✅ Full | Stable |"
+    },
+    {
+      "id": "forge-cli",
+      "label": "Forge CLI",
+      "maturity": "beta",
+      "truthFile": "docs/product-overview.md",
+      "truthMarker": "| **Forge CLI** | `src/cli/package.json` | N/A | Beta |"
+    }
+  ],
+  "truthFiles": [
+    {
+      "path": "package.json"
+    },
+    {
+      "path": "README.md"
+    },
+    {
+      "path": "docs/product-overview.md"
+    },
+    {
+      "path": "docs/index.md"
+    },
+    {
+      "path": "docs/mode-reference.md"
+    },
+    {
+      "path": "skills/skills-registry.yaml"
+    }
+  ]
+}

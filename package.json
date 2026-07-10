@@ -1,7 +1,7 @@
 {
   "name": "forgewright",
   "version": "8.7.0",
-  "description": "Adaptive AI Orchestrator — 52 skills, 19 modes. SaaS, game dev, XR, AI/ML, data engineering. Pipeline: DEFINE → BUILD → HARDEN → SHIP → SUSTAIN → GROW",
+  "description": "Adaptive AI Orchestrator — 83 skills, 24 modes. SaaS, game dev, XR, AI/ML, data engineering. Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN",
   "private": true,
   "workspaces": [
     "mcp",
@@ -14,7 +14,8 @@
     "lint": "cd mcp && npm run lint",
     "build:cli": "npm run build --workspace src/cli",
     "dev:cli": "cd src/cli && npm run dev",
-    "typecheck:cli": "cd src/cli && npx tsc --noEmit"
+    "typecheck:cli": "cd src/cli && npx tsc --noEmit",
+    "verify:product-truth": "python3 scripts/ci/verify-product-truth.py"
   },
   "devDependencies": {
     "@midscene/android": "^1.10.2",

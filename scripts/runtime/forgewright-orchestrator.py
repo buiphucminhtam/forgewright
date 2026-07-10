@@ -2,8 +2,13 @@ import os
 import sys
 import json
 import asyncio
+import hashlib
+import re
+import time
 import requests
-from typing import List, Dict
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, List, Dict
 from contextlib import AsyncExitStack
 
 from mcp import ClientSession, StdioServerParameters
@@ -11,55 +16,210 @@ from mcp.client.stdio import stdio_client
 
 # Repo-relative paths — derived from this script's own location.
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_REPO_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
+_REPO_ROOT = str(Path(__file__).resolve().parents[2])
 
 # Provider / model are read exclusively from env vars so that the harness
 # controls them without needing to hard-code any model name in this file.
 _PROVIDER = os.environ.get("FORGEWRIGHT_PROVIDER", "OpenClaw")
-_MODEL = os.environ.get("NINEROUTER_MODEL", "OpenClaw")
+
+
+def _first_nonempty(*values: str | None) -> str:
+    return next((value.strip() for value in values if value and value.strip()), "")
+
+
+def resolve_model(environ: dict[str, str] | None = None) -> str:
+    env = os.environ if environ is None else environ
+    model = _first_nonempty(env.get("FORGEWRIGHT_MODEL"), env.get("NINEROUTER_MODEL"))
+    if not model:
+        raise ValueError(
+            "FORGEWRIGHT_MODEL is required (NINEROUTER_MODEL is a legacy fallback)"
+        )
+    return model
+
+
+def resolve_api_url(environ: dict[str, str] | None = None) -> str:
+    env = os.environ if environ is None else environ
+    exact_url = _first_nonempty(env.get("FORGEWRIGHT_API_URL"))
+    if exact_url:
+        return exact_url
+    legacy_base = _first_nonempty(env.get("NINEROUTER_BASE_URL"))
+    if legacy_base:
+        if legacy_base.endswith("/chat/completions"):
+            return legacy_base
+        return legacy_base.rstrip("/") + "/chat/completions"
+    return "https://api.minimax.io/v1/text/chatcompletion_v2"
+
+
+def resolve_code_dir(value: str) -> str:
+    path = Path(value).expanduser().resolve(strict=True)
+    if not path.is_dir():
+        raise ValueError(f"code_dir is not a directory: {path}")
+    if path == Path(path.anchor):
+        raise ValueError("code_dir cannot be the filesystem root")
+    return str(path)
+
+
+def _positive_int(environ: dict[str, str], name: str, default: int) -> int:
+    raw = environ.get(name, str(default))
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive integer") from error
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
+@dataclass(frozen=True)
+class RuntimeLimits:
+    max_turns: int
+    max_tool_calls_per_turn: int
+    max_tool_calls_total: int
+    max_output_tokens: int
+    max_http_response_bytes: int
+    max_tool_argument_bytes: int
+    max_tool_result_bytes: int
+    max_context_bytes: int
+    max_tools: int
+    max_tool_schema_bytes: int
+    mcp_timeout_seconds: int
+    runtime_timeout_seconds: int
+
+    @classmethod
+    def from_env(cls, environ: dict[str, str] | None = None) -> "RuntimeLimits":
+        env = dict(os.environ if environ is None else environ)
+        return cls(
+            max_turns=_positive_int(env, "FORGEWRIGHT_MAX_TURNS", 20),
+            max_tool_calls_per_turn=_positive_int(
+                env, "FORGEWRIGHT_MAX_TOOL_CALLS_PER_TURN", 8
+            ),
+            max_tool_calls_total=_positive_int(
+                env, "FORGEWRIGHT_MAX_TOOL_CALLS_TOTAL", 40
+            ),
+            max_output_tokens=_positive_int(env, "FORGEWRIGHT_MAX_OUTPUT_TOKENS", 8192),
+            max_http_response_bytes=_positive_int(
+                env, "FORGEWRIGHT_MAX_HTTP_RESPONSE_BYTES", 2_000_000
+            ),
+            max_tool_argument_bytes=_positive_int(
+                env, "FORGEWRIGHT_MAX_TOOL_ARGUMENT_BYTES", 100_000
+            ),
+            max_tool_result_bytes=_positive_int(
+                env, "FORGEWRIGHT_MAX_TOOL_RESULT_BYTES", 250_000
+            ),
+            max_context_bytes=_positive_int(
+                env, "FORGEWRIGHT_MAX_CONTEXT_BYTES", 1_000_000
+            ),
+            max_tools=_positive_int(env, "FORGEWRIGHT_MAX_TOOLS", 256),
+            max_tool_schema_bytes=_positive_int(
+                env, "FORGEWRIGHT_MAX_TOOL_SCHEMA_BYTES", 500_000
+            ),
+            mcp_timeout_seconds=_positive_int(
+                env, "FORGEWRIGHT_MCP_TIMEOUT_SECONDS", 120
+            ),
+            runtime_timeout_seconds=_positive_int(
+                env, "FORGEWRIGHT_RUNTIME_TIMEOUT_SECONDS", 3600
+            ),
+        )
+
+
+def qualified_tool_name(server: str, tool: str) -> str:
+    raw = f"mcp_{server}__{tool}"
+    sanitized = re.sub(r"[^A-Za-z0-9_-]", "_", raw)
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:8]
+    prefix = sanitized[: 64 - len(digest) - 2]
+    return f"{prefix}__{digest}"
+
+
+def _serialized_size(value: Any) -> int:
+    return len(
+        json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    )
+
+
+def _read_bounded_response(response: Any, max_bytes: int) -> str:
+    chunks: list[bytes] = []
+    total = 0
+    for chunk in response.iter_content(chunk_size=65_536):
+        if not chunk:
+            continue
+        total += len(chunk)
+        if total > max_bytes:
+            raise RuntimeError("runtime budget exceeded: HTTP response bytes")
+        chunks.append(chunk)
+    return b"".join(chunks).decode("utf-8", errors="replace")
+
+
+_MODEL = _first_nonempty(
+    os.environ.get("FORGEWRIGHT_MODEL"), os.environ.get("NINEROUTER_MODEL")
+)
 
 # MiniMax-specific config is optional and only used when provider == "minimax".
-_API_KEY = os.environ.get("NINEROUTER_API_KEY", os.environ.get("MINIMAX_API_KEY", ""))
-_BASE_URL = os.environ.get("NINEROUTER_BASE_URL")
-if not _BASE_URL:
-    _BASE_URL = "https://api.minimax.io/v1/text/chatcompletion_v2"
-if not _BASE_URL.endswith("/chat/completions"):
-    if not _BASE_URL.endswith("/"):
-        _BASE_URL += "/"
-    _BASE_URL += "chat/completions"
+_API_KEY = _first_nonempty(
+    os.environ.get("FORGEWRIGHT_API_KEY"),
+    os.environ.get("NINEROUTER_API_KEY"),
+    os.environ.get("MINIMAX_API_KEY"),
+)
+_BASE_URL = resolve_api_url()
 
 
 class ForgewrightAgent:
     def __init__(self, project_id: str, code_dir: str):
         self.project_id = project_id
-        self.code_dir = code_dir
+        self.code_dir = resolve_code_dir(code_dir)
         self.messages = []
+        self.limits = RuntimeLimits.from_env()
+        self._started_at: float | None = None
+
+    def _remaining_timeout(self, operation_cap: float) -> float:
+        if self._started_at is None:
+            return min(operation_cap, float(self.limits.runtime_timeout_seconds))
+        remaining = self.limits.runtime_timeout_seconds - (
+            time.monotonic() - self._started_at
+        )
+        if remaining <= 0:
+            raise RuntimeError("runtime budget exceeded: total runtime")
+        return min(operation_cap, remaining)
 
     def _call_api(self, tools: List[Dict]) -> Dict:
         """Call the Chat Completions API."""
         if not _API_KEY:
-            print("[!] NINEROUTER_API_KEY or MINIMAX_API_KEY env var is not set.")
+            print(
+                "[!] FORGEWRIGHT_API_KEY, NINEROUTER_API_KEY, or MINIMAX_API_KEY env var is not set."
+            )
             sys.exit(1)
         if not _MODEL:
-            print("[!] NINEROUTER_MODEL env var is not set.")
+            print("[!] FORGEWRIGHT_MODEL env var is not set.")
             sys.exit(1)
         headers = {
             "Authorization": f"Bearer {_API_KEY}",
             "Content-Type": "application/json",
         }
 
-        data = {"model": _MODEL, "messages": self.messages, "temperature": 0.1}
+        if _serialized_size(self.messages) > self.limits.max_context_bytes:
+            raise RuntimeError("runtime budget exceeded: context bytes")
+        data = {
+            "model": _MODEL,
+            "messages": self.messages,
+            "temperature": 0.1,
+            "max_tokens": self.limits.max_output_tokens,
+        }
         if tools:
             data["tools"] = tools
 
         print(f"[*] Calling {_PROVIDER}/{_MODEL} (Messages: {len(self.messages)})...")
-        resp = requests.post(_BASE_URL, headers=headers, json=data, timeout=120)
-        resp.encoding = "utf-8"
+        resp = requests.post(
+            _BASE_URL,
+            headers=headers,
+            json=data,
+            timeout=self._remaining_timeout(120),
+            stream=True,
+        )
+        response_text = _read_bounded_response(
+            resp, self.limits.max_http_response_bytes
+        )
 
-        import json
-
-        if resp.text.startswith("data: "):
-            lines = resp.text.split("\n")
+        if response_text.startswith("data: "):
+            lines = response_text.split("\n")
             content = ""
             tool_calls = {}
             for line in lines:
@@ -109,10 +269,10 @@ class ForgewrightAgent:
             return message
         else:
             try:
-                text = resp.text.replace("data: [DONE]", "").strip()
+                text = response_text.replace("data: [DONE]", "").strip()
                 resp_json = json.loads(text)
             except Exception:
-                print(f"[!] API Error, non-JSON response: {repr(resp.text)}")
+                print(f"[!] API Error, non-JSON response: {repr(response_text)}")
                 sys.exit(1)
 
             if "choices" not in resp_json:
@@ -123,6 +283,8 @@ class ForgewrightAgent:
 
     async def run(self, task: str):
         import subprocess
+
+        self._started_at = time.monotonic()
 
         # 1. Auto-Setup MCP for the project if manifest does not exist
         manifest_path = os.path.join(self.code_dir, ".antigravity", "mcp-manifest.json")
@@ -144,6 +306,7 @@ class ForgewrightAgent:
                     ["bash", mcp_setup_script],
                     cwd=self.code_dir,
                     check=True,
+                    timeout=self._remaining_timeout(300),
                 )
             except Exception as e:
                 print(f"[!] Warning: Auto-setup failed: {e}")
@@ -155,7 +318,6 @@ class ForgewrightAgent:
 
         gitnexus_env = {**os.environ}
         gitnexus_env["FORGEWRIGHT_WORKSPACE"] = self.code_dir
-        gitnexus_env["FORGEWRIGHT_TOOL_SANDBOX"] = "false"
         gitnexus_env["GITNEXUS_DB"] = gitnexus_db_path
 
         mcp_servers = [
@@ -166,7 +328,7 @@ class ForgewrightAgent:
                     args=[
                         "-y",
                         "@modelcontextprotocol/server-filesystem",
-                        "/workspace",
+                        self.code_dir,
                     ],
                     env=gitnexus_env,
                 ),
@@ -180,13 +342,17 @@ class ForgewrightAgent:
                     env=gitnexus_env,
                 ),
             },
-            {
-                "name": "nlm",
-                "params": StdioServerParameters(
-                    command="nlm", args=["mcp"], env={**os.environ}
-                ),
-            },
         ]
+        if os.environ.get("FORGEWRIGHT_ENABLE_NLM", "").lower() in {"1", "true", "yes"}:
+            mcp_servers.append(
+                {
+                    "name": "nlm",
+                    "optional": True,
+                    "params": StdioServerParameters(
+                        command="nlm", args=["mcp"], env={**os.environ}
+                    ),
+                }
+            )
 
         if os.path.exists(
             os.path.join(self.code_dir, ".antigravity", "mcp-manifest.json")
@@ -421,47 +587,78 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
                 active_sessions = {}
                 for srv in mcp_servers:
                     try:
-                        read, write = await stack.enter_async_context(
-                            stdio_client(srv["params"])
+                        read, write = await asyncio.wait_for(
+                            stack.enter_async_context(stdio_client(srv["params"])),
+                            timeout=self._remaining_timeout(
+                                self.limits.mcp_timeout_seconds
+                            ),
                         )
-                        session = await stack.enter_async_context(
-                            ClientSession(read, write)
+                        session = await asyncio.wait_for(
+                            stack.enter_async_context(ClientSession(read, write)),
+                            timeout=self._remaining_timeout(
+                                self.limits.mcp_timeout_seconds
+                            ),
                         )
-                        await session.initialize()
+                        await asyncio.wait_for(
+                            session.initialize(),
+                            timeout=self._remaining_timeout(
+                                self.limits.mcp_timeout_seconds
+                            ),
+                        )
                         active_sessions[srv["name"]] = session
                         print(f"[✓] MCP Server connected: {srv['name']}")
                     except Exception as e:
                         print(
                             f"[!] Warning: Failed to connect to MCP Server: {srv['name']} - {e}"
                         )
+                        if not srv.get("optional", False):
+                            raise RuntimeError(
+                                f"Required MCP server failed: {srv['name']}"
+                            ) from e
 
                 if not active_sessions:
                     raise RuntimeError(
                         "No MCP Servers could be connected. Check dependencies."
                     )
 
-                while True:
-                    # 1. Fetch available MCP Tools dynamically
-                    tools_payload = []
-                    tool_to_session_map = {}
+                tools_payload = []
+                tool_to_session_map = {}
+                for srv_name, session in active_sessions.items():
+                    mcp_tools = await asyncio.wait_for(
+                        session.list_tools(),
+                        timeout=self._remaining_timeout(
+                            self.limits.mcp_timeout_seconds
+                        ),
+                    )
+                    for tool in mcp_tools.tools:
+                        exposed_name = qualified_tool_name(srv_name, tool.name)
+                        if exposed_name in tool_to_session_map:
+                            raise RuntimeError(
+                                f"Qualified MCP tool collision: {exposed_name}"
+                            )
+                        tool_to_session_map[exposed_name] = (session, tool.name)
+                        tools_payload.append(
+                            {
+                                "type": "function",
+                                "function": {
+                                    "name": exposed_name,
+                                    "description": tool.description,
+                                    "parameters": tool.inputSchema,
+                                },
+                            }
+                        )
+                if len(tools_payload) > self.limits.max_tools:
+                    raise RuntimeError("runtime budget exceeded: tool count")
+                if _serialized_size(tools_payload) > self.limits.max_tool_schema_bytes:
+                    raise RuntimeError("runtime budget exceeded: tool schema bytes")
 
-                    for srv_name, session in active_sessions.items():
-                        try:
-                            mcp_tools = await session.list_tools()
-                            for t in mcp_tools.tools:
-                                tool_to_session_map[t.name] = session
-                                tools_payload.append(
-                                    {
-                                        "type": "function",
-                                        "function": {
-                                            "name": t.name,
-                                            "description": t.description,
-                                            "parameters": t.inputSchema,
-                                        },
-                                    }
-                                )
-                        except Exception as e:
-                            print(f"[!] Error querying tools from {srv_name}: {e}")
+                total_tool_calls = 0
+                for turn in range(1, self.limits.max_turns + 1):
+                    if (
+                        time.monotonic() - self._started_at
+                        > self.limits.runtime_timeout_seconds
+                    ):
+                        raise RuntimeError("runtime budget exceeded: total runtime")
 
                     # 2. ReAct reasoning with MiniMax
                     reply = self._call_api(tools_payload)
@@ -469,18 +666,48 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
 
                     # 3. Tool Execution Phase
                     if "tool_calls" in reply and reply["tool_calls"]:
+                        if (
+                            len(reply["tool_calls"])
+                            > self.limits.max_tool_calls_per_turn
+                        ):
+                            raise RuntimeError(
+                                "runtime budget exceeded: tool calls per turn"
+                            )
                         for tcall in reply["tool_calls"]:
                             tname = tcall["function"]["name"]
-                            targs = json.loads(tcall["function"]["arguments"])
+                            total_tool_calls += 1
+                            if total_tool_calls > self.limits.max_tool_calls_total:
+                                raise RuntimeError(
+                                    "runtime budget exceeded: total tool calls"
+                                )
+                            raw_arguments = tcall["function"].get("arguments", "")
+                            if (
+                                len(raw_arguments.encode("utf-8"))
+                                > self.limits.max_tool_argument_bytes
+                            ):
+                                raise RuntimeError(
+                                    "runtime budget exceeded: tool argument bytes"
+                                )
+                            targs = json.loads(raw_arguments)
+                            if not isinstance(targs, dict):
+                                raise ValueError(
+                                    "MCP tool arguments must decode to an object"
+                                )
                             print(f" ⚙️  Thực thi Tool: {tname} | Args: {targs}")
 
-                            target_session = tool_to_session_map.get(tname)
-                            if not target_session:
+                            target = tool_to_session_map.get(tname)
+                            if not target:
                                 res_text = f"Execution Error: Unknown tool {tname} - It was not supplied by any connected MCP server."
                             else:
+                                target_session, original_tool_name = target
                                 try:
-                                    result = await target_session.call_tool(
-                                        tname, arguments=targs
+                                    result = await asyncio.wait_for(
+                                        target_session.call_tool(
+                                            original_tool_name, arguments=targs
+                                        ),
+                                        timeout=self._remaining_timeout(
+                                            self.limits.mcp_timeout_seconds
+                                        ),
                                     )
                                     res_text = "\n".join(
                                         [
@@ -491,6 +718,13 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
                                     )
                                 except Exception as e:
                                     res_text = f"Execution Error: {str(e)}"
+                            if (
+                                len(res_text.encode("utf-8"))
+                                > self.limits.max_tool_result_bytes
+                            ):
+                                raise RuntimeError(
+                                    "runtime budget exceeded: tool result bytes"
+                                )
 
                             self.messages.append(
                                 {
@@ -505,6 +739,8 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
                         final_str = reply.get("content", "")
                         print(f"\n[🏁 KẾT THÚC TASK]\n{final_str}")
                         break
+                else:
+                    raise RuntimeError("runtime budget exceeded: model turns")
         except Exception as err:
             print(f"[!] Orchestrator Error: {str(err)}")
             sys.exit(1)
