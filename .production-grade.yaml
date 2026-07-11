@@ -10,7 +10,7 @@ expertMode:
     architectureReview: true
     codeReview: true
   budget:
-    maxExpertCallsPerRun: 5
+    maxExpertCallsPerRun: 12
     requireConfirmationAbove: 3
 
 token_tracking:

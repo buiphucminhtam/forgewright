@@ -16,9 +16,14 @@ export class PipelineService {
     private eventPublisher: IEventPublisher,
   ) {}
 
-  private async getState(): Promise<PipelineState> {
-    const state = await this.stateRepo.load();
-    if (!state) return { ...DEFAULT_STATE };
+  private normalizeState(state: PipelineState | null): PipelineState {
+    if (!state) {
+      return {
+        ...DEFAULT_STATE,
+        history: [],
+        phases: initializeDefaultPhases(0, 'IDLE'),
+      };
+    }
 
     // Backward compatibility initialization
     if (state.activeAction === undefined) state.activeAction = null;
@@ -31,153 +36,143 @@ export class PipelineService {
     return state;
   }
 
-  private async saveAndPublish(state: PipelineState): Promise<void> {
-    await this.stateRepo.save(state);
-    this.eventPublisher.publish('PIPELINE_STATE_UPDATE', state);
+  private async transactAndPublish(
+    mutator: (state: PipelineState) => PipelineState | null | Promise<PipelineState | null>,
+  ): Promise<PipelineState | null> {
+    const state = await this.stateRepo.transact(async (current) => {
+      return mutator(this.normalizeState(current));
+    });
+    if (state) this.eventPublisher.publish('PIPELINE_STATE_UPDATE', state);
+    return state;
   }
 
   async startPipeline(mode: string): Promise<string> {
-    const state = await this.getState();
-    state.currentPhase = 1;
-    state.currentMode = mode;
-    state.status = 'IN_PROGRESS';
-    state.history.push(`Started pipeline in mode: ${mode}`);
-    state.activeAction = null;
-    state.phaseProgress = null;
-    state.selfHealing = null;
-    state.qualityGate = null;
-    state.phases = initializeDefaultPhases(1, 'IN_PROGRESS');
-
-    await this.saveAndPublish(state);
-    return `Successfully started pipeline in ${mode} mode. You are now at Phase 1: Research & Discovery. Follow the Forgewright orchestrator instructions.`;
-  }
-
-  async advancePhase(): Promise<string> {
-    const state = await this.getState();
-    if (state.status === 'WAITING_FOR_GATE') {
-      return `Error: You cannot advance the phase yet. The current phase is frozen pending human-in-the-loop (HITL) gate approval.`;
-    }
-
-    const now = new Date().toISOString();
-    const currentPhaseKey = PHASE_KEYS[state.currentPhase];
-    const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
-    if (currentPhaseState) {
-      currentPhaseState.status = 'passed';
-      currentPhaseState.endedAt = now;
-      currentPhaseState.progress = 1.0;
-    }
-
-    if (state.currentPhase >= PIPELINE_PHASES.length - 1) {
-      state.status = 'COMPLETED';
-      state.history.push(`Pipeline completed.`);
+    await this.transactAndPublish((state) => {
+      state.currentPhase = 1;
+      state.currentMode = mode;
+      state.status = 'IN_PROGRESS';
+      state.history.push(`Started pipeline in mode: ${mode}`);
       state.activeAction = null;
       state.phaseProgress = null;
       state.selfHealing = null;
       state.qualityGate = null;
-      await this.saveAndPublish(state);
-      return `Success: Pipeline is now Fully Completed.`;
-    }
+      state.phases = initializeDefaultPhases(1, 'IN_PROGRESS');
+      return state;
+    });
+    return `Successfully started pipeline in ${mode} mode. You are now at Phase 1: Research & Discovery. Follow the Forgewright orchestrator instructions.`;
+  }
 
-    state.currentPhase += 1;
-    const phaseName = PIPELINE_PHASES[state.currentPhase];
-    state.status = 'IN_PROGRESS';
-    state.history.push(`Advanced to ${phaseName}`);
-    state.activeAction = null;
-    state.phaseProgress = null;
-    state.selfHealing = null;
-    state.qualityGate = null;
-
-    const newPhaseKey = PHASE_KEYS[state.currentPhase];
-    const newPhaseState = state.phases.find((p) => p.key === newPhaseKey);
-    if (newPhaseState) {
-      newPhaseState.status = 'running';
-      newPhaseState.startedAt = now;
-      newPhaseState.progress = 0.0;
-    }
-
-    await this.saveAndPublish(state);
-    return `Successfully advanced to ${phaseName}. Check the Forgewright instructions for roles required in this phase.`;
+  async advancePhase(): Promise<string> {
+    let result = '';
+    await this.transactAndPublish((state) => {
+      if (state.status === 'WAITING_FOR_GATE') {
+        result =
+          'Error: You cannot advance the phase yet. The current phase is frozen pending human-in-the-loop (HITL) gate approval.';
+        return null;
+      }
+      const now = new Date().toISOString();
+      const currentPhaseState = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
+      if (currentPhaseState)
+        Object.assign(currentPhaseState, { status: 'passed', endedAt: now, progress: 1.0 });
+      if (state.currentPhase >= PIPELINE_PHASES.length - 1) {
+        Object.assign(state, {
+          status: 'COMPLETED',
+          activeAction: null,
+          phaseProgress: null,
+          selfHealing: null,
+          qualityGate: null,
+        });
+        state.history.push('Pipeline completed.');
+        result = 'Success: Pipeline is now Fully Completed.';
+        return state;
+      }
+      state.currentPhase += 1;
+      const phaseName = PIPELINE_PHASES[state.currentPhase];
+      Object.assign(state, {
+        status: 'IN_PROGRESS',
+        activeAction: null,
+        phaseProgress: null,
+        selfHealing: null,
+        qualityGate: null,
+      });
+      state.history.push(`Advanced to ${phaseName}`);
+      const newPhaseState = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
+      if (newPhaseState)
+        Object.assign(newPhaseState, { status: 'running', startedAt: now, progress: 0.0 });
+      result = `Successfully advanced to ${phaseName}. Check the Forgewright instructions for roles required in this phase.`;
+      return state;
+    });
+    return result;
   }
 
   async requestGateApproval(
     message: string,
     qualityGate?: QualityGateState | null,
   ): Promise<string> {
-    const state = await this.getState();
-    state.status = 'WAITING_FOR_GATE';
-    state.history.push(`Requested Gate Approval: ${message}`);
-    state.qualityGate = qualityGate || null;
-
-    const currentPhaseKey = PHASE_KEYS[state.currentPhase];
-    const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
-    if (currentPhaseState) {
-      currentPhaseState.status = 'waiting_review';
-    }
-
-    await this.saveAndPublish(state);
+    await this.transactAndPublish((state) => {
+      state.status = 'WAITING_FOR_GATE';
+      state.history.push(`Requested Gate Approval: ${message}`);
+      state.qualityGate = qualityGate || null;
+      const phase = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
+      if (phase) phase.status = 'waiting_review';
+      return state;
+    });
     return `System is now locked. Ask the user for explicit approval to pass the gate: "${message}".`;
   }
 
   async approveGate(): Promise<string> {
-    const state = await this.getState();
-    if (state.status !== 'WAITING_FOR_GATE') {
-      return 'Error: System is not waiting for any gate approval.';
-    }
-    state.status = 'IN_PROGRESS';
-    state.history.push('Gate approved by user.');
-    state.qualityGate = null;
-
-    const currentPhaseKey = PHASE_KEYS[state.currentPhase];
-    const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
-    if (currentPhaseState) {
-      currentPhaseState.status = 'running';
-    }
-
-    await this.saveAndPublish(state);
-    return 'Gate successfully approved. Proceed to next step or advance phase.';
+    let result = '';
+    await this.transactAndPublish((state) => {
+      if (state.status !== 'WAITING_FOR_GATE') {
+        result = 'Error: System is not waiting for any gate approval.';
+        return null;
+      }
+      state.status = 'IN_PROGRESS';
+      state.history.push('Gate approved by user.');
+      state.qualityGate = null;
+      const phase = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
+      if (phase) phase.status = 'running';
+      result = 'Gate successfully approved. Proceed to next step or advance phase.';
+      return state;
+    });
+    return result;
   }
 
   async failPipeline(reason?: string): Promise<string> {
-    const state = await this.getState();
-    state.status = 'FAILED';
-    const entry = reason ? `Pipeline failed: ${reason}` : 'Pipeline failed.';
-    state.history.push(entry);
-    state.activeAction = null;
-    state.phaseProgress = null;
-    state.selfHealing = null;
-    state.qualityGate = null;
-
-    const currentPhaseKey = PHASE_KEYS[state.currentPhase];
-    const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
-    if (currentPhaseState) {
-      currentPhaseState.status = 'failed';
-      currentPhaseState.errorSummary = reason || 'Unknown failure';
-    }
-
-    await this.saveAndPublish(state);
+    await this.transactAndPublish((state) => {
+      state.status = 'FAILED';
+      state.history.push(reason ? `Pipeline failed: ${reason}` : 'Pipeline failed.');
+      Object.assign(state, {
+        activeAction: null,
+        phaseProgress: null,
+        selfHealing: null,
+        qualityGate: null,
+      });
+      const phase = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
+      if (phase)
+        Object.assign(phase, { status: 'failed', errorSummary: reason || 'Unknown failure' });
+      return state;
+    });
     return `Pipeline status updated to FAILED.`;
   }
 
   async updateSubTask(activeAction: string | null, phaseProgress: number | null): Promise<void> {
-    const state = await this.getState();
-    state.activeAction = activeAction;
-    state.phaseProgress = phaseProgress;
-
-    const currentPhaseKey = PHASE_KEYS[state.currentPhase];
-    const currentPhaseState = state.phases.find((p) => p.key === currentPhaseKey);
-    if (currentPhaseState) {
-      if (activeAction !== undefined) currentPhaseState.activeAction = activeAction;
-      if (phaseProgress !== null && phaseProgress !== undefined) {
-        currentPhaseState.progress = phaseProgress;
+    await this.transactAndPublish((state) => {
+      state.activeAction = activeAction;
+      state.phaseProgress = phaseProgress;
+      const phase = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
+      if (phase) {
+        phase.activeAction = activeAction;
+        if (phaseProgress !== null) phase.progress = phaseProgress;
       }
-    }
-
-    await this.saveAndPublish(state);
+      return state;
+    });
   }
 
   async updateSelfHealing(selfHealing: SelfHealingState | null): Promise<void> {
-    const state = await this.getState();
-    state.selfHealing = selfHealing;
-    await this.saveAndPublish(state);
+    await this.transactAndPublish((state) => {
+      state.selfHealing = selfHealing;
+      return state;
+    });
   }
 }

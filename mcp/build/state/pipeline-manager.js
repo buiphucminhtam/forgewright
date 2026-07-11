@@ -2,7 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS } from '../core/models/PipelineState.js';
+import { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS, parsePipelineState, } from '../core/models/PipelineState.js';
 import { PipelineService } from '../core/services/PipelineService.js';
 import { StateQueryService } from '../core/services/StateQueryService.js';
 import { FileSystemStateRepository } from '../infrastructure/adapters/FileSystemStateRepository.js';
@@ -90,7 +90,7 @@ function getServices() {
     if (!pipelineService || !queryService) {
         const wsRoot = getWorkspaceRoot();
         const sessionId = process.env.FORGEWRIGHT_SESSION_ID;
-        const stateRepo = new FileSystemStateRepository(wsRoot, 'pipeline-state.json');
+        const stateRepo = new FileSystemStateRepository(wsRoot, 'pipeline-state.json', parsePipelineState);
         const mcpPublisher = new McpEventPublisher(wsRoot, sessionId);
         // Note: To truly set the server on mcpPublisher, we need a way to pass it.
         // rpc-client.ts is handling the server right now.

@@ -73,9 +73,11 @@ describe('Pipeline Manager', () => {
     cleanState();
     await startPipeline('Feature');
     await requestGateApproval('test gate');
+    const revision = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8')).revision;
     const result = await advancePhase();
     expect(result).toContain('Error');
     expect(result).toContain('frozen');
+    expect(JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8')).revision).toBe(revision);
   });
 
   it('advancePhase completes pipeline at end', async () => {
@@ -123,8 +125,10 @@ describe('Pipeline Manager', () => {
     resetWorkspaceRoot();
     cleanState();
     await startPipeline('Feature');
+    const revision = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8')).revision;
     const result = await approveGate();
     expect(result).toContain('Error');
+    expect(JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8')).revision).toBe(revision);
   });
 
   it('PIPELINE_PHASES has correct phases', async () => {

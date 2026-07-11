@@ -23,7 +23,7 @@
 
 ---
 
-> **The AI that gets smarter every time it fails.** Unlike other AI assistants, Forgewright doesn't repeat the same mistakes. It learns.
+> **An AI harness that records failures and reuses verified lessons.** Forgewright is designed to reduce repeated failure patterns; recurrence is measured rather than assumed away.
 
 Forgewright is an open-source, production-grade harness that turns raw LLMs (Claude, Gemini, GPT) into reliable engineering agents. It coordinates complex software delivery through a strict pipeline of definition, building, hardening, and shipping, using multi-agent parallel execution.
 
@@ -35,11 +35,11 @@ Raw language models are only a small part of a functional AI coding agent. Witho
 
 ### Key Outcomes
 
-- **Never repeats a mistake**: The Adaptive Self-Improving Protocol (ASIP) decays failing logic paths and hardcodes learned lessons into the system.
+- **Reduces repeated failure patterns**: The Adaptive Self-Improving Protocol (ASIP) records lessons and weakens previously failing logic paths. Effectiveness depends on memory being enabled and is evaluated through recurrence metrics.
 - **Project-Specific Memory**: Uses a local SQLite GraphRAG cognitive database (FluxMem) to instantly recall your exact stack, preventing generic "textbook" code.
 - **Pipeline Execution**: Bypasses the "chat" paradigm. Requests undergo a strict requirements-gathering and testing lifecycle before code is written.
 - **Enterprise-Grade Testing**: Native integration with Property-Based Testing, Mutation Testing, and Visual Regression guarantees zero escaped bugs.
-- **Local-First Privacy**: Your code and prompts never leave your local machine.
+- **Local-first state**: Project memory and orchestration state are stored in the workspace by default. Prompts, code excerpts, and tool results may still be sent to the model or tool providers you configure; use a local model and local tools when data must stay on-device.
 
 ### Who It Is For
 
@@ -213,7 +213,7 @@ A unified management dashboard for handling multiple projects simultaneously. Mo
 
 ### 6. Token Tracking & Cost Analytics
 
-Track your LLM usage, API costs, and optimization opportunities in real-time. Set daily limits and alerts to avoid runaway API bills caused by autonomous looping behaviors.
+Track reported LLM usage, estimate API costs from configured pricing, and surface optimization opportunities. Budgets and alerts reduce runaway-loop risk, but provider billing remains authoritative and must be reconciled when usage metadata or prices are unavailable.
 **[Read the Token Management Guide ➔](docs/guides/token-management.md)**
 
 ### 7. MCP Tool Sandbox

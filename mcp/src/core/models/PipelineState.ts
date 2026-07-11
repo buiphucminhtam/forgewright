@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export interface SelfHealingState {
   isHealing: boolean;
   currentAttempt: number;
@@ -38,6 +40,64 @@ export interface PipelineState {
   selfHealing?: SelfHealingState | null;
   qualityGate?: QualityGateState | null;
   phases: PhaseState[];
+}
+
+const SelfHealingStateSchema = z
+  .object({
+    isHealing: z.boolean(),
+    currentAttempt: z.number().int().nonnegative(),
+    maxAttempts: z.number().int().positive(),
+    lastError: z.string().optional(),
+  })
+  .strict();
+
+const QualityGateStateSchema = z
+  .object({
+    score: z.number().finite(),
+    threshold: z.number().finite(),
+    failedCriteria: z.array(
+      z.object({ name: z.string(), score: z.number().finite(), reason: z.string() }).strict(),
+    ),
+  })
+  .strict();
+
+const PhaseStateSchema = z
+  .object({
+    key: z.enum(['interpret', 'define', 'build', 'harden', 'ship']),
+    status: z.enum([
+      'not_started',
+      'running',
+      'waiting_review',
+      'passed',
+      'failed',
+      'skipped',
+      'blocked',
+    ]),
+    progress: z.number().min(0).max(1),
+    activeAction: z.string().nullable().optional(),
+    startedAt: z.string().nullable().optional(),
+    endedAt: z.string().nullable().optional(),
+    errorSummary: z.string().nullable().optional(),
+  })
+  .strict();
+
+const PipelineStateSchema = z
+  .object({
+    currentPhase: z.number().int().min(0).max(4),
+    currentMode: z.string().nullable(),
+    status: z.enum(['IDLE', 'IN_PROGRESS', 'WAITING_FOR_GATE', 'COMPLETED', 'FAILED']),
+    history: z.array(z.string()),
+    activeAction: z.string().nullable().optional(),
+    phaseProgress: z.number().min(0).max(1).nullable().optional(),
+    selfHealing: SelfHealingStateSchema.nullable().optional(),
+    qualityGate: QualityGateStateSchema.nullable().optional(),
+    phases: z.array(PhaseStateSchema).optional().default([]),
+  })
+  .strict();
+
+/** Runtime validation boundary for persisted pipeline state. */
+export function parsePipelineState(value: unknown): PipelineState {
+  return PipelineStateSchema.parse(value) as PipelineState;
 }
 
 export const PIPELINE_PHASES = [
