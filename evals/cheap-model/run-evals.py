@@ -7,6 +7,8 @@ import tempfile
 import subprocess
 import time
 import argparse
+import hashlib
+from typing import Any
 
 # Color constants for nice terminal output
 GREEN = "\033[92m"
@@ -257,6 +259,57 @@ def sanitize_log(message):
 }
 
 
+EVAL_REPORT_SCHEMA_VERSION = 2
+
+
+def _verifier_fingerprint(tasks: list[dict[str, Any]]) -> str:
+    """Return a deterministic fingerprint of task IDs and verifier commands."""
+    payload = [
+        {"id": task["id"], "verifierCommands": task.get("verifierCommands", [])}
+        for task in tasks
+    ]
+    encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def validate_comparable_report(report: Any) -> list[str]:
+    """Validate the local schema required before a report may be compared."""
+    if not isinstance(report, dict):
+        return ["report must be a JSON object"]
+    errors = []
+    if report.get("schemaVersion") != EVAL_REPORT_SCHEMA_VERSION:
+        errors.append(f"schemaVersion must be {EVAL_REPORT_SCHEMA_VERSION}")
+    metadata = report.get("comparisonMetadata")
+    if not isinstance(metadata, dict):
+        return errors + ["comparisonMetadata must be an object"]
+    if metadata.get("mode") != "live":
+        errors.append(
+            "comparisonMetadata.mode must be 'live' (mock evidence is rejected)"
+        )
+    for field in (
+        "provider",
+        "modelId",
+        "modelSnapshot",
+        "verifierVersion",
+        "verifierFingerprint",
+    ):
+        if not isinstance(metadata.get(field), str) or not metadata[field].strip():
+            errors.append(f"comparisonMetadata.{field} must be a non-empty string")
+    attempts = metadata.get("attempts")
+    if not isinstance(attempts, int) or isinstance(attempts, bool) or attempts < 1:
+        errors.append("comparisonMetadata.attempts must be a positive integer")
+    task_ids = metadata.get("taskIds")
+    if (
+        not isinstance(task_ids, list)
+        or not task_ids
+        or not all(isinstance(task_id, str) and task_id for task_id in task_ids)
+    ):
+        errors.append("comparisonMetadata.taskIds must be a non-empty string list")
+    elif len(task_ids) != len(set(task_ids)):
+        errors.append("comparisonMetadata.taskIds must not contain duplicates")
+    return errors
+
+
 def print_comparison(legacy_path, lite_path):
     """Compare two result files, rejecting non-comparable pairs."""
     if not os.path.exists(legacy_path):
@@ -279,59 +332,22 @@ def print_comparison(legacy_path, lite_path):
         log_error(f"Failed to read results: {e}")
         return False
 
-    # -----------------------------------------------------------------------
-    # Comparable-run gate: reject pairs that cannot be fairly compared.
-    # -----------------------------------------------------------------------
-    errors = []
-
-    leg_mode = legacy_data.get("mode", "")
-    lit_mode = lite_data.get("mode", "")
-    if leg_mode == "mock" or lit_mode == "mock":
-        errors.append(
-            f"Mock runs are not comparable to live runs "
-            f"(legacy mode='{leg_mode}', lite mode='{lit_mode}'). "
-            "Re-run both with --live."
-        )
-
-    leg_model = legacy_data.get("model", "")
-    lit_model = lite_data.get("model", "")
-    if leg_model != lit_model and not errors:  # already reported if mock
-        errors.append(
-            f"Model mismatch: legacy='{leg_model}', lite='{lit_model}'. "
-            "Both runs must use the same model so only the kernel/prompt changes."
-        )
-
-    leg_provider = legacy_data.get("provider", "")
-    lit_provider = lite_data.get("provider", "")
-    if leg_provider != lit_provider:
-        errors.append(
-            f"Provider mismatch: legacy='{leg_provider}', lite='{lit_provider}'. "
-            "Both runs must use the same provider."
-        )
-
-    leg_tasks = legacy_data.get("summary", {}).get("totalTasks", -1)
-    lit_tasks = lite_data.get("summary", {}).get("totalTasks", -2)
-    if leg_tasks != lit_tasks:
-        errors.append(
-            f"Task count mismatch: legacy={leg_tasks}, lite={lit_tasks}. "
-            "Both runs must evaluate the same task suite."
-        )
-
-    leg_attempts = legacy_data.get("defaultAttempts", -1)
-    lit_attempts = lite_data.get("defaultAttempts", -2)
-    if leg_attempts != lit_attempts:
-        errors.append(
-            f"Attempt count mismatch: legacy k={leg_attempts}, lite k={lit_attempts}. "
-            "Both runs must use the same k."
-        )
-
-    leg_ver = legacy_data.get("verifierVersion", "")
-    lit_ver = lite_data.get("verifierVersion", "")
-    if leg_ver and lit_ver and leg_ver != lit_ver:
-        errors.append(
-            f"Verifier version mismatch: legacy='{leg_ver}', lite='{lit_ver}'. "
-            "One run used stale verifiers — re-run both with the same verifier suite."
-        )
+    errors = [f"legacy: {error}" for error in validate_comparable_report(legacy_data)]
+    errors += [f"lite: {error}" for error in validate_comparable_report(lite_data)]
+    legacy_meta = legacy_data.get("comparisonMetadata", {})
+    lite_meta = lite_data.get("comparisonMetadata", {})
+    if not errors:
+        for field, label in (
+            ("provider", "Provider"),
+            ("modelId", "Model"),
+            ("modelSnapshot", "Model snapshot"),
+            ("taskIds", "Task set"),
+            ("attempts", "Attempt count"),
+            ("verifierVersion", "Verifier version"),
+            ("verifierFingerprint", "Verifier fingerprint"),
+        ):
+            if legacy_meta[field] != lite_meta[field]:
+                errors.append(f"{label} mismatch between reports.")
 
     if errors:
         log_error("Cannot compare: the two result files are not comparable.")
@@ -350,7 +366,7 @@ def print_comparison(legacy_path, lite_path):
         f"{BOLD}{CYAN}----------------------------------------------------------------------{RESET}"
     )
     print(
-        f"Legacy Model : {legacy_data.get('model', 'N/A')}  |  Lite Model : {lite_data.get('model', 'N/A')}"
+        f"Legacy Model : {legacy_meta.get('modelId', 'N/A')}  |  Lite Model : {lite_meta.get('modelId', 'N/A')}"
     )
     print(
         f"Legacy Date  : {legacy_data.get('timestamp', 'N/A')} |  Lite Date  : {lite_data.get('timestamp', 'N/A')}"
@@ -560,6 +576,14 @@ def main():
     if args.live and not args.model:
         log_error("--model (or FORGEWRIGHT_MODEL env var) is required for --live runs.")
         sys.exit(1)
+    if args.live and not os.environ.get("FORGEWRIGHT_PROVIDER", "").strip():
+        log_error("FORGEWRIGHT_PROVIDER is required for a comparable --live report.")
+        sys.exit(1)
+    if args.live and not os.environ.get("FORGEWRIGHT_MODEL_SNAPSHOT", "").strip():
+        log_error(
+            "FORGEWRIGHT_MODEL_SNAPSHOT is required for a comparable --live report."
+        )
+        sys.exit(1)
 
     results = []
     category_summary = {}
@@ -732,12 +756,27 @@ def main():
     pass_rate = (passed_tasks / total_tasks) * 100 if total_tasks > 0 else 0
 
     report = {
+        "schemaVersion": EVAL_REPORT_SCHEMA_VERSION,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "mode": "mock" if args.mock else "live",
         "model": args.model if not args.mock else "mocked",
         "provider": os.environ.get("FORGEWRIGHT_PROVIDER", ""),
         "defaultAttempts": suite.get("defaultAttempts", 1),
         "verifierVersion": suite.get("verifierVersion", "1"),
+        "comparisonMetadata": {
+            "mode": "mock" if args.mock else "live",
+            "provider": os.environ.get("FORGEWRIGHT_PROVIDER", "")
+            if not args.mock
+            else "mock",
+            "modelId": args.model if not args.mock else "mocked",
+            "modelSnapshot": os.environ.get("FORGEWRIGHT_MODEL_SNAPSHOT", "")
+            if not args.mock
+            else "mock",
+            "taskIds": [task["id"] for task in tasks],
+            "attempts": suite.get("defaultAttempts", 1),
+            "verifierVersion": suite.get("verifierVersion", "1"),
+            "verifierFingerprint": _verifier_fingerprint(tasks),
+        },
         "summary": {
             "totalTasks": total_tasks,
             "passedTasks": passed_tasks,

@@ -2,7 +2,7 @@
 
 > **North star:** cost per verified, accepted engineering task.
 > **Scope:** the core engineering loop first; game, XR, research, and growth remain optional capability packs until the core loop has production evidence.
-> **Status date:** 2026-07-10.
+> **Status date:** 2026-07-11.
 
 ## Product Goal
 
@@ -26,15 +26,15 @@ The product promise is:
 
 | Area | Current evidence | Gap |
 |---|---|---|
-| Product truth | `product-manifest.json` and a deterministic validator now cover public version, pipeline, skill, mode, surface, and maturity facts | CI integration and remaining legacy/status-document cleanup are pending |
-| Runtime | MCP, CLI, and legacy Python/shell orchestration coexist | No declared canonical runtime or conformance matrix |
+| Product truth | `product-manifest.json`, deterministic validator, and required aggregate gate cover declared public facts | Remaining legacy/status-document cleanup is pending |
+| Runtime | The TypeScript MCP stdio server is declared as the canonical locally-tested production path; CLI and Python/shell paths coexist | Live provider/MCP smoke and legacy-path equivalence evidence are pending |
 | Safety controls | MiddlewareChain tests pass, but production construction was not found outside tests | Safety claims are not proven on the production path |
-| Legacy agent loop | Local hardening now caches a bounded namespaced tool catalog and enforces turn, tool-call, context, output, response, and timeout limits | Live MCP/provider smoke evidence and canonical-runtime ADR remain pending |
+| Legacy agent loop | Local hardening now caches a bounded namespaced tool catalog and enforces turn, tool-call, context, output, response, and timeout limits | Live MCP/provider smoke evidence and legacy-path enforcement equivalence remain pending |
 | Model selection | Provider-specific static tier guidance and several unrelated model environment variables | No capability/risk router or startup capability probe |
-| Evaluation | Stored cheap-model comparison mixes live and mock results | No valid quality/cost baseline for routing decisions |
+| Evaluation | Schema-v2 local validator rejects mock/incomplete/mismatched reports; historical files are documented as non-comparable | No reproducible paired live baseline or live provider evidence |
 | Cost control | Token budgets and reports exist | Budget is not enforced at a single model-call gateway |
 | State | File state persistence can log a failed write while the caller reports success | No fail-closed error propagation or concurrency control |
-| CI/release | MCP and CLI tests exist; several suites and coverage are not part of one required aggregate gate | Release evidence is fragmented |
+| CI/release | A deterministic aggregate workflow invokes product truth, Python units, MCP lint/format/build/test, and CLI tests | Coverage, security, clean-install, and runtime smoke remain outside this partial P3.1 gate |
 | Memory | Boot injection is capped at 500 tokens | Retrieval quality, staleness, and non-ASCII query behavior lack release KPIs |
 
 ## GPT Routing Policy
@@ -59,11 +59,11 @@ Every route decision must log: task class, risk signals, selected model and snap
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
-| P0.1 | Declare the canonical runtime in an ADR and add a claim-to-enforcement conformance matrix | Architect / Expert | None | ADR accepted; every safety claim maps to code and an automated test |
-| P0.2 | **Implemented locally:** canonical product manifest, drift validator, public truth sync, and regression tests; CI wiring remains | Tech writer + Builder | P0.1 | Local truth gate passes; CI reports zero truth drift and zero broken internal links |
+| P0.1 | **Implemented locally:** ADR 0001 declares the canonical MCP runtime and scopes claims through a code/test conformance matrix | Architect / Expert | None | Local conformance evidence exists; live-provider and legacy-path equivalence remain gated |
+| P0.2 | **Implemented locally:** canonical product manifest, drift validator, public truth sync, regression tests, and aggregate CI wiring | Tech writer + Builder | P0.1 | Local truth gate passes; hosted CI execution and remaining internal-link cleanup remain pending |
 | P0.3 | **Implemented locally:** corrected paths/model endpoint handling, workspace isolation, required-server failure, namespaced tools, and hard runtime limits; live smoke remains | Runtime engineer / Expert | P0.1 | Deterministic unit tests pass; live runtime smoke proves provider/MCP boundaries |
-| P0.4 | Make stored evals comparable: live-to-live, same task set, attempts, verifier version, provider metadata, and pinned model snapshot | QA / Builder | P0.1 | Mock/live comparisons are rejected; baseline is reproducible |
-| P0.5 | Replace absolute privacy and performance claims with scoped, evidence-linked language | Product + tech writer / Scout | P0.2 | No absolute claim lacks a test, benchmark, or provider-policy qualifier |
+| P0.4 | **Implemented locally:** schema-v2 eval reports require live mode, exact task set, attempts, verifier metadata, provider, model, and resolved snapshot before comparison | QA / Builder | P0.1 | Historical reports are intentionally rejected; reproducible paired live baseline remains pending |
+| P0.5 | **Implemented locally (README/product overview scope):** absolute safety, privacy, and performance language is qualified and linked to runtime/evidence boundaries | Product + tech writer / Scout | P0.2 | Broader documentation inventory remains pending |
 
 **Targets:** zero known false-success paths; zero unbounded model loops; clean clone to first verified task in under 10 minutes; at least 90% setup success in supported CI environments.
 
@@ -101,7 +101,7 @@ Every route decision must log: task class, risk signals, selected model and snap
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
-| P3.1 | Consolidate CI into reusable workflows and one required aggregate gate covering MCP, CLI, Python, runtime smoke, clean install, coverage, security, and generated drift | DevOps / Builder | P0.2, P1.1, P1.2 | One required gate cannot pass when any required suite is skipped or fails |
+| P3.1 | **Partial implemented locally:** required aggregate gate covers product truth, Python units, MCP lint/format/build/test, and CLI tests | DevOps / Builder | P0.2, P1.1, P1.2 | Runtime smoke, clean install, coverage, security, and reusable workflow decomposition remain pending |
 | P3.2 | Pin actions and tools; remove unverified `curl | bash`; add SBOM, provenance, synchronized version/tag checks, rollback test, and package smoke tests | Security + DevOps / Expert | P3.1 | Release checklist contains linked evidence for every item |
 | P3.3 | Ship one canonical `forge init`/`forge onboard` golden path and a 10-minute sample workflow | CLI + docs / Builder | P0.2, P3.1 | Every documented command executes in clean-clone CI |
 | P3.4 | Label capabilities stable, beta, experimental, or docs-only; move non-core domains into optional packs | Product + architect / Expert | Usage data from P2 | Every README capability has maturity and evidence links |
@@ -136,7 +136,7 @@ A phase is complete only when all of the following are true:
 
 ## Next Execution Slice
 
-1. Complete P0.1 and the live P0.3 smoke so safety claims and enforcement cannot drift.
-2. Wire the product-truth validator into the required aggregate CI gate.
-3. Implement P0.4 before using any cheap-model result to justify routing.
+1. Run a live P0.3 provider/MCP smoke and record its evidence before expanding runtime safety claims.
+2. Produce paired schema-v2 live reports with the same resolved model snapshot before using cheap-model results to justify routing.
+3. Extend P3.1 with clean-install, coverage, security, runtime-smoke, and reusable workflow evidence.
 4. Run the full regression matrix, GitNexus `detect_changes`, independent diff review, and release audit.

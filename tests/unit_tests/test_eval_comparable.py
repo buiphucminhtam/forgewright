@@ -4,7 +4,7 @@ tests/unit_tests/test_eval_comparable.py
 Regression tests for the cheap-model eval harness (run-evals.py):
 1. --compare with a mock results-lite.json vs live results-legacy.json must exit
    non-zero (these files exist in the repo and are the old bad combination).
-2. print_comparison() unit tests for mock/model/provider/task/attempt mismatch.
+2. Strict-schema unit tests for mock/model/provider/snapshot/task/attempt/verifier mismatch.
 3. Syntax and import sanity check for run-evals.py.
 """
 
@@ -55,12 +55,29 @@ class TestPrintComparisonComparabilityGate:
 
     def _write_report(self, path: str, **kwargs):
         data = {
+            "schemaVersion": 2,
             "timestamp": "2026-07-04T00:00:00Z",
             "mode": "live",
             "model": "gemini-2.5-flash",
             "provider": "gemini",
             "defaultAttempts": 3,
             "verifierVersion": "1",
+            "comparisonMetadata": {
+                "mode": "live",
+                "provider": "gemini",
+                "modelId": "gemini-2.5-flash",
+                "modelSnapshot": "gemini-2.5-flash-2026-07-01",
+                "taskIds": [
+                    "debug-1",
+                    "feature-1",
+                    "safety-1",
+                    "refactor-1",
+                    "verification-1",
+                ],
+                "attempts": 3,
+                "verifierVersion": "1",
+                "verifierFingerprint": "fixture-verifiers-v1",
+            },
             "summary": {
                 "totalTasks": 5,
                 "passedTasks": 3,
@@ -78,7 +95,7 @@ class TestPrintComparisonComparabilityGate:
         legacy = str(tmp_path / "legacy.json")
         lite = str(tmp_path / "lite.json")
         self._write_report(legacy, mode="live")
-        self._write_report(lite, mode="mock", model="mocked")
+        self._write_report(lite, comparisonMetadata={"mode": "mock"})
         result = mod.print_comparison(legacy, lite)
         assert result is False
 
@@ -86,8 +103,10 @@ class TestPrintComparisonComparabilityGate:
         mod = _import_run_evals()
         legacy = str(tmp_path / "legacy.json")
         lite = str(tmp_path / "lite.json")
-        self._write_report(legacy, model="gemini-2.5-flash")
-        self._write_report(lite, model="gemini-2.0-flash")
+        self._write_report(legacy)
+        self._write_report(
+            lite, comparisonMetadata={**self._metadata(), "modelId": "gemini-2.0-flash"}
+        )
         result = mod.print_comparison(legacy, lite)
         assert result is False
 
@@ -95,8 +114,10 @@ class TestPrintComparisonComparabilityGate:
         mod = _import_run_evals()
         legacy = str(tmp_path / "legacy.json")
         lite = str(tmp_path / "lite.json")
-        self._write_report(legacy, provider="gemini")
-        self._write_report(lite, provider="codex")
+        self._write_report(legacy)
+        self._write_report(
+            lite, comparisonMetadata={**self._metadata(), "provider": "codex"}
+        )
         result = mod.print_comparison(legacy, lite)
         assert result is False
 
@@ -107,11 +128,9 @@ class TestPrintComparisonComparabilityGate:
         self._write_report(legacy)
         self._write_report(
             lite,
-            summary={
-                "totalTasks": 3,
-                "passedTasks": 2,
-                "passRate": 66.6,
-                "categories": {},
+            comparisonMetadata={
+                **self._metadata(),
+                "taskIds": ["debug-1", "feature-1", "other"],
             },
         )
         result = mod.print_comparison(legacy, lite)
@@ -121,8 +140,8 @@ class TestPrintComparisonComparabilityGate:
         mod = _import_run_evals()
         legacy = str(tmp_path / "legacy.json")
         lite = str(tmp_path / "lite.json")
-        self._write_report(legacy, defaultAttempts=3)
-        self._write_report(lite, defaultAttempts=1)
+        self._write_report(legacy)
+        self._write_report(lite, comparisonMetadata={**self._metadata(), "attempts": 1})
         result = mod.print_comparison(legacy, lite)
         assert result is False
 
@@ -130,8 +149,10 @@ class TestPrintComparisonComparabilityGate:
         mod = _import_run_evals()
         legacy = str(tmp_path / "legacy.json")
         lite = str(tmp_path / "lite.json")
-        self._write_report(legacy, verifierVersion="1")
-        self._write_report(lite, verifierVersion="2")
+        self._write_report(legacy)
+        self._write_report(
+            lite, comparisonMetadata={**self._metadata(), "verifierVersion": "2"}
+        )
         result = mod.print_comparison(legacy, lite)
         assert result is False
 
@@ -143,6 +164,46 @@ class TestPrintComparisonComparabilityGate:
         self._write_report(lite)
         result = mod.print_comparison(legacy, lite)
         assert result is True
+
+    @staticmethod
+    def _metadata():
+        return {
+            "mode": "live",
+            "provider": "gemini",
+            "modelId": "gemini-2.5-flash",
+            "modelSnapshot": "gemini-2.5-flash-2026-07-01",
+            "taskIds": [
+                "debug-1",
+                "feature-1",
+                "safety-1",
+                "refactor-1",
+                "verification-1",
+            ],
+            "attempts": 3,
+            "verifierVersion": "1",
+            "verifierFingerprint": "fixture-verifiers-v1",
+        }
+
+    def test_missing_model_snapshot_returns_false(self, tmp_path):
+        mod = _import_run_evals()
+        legacy = str(tmp_path / "legacy.json")
+        lite = str(tmp_path / "lite.json")
+        self._write_report(legacy)
+        metadata = self._metadata()
+        del metadata["modelSnapshot"]
+        self._write_report(lite, comparisonMetadata=metadata)
+        assert mod.print_comparison(legacy, lite) is False
+
+    def test_snapshot_mismatch_returns_false(self, tmp_path):
+        mod = _import_run_evals()
+        legacy = str(tmp_path / "legacy.json")
+        lite = str(tmp_path / "lite.json")
+        self._write_report(legacy)
+        self._write_report(
+            lite,
+            comparisonMetadata={**self._metadata(), "modelSnapshot": "other-snapshot"},
+        )
+        assert mod.print_comparison(legacy, lite) is False
 
 
 # ---------------------------------------------------------------------------

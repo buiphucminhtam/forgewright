@@ -27,5 +27,6 @@ logo*
 favicon*
 assets/!(donate)
 !adr/
+!adr/*.md
 !archive/
 !active-roadmap.md

@@ -6,7 +6,7 @@
 
 ## What Is Forgewright?
 
-Forgewright is an open-source AI orchestrator that turns raw language models (Claude, GPT, Gemini) into evidence-oriented software engineering agents. It wraps supported model and tool integrations with a structured pipeline of skills, guardrails, memory, and verification so the AI plans before it builds, attaches evidence to completion claims, and records lessons from failures. Those controls reduce risk; they do not guarantee correct output or eliminate repeated mistakes. One install gives you 83 specialized AI skills covering the software lifecycle, as counted by `product-manifest.json` and checked by `npm run verify:product-truth`.
+Forgewright is an open-source AI orchestrator that turns raw language models (Claude, GPT, Gemini) into evidence-oriented software engineering agents. Supported runtime paths can use a structured pipeline of skills, guardrails, memory, and verification to attach evidence to completion claims and record lessons from failures. Those controls reduce risk; they do not guarantee correct output or eliminate repeated mistakes. The currently declared canonical runtime and its enforcement boundary are documented in the [canonical-runtime ADR](adr/0001-canonical-production-runtime.md). One install gives you 83 specialized AI skills covering the software lifecycle, as counted by `product-manifest.json` and checked by `npm run verify:product-truth`.
 
 ---
 
@@ -14,10 +14,10 @@ Forgewright is an open-source AI orchestrator that turns raw language models (Cl
 
 | Audience | Why Forgewright Helps |
 |----------|----------------------|
-| **Solo developers** | Acts as a full engineering team — PM, architect, QA, DevOps — working alongside you in your IDE. |
-| **Small teams (2–10)** | Enforces consistent quality gates, testing standards, and architecture decisions across the team. |
+| **Solo developers** | Provides structured PM, architecture, QA, and DevOps-oriented workflows alongside the IDE. |
+| **Small teams (2–10)** | Can apply consistent quality-gate and testing workflows when the configured runtime supports them. |
 | **AI-first studios** | Provides game development skills (Unity, Unreal, Godot, Phaser 3, Three.js, Roblox) with level, narrative, and audio design agents. |
-| **Enterprise engineering orgs** | Offers repeatable, auditable pipelines with guardrails, security audits, and quality scoring (0–100) for every deliverable. |
+| **Enterprise engineering orgs** | Offers configurable pipeline, guardrail, security-review, and quality-scoring workflows; applicability depends on the installed surface and checks. |
 | **Researchers & educators** | Enables deep research workflows (NotebookLM + Polymath), self-improving ASIP protocol, and transparent decision logging. |
 
 ---
@@ -26,7 +26,7 @@ Forgewright is an open-source AI orchestrator that turns raw language models (Cl
 
 ### 1. Evidence-First Engineering
 
-Every claim the AI makes must be backed by verifiable evidence. Forgewright enforces VERIFY blocks — runnable commands with pasted output and exit codes — before any work is accepted. Narrative claims like "I updated the file" without proof are automatically marked FALSE.
+The documented kernel workflow requires VERIFY blocks — runnable commands with pasted output and exit codes — before a completion claim. This is a workflow and test-backed constraint, scoped to the declared runtime rather than a guarantee for every compatibility path; see the [conformance matrix](adr/0001-canonical-production-runtime.md#claim-to-enforcement-conformance-matrix).
 
 ```
 CLAIM: JWT auth middleware works
@@ -38,16 +38,16 @@ VERDICT: PASS
 
 ### 2. Persistent Memory (GraphRAG V4 — FluxMem)
 
-Unlike standard AI assistants that start from scratch each session, Forgewright maintains a SQLite cognitive graph (`memory.db`) that persists:
+Memory-enabled configurations can maintain a SQLite cognitive graph (`memory.db`) that persists:
 
 - **Episodic memory** — What happened in previous sessions
 - **Semantic memory** — Architectural decisions, coding conventions
-- **Procedural circuits** — Successful execution trajectories cached for sub-second recovery
-- **ASIP edge decay/reinforcement** — Failed paths are mathematically weakened (×0.5), successful paths strengthened (×1.2)
+- **Procedural circuits** — Successful execution trajectories may be cached for later reuse
+- **ASIP edge decay/reinforcement** — configured memory paths can record failed and successful trajectories; effectiveness is measured rather than guaranteed
 
 ### 3. Skill Routing & Orchestration
 
-A single user request is automatically classified into one of 24 execution modes and routed to the appropriate subset of 83 skills. The pipeline follows six phases:
+A configured agent surface can classify a request into one of 24 execution modes and select skills. The canonical product pipeline has six phases:
 
 ```
 INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
@@ -150,10 +150,10 @@ Connect the Forgewright MCP server for maximum power: 12+ AI tools available dir
 |--------------|---------|
 | **Not a code generator** | Forgewright produces *systems* — with architecture, tests, security audits, infrastructure, and documentation. Not just files. |
 | **Not a chatbot** | It doesn't ask 20 questions then generate a template. It researches, decides, builds, and verifies — pausing only at strategic gates. |
-| **Not a cloud service** | Everything runs locally. No SaaS, no subscriptions, no data sent to Forgewright servers. |
+| **Not a cloud service** | Forgewright has no required hosted service. Local state remains local by default, while configured model and tool providers may receive prompts, code excerpts, or tool results. |
 | **Not a model provider** | Forgewright is the harness, not the engine. You bring your own LLM (Claude, GPT, Gemini, or local models). |
 | **Not a rigid pipeline** | The orchestrator adapts: skipping frontend for API-only projects, enabling data science for ML workloads, scaling complexity to match the problem. |
-| **Not a demo** | Every artifact is real. Every test runs. If it doesn't work, the AI debugs it — or tells you exactly why it can't. |
+| **Not a demo** | Included artifacts and tests are versioned in the repository. A given run records only the checks it actually executes; failures remain evidence, not a guarantee of automatic repair. |
 
 ---
 

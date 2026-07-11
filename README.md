@@ -36,9 +36,9 @@ Raw language models are only a small part of a functional AI coding agent. Witho
 ### Key Outcomes
 
 - **Reduces repeated failure patterns**: The Adaptive Self-Improving Protocol (ASIP) records lessons and weakens previously failing logic paths. Effectiveness depends on memory being enabled and is evaluated through recurrence metrics.
-- **Project-Specific Memory**: Uses a local SQLite GraphRAG cognitive database (FluxMem) to instantly recall your exact stack, preventing generic "textbook" code.
+- **Project-Specific Memory**: Can use a local SQLite-backed memory layer to retrieve project context. Retrieval quality and recurrence improvements are measured release criteria, not guarantees; see the [active roadmap](docs/active-roadmap.md).
 - **Pipeline Execution**: Bypasses the "chat" paradigm. Requests undergo a strict requirements-gathering and testing lifecycle before code is written.
-- **Enterprise-Grade Testing**: Native integration with Property-Based Testing, Mutation Testing, and Visual Regression guarantees zero escaped bugs.
+- **Evidence-Gated Testing**: Test and verification integrations are available where configured. They provide local evidence for the checks actually run; they do not guarantee zero escaped bugs.
 - **Local-first state**: Project memory and orchestration state are stored in the workspace by default. Prompts, code excerpts, and tool results may still be sent to the model or tool providers you configure; use a local model and local tools when data must stay on-device.
 
 ### Who It Is For
@@ -86,7 +86,7 @@ Forgewright responds:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Unlike basic AI chat interfaces, Forgewright didn't just give you a snippet to copy and paste. It created the files, updated the tests, evaluated the security implications, and confirmed that the module built successfully—all locally.
+For supported, configured paths, Forgewright can create files, run configured tests, and record verifier output. Whether a particular task uses those paths depends on the selected runtime and available tools; see the [canonical-runtime ADR](docs/adr/0001-canonical-production-runtime.md).
 
 ---
 
@@ -193,12 +193,12 @@ Forgewright utilizes GitNexus to construct a deep structural graph of your codeb
 
 ### 2. Autonomous Testing Stack
 
-Automated shifting-left test logic. Property-Based Testing (PBT), mutation testing, and Appium/Maestro integration ensure the AI writes comprehensive tests before writing implementations. The orchestrator will not merge code that decreases total test coverage.
+Automated shifting-left test logic can integrate Property-Based Testing (PBT), mutation testing, and Appium/Maestro where configured. The checks that run are recorded as evidence; this repository does not claim that every runtime writes tests first or blocks every coverage decrease.
 **[Read the Testing Stack Guide ➔](docs/guides/testing-stack.md)**
 
 ### 3. Persistent Cognitive Memory (FluxMem)
 
-Your agent remembers past architectural decisions across sessions. Uses a local SQLite layer-2 knowledge graph for instantaneous context retrieval, automatically pruning irrelevant data to keep context windows lean.
+Memory-enabled configurations can retain project context across sessions using local SQLite-backed storage. Retrieval and staleness targets are documented in the [active roadmap](docs/active-roadmap.md); no universal recall or latency guarantee is claimed.
 **[Read the FluxMem Guide ➔](docs/guides/fluxmem.md)**
 
 ### 4. Parallel Skill Dispatch
@@ -235,8 +235,8 @@ The Forgewright pipeline revolves around predictable constraint enforcement, ope
 
 ### Verification and Safety Layers
 
-- **Evidence-Gated Logic**: The kernel uses script-layer verification to enforce proof of success. If a test suite doesn't pass locally, the AI cannot claim the task is done. There are no self-attested successes.
-- **Strict Guardrails**: Every tool call passes through Middleware interceptors. Destructive shell commands, raw database overwrites, and unauthorized path edits are blocked before they are executed by the underlying operating system.
+- **Evidence-Gated Logic**: The documented kernel workflow requires script-layer verification before a success claim. Enforcement is scoped to the declared runtime and tests in the [canonical-runtime ADR](docs/adr/0001-canonical-production-runtime.md); legacy paths are not represented as universally enforced.
+- **Strict Guardrails**: Middleware behavior has local unit coverage on the MCP surface. The current production construction evidence does not establish that every legacy tool path traverses it; see the [conformance matrix](docs/adr/0001-canonical-production-runtime.md#claim-to-enforcement-conformance-matrix).
 - **Execution Blockers**: When the AI encounters the same error multiple times, the orchestration kernel halts the active thread and forces a context reset, breaking infinite loops.
 - **Visual Validation**: For UI changes, the AI must explicitly capture layout regressions and perform visual verification against established design tokens.
 
