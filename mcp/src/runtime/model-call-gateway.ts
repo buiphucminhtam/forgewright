@@ -52,9 +52,20 @@ export interface BudgetPolicy {
 
 export type BudgetStatus = 'ok' | 'warning' | 'authority_required' | 'blocked' | 'allowed_override';
 
+export interface BudgetReservation {
+  readonly id: string;
+  readonly taskId: string;
+  readonly accountId: string;
+  readonly estimatedCost: number;
+}
+
 export class BudgetLedger {
   private readonly taskSpend = new Map<string, number>();
   private readonly accountSpend = new Map<string, number>();
+  private readonly taskReserved = new Map<string, number>();
+  private readonly accountReserved = new Map<string, number>();
+  private readonly reservations = new Map<string, BudgetReservation>();
+  private nextReservationId = 0;
 
   constructor(private readonly limits: { taskLimit: number; accountLimit: number }) {}
 
@@ -69,8 +80,61 @@ export class BudgetLedger {
     estimatedCost: number,
     policy: BudgetPolicy = {},
   ): { status: BudgetStatus; projectedTask: number; projectedAccount: number } {
-    const projectedTask = (this.taskSpend.get(taskId) ?? 0) + estimatedCost;
-    const projectedAccount = (this.accountSpend.get(accountId) ?? 0) + estimatedCost;
+    return this.evaluate(taskId, accountId, estimatedCost, policy, false);
+  }
+
+  reserve(
+    taskId: string,
+    accountId: string,
+    estimatedCost: number,
+    policy: BudgetPolicy = {},
+  ): {
+    status: BudgetStatus;
+    reservation?: BudgetReservation;
+    projectedTask: number;
+    projectedAccount: number;
+  } {
+    const evaluation = this.evaluate(taskId, accountId, estimatedCost, policy, true);
+    if (evaluation.status === 'blocked' || evaluation.status === 'authority_required')
+      return evaluation;
+    const reservation: BudgetReservation = {
+      id: `budget-${++this.nextReservationId}`,
+      taskId,
+      accountId,
+      estimatedCost,
+    };
+    this.reservations.set(reservation.id, reservation);
+    this.taskReserved.set(taskId, (this.taskReserved.get(taskId) ?? 0) + estimatedCost);
+    this.accountReserved.set(accountId, (this.accountReserved.get(accountId) ?? 0) + estimatedCost);
+    return { ...evaluation, reservation };
+  }
+
+  settle(reservation: BudgetReservation, actualCost: number): void {
+    this.release(reservation);
+    this.record(reservation.taskId, reservation.accountId, actualCost);
+  }
+
+  release(reservation: BudgetReservation): void {
+    if (!this.reservations.delete(reservation.id)) return;
+    this.decrement(this.taskReserved, reservation.taskId, reservation.estimatedCost);
+    this.decrement(this.accountReserved, reservation.accountId, reservation.estimatedCost);
+  }
+
+  private evaluate(
+    taskId: string,
+    accountId: string,
+    estimatedCost: number,
+    policy: BudgetPolicy,
+    includeReservations: boolean,
+  ): { status: BudgetStatus; projectedTask: number; projectedAccount: number } {
+    const projectedTask =
+      (this.taskSpend.get(taskId) ?? 0) +
+      (includeReservations ? (this.taskReserved.get(taskId) ?? 0) : 0) +
+      estimatedCost;
+    const projectedAccount =
+      (this.accountSpend.get(accountId) ?? 0) +
+      (includeReservations ? (this.accountReserved.get(accountId) ?? 0) : 0) +
+      estimatedCost;
     const ratio = Math.max(
       projectedTask / this.limits.taskLimit,
       projectedAccount / this.limits.accountLimit,
@@ -84,6 +148,12 @@ export class BudgetLedger {
     if (ratio >= 0.95) return { status: 'authority_required', projectedTask, projectedAccount };
     if (ratio >= 0.8) return { status: 'warning', projectedTask, projectedAccount };
     return { status: 'ok', projectedTask, projectedAccount };
+  }
+
+  private decrement(values: Map<string, number>, key: string, amount: number): void {
+    const next = (values.get(key) ?? 0) - amount;
+    if (next <= 0) values.delete(key);
+    else values.set(key, next);
   }
 }
 
@@ -139,18 +209,19 @@ export class ModelCallGateway {
     if (this.options.budget && request.estimatedCost === undefined) {
       throw new Error('Budgeted model calls require an estimated cost');
     }
-    const preflight = this.options.budget?.preflight(
+    this.turns.set(request.taskId, turn);
+    this.assertCircuitClosed();
+    const route = await this.selectRoute(request.riskSignals ?? []);
+    const reservationResult = this.options.budget?.reserve(
       request.taskId,
       request.accountId,
       request.estimatedCost ?? 0,
       { allowOverage: this.options.authorizeOverage?.(request) ?? false },
     );
-    if (preflight?.status === 'blocked') throw new Error('Budget exhausted; call blocked');
-    if (preflight?.status === 'authority_required')
+    if (reservationResult?.status === 'blocked') throw new Error('Budget exhausted; call blocked');
+    if (reservationResult?.status === 'authority_required')
       throw new Error('Budget authority required before call');
-    this.turns.set(request.taskId, turn);
-    this.assertCircuitClosed();
-    const route = await this.selectRoute(request.riskSignals ?? []);
+    const reservation = reservationResult?.reservation;
     const started = Date.now();
     let lastError: unknown;
     for (let attempt = 0; attempt < this.retry.maxAttempts; attempt++) {
@@ -165,11 +236,11 @@ export class ModelCallGateway {
         );
         this.circuit.failures = 0;
         this.circuit.openedAt = undefined;
-        this.options.budget?.record(
-          request.taskId,
-          request.accountId,
-          response.usage?.cost ?? request.estimatedCost ?? 0,
-        );
+        if (reservation)
+          this.options.budget?.settle(
+            reservation,
+            response.usage?.cost ?? request.estimatedCost ?? 0,
+          );
         this.options.telemetry?.({
           task_id: request.taskId,
           account_id: request.accountId,
@@ -192,6 +263,7 @@ export class ModelCallGateway {
         };
       } catch (error) {
         lastError = error;
+        if (!this.isRetryable(error)) break;
         if (attempt + 1 < this.retry.maxAttempts && this.retry.baseDelayMs > 0)
           await new Promise((resolve) =>
             setTimeout(resolve, this.retry.baseDelayMs * (attempt + 1)),
@@ -201,6 +273,7 @@ export class ModelCallGateway {
     this.circuit.failures++;
     if (this.circuit.failures >= this.circuitPolicy.failureThreshold)
       this.circuit.openedAt = Date.now();
+    if (reservation) this.options.budget?.release(reservation);
     throw lastError instanceof Error ? lastError : new Error('Model call failed');
   }
 
@@ -241,11 +314,27 @@ export class ModelCallGateway {
       return await Promise.race([
         promise,
         new Promise<T>((_, reject) => {
-          timer = setTimeout(() => reject(new Error('Model call timed out')), this.caps.timeoutMs);
+          timer = setTimeout(
+            () =>
+              reject(
+                Object.assign(new Error('Model call timed out'), { code: 'MODEL_CALL_TIMEOUT' }),
+              ),
+            this.caps.timeoutMs,
+          );
         }),
       ]);
     } finally {
       if (timer) clearTimeout(timer);
     }
+  }
+
+  private isRetryable(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const candidate = error as { retryable?: unknown; status?: unknown; code?: unknown };
+    if (candidate.code === 'MODEL_CALL_TIMEOUT') return false;
+    if (candidate.retryable === true) return true;
+    return (
+      candidate.status === 429 || (typeof candidate.status === 'number' && candidate.status >= 500)
+    );
   }
 }

@@ -63,7 +63,7 @@ describe('ModelCallGateway', () => {
     });
     const failing = provider(async () => {
       calls++;
-      throw new Error('temporary provider failure');
+      throw Object.assign(new Error('temporary provider failure'), { retryable: true });
     });
     await expect(
       gateway.execute({ taskId: 'a', accountId: 'a', prompt: 'x' }, failing),
@@ -119,5 +119,89 @@ describe('ModelCallGateway', () => {
         provider(async () => ({ output: 'x' })),
       ),
     ).rejects.toThrow('estimated cost');
+  });
+
+  it('atomically reserves budget before simultaneous provider calls with no deterministic overshoot', async () => {
+    const ledger = new BudgetLedger({ taskLimit: 10, accountLimit: 10 });
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let invocations = 0;
+    const gateway = new ModelCallGateway({ probe, budget: ledger, retry: { maxAttempts: 1 } });
+    const blocking = provider(async () => {
+      invocations++;
+      await pending;
+      return { output: 'ok', usage: { inputTokens: 1, outputTokens: 1, cost: 5 } };
+    });
+    const first = gateway.execute(
+      { taskId: 'task-a', accountId: 'account', prompt: 'x', estimatedCost: 6 },
+      blocking,
+    );
+    await expect(
+      gateway.execute(
+        { taskId: 'task-b', accountId: 'account', prompt: 'x', estimatedCost: 6 },
+        blocking,
+      ),
+    ).rejects.toThrow('Budget exhausted');
+    expect(invocations).toBe(1);
+    release();
+    await first;
+    expect(ledger.preflight('task-c', 'account', 4).status).toBe('warning');
+  });
+
+  it('settles a reservation using actual cost and refunds it after terminal failure', async () => {
+    const ledger = new BudgetLedger({ taskLimit: 10, accountLimit: 10 });
+    const gateway = new ModelCallGateway({ probe, budget: ledger, retry: { maxAttempts: 1 } });
+    await gateway.execute(
+      { taskId: 'task-a', accountId: 'account', prompt: 'x', estimatedCost: 8 },
+      provider(async () => ({ output: 'ok', usage: { inputTokens: 1, outputTokens: 1, cost: 3 } })),
+    );
+    expect(ledger.preflight('task-b', 'account', 5).status).toBe('warning');
+    await expect(
+      gateway.execute(
+        { taskId: 'task-c', accountId: 'account', prompt: 'x', estimatedCost: 5 },
+        provider(async () => {
+          throw new Error('invalid request');
+        }),
+      ),
+    ).rejects.toThrow('invalid request');
+    expect(ledger.preflight('task-d', 'account', 6).status).toBe('warning');
+  });
+
+  it('does not retry non-retryable provider errors or timeouts', async () => {
+    let validationCalls = 0;
+    const validationGateway = new ModelCallGateway({
+      probe,
+      retry: { maxAttempts: 3, baseDelayMs: 0 },
+    });
+    await expect(
+      validationGateway.execute(
+        { taskId: 'validation', accountId: 'account', prompt: 'x' },
+        provider(async () => {
+          validationCalls++;
+          throw new Error('invalid request');
+        }),
+      ),
+    ).rejects.toThrow('invalid request');
+    expect(validationCalls).toBe(1);
+
+    let timeoutCalls = 0;
+    const timeoutGateway = new ModelCallGateway({
+      probe,
+      retry: { maxAttempts: 3, baseDelayMs: 0 },
+      caps: { timeoutMs: 5 },
+    });
+    await expect(
+      timeoutGateway.execute(
+        { taskId: 'timeout', accountId: 'account', prompt: 'x' },
+        provider(async () => {
+          timeoutCalls++;
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          return { output: 'late' };
+        }),
+      ),
+    ).rejects.toThrow('timed out');
+    expect(timeoutCalls).toBe(1);
   });
 });
