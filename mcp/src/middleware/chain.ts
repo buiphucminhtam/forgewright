@@ -83,6 +83,7 @@ export class MiddlewareChain {
     middlewareMs: number;
     qualityGate?: QualityGateReport;
     verification?: VerificationReport;
+    offloadRef?: string;
   }> {
     const ctx: ToolContext = {
       call: toolCall,
@@ -166,8 +167,10 @@ export class MiddlewareChain {
 
     // ④d ContextOffload: persist full sanitized output with trace handle.
     const offloadStart = Date.now();
+    let offloadRef: string | undefined;
     if (this.contextOffload.enabled) {
       const offload = this.contextOffload.processResult(ctx, result, processedResult);
+      offloadRef = offload.event?.result_ref;
       this.options.onMetrics?.(
         'context-offload',
         'after_tool',
@@ -272,6 +275,7 @@ export class MiddlewareChain {
       middlewareMs: totalMs,
       qualityGate: qualityGateReport,
       verification: verificationReport,
+      offloadRef,
     };
   }
 

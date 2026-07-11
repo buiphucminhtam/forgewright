@@ -117,11 +117,29 @@ function redactSecrets(text: string): string {
   return redacted;
 }
 
+function redactAuditValue(value: unknown, key?: string): unknown {
+  if (key && /(?:token|secret|password|api[_-]?key|authorization)/i.test(key)) {
+    return '[REDACTED]';
+  }
+  if (typeof value === 'string') return redactSecrets(value);
+  if (Array.isArray(value)) return value.map((item) => redactAuditValue(item));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([entryKey, item]) => [
+        entryKey,
+        redactAuditValue(item, entryKey),
+      ]),
+    );
+  }
+  return value;
+}
+
 /** Strip ANSI escape codes from text. */
 function stripAnsi(text: string): string {
+  const escape = String.fromCharCode(0x1b);
   return text
-    .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
-    .replace(/\x1b\(B/g, '')
+    .replace(new RegExp(`${escape}\\[[0-9;]*[a-zA-Z]`, 'g'), '')
+    .replace(new RegExp(`${escape}\\(B`, 'g'), '')
     .replace(/\r$/g, '');
 }
 
@@ -391,15 +409,23 @@ export class ToolSandboxMiddleware {
     const tsHash = createHash('sha256').update(ts).digest('hex').slice(0, 8);
     const ref = `${ctx.sessionId}/${ctx.turnNumber}/${ctx.call.toolName}/${tsHash}.jsonl`;
 
+    const safeArgs = redactAuditValue(args) as Record<string, unknown>;
+    const safeResult: ToolResult = {
+      ...result,
+      content: result.content.map((block) => ({
+        type: block.type,
+        text: redactSecrets(block.text),
+      })),
+    };
     const entry: AuditEntry = {
       sessionId: ctx.sessionId,
       turnNumber: ctx.turnNumber,
       tool: ctx.call.toolName,
-      args,
+      args: safeArgs,
       resultTokens: countResultTokens(result),
       timestamp: ts,
       compressed: processedText.length < 1_000,
-      summary: generateSummary(ctx.call.toolName, args, result, 256),
+      summary: redactSecrets(generateSummary(ctx.call.toolName, safeArgs, safeResult, 256)),
       injectionBlocked,
     };
 

@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -51,7 +51,7 @@ describe('MiddlewareChain', () => {
     const largeResult: ToolResult = {
       content: [{ type: 'text', text: 'x'.repeat(400) }],
     };
-    const args = { path: '/tmp/large-output.txt' };
+    const args = { path: '/tmp/large-output.txt', token: 'supersecrettoken' };
 
     const first = await executeRead(chain, makeToolCall('Read', args), largeResult);
 
@@ -66,6 +66,10 @@ describe('MiddlewareChain', () => {
     expect(chain.getDedupMetrics().cacheHits).toBe(1);
     expect(chain.getSandboxMetrics().totalTools).toBe(1);
     expect(chain.getSandboxMetrics().auditWrites).toBe(1);
+    const auditFile = readdirSync(join(auditDir, 'test-session', '1', 'Read'))[0];
+    expect(
+      readFileSync(join(auditDir, 'test-session', '1', 'Read', auditFile), 'utf8'),
+    ).not.toContain('supersecrettoken');
   });
 
   it('offloads raw tool output while returning only sandboxed content', async () => {
