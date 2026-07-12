@@ -2,7 +2,7 @@ name: GitNexus PR Review Action
 
 description: |
   GitHub Action for GitNexus PR Review — Blast radius analysis + OpenAPI contract checking.
-  
+
   This action runs GitNexus PR Review on pull requests and posts a comment with:
   - Blast radius analysis (affected modules, breaking changes, risk level)
   - OpenAPI contract breaking change detection (optional)
@@ -12,32 +12,32 @@ inputs:
   openapi-enabled:
     description: Enable OpenAPI contract checking
     required: false
-    default: 'false'
+    default: "false"
   openapi-specs:
     description: Space-separated list of OpenAPI spec paths
     required: false
-    default: ''
+    default: ""
   min-risk-level:
     description: Minimum risk level to block merge
     required: false
-    default: 'MEDIUM'
+    default: "MEDIUM"
   comment-mode:
     description: |
       Comment mode: 'always' (always post), 'changes' (only on changes), 'never'
     required: false
-    default: 'always'
+    default: "always"
   fail-on-critical:
     description: Fail workflow on CRITICAL risk level
     required: false
-    default: 'true'
+    default: "true"
   fail-on-high:
     description: Fail workflow on HIGH risk level
     required: false
-    default: 'false'
+    default: "false"
   dry-run:
     description: Dry run mode — no changes or comments will be posted
     required: false
-    default: 'false'
+    default: "false"
   token:
     description: GitHub token (defaults to github.token)
     required: false
@@ -64,18 +64,18 @@ runs:
   using: composite
   steps:
     - name: Checkout PR
-      uses: actions/checkout@v4
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
         fetch-depth: 0
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
-        node-version: '20'
+        node-version: "20"
 
     - name: Install GitNexus
       shell: bash
-      run: npm install -g gitnexus
+      run: npx --yes gitnexus@1.6.9 --version
 
     - name: Setup environment
       shell: bash
@@ -83,7 +83,7 @@ runs:
       run: |
         echo "base_ref=${{ github.base_ref }}" >> $GITHUB_OUTPUT
         echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-        
+
         if [ "${{ inputs.dry-run }}" == "true" ]; then
           echo "mode=DRY RUN" >> $GITHUB_OUTPUT
         else
@@ -102,11 +102,11 @@ runs:
           DRY_RUN_FLAG="--dry-run"
           echo "🔍 DRY RUN MODE — No changes will be made"
         fi
-        
+
         echo "report<<EOF" >> $GITHUB_OUTPUT
-        
+
         # Run GitNexus PR Review
-        if npx gitnexus pr-review "${{ steps.setup.outputs.base_ref }}" HEAD $DRY_RUN_FLAG 2>/dev/null; then
+        if npx --yes gitnexus@1.6.9 pr-review "${{ steps.setup.outputs.base_ref }}" HEAD $DRY_RUN_FLAG 2>/dev/null; then
           echo "✅ GitNexus analysis complete"
         else
           echo "⚠️ GitNexus index not available — running basic analysis"
@@ -114,13 +114,13 @@ runs:
           echo "## Basic Diff Analysis" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
         fi
-        
+
         echo "EOF" >> $GITHUB_OUTPUT
-        
+
         # Extract metrics
         FILES_CHANGED=$(git diff --name-status "${{ steps.setup.outputs.base_ref }}" HEAD 2>/dev/null | wc -l | tr -d ' ')
         BREAKING_COUNT=$(git diff --name-status "${{ steps.setup.outputs.base_ref }}" HEAD 2>/dev/null | grep '^D' | wc -l | tr -d ' ')
-        
+
         # Determine risk level
         if [ "$BREAKING_COUNT" -gt 0 ]; then
           RISK="HIGH"
@@ -129,7 +129,7 @@ runs:
         else
           RISK="LOW"
         fi
-        
+
         echo "files_changed=$FILES_CHANGED" >> $GITHUB_OUTPUT
         echo "symbols_changed=0" >> $GITHUB_OUTPUT
         echo "breaking_count=$BREAKING_COUNT" >> $GITHUB_OUTPUT
@@ -140,7 +140,7 @@ runs:
       if: inputs.openapi-enabled == 'true'
       shell: bash
       run: |
-        curl -sSL https://raw.githubusercontent.com/oasdiff/oasdiff/main/get.sh | bash -s -- -b v1.0.0
+        bash scripts/ci/install-oasdiff.sh
 
     - name: Run OpenAPI contract check
       if: inputs.openapi-enabled == 'true'
@@ -151,7 +151,7 @@ runs:
       run: |
         HAS_BREAKING=false
         DETAILS=""
-        
+
         # Get spec list
         if [ -n "${{ inputs.openapi-specs }}" ]; then
           SPECS="${{ inputs.openapi-specs }}"
@@ -160,7 +160,7 @@ runs:
             \( -path "*/openapi*" -o -path "*/api/*" -o -name "swagger*" \) \
             -not -path "*/node_modules/*" 2>/dev/null | head -10 || echo "")
         fi
-        
+
         for spec in $SPECS; do
           if [ ! -f "$spec" ]; then
             echo "⚠️ Spec not found in HEAD: $spec"
@@ -181,7 +181,7 @@ runs:
             DETAILS="${DETAILS}\n\n### $spec\n${RESULT}"
           fi
         done
-        
+
         echo "has_breaking=$HAS_BREAKING" >> $GITHUB_OUTPUT
         echo "details<<EOF" >> $GITHUB_OUTPUT
         echo -e "$DETAILS" >> $GITHUB_OUTPUT
@@ -194,7 +194,7 @@ runs:
           inputs.comment-mode == 'always' ||
           (inputs.comment-mode == 'changes' && steps.analysis.outputs.files_changed != '0')
         )
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       with:
         github-token: ${{ inputs.token }}
         script: |
@@ -204,21 +204,21 @@ runs:
           const breakingCount = '${{ steps.analysis.outputs.breaking_count }}';
           const hasOpenApiBreaking = '${{ steps.openapi.outputs.has_breaking || 'false' }}' === 'true';
           const openApiDetails = `${{ steps.openapi.outputs.details || '' }}`;
-          
+
           const riskEmoji = {
             'LOW': '🟢',
             'MEDIUM': '🟡', 
             'HIGH': '🟠',
             'CRITICAL': '🔴'
           };
-          
+
           const riskDescriptions = {
             'LOW': 'Low risk — additive changes only',
             'MEDIUM': 'Medium risk — review recommended',
             'HIGH': 'High risk — breaking changes detected',
             'CRITICAL': 'Critical risk — significant blast radius'
           };
-          
+
           let body = [
             `## 🔍 GitNexus PR Review`,
             ``,
@@ -232,7 +232,7 @@ runs:
             riskDescriptions[riskLevel] ? `> ${riskDescriptions[riskLevel]}` : '',
             ``,
           ];
-          
+
           if (hasOpenApiBreaking) {
             body.push(
               `## ⚠️ OpenAPI Breaking Changes Detected`,
@@ -241,23 +241,23 @@ runs:
               ``
             );
           }
-          
+
           body.push(
             `---`,
             `*🤖 Generated by [GitNexus](https://github.com/buiphucminhtam/forgewright) | [Configure](https://github.com/buiphucminhtam/forgewright/wiki/GitNexus-Enterprise)*`
           );
-          
+
           const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: ${{ steps.setup.outputs.pr_number }},
           });
-          
+
           const existingComment = comments.data.find(c => 
             c.user.login === 'github-actions[bot]' && 
             c.body.includes('GitNexus PR Review')
           );
-          
+
           if (existingComment) {
             await github.rest.issues.updateComment({
               owner: context.repo.owner,

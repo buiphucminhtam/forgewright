@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 concurrency:
@@ -12,37 +12,75 @@ concurrency:
 
 jobs:
   release:
-    name: Build & Publish
+    name: Build, Verify & Publish
     runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Type check & build
-        run: npm run build
-        working-directory: mcp
+      - name: Verify release contract
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node scripts/ci/verify-release-contract.mjs "${{ github.ref_name }}"
 
-      - name: Run tests
-        run: npm run test:coverage
-        working-directory: mcp
+      - name: Rehearse rollback selection without external mutation
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node scripts/ci/verify-rollback-rehearsal.mjs "${{ github.ref_name }}"
+
+      - name: Build and test release artifacts
+        run: |
+          npm --prefix mcp run build
+          npm --prefix mcp test
+          npm --prefix src/cli run build
+          npm --prefix src/cli run typecheck
+          npm --prefix src/cli test
+          npm run test:golden
+          node --test scripts/ci/release-supply-chain-policy.test.mjs
+          node scripts/ci/verify-supply-chain-policy.mjs
+
+      - name: Pack canonical MCP and CLI artifacts
+        run: |
+          mkdir -p release-artifacts
+          npm pack --workspace mcp --ignore-scripts --pack-destination release-artifacts
+          npm pack --workspace src/cli --ignore-scripts --pack-destination release-artifacts
+
+      - name: Smoke-test packed artifacts
+        run: node scripts/ci/verify-release-artifacts.mjs release-artifacts
+
+      - name: Generate and validate CycloneDX SBOMs
+        run: |
+          npm sbom --workspace=mcp --package-lock-only --omit=dev --sbom-format=cyclonedx > release-artifacts/mcp.sbom.cdx.json
+          npm sbom --workspace=src/cli --package-lock-only --omit=dev --sbom-format=cyclonedx > release-artifacts/cli.sbom.cdx.json
+          node scripts/ci/verify-release-sboms.mjs release-artifacts
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-artifacts
+          path: release-artifacts/
+
+      - name: Attest packed artifacts
+        if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        with:
+          subject-path: release-artifacts/*
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: mcp/build/**/*
+          files: release-artifacts/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

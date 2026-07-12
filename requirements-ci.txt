@@ -1,0 +1,6 @@
+# Direct CI tooling is version-locked; runtime/local-memory extras are intentionally excluded.
+ruff==0.12.2
+pytest==8.4.1
+hypothesis==6.135.8
+mutmut==3.3.1
+junit2html==31.1.4

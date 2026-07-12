@@ -3,25 +3,25 @@ name: GitNexus Multi-Repo Sync
 on:
   schedule:
     # Run every 6 hours to keep contracts fresh
-    - cron: '0 */6 * * *'
+    - cron: "0 */6 * * *"
   workflow_dispatch:
     inputs:
       group:
-        description: 'Repository group name to sync'
+        description: "Repository group name to sync"
         required: true
-        default: ''
+        default: ""
       mode:
-        description: 'Sync mode (sync, contracts, status, query)'
+        description: "Sync mode (sync, contracts, status, query)"
         required: false
-        default: 'sync'
+        default: "sync"
       query:
-        description: 'Query to search across group (for query mode)'
+        description: "Query to search across group (for query mode)"
         required: false
-        default: ''
+        default: ""
       dry_run:
-        description: 'Dry run mode'
+        description: "Dry run mode"
         required: false
-        default: 'false'
+        default: "false"
 
 env:
   GITNEXUS_REGISTRY: ${{ vars.GITNEXUS_REGISTRY || '.gitnexus/registry.kuzu' }}
@@ -40,18 +40,18 @@ jobs:
       status: ${{ steps.sync.outputs.status }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install GitNexus
-        run: npm install -g gitnexus
+        run: npx --yes gitnexus@1.6.9 --version
 
       - name: Setup environment
         id: setup
@@ -70,18 +70,18 @@ jobs:
         if: steps.setup.outputs.mode == 'LIVE'
         run: |
           GROUP="${{ steps.setup.outputs.group }}"
-          
+
           echo "Syncing contracts for group: $GROUP"
-          
+
           # Run group sync
-          OUTPUT=$(npx gitnexus group sync "$GROUP" 2>&1)
+          OUTPUT=$(npx --yes gitnexus@1.6.9 group sync "$GROUP" 2>&1)
           echo "$OUTPUT"
-          
+
           # Parse output
           CONTRACTS=$(echo "$OUTPUT" | grep -oP '\d+(?= contract)' | head -1 || echo "0")
           LINKS=$(echo "$OUTPUT" | grep -oP '\d+(?= cross-repo link)' | head -1 || echo "0")
           REPOS=$(echo "$OUTPUT" | grep -oP '\d+(?= repo)' | head -1 || echo "0")
-          
+
           echo "contracts_count=$CONTRACTS" >> $GITHUB_OUTPUT
           echo "links_count=$LINKS" >> $GITHUB_OUTPUT
           echo "repos_synced=$REPOS" >> $GITHUB_OUTPUT
@@ -111,34 +111,34 @@ jobs:
       repos: ${{ steps.contracts.outputs.repos }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install GitNexus
-        run: npm install -g gitnexus
+        run: npx --yes gitnexus@1.6.9 --version
 
       - name: View Group Contracts
         id: contracts
         run: |
           GROUP="${{ github.event.inputs.group || 'default' }}"
-          
+
           echo "Fetching contracts for group: $GROUP"
           echo ""
-          
-          CONTRACTS=$(npx gitnexus group contracts "$GROUP" 2>&1)
+
+          CONTRACTS=$(npx --yes gitnexus@1.6.9 group contracts "$GROUP" 2>&1)
           echo "$CONTRACTS"
-          
+
           # Convert to JSON for output
           echo "contracts<<EOF" >> $GITHUB_OUTPUT
           echo "$CONTRACTS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          
+
           # Count repos
           REPOS=$(echo "$CONTRACTS" | grep -c "^###" || echo "0")
           echo "repos=$REPOS" >> $GITHUB_OUTPUT
@@ -154,33 +154,33 @@ jobs:
       total_repos: ${{ steps.status.outputs.total_repos }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install GitNexus
-        run: npm install -g gitnexus
+        run: npx --yes gitnexus@1.6.9 --version
 
       - name: Check Group Status
         id: status
         run: |
           GROUP="${{ github.event.inputs.group || 'default' }}"
-          
+
           echo "Checking status for group: $GROUP"
           echo ""
-          
-          STATUS=$(npx gitnexus group status "$GROUP" 2>&1)
+
+          STATUS=$(npx --yes gitnexus@1.6.9 group status "$GROUP" 2>&1)
           echo "$STATUS"
-          
+
           # Parse output
           STALE=$(echo "$STATUS" | grep -c "STALE" || echo "0")
           TOTAL=$(echo "$STATUS" | grep -c "^|" | head -1 || echo "0")
-          
+
           echo "stale_repos=$STALE" >> $GITHUB_OUTPUT
           echo "total_repos=$TOTAL" >> $GITHUB_OUTPUT
 
@@ -195,35 +195,35 @@ jobs:
       match_count: ${{ steps.query.outputs.match_count }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install GitNexus
-        run: npm install -g gitnexus
+        run: npx --yes gitnexus@1.6.9 --version
 
       - name: Search Group
         id: query
         run: |
           GROUP="${{ github.event.inputs.group || 'default' }}"
           SEARCH="${{ github.event.inputs.query || '*' }}"
-          
+
           echo "Searching for: $SEARCH in group: $GROUP"
           echo ""
-          
-          RESULTS=$(npx gitnexus group query "$GROUP" "$SEARCH" 2>&1)
+
+          RESULTS=$(npx --yes gitnexus@1.6.9 group query "$GROUP" "$SEARCH" 2>&1)
           echo "$RESULTS"
-          
+
           # Convert to JSON
           echo "results<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULTS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          
+
           # Count matches
           MATCHES=$(echo "$RESULTS" | grep -c "^-" || echo "0")
           echo "match_count=$MATCHES" >> $GITHUB_OUTPUT
