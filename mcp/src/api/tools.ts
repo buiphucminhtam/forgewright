@@ -19,6 +19,9 @@ import {
 } from '../state/pipeline-manager.js';
 
 export function registerTools(server: Server, toolGateway = new ToolExecutionGateway()) {
+  // stdio serves one MCP client per server process. Keep its cache namespace
+  // stable across calls while keeping separate server instances isolated.
+  const sessionId = `${process.env.FORGEWRIGHT_SESSION_ID ?? 'mcp'}:${randomUUID()}`;
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -223,7 +226,7 @@ export function registerTools(server: Server, toolGateway = new ToolExecutionGat
         {
           name: request.params.name,
           arguments: (request.params.arguments ?? {}) as Record<string, unknown>,
-          sessionId: `${process.env.FORGEWRIGHT_SESSION_ID ?? 'mcp'}:${randomUUID()}`,
+          sessionId,
           turnNumber: 1,
         },
         async () => {

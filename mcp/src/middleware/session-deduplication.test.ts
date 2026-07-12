@@ -163,6 +163,27 @@ describe('SessionDeduplicationMiddleware', () => {
   });
 
   describe('dedup caching', () => {
+    it('does not cache a read that was pending when a successful mutation advanced its session epoch', () => {
+      mw.configure({ include_tools: ['Read'] });
+      const pendingRead = makeCtx('Read', { path: '/state.json' });
+      pendingRead.sessionId = 'session-a';
+      expect(mw.before_tool(pendingRead).action).toBe('pass');
+
+      const mutation = makeCtx('fw_advance_to_next_phase');
+      mutation.sessionId = 'session-a';
+      mutation.call.result = { content: [{ type: 'text', text: 'advanced' }] };
+      expect(mw.before_tool(mutation).action).toBe('pass');
+      mw.after_tool(mutation);
+
+      pendingRead.call.result = { content: [{ type: 'text', text: 'stale state' }] };
+      mw.after_tool(pendingRead);
+
+      const nextRead = makeCtx('Read', { path: '/state.json' });
+      nextRead.sessionId = 'session-a';
+      expect(mw.before_tool(nextRead).action).toBe('pass');
+      expect(mw.getStoreSize()).toBe(0);
+    });
+
     it('should return cached result on duplicate call', () => {
       const baseArgs = {
         path: '/src',

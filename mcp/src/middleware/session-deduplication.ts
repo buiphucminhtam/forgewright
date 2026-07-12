@@ -37,6 +37,12 @@ interface DedupEntry {
   resultTokens: number;
 }
 
+interface PendingDedupEntry {
+  key: string;
+  sessionId: string;
+  epoch: number;
+}
+
 interface DedupMetrics {
   totalCalls: number;
   cacheHits: number;
@@ -102,7 +108,10 @@ export class SessionDeduplicationMiddleware {
   enabled = true;
 
   private store = new Map<string, DedupEntry>();
-  private pendingKeys = new Set<string>(); // keys from before_tool that missed cache
+  // A pending miss belongs to one call, session, and epoch. A late read must
+  // never be cached into an epoch that a concurrent mutation has advanced.
+  private pendingKeys = new Map<string, PendingDedupEntry>();
+  private epochs = new Map<string, number>();
   private metrics: DedupMetrics = {
     totalCalls: 0,
     cacheHits: 0,
@@ -153,9 +162,32 @@ export class SessionDeduplicationMiddleware {
   }
 
   /** Compute the deduplication key for a tool call. */
-  private computeKey(toolName: string, args: Record<string, unknown>): string {
+  private getEpoch(sessionId: string): number {
+    return this.epochs.get(sessionId) ?? 0;
+  }
+
+  private computeKey(sessionId: string, toolName: string, args: Record<string, unknown>): string {
     const normalized = normalizeArgs(args);
-    return `${toolName}::${shortHash(normalized)}`;
+    return `${sessionId}::${this.getEpoch(sessionId)}::${toolName}::${shortHash(normalized)}`;
+  }
+
+  /** In explicit-allowlist mode, every non-allowlisted tool is conservatively mutating. */
+  private isSuccessfulMutation(ctx: ToolContext): boolean {
+    if (ctx.call.result?.isError) return false;
+    if (this.config.includeTools.length > 0) {
+      return !this.config.includeTools.includes(ctx.call.toolName);
+    }
+    return SIDE_EFFECT_TOOLS.has(ctx.call.toolName);
+  }
+
+  private bumpEpoch(sessionId: string): void {
+    const nextEpoch = this.getEpoch(sessionId) + 1;
+    this.epochs.set(sessionId, nextEpoch);
+    for (const [callId, pending] of this.pendingKeys) {
+      if (pending.sessionId === sessionId && pending.epoch < nextEpoch) {
+        this.pendingKeys.delete(callId);
+      }
+    }
   }
 
   /** Evict expired entries from the dedup store. */
@@ -198,7 +230,7 @@ export class SessionDeduplicationMiddleware {
     this.evictExpired(ctx.turnNumber);
 
     // Compute key
-    const key = this.computeKey(ctx.call.toolName, ctx.call.toolArgs);
+    const key = this.computeKey(ctx.sessionId, ctx.call.toolName, ctx.call.toolArgs);
     const existing = this.store.get(key);
 
     if (existing) {
@@ -232,7 +264,11 @@ export class SessionDeduplicationMiddleware {
 
     // MISS — tool IS deduplicable and not in store
     // Mark as pending so after_tool knows to cache the result
-    this.pendingKeys.add(key);
+    this.pendingKeys.set(ctx.call.id, {
+      key,
+      sessionId: ctx.sessionId,
+      epoch: this.getEpoch(ctx.sessionId),
+    });
     return { action: 'pass', context: ctx };
   }
 
@@ -241,18 +277,27 @@ export class SessionDeduplicationMiddleware {
     if (!ctx.call.result) return;
 
     const result = ctx.call.result;
-    const key = this.computeKey(ctx.call.toolName, ctx.call.toolArgs);
+    const pending = this.pendingKeys.get(ctx.call.id);
+
+    if (this.isSuccessfulMutation(ctx)) {
+      this.bumpEpoch(ctx.sessionId);
+      return;
+    }
 
     // Only store if this key was a pending miss from before_tool
-    if (!this.pendingKeys.has(key)) return;
-    this.pendingKeys.delete(key);
+    if (!pending) return;
+    this.pendingKeys.delete(ctx.call.id);
+
+    // A mutation completed while this read was pending; discard the old result.
+    if (pending.sessionId !== ctx.sessionId || pending.epoch !== this.getEpoch(ctx.sessionId))
+      return;
 
     // Skip large results
     const tokens = estimateTokens(result);
     if (tokens > 25_000) return;
 
-    this.store.set(key, {
-      key,
+    this.store.set(pending.key, {
+      key: pending.key,
       toolName: ctx.call.toolName,
       argsHash: shortHash(normalizeArgs(ctx.call.toolArgs)),
       result,
@@ -271,6 +316,7 @@ export class SessionDeduplicationMiddleware {
   reset(): void {
     this.store.clear();
     this.pendingKeys.clear();
+    this.epochs.clear();
   }
 
   /** Clear metrics only. */

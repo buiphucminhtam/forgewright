@@ -1,4 +1,5 @@
 import { MiddlewareChain } from '../middleware/chain.js';
+import { randomUUID } from 'node:crypto';
 import type { MiddlewareConfig, ToolResult } from '../middleware/types.js';
 
 export interface ToolExecutionRequest {
@@ -57,7 +58,7 @@ export class ToolExecutionGateway {
     }
     const completed = await this.chain.executeTool(
       {
-        id: `${request.sessionId}:${request.turnNumber}:${request.name}`,
+        id: `${request.sessionId}:${request.turnNumber}:${request.name}:${randomUUID()}`,
         toolName: request.name,
         toolArgs: request.arguments,
         startTime: Date.now(),

@@ -5,6 +5,128 @@ import { describe, expect, it } from 'vitest';
 import { ToolExecutionGateway } from './tool-execution-gateway.js';
 
 describe('ToolExecutionGateway', () => {
+  it('reduces a representative large offloaded result by at least 60 percent with a reference', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'forgewright-tool-gateway-offload-'));
+    const gateway = new ToolExecutionGateway({
+      middleware: {
+        tool_sandbox: { enabled: true, max_raw_size: 160, enable_audit: false },
+        context_offload: {
+          enabled: true,
+          data_dir: join(root, 'offload'),
+          min_tokens_to_offload: 1,
+        },
+      },
+    });
+    const original = 'large result line\n'.repeat(2_000);
+    const result = await gateway.execute(
+      { name: 'fw_test', arguments: {}, sessionId: 'benchmark', turnNumber: 1 },
+      async () => ({ content: [{ type: 'text', text: original }] }),
+    );
+    const returned = result.content[0].text;
+    const reduction = 1 - returned.length / original.length;
+
+    expect(returned).toContain('[offloaded result: refs/');
+    expect(reduction).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it('uses session-scoped epochs to invalidate only successful canonical mutations', async () => {
+    const gateway = new ToolExecutionGateway({
+      middleware: {
+        session_deduplication: {
+          enabled: true,
+          include_tools: ['fw_get_current_phase', 'fw_check_pipeline_compliance'],
+        },
+        tool_sandbox: { enabled: false },
+      },
+    });
+    let reads = 0;
+    const read = (sessionId: string) =>
+      gateway.execute(
+        { name: 'fw_get_current_phase', arguments: {}, sessionId, turnNumber: 1 },
+        async () => ({ content: [{ type: 'text' as const, text: `state-${++reads}` }] }),
+      );
+
+    await expect(read('session-a')).resolves.toMatchObject({
+      content: [{ text: 'state-1' }],
+    });
+    await expect(read('session-a')).resolves.toMatchObject({
+      content: [{ text: 'state-1' }],
+    });
+    expect(reads).toBe(1);
+
+    await gateway.execute(
+      { name: 'fw_advance_to_next_phase', arguments: {}, sessionId: 'session-a', turnNumber: 2 },
+      async () => ({ content: [{ type: 'text', text: 'advanced' }] }),
+    );
+    await expect(read('session-a')).resolves.toMatchObject({
+      content: [{ text: 'state-2' }],
+    });
+    expect(reads).toBe(2);
+
+    await expect(read('session-b')).resolves.toMatchObject({
+      content: [{ text: 'state-3' }],
+    });
+    expect(reads).toBe(3);
+
+    await gateway.execute(
+      { name: 'fw_advance_to_next_phase', arguments: {}, sessionId: 'session-a', turnNumber: 3 },
+      async () => ({ content: [{ type: 'text', text: 'mutation failed' }], isError: true }),
+    );
+    await expect(read('session-a')).resolves.toMatchObject({
+      content: [{ text: 'state-2' }],
+    });
+    expect(reads).toBe(3);
+  });
+
+  it('keeps overlapping same-session reads with different arguments from sharing pending state', async () => {
+    const gateway = new ToolExecutionGateway({
+      middleware: {
+        session_deduplication: { enabled: true, include_tools: ['fw_get_current_phase'] },
+        tool_sandbox: { enabled: false },
+      },
+    });
+    let resolveFirst!: (result: { content: Array<{ type: 'text'; text: string }> }) => void;
+    let resolveSecond!: (result: { content: Array<{ type: 'text'; text: string }> }) => void;
+    const first = gateway.execute(
+      {
+        name: 'fw_get_current_phase',
+        arguments: { scope: 'first' },
+        sessionId: 's',
+        turnNumber: 1,
+      },
+      () => new Promise((resolve) => (resolveFirst = resolve)),
+    );
+    const second = gateway.execute(
+      {
+        name: 'fw_get_current_phase',
+        arguments: { scope: 'second' },
+        sessionId: 's',
+        turnNumber: 1,
+      },
+      () => new Promise((resolve) => (resolveSecond = resolve)),
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    resolveFirst({ content: [{ type: 'text', text: 'first result' }] });
+    await first;
+    resolveSecond({ content: [{ type: 'text', text: 'second result' }] });
+    await second;
+
+    await expect(
+      gateway.execute(
+        {
+          name: 'fw_get_current_phase',
+          arguments: { scope: 'second' },
+          sessionId: 's',
+          turnNumber: 2,
+        },
+        async () => ({ content: [{ type: 'text', text: 'unexpected fresh result' }] }),
+      ),
+    ).resolves.toMatchObject({ content: [{ text: 'second result' }] });
+  });
+
   it('authorizes then traverses middleware to sanitize, cap, offload, verify, and emit safe telemetry', async () => {
     const telemetry: unknown[] = [];
     const root = mkdtempSync(join(tmpdir(), 'forgewright-tool-gateway-'));
