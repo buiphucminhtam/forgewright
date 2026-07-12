@@ -10,6 +10,12 @@ import {
   SelfHealingState,
 } from '../models/PipelineState.js';
 
+/**
+ * Retain the most recent 100 state-history entries. Older entries are removed
+ * from the front so persisted state remains bounded and trim order is stable.
+ */
+const PIPELINE_HISTORY_MAX_ENTRIES = 100;
+
 export class PipelineService {
   constructor(
     private stateRepo: IStateRepository<PipelineState>,
@@ -33,7 +39,19 @@ export class PipelineService {
     if (!state.phases || !Array.isArray(state.phases) || state.phases.length === 0) {
       state.phases = initializeDefaultPhases(state.currentPhase, state.status);
     }
+    this.trimHistory(state);
     return state;
+  }
+
+  private trimHistory(state: PipelineState): void {
+    if (state.history.length > PIPELINE_HISTORY_MAX_ENTRIES) {
+      state.history.splice(0, state.history.length - PIPELINE_HISTORY_MAX_ENTRIES);
+    }
+  }
+
+  private appendHistory(state: PipelineState, entry: string): void {
+    state.history.push(entry);
+    this.trimHistory(state);
   }
 
   private async transactAndPublish(
@@ -51,7 +69,7 @@ export class PipelineService {
       state.currentPhase = 1;
       state.currentMode = mode;
       state.status = 'IN_PROGRESS';
-      state.history.push(`Started pipeline in mode: ${mode}`);
+      this.appendHistory(state, `Started pipeline in mode: ${mode}`);
       state.activeAction = null;
       state.phaseProgress = null;
       state.selfHealing = null;
@@ -82,7 +100,7 @@ export class PipelineService {
           selfHealing: null,
           qualityGate: null,
         });
-        state.history.push('Pipeline completed.');
+        this.appendHistory(state, 'Pipeline completed.');
         result = 'Success: Pipeline is now Fully Completed.';
         return state;
       }
@@ -95,7 +113,7 @@ export class PipelineService {
         selfHealing: null,
         qualityGate: null,
       });
-      state.history.push(`Advanced to ${phaseName}`);
+      this.appendHistory(state, `Advanced to ${phaseName}`);
       const newPhaseState = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
       if (newPhaseState)
         Object.assign(newPhaseState, { status: 'running', startedAt: now, progress: 0.0 });
@@ -111,7 +129,7 @@ export class PipelineService {
   ): Promise<string> {
     await this.transactAndPublish((state) => {
       state.status = 'WAITING_FOR_GATE';
-      state.history.push(`Requested Gate Approval: ${message}`);
+      this.appendHistory(state, `Requested Gate Approval: ${message}`);
       state.qualityGate = qualityGate || null;
       const phase = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
       if (phase) phase.status = 'waiting_review';
@@ -128,7 +146,7 @@ export class PipelineService {
         return null;
       }
       state.status = 'IN_PROGRESS';
-      state.history.push('Gate approved by user.');
+      this.appendHistory(state, 'Gate approved by user.');
       state.qualityGate = null;
       const phase = state.phases.find((p) => p.key === PHASE_KEYS[state.currentPhase]);
       if (phase) phase.status = 'running';
@@ -141,7 +159,7 @@ export class PipelineService {
   async failPipeline(reason?: string): Promise<string> {
     await this.transactAndPublish((state) => {
       state.status = 'FAILED';
-      state.history.push(reason ? `Pipeline failed: ${reason}` : 'Pipeline failed.');
+      this.appendHistory(state, reason ? `Pipeline failed: ${reason}` : 'Pipeline failed.');
       Object.assign(state, {
         activeAction: null,
         phaseProgress: null,
