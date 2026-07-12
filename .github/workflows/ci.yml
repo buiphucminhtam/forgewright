@@ -39,6 +39,24 @@ jobs:
       - name: Run all required checks
         run: bash scripts/ci/run-required-checks.sh
 
+  cli-init-onboard-golden:
+    name: CLI Init/Onboard Golden Path
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install clean-checkout dependencies
+        run: npm ci
+
+      - name: Run documented init/onboard workflow
+        run: npm run test:golden
+
   # ═══════════════════════════════════════════════════════════
   # WAVE 1: MCP Package Checks (parallel)
   # ═══════════════════════════════════════════════════════════

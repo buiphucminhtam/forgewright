@@ -15,6 +15,7 @@
     "build:cli": "npm run build --workspace src/cli",
     "dev:cli": "cd src/cli && npm run dev",
     "typecheck:cli": "cd src/cli && npx tsc --noEmit",
+    "test:golden": "node tests/golden/forge-init-onboard.test.mjs",
     "verify:product-truth": "python3 scripts/ci/verify-product-truth.py"
   },
   "devDependencies": {

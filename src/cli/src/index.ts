@@ -23,6 +23,7 @@ import {
   registerDelegateCommand,
 } from "./commands/delegate.js";
 import { registerBenchCommand } from "./commands/bench.js";
+import { registerProjectCommands } from "./commands/project.js";
 import { VERSION } from "./version.js";
 import { EXIT_CODES } from "./exit-codes.js";
 import pc from "picocolors";
@@ -53,6 +54,7 @@ export function buildProgram(): Command {
   registerTokenCommand(program);
   registerDelegateCommand(program);
   registerBenchCommand(program);
+  registerProjectCommands(program);
 
   // Initialize config
   const config = getConfig();
