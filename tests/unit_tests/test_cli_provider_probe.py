@@ -76,3 +76,71 @@ def test_probe_rejects_unsafe_or_missing_invocation_contract() -> None:
     )
     assert result.returncode != 0
     assert "{prompt}" in result.stderr or "not found" in result.stderr
+
+
+def test_opt_in_smoke_invokes_generic_cli_without_persisting_output(
+    tmp_path: Path,
+) -> None:
+    binary = tmp_path / "provider-y"
+    binary.write_text(
+        "#!/bin/sh\nif [ \"$1\" = '--version' ]; then echo 'provider-y 1'; else echo 'FORGEWRIGHT_PROVIDER_SMOKE_OK'; fi\n",
+        encoding="utf-8",
+    )
+    binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROBE),
+            "smoke",
+            "--provider",
+            "provider-y",
+            "--executable",
+            str(binary),
+            "--version-args-json",
+            '["--version"]',
+            "--invocation-args-json",
+            '["--print", "{prompt}"]',
+            "--routing-mode",
+            "provider-managed",
+        ],
+        cwd=ROOT,
+        env={**os.environ, "FORGEWRIGHT_PROVIDER_SMOKE": "1"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    receipt = json.loads(result.stdout)
+    assert receipt["marker_verified"] is True
+    assert receipt["invocation_calls"] == 1
+    assert receipt["live_evidence_eligible"] is False
+    assert "FORGEWRIGHT_PROVIDER_SMOKE_OK" not in json.dumps(receipt)
+
+
+def test_smoke_requires_explicit_opt_in(tmp_path: Path) -> None:
+    binary = tmp_path / "provider-z"
+    binary.write_text("#!/bin/sh\necho 'provider-z 1'\n", encoding="utf-8")
+    binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROBE),
+            "smoke",
+            "--provider",
+            "provider-z",
+            "--executable",
+            str(binary),
+            "--version-args-json",
+            '["--version"]',
+            "--invocation-args-json",
+            '["{prompt}"]',
+            "--routing-mode",
+            "provider-managed",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "FORGEWRIGHT_PROVIDER_SMOKE=1" in result.stderr
