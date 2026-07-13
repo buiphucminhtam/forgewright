@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "stable": "Hosted production evidence and rollback evidence exist.",
+    "beta": "Automated local verification exists; hosted or usage evidence is incomplete.",
+    "experimental": "The capability is available but lacks complete production evidence.",
+    "docs-only": "Documentation or a capability pack exists without a supported production runtime claim."
+  },
+  "capabilities": [
+    {
+      "id": "code-intelligence",
+      "readme_heading": "Code Intelligence (GitNexus)",
+      "maturity": "docs-only",
+      "placement": "core",
+      "evidence": ["docs/guides/gitnexus.md", "AGENTS.md"]
+    },
+    {
+      "id": "testing-stack",
+      "readme_heading": "Autonomous Testing Stack",
+      "maturity": "beta",
+      "placement": "core",
+      "verification_command": "pytest -q tests/unit_tests/test_audit_step.py",
+      "evidence": ["docs/guides/testing-stack.md", "tests/unit_tests/test_audit_step.py"]
+    },
+    {
+      "id": "persistent-memory",
+      "readme_heading": "Persistent Cognitive Memory (FluxMem)",
+      "maturity": "experimental",
+      "placement": "core",
+      "evidence": ["scripts/mem0-v2.py", "tests/unit_tests/test_memory_consolidate.py"]
+    },
+    {
+      "id": "parallel-dispatch",
+      "readme_heading": "Parallel Skill Dispatch",
+      "maturity": "experimental",
+      "placement": "core",
+      "evidence": ["docs/active-roadmap.md", "skills/parallel-dispatch/SKILL.md"]
+    },
+    {
+      "id": "multi-project-hub",
+      "readme_heading": "Multi-Project Hub",
+      "maturity": "docs-only",
+      "placement": "core",
+      "evidence": ["docs/active-roadmap.md", "docs/architecture.md"]
+    },
+    {
+      "id": "token-analytics",
+      "readme_heading": "Token Tracking & Cost Analytics",
+      "maturity": "beta",
+      "placement": "core",
+      "verification_command": "pytest -q tests/unit_tests/test_token_analyzer.py tests/unit_tests/test_token_api.py",
+      "evidence": ["tests/unit_tests/test_token_analyzer.py", "tests/unit_tests/test_token_api.py"]
+    },
+    {
+      "id": "mcp-tool-sandbox",
+      "readme_heading": "MCP Tool Sandbox",
+      "maturity": "beta",
+      "placement": "core",
+      "verification_command": "npm --prefix mcp test -- src/runtime/tool-execution-gateway.test.ts src/middleware/chain.test.ts",
+      "evidence": ["mcp/src/runtime/tool-execution-gateway.test.ts", "mcp/src/middleware/chain.test.ts"]
+    },
+    {
+      "id": "asip",
+      "readme_heading": "The Adaptive Self-Improving Protocol (ASIP)",
+      "maturity": "experimental",
+      "placement": "core",
+      "evidence": ["tests/unit_tests/test_ai_reasoning_lessons.py", "docs/active-roadmap.md"]
+    }
+  ],
+  "optional_packs": [
+    {"id": "game", "maturity": "docs-only", "placement": "optional-pack", "evidence": ["docs/active-roadmap.md"]},
+    {"id": "xr", "maturity": "docs-only", "placement": "optional-pack", "evidence": ["docs/active-roadmap.md"]},
+    {"id": "research", "maturity": "docs-only", "placement": "optional-pack", "evidence": ["docs/active-roadmap.md"]},
+    {"id": "growth", "maturity": "docs-only", "placement": "optional-pack", "evidence": ["docs/active-roadmap.md"]}
+  ]
+}
