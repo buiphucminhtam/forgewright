@@ -5,16 +5,44 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Any
 
 try:
-    from .corpus import RoutingEvalTask, build_corpus
+    from .corpus import (
+        CORPUS_VERSION,
+        RoutingEvalTask,
+        build_corpus,
+        corpus_fingerprint,
+    )
 except ImportError:  # Supports direct invocation: python evals/routing/evaluate.py
-    from corpus import RoutingEvalTask, build_corpus
+    from corpus import CORPUS_VERSION, RoutingEvalTask, build_corpus, corpus_fingerprint
 
 
 TIER_RANK = {"scout": 0, "builder": 1, "expert": 2}
+Z_95 = 1.959963984540054
+
+
+def wilson_interval(successes: int, total: int) -> dict[str, float]:
+    """Return a two-sided 95% Wilson score interval for a binomial rate."""
+    if total <= 0:
+        raise ValueError("Wilson interval total must be positive")
+    if successes < 0 or successes > total:
+        raise ValueError("Wilson interval successes must be between 0 and total")
+    proportion = successes / total
+    z_squared = Z_95**2
+    denominator = 1 + z_squared / total
+    centre = (proportion + z_squared / (2 * total)) / denominator
+    margin = (
+        Z_95
+        * math.sqrt(proportion * (1 - proportion) / total + z_squared / (4 * total**2))
+        / denominator
+    )
+    return {
+        "lower": max(0.0, centre - margin),
+        "upper": min(1.0, centre + margin),
+    }
 
 
 def _validate_decisions(
@@ -70,10 +98,13 @@ def evaluate(decisions: object) -> dict[str, object]:
 
     for stats in category_stats.values():
         stats["accuracy"] = stats["correct"] / stats["total"]
+        stats["accuracy_ci95"] = wilson_interval(stats["correct"], stats["total"])
 
     total = len(expected)
     return {
         "total": total,
+        "corpus_version": CORPUS_VERSION,
+        "corpus_sha256": corpus_fingerprint(),
         "accuracy": correct / total,
         "under_routed": under_routed,
         "expert_share": expert_count / total,

@@ -183,3 +183,14 @@ def test_runtime_source_wires_fail_closed_limits_and_workspace() -> None:
     assert 'FORGEWRIGHT_TOOL_SANDBOX"] = "false"' not in source
     assert '"/workspace"' not in source
     assert "tool_to_session_map[tool.name]" not in source
+
+
+def test_mcp_contexts_enter_without_spawning_timeout_tasks() -> None:
+    source = MODULE_PATH.read_text(encoding="utf-8")
+
+    assert "async with asyncio.timeout(" in source
+    assert (
+        "asyncio.wait_for(\n                            stack.enter_async_context"
+        not in source
+    )
+    assert '"name": "forgewright",\n                    "optional": True' in source

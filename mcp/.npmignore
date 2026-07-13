@@ -1,0 +1,13 @@
+src/
+coverage/
+.forgewright/
+build/**/*.test.js
+build/**/*.test.js.map
+*.config.cjs
+eslint.config.js
+stryker.config.json
+vitest*.config.ts
+tsconfig.json
+.eslintrc.json
+.prettierignore
+.prettierrc

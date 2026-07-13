@@ -366,6 +366,7 @@ class ForgewrightAgent:
             mcp_servers.append(
                 {
                     "name": "forgewright",
+                    "optional": True,
                     "params": StdioServerParameters(
                         command="bash",
                         args=[mcp_launcher],
@@ -587,18 +588,20 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
                 active_sessions = {}
                 for srv in mcp_servers:
                     try:
-                        read, write = await asyncio.wait_for(
-                            stack.enter_async_context(stdio_client(srv["params"])),
-                            timeout=self._remaining_timeout(
-                                self.limits.mcp_timeout_seconds
-                            ),
-                        )
-                        session = await asyncio.wait_for(
-                            stack.enter_async_context(ClientSession(read, write)),
-                            timeout=self._remaining_timeout(
-                                self.limits.mcp_timeout_seconds
-                            ),
-                        )
+                        # AnyIO's stdio client owns a task-local cancel scope. Using
+                        # asyncio.wait_for() here enters that scope in a child task,
+                        # while AsyncExitStack closes it in this task and crashes
+                        # cleanup with "exit cancel scope in a different task".
+                        # asyncio.timeout() preserves task identity.
+                        async with asyncio.timeout(
+                            self._remaining_timeout(self.limits.mcp_timeout_seconds)
+                        ):
+                            read, write = await stack.enter_async_context(
+                                stdio_client(srv["params"])
+                            )
+                            session = await stack.enter_async_context(
+                                ClientSession(read, write)
+                            )
                         await asyncio.wait_for(
                             session.initialize(),
                             timeout=self._remaining_timeout(

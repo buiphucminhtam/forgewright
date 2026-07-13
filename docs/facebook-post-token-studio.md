@@ -1,5 +1,7 @@
 # Bài viết Facebook: Token Efficiency + Forgewright Studio
 
+> **Historical marketing draft — all product, performance, and quality claims are unverified.** Percentages, test counts, cost reductions, and quality statements in every version below are retained as draft copy, not current product evidence. Use `docs/active-roadmap.md` and generated verifier output for release claims.
+
 ---
 
 ## VERSION 1: Kỹ thuật / Developer-focused

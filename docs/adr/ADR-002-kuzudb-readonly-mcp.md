@@ -35,9 +35,9 @@ const db = new ForgeDB(dbPath)
 
 ### Positive
 - MCP server and analyze CLI can run concurrently
-- MCP queries are safe and never corrupt the index
+- The read-only MCP design removes intended write operations from this path and reduces index-corruption risk; it is not proof against storage, library, or implementation defects
 - Multiple MCP servers across projects don't conflict
-- Zero lock errors in normal usage
+- Read-only MCP connections avoid the known writer-lock conflict exercised by this design; operational lock failures remain possible and must be reported
 
 ### Negative
 - MCP tools cannot write to the index (by design — correct)

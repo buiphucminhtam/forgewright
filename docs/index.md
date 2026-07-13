@@ -17,6 +17,7 @@ Welcome to Forgewright — an adaptive orchestrator with 83 AI skills covering t
 - **[Quickstart Guide](quickstart.md)** — Get up and running with Forgewright in 5 minutes
 - **[Setup Guide](SETUP.md)** — Detailed installation instructions
 - **[Configuration Guide](SETUP-REFERENCE.md)** — Configure Forgewright for your project
+- **[CLI Init/Onboard Golden Path](guides/forge-init-onboard.md)** — Deterministic project initialization and profiling workflow
 
 ### Core Concepts
 - **[Mode Reference](mode-reference.md)** — 24 execution modes explained

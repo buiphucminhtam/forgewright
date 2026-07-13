@@ -36,6 +36,44 @@ def test_corpus_has_100_unique_balanced_tasks() -> None:
         assert set(task.risk_signals) <= corpus_module.VALID_RISK_SIGNALS
     assert len(counts) == 10
     assert set(counts.values()) == {10}
+    assert {
+        "debug",
+        "feature",
+        "review",
+        "refactor",
+        "security",
+        "docs",
+        "operations",
+    } <= set(counts)
+
+
+def test_corpus_fingerprint_is_frozen() -> None:
+    approved_v2_fingerprint = (
+        "bcb83e2ed5f4a9ccf2a7ef6d01fca38346b14f026381826f1cb51eaafc879da4"
+    )
+    assert corpus_module.CORPUS_VERSION == 2
+    assert corpus_module.CORPUS_SHA256 == approved_v2_fingerprint
+    assert corpus_module.corpus_fingerprint() == corpus_module.CORPUS_SHA256
+    assert corpus_module.canonical_payload().endswith("\n")
+
+
+@pytest.mark.parametrize(
+    ("successes", "total", "expected_lower", "expected_upper"),
+    [
+        (10, 10, 0.722467, 1.0),
+        (0, 10, 0.0, 0.277533),
+        (9, 10, 0.595850, 0.982124),
+    ],
+)
+def test_wilson_interval_known_values(
+    successes: int,
+    total: int,
+    expected_lower: float,
+    expected_upper: float,
+) -> None:
+    interval = evaluate_module.wilson_interval(successes, total)
+    assert interval["lower"] == pytest.approx(expected_lower, abs=1e-6)
+    assert interval["upper"] == pytest.approx(expected_upper, abs=1e-6)
 
 
 def test_perfect_router_has_no_under_routing() -> None:
@@ -103,14 +141,17 @@ def test_report_includes_category_and_tier_shares() -> None:
     ]
     report = evaluate_module.evaluate(decisions)
     assert report["expert_share"] + report["non_expert_share"] == pytest.approx(1.0)
+    assert report["corpus_sha256"] == corpus_module.CORPUS_SHA256
+    assert report["corpus_version"] == 2
     assert set(report["categories"]) == set(corpus_module.SCENARIOS)
     for stats in report["categories"].values():
-        assert stats == {
-            "total": 10,
-            "correct": 10,
-            "under_routed": 0,
-            "accuracy": 1.0,
-        }
+        assert stats["total"] == 10
+        assert stats["correct"] == 10
+        assert stats["under_routed"] == 0
+        assert stats["accuracy"] == 1.0
+        assert stats["accuracy_ci95"] == pytest.approx(
+            {"lower": 0.722467, "upper": 1.0}, abs=1e-6
+        )
 
 
 def test_cli_returns_nonzero_when_threshold_is_not_met(tmp_path: Path) -> None:

@@ -61,6 +61,8 @@ scripts/cf-dns-remove.sh
 .forgewright/baseline-*.json
 .forgewright/change-manifest-*.json
 .forgewright/logs/
+.forgewright/audit/
+.forgewright/escalations/
 .forgewright/metrics/
 .forgewright/reports/
 .forgewright/cache/
@@ -77,6 +79,11 @@ scripts/cf-dns-remove.sh
 .forgewright/settings.env
 .forgewright/marketing-research-notebook-id.txt
 .forgewright/active-goal.json
+.forgewright/quality-gate-events.jsonl
+.forgewright/verification-events.jsonl
+
+# Workspace-local MCP runtime evidence
+mcp/.forgewright/
 
 # Root-level SQLite database
 memory.db

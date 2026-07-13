@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "documents": [
+    {
+      "path": "README.md",
+      "classification": "public-product",
+      "requiredMarker": "compatibility paths and user overrides are not universally enforced",
+      "forbiddenPatterns": ["ensures\\s+the\\s+AI\\s+never\\s+edits"]
+    },
+    {
+      "path": "docs/guides/testing-stack.md",
+      "classification": "public-guide",
+      "requiredMarker": "they do not guarantee zero escaped bugs in production",
+      "forbiddenPatterns": ["(?<!not )guarantee\\s+zero[- ]escaped", "100%\\s+free", "ensur(?:e|es|ing)\\s+no\\s+regressions", "eliminate\\s+requirements\\s+gaps", "ensur(?:e|es|ing)\\s+cross-platform"]
+    },
+    {
+      "path": "docs/adr/ADR-002-kuzudb-readonly-mcp.md",
+      "classification": "architecture-decision",
+      "requiredMarker": "it is not proof against storage, library, or implementation defects",
+      "forbiddenPatterns": ["safe\\s+and\\s+never\\s+corrupt", "zero\\s+lock\\s+errors"]
+    },
+    {
+      "path": "docs/guides/gitnexus.md",
+      "classification": "public-guide",
+      "requiredMarker": "unsupported or dynamic patterns may not resolve",
+      "forbiddenPatterns": ["zero[- ]overhead", "[0-9]+k\\+\\s+stars", "[0-9,]+\\s+symbols", "[0-9]+\\s+MCP\\s+tools"]
+    },
+    {
+      "path": "docs/facebook-post-token-studio.md",
+      "classification": "historical-unverified-marketing",
+      "requiredMarker": "Historical marketing draft — all product, performance, and quality claims are unverified",
+      "forbiddenPatterns": []
+    }
+  ]
+}

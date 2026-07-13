@@ -25,7 +25,25 @@
 
 > **An AI harness that records failures and reuses verified lessons.** Forgewright is designed to reduce repeated failure patterns; recurrence is measured rather than assumed away.
 
-Forgewright is an open-source, production-grade harness that turns raw LLMs (Claude, Gemini, GPT) into reliable engineering agents. It coordinates complex software delivery through a strict pipeline of definition, building, hardening, and shipping, using multi-agent parallel execution.
+Forgewright is an open-source engineering harness that adds evidence-gated delivery workflows around the model provider and tools you configure. It coordinates definition, building, hardening, and shipping while keeping provider-specific execution inside that provider's native ecosystem.
+
+---
+
+## Roadmap and Evidence Status
+
+The zero-cost local roadmap is implemented for all 19 deliverables from P0.1 through P3.4. The machine-readable [completion manifest](docs/roadmap-completion.json) maps every deliverable to local evidence and a rollback strategy; the [active roadmap](docs/active-roadmap.md) records the detailed scope and evidence boundaries.
+
+- Verification runs locally and does not require GitHub Actions or paid hosted CI.
+- Provider and model selection is capability-driven. The core does not require one provider, model catalog, or API.
+- Provider-native execution stays within the selected provider's own CLI or ecosystem adapter.
+- Live adaptive-routing gates P2.2–P2.5 remain disabled until that provider produces trustworthy native receipts. Fixtures, generic CLI probes, and local smoke markers cannot enable them.
+- Gemini API integration is not part of the roadmap. Antigravity CLI may be used as one optional provider-side validation instance, not as a core dependency.
+
+Run the roadmap contract locally:
+
+```bash
+python3 -m pytest -q tests/unit_tests/test_roadmap_completion.py
+```
 
 ---
 
@@ -188,7 +206,7 @@ Forgewright bundles advanced software engineering workflows into focused, access
 
 ### 1. Code Intelligence (GitNexus)
 
-Forgewright utilizes GitNexus to construct a deep structural graph of your codebase. This ensures the AI never edits a symbol without first understanding its upstream blast radius and upstream impact. It replaces naive keyword searches with semantic relationship queries.
+Forgewright can use GitNexus to construct a structural graph of a supported codebase. The documented kernel requires impact analysis before symbol edits when GitNexus is available; compatibility paths and user overrides are not universally enforced. Graph queries supplement rather than eliminate text search, and incomplete or stale indexes remain an explicit evidence boundary.
 **[Read the GitNexus Guide ➔](docs/guides/gitnexus.md)**
 
 ### 2. Autonomous Testing Stack
@@ -257,6 +275,8 @@ Once setup is complete, run the onboarding workflow to establish a baseline. In 
 ```
 
 *Creates a `.forgewright/project-profile.json` detailing your stack, coding conventions, and existing tech debt.*
+
+For a deterministic, model-free CLI path, use `forge --json init .` followed by `forge --json onboard .`. The [CLI init/onboard golden-path guide](docs/guides/forge-init-onboard.md) documents idempotency, overwrite behavior, recorded facts, and the required under-ten-minute test.
 
 ### Parallel AI Worktrees
 

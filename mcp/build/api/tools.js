@@ -1,6 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { ToolExecutionGateway } from '../runtime/tool-execution-gateway.js';
 import { startPipeline, getState, advancePhase, requestGateApproval, approveGate, updateSubTask, updateSelfHealing, failPipeline, logTokenUsage, checkPipelineCompliance, PIPELINE_PHASES, } from '../state/pipeline-manager.js';
-export function registerTools(server) {
+export function registerTools(server, toolGateway = new ToolExecutionGateway()) {
+    // stdio serves one MCP client per server process. Keep its cache namespace
+    // stable across calls while keeping separate server instances isolated.
+    const sessionId = `${process.env.FORGEWRIGHT_SESSION_ID ?? 'mcp'}:${randomUUID()}`;
     server.setRequestHandler(ListToolsRequestSchema, async () => {
         return {
             tools: [
@@ -185,7 +190,12 @@ export function registerTools(server) {
             ],
         };
     });
-    server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    server.setRequestHandler(CallToolRequestSchema, async (request) => toolGateway.execute({
+        name: request.params.name,
+        arguments: (request.params.arguments ?? {}),
+        sessionId,
+        turnNumber: 1,
+    }, async () => {
         try {
             if (request.params.name === 'fw_start_pipeline') {
                 const result = await startPipeline(request.params.arguments?.mode);
@@ -209,7 +219,8 @@ export function registerTools(server) {
                 }
                 if (state.status === 'WAITING_FOR_GATE' && state.qualityGate) {
                     msg += `\nQuality Gate Score: ${state.qualityGate.score}/${state.qualityGate.threshold}`;
-                    if (state.qualityGate.failedCriteria && state.qualityGate.failedCriteria.length > 0) {
+                    if (state.qualityGate.failedCriteria &&
+                        state.qualityGate.failedCriteria.length > 0) {
                         msg += `\nFailed Criteria:`;
                         for (const item of state.qualityGate.failedCriteria) {
                             msg += `\n  - ${item.name} (Score: ${item.score}, Reason: ${item.reason})`;
@@ -331,5 +342,5 @@ export function registerTools(server) {
                 content: [{ type: 'text', text: `Failed to execute: ${msg}` }],
             };
         }
-    });
+    }));
 }

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict, dataclass
 from typing import Final
@@ -28,6 +29,13 @@ VALID_RISK_SIGNALS: Final[frozenset[str]] = frozenset(
         "security",
     }
 )
+REQUIRED_ROADMAP_CATEGORIES: Final[frozenset[str]] = frozenset(
+    {"debug", "feature", "review", "refactor", "security", "docs", "operations"}
+)
+CORPUS_VERSION: Final[int] = 2
+CORPUS_SHA256: Final[str] = (
+    "bcb83e2ed5f4a9ccf2a7ef6d01fca38346b14f026381826f1cb51eaafc879da4"
+)
 
 
 SCENARIOS: Final[dict[str, tuple[tuple[str, str, tuple[str, ...]], ...]]] = {
@@ -43,7 +51,7 @@ SCENARIOS: Final[dict[str, tuple[tuple[str, str, tuple[str, ...]], ...]]] = {
         ("Extract API route names from this source excerpt.", "scout", ()),
         ("Group these files by extension.", "scout", ()),
     ),
-    "documentation": (
+    "docs": (
         ("Fix grammar in one paragraph without changing meaning.", "scout", ()),
         ("Update a README command after a verified rename.", "builder", ()),
         ("Write release notes from this verified changelog.", "builder", ()),
@@ -255,16 +263,40 @@ SCENARIOS: Final[dict[str, tuple[tuple[str, str, tuple[str, ...]], ...]]] = {
             ("public_api", "security"),
         ),
     ),
-    "verification": (
-        ("Run and summarize an existing unit test command.", "scout", ()),
-        ("Write unit tests for a pure helper.", "builder", ()),
-        ("Create a regression test for a parser bug.", "builder", ()),
-        ("Verify package metadata fields deterministically.", "scout", ()),
-        ("Add property tests for a calculation.", "builder", ()),
-        ("Review security test coverage for authentication.", "expert", ("security",)),
-        ("Check a generated file for deterministic drift.", "scout", ()),
-        ("Add a concurrency stress test for state writes.", "expert", ("concurrency",)),
-        ("Compare two live model runs with pinned metadata.", "builder", ()),
+    "review": (
+        (
+            "Review a parser fix for behavior regressions and missing tests.",
+            "builder",
+            (),
+        ),
+        (
+            "Review a dependency upgrade for compatibility and lockfile risk.",
+            "builder",
+            (),
+        ),
+        (
+            "Review a refactor for accidental public export changes.",
+            "expert",
+            ("public_api",),
+        ),
+        ("Review error-handling changes for swallowed failures.", "builder", ()),
+        (
+            "Review a database migration for rollback and schema risk.",
+            "expert",
+            ("schema",),
+        ),
+        (
+            "Review authentication test coverage for security gaps.",
+            "expert",
+            ("security",),
+        ),
+        ("Review a performance patch for correctness regressions.", "builder", ()),
+        (
+            "Review an async worker diff for races and ordering bugs.",
+            "expert",
+            ("concurrency",),
+        ),
+        ("Review release notes against the verified code changes.", "builder", ()),
         (
             "Independently review a high-risk public API diff.",
             "expert",
@@ -301,6 +333,8 @@ def build_corpus() -> tuple[RoutingEvalTask, ...]:
         raise RuntimeError("routing corpus must contain exactly 100 unique tasks")
     if len(category_counts) != 10 or set(category_counts.values()) != {10}:
         raise RuntimeError("routing corpus must contain 10 categories of 10 tasks")
+    if not REQUIRED_ROADMAP_CATEGORIES.issubset(category_counts):
+        raise RuntimeError("routing corpus is missing a required roadmap category")
     if any(task.expected_tier not in VALID_TIERS for task in corpus):
         raise RuntimeError("routing corpus contains an invalid expected tier")
     if any(not set(task.risk_signals).issubset(VALID_RISK_SIGNALS) for task in corpus):
@@ -308,8 +342,26 @@ def build_corpus() -> tuple[RoutingEvalTask, ...]:
     return tuple(corpus)
 
 
+def canonical_payload() -> str:
+    """Serialize the corpus deterministically for drift detection."""
+    return (
+        json.dumps(
+            [asdict(task) for task in build_corpus()],
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+
+
+def corpus_fingerprint() -> str:
+    """Return the SHA-256 fingerprint of the canonical frozen corpus."""
+    return hashlib.sha256(canonical_payload().encode("utf-8")).hexdigest()
+
+
 def main() -> None:
-    print(json.dumps([asdict(task) for task in build_corpus()], indent=2))
+    print(canonical_payload(), end="")
 
 
 if __name__ == "__main__":
