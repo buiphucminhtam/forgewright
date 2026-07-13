@@ -87,4 +87,5 @@ reports/
 mutants/
 .mutmut-cache
 .forgewright/mcp-manifest.json
+.antigravity/mcp-manifest.json
 ruff_errors.json
