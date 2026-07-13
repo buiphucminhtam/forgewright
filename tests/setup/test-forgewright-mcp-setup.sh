@@ -70,7 +70,21 @@ test_diagnose() {
 
     cd "$PROJECT_ROOT"
     info "Testing forgewright-mcp-setup.sh --diagnose"
-    bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --diagnose > /dev/null 2>&1 && pass "forgewright-mcp-setup.sh --diagnose" || fail "forgewright-mcp-setup.sh --diagnose"
+    local output
+    if output="$(bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --diagnose 2>&1)"; then
+        pass "forgewright-mcp-setup.sh --diagnose"
+    else
+        fail "forgewright-mcp-setup.sh --diagnose"
+        return
+    fi
+    grep -Fq "DIR:     ${FORGEWRIGHT_DIR}" <<< "$output" && pass "diagnose: repository root" || fail "diagnose: wrong repository root"
+    grep -Fq "forgewright: ${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh" <<< "$output" && pass "diagnose: canonical launcher path" || fail "diagnose: wrong launcher path"
+    grep -Fq "PATH:  ${FORGEWRIGHT_DIR}/mcp" <<< "$output" && pass "diagnose: canonical MCP path" || fail "diagnose: wrong MCP path"
+    if grep -Fq "/scripts/scripts/" <<< "$output"; then
+        fail "diagnose: duplicated scripts path"
+    else
+        pass "diagnose: no duplicated scripts path"
+    fi
 }
 
 test_setup() {

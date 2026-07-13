@@ -75,6 +75,16 @@ detect_forgewright() {
             FORGEWRIGHT_DIR="$plugin_root"
             FORGEWRIGHT_IS_PROJECT="false"
         fi
+    elif [[ "$resolved" == */scripts/mcp ]]; then
+        # Canonical repository layout after the script migration:
+        # FORGEWRIGHT_ROOT/scripts/mcp/forgewright-mcp-setup.sh
+        local possible_fw="$(dirname "$(dirname "$resolved")")"
+        FORGEWRIGHT_DIR="$possible_fw"
+        if [[ -f "${possible_fw}/AGENTS.md" ]] || [[ -f "${possible_fw}/CLAUDE.md" ]]; then
+            FORGEWRIGHT_IS_PROJECT="true"
+        else
+            FORGEWRIGHT_IS_PROJECT="false"
+        fi
     elif [[ "$resolved" == */scripts ]]; then
         local possible_fw="$(dirname "$resolved")"
         FORGEWRIGHT_DIR="$possible_fw"
