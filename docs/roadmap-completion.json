@@ -1,0 +1,29 @@
+{
+  "schema": "forgewright-roadmap-completion/v1",
+  "scope": "zero-cost local implementation and verification",
+  "completion_rule": "A deliverable is complete when its implementation, deterministic local evidence, and rollback strategy are present. Provider-native activation is a separate gate and is never inferred from fixtures or local CLI probes.",
+  "deliverables": [
+    {"id":"P0.1","status":"implemented","activation":"local","evidence":["docs/adr/0001-canonical-production-runtime.md","tests/unit_tests/test_product_truth.py"],"rollback":"Revert the runtime ADR/manifest change and rerun the product-truth verifier."},
+    {"id":"P0.2","status":"implemented","activation":"local","evidence":["product-manifest.json","scripts/ci/verify-product-truth.py","tests/unit_tests/test_product_truth.py"],"rollback":"Restore the previous manifest and regenerate only derived truth documents."},
+    {"id":"P0.3","status":"implemented","activation":"opt-in","evidence":["docs/adr/ADR-008-live-runtime-smoke.md","scripts/ci/verify-runtime-smoke.mjs"],"rollback":"Disable the opt-in smoke environment and retain deterministic runtime tests."},
+    {"id":"P0.4","status":"implemented","activation":"local","evidence":["evals/routing/evaluate.py","tests/unit_tests/test_routing_eval.py"],"rollback":"Reject incompatible reports and restore the previous versioned evaluator contract."},
+    {"id":"P0.5","status":"implemented","activation":"local","evidence":["README.md","tests/unit_tests/test_product_truth.py"],"rollback":"Revert claim wording only after the product-truth tests accept the replacement."},
+
+    {"id":"P1.1","status":"implemented","activation":"library-only","evidence":["mcp/src/runtime/model-call-gateway.ts","mcp/src/runtime/model-call-gateway.test.ts"],"rollback":"Remove gateway wiring while keeping the canonical MCP runtime operational."},
+    {"id":"P1.2","status":"implemented","activation":"canonical-mcp","evidence":["mcp/src/runtime/tool-execution-gateway.ts","mcp/src/runtime/tool-execution-gateway.test.ts"],"rollback":"Restore direct registered-tool dispatch and rerun the gateway regression suite."},
+    {"id":"P1.3","status":"implemented","activation":"canonical-mcp","evidence":["mcp/src/middleware/context-offload.ts","mcp/src/middleware/context-offload.test.ts","mcp/src/runtime/tool-execution-gateway.test.ts"],"rollback":"Disable cache/offload hooks and return bounded direct tool results."},
+    {"id":"P1.4","status":"implemented","activation":"library-only","evidence":["mcp/src/runtime/model-call-gateway.ts","mcp/src/runtime/model-call-gateway.test.ts"],"rollback":"Disable model invocation when reservations cannot be enforced; never bypass budgets."},
+    {"id":"P1.5","status":"implemented","activation":"canonical-mcp","evidence":["mcp/src/state/pipeline-manager.ts","mcp/src/state/pipeline-manager.test.ts"],"rollback":"Restore the last valid state snapshot and retain fail-closed writes."},
+
+    {"id":"P2.1","status":"implemented","activation":"local","evidence":["evals/routing/corpus.py","tests/unit_tests/test_routing_eval.py"],"rollback":"Restore the frozen corpus fingerprint and reject drifted reports."},
+    {"id":"P2.2","status":"implemented","activation":"not-enabled","evidence":["evals/routing/live_evidence.py","tests/unit_tests/test_live_routing_evidence.py","evals/routing/providers/cli.py"],"rollback":"Keep adaptive routing disabled and discard non-native receipts."},
+    {"id":"P2.3","status":"implemented","activation":"not-enabled","evidence":["evals/routing/control_plane.py","tests/unit_tests/test_routing_control_plane.py"],"rollback":"Fail closed to the strong-model route when canary gates lack valid evidence."},
+    {"id":"P2.4","status":"implemented","activation":"not-enabled","evidence":["evals/routing/control_plane.py","tests/unit_tests/test_routing_control_plane.py"],"rollback":"Disable rollout and restore the last accepted provider-native policy snapshot."},
+    {"id":"P2.5","status":"implemented","activation":"not-enabled","evidence":["evals/routing/control_plane.py","tests/unit_tests/test_routing_control_plane.py"],"rollback":"Disable paid review routing when avoided-defect evidence does not exceed cost."},
+
+    {"id":"P3.1","status":"implemented","activation":"local","evidence":["scripts/ci/run-required-checks.sh","tests/unit_tests/test_roadmap_provider_policy.py"],"rollback":"Stop release locally on any aggregate-gate failure; no hosted workflow is required."},
+    {"id":"P3.2","status":"implemented","activation":"local","evidence":["scripts/ci/release-supply-chain-policy.mjs","scripts/ci/release-supply-chain-policy.test.mjs","scripts/ci/verify-rollback-rehearsal.mjs"],"rollback":"Run the rollback rehearsal and do not publish artifacts that fail policy verification."},
+    {"id":"P3.3","status":"implemented","activation":"local","evidence":["docs/adr/ADR-006-cli-init-onboard-golden-path.md","tests/golden/forge-init-onboard.test.mjs"],"rollback":"Remove generated project metadata or restore preserved pre-existing files."},
+    {"id":"P3.4","status":"implemented","activation":"local","evidence":["docs/capability-maturity.json","tests/unit_tests/test_capability_maturity.py"],"rollback":"Downgrade unsupported maturity labels and rerun every declared verification command."}
+  ]
+}
