@@ -2,7 +2,7 @@
 
 > **North star:** cost per verified, accepted engineering task.
 > **Scope:** the core engineering loop first; game, XR, research, and growth remain optional capability packs until the core loop has production evidence.
-> **Status date:** 2026-07-11.
+> **Status date:** 2026-07-13.
 
 ## Product Goal
 
@@ -21,33 +21,35 @@ The product promise is:
 5. Give workers a bounded task contract and relevant context slice, never the full conversation by default.
 6. Treat documentation claims as release artifacts: every quantitative or safety claim needs an owner and evidence.
 7. Roll out routing changes in shadow and canary modes before making them default.
+8. Keep execution provider-native: discovery, routing, model calls, verification, usage receipts, and credentials stay inside one provider ecosystem per run.
+9. Do not require paid hosted CI; release evidence must be reproducible with local or provider-included tooling.
 
 ## Verified Baseline
 
 | Area | Current evidence | Gap |
 |---|---|---|
-| Product truth | `product-manifest.json`, deterministic validator, and required aggregate gate cover declared public facts | Remaining legacy/status-document cleanup is pending |
+| Product truth | `product-manifest.json`, deterministic validator, required aggregate gate, and an explicit five-document claim inventory cover core public facts plus high-risk testing, GitNexus, ADR, and historical marketing claims | Remaining legacy/status and domain-specific documentation inventory is pending |
 | Runtime | The TypeScript MCP stdio server is declared as the canonical locally-tested production path; CLI and Python/shell paths coexist | Live provider/MCP smoke and legacy-path equivalence evidence are pending |
 | Safety controls | MiddlewareChain tests pass, but production construction was not found outside tests | Safety claims are not proven on the production path |
 | Legacy agent loop | Local hardening now caches a bounded namespaced tool catalog and enforces turn, tool-call, context, output, response, and timeout limits | Live MCP/provider smoke evidence and legacy-path enforcement equivalence remain pending |
 | Model selection | Provider-specific static tier guidance and several unrelated model environment variables | No capability/risk router or startup capability probe |
-| Evaluation | Schema-v2 local validator rejects mock/incomplete/mismatched reports; historical files are documented as non-comparable | No reproducible paired live baseline or live provider evidence |
+| Evaluation | Schema-v2 local validator rejects mock/incomplete/mismatched reports; a frozen 100-task routing corpus covers all required roadmap categories and reports per-category Wilson 95% confidence intervals | No reproducible paired live baseline or live provider evidence |
 | Cost control | Token budgets and reports exist | Budget is not enforced at a single model-call gateway |
 | State | File state persistence can log a failed write while the caller reports success | No fail-closed error propagation or concurrency control |
-| CI/release | A deterministic aggregate workflow invokes product truth, Python units, MCP lint/format/build/test, and CLI tests | Coverage, security, clean-install, and runtime smoke remain outside this partial P3.1 gate |
+| CI/release | A required local aggregate gate invokes product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, production dependency audit, package-content smoke checks, and a temporary worktree-snapshot `npm ci`/build check | Runtime smoke remains opt-in; paid hosted execution is intentionally outside scope |
 | Memory | Boot injection is capped at 500 tokens | Retrieval quality, staleness, and non-ASCII query behavior lack release KPIs |
 
-## GPT Routing Policy
+## Provider-Native Routing Policy
 
-Model IDs are resolved by a startup capability probe and pinned snapshots are used for repeatable evals. The policy uses capabilities, not permanent marketing names.
+Forgewright exposes one provider-neutral Scout/Builder/Expert contract. Each run selects exactly one provider adapter; that adapter discovers the provider's available models, maps capabilities to tiers, resolves snapshots, performs calls and verification, and records provider-native usage/cost receipts. Model IDs are never assumed portable between providers.
 
-| Tier | Default responsibility | Current preferred GPT family | Escalation rule |
+| Tier | Default responsibility | Provider-native selection | Escalation rule |
 |---|---|---|---|
-| Scout | Classification, extraction, ranking, inventory, context compression | GPT-5.6 Luna | Escalate when the output is ambiguous or a deterministic check fails |
-| Builder | Bounded implementation, tests, debugging, code review, subagents | GPT-5.6 Terra | Escalate on any HARD signal or two failed checks |
-| Expert | Architecture, security, public API/schema, concurrency, cross-module decisions, independent high-risk review | GPT-5.6 Sol | Human authority gate when budget, policy, or unresolved disagreement requires it |
+| Scout | Classification, extraction, ranking, inventory, context compression | Least-cost discovered model satisfying the Scout capability profile | Escalate when the output is ambiguous or a deterministic check fails |
+| Builder | Bounded implementation, tests, debugging, code review, subagents | Discovered model satisfying implementation and tool-use capabilities | Escalate on any HARD signal or two failed checks |
+| Expert | Architecture, security, public API/schema, concurrency, cross-module decisions, independent high-risk review | Strongest eligible model exposed by the selected provider | Human authority gate when budget, policy, or unresolved disagreement requires it |
 
-Compatibility fallback order must be populated from a live capability probe. An unavailable model is a routing event, not a reason to loop. A task uses one primary model by default. Parallel workers are allowed only for two or more independent, bounded, non-overlapping workstreams. An independent reviewer receives only the original requirements, diff, and verifier evidence.
+Compatibility fallback order must come from the selected provider's live capability probe. An unavailable model is a routing event, not a reason to switch providers or loop. Cross-provider fallback is opt-in and out of the default scope. A task uses one primary model by default. Parallel workers are allowed only for independent, bounded, non-overlapping workstreams. An independent reviewer uses a separate context within the same provider ecosystem and receives only the original requirements, diff, and verifier evidence.
 
 Every route decision must log: task class, risk signals, selected model and snapshot, reason, input/output/cached tokens, latency, estimated cost, verifier result, retry count, and escalation count. Prompts, secrets, and full diffs must not be stored in process arguments or telemetry.
 
@@ -63,7 +65,7 @@ Every route decision must log: task class, risk signals, selected model and snap
 | P0.2 | **Implemented locally:** canonical product manifest, drift validator, public truth sync, regression tests, and aggregate CI wiring | Tech writer + Builder | P0.1 | Local truth gate passes; hosted CI execution and remaining internal-link cleanup remain pending |
 | P0.3 | **Implemented locally:** corrected paths/model endpoint handling, workspace isolation, required-server failure, namespaced tools, and hard runtime limits; live smoke remains | Runtime engineer / Expert | P0.1 | Deterministic unit tests pass; live runtime smoke proves provider/MCP boundaries |
 | P0.4 | **Implemented locally:** schema-v2 eval reports require live mode, exact task set, attempts, verifier metadata, provider, model, and resolved snapshot before comparison | QA / Builder | P0.1 | Historical reports are intentionally rejected; reproducible paired live baseline remains pending |
-| P0.5 | **Implemented locally (README/product overview scope):** absolute safety, privacy, and performance language is qualified and linked to runtime/evidence boundaries | Product + tech writer / Scout | P0.2 | Broader documentation inventory remains pending |
+| P0.5 | **Expanded locally:** README/product overview claims are qualified, and an explicit regression-tested inventory now covers five high-risk public documents; universal editing, zero-bug, index-corruption, zero-overhead, and historical percentage claims are removed or classified as unverified | Product + tech writer / Scout | P0.2 | Remaining legacy/status and domain-specific documentation inventory is pending |
 
 **Targets:** zero known false-success paths; zero unbounded model loops; clean clone to first verified task in under 10 minutes; at least 90% setup success in supported CI environments.
 
@@ -87,24 +89,24 @@ Every route decision must log: task class, risk signals, selected model and snap
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
-| P2.1 | Build at least 100 representative tasks across debug, feature, review, refactor, security, docs, and operations | QA / Builder | P0.4 | Category-level confidence intervals and frozen fixtures exist |
-| P2.2 | Run a strong-model-only baseline and shadow route decisions without changing execution | QA + data / Expert | P1.1, P2.1 | Route precision and predicted savings are reported |
-| P2.3 | Canary the Scout/Builder/Expert policy on 10% of eligible tasks | Runtime + SRE / Expert | P2.2 | No category drops more than 2 percentage points; no safety regression |
-| P2.4 | Expand gradually and tune thresholds from verifier outcomes, not self-reported model confidence | Runtime + data / Builder | P2.3 | Scout/Builder share at least 70%; escalation 10–25%; re-escalation at most 5% |
-| P2.5 | Trigger independent review only when its marginal defect reduction exceeds its token cost | QA / Expert | P2.3 | Review precision and avoided-defect cost are measured |
+| P2.1 | **Implemented locally:** the canonical frozen corpus contains 100 unique tasks across ten balanced categories, includes debug, feature, review, refactor, security, docs, and operations, and is locked by a canonical SHA-256 fingerprint | QA / Builder | P0.4 | Deterministic tests enforce task/category balance, required categories, fingerprint drift, fail-closed decision coverage, and per-category Wilson 95% confidence intervals |
+| P2.2 | **Infrastructure implemented locally:** provider-native adapter protocol produces paired strong-model baseline and shadow evidence without storing prompts/outputs | QA + data / Expert | P1.1, P2.1 | Live route precision and savings remain provider-run evidence, not a fixture claim |
+| P2.3 | **Infrastructure implemented locally:** deterministic exact 10% stratified canary producer and fail-closed gate | Runtime + SRE / Expert | P2.2 | A real provider run must show no category drop above 2 points and no safety regression |
+| P2.4 | **Infrastructure implemented locally:** rollout gate measures initial/final tiers, escalation, re-escalation, verifier and safety outcomes | Runtime + data / Builder | P2.3 | Live provider-native rollout receipt remains required before enabling the policy by default |
+| P2.5 | **Infrastructure implemented locally:** per-review avoided-defect value must exceed review cost and review provenance is hashed | QA / Expert | P2.3 | Live review precision and avoided-defect cost remain provider-run evidence |
 
 **Targets:** P0/P1 escaped defects equal zero; p50 latency down 25%; p95 latency no worse than 10%; maximum-turn breaches below 1%.
 
 ### Phase 3 — Release and Product Credibility
 
-**Outcome:** a release is reproducible, portable, auditable, and understandable by a new user.
+**Outcome:** a release is locally reproducible, auditable, zero-hosting-cost, and understandable by a new user.
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
-| P3.1 | **Partial implemented locally:** required aggregate gate covers product truth, Python units, MCP lint/format/build/test, and CLI tests | DevOps / Builder | P0.2, P1.1, P1.2 | Runtime smoke, clean install, coverage, security, and reusable workflow decomposition remain pending |
-| P3.2 | Pin actions and tools; remove unverified `curl | bash`; add SBOM, provenance, synchronized version/tag checks, rollback test, and package smoke tests | Security + DevOps / Expert | P3.1 | Release checklist contains linked evidence for every item |
-| P3.3 | Ship one canonical `forge init`/`forge onboard` golden path and a 10-minute sample workflow | CLI + docs / Builder | P0.2, P3.1 | Every documented command executes in clean-clone CI |
-| P3.4 | Label capabilities stable, beta, experimental, or docs-only; move non-core domains into optional packs | Product + architect / Expert | Usage data from P2 | Every README capability has maturity and evidence links |
+| P3.1 | **Implemented locally:** required zero-cost aggregate gate covers product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, dependency audit, package smoke, and clean temporary `npm ci` builds; the MCP tarball excludes tests, coverage, source, and telemetry | DevOps / Builder | P0.2, P1.1, P1.2 | Local aggregate and runtime smoke commands are the canonical evidence; paid hosted execution is not required |
+| P3.2 | **Implemented locally:** release dependencies/tools are pinned, package/tag contracts are checked, SBOM and provenance artifacts are generated, package smoke and rollback rehearsal are automated | Security + DevOps / Expert | P3.1 | Local release-policy and artifact verifiers provide linked evidence without publishing or paid runners; repository-hosted workflow definitions are intentionally absent |
+| P3.3 | **Implemented locally:** canonical `forge init`/`forge onboard` commands create deterministic project metadata, fail closed without a manifest, preserve existing files by default, support explicit refresh, and are documented as a ten-minute sample workflow | CLI + docs / Builder | P0.2, P3.1 | Golden tests execute locally and inside the aggregate gate |
+| P3.4 | **Implemented locally:** machine-verified inventory labels every README core capability and classifies game, XR, research, and growth as optional docs-only packs | Product + architect / Expert | Local evidence inventory | Maturity tests execute each beta capability's verification command and forbid unsupported stable claims |
 
 ## Learning and Memory KPIs
 
@@ -136,7 +138,7 @@ A phase is complete only when all of the following are true:
 
 ## Next Execution Slice
 
-1. Run a live P0.3 provider/MCP smoke and record its evidence before expanding runtime safety claims.
-2. Produce paired schema-v2 live reports with the same resolved model snapshot before using cheap-model results to justify routing.
-3. Extend P3.1 with clean-install, coverage, security, runtime-smoke, and reusable workflow evidence.
-4. Run the full regression matrix, GitNexus `detect_changes`, independent diff review, and release audit.
+1. Add provider-native adapters only when their capability probe, resolved snapshots, usage receipts, and verifier contract can be proven locally.
+2. Produce paired live reports inside one selected provider ecosystem before using lower-cost model results to justify routing.
+3. Keep provider/MCP runtime smoke opt-in and local; do not add paid hosted CI as a release dependency.
+4. Run the full local regression matrix, GitNexus `detect_changes`, independent diff review, and release audit.
