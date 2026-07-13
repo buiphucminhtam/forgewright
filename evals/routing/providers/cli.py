@@ -179,15 +179,88 @@ def smoke(
     }
 
 
+def catalog(
+    provider: str, executable: str, catalog_args: list[str], catalog_format: str
+) -> dict[str, object]:
+    if os.environ.get("FORGEWRIGHT_PROVIDER_CATALOG") != "1":
+        raise ValueError(
+            "set FORGEWRIGHT_PROVIDER_CATALOG=1 to authorize one provider catalog call"
+        )
+    if os.name != "posix":
+        raise ValueError(
+            "provider catalog requires POSIX process-group and output-limit controls"
+        )
+    resolved = _executable(executable)
+    with tempfile.TemporaryFile() as output:
+        process = subprocess.Popen(
+            [resolved, *catalog_args],
+            stdout=output,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            preexec_fn=_limit_output_file,
+        )
+        try:
+            code = process.wait(timeout=30)
+        except subprocess.TimeoutExpired as error:
+            _terminate_process_group(process)
+            process.wait(timeout=5)
+            raise ValueError("provider catalog timed out") from error
+        finally:
+            _terminate_process_group(process)
+        size = output.tell()
+        if code != 0:
+            raise ValueError(f"provider catalog exited {code}; output suppressed")
+        if size > MAX_SMOKE_BYTES:
+            raise ValueError("provider catalog exceeded the output cap")
+        output.seek(0)
+        raw = output.read(MAX_SMOKE_BYTES)
+    try:
+        text = raw.decode("utf-8")
+        if catalog_format == "lines":
+            models = [line.strip() for line in text.splitlines() if line.strip()]
+        else:
+            parsed = json.loads(text)
+            if not isinstance(parsed, list) or not all(
+                isinstance(item, str) and item.strip() for item in parsed
+            ):
+                raise ValueError("provider JSON catalog must be a string array")
+            models = [item.strip() for item in parsed]
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("provider catalog output is invalid") from error
+    models = list(dict.fromkeys(models))
+    if not models or len(models) > 200:
+        raise ValueError(
+            "provider catalog must contain between 1 and 200 unique models"
+        )
+    return {
+        "schema_version": 1,
+        "provider": provider,
+        "adapter_kind": "cli",
+        "models": models,
+        "models_source": "provider-cli-runtime",
+        "catalog_fingerprint": hashlib.sha256(
+            json.dumps(models, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "catalog_calls": 1,
+        "catalog_side_effects": "provider-defined",
+        "generation_calls": "not-observed",
+        "live_evidence_eligible": False,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("probe", "smoke"))
+    parser.add_argument("command", choices=("probe", "smoke", "catalog"))
     parser.add_argument("--provider", required=True)
     parser.add_argument("--executable", required=True)
     parser.add_argument("--version-args-json", required=True)
     parser.add_argument("--invocation-args-json", required=True)
     parser.add_argument(
         "--routing-mode", choices=("provider-managed", "explicit-tier"), required=True
+    )
+    parser.add_argument("--catalog-args-json", default="[]")
+    parser.add_argument(
+        "--catalog-format", choices=("lines", "json-array"), default="lines"
     )
     args = parser.parse_args()
     try:
@@ -200,8 +273,15 @@ def main() -> int:
                 invocation_args,
                 args.routing_mode,
             )
-        else:
+        elif args.command == "smoke":
             report = smoke(args.provider, args.executable, invocation_args)
+        else:
+            report = catalog(
+                args.provider,
+                args.executable,
+                _string_array(args.catalog_args_json, "catalog args"),
+                args.catalog_format,
+            )
         print(json.dumps(report, indent=2, sort_keys=True))
     except (OSError, subprocess.SubprocessError, ValueError) as error:
         parser.error(str(error))

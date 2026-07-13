@@ -144,3 +144,45 @@ def test_smoke_requires_explicit_opt_in(tmp_path: Path) -> None:
     )
     assert result.returncode != 0
     assert "FORGEWRIGHT_PROVIDER_SMOKE=1" in result.stderr
+
+
+def test_catalog_discovers_models_from_generic_cli_lines(tmp_path: Path) -> None:
+    binary = tmp_path / "provider-catalog"
+    binary.write_text(
+        "#!/bin/sh\nprintf 'Model Alpha\\nModel Beta\\n'\n",
+        encoding="utf-8",
+    )
+    binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROBE),
+            "catalog",
+            "--provider",
+            "catalog-x",
+            "--executable",
+            str(binary),
+            "--version-args-json",
+            "[]",
+            "--invocation-args-json",
+            '["{prompt}"]',
+            "--routing-mode",
+            "explicit-tier",
+            "--catalog-args-json",
+            '["models"]',
+            "--catalog-format",
+            "lines",
+        ],
+        cwd=ROOT,
+        env={**os.environ, "FORGEWRIGHT_PROVIDER_CATALOG": "1"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    receipt = json.loads(result.stdout)
+    assert receipt["models"] == ["Model Alpha", "Model Beta"]
+    assert receipt["catalog_calls"] == 1
+    assert receipt["generation_calls"] == "not-observed"
+    assert receipt["catalog_side_effects"] == "provider-defined"
+    assert receipt["models_source"] == "provider-cli-runtime"
