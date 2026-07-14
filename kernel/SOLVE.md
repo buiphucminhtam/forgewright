@@ -115,3 +115,8 @@ After completing all work for this user turn, persist context so the next turn (
    ```
 
 4. **Self-check**: Confirm the mem0 add command succeeded. If it failed, log: `⚠ Memory save failed — context may not persist`.
+
+5. **Self-Report Rule Violation**: Nếu bạn tự nhận ra mình đã quên rule (hoặc user nhắc), bắt buộc chạy rule-ledger.sh:
+   ```bash
+   bash scripts/lite/rule-ledger.sh add <rule_id> violation "source: self-report|user"
+   ```

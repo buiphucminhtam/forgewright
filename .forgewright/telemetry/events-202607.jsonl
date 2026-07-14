@@ -1,0 +1,4 @@
+{"ts":"2026-07-14T13:37:38Z","event":"test.event","data":{"ok":true}}
+{"ts":"2026-07-14T13:37:39Z","event":"policy.deny","data":{"tool":"Bash","pattern":"rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)","mode":"strict"}}
+{"ts":"2026-07-14T13:38:49Z","event":"test","data":{"status":"ok"}}
+{"ts":"2026-07-14T13:40:26Z","event":"policy.deny","data":{"tool":"Bash","pattern":"rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)","mode":"unknown"}}

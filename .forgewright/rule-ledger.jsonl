@@ -1,0 +1,3 @@
+{"ts":"2026-07-14T13:37:39Z","rule":"HR1-verify","outcome":"hit","note":""}
+{"ts":"2026-07-14T13:38:49Z","rule":"test-rule","outcome":"hit","note":"test run"}
+{"ts":"2026-07-14T13:40:26Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - Claim made without VERDICT block"}

@@ -7,6 +7,7 @@ All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewrig
 > Features targeting v8.8.0 and beyond. Not yet released.
 
 ### Added
+- **Forgewright Rule Compliance Loop** — Telemetry, Rule Ledger, Execution Policy, Context Manager, and Rule Validator to self-correct and enforce rules.
 - **AI Reasoning Research Integration** — Deep NotebookLM research across 14 sources (OpenAI o1/o3, Anthropic extended thinking, Claude Code best practices) producing 15 actionable lessons (reconstructed from docs).
 - **Reasoning Checkpoint** — SOLVE Step 6.4 mandates a 1–2 sentence reasoning pause after every CHECK result (reconstructed from docs).
 - **Adversarial Review** — SOLVE Step 6.7 spawns a fresh-context reviewer for FEATURE/DEBUG tasks touching ≥3 files (reconstructed from docs).

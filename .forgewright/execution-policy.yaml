@@ -1,0 +1,34 @@
+# .forgewright/execution-policy.yaml
+# Forgewright Phase 4 — Execution Policy.
+# Read by scripts/lite/policy-check.sh (guard middleware ④). See kernel/POLICY.md.
+#
+# Format constraints (parsed with grep/cut/tr — no yq dependency):
+#   - Scalars: one per line as `key: value`; the value must not contain spaces.
+#   - deny_patterns items: exactly `  - "pattern"` (two-space indent, dash, space).
+#     Patterns are POSIX ERE, matched case-insensitively against the string
+#     "<tool_name> <args>". Pattern lines must not contain double quotes
+#     inside the pattern or inline comments.
+
+# strict     → deny match blocks the tool call (exit 1)
+# permissive → deny match warns but allows (exit 2)
+# audit      → deny match is logged to telemetry only (exit 0)
+mode: strict
+
+# Every success claim requires a VERIFY block (kernel/VERIFY.md).
+require_verify: true
+
+# Max escalate.sh invocations per user turn before pausing for approval.
+max_escalations: 3
+
+# Guard re-reads this file every N tool calls (policy hot-reload).
+refresh_interval_ticks: 10
+
+deny_patterns:
+  - "rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)"
+  - "git[[:space:]]+push[[:space:]]+.*(--force|[[:space:]]-f([[:space:]]|$))"
+  - "git[[:space:]]+reset[[:space:]]+--hard"
+  - "git[[:space:]]+clean[[:space:]]+-[a-zA-Z]*f"
+  - "DROP[[:space:]]+(TABLE|DATABASE)"
+  - "curl[[:space:]]+[^|]*\|[[:space:]]*(ba|z)?sh"
+  - "wget[[:space:]]+[^|]*\|[[:space:]]*(ba|z)?sh"
+  - "chmod[[:space:]]+777"

@@ -1,5 +1,5 @@
 {
   "hooks": {
-    "stop": "bash scripts/lite/verify-gate.sh --platform CLAUDE"
+    "stop": "bash scripts/lite/verify-gate.sh --platform CLAUDE && python3 scripts/lite/rule-validator.py --runtime --transcript .forgewright/session-log.json"
   }
 }

@@ -180,6 +180,11 @@ After completing all work for this user turn, persist context so the next turn (
    ```
 
 4. **Self-check**: Confirm the mem0 add command succeeded. If it failed, log: `⚠ Memory save failed — context may not persist`.
+
+5. **Self-Report Rule Violation**: Nếu bạn tự nhận ra mình đã quên rule (hoặc user nhắc), bắt buộc chạy rule-ledger.sh:
+   ```bash
+   bash scripts/lite/rule-ledger.sh add <rule_id> violation "source: self-report|user"
+   ```
 <!-- END OF SOLVE.md -->
 
 <!-- START OF VERIFY.md -->
@@ -334,7 +339,7 @@ When the user provides answers, record explicit defaults and constraints before 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (20616 symbols, 27765 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (20636 symbols, 27808 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
