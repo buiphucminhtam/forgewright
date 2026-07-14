@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# ⚡ Tự động cập nhật submodule sau khi checkout nhánh
+if [ -x "./scripts/lite/submodule-auto-update.sh" ]; then
+  ./scripts/lite/submodule-auto-update.sh
+fi

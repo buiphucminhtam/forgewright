@@ -5,3 +5,8 @@ if git diff-tree --no-commit-id --name-only -r ORIG_HEAD HEAD | grep -q '^mcp/';
     bash ./scripts/forgewright-mcp-setup.sh
   fi
 fi
+
+# ⚡ Tự động cập nhật submodule
+if [ -x "./scripts/lite/submodule-auto-update.sh" ]; then
+  ./scripts/lite/submodule-auto-update.sh
+fi

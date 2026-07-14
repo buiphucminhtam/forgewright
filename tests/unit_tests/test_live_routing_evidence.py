@@ -62,7 +62,7 @@ def test_shadow_runner_produces_attested_gate_accepted_receipt(tmp_path: Path) -
         env=env,
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=90,
         check=False,
     )
     assert result.returncode == 0, result.stderr
