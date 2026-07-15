@@ -169,13 +169,13 @@ You must restart your IDE completely (e.g., CMD+Q on Mac) to force it to load th
 
 #### Step 5: Enable Antigravity CLI (`agy`) Enforcement
 
-Pulling the repository updates the Forgewright code, but it does not install
-Antigravity's machine-level hook automatically. Every developer or CI machine
-that uses `agy` must run the installer and doctor once:
+Every developer or CI machine that uses `agy` must install the machine-level
+Antigravity hook and the parent repository's update hooks once:
 
 ```bash
 bash forgewright/scripts/forgewright-install.sh --profile minimal --yes
 bash forgewright/scripts/forgewright-hook-doctor.sh --quick --fix
+bash forgewright/scripts/lite/install-submodule-update-hooks.sh "$PWD"
 ```
 
 The installer adds the native named `PreToolUse` policy hook to
@@ -185,6 +185,14 @@ separate from Gemini CLI's `.gemini/settings.json`. Confirm the installation:
 ```bash
 bash forgewright/scripts/forgewright-hook-doctor.sh --quick
 ```
+
+After this one-time setup, `post-merge` and `post-checkout` in the parent
+repository automatically check `origin/main`. When the submodule is clean and
+can be fast-forwarded, Forgewright updates it and refreshes the installed
+Antigravity hook runtime, doctor checks, and MCP configuration. Local submodule
+changes or divergent history are never overwritten. Opening `agy` itself does
+not fetch Git; the automatic update happens during the preceding parent Git
+pull, merge, or checkout.
 
 Use Forgewright-managed delegation, escalation, benchmark, or parallel-dispatch
 commands whenever possible. These paths invoke the real `agy` binary with an
