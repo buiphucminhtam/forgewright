@@ -365,17 +365,75 @@ sync_canonical_server() {
     log_step "Syncing MCP server to canonical location..."
     mkdir -p "$CANONICAL_SERVER_DIR"
 
-    # Sync files (preserve node_modules if already installed)
-    if [[ ! -d "$CANONICAL_SERVER_DIR/node_modules" ]] || [[ -d "$src_dir/node_modules" ]] && [[ -z "$(ls -A "$CANONICAL_SERVER_DIR/node_modules" 2>/dev/null)" ]]; then
-        rsync -a --exclude='node_modules' "$src_dir/" "$CANONICAL_SERVER_DIR/" 2>/dev/null || cp -r "$src_dir/"* "$CANONICAL_SERVER_DIR/" 2>/dev/null
+    # Mirror source while preserving installed dependencies and runtime evidence.
+    if [[ "${FORGEWRIGHT_FORCE_PYTHON_SYNC:-0}" != "1" ]] && command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete --exclude='node_modules' --exclude='.forgewright' \
+            "$src_dir/" "$CANONICAL_SERVER_DIR/"
     else
-        rsync -a --exclude='node_modules' "$src_dir/" "$CANONICAL_SERVER_DIR/" 2>/dev/null || cp -r "$src_dir/"* "$CANONICAL_SERVER_DIR/" 2>/dev/null
+        python3 - "$src_dir" "$CANONICAL_SERVER_DIR" <<'PYEOF'
+from pathlib import Path
+import shutil
+import sys
+
+source, destination = map(Path, sys.argv[1:])
+preserved = {"node_modules", ".forgewright"}
+source_names = {path.name for path in source.iterdir()} - preserved
+for path in destination.iterdir():
+    if path.name in preserved or path.name in source_names:
+        continue
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+for path in source.iterdir():
+    if path.name in preserved:
+        continue
+    target = destination / path.name
+    if target.exists() or target.is_symlink():
+        if target.is_dir() and not target.is_symlink():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+    if path.is_dir() and not path.is_symlink():
+        shutil.copytree(path, target, symlinks=True)
+    else:
+        shutil.copy2(path, target, follow_symlinks=False)
+PYEOF
     fi
 
-    # Ensure node_modules is usable (reinstall if broken)
-    if [[ ! -f "$CANONICAL_SERVER_DIR/node_modules/.bin/tsx" ]]; then
+    local lock_digest="" lock_marker="$CANONICAL_SERVER_DIR/node_modules/.forgewright-package-lock.sha256"
+    if [[ -f "$CANONICAL_SERVER_DIR/package-lock.json" ]]; then
+        if command -v sha256sum >/dev/null 2>&1; then
+            lock_digest="$(sha256sum "$CANONICAL_SERVER_DIR/package-lock.json" | awk '{print $1}')"
+        else
+            lock_digest="$(shasum -a 256 "$CANONICAL_SERVER_DIR/package-lock.json" | awk '{print $1}')"
+        fi
+    fi
+    local installed_digest=""
+    [[ -f "$lock_marker" ]] && installed_digest="$(cat "$lock_marker")"
+
+    # Reconcile dependencies when the lock changes or the installed tree is incomplete.
+    if [[ ! -x "$CANONICAL_TSX" ]] || [[ -z "$lock_digest" ]] || [[ "$lock_digest" != "$installed_digest" ]] || \
+        ! (cd "$CANONICAL_SERVER_DIR" && npm ls --silent >/dev/null 2>&1); then
         log_info "  Reinstalling dependencies..."
-        (cd "$CANONICAL_SERVER_DIR" && npm install --no-bin-links --silent 2>&1 | tail -2) || true
+        (cd "$CANONICAL_SERVER_DIR" && npm install --silent)
+        mkdir -p "$(dirname "$lock_marker")"
+        printf '%s\n' "$lock_digest" > "$lock_marker"
+    fi
+
+    if [[ ! -x "$CANONICAL_TSX" ]]; then
+        log_error "Canonical tsx executable missing: $CANONICAL_TSX"
+        return 1
+    fi
+
+    if ! (cd "$CANONICAL_SERVER_DIR" && npm run build --silent); then
+        log_error "Failed to build canonical MCP server"
+        return 1
+    fi
+
+    if [[ ! -f "$CANONICAL_SERVER_DIR/build/runtime/tool-execution-gateway.js" ]]; then
+        log_error "Canonical MCP build is missing runtime/tool-execution-gateway.js"
+        return 1
     fi
 
     log_ok "Canonical MCP server synced → $CANONICAL_SERVER_DIR"
@@ -455,7 +513,7 @@ console.log(JSON.stringify(cfg, null, 2));
 
     echo "$new_config" > "$CURSOR_CONFIG"
     log_ok "Updated $CURSOR_CONFIG"
-    log_info "  forgewright → npx tsx (CANONICAL: ~/.forgewright/mcp-server/)"
+    log_info "  forgewright → canonical tsx (~/.forgewright/mcp-server/)"
     log_info "  gitnexus    → /opt/homebrew/bin/gitnexus"
 }
 
@@ -523,7 +581,7 @@ console.log(JSON.stringify(cfg, null, 2));
 
     echo "$new_config" > "$CLAUDE_CODE_CONFIG"
     log_ok "Updated $CLAUDE_CODE_CONFIG"
-    log_info "  forgewright → npx tsx (CANONICAL: ~/.forgewright/mcp-server/)"
+    log_info "  forgewright → canonical tsx (~/.forgewright/mcp-server/)"
     log_info "  gitnexus    → /opt/homebrew/bin/gitnexus"
 }
 
@@ -686,7 +744,7 @@ setup_codex() {
     } > "$CODEX_CONFIG"
 
     log_ok "Updated $CODEX_CONFIG"
-    log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
+    log_info "  forgewright → canonical tsx ~/.forgewright/mcp-server/"
     log_info "  gitnexus    → $gitnexus_path"
 }
 
@@ -776,7 +834,7 @@ console.log(JSON.stringify(cfg, null, 2));
     # Always write to Antigravity CLI config
     write_mcp_config "$ANTIGRAVITY_CLI_CONFIG"
 
-    log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
+    log_info "  forgewright → canonical tsx ~/.forgewright/mcp-server/"
     log_info "  gitnexus    → $gitnexus_path"
 }
 
@@ -871,7 +929,7 @@ console.log(JSON.stringify(cfg, null, 2));
 
     echo "$new_config" > "$ZED_CONFIG"
     log_ok "Updated $ZED_CONFIG"
-    log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
+    log_info "  forgewright → canonical tsx ~/.forgewright/mcp-server/"
     log_info "  gitnexus    → $gitnexus_path"
 }
 
@@ -958,8 +1016,8 @@ setup_opencode() {
             echo ""
             echo "[mcp_servers.forgewright]"
             echo 'enabled = true'
-            echo 'command = "npx"'
-            echo "args = [\"tsx\", \"$CANONICAL_SERVER_TS\"]"
+            echo "command = \"$CANONICAL_TSX\""
+            echo "args = [\"$CANONICAL_SERVER_TS\"]"
 
             echo ""
             echo "[mcp_servers.gitnexus]"
@@ -1007,7 +1065,7 @@ console.log(JSON.stringify(cfg, null, 2));
     fi
 
     log_ok "Updated $OPENCODE_CONFIG"
-    log_info "  forgewright → npx tsx ~/.forgewright/mcp-server/"
+    log_info "  forgewright → canonical tsx ~/.forgewright/mcp-server/"
     log_info "  gitnexus    → $gitnexus_path"
 }
 
@@ -1020,7 +1078,15 @@ verify_manifest() {
         return 1
     fi
     local ws_path
-    ws_path=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$manifest','utf8')).workspace)}catch{e}" 2>/dev/null)
+    ws_path=$(node - "$manifest" <<'NODE'
+try {
+  const manifest = JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
+  process.stdout.write(typeof manifest.workspace === 'string' ? manifest.workspace : '');
+} catch (error) {
+  process.exit(1);
+}
+NODE
+    ) || ws_path=""
     if [[ "$ws_path" != "$PROJECT_ROOT" ]]; then
         log_warn "Manifest workspace mismatch: expected $PROJECT_ROOT, got $ws_path"
         return 1
@@ -1064,24 +1130,42 @@ SETTINGS_EOF
 
 # ─── Verify Installation ────────────────────────────────────────────────────────
 
+has_canonical_mcp_config() {
+    local config_path="$1"
+    [[ -f "$config_path" ]] && grep -Fq "$CANONICAL_SERVER_TS" "$config_path" && \
+        grep -Fq "$CANONICAL_TSX" "$config_path"
+}
+
+report_platform_configuration() {
+    local platform="$1"
+    local config_path="$2"
+    if has_canonical_mcp_config "$config_path"; then
+        log_ok "$platform configured: $config_path"
+    else
+        log_info "$platform not configured (not installed or skipped)"
+    fi
+}
+
 verify_installation() {
     log_step "Verifying installation..."
 
     local checks=0 passed=0
-    local server_dir="${PROJECT_ROOT}/.forgewright/mcp-server"
+    local server_dir="$CANONICAL_SERVER_DIR"
 
-    ((checks++)); [[ -d "$server_dir" ]] && ((passed++)) && log_ok "Server dir" || log_error "Server dir missing"
-    ((checks++)); [[ -f "$server_dir/src/index.ts" ]] && ((passed++)) && log_ok "src/index.ts" || log_error "src/index.ts missing"
-    ((checks++)); [[ -f "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh" ]] && ((passed++)) && log_ok "Launcher script" || log_error "Launcher script missing"
-    ((checks++)); [[ -f "${PROJECT_ROOT}/.antigravity/mcp-manifest.json" ]] && ((passed++)) && log_ok "Manifest" || log_error "Manifest missing"
+    ((checks += 1)); if [[ -d "$server_dir" ]]; then ((passed += 1)); log_ok "Server dir"; else log_error "Server dir missing"; fi
+    ((checks += 1)); if [[ -f "$server_dir/src/index.ts" ]]; then ((passed += 1)); log_ok "src/index.ts"; else log_error "src/index.ts missing"; fi
+    ((checks += 1)); if [[ -x "$CANONICAL_TSX" ]]; then ((passed += 1)); log_ok "tsx executable"; else log_error "tsx executable missing"; fi
+    ((checks += 1)); if [[ -f "$server_dir/build/runtime/tool-execution-gateway.js" ]]; then ((passed += 1)); log_ok "tool-execution gateway build artifact"; else log_error "tool-execution gateway build artifact missing"; fi
+    ((checks += 1)); if [[ -f "${PROJECT_ROOT}/.antigravity/mcp-manifest.json" ]]; then ((passed += 1)); log_ok "Manifest"; else log_error "Manifest missing"; fi
 
-    # Platform-specific checks
-    ((checks++)); [[ -f "$CURSOR_CONFIG" ]] && ((passed++)) && log_ok "Cursor config" || log_error "Cursor config missing"
-    ((checks++)); [[ -f "$CLAUDE_CODE_CONFIG" ]] && ((passed++)) && log_ok "Claude Code config" || log_error "Claude Code config missing"
-    [[ "$ANTIGRAVITY_CONFIG" != "not_found" ]] && [[ -d "$ANTIGRAVITY_CONFIG" ]] && ((passed++)) && ((checks++)) && log_ok "Antigravity server" || true
+    report_platform_configuration "Cursor" "$HOME/.cursor/mcp.json"
+    report_platform_configuration "Claude Code" "$HOME/.claude/settings.json"
+    report_platform_configuration "Codex CLI" "$HOME/.codex/config.toml"
+    report_platform_configuration "Gemini CLI" "$HOME/.config/google/mcp-cli/config.json"
 
     echo ""
     log_info "Passed: $passed/$checks checks"
+    [[ "$passed" -eq "$checks" ]]
 }
 
 # ─── Built-in Research MCPs ───────────────────────────────────────────────
@@ -1095,7 +1179,7 @@ install_builtin_mcps() {
 
     # Exa Web Search
     echo -n "  Exa (web search): "
-    if command -v npx &>/dev/null && npx --yes @exa/search-mcp-server --help &>/dev/null 2>&1; then
+    if command -v npx &>/dev/null && npx --no-install @exa/search-mcp-server --help &>/dev/null 2>&1; then
         echo -e "${GREEN}available${NC}"
         ((mcp_count++))
     else
@@ -1104,7 +1188,7 @@ install_builtin_mcps() {
 
     # Context7 Docs
     echo -n "  Context7 (official docs): "
-    if command -v npx &>/dev/null && npx --yes @context7/mcp-server --help &>/dev/null 2>&1; then
+    if command -v npx &>/dev/null && npx --no-install @context7/mcp-server --help &>/dev/null 2>&1; then
         echo -e "${GREEN}available${NC}"
         ((mcp_count++))
     else
@@ -1113,7 +1197,7 @@ install_builtin_mcps() {
 
     # Grep.app GitHub Search
     echo -n "  Grep.app (GitHub code search): "
-    if command -v npx &>/dev/null && npx --yes @grepapp/mcp-server --help &>/dev/null 2>&1; then
+    if command -v npx &>/dev/null && npx --no-install @grepapp/mcp-server --help &>/dev/null 2>&1; then
         echo -e "${GREEN}available${NC}"
         ((mcp_count++))
     else
@@ -1148,10 +1232,10 @@ cmd_check() {
     # Cursor
     if [[ -f "$CURSOR_CONFIG" ]]; then
         log_ok "Cursor: $CURSOR_CONFIG"
-        if grep -q "forgewright" "$CURSOR_CONFIG" 2>/dev/null; then
+        if has_canonical_mcp_config "$CURSOR_CONFIG"; then
             log_ok "  forgewright: CONFIGURED"
         else
-            log_warn "  forgewright: NOT configured"
+            log_warn "  forgewright: NOT configured with canonical server"
         fi
         if grep -q "gitnexus" "$CURSOR_CONFIG" 2>/dev/null; then
             log_ok "  gitnexus: CONFIGURED"
@@ -1166,10 +1250,10 @@ cmd_check() {
     # Claude Code
     if [[ -f "$CLAUDE_CODE_CONFIG" ]]; then
         log_ok "Claude Code: $CLAUDE_CODE_CONFIG"
-        if grep -q "forgewright" "$CLAUDE_CODE_CONFIG" 2>/dev/null; then
+        if has_canonical_mcp_config "$CLAUDE_CODE_CONFIG"; then
             log_ok "  forgewright: CONFIGURED"
         else
-            log_warn "  forgewright: NOT configured"
+            log_warn "  forgewright: NOT configured with canonical server"
         fi
         if grep -q "gitnexus" "$CLAUDE_CODE_CONFIG" 2>/dev/null; then
             log_ok "  gitnexus: CONFIGURED"
@@ -1185,8 +1269,10 @@ cmd_check() {
     log_step "Antigravity:"
     if [[ "$ANTIGRAVITY_CONFIG" != "not_found" ]] && [[ -d "$ANTIGRAVITY_CONFIG" ]]; then
         log_ok "  Server: $ANTIGRAVITY_CONFIG"
-        if grep -q "forgewright" "${ANTIGRAVITY_CONFIG}/SERVER_METADATA.json" 2>/dev/null; then
+        if [[ -x "${ANTIGRAVITY_CONFIG}/launcher.sh" ]] && grep -Fq "$CANONICAL_TSX" "${ANTIGRAVITY_CONFIG}/launcher.sh" && grep -Fq "$CANONICAL_SERVER_TS" "${ANTIGRAVITY_CONFIG}/launcher.sh"; then
             log_ok "  forgewright: CONFIGURED"
+        else
+            log_warn "  forgewright: NOT configured with canonical server"
         fi
     else
         log_warn "  Antigravity forgewright server not found"
@@ -1207,10 +1293,10 @@ cmd_check() {
     CODEX_CONFIG="$HOME/.codex/config.toml"
     if [[ -f "$CODEX_CONFIG" ]]; then
         log_ok "Codex CLI: $CODEX_CONFIG"
-        if grep -q '^\[mcp_servers\.forgewright\]' "$CODEX_CONFIG" 2>/dev/null; then
+        if has_canonical_mcp_config "$CODEX_CONFIG"; then
             log_ok "  forgewright: CONFIGURED"
         else
-            log_warn "  forgewright: NOT configured"
+            log_warn "  forgewright: NOT configured with canonical server"
         fi
         if grep -q '^\[mcp_servers\.gitnexus\]' "$CODEX_CONFIG" 2>/dev/null; then
             log_ok "  gitnexus: CONFIGURED"
@@ -1226,10 +1312,10 @@ cmd_check() {
     GEMINI_CONFIG="$HOME/.config/google/mcp-cli/config.json"
     if [[ -f "$GEMINI_CONFIG" ]]; then
         log_ok "Gemini CLI: $GEMINI_CONFIG"
-        if grep -q '"forgewright"' "$GEMINI_CONFIG" 2>/dev/null; then
+        if has_canonical_mcp_config "$GEMINI_CONFIG"; then
             log_ok "  forgewright: CONFIGURED"
         else
-            log_warn "  forgewright: NOT configured"
+            log_warn "  forgewright: NOT configured with canonical server"
         fi
         if grep -q '"gitnexus"' "$GEMINI_CONFIG" 2>/dev/null; then
             log_ok "  gitnexus: CONFIGURED"
@@ -1245,10 +1331,10 @@ cmd_check() {
     local ag_config="$HOME/.gemini/config/mcp_config.json"
     if [[ -f "$ag_config" ]]; then
         log_ok "Antigravity CLI: $ag_config"
-        if grep -q '"forgewright"' "$ag_config" 2>/dev/null; then
+        if has_canonical_mcp_config "$ag_config"; then
             log_ok "  forgewright: CONFIGURED"
         else
-            log_warn "  forgewright: NOT configured"
+            log_warn "  forgewright: NOT configured with canonical server"
         fi
         if grep -q '"gitnexus"' "$ag_config" 2>/dev/null; then
             log_ok "  gitnexus: CONFIGURED"
@@ -1270,10 +1356,10 @@ cmd_check() {
     ZED_CONFIG="${zed_settings_dir}/settings.json"
     if [[ -f "$ZED_CONFIG" ]]; then
         log_ok "Zed AI: $ZED_CONFIG"
-        if grep -q '"forgewright"' "$ZED_CONFIG" 2>/dev/null; then
+        if has_canonical_mcp_config "$ZED_CONFIG"; then
             log_ok "  forgewright: CONFIGURED"
         else
-            log_warn "  forgewright: NOT configured"
+            log_warn "  forgewright: NOT configured with canonical server"
         fi
         if grep -q '"gitnexus"' "$ZED_CONFIG" 2>/dev/null; then
             log_ok "  gitnexus: CONFIGURED"
@@ -1292,10 +1378,10 @@ cmd_check() {
     fi
     if [[ -f "$OPENCODE_CONFIG" ]]; then
         log_ok "OpenCode: $OPENCODE_CONFIG"
-        if grep -q 'forgewright' "$OPENCODE_CONFIG" 2>/dev/null; then
+        if has_canonical_mcp_config "$OPENCODE_CONFIG"; then
             log_ok "  forgewright: CONFIGURED"
         else
-            log_warn "  forgewright: NOT configured"
+            log_warn "  forgewright: NOT configured with canonical server"
         fi
         if grep -q 'gitnexus' "$OPENCODE_CONFIG" 2>/dev/null; then
             log_ok "  gitnexus: CONFIGURED"
@@ -1663,13 +1749,11 @@ main() {
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo ""
             echo "  Configured for:"
-            [[ "$do_cursor" == "true" ]] && echo "    ✓ Cursor (~/.cursor/mcp.json)"
-            [[ "$do_claude" == "true" ]] && echo "    ✓ Claude Code (~/.claude/settings.json)"
-            [[ "$do_antigravity" == "true" ]] && echo "    ✓ Antigravity (MCP workspace)"
-            [[ "$do_codex" == "true" ]] && echo "    ✓ OpenAI Codex CLI (~/.codex/config.toml)"
-            [[ "$do_gemini" == "true" ]] && echo "    ✓ Google Gemini CLI (~/.config/google/mcp-cli/config.json)"
-            [[ "$do_zed" == "true" ]] && echo "    ✓ Zed AI (Zed settings.json)"
-            [[ "$do_opencode" == "true" ]] && echo "    ✓ OpenCode (~/.config/opencode/config.*)"
+            has_canonical_mcp_config "$HOME/.cursor/mcp.json" && echo "    ✓ Cursor (~/.cursor/mcp.json)"
+            has_canonical_mcp_config "$HOME/.claude/settings.json" && echo "    ✓ Claude Code (~/.claude/settings.json)"
+            [[ -x "${ANTIGRAVITY_CONFIG}/launcher.sh" ]] && grep -Fq "$CANONICAL_TSX" "${ANTIGRAVITY_CONFIG}/launcher.sh" && grep -Fq "$CANONICAL_SERVER_TS" "${ANTIGRAVITY_CONFIG}/launcher.sh" && echo "    ✓ Antigravity (MCP workspace)"
+            has_canonical_mcp_config "$HOME/.codex/config.toml" && echo "    ✓ OpenAI Codex CLI (~/.codex/config.toml)"
+            has_canonical_mcp_config "$HOME/.config/google/mcp-cli/config.json" && echo "    ✓ Google Gemini CLI (~/.config/google/mcp-cli/config.json)"
             echo ""
             echo "  Next: Restart your AI clients to activate MCP servers"
             echo "        Verify: bash ${BASH_SOURCE[0]} --check"

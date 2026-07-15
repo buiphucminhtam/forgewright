@@ -41,6 +41,10 @@ if [[ ! -x "$FORGEWRIGHT_DIR/scripts/lite/antigravity-pre-tool-gate.sh" ]]; then
     echo "FAILED: Antigravity PreToolUse gate runtime was not installed"
     exit 1
 fi
+if [[ ! -x "$FORGEWRIGHT_DIR/scripts/lite/run-check.sh" ]] || [[ ! -x "$FORGEWRIGHT_DIR/scripts/lite/run_check.py" ]]; then
+    echo "FAILED: run-check runtime scripts were not installed"
+    exit 1
+fi
 
 echo "Test 2: Validate hook schemas"
 claude_schema=$(node -e "var c=JSON.parse(require('fs').readFileSync('$HOME/.claude/settings.json')); console.log(!('stop' in c.hooks) && Array.isArray(c.hooks.Stop) && c.hooks.Stop.some(g => Array.isArray(g.hooks) && g.hooks.some(h => h.type === 'command' && h.command.includes('stop-gate.sh --platform CLAUDE'))));")

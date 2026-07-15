@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 
 export type PolicyAction = 'allow' | 'warn' | 'block' | 'config-error';
@@ -73,6 +74,8 @@ function defaultScriptPath(workspaceRoot: string): string {
   }
   const workspaceScript = findPolicyScript(workspaceRoot);
   if (existsSync(workspaceScript)) return workspaceScript;
+  const canonicalScript = resolve(homedir(), '.forgewright/scripts/lite/policy-check.sh');
+  if (existsSync(canonicalScript)) return canonicalScript;
   return findPolicyScript(process.cwd());
 }
 

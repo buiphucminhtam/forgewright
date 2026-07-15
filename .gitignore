@@ -23,6 +23,7 @@ dist/
 
 # Python cache
 __pycache__/
+.hypothesis/
 *.pyc
 *.pyo
 

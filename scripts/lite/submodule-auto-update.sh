@@ -94,7 +94,7 @@ if [[ -x "$DOCTOR" ]]; then
     fi
 fi
 if [[ -x "$MCP_SETUP" ]]; then
-    if ! (cd "$SUPERPROJECT" && bash "$MCP_SETUP"); then
+    if ! (cd "$SUPERPROJECT" && bash "$MCP_SETUP" --force); then
         echo "⚠️ [Forgewright] MCP refresh thất bại; code và policy hook vẫn đã được cập nhật." >&2
     fi
 fi

@@ -34,7 +34,7 @@ bash forgewright/scripts/forgewright-mcp-setup.sh setup
 ### Verify Installation
 
 ```bash
-bash forgewright/scripts/forgewright-mcp-setup.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
 ```
 
 Expected output:
@@ -111,7 +111,7 @@ gitnexus setup
 #### Verify Cursor Setup
 
 ```bash
-bash forgewright/scripts/forgewright-mcp-setup.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
 ```
 
 Look for:
@@ -164,19 +164,19 @@ gitnexus setup
 #### Verify Claude Setup
 
 ```bash
-bash forgewright/scripts/forgewright-mcp-setup.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
 ```
 
 ---
 
 ### Antigravity CLI
 
-Antigravity CLI cũng dùng **canonical MCP server** tại `~/.forgewright/mcp-server/server.ts`. Không có server riêng cho Antigravity.
+Antigravity CLI cũng dùng **canonical MCP server** tại `~/.forgewright/mcp-server/src/index.ts`. Không có server riêng cho Antigravity.
 
 #### Canonical Server Rule
 
 ```
-~/.forgewright/mcp-server/server.ts  ← CANONICAL (duy nhất, shared)
+~/.forgewright/mcp-server/src/index.ts  ← CANONICAL (duy nhất, shared)
 │
 ├── ~/.cursor/mcp.json              → Cursor points here
 ├── ~/.claude/settings.json        → Claude Code points here
@@ -185,7 +185,7 @@ Antigravity CLI cũng dùng **canonical MCP server** tại `~/.forgewright/mcp-s
 
 **Điểm quan trọng:**
 - `.antigravity/mcp-manifest.json` chỉ chứa **project context** (workspace path, forgewright path) — nó KHÔNG chứa server code riêng
-- Antigravity launcher sử dụng `~/.forgewright/mcp-server/server.ts` — canonical server
+- Antigravity launcher sử dụng `~/.forgewright/mcp-server/src/index.ts` — canonical server
 - Manifest/isolation theo project chỉ để Antigravity biết workspace hiện tại, không override global server path
 
 #### Automated Setup
@@ -210,7 +210,7 @@ Antigravity reads .antigravity/mcp-manifest.json
                     ↓
         Starts forgewright-mcp-launcher.sh
                     ↓
-        Launcher uses ~/.forgewright/mcp-server/server.ts (CANONICAL)
+        Launcher uses ~/.forgewright/mcp-server/src/index.ts (CANONICAL)
                     ↓
         MCP server starts with correct workspace context
 ```
@@ -265,12 +265,12 @@ Nếu cần config thủ công, launcher vẫn phải dùng canonical server:
 
 ### OpenAI Codex CLI
 
-Codex CLI cũng dùng **canonical MCP server** tại `~/.forgewright/mcp-server/server.ts`. Config file: `~/.codex/config.toml` (TOML format).
+Codex CLI cũng dùng **canonical MCP server** tại `~/.forgewright/mcp-server/src/index.ts`. Config file: `~/.codex/config.toml` (TOML format).
 
 #### Canonical Server Rule
 
 ```
-~/.forgewright/mcp-server/server.ts  ← CANONICAL (duy nhất, shared)
+~/.forgewright/mcp-server/src/index.ts  ← CANONICAL (duy nhất, shared)
 │
 ├── ~/.cursor/mcp.json              → Cursor
 ├── ~/.claude/settings.json        → Claude Code
@@ -309,8 +309,8 @@ Expected output trong config:
 [mcp_servers.forgewright]
 enabled = true
 transport = { type = "stdio" }
-command = "npx"
-args = ["tsx", "~/.forgewright/mcp-server/server.ts"]
+command = "~/.forgewright/mcp-server/node_modules/.bin/tsx"
+args = ["~/.forgewright/mcp-server/src/index.ts"]
 env = { FORGEWRIGHT_WORKSPACE = "$PROJECT_ROOT" }
 
 [mcp_servers.gitnexus]
@@ -424,10 +424,10 @@ When you switch from one IDE to another:
 
 ```bash
 # Check which IDEs are configured
-bash forgewright/scripts/forgewright-mcp-setup.sh check
+bash forgewright/scripts/forgewright-mcp-setup.sh --check
 
 # Run diagnostics for detailed view
-bash forgewright/scripts/forgewright-mcp-setup.sh diagnose
+bash forgewright/scripts/forgewright-mcp-setup.sh --diagnose
 ```
 
 ---
@@ -497,10 +497,10 @@ gitnexus list
 
 ```bash
 # Enable verbose output
-FW_MCP_VERBOSE=1 bash forgewright-mcp-setup.sh diagnose
+FW_MCP_VERBOSE=1 bash forgewright-mcp-setup.sh --diagnose
 
 # Or use --verbose flag
-bash forgewright-mcp-setup.sh diagnose --verbose
+bash forgewright-mcp-setup.sh --diagnose
 ```
 
 ---
@@ -515,12 +515,12 @@ bash forgewright-mcp-setup.sh diagnose --verbose
 
 1. Check status:
    ```bash
-   bash forgewright-mcp-setup.sh check
+   bash forgewright-mcp-setup.sh --check
    ```
 
 2. Run diagnostics:
    ```bash
-   bash forgewright-mcp-setup.sh diagnose
+   bash forgewright-mcp-setup.sh --diagnose
    ```
 
 3. Restart IDE
@@ -592,13 +592,13 @@ On Windows, path structures and command execution differ from macOS. If you enco
 1. Set workspace explicitly:
    ```bash
    export FORGEWRIGHT_WORKSPACE=/path/to/project
-   bash forgewright-mcp-setup.sh check
+   bash forgewright-mcp-setup.sh --check
    ```
 
 2. Run from project directory:
    ```bash
    cd /path/to/project
-   bash forgewright-mcp-setup.sh check
+   bash forgewright-mcp-setup.sh --check
    ```
 
 ### GitNexus Index Stale
@@ -682,7 +682,7 @@ bash scripts/forgewright-mcp-setup.sh setup --force
 
 **A:**
 ```bash
-bash forgewright-mcp-setup.sh uninstall
+bash forgewright-mcp-setup.sh --uninstall
 ```
 
 ### Q: Can I use ForgeWright with multiple IDEs simultaneously?

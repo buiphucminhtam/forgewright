@@ -8,7 +8,6 @@ import json
 import os
 import re
 import shlex
-import shutil
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +23,12 @@ class ManifestError(ValueError):
 
 DEFAULT_MAX_RESULT_CHARS = 32_768
 MAX_RESULT_CHARS = 65_536
+TRUSTED_AGY_DIRECTORIES = (
+    Path.home() / ".local" / "bin",
+    Path("/opt/homebrew/bin"),
+    Path("/usr/local/bin"),
+)
+DELEGATION_ENV_KEYS = ("HOME", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR")
 SECRET_VALUE_PATTERN = re.compile(
     r"(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|"
     r"authorization|credential)\b\s*([:=])\s*(\"[^\"\r\n]*\"|'[^'\r\n]*'|[^\s,;]+)"
@@ -188,6 +193,8 @@ def validate_provider_safety(provider: dict[str, Any]) -> None:
         or provider.get("accept_edits") is True
     ):
         raise ManifestError("dangerous provider permission/edit flags are forbidden")
+    if "executable" in provider:
+        raise ManifestError("provider executable selection is forbidden")
 
 
 def resolve_workspace(request: dict[str, Any], manifest_dir: Path) -> Path:
@@ -248,14 +255,40 @@ def select_model(
     }
 
 
+def _resolve_trusted_agy() -> str:
+    """Resolve AGY from a local install location, never from the manifest or PATH."""
+    for directory in TRUSTED_AGY_DIRECTORIES:
+        candidate = directory / "agy"
+        try:
+            resolved = candidate.resolve(strict=True)
+        except OSError:
+            continue
+        if resolved.is_file() and os.access(resolved, os.X_OK):
+            return str(resolved)
+    raise ManifestError("trusted agy executable not found")
+
+
+def _delegation_env(workspace: Path) -> dict[str, str]:
+    trusted_path = os.pathsep.join(
+        [*(str(path) for path in TRUSTED_AGY_DIRECTORIES), os.defpath]
+    )
+    environment = {
+        "FORGEWRIGHT_WORKSPACE": str(workspace.resolve(strict=True)),
+        "PATH": trusted_path,
+    }
+    for key in DELEGATION_ENV_KEYS:
+        value = os.environ.get(key)
+        if value:
+            environment[key] = value
+    return environment
+
+
 def _probe_runtime_models(executable: str, workspace: Path) -> dict[str, str]:
-    resolved = shutil.which(executable)
-    if resolved is None:
-        return {}
     try:
         result = subprocess.run(
-            [resolved, "models"],
+            [executable, "models"],
             cwd=workspace,
+            env=_delegation_env(workspace),
             text=True,
             capture_output=True,
             timeout=5,
@@ -284,13 +317,13 @@ def _probe_runtime_models(executable: str, workspace: Path) -> dict[str, str]:
         return {}
 
 
-def _apply_runtime_model_selection(plan: dict[str, Any]) -> None:
+def _apply_runtime_model_selection(plan: dict[str, Any], executable: str) -> None:
     calls = [*plan["workers"]]
     if plan["reviewer"] is not None:
         calls.append(plan["reviewer"])
     if not calls:
         return
-    models = _probe_runtime_models(calls[0]["argv"][0], Path(plan["workspace"]))
+    models = _probe_runtime_models(executable, Path(plan["workspace"]))
     for call in calls:
         model = models.get(call["role"])
         selection = {
@@ -300,7 +333,7 @@ def _apply_runtime_model_selection(plan: dict[str, Any]) -> None:
         }
         prompt = call["argv"][-1]
         call["model_selection"] = selection
-        call["argv"] = _provider_argv(call["argv"][0], selection, prompt)
+        call["argv"] = _provider_argv(executable, selection, prompt)
 
 
 def _worker_prompt(
@@ -355,12 +388,6 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
     decision = decide_orchestration(request)
     provider = manifest.get("provider", {})
     validate_provider_safety(provider)
-    executable = provider.get("executable", "agy")
-    if not isinstance(executable, str) or not executable:
-        raise ManifestError("provider.executable must be a non-empty string")
-    if Path(executable).name != "agy":
-        raise ManifestError("provider.executable must resolve to an agy binary")
-
     planned_workers = []
     for worker in decision["workers"]:
         selection = select_model(worker["role"], provider, manifest_dir)
@@ -369,7 +396,7 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
             {
                 **worker,
                 "model_selection": selection,
-                "argv": _provider_argv(executable, selection, prompt),
+                "argv": _provider_argv("agy", selection, prompt),
                 "max_result_chars": max_result_chars,
             }
         )
@@ -385,7 +412,7 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
             "max_result_chars": max_result_chars,
             "model_selection": selection,
             "argv": _provider_argv(
-                executable, selection, _reviewer_prompt(planned_reviewer)
+                "agy", selection, _reviewer_prompt(planned_reviewer)
             ),
         }
 
@@ -407,21 +434,12 @@ def _redact_and_bound(value: str, max_chars: int) -> str:
 
 
 def _execute_call(call: dict[str, Any], workspace: Path) -> dict[str, Any]:
-    executable = shutil.which(call["argv"][0])
-    if executable is None:
-        return {
-            "id": call["id"],
-            "exit_code": 127,
-            "stderr": "agy executable not found",
-        }
-    argv = [executable, *call["argv"][1:]]
+    argv = call["argv"]
     try:
-        delegation_env = os.environ.copy()
-        delegation_env["FORGEWRIGHT_WORKSPACE"] = str(workspace.resolve(strict=True))
         result = subprocess.run(
             argv,
             cwd=workspace,
-            env=delegation_env,
+            env=_delegation_env(workspace),
             text=True,
             capture_output=True,
             timeout=call["deadline_ms"] / 1000,
@@ -439,10 +457,11 @@ def _execute_call(call: dict[str, Any], workspace: Path) -> dict[str, Any]:
 
 
 def execute_plan(plan: dict[str, Any]) -> int:
-    if plan["workers"] or plan["reviewer"] is not None:
-        validate_global_antigravity_hook()
-    _apply_runtime_model_selection(plan)
     workers = plan["workers"]
+    if workers or plan["reviewer"] is not None:
+        validate_global_antigravity_hook()
+        executable = _resolve_trusted_agy()
+        _apply_runtime_model_selection(plan, executable)
     workspace = Path(plan["workspace"])
     if workers:
         with ThreadPoolExecutor(max_workers=len(workers)) as pool:

@@ -6,6 +6,14 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+GIT_LOCAL_ENV_KEYS = (
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_WORK_TREE",
+)
 
 
 def load_json(relative_path: str) -> dict:
@@ -19,6 +27,13 @@ def hook_commands(groups: list[dict]) -> list[str]:
         for hook in group.get("hooks", [])
         if hook.get("type") == "command"
     ]
+
+
+def clean_git_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    for key in GIT_LOCAL_ENV_KEYS:
+        environment.pop(key, None)
+    return environment
 
 
 def test_checked_in_claude_stop_hook_uses_native_schema() -> None:
@@ -81,14 +96,23 @@ def test_checked_in_codex_stop_hook_uses_native_schema() -> None:
 
 
 def clean_git_workspace(path: Path) -> None:
-    subprocess.run(["git", "init", "-q"], cwd=path, check=True)
+    git_env = clean_git_environment()
+
+    subprocess.run(["git", "init", "-q"], cwd=path, env=git_env, check=True)
     subprocess.run(
-        ["git", "config", "user.email", "tests@example.com"], cwd=path, check=True
+        ["git", "config", "user.email", "tests@example.com"],
+        cwd=path,
+        env=git_env,
+        check=True,
     )
-    subprocess.run(["git", "config", "user.name", "Tests"], cwd=path, check=True)
+    subprocess.run(
+        ["git", "config", "user.name", "Tests"], cwd=path, env=git_env, check=True
+    )
     (path / "README.md").write_text("test\n", encoding="utf-8")
-    subprocess.run(["git", "add", "README.md"], cwd=path, check=True)
-    subprocess.run(["git", "commit", "-qm", "fixture"], cwd=path, check=True)
+    subprocess.run(["git", "add", "README.md"], cwd=path, env=git_env, check=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "fixture"], cwd=path, env=git_env, check=True
+    )
 
 
 def run_stop_gate(
@@ -102,7 +126,7 @@ def run_stop_gate(
         "last_assistant_message" if platform == "CLAUDE" else "response_content"
     )
     payload = json.dumps({response_field: response, "files": files or []})
-    env = os.environ.copy()
+    env = clean_git_environment()
     env["FORGEWRIGHT_RULE_LEDGER"] = str(tmp_path / "rule-ledger.jsonl")
     return subprocess.run(
         ["bash", str(ROOT / "scripts/lite/stop-gate.sh"), "--platform", platform],

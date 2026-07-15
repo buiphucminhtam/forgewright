@@ -22,7 +22,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOK_SCRIPT="${SCRIPT_DIR}/forgewright-memory-hook.sh"
-MEMORY_SESSION="${SCRIPT_DIR}/memory-session.sh"
+MEMORY_SESSION="${SCRIPT_DIR}/../memory/memory-session.sh"
 MEMORY_DB_DIR="${HOME}/.forgewright/sessions"
 
 # Colors

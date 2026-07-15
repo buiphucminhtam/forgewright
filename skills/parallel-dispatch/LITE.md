@@ -85,7 +85,11 @@ python3 scripts/parallel-dispatch-runner.py \
 The runner uses an argv array with `shell=False` and always adds `--sandbox
 --mode plan`; manifest text is never shell interpolated. Custom provider args,
 `accept-edits`, disabled sandboxing, and dangerous permission-bypass flags are
-forbidden. Before any external call, execution fails closed unless Antigravity's
+forbidden. A manifest cannot select the provider executable. The runner resolves
+`agy` only from `~/.local/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`, and
+passes an allowlisted environment containing the canonical workspace, a fixed
+PATH, HOME, locale variables, and TMPDIR; other parent variables are not forwarded.
+Before any external call, execution fails closed unless Antigravity's
 runtime-loaded global `~/.gemini/config/hooks.json` contains the exact enabled
 `forgewright-policy` `PreToolUse` hook. Each worker receives the canonical
 workspace through `FORGEWRIGHT_WORKSPACE`, because current `agy --print` builds

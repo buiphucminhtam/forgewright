@@ -4,10 +4,10 @@
 #
 # A thin bash/stdio bridge for Antigravity MCP integration.
 # Detects current workspace, then FORWARDS all MCP protocol traffic
-# to the project's forgewright MCP server.
+# to the installer-managed canonical Forgewright MCP server.
 #
 # HOW IT WORKS:
-#   Antigravity → stdio JSON-RPC → launcher → project's MCP server
+#   Antigravity → stdio JSON-RPC → launcher → canonical MCP server
 #
 # USAGE (single entry in claude_desktop_config.json):
 #   {
@@ -47,6 +47,8 @@ log_info() {
 
 FORGEWRIGHT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 FORGEWRIGHT_DIR="${FORGEWRIGHT_DIR%/scripts}"
+CANONICAL_SERVER_PATH="$HOME/.forgewright/mcp-server/src/index.ts"
+CANONICAL_TSX_PATH="$HOME/.forgewright/mcp-server/node_modules/.bin/tsx"
 
 # ─── Workspace Detection ────────────────────────────────────────
 
@@ -152,14 +154,15 @@ validate_manifest() {
 
     # Check workspace matches
     local manifest_workspace
-    manifest_workspace="$(node -e "
-        try {
-            var m = JSON.parse(require('fs').readFileSync('$manifest', 'utf8'));
-            console.log(m.workspace || '');
-        } catch(e) {
-            console.log('');
-        }
-    " 2>/dev/null)" || manifest_workspace=""
+    manifest_workspace="$(node - "$manifest" <<'NODE'
+try {
+  const manifest = JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
+  process.stdout.write(typeof manifest.workspace === 'string' ? manifest.workspace : '');
+} catch (error) {
+  process.exit(1);
+}
+NODE
+    )" || manifest_workspace=""
 
     if [[ -n "$manifest_workspace" ]]; then
         # Normalize for comparison
@@ -177,14 +180,15 @@ validate_manifest() {
 
     # Check manifest has servers
     local server_count
-    server_count="$(node -e "
-        try {
-            var m = JSON.parse(require('fs').readFileSync('$manifest', 'utf8'));
-            console.log((m.servers || []).length);
-        } catch(e) {
-            console.log('0');
-        }
-    " 2>/dev/null)" || server_count="0"
+    server_count="$(node - "$manifest" <<'NODE'
+try {
+  const manifest = JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
+  process.stdout.write(String(Array.isArray(manifest.servers) ? manifest.servers.length : 0));
+} catch (error) {
+  process.exit(1);
+}
+NODE
+    )" || server_count="0"
 
     if [[ "$server_count" == "0" ]]; then
         log_debug "  → No servers defined in manifest"
@@ -261,24 +265,26 @@ resolve_server_cmd() {
 
         # Find forgewright-mcp-server from manifest
         local server_path
-        server_path="$(node -e "
+        server_path="$(node - "$manifest" "$CANONICAL_SERVER_PATH" <<'NODE'
 var fs = require('fs');
-var path = require('path');
 try {
-  var m = JSON.parse(fs.readFileSync('$manifest', 'utf8'));
+  var m = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
   var server = (m.servers || []).find(function(s){
     return (s.type === 'forgewright-mcp-server' || s.name === 'forgewright') && s.enabled !== false && s.auto_start !== false;
   });
   if (server) {
-    var sp = server.command;
-    if (!sp) {
-      process.exit(1);
+    var scriptPath = server.path;
+    if (typeof scriptPath !== 'string') {
+      var sp = server.command;
+      if (typeof sp !== 'string' || !sp.startsWith('npx tsx ')) {
+        process.exit(1);
+      }
+      scriptPath = sp.slice('npx tsx '.length);
     }
-    // Command is usually 'npx tsx /path/to/server.ts', we want the path
-    var parts = sp.split(' ');
-    var scriptPath = parts[parts.length - 1];
-    if (fs.existsSync(scriptPath)) {
-        process.stdout.write(scriptPath);
+    var canonicalPath = process.argv[3];
+    if (scriptPath.startsWith('/') && !/[\r\n\0]/.test(scriptPath) &&
+        fs.statSync(scriptPath).isFile() && fs.realpathSync(scriptPath) === fs.realpathSync(canonicalPath)) {
+        process.stdout.write(fs.realpathSync(scriptPath));
     } else {
         process.exit(1);
     }
@@ -286,49 +292,28 @@ try {
     process.exit(1);
   }
 } catch(e) { process.exit(1); }
-" 2>/dev/null)" || server_path=""
+NODE
+        )" || server_path=""
 
         if [[ -n "$server_path" ]] && [[ -f "$server_path" ]]; then
             log_debug "  → Found forgewright-mcp-server: $server_path"
-            echo "npx tsx $server_path"
+            if [[ ! -x "$CANONICAL_TSX_PATH" ]]; then
+                log_error "Canonical tsx executable missing: $CANONICAL_TSX_PATH"
+                return 1
+            fi
+            SERVER_ARGV=("$CANONICAL_TSX_PATH" "$server_path")
             return 0
         fi
+        log_error "Rejected unsafe or unsupported MCP server command in manifest"
+        return 1
     fi
 
-    # ── Path B: Scan for forgewright and find MCP server ──────────
-
-    if [[ -n "$forgewright" ]]; then
-        local mcp_server="$forgewright/mcp/src/index.ts"
-        if [[ -f "$mcp_server" ]]; then
-            log_debug "  → Found MCP server at: $mcp_server"
-            echo "npx tsx $mcp_server"
-            return 0
-        fi
-
-        # Try forgewright MCP server (project has its own)
-        local project_mcp="$workspace/.forgewright/mcp/src/index.ts"
-        if [[ -f "$project_mcp" ]]; then
-            log_debug "  → Found project MCP server: $project_mcp"
-            echo "npx tsx $project_mcp"
-            return 0
-        fi
+    # Never execute workspace-owned TypeScript. The setup command owns and
+    # verifies the canonical server and its local tsx runtime.
+    if [[ -f "$CANONICAL_SERVER_PATH" ]] && [[ -x "$CANONICAL_TSX_PATH" ]]; then
+        SERVER_ARGV=("$CANONICAL_TSX_PATH" "$CANONICAL_SERVER_PATH")
+        return 0
     fi
-
-    # ── Path C: Try common locations ──────────────────────────────
-
-    local common_paths=(
-        "$workspace/.forgewright/mcp/src/index.ts"
-        "$workspace/mcp/src/index.ts"
-        "$workspace/forgewright/mcp/src/index.ts"
-    )
-
-    for path in "${common_paths[@]}"; do
-        if [[ -f "$path" ]]; then
-            log_debug "  → Found server at common path: $path"
-            echo "npx tsx $path"
-            return 0
-        fi
-    done
 
     log_debug "  → No server found"
     return 1
@@ -403,22 +388,23 @@ main() {
     fi
 
     # Step 5: Resolve server command
-    server_cmd="$(resolve_server_cmd "$workspace" "$manifest" "$forgewright")" || {
+    SERVER_ARGV=()
+    resolve_server_cmd "$workspace" "$manifest" "$forgewright" || {
         log_error "Could not find MCP server in workspace: $workspace"
         log_info ""
         log_info "Possible solutions:"
         log_info "  1. Run 'forgewright-mcp-setup.sh' in the project"
-        log_info "  2. Ensure .forgewright/mcp-server/server.ts exists"
+        log_info "  2. Ensure canonical src/index.ts and node_modules/.bin/tsx exist"
         log_info "  3. Check that the project has been onboarded"
         exit 1
     }
 
     log_debug "=== Launching MCP Server ==="
-    log_debug "Command: $server_cmd"
+    log_debug "Command: ${SERVER_ARGV[*]}"
 
     # Step 6: Execute MCP server
     # The MCP server communicates via stdio JSON-RPC
-    eval "$server_cmd"
+    exec "${SERVER_ARGV[@]}"
 }
 
 # ─── Entry Point ────────────────────────────────────────────────

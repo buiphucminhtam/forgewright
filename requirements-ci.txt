@@ -2,5 +2,7 @@
 ruff==0.12.2
 pytest==8.4.1
 hypothesis==6.135.8
+requests==2.32.5
+mcp==1.28.1
 mutmut==3.3.1
 junit2html==31.1.4

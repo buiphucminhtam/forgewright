@@ -358,12 +358,13 @@ install_hooks() {
     mkdir -p "$gate_runtime_dir"
     local gate_runtime_file
     for gate_runtime_file in stop-gate.sh gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh verify-gate.sh verify_gate.py \
-        rule-validator.py rule-ledger.sh policy-check.sh telemetry.sh; do
+        run-check.sh run_check.py rule-validator.py rule-ledger.sh policy-check.sh telemetry.sh; do
         cp "${source_dir}/scripts/lite/${gate_runtime_file}" "${gate_runtime_dir}/${gate_runtime_file}"
     done
     chmod +x "$gate_runtime_dir/stop-gate.sh" "$gate_runtime_dir/gemini-before-tool-gate.sh" \
         "$gate_runtime_dir/antigravity-pre-tool-gate.sh" \
         "$gate_runtime_dir/verify-gate.sh" "$gate_runtime_dir/rule-validator.py" \
+        "$gate_runtime_dir/run-check.sh" "$gate_runtime_dir/run_check.py" \
         "$gate_runtime_dir/rule-ledger.sh" "$gate_runtime_dir/policy-check.sh" \
         "$gate_runtime_dir/telemetry.sh"
 

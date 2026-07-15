@@ -114,6 +114,28 @@ describe('ProcessPolicyEvaluator', () => {
     });
   });
 
+  it('uses the canonical policy script when generated MCP config has no FORGEWRIGHT_DIR', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'forgewright-canonical-home-'));
+    const workspace = join(home, 'workspace');
+    const script = join(home, '.forgewright/scripts/lite/policy-check.sh');
+    mkdirSync(join(workspace, '.forgewright'), { recursive: true });
+    mkdirSync(join(home, '.forgewright/scripts/lite'), { recursive: true });
+    writeFileSync(join(workspace, '.forgewright/execution-policy.yaml'), 'mode: strict\n');
+    writeFileSync(script, '#!/usr/bin/env bash\n[[ "$1" = "check" ]] || exit 3\nexit 0\n', {
+      mode: 0o700,
+    });
+    vi.stubEnv('HOME', home);
+    vi.stubEnv('FORGEWRIGHT_WORKSPACE', workspace);
+    vi.stubEnv('FORGEWRIGHT_DIR', '');
+    vi.stubEnv('FORGEWRIGHT_POLICY_FILE', '');
+
+    const evaluator = new ProcessPolicyEvaluator();
+
+    await expect(evaluator.evaluate('Bash', { cmd: 'echo safe' })).resolves.toMatchObject({
+      action: 'allow',
+    });
+  });
+
   it('returns config-error when the policy process times out', async () => {
     const { root, script } = policyScript('sleep 2');
     const evaluator = new ProcessPolicyEvaluator({ scriptPath: script, cwd: root, timeoutMs: 20 });

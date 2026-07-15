@@ -110,6 +110,14 @@ def run_runner(
     )
 
 
+def install_trusted_agy(manifest: Path, script: str) -> Path:
+    agy = manifest.parent / ".test-home" / ".local" / "bin" / "agy"
+    agy.parent.mkdir(parents=True, exist_ok=True)
+    agy.write_text(script, encoding="utf-8")
+    agy.chmod(0o755)
+    return agy
+
+
 def write_manifest(
     tmp_path: Path,
     request: dict[str, object],
@@ -355,21 +363,104 @@ def test_external_execution_requires_both_explicit_flags(tmp_path: Path) -> None
     assert "external code sharing denied" in denied.stderr.lower()
 
 
+def test_runner_rejects_manifest_selected_agy_executable(tmp_path: Path) -> None:
+    marker = tmp_path / "manifest-selected-agy-ran"
+    attacker_agy = tmp_path / "agy"
+    attacker_agy.write_text(
+        f"#!/usr/bin/env bash\ntouch {marker!s}\n", encoding="utf-8"
+    )
+    attacker_agy.chmod(0o755)
+    request = base_request(
+        task_size="medium",
+        mechanical_inventory=True,
+        scopes=[
+            {
+                "id": "inventory",
+                "paths": ["src"],
+                "independent": True,
+                "risk_signals": [],
+            }
+        ],
+    )
+    result = run_runner(
+        write_manifest(
+            tmp_path, request, {"cli": "agy", "executable": str(attacker_agy)}
+        )
+    )
+    assert result.returncode != 0
+    assert "executable selection" in result.stderr.lower()
+    assert not marker.exists()
+
+
+def test_runner_uses_allowlisted_environment_and_trusted_agy(tmp_path: Path) -> None:
+    capture = tmp_path / "environment.jsonl"
+    request = base_request(
+        task_size="medium",
+        mechanical_inventory=True,
+        scopes=[
+            {
+                "id": "inventory",
+                "paths": ["src"],
+                "independent": True,
+                "risk_signals": [],
+            }
+        ],
+    )
+    manifest = write_manifest(tmp_path, request)
+    install_trusted_agy(
+        manifest,
+        (
+            "#!/usr/bin/env python3\n"
+            "import json, os, sys\n"
+            f"with open({str(capture)!r}, 'a') as output:\n"
+            "    output.write(json.dumps({'args': sys.argv[1:], 'env': dict(os.environ)}) + '\\n')\n"
+            "if sys.argv[1:] == ['models']:\n"
+            "    print(json.dumps({'models': []}))\n"
+        ),
+    )
+    result = run_runner(
+        manifest,
+        "--execute",
+        "--allow-external-code-sharing",
+        env={
+            "FORGEWRIGHT_WORKSPACE": str(tmp_path / "attacker-workspace"),
+            "LEAKED_SECRET": "do-not-forward",
+            "PATH": str(tmp_path / "attacker-bin"),
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    calls = [
+        json.loads(line) for line in capture.read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(calls) == 2
+    assert all(
+        call["env"]["FORGEWRIGHT_WORKSPACE"] == str(tmp_path.resolve())
+        for call in calls
+    )
+    expected_path = os.pathsep.join(
+        [
+            str(manifest.parent / ".test-home" / ".local" / "bin"),
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            os.defpath,
+        ]
+    )
+    assert all(call["env"]["PATH"] == expected_path for call in calls)
+    assert all("LEAKED_SECRET" not in call["env"] for call in calls)
+
+
 def test_verified_capability_enables_model_flag_and_exec_uses_argv_not_shell(
     tmp_path: Path,
 ) -> None:
     capture = tmp_path / "args.json"
-    agy = tmp_path / "agy"
-    agy.write_text(
+    agy_script = (
         "#!/usr/bin/env python3\n"
         "import json, os, sys\n"
         "if sys.argv[1:] == ['models']:\n"
         "    print(json.dumps({'models': [{'id': 'machine-model-id', 'tiers': ['scout']}]}))\n"
         "    raise SystemExit(0)\n"
-        "open(os.environ['AGY_CAPTURE'], 'w').write(json.dumps(sys.argv[1:]))\n",
-        encoding="utf-8",
+        f"open({str(capture)!r}, 'w').write(json.dumps(sys.argv[1:]))\n"
     )
-    agy.chmod(0o755)
     capabilities = tmp_path / "capabilities.json"
     capabilities.write_text(
         json.dumps(
@@ -400,13 +491,13 @@ def test_verified_capability_enables_model_flag_and_exec_uses_argv_not_shell(
     manifest = write_manifest(
         tmp_path,
         request,
-        {"cli": "agy", "executable": str(agy), "capabilities_file": str(capabilities)},
+        {"cli": "agy", "capabilities_file": str(capabilities)},
     )
+    install_trusted_agy(manifest, agy_script)
     result = run_runner(
         manifest,
         "--execute",
         "--allow-external-code-sharing",
-        env={"AGY_CAPTURE": str(capture)},
     )
     assert result.returncode == 0, result.stderr
     args = json.loads(capture.read_text(encoding="utf-8"))
@@ -420,17 +511,14 @@ def test_verified_capability_enables_model_flag_and_exec_uses_argv_not_shell(
 
 def test_forged_manifest_capability_cannot_authorize_model_flag(tmp_path: Path) -> None:
     capture = tmp_path / "args.json"
-    agy = tmp_path / "agy"
-    agy.write_text(
+    agy_script = (
         "#!/usr/bin/env python3\n"
         "import json, os, sys\n"
         "if sys.argv[1:] == ['models']:\n"
         "    print('Human Display Name Only')\n"
         "    raise SystemExit(0)\n"
-        "open(os.environ['AGY_CAPTURE'], 'w').write(json.dumps(sys.argv[1:]))\n",
-        encoding="utf-8",
+        f"open({str(capture)!r}, 'w').write(json.dumps(sys.argv[1:]))\n"
     )
-    agy.chmod(0o755)
     forged = tmp_path / "forged.json"
     forged.write_text(
         json.dumps(
@@ -456,15 +544,16 @@ def test_forged_manifest_capability_cannot_authorize_model_flag(tmp_path: Path) 
             }
         ],
     )
+    manifest = write_manifest(
+        tmp_path,
+        request,
+        {"cli": "agy", "capabilities_file": str(forged)},
+    )
+    install_trusted_agy(manifest, agy_script)
     result = run_runner(
-        write_manifest(
-            tmp_path,
-            request,
-            {"cli": "agy", "executable": str(agy), "capabilities_file": str(forged)},
-        ),
+        manifest,
         "--execute",
         "--allow-external-code-sharing",
-        env={"AGY_CAPTURE": str(capture)},
     )
     assert result.returncode == 0, result.stderr
     args = json.loads(capture.read_text(encoding="utf-8"))
@@ -551,14 +640,11 @@ def test_runner_anchors_cwd_to_manifest_workspace_from_another_cwd(
     other_cwd = tmp_path / "other-cwd"
     other_cwd.mkdir()
     capture = tmp_path / "cwd.txt"
-    agy = tmp_path / "agy"
-    agy.write_text(
+    agy_script = (
         "#!/usr/bin/env python3\n"
         "import os\n"
-        "open(os.environ['AGY_CAPTURE'], 'w').write(os.getcwd() + '\\n' + os.environ.get('FORGEWRIGHT_WORKSPACE', ''))\n",
-        encoding="utf-8",
+        f"open({str(capture)!r}, 'w').write(os.getcwd() + '\\n' + os.environ.get('FORGEWRIGHT_WORKSPACE', ''))\n"
     )
-    agy.chmod(0o755)
     request = base_request(
         task_size="medium",
         mechanical_inventory=True,
@@ -571,14 +657,12 @@ def test_runner_anchors_cwd_to_manifest_workspace_from_another_cwd(
             }
         ],
     )
-    manifest = write_manifest(
-        manifest_dir, request, {"cli": "agy", "executable": str(agy)}
-    )
+    manifest = write_manifest(manifest_dir, request)
+    install_trusted_agy(manifest, agy_script)
     result = run_runner(
         manifest,
         "--execute",
         "--allow-external-code-sharing",
-        env={"AGY_CAPTURE": str(capture)},
         cwd=other_cwd,
     )
     assert result.returncode == 0, result.stderr
@@ -593,9 +677,6 @@ def test_runner_anchors_cwd_to_manifest_workspace_from_another_cwd(
 def test_runner_fails_closed_without_runtime_loaded_global_hook(tmp_path: Path) -> None:
     home = tmp_path / "home-without-hook"
     home.mkdir()
-    agy = tmp_path / "agy"
-    agy.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-    agy.chmod(0o755)
     request = base_request(
         task_size="medium",
         mechanical_inventory=True,
@@ -609,7 +690,7 @@ def test_runner_fails_closed_without_runtime_loaded_global_hook(tmp_path: Path) 
         ],
     )
     result = run_runner(
-        write_manifest(tmp_path, request, {"cli": "agy", "executable": str(agy)}),
+        write_manifest(tmp_path, request),
         "--execute",
         "--allow-external-code-sharing",
         env={"HOME": str(home)},
@@ -645,9 +726,6 @@ def test_runner_rejects_global_hook_command_wrapper(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
-    agy = tmp_path / "agy"
-    agy.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-    agy.chmod(0o755)
     request = base_request(
         task_size="medium",
         mechanical_inventory=True,
@@ -661,7 +739,7 @@ def test_runner_rejects_global_hook_command_wrapper(tmp_path: Path) -> None:
         ],
     )
     result = run_runner(
-        write_manifest(tmp_path, request, {"cli": "agy", "executable": str(agy)}),
+        write_manifest(tmp_path, request),
         "--execute",
         "--allow-external-code-sharing",
         env={"HOME": str(home)},
@@ -696,22 +774,19 @@ def test_runner_rejects_workspace_symlink_escape(tmp_path: Path) -> None:
 
 def _reviewer_fixture(tmp_path: Path, *, reviewer_exit: int = 0) -> tuple[Path, Path]:
     capture = tmp_path / "calls.jsonl"
-    agy = tmp_path / "agy"
-    agy.write_text(
+    agy_script = (
         "#!/usr/bin/env python3\n"
         "import json, os, sys\n"
         "if sys.argv[1:] == ['models']:\n"
         "    print('Human Display Names Only')\n"
         "    raise SystemExit(0)\n"
         "prompt = sys.argv[-1]\n"
-        "with open(os.environ['AGY_CAPTURE'], 'a') as f:\n"
+        f"with open({str(capture)!r}, 'a') as f:\n"
         "    f.write(json.dumps({'argv': sys.argv[1:], 'cwd': os.getcwd()}) + '\\n')\n"
         "print('token=super-secret WORKER_REASONING_PRIVATE ' + ('X' * 500))\n"
         "print('password: hidden-value ' + ('Y' * 500), file=sys.stderr)\n"
-        f"sys.exit({reviewer_exit} if '[Forgewright independent reviewer]' in prompt else 0)\n",
-        encoding="utf-8",
+        f"sys.exit({reviewer_exit} if '[Forgewright independent reviewer]' in prompt else 0)\n"
     )
-    agy.chmod(0o755)
     request = base_request(
         task_size="medium",
         mechanical_inventory=True,
@@ -735,7 +810,8 @@ def _reviewer_fixture(tmp_path: Path, *, reviewer_exit: int = 0) -> tuple[Path, 
             "max_result_chars": 120,
         },
     )
-    manifest = write_manifest(tmp_path, request, {"cli": "agy", "executable": str(agy)})
+    manifest = write_manifest(tmp_path, request)
+    install_trusted_agy(manifest, agy_script)
     return manifest, capture
 
 
@@ -747,7 +823,6 @@ def test_results_are_bounded_redacted_and_reviewer_executes_with_isolated_prompt
         manifest,
         "--execute",
         "--allow-external-code-sharing",
-        env={"AGY_CAPTURE": str(capture)},
     )
     assert result.returncode == 0, result.stderr
     plan = json.loads(result.stdout)
@@ -785,7 +860,6 @@ def test_reviewer_failure_fails_the_plan(tmp_path: Path) -> None:
         manifest,
         "--execute",
         "--allow-external-code-sharing",
-        env={"AGY_CAPTURE": str(capture)},
     )
     assert result.returncode != 0
     plan = json.loads(result.stdout)

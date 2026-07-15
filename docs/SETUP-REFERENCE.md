@@ -222,12 +222,12 @@ Launcher for ForgeNexus code intelligence.
 
 **Config Location:** `~/.cursor/projects/<hash>/mcps/user-forgewright/`
 
-Antigravity uses the **canonical MCP server** at `~/.forgewright/mcp-server/server.ts`. The per-project manifest (`.antigravity/mcp-manifest.json`) provides workspace context only — it does NOT contain a separate server.
+Antigravity uses the **canonical MCP server** at `~/.forgewright/mcp-server/src/index.ts`. The per-project manifest (`.antigravity/mcp-manifest.json`) provides workspace context only — it does NOT contain a separate server.
 
 #### Canonical Server Rule
 
 ```
-~/.forgewright/mcp-server/server.ts  ← CANONICAL (single source of truth)
+~/.forgewright/mcp-server/src/index.ts  ← CANONICAL (single source of truth)
 │
 ├── ~/.cursor/mcp.json              → Cursor
 ├── ~/.claude/settings.json        → Claude Code
@@ -255,12 +255,12 @@ bash forgewright/scripts/forgewright-mcp-setup.sh --check
 
 **Config Location:** `~/.codex/config.toml`
 
-OpenAI Codex CLI uses the **canonical MCP server** at `~/.forgewright/mcp-server/server.ts`. Codex uses TOML config format.
+OpenAI Codex CLI uses the **canonical MCP server** at `~/.forgewright/mcp-server/src/index.ts`. Codex uses TOML config format.
 
 #### Canonical Server Rule
 
 ```
-~/.forgewright/mcp-server/server.ts  ← CANONICAL (single source of truth)
+~/.forgewright/mcp-server/src/index.ts  ← CANONICAL (single source of truth)
 │
 ├── ~/.cursor/mcp.json              → Cursor
 ├── ~/.claude/settings.json        → Claude Code
@@ -273,8 +273,8 @@ OpenAI Codex CLI uses the **canonical MCP server** at `~/.forgewright/mcp-server
 [mcp_servers.forgewright]
 enabled = true
 transport = { type = "stdio" }
-command = "npx"
-args = ["tsx", "~/.forgewright/mcp-server/server.ts"]
+command = "~/.forgewright/mcp-server/node_modules/.bin/tsx"
+args = ["~/.forgewright/mcp-server/src/index.ts"]
 env = { FORGEWRIGHT_WORKSPACE = "$PROJECT_ROOT" }
 
 [mcp_servers.gitnexus]
@@ -404,10 +404,10 @@ set -- "item1" "item2"
 bash forgewright-mcp-setup.sh --help
 
 # Test check
-bash forgewright-mcp-setup.sh check
+bash forgewright-mcp-setup.sh --check
 
 # Test diagnose
-bash forgewright-mcp-setup.sh diagnose
+bash forgewright-mcp-setup.sh --diagnose
 
 # Test wizard (non-interactive)
 echo "" | bash forgewright-mcp-setup.sh wizard
@@ -435,7 +435,7 @@ git init
 bash /path/to/forgewright/scripts/forgewright-mcp-setup.sh setup
 
 # Verify
-bash /path/to/forgewright/scripts/forgewright-mcp-setup.sh check
+bash /path/to/forgewright/scripts/forgewright-mcp-setup.sh --check
 
 # Clean up
 cd /
@@ -459,7 +459,7 @@ rm -rf /tmp/fw-test
 
 ```bash
 # Verbose output
-FW_MCP_VERBOSE=1 bash forgewright-mcp-setup.sh diagnose
+FW_MCP_VERBOSE=1 bash forgewright-mcp-setup.sh --diagnose
 
 # Debug launcher
 FORGEWRIGHT_DEBUG=1 bash scripts/forgewright-mcp-launcher.sh
