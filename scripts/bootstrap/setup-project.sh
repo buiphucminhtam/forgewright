@@ -198,6 +198,26 @@ EOF
     log_ok "Generated .forgewright/project-profile.json"
 }
 
+ensure_project_policy() {
+    local policy_seeder="${FORGEWRIGHT_PATH}/scripts/lite/ensure-project-policy.sh"
+    local policy_result
+
+    if [[ ! -x "$policy_seeder" ]]; then
+        log_error "Execution-policy seeder not found: $policy_seeder"
+        exit 1
+    fi
+    if ! policy_result=$(bash "$policy_seeder" "$FORGEWRIGHT_PATH" "$TARGET_PROJECT"); then
+        log_error "Could not seed the project execution policy."
+        exit 1
+    fi
+
+    case "$policy_result" in
+        created:*) log_ok "Seeded .forgewright/execution-policy.yaml" ;;
+        preserved:*) log_info "Preserved existing .forgewright/execution-policy.yaml" ;;
+        *) log_error "Unexpected policy-seeder result: $policy_result"; exit 1 ;;
+    esac
+}
+
 # ─── Index with GitNexus ───────────────────────────────────────────────────
 
 run_gitnexus_analyze() {
@@ -373,6 +393,7 @@ setup_submodule_auto_update() {
 main() {
     check_prerequisites
     create_forgewright_dir
+    ensure_project_policy
     run_mem0_ensure
     update_gitignore
     setup_llm_wiki_integration

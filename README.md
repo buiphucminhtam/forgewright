@@ -180,7 +180,9 @@ bash forgewright/scripts/lite/install-submodule-update-hooks.sh "$PWD"
 
 The installer adds the native named `PreToolUse` policy hook to
 `~/.gemini/config/hooks.json`. This is Antigravity CLI configuration and is
-separate from Gemini CLI's `.gemini/settings.json`. Confirm the installation:
+separate from Gemini CLI's `.gemini/settings.json`. Setup and `doctor --fix`
+also seed `.forgewright/execution-policy.yaml` into the parent workspace when
+it is missing; an existing file or symlink is always preserved. Confirm the installation:
 
 ```bash
 bash forgewright/scripts/forgewright-hook-doctor.sh --quick

@@ -505,7 +505,36 @@ EOF
     fi
 fi
 
-# ─── Check 5: Memory Session Status ───────────────────────────────────────────
+# ─── Check 5: Project Execution Policy ────────────────────────────────────────
+
+log_header "Project Execution Policy"
+
+POLICY_SEEDER="${PROJECT_ROOT}/scripts/lite/ensure-project-policy.sh"
+SUPERPROJECT_ROOT="$(git -C "$PROJECT_ROOT" rev-parse --show-superproject-working-tree 2>/dev/null || true)"
+
+if [[ -z "$SUPERPROJECT_ROOT" ]]; then
+    log_info "Forgewright is not running as a submodule; no parent policy to seed"
+else
+    PARENT_POLICY="${SUPERPROJECT_ROOT}/.forgewright/execution-policy.yaml"
+    if [[ -f "$PARENT_POLICY" || -L "$PARENT_POLICY" ]]; then
+        log_pass "Parent workspace execution policy exists: $PARENT_POLICY"
+    elif [[ "$AUTO_FIX" != "true" ]]; then
+        log_fail "Parent workspace execution policy is missing: $PARENT_POLICY"
+        log_info "  → Run this doctor with --fix before opening AGY in the parent workspace"
+    elif [[ ! -x "$POLICY_SEEDER" ]]; then
+        log_fail "Execution-policy seeder is missing: $POLICY_SEEDER"
+    else
+        policy_result=""
+        if policy_result=$(bash "$POLICY_SEEDER" "$PROJECT_ROOT" "$SUPERPROJECT_ROOT") \
+            && [[ -f "$PARENT_POLICY" || -L "$PARENT_POLICY" ]]; then
+            log_pass "Fixed: Seeded execution policy into parent workspace: $PARENT_POLICY"
+        else
+            log_fail "Could not seed execution policy into parent workspace: ${policy_result:-unknown error}"
+        fi
+    fi
+fi
+
+# ─── Check 6: Memory Session Status ───────────────────────────────────────────
 
 if [[ "$QUICK_MODE" == "false" ]]; then
     log_header "Memory Session Status"

@@ -281,8 +281,24 @@ console.log('Added: ${server_name}');
 copy_project_files() {
     local project_root="$1"
     local fw_dir="$2"
+    local policy_seeder="${fw_dir}/scripts/lite/ensure-project-policy.sh"
+    local policy_result
     
     info "Setting up project files..."
+
+    if [[ ! -x "$policy_seeder" ]]; then
+        error "Execution-policy seeder not found: $policy_seeder"
+        return 1
+    fi
+    if ! policy_result=$(bash "$policy_seeder" "$fw_dir" "$project_root"); then
+        error "Could not seed the project execution policy"
+        return 1
+    fi
+    case "$policy_result" in
+        created:*) success "Seeded .forgewright/execution-policy.yaml" ;;
+        preserved:*) info "Preserved existing .forgewright/execution-policy.yaml" ;;
+        *) error "Unexpected policy-seeder result: $policy_result"; return 1 ;;
+    esac
     
     if [[ -f "${fw_dir}/AGENTS.md" ]] && [[ ! -f "${project_root}/AGENTS.md" ]]; then
         cp "${fw_dir}/AGENTS.md" "${project_root}/"
