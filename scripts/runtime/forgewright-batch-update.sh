@@ -60,15 +60,12 @@ done
 # ═══════════════════════════════════════════════════════════════════════════════
 if $INSTALL_HOOKS; then
     header "Installing Auto-Update Hooks"
-
-    HOOK_CONTENT='#!/usr/bin/env bash
-# Forgewright auto-update hook — checks for submodule updates after git pull/merge
-if [[ -f ".gitmodules" ]] && grep -qi "forgewright" .gitmodules 2>/dev/null; then
-    FW_DIR=$(git config --file .gitmodules --get-regexp path | grep -i "forgewright" | awk "{print \$2}" || echo "forgewright")
-    if [[ -d "$FW_DIR" ]] && [[ -f "$FW_DIR/scripts/forgewright-submodule-check.sh" ]]; then
-        bash "$FW_DIR/scripts/forgewright-submodule-check.sh" --pull
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    hook_installer="$script_dir/../lite/install-submodule-update-hooks.sh"
+    if [[ ! -x "$hook_installer" ]]; then
+        error "Hook installer not found: $hook_installer"
+        exit 2
     fi
-fi'
 
     count=0
     for scan_dir in $SCAN_DIRS; do
@@ -76,43 +73,18 @@ fi'
         while IFS= read -r gitmodules; do
             project_dir="$(dirname "$gitmodules")"
             project_name="$(basename "$project_dir")"
-
-            # Create hooks dir if needed
-            hooks_dir="$project_dir/.husky"
-            git_hooks_dir="$project_dir/.git/hooks"
-
-            # Prefer .husky if it exists, else .git/hooks
-            if [[ -d "$hooks_dir" ]]; then
-                target_dir="$hooks_dir"
-            elif [[ -d "$git_hooks_dir" ]]; then
-                target_dir="$git_hooks_dir"
+            if bash "$hook_installer" "$project_dir" >/dev/null; then
+                success "$project_name: post-merge/post-checkout hooks installed"
+                ((count+=1))
             else
-                warn "$project_name: No hooks directory found, skipping"
-                continue
-            fi
-
-            # Install post-merge hook
-            hook_file="$target_dir/post-merge"
-            if [[ -f "$hook_file" ]] && grep -q "forgewright-submodule-check" "$hook_file" 2>/dev/null; then
-                success "$project_name: Hook already installed"
-            else
-                if [[ -f "$hook_file" ]]; then
-                    # Append to existing hook
-                    echo "" >> "$hook_file"
-                    echo "$HOOK_CONTENT" >> "$hook_file"
-                else
-                    echo "$HOOK_CONTENT" > "$hook_file"
-                fi
-                chmod +x "$hook_file"
-                success "$project_name: post-merge hook installed → $target_dir"
-                ((count++))
+                warn "$project_name: hook installation failed"
             fi
         done < <(find "$scan_dir" -maxdepth 3 -name ".gitmodules" -exec grep -l "forgewright" {} \; 2>/dev/null)
     done
 
     echo ""
     success "Installed hooks in $count projects."
-    info "After 'git pull', each project will auto-check for Forgewright updates."
+    info "After git pull or checkout, each project will auto-check Forgewright and refresh its installed runtime."
     exit 0
 fi
 
@@ -147,10 +119,31 @@ for scan_dir in $SCAN_DIRS; do
     while IFS= read -r gitmodules; do
         project_dir="$(dirname "$gitmodules")"
         project_name="$(basename "$project_dir")"
-        ((projects_found++))
+        ((projects_found+=1))
 
         # Find submodule path
-        submodule_dir=$(cd "$project_dir" && git config --file .gitmodules --get-regexp path 2>/dev/null | grep -i "forgewright" | awk '{print $2}' || echo "")
+        submodule_dir=$(
+            git -C "$project_dir" config --file .gitmodules --name-only --get-regexp '^submodule\..*\.path$' 2>/dev/null |
+            while IFS= read -r path_key; do
+                path_value=$(git -C "$project_dir" config --file .gitmodules --get "$path_key" 2>/dev/null || true)
+                if printf '%s' "$path_value" | grep -qi forgewright; then
+                    printf '%s\n' "$path_value"
+                    break
+                fi
+            done
+        )
+        if [[ -z "$submodule_dir" ]]; then
+            submodule_dir=$(
+                git -C "$project_dir" config --file .gitmodules --name-only --get-regexp '^submodule\..*\.url$' 2>/dev/null |
+                while IFS= read -r url_key; do
+                    url_value=$(git -C "$project_dir" config --file .gitmodules --get "$url_key" 2>/dev/null || true)
+                    if printf '%s' "$url_value" | grep -qi forgewright; then
+                        git -C "$project_dir" config --file .gitmodules --get "${url_key%.url}.path" 2>/dev/null || true
+                        break
+                    fi
+                done
+            )
+        fi
         [[ -z "$submodule_dir" ]] && submodule_dir="forgewright"
 
         full_submodule_path="$project_dir/$submodule_dir"
@@ -158,7 +151,7 @@ for scan_dir in $SCAN_DIRS; do
         # Check if submodule is initialized
         if [[ ! -d "$full_submodule_path/.git" ]] && [[ ! -f "$full_submodule_path/.git" ]]; then
             warn "${BOLD}$project_name${NC}: Submodule not initialized (run: cd $project_dir && git submodule update --init)"
-            ((skipped++))
+            ((skipped+=1))
             continue
         fi
 
@@ -166,9 +159,9 @@ for scan_dir in $SCAN_DIRS; do
         cd "$full_submodule_path"
 
         # Check for local changes
-        if ! git diff --quiet 2>/dev/null; then
+        if [[ -n "$(git status --porcelain --untracked-files=normal 2>/dev/null)" ]]; then
             warn "${BOLD}$project_name${NC}: Has local changes, skipping"
-            ((skipped++))
+            ((skipped+=1))
             cd "$project_dir"
             continue
         fi
@@ -176,7 +169,7 @@ for scan_dir in $SCAN_DIRS; do
         # Fetch remote
         git fetch origin >/dev/null 2>&1 || {
             warn "${BOLD}$project_name${NC}: Fetch failed (offline?)"
-            ((skipped++))
+            ((skipped+=1))
             cd "$project_dir"
             continue
         }
@@ -204,7 +197,7 @@ for scan_dir in $SCAN_DIRS; do
                     info "  Committed submodule pointer update"
                 fi
 
-                ((updated++))
+                ((updated+=1))
             else
                 warn "${BOLD}$project_name${NC}: ${RED}$behind commits behind${NC} (at $current_sha)"
             fi
