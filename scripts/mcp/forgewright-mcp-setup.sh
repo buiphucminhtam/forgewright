@@ -292,49 +292,124 @@ setup_mcp_server() {
         log_warn "mcp-generate.sh not found, skipping regeneration (using existing src/index.ts)"
     fi
 
-    # Generate manifest
+    # Generate the manifest atomically. Preserve generated_at when the semantic
+    # configuration is unchanged so a routine --force refresh stays idempotent.
     local manifest="${PROJECT_ROOT}/.antigravity/mcp-manifest.json"
-    local fw_version
+    local manifest_dir manifest_tmp existing_manifest generated_at fw_version
     fw_version=$(cat "${FORGEWRIGHT_DIR}/VERSION" 2>/dev/null || echo "8.0.0")
-    mkdir -p "$(dirname "$manifest")"
-    cat > "$manifest" <<EOF
-{
-  "manifest_version": "1.0",
-  "workspace": "${PROJECT_ROOT}",
-  "forgewright": {
-    "version": "${fw_version}",
-    "canonical": "${HOME}/.forgewright",
-    "server": "${CANONICAL_SERVER_TS}"
-  },
-  "servers": [
+    manifest_dir="$(dirname "$manifest")"
+    mkdir -p "$manifest_dir"
+    if { [[ -e "$manifest" ]] || [[ -L "$manifest" ]]; } && { [[ ! -f "$manifest" ]] || [[ -L "$manifest" ]]; }; then
+        log_error "MCP manifest target must be a regular, non-symlink file: $manifest"
+        return 1
+    fi
+    manifest_tmp="$(mktemp "$manifest_dir/.mcp-manifest.XXXXXX")"
+    trap 'rm -f -- "$manifest_tmp"; exit 129' HUP
+    trap 'rm -f -- "$manifest_tmp"; exit 130' INT
+    trap 'rm -f -- "$manifest_tmp"; exit 143' TERM
+    existing_manifest=""
+    if [[ -f "$manifest" ]] && [[ ! -L "$manifest" ]]; then
+        existing_manifest="$manifest"
+    fi
+    generated_at="${FORGEWRIGHT_MANIFEST_GENERATED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+
+    if ! node - "$manifest_tmp" "$existing_manifest" "$PROJECT_ROOT" "$fw_version" \
+        "$HOME/.forgewright" "$CANONICAL_SERVER_TS" "$CURSOR_CONFIG" \
+        "$CLAUDE_CODE_CONFIG" "$ANTIGRAVITY_CONFIG" "$generated_at" <<'NODE'
+const fs = require('fs');
+
+const [
+  outputPath,
+  existingPath,
+  workspace,
+  version,
+  canonical,
+  serverPath,
+  cursorConfig,
+  claudeCodeConfig,
+  antigravityConfig,
+  generatedAt,
+] = process.argv.slice(2);
+
+const manifest = {
+  manifest_version: '1.0',
+  workspace,
+  forgewright: { version, canonical, server: serverPath },
+  servers: [
     {
-      "name": "forgewright",
-      "type": "forgewright-mcp-server",
-      "path": "${CANONICAL_SERVER_TS}",
-      "enabled": true,
-      "auto_start": true
+      name: 'forgewright',
+      type: 'forgewright-mcp-server',
+      path: serverPath,
+      enabled: true,
+      auto_start: true,
     },
     {
-      "name": "gitnexus",
-      "type": "gitnexus",
-      "command": "gitnexus",
-      "args": ["mcp"],
-      "enabled": true,
-      "auto_start": true
-    }
+      name: 'gitnexus',
+      type: 'gitnexus',
+      command: 'gitnexus',
+      args: ['mcp'],
+      enabled: true,
+      auto_start: true,
+    },
   ],
-  "settings": {
-    "mcp_compatibility": "loose",
-    "workspace_detection": "git-root"
+  settings: {
+    mcp_compatibility: 'loose',
+    workspace_detection: 'git-root',
   },
-  "platforms": {
-    "cursor": "${CURSOR_CONFIG}",
-    "claude_code": "${CLAUDE_CODE_CONFIG}",
-    "antigravity": "${ANTIGRAVITY_CONFIG}"
+  platforms: {
+    cursor: cursorConfig,
+    claude_code: claudeCodeConfig,
+    antigravity: antigravityConfig,
   },
-  "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  generated_at: generatedAt,
+};
+
+function semanticJson(value, atRoot = true) {
+  if (Array.isArray(value)) {
+    return value.map((item) => semanticJson(item, false));
+  }
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .filter((key) => !(atRoot && key === 'generated_at'))
+      .sort()
+      .map((key) => [key, semanticJson(value[key], false)]),
+  );
 }
-EOF
+
+if (existingPath) {
+  try {
+    const existing = JSON.parse(fs.readFileSync(existingPath, 'utf8'));
+    const unchanged = JSON.stringify(semanticJson(existing)) === JSON.stringify(semanticJson(manifest));
+    if (unchanged && typeof existing.generated_at === 'string' && existing.generated_at) {
+      manifest.generated_at = existing.generated_at;
+    }
+  } catch {
+    // Invalid legacy manifests are replaced by the validated generated shape.
+  }
+}
+
+fs.writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
+NODE
+    then
+        rm -f "$manifest_tmp"
+        trap - HUP INT TERM
+        log_error "Failed to generate MCP manifest"
+        return 1
+    fi
+    if ! chmod 644 "$manifest_tmp" || ! node - "$manifest_tmp" "$manifest" <<'NODE'
+const fs = require('fs');
+const [source, destination] = process.argv.slice(2);
+fs.renameSync(source, destination);
+NODE
+    then
+        rm -f "$manifest_tmp"
+        trap - HUP INT TERM
+        log_error "Failed to install MCP manifest"
+        return 1
+    fi
+    trap - HUP INT TERM
+    manifest_tmp=""
     log_ok "Manifest generated at $manifest"
 
     # Copy launcher scripts to FORGEWRIGHT_DIR/scripts/

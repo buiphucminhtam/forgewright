@@ -104,12 +104,15 @@ test_setup() {
 
     setup_test_project
     cd "$TEST_PROJECT"
+    local project_root_real
+    project_root_real="$(pwd -P)"
     mkdir -p "$TEST_HOME"
     seed_canonical_dependencies
 
     info "Testing fresh setup (--cursor only)"
     local output
-    if output="$(HOME="$TEST_HOME" bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --cursor 2>&1)"; then
+    if output="$(HOME="$TEST_HOME" FORGEWRIGHT_MANIFEST_GENERATED_AT="2026-01-01T00:00:00Z" \
+        bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --cursor 2>&1)"; then
         pass "Setup completed"
     else
         fail "Setup failed"
@@ -133,15 +136,88 @@ test_setup() {
         pass "Skipped platforms are not reported as configured"
     fi
 
+    local manifest_path expected_manifest
+    manifest_path="${TEST_PROJECT}/.antigravity/mcp-manifest.json"
+    expected_manifest="${TEST_PROJECT}/expected-mcp-manifest.json"
+    cp "$manifest_path" "$expected_manifest"
+    if node - "$manifest_path" "$project_root_real" <<'NODE'
+const fs = require('fs');
+const [path, workspace] = process.argv.slice(2);
+const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+let formatted = `${JSON.stringify(manifest, null, 2)}\n`.replace(
+  /"args": \[\n\s+"mcp"\n\s+\]/,
+  '"args": ["mcp"]',
+);
+formatted = formatted.replace(
+  `"workspace": "${workspace}"`,
+  `"workspace": "/untrusted/duplicate",\n  "workspace": "${workspace}"`,
+);
+if ((formatted.match(/"workspace":/g) || []).length !== 2) {
+  throw new Error('duplicate workspace fixture was not created');
+}
+fs.writeFileSync(path, formatted);
+NODE
+    then
+        pass "Equivalent legacy fixture contains a duplicate key"
+    else
+        fail "Equivalent legacy duplicate-key fixture was not created"
+    fi
+    if cmp -s "$manifest_path" "$expected_manifest"; then
+        fail "Equivalent legacy manifest fixture was not mutated"
+    else
+        pass "Equivalent legacy manifest fixture differs byte-for-byte"
+    fi
     mkdir -p "${TEST_HOME}/.forgewright/mcp-server/src/stale"
     touch "${TEST_HOME}/.forgewright/mcp-server/src/stale/removed.ts"
     if HOME="$TEST_HOME" FORGEWRIGHT_FORCE_PYTHON_SYNC=1 \
-        bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --cursor >/dev/null 2>&1 && \
+        FORGEWRIGHT_MANIFEST_GENERATED_AT="2030-01-01T00:00:00Z" \
+        bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --force --cursor >/dev/null 2>&1 && \
         [[ ! -e "${TEST_HOME}/.forgewright/mcp-server/src/stale/removed.ts" ]]; then
         pass "Python canonical refresh removes nested stale source files"
     else
         fail "Python canonical refresh retained nested stale source files"
     fi
+    if cmp -s "$manifest_path" "$expected_manifest"; then
+        pass "Forced setup canonicalizes equivalent JSON without timestamp churn"
+    else
+        fail "Forced setup changed the canonical equivalent manifest"
+    fi
+    if [[ "$(node -p "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).generated_at" "$manifest_path")" == "2026-01-01T00:00:00Z" ]]; then
+        pass "Equivalent manifest preserves generated_at"
+    else
+        fail "Equivalent manifest changed generated_at"
+    fi
+
+    node - "$manifest_path" <<'NODE'
+const fs = require('fs');
+const path = process.argv[2];
+const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+manifest.workspace = '/changed/semantic/workspace';
+fs.writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+NODE
+    if HOME="$TEST_HOME" FORGEWRIGHT_MANIFEST_GENERATED_AT="2040-01-01T00:00:00Z" \
+        bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --force --cursor >/dev/null 2>&1 && \
+        node - "$manifest_path" "$project_root_real" <<'NODE'
+const fs = require('fs');
+const [path, workspace] = process.argv.slice(2);
+const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+process.exit(manifest.workspace === workspace && manifest.generated_at === '2040-01-01T00:00:00Z' ? 0 : 1);
+NODE
+    then
+        pass "Semantic manifest changes adopt the new timestamp"
+    else
+        fail "Semantic manifest changes did not replace legacy values"
+    fi
+
+    rm -f "$manifest_path"
+    mkdir "$manifest_path"
+    if HOME="$TEST_HOME" bash "${SCRIPT_DIR}/forgewright-mcp-setup.sh" --force --cursor >/dev/null 2>&1; then
+        fail "Directory manifest target was accepted"
+    else
+        pass "Directory manifest target is rejected"
+    fi
+    rmdir "$manifest_path"
+    cp "$expected_manifest" "$manifest_path"
 
     cleanup
 }
