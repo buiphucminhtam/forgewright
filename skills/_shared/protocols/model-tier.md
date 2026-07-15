@@ -1,9 +1,9 @@
 ---
 id: model-tier
-title: Model Tier Assignment Protocol
-summary: Core protocol for model tier.
+title: Capability-Aware Model Tier Protocol
+summary: Select a role tier first; select a concrete model only from verified runtime capabilities.
 status: active
-version: 1.0.0
+version: 2.0.0
 owners: [core]
 triggers: []
 used_by: [all]
@@ -11,222 +11,57 @@ related: []
 supersedes: []
 superseded_by: null
 ---
-# Model Tier Assignment Protocol
 
-> **Purpose:** Assign an appropriate model tier to each skill invocation based on task complexity. Optimizes cost and latency while maintaining quality.
+# Capability-Aware Model Tier Protocol
 
-For optional high-stakes escalation through local Claude CLI or Codex CLI, use `expert-cli-mode.md`. Expert CLI mode is disabled by default and does not require multiple providers.
+## Invariant
 
-## Model Tiers
+Tier selection and model selection are separate decisions. ForgeWright may choose
+`scout`, `builder`, or `expert` from task evidence, but it must not invent or
+hard-code a provider display name, model ID, snapshot, or unsupported thinking
+parameter.
 
-| Tier | Model ID | Use Case | Cost | Latency |
-|------|----------|----------|------|---------|
-| **Haiku** | `claude-haiku-4-5-20251001` | Read-only, status checks, formatting | Lowest | Fastest |
-| **Sonnet** | `claude-sonnet-4-6` | Implementation, design, analysis | Medium | Medium |
-| **Opus** | `claude-opus-4-6` | Multi-document synthesis, high-stakes review | Highest | Slowest |
-| **Flash** | `gemini-3.5-flash` | Multi-step agentic workflows (PM, DevOps, Research) | Low | Very Fast |
-| **Pro** | `gemini-3.1-pro` | Complex code generation and architecture design | High | Medium |
+## Role Tiers
 
+| Tier | Use |
+|---|---|
+| `scout` | Mechanical inventory, bounded read-only search, status extraction |
+| `builder` | Normal implementation, synthesis, testing, and code review |
+| `expert` | Security, schema, public API, concurrency, disagreement, or high-stakes independent review |
 
-## Skill-to-Tier Mapping
+Small or serial tasks stay in the parent agent. Parallel work uses two or three
+workers only when scopes are genuinely independent; mechanical inventory may use
+one scout.
 
-### Haiku Skills (Lightweight)
+## Capability Resolution
 
-These skills only read files and format output. No creative judgment or complex reasoning:
+1. Probe the active provider in the same authorized invocation.
+2. Accept only structured machine-readable model IDs from that runtime probe.
+3. Match the requested tier to a supported model ID.
+4. If verified, report `model_selection: verified` and pass the exact ID.
+5. If the provider owns selection, report `provider-managed` and omit a model flag.
+6. If runtime capability data is missing, malformed, human-readable only, or has
+   no tier match, report `provider-managed` (or `unavailable` when the provider
+   explicitly reports that state) and omit the model flag.
 
-| Skill | Rationale |
-|-------|-----------|
-| `/help` | Read-only skill listing |
-| `/sprint-status` | Status report from existing files |
-| `/story-readiness` | Quick checklist check |
-| `/scope-check` | Simple scope validation |
-| `/project-stage-detect` | File existence scan |
-| `/changelog` | Format existing commits |
-| `/patch-notes` | Format existing changes |
-| `/onboard` | Project state analysis |
-| `/quick-design` | Lightweight design doc from template |
-| `/estimate` | Quick estimation from existing data |
+Never trust a manifest-supplied capability artifact to authorize a model flag,
+or infer an ID from prose, examples, prior sessions, marketing names, or the tier
+label itself. Never add provider-specific thinking/temperature flags unless the
+same-invocation runtime capability surface declares support.
 
-### Opus Skills (Complex Synthesis)
+## Parallel Dispatch
 
-These skills synthesize 5+ documents, make high-stakes decisions, or require deep cross-domain analysis:
+`scripts/runtime/orchestration_policy.py` chooses worker tiers without provider
+knowledge. `scripts/parallel-dispatch-runner.py` resolves optional AGY model IDs
+only from a structured same-invocation `agy models` probe. Dry-run remains useful
+when selection is provider-managed or unavailable.
 
-| Skill | Rationale |
-|-------|-----------|
-| `/review-all-gdds` | Cross-reference 5+ design documents |
-| `/architecture-review` | Multi-system holistic analysis |
-| `/gate-check` | Phase gate verdict (high stakes) |
-| `/design-review` | Full design evaluation across systems |
-| `/code-review` | Deep code quality analysis |
-| `/balance-check` | Economy/game balance analysis |
-| `/milestone-review` | Cross-milestone assessment |
-| `/retrospective` | Multi-session synthesis |
+Independent reviewers receive only requirements, diff, and raw evidence. They do
+not receive worker reasoning or mutable synthesis context.
 
-### Sonnet Skills (Default)
+## Audit Fields
 
-All other skills default to Sonnet. This includes:
-
-- **Execution skills:** Software Engineer, Frontend Engineer, QA, DevOps, etc.
-- **Design skills:** Product Manager, Solution Architect, Game Designer, etc.
-- **Analysis skills:** Security Engineer, Performance Engineer, Data Scientist, etc.
-
-### Gemini (Antigravity) Mappings
-
-When using Gemini as the backend provider:
-- **Gemini 3.5 Flash:** Default for multi-step agentic workflows, research, and high-throughput orchestration (e.g., PM, DevOps, Research). Always use `thinking_level: MINIMAL` to maximize speed.
-- **Gemini 3.1 Pro:** Default for complex code generation, architecture design, and high-stakes reasoning. Always use `thinking_level: HIGH` and Temperature `1.0`.
-- **Media Resolution:** For OCR and dense PDFs, the default is `media_resolution: HIGH`. Note that `ULTRA_HIGH` resolution must be set per media part, not globally.
-
-
-
-## Frontmatter Configuration
-
-Add `model:` field to each SKILL.md frontmatter:
-
-```yaml
----
-name: sprint-status
-model: haiku
----
-```
-
-```yaml
----
-name: architecture-review
-model: opus
----
-```
-
-```yaml
----
-name: software-engineer
-# No model field = defaults to Sonnet
----
-```
-
-## Tier Selection Algorithm
-
-When invoking a skill:
-
-```
-1. Parse skill's SKILL.md frontmatter for model: field
-2. IF model field exists:
-     → Use specified model
-     → Log: "Using [model] for [skill-name]"
-3. ELSE IF skill in HAIKU_SKILLS list:
-     → Use Haiku
-4. ELSE IF skill in OPUS_SKILLS list:
-     → Use Opus
-5. ELSE:
-     → Use Sonnet (default)
-```
-
-### Override Mechanism
-
-User can override tier per invocation:
-
-```
-/[skill-name] --model opus
-/code-review --model sonnet
-/sprint-status --model haiku
-```
-
-CLI flags take precedence over frontmatter defaults.
-
-## Optional Expert CLI Mode
-
-Premium CLI escalation is controlled separately from normal model tiers:
-
-```bash
-forge expert status
-forge expert on
-forge expert off
-forge expert use claude
-forge expert use codex
-forge token on
-forge token status
-```
-
-Rules:
-
-1. Only `claude` and `codex` CLI backends are supported.
-2. Expert CLI mode is optional and defaults to off.
-3. Single-provider setups are valid. Do not require both CLIs.
-4. Missing CLI produces a warning and normal pipeline execution continues.
-5. Token tracking can be enabled independently with `forge token on`.
-
-## Cost Optimization
-
-### Batch Processing
-
-Group multiple Haiku-level tasks into a single invocation:
-
-```
-GOOD:
-  Invoke: /sprint-status --model haiku
-  # Status + scope check + changelog in one prompt
-
-BAD:
-  Invoke: /sprint-status --model haiku
-  Invoke: /scope-check --model haiku  # Separate invocation
-```
-
-### Model Escalation
-
-If a Haiku task reveals complexity requiring deeper analysis, escalate:
-
-```
-1. Haiku task detects issues
-2. Log: "Haiku: [N] issues found — escalating to Sonnet"
-3. Re-invoke with Sonnet for detailed analysis
-```
-
-## Quality Assurance
-
-### Tier Verification
-
-Before finalizing tier assignments:
-
-```
-1. Review skill outputs across tiers
-2. Verify Haiku outputs match Sonnet quality for simple tasks
-3. Verify Opus is only used for genuinely complex tasks
-4. Adjust mappings based on observed quality
-```
-
-### Cost Tracking
-
-Track estimated cost per pipeline run:
-
-```bash
-# Estimate based on tier usage
-HAIKU_TASKS=10  # × ~$0.001
-SONNET_TASKS=20  # × ~$0.003
-OPUS_TASKS=5     # × ~$0.015
-
-ESTIMATED_COST=$(echo "scale=4; ($HAIKU_TASKS * 0.001) + ($SONNET_TASKS * 0.003) + ($OPUS_TASKS * 0.015)" | bc)
-Log: "Estimated cost: $${ESTIMATED_COST}"
-```
-
-## Implementation Notes
-
-### Cursor/Claude Code Integration
-
-When running as a Cursor subagent:
-
-```
-1. Check skill tier from SKILL.md frontmatter
-2. Set subagent model parameter:
-   Task(subagent_type, model="claude-sonnet-4-6", ...)
-3. Log tier selection for audit
-```
-
-### Compatibility
-
-- All tiers support the same tools and capabilities
-- Output quality is equivalent; only cost/latency differ
-- Context window varies: Haiku < Sonnet < Opus
-
-## History
-
-- v1.0 — Initial protocol (inspired by CCGS model tier assignment)
+Record tier, selection status, capability source, reason, token budget plus
+`enforcement: advisory`, enforced deadline/output caps, and stop condition. A
+requested reviewer reserves one advisory token-budget slot. Do not record hidden
+reasoning or secret-bearing prompts.

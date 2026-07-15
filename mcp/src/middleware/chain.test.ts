@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MiddlewareChain } from './chain.js';
+import type { PolicyEvaluator } from './guardrail.js';
 import type { ToolCall, ToolResult } from './types.js';
 
 function makeToolCall(toolName: string, toolArgs: Record<string, unknown>): ToolCall {
@@ -33,6 +34,92 @@ async function executeRead(
 }
 
 describe('MiddlewareChain', () => {
+  it('blocks policy denials before the execute callback', async () => {
+    let executed = false;
+    const policyEvaluator: PolicyEvaluator = {
+      evaluate: async () => ({ action: 'block', reason: 'destructive command' }),
+    };
+    const chain = new MiddlewareChain({
+      config: { tool_sandbox: { enabled: false } },
+      policyEvaluator,
+    });
+
+    const processed = await chain.executeTool(
+      makeToolCall('Bash', { cmd: 'rm -rf /tmp/example' }),
+      'software-engineer',
+      'feature',
+      'build',
+      1,
+      'test-session',
+      'test',
+      async () => {
+        executed = true;
+        return { content: [{ type: 'text', text: 'should not run' }] };
+      },
+    );
+
+    expect(executed).toBe(false);
+    expect(processed.result).toMatchObject({ isError: true });
+    expect(processed.result.content[0].text).toContain('destructive command');
+    expect(processed.guardrail?.action).toBe('block');
+  });
+
+  it('fails closed on policy configuration errors', async () => {
+    let executed = false;
+    const chain = new MiddlewareChain({
+      config: { tool_sandbox: { enabled: false } },
+      policyEvaluator: {
+        evaluate: async () => ({ action: 'config-error', reason: 'policy unavailable' }),
+      },
+    });
+
+    const processed = await chain.executeTool(
+      makeToolCall('Bash', { cmd: 'echo unsafe without policy' }),
+      'software-engineer',
+      'feature',
+      'build',
+      1,
+      'test-session',
+      'test',
+      async () => {
+        executed = true;
+        return { content: [{ type: 'text', text: 'executed' }] };
+      },
+    );
+
+    expect(executed).toBe(false);
+    expect(processed.result.isError).toBe(true);
+    expect(processed.guardrail?.action).toBe('config-error');
+  });
+
+  it('continues after a policy warning and reports it', async () => {
+    let executed = false;
+    const chain = new MiddlewareChain({
+      config: { tool_sandbox: { enabled: false } },
+      policyEvaluator: {
+        evaluate: async () => ({ action: 'warn', reason: 'sensitive operation' }),
+      },
+    });
+
+    const processed = await chain.executeTool(
+      makeToolCall('Bash', { cmd: 'echo ok' }),
+      'software-engineer',
+      'feature',
+      'build',
+      1,
+      'test-session',
+      'test',
+      async () => {
+        executed = true;
+        return { content: [{ type: 'text', text: 'executed' }] };
+      },
+    );
+
+    expect(executed).toBe(true);
+    expect(processed.result.isError).toBeUndefined();
+    expect(processed.guardrail?.action).toBe('warn');
+  });
+
   it('sanitizes and compresses tool output before returning and caching it', async () => {
     const auditDir = mkdtempSync(join(tmpdir(), 'forgewright-chain-audit-'));
     const chain = new MiddlewareChain({

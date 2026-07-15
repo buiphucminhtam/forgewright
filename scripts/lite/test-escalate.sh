@@ -94,6 +94,10 @@ make_config "$t1" "agy"
 out=$(run_dry "$t1" "fix the auth bug")
 assert_contains "agy argv contains '--print'" "'--print'" "$out"
 assert_contains "agy argv starts with 'agy'" "'agy'" "$out"
+assert_contains "agy argv enables sandbox" "'--sandbox'" "$out"
+assert_contains "agy argv sets mode flag" "'--mode'" "$out"
+assert_contains "agy argv is plan-only" "'plan'" "$out"
+assert_not_contains "agy argv never bypasses permissions" "--dangerously-skip-permissions" "$out"
 assert_not_contains "agy argv does NOT use --headless" "--headless" "$out"
 assert_not_contains "agy argv does NOT use --prompt-file" "--prompt-file" "$out"
 

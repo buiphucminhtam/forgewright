@@ -1,0 +1,511 @@
+#!/usr/bin/env python3
+"""Bounded parallel-dispatch runner. Dry-run unless explicit sharing consent is given."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path, PurePosixPath
+from typing import Any
+
+from runtime.orchestration_policy import PolicyError, decide_orchestration
+
+
+class ManifestError(ValueError):
+    """Raised when a dispatch manifest is unsafe or malformed."""
+
+
+DEFAULT_MAX_RESULT_CHARS = 32_768
+MAX_RESULT_CHARS = 65_536
+SECRET_VALUE_PATTERN = re.compile(
+    r"(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|"
+    r"authorization|credential)\b\s*([:=])\s*(\"[^\"\r\n]*\"|'[^'\r\n]*'|[^\s,;]+)"
+)
+BEARER_PATTERN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
+KNOWN_TOKEN_PATTERN = re.compile(r"\b(?:sk|gh[opusr])_[A-Za-z0-9_-]{8,}\b")
+
+
+def validate_global_antigravity_hook() -> Path:
+    """Fail closed unless AGY's runtime-loaded global policy hook is exact and local."""
+    home = Path.home().resolve(strict=True)
+    try:
+        hooks_path = (home / ".gemini" / "config" / "hooks.json").resolve(strict=True)
+    except OSError as error:
+        raise ManifestError(
+            "global Antigravity forgewright-policy hook is missing"
+        ) from error
+    if not hooks_path.is_relative_to(home):
+        raise ManifestError("Antigravity hook configuration escapes the home directory")
+    try:
+        document = json.loads(hooks_path.read_text(encoding="utf-8"))
+        groups = document["forgewright-policy"]["PreToolUse"]
+    except (KeyError, TypeError, json.JSONDecodeError, OSError) as error:
+        raise ManifestError(
+            "invalid global Antigravity forgewright-policy hook"
+        ) from error
+    if document["forgewright-policy"].get("enabled") is False or not isinstance(
+        groups, list
+    ):
+        raise ManifestError("global Antigravity forgewright-policy hook is disabled")
+
+    for group in groups:
+        if not isinstance(group, dict) or group.get("matcher") != "*":
+            continue
+        for handler in group.get("hooks", []):
+            if (
+                not isinstance(handler, dict)
+                or handler.get("type", "command") != "command"
+            ):
+                continue
+            command = handler.get("command")
+            if not isinstance(command, str):
+                continue
+            try:
+                argv = shlex.split(command)
+            except ValueError:
+                continue
+            if len(argv) == 2 and argv[0] == "bash":
+                gate_value = argv[1]
+            elif len(argv) == 1:
+                gate_value = argv[0]
+            else:
+                continue
+            gate = Path(gate_value).expanduser()
+            if not gate.is_absolute():
+                gate = hooks_path.parent / gate
+            try:
+                gate = gate.resolve(strict=True)
+            except OSError:
+                continue
+            if (
+                gate.is_relative_to(home)
+                and gate.is_file()
+                and gate.name == "antigravity-pre-tool-gate.sh"
+            ):
+                return hooks_path
+    raise ManifestError("invalid global Antigravity forgewright-policy hook")
+
+
+def load_manifest(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ManifestError(f"manifest cannot be read as JSON: {error}") from error
+    if not isinstance(value, dict) or value.get("version") != 1:
+        raise ManifestError("manifest must be a version 1 JSON object")
+    if not isinstance(value.get("request"), dict):
+        raise ManifestError("manifest.request must be an object")
+    provider = value.get("provider", {})
+    if not isinstance(provider, dict) or provider.get("cli", "agy") != "agy":
+        raise ManifestError("only the agy provider is supported")
+    return value
+
+
+def _reject_recursive(value: Any) -> None:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if (
+                key in {"recursive_spawn", "allow_recursive", "spawn_subagents"}
+                and child is not False
+                and child is not None
+            ):
+                raise ManifestError("recursive spawning is forbidden")
+            _reject_recursive(child)
+    elif isinstance(value, list):
+        for child in value:
+            _reject_recursive(child)
+
+
+def validate_disjoint_paths(request: dict[str, Any]) -> None:
+    scopes = request.get("scopes", [])
+    if not isinstance(scopes, list):
+        raise ManifestError("request.scopes must be an array")
+    claimed: list[tuple[str, PurePosixPath]] = []
+    for scope in scopes:
+        if not isinstance(scope, dict) or not isinstance(scope.get("id"), str):
+            raise ManifestError("each scope must have a string id")
+        paths = scope.get("paths")
+        if not isinstance(paths, list) or not paths:
+            raise ManifestError(f"scope {scope['id']} must have paths")
+        for raw_path in paths:
+            if not isinstance(raw_path, str) or not raw_path.strip():
+                raise ManifestError("scope paths must be non-empty strings")
+            path = PurePosixPath(raw_path)
+            if path.is_absolute() or ".." in path.parts or str(path) in {"", "."}:
+                raise ManifestError(f"unsafe scope path: {raw_path}")
+            for other_scope, other in claimed:
+                if path == other or path in other.parents or other in path.parents:
+                    raise ManifestError(
+                        f"scope path overlap: {scope['id']}:{path} conflicts with {other_scope}:{other}"
+                    )
+            claimed.append((scope["id"], path))
+
+
+def validate_read_only_request(request: dict[str, Any]) -> None:
+    if any(
+        request.get(key) is True
+        for key in ("write", "requires_write", "allow_writes", "accept_edits")
+    ):
+        raise ManifestError("external dispatch is read-only; write access is forbidden")
+    access = request.get("access", "read-only")
+    if access not in {"read-only", "readonly"}:
+        raise ManifestError(
+            "external dispatch is read-only; request.access must be read-only"
+        )
+    if request.get("mode", "plan") not in {"plan", "read-only", "readonly"}:
+        raise ManifestError("external dispatch is read-only; request.mode must be plan")
+    for scope in request.get("scopes", []):
+        scope_access = scope.get("access", "read-only")
+        scope_mode = scope.get("mode", "plan")
+        if (
+            scope_access not in {"read-only", "readonly"}
+            or scope_mode not in {"plan", "read-only", "readonly"}
+            or scope.get("write") is True
+        ):
+            raise ManifestError(
+                f"external dispatch is read-only; scope {scope.get('id', '<unknown>')} requests write"
+            )
+
+
+def validate_provider_safety(provider: dict[str, Any]) -> None:
+    if any(
+        provider.get(key) not in (None, False, []) for key in ("args", "argv", "flags")
+    ):
+        raise ManifestError("custom provider args are forbidden")
+    if provider.get("mode", "plan") != "plan":
+        raise ManifestError("provider mode must be read-only plan")
+    if provider.get("sandbox", True) is not True:
+        raise ManifestError("provider sandbox cannot be disabled")
+    if (
+        provider.get("dangerously_skip_permissions") is True
+        or provider.get("accept_edits") is True
+    ):
+        raise ManifestError("dangerous provider permission/edit flags are forbidden")
+
+
+def resolve_workspace(request: dict[str, Any], manifest_dir: Path) -> Path:
+    raw_workspace = request.get("workspace")
+    if raw_workspace is None:
+        candidate = manifest_dir
+    elif not isinstance(raw_workspace, str) or not raw_workspace.strip():
+        raise ManifestError("request.workspace must be a non-empty path string")
+    else:
+        candidate = Path(raw_workspace).expanduser()
+        if not candidate.is_absolute():
+            candidate = manifest_dir / candidate
+    try:
+        workspace = candidate.resolve(strict=True)
+    except OSError as error:
+        raise ManifestError(f"request.workspace cannot be resolved: {error}") from error
+    if not workspace.is_dir():
+        raise ManifestError("request.workspace must resolve to a directory")
+
+    for scope in request.get("scopes", []):
+        for raw_path in scope["paths"]:
+            resolved_scope = (workspace / raw_path).resolve(strict=False)
+            if resolved_scope != workspace and workspace not in resolved_scope.parents:
+                raise ManifestError(
+                    f"scope path escapes resolved workspace: {scope['id']}:{raw_path}"
+                )
+    return workspace
+
+
+def _max_result_chars(request: dict[str, Any]) -> int:
+    limits = request.get("limits", {})
+    value = limits.get("max_result_chars", DEFAULT_MAX_RESULT_CHARS)
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ManifestError("limits.max_result_chars must be a positive integer")
+    return min(value, MAX_RESULT_CHARS)
+
+
+def _capabilities_path(provider: dict[str, Any], manifest_dir: Path) -> Path | None:
+    raw = provider.get("capabilities_file")
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or not raw:
+        raise ManifestError("provider.capabilities_file must be a path string")
+    path = Path(raw).expanduser()
+    return path if path.is_absolute() else manifest_dir / path
+
+
+def select_model(
+    tier: str, provider: dict[str, Any], manifest_dir: Path
+) -> dict[str, str | None]:
+    path = _capabilities_path(provider, manifest_dir)
+    if path is None:
+        return {"status": "provider-managed", "model": None, "source": None}
+    return {
+        "status": "unavailable",
+        "model": None,
+        "source": "untrusted-manifest-capability",
+    }
+
+
+def _probe_runtime_models(executable: str, workspace: Path) -> dict[str, str]:
+    resolved = shutil.which(executable)
+    if resolved is None:
+        return {}
+    try:
+        result = subprocess.run(
+            [resolved, "models"],
+            cwd=workspace,
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=False,
+            shell=False,
+        )
+        if result.returncode != 0:
+            return {}
+        payload = json.loads(result.stdout)
+        models = payload.get("models") if isinstance(payload, dict) else None
+        if not isinstance(models, list):
+            return {}
+        selected: dict[str, str] = {}
+        for model in models:
+            if (
+                isinstance(model, dict)
+                and isinstance(model.get("id"), str)
+                and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/-]*", model["id"])
+                and isinstance(model.get("tiers"), list)
+            ):
+                for tier in model["tiers"]:
+                    if tier in {"scout", "builder", "expert"} and tier not in selected:
+                        selected[tier] = model["id"]
+        return selected
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, TypeError):
+        return {}
+
+
+def _apply_runtime_model_selection(plan: dict[str, Any]) -> None:
+    calls = [*plan["workers"]]
+    if plan["reviewer"] is not None:
+        calls.append(plan["reviewer"])
+    if not calls:
+        return
+    models = _probe_runtime_models(calls[0]["argv"][0], Path(plan["workspace"]))
+    for call in calls:
+        model = models.get(call["role"])
+        selection = {
+            "status": "verified" if model else "provider-managed",
+            "model": model,
+            "source": "provider-cli-runtime-same-invocation",
+        }
+        prompt = call["argv"][-1]
+        call["model_selection"] = selection
+        call["argv"] = _provider_argv(call["argv"][0], selection, prompt)
+
+
+def _worker_prompt(
+    request: dict[str, Any], worker: dict[str, Any], stop: list[str]
+) -> str:
+    return "\n".join(
+        [
+            "[Forgewright bounded parallel worker]",
+            f"Requirements: {request.get('requirements', '')}",
+            f"Role tier: {worker['role']}",
+            f"Scope: {worker['scope_id']}",
+            f"Advisory read-only paths: {json.dumps(worker['paths'], separators=(',', ':'))}",
+            f"Stop when: {','.join(stop)}",
+            "Do not spawn subagents or expand beyond the assigned scope.",
+            "Return findings with exact file:line evidence and stop when the scope is covered.",
+        ]
+    )
+
+
+def _reviewer_prompt(reviewer: dict[str, Any]) -> str:
+    packet = reviewer["packet"]
+    return "\n".join(
+        [
+            "[Forgewright independent reviewer]",
+            f"Requirements: {json.dumps(packet['requirements'], ensure_ascii=False)}",
+            f"Diff: {json.dumps(packet['diff'], ensure_ascii=False)}",
+            f"Raw evidence: {json.dumps(packet['raw_evidence'], ensure_ascii=False)}",
+            "Review only this immutable packet. Do not use worker reasoning or worker results.",
+            "Do not spawn subagents or expand the supplied scope.",
+            "Return independent findings with exact evidence; fail closed if evidence is insufficient.",
+        ]
+    )
+
+
+def _provider_argv(
+    executable: str, selection: dict[str, str | None], prompt: str
+) -> list[str]:
+    argv = [executable, "--sandbox", "--mode", "plan"]
+    if selection["status"] == "verified" and selection["model"]:
+        argv.extend(["--model", selection["model"]])
+    argv.extend(["--print", prompt])
+    return argv
+
+
+def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
+    _reject_recursive(manifest)
+    request = manifest["request"]
+    validate_disjoint_paths(request)
+    validate_read_only_request(request)
+    workspace = resolve_workspace(request, manifest_dir)
+    max_result_chars = _max_result_chars(request)
+    decision = decide_orchestration(request)
+    provider = manifest.get("provider", {})
+    validate_provider_safety(provider)
+    executable = provider.get("executable", "agy")
+    if not isinstance(executable, str) or not executable:
+        raise ManifestError("provider.executable must be a non-empty string")
+    if Path(executable).name != "agy":
+        raise ManifestError("provider.executable must resolve to an agy binary")
+
+    planned_workers = []
+    for worker in decision["workers"]:
+        selection = select_model(worker["role"], provider, manifest_dir)
+        prompt = _worker_prompt(request, worker, decision["stop_conditions"])
+        planned_workers.append(
+            {
+                **worker,
+                "model_selection": selection,
+                "argv": _provider_argv(executable, selection, prompt),
+                "max_result_chars": max_result_chars,
+            }
+        )
+
+    planned_reviewer = decision["reviewer"]
+    if planned_reviewer is not None:
+        selection = select_model("expert", provider, manifest_dir)
+        deadline_ms = request.get("limits", {}).get("deadline_ms", 30_000)
+        planned_reviewer = {
+            **planned_reviewer,
+            "id": "reviewer",
+            "deadline_ms": deadline_ms,
+            "max_result_chars": max_result_chars,
+            "model_selection": selection,
+            "argv": _provider_argv(
+                executable, selection, _reviewer_prompt(planned_reviewer)
+            ),
+        }
+
+    return {
+        **decision,
+        "workspace": str(workspace),
+        "scope_enforcement": "advisory-read-only",
+        "workers": planned_workers,
+        "reviewer": planned_reviewer,
+        "execution": {"status": "dry-run", "external_call": False},
+    }
+
+
+def _redact_and_bound(value: str, max_chars: int) -> str:
+    redacted = SECRET_VALUE_PATTERN.sub(r"\1\2***REDACTED***", value)
+    redacted = BEARER_PATTERN.sub("Bearer ***REDACTED***", redacted)
+    redacted = KNOWN_TOKEN_PATTERN.sub("***REDACTED***", redacted)
+    return redacted[:max_chars]
+
+
+def _execute_call(call: dict[str, Any], workspace: Path) -> dict[str, Any]:
+    executable = shutil.which(call["argv"][0])
+    if executable is None:
+        return {
+            "id": call["id"],
+            "exit_code": 127,
+            "stderr": "agy executable not found",
+        }
+    argv = [executable, *call["argv"][1:]]
+    try:
+        delegation_env = os.environ.copy()
+        delegation_env["FORGEWRIGHT_WORKSPACE"] = str(workspace.resolve(strict=True))
+        result = subprocess.run(
+            argv,
+            cwd=workspace,
+            env=delegation_env,
+            text=True,
+            capture_output=True,
+            timeout=call["deadline_ms"] / 1000,
+            check=False,
+            shell=False,
+        )
+        return {
+            "id": call["id"],
+            "exit_code": result.returncode,
+            "stdout": _redact_and_bound(result.stdout, call["max_result_chars"]),
+            "stderr": _redact_and_bound(result.stderr, call["max_result_chars"]),
+        }
+    except subprocess.TimeoutExpired:
+        return {"id": call["id"], "exit_code": 124, "stderr": "deadline cap exceeded"}
+
+
+def execute_plan(plan: dict[str, Any]) -> int:
+    if plan["workers"] or plan["reviewer"] is not None:
+        validate_global_antigravity_hook()
+    _apply_runtime_model_selection(plan)
+    workers = plan["workers"]
+    workspace = Path(plan["workspace"])
+    if workers:
+        with ThreadPoolExecutor(max_workers=len(workers)) as pool:
+            results = list(
+                pool.map(lambda worker: _execute_call(worker, workspace), workers)
+            )
+    else:
+        results = []
+    reviewer_result = None
+    if plan["reviewer"] is not None:
+        reviewer_result = _execute_call(plan["reviewer"], workspace)
+    success = all(result["exit_code"] == 0 for result in results) and (
+        reviewer_result is None or reviewer_result["exit_code"] == 0
+    )
+    external_call = bool(workers or reviewer_result is not None)
+    plan["execution"] = {
+        "status": "completed" if success else "failed",
+        "external_call": external_call,
+        "results": results,
+        "reviewer_result": reviewer_result,
+    }
+    return 0 if success else 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument(
+        "--execute", action="store_true", help="Execute the bounded AGY plan"
+    )
+    parser.add_argument(
+        "--allow-external-code-sharing",
+        action="store_true",
+        help="Explicitly consent to sending scoped code context to AGY",
+    )
+    args = parser.parse_args()
+    try:
+        manifest_path = args.manifest.expanduser().resolve(strict=True)
+        manifest = load_manifest(manifest_path)
+        plan = build_plan(manifest, manifest_path.parent)
+    except (OSError, ManifestError, PolicyError) as error:
+        print(f"Dispatch denied: {error}", file=sys.stderr)
+        return 2
+
+    if args.execute and not args.allow_external_code_sharing:
+        print(
+            "External code sharing denied: execution requires both --execute and "
+            "--allow-external-code-sharing.",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        rc = (
+            execute_plan(plan)
+            if args.execute and args.allow_external_code_sharing
+            else 0
+        )
+    except (OSError, ManifestError) as error:
+        print(f"Dispatch denied: {error}", file=sys.stderr)
+        return 2
+    print(json.dumps(plan, ensure_ascii=False, sort_keys=True))
+    return rc
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

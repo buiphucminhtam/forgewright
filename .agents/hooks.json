@@ -1,0 +1,16 @@
+{
+  "forgewright-policy": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/lite/antigravity-pre-tool-gate.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

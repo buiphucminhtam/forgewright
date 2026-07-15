@@ -1,5 +1,10 @@
 {
+  "version": 1,
   "hooks": {
-    "stop": "bash scripts/lite/verify-gate.sh --platform CURSOR"
+    "stop": [
+      {
+        "command": "bash scripts/lite/stop-gate.sh --platform CURSOR"
+      }
+    ]
   }
 }

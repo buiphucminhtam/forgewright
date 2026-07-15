@@ -29,11 +29,52 @@ log_error() { echo -e "${RED}[TELEMETRY] ERROR:${NC} $*" >&2; }
 # Find project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [[ -n "${FORGEWRIGHT_WORKSPACE:-}" ]]; then
+  if [[ ! -d "$FORGEWRIGHT_WORKSPACE" ]]; then
+    log_error "FORGEWRIGHT_WORKSPACE is not a readable directory."
+    exit 1
+  fi
+  PROJECT_ROOT="$(cd "$FORGEWRIGHT_WORKSPACE" 2>/dev/null && pwd -P)" || {
+    log_error "FORGEWRIGHT_WORKSPACE cannot be resolved."
+    exit 1
+  }
+fi
 cd "$PROJECT_ROOT"
 
 TELEMETRY_DIR="${FORGEWRIGHT_TELEMETRY_DIR:-.forgewright/telemetry}"
 
 command -v jq >/dev/null 2>&1 || { log_error "jq is required but not found in PATH."; exit 1; }
+
+ACTIVE_LOCK_DIR=""
+_release_lock() {
+  if [[ -n "$ACTIVE_LOCK_DIR" && -d "$ACTIVE_LOCK_DIR" ]]; then
+    rmdir "$ACTIVE_LOCK_DIR" 2>/dev/null || true
+  fi
+  ACTIVE_LOCK_DIR=""
+}
+
+_append_locked() {
+  local file="$1" record="$2" attempts=0 max_attempts=100
+  mkdir -p "$(dirname "$file")"
+  ACTIVE_LOCK_DIR="${file}.lock"
+  while ! mkdir "$ACTIVE_LOCK_DIR" 2>/dev/null; do
+    attempts=$((attempts + 1))
+    if [[ "$attempts" -ge "$max_attempts" ]]; then
+      log_error "Timed out waiting for telemetry append lock."
+      ACTIVE_LOCK_DIR=""
+      return 1
+    fi
+    sleep 0.02
+  done
+  trap _release_lock EXIT HUP INT TERM
+  if ! printf '%s\n' "$record" >> "$file"; then
+    _release_lock
+    trap - EXIT HUP INT TERM
+    return 1
+  fi
+  _release_lock
+  trap - EXIT HUP INT TERM
+}
 
 usage() {
   cat >&2 <<'EOF'
@@ -58,17 +99,32 @@ cmd_emit() {
   month="$(date -u +'%Y%m')"
   file="${TELEMETRY_DIR}/events-${month}.jsonl"
 
-  # jq validates the payload and builds the envelope in one pass.
+  # jq validates and recursively redacts secret-bearing fields before either
+  # persistence or stdout. Never echo the rejected payload on an error path.
   if ! record="$(printf '%s' "$payload" \
-      | jq -c --arg ts "$ts" --arg event "$event_type" \
-           '{ts: $ts, event: $event, data: .}' 2>/dev/null)"; then
-    log_error "Payload is not valid JSON: ${payload}"
+      | jq -cse --arg ts "$ts" --arg event "$event_type" \
+           'def redact:
+              walk(
+                if type == "object" then
+                  with_entries(
+                    if (.key | test("(^|[_-])(api[_-]?key|secret|token|password|auth|credential)([_-]|$)"; "i"))
+                    then .value = "***REDACTED***"
+                    else .
+                    end
+                  )
+                else . end
+              );
+            if length != 1 or (.[0] | type) != "object" then
+              error("payload must be exactly one JSON object")
+            else
+              {ts: $ts, event: $event, data: (.[0] | redact)}
+            end' 2>/dev/null)"; then
+    log_error "Payload must be exactly one valid JSON object."
     exit 1
   fi
 
-  mkdir -p "$TELEMETRY_DIR"
-  printf '%s\n' "$record" >> "$file"
-  log_info "emit ${event_type} → ${file}"
+  _append_locked "$file" "$record"
+  printf '%s\n' "$record"
 }
 
 cmd_report() {

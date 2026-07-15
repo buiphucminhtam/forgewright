@@ -155,6 +155,7 @@ async function handleRun(contract: string): Promise<never> {
     const result = await runAgyWorker({
       contractPath,
       model: activation.model,
+      projectRoot,
       sandbox: true,
     });
     process.exit(result.exitCode ?? EXIT_CODES.TOOL_ERROR);

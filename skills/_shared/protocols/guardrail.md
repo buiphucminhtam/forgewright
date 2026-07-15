@@ -372,11 +372,11 @@ guardrail:
 ```
 IF guardrail rule evaluation fails (regex error, config parse error):
   1. Log error: "⚠ Guardrail rule evaluation failed: [rule_name]"
-  2. For NON-SECURITY custom rules: Default to ALLOW (fail-open)
-  3. For SECURITY rules (Rules 1–4, 7–12, and custom rules with critical: true): Default to DENY (fail-closed)
-  4. Continue pipeline — NEVER block pipeline on guardrail internal error
+  2. Only for a NON-SECURITY custom rule explicitly running in permissive mode: ALLOW and continue (fail-open)
+  3. For SECURITY rules (Rules 1–4, 7–12, and custom rules with critical: true), strict mode, or any policy/configuration error: DENY and halt the affected tool/pipeline branch (fail-closed)
+  4. Surface the diagnostic; never continue after a security, strict-mode, or policy/configuration error
 
-Note: "Fail-open" applies ONLY to non-security custom rules in .production-grade.yaml.
+Note: "Fail-open" applies ONLY to non-security custom rules explicitly configured as permissive in .production-grade.yaml.
 All built-in security rules (1–4, 7–12) ALWAYS fail-closed (DENY on error).
 Consistent with middleware-chain.md Rule 3: Guardrail is the kill switch.
 ```

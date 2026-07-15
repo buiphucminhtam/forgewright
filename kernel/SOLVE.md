@@ -50,6 +50,22 @@ Do not self-attest Y/N claims. Mechanical checks must be script-produced evidenc
 - Total items ≤ 10.
 If the script-produced evidence shows failures, fix the list. Do not start execution.
 
+### Parallel Orchestration Decision Contract
+
+Before dispatch, run the deterministic policy in
+`scripts/runtime/orchestration_policy.py`. Small or serial work uses `0` workers;
+mechanical inventory may use `1` scout; other work uses `2–3` workers only for
+independent, path-disjoint scopes. Path scopes are advisory read-only boundaries;
+external AGY calls must use sandboxed plan mode and reject write requests. Cap
+workers by scope count, concurrency, and advisory remaining token budget, with
+one budget slot reserved for a requested reviewer. Route security, schema, public API, concurrency, or
+disagreement to expert. An independent reviewer receives only requirements,
+diff, and raw evidence. No worker may recursively spawn. Stop on duplicate
+findings, covered scope, the same blocker twice, advisory token budget, or
+enforced deadline cap. Fail closed if a hard token cap is requested because AGY
+has no runtime token limiter. Model flags require a structured same-invocation
+provider probe; manifest-supplied capability files are untrusted.
+
 ## 4. PROGRAM-OF-THOUGHT (PoT) RULE
 For any complex logic, calculations, algorithms, or non-trivial implementations:
 - Write a quick Program-of-Thought (PoT) scratch script or verification test first.

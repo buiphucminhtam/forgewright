@@ -174,6 +174,10 @@ describe("Benchmark runner", () => {
     expect(spawnCalls.length).toBe(4); // 2 runs (adapter + verifier) per attempt
     expect(spawnCalls[0].program).toBe("agy");
     expect(spawnCalls[0].options.shell).toBe(false);
+    expect([
+      spawnCalls[0].options.cwd,
+      `/private${spawnCalls[0].options.cwd}`,
+    ]).toContain(spawnCalls[0].options.env.FORGEWRIGHT_WORKSPACE);
     expect(spawnCalls[1].program).toBe("node");
     expect(spawnCalls[1].args).toEqual(["verify.js"]);
     expect(spawnCalls[1].options.shell).toBe(false);
@@ -248,6 +252,8 @@ describe("Benchmark runner", () => {
       "--model",
       "Gemini-3.5",
       "--sandbox",
+      "--mode",
+      "accept-edits",
       "--print",
       "Read WORKER_INSTRUCTIONS.md and CONTRACT.json, execute only the contracted task, run its verification commands, and write DELIVERY.json.",
     ]);

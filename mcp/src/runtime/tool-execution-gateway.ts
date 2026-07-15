@@ -1,6 +1,11 @@
 import { MiddlewareChain } from '../middleware/chain.js';
 import { randomUUID } from 'node:crypto';
 import type { MiddlewareConfig, ToolResult } from '../middleware/types.js';
+import {
+  ProcessPolicyEvaluator,
+  type PolicyAction,
+  type PolicyEvaluator,
+} from '../middleware/guardrail.js';
 
 export interface ToolExecutionRequest {
   name: string;
@@ -17,6 +22,7 @@ export interface ToolExecutionTelemetry {
   quality?: 'pass' | 'warn' | 'blocked';
   verification?: 'pass' | 'fail';
   output_chars?: number;
+  policy?: PolicyAction;
 }
 
 export class ToolExecutionGateway {
@@ -30,9 +36,11 @@ export class ToolExecutionGateway {
       ) => boolean | Promise<boolean>;
       telemetry?: (event: ToolExecutionTelemetry) => void;
       middleware?: MiddlewareConfig;
+      policyEvaluator?: PolicyEvaluator;
     } = {},
   ) {
     this.chain = new MiddlewareChain({
+      policyEvaluator: options.policyEvaluator ?? new ProcessPolicyEvaluator(),
       config: options.middleware ?? {
         tool_sandbox: { enabled: true },
         context_offload: { enabled: true, min_tokens_to_offload: 2_000 },
@@ -76,9 +84,12 @@ export class ToolExecutionGateway {
       : completed.qualityGate && completed.qualityGate.score < completed.qualityGate.threshold
         ? 'warn'
         : 'pass';
+    const policyBlocked =
+      completed.guardrail?.action === 'block' || completed.guardrail?.action === 'config-error';
     this.options.telemetry?.({
       tool: request.name,
-      authorized: true,
+      authorized: !policyBlocked,
+      policy: completed.guardrail?.action,
       cached: completed.cached,
       middleware_ms: completed.middlewareMs,
       quality,
@@ -87,6 +98,7 @@ export class ToolExecutionGateway {
         .map((block) => block.text.length)
         .reduce((total, size) => total + size, 0),
     });
+    if (policyBlocked) return completed.result;
     if (!completed.offloadRef) return completed.result;
     return {
       ...completed.result,

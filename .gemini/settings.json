@@ -1,12 +1,25 @@
 {
   "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "forgewright-policy",
+            "type": "command",
+            "command": "bash scripts/lite/gemini-before-tool-gate.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "AfterAgent": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/lite/verify-gate.sh --platform GEMINI"
+            "command": "bash scripts/lite/stop-gate.sh --platform GEMINI"
           }
         ]
       }

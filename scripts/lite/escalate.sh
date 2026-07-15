@@ -191,8 +191,9 @@ def get_git_diff():
 # ---------------------------------------------------------------------------
 
 CLI_ARGV = {
-    # agy --print <prompt>   (noninteractive contract: §agy --help)
-    "agy":    lambda prompt: ["agy", "--print", prompt],
+    # Expert escalation is advisory/read-only. Keep Antigravity sandboxed and
+    # force plan mode even when the user's persisted default permits edits.
+    "agy":    lambda prompt: ["agy", "--sandbox", "--mode", "plan", "--print", prompt],
     # claude -p <prompt>     (documented: -p / --print)
     "claude": lambda prompt: ["claude", "-p", prompt],
     # codex exec <prompt>    (documented: codex exec [PROMPT])
@@ -303,7 +304,13 @@ def main():
         print(f"[ESCALATE] CLI: {argv[0]}, budget {prior+1}/{max_calls}, packet: {packet_file}")
 
         start_time = time.time()
-        result = subprocess.run(argv, capture_output=True, text=True)
+        delegation_env = os.environ.copy()
+        delegation_env["FORGEWRIGHT_WORKSPACE"] = os.path.realpath(
+            os.environ.get("PROJECT_ROOT", ".")
+        )
+        result = subprocess.run(
+            argv, capture_output=True, text=True, env=delegation_env
+        )
         latency_ms = int((time.time() - start_time) * 1000)
 
         print(result.stdout)
@@ -333,7 +340,12 @@ def main():
         if result.returncode != 0 and fallback_cli and fallback_cli in KNOWN_CLIS:
             print(f"[ESCALATE] Primary CLI exited {result.returncode}. Trying fallback: {fallback_cli}.")
             fallback_argv = build_argv(fallback_cli, prompt_text)
-            fb_result = subprocess.run(fallback_argv, capture_output=True, text=True)
+            fb_result = subprocess.run(
+                fallback_argv,
+                capture_output=True,
+                text=True,
+                env=delegation_env,
+            )
             print(fb_result.stdout)
             if fb_result.stderr:
                 print(fb_result.stderr, file=sys.stderr)

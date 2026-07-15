@@ -18,7 +18,7 @@ echo "6. GUARDRAIL: Never bypass"
 
 echo "### FORGOTTEN RULES TO FOCUS ON ###"
 if [[ -x "scripts/lite/rule-ledger.sh" ]]; then
-    bash scripts/lite/rule-ledger.sh top 3
+    bash scripts/lite/rule-ledger.sh recent 3 violation
 else
     echo "No forgotten rules logged yet."
 fi

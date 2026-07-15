@@ -184,26 +184,35 @@ log_header "Platform Hook Configurations"
 
 # Determine project root path
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-GATE_SCRIPT="${PROJECT_ROOT}/scripts/lite/verify-gate.sh"
+GATE_SCRIPT="${PROJECT_ROOT}/scripts/lite/stop-gate.sh"
 
 # 1. Claude Code Hook Configuration
 CLAUDE_SETTINGS="${HOME}/.claude/settings.json"
 if [[ -f "$CLAUDE_SETTINGS" ]]; then
     log_pass "Claude Code settings file exists"
-    if grep -q "verify-gate.sh --platform CLAUDE" "$CLAUDE_SETTINGS" 2>/dev/null; then
-        log_pass "Claude stop hook configured with verify-gate.sh"
+    claude_schema=$(node -e "try { var c=JSON.parse(require('fs').readFileSync('$CLAUDE_SETTINGS')); var ok=c.hooks && !('stop' in c.hooks) && Array.isArray(c.hooks.Stop) && c.hooks.Stop.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(function(h){ return h.type === 'command' && typeof h.command === 'string' && h.command.includes('stop-gate.sh --platform CLAUDE'); }); }); console.log(Boolean(ok)); } catch (_) { console.log(false); }" 2>/dev/null || echo "false")
+    if [[ "$claude_schema" == "true" ]]; then
+        log_pass "Claude Stop hook uses the native matcher-group schema"
     else
-        log_warn "Claude stop hook NOT configured with verify-gate.sh"
+        log_warn "Claude Stop hook schema is invalid or stop-gate.sh is missing"
         if [[ "$AUTO_FIX" == "true" ]]; then
             cp "$CLAUDE_SETTINGS" "${CLAUDE_SETTINGS}.bak.$(date +%Y%m%d%H%M%S)"
             node -e "
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$CLAUDE_SETTINGS', 'utf8'));
 if (!cfg.hooks) cfg.hooks = {};
-cfg.hooks.stop = 'bash $GATE_SCRIPT --platform CLAUDE';
+delete cfg.hooks.stop;
+var Stop = Array.isArray(cfg.hooks.Stop) ? cfg.hooks.Stop : [];
+Stop = Stop.map(function(g){
+  if (!Array.isArray(g.hooks)) return g;
+  return Object.assign({}, g, { hooks: g.hooks.filter(function(h){ return !(typeof h.command === 'string' && h.command.includes('verify-gate.sh --platform CLAUDE')); }) });
+}).filter(function(g){ return !Array.isArray(g.hooks) || g.hooks.length > 0; });
+var already = Stop.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(function(h){ return typeof h.command === 'string' && h.command.includes('stop-gate.sh --platform CLAUDE'); }); });
+if (!already) Stop.push({ hooks: [{ type: 'command', command: 'bash $GATE_SCRIPT --platform CLAUDE' }] });
+cfg.hooks.Stop = Stop;
 fs.writeFileSync('$CLAUDE_SETTINGS', JSON.stringify(cfg, null, 2));
 "
-            log_info "  → Fixed: Added stop hook to Claude settings"
+            log_info "  → Fixed: Installed native Claude Stop hook schema"
         fi
     fi
 else
@@ -213,11 +222,20 @@ else
         cat <<EOF > "$CLAUDE_SETTINGS"
 {
   "hooks": {
-    "stop": "bash $GATE_SCRIPT --platform CLAUDE"
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $GATE_SCRIPT --platform CLAUDE"
+          }
+        ]
+      }
+    ]
   }
 }
 EOF
-        log_info "  → Fixed: Created Claude settings with stop hook"
+        log_info "  → Fixed: Created Claude settings with native Stop hook"
     fi
 fi
 
@@ -225,21 +243,36 @@ fi
 GEMINI_SETTINGS="${HOME}/.gemini/settings.json"
 if [[ -f "$GEMINI_SETTINGS" ]]; then
     log_pass "Gemini settings file exists"
-    is_array=$(node -e "var c=JSON.parse(require('fs').readFileSync('$GEMINI_SETTINGS')); console.log(Array.isArray(c.hooks && c.hooks.AfterAgent));" 2>/dev/null || echo "false")
-    if [[ "$is_array" == "true" ]] && grep -q "verify-gate.sh --platform GEMINI" "$GEMINI_SETTINGS" 2>/dev/null; then
-        log_pass "Gemini AfterAgent hook is array and configured correctly"
+    gemini_schema=$(node -e "try { var c=JSON.parse(require('fs').readFileSync('$GEMINI_SETTINGS')); var afterOk=c.hooks && Array.isArray(c.hooks.AfterAgent) && c.hooks.AfterAgent.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(function(h){ return h.type === 'command' && typeof h.command === 'string' && h.command.includes('stop-gate.sh --platform GEMINI'); }); }); var beforeOk=c.hooks && Array.isArray(c.hooks.BeforeTool) && c.hooks.BeforeTool.some(function(g){ return g.matcher === '*' && Array.isArray(g.hooks) && g.hooks.some(function(h){ return h.name === 'forgewright-policy' && h.type === 'command' && typeof h.command === 'string' && h.command.includes('gemini-before-tool-gate.sh') && typeof h.timeout === 'number'; }); }); console.log(Boolean(afterOk && beforeOk)); } catch (_) { console.log(false); }" 2>/dev/null || echo "false")
+    if [[ "$gemini_schema" == "true" ]]; then
+        log_pass "Gemini BeforeTool and AfterAgent hooks use native schemas"
     else
-        log_warn "Gemini AfterAgent hook NOT configured correctly (must be array)"
+        log_warn "Gemini BeforeTool or AfterAgent hook is not configured correctly"
         if [[ "$AUTO_FIX" == "true" ]]; then
             cp "$GEMINI_SETTINGS" "${GEMINI_SETTINGS}.bak.$(date +%Y%m%d%H%M%S)"
             node -e "
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$GEMINI_SETTINGS', 'utf8'));
 if (!cfg.hooks) cfg.hooks = {};
-cfg.hooks.AfterAgent = [{ matcher: '*', hooks: [{ type: 'command', command: 'bash ' + '$GATE_SCRIPT' + ' --platform GEMINI' }] }];
+if (Array.isArray(cfg.hooks.AfterAgent) && cfg.hooks.AfterAgent.length > 0 && typeof cfg.hooks.AfterAgent[0] === 'string') cfg.hooks.AfterAgent = [];
+var AA = Array.isArray(cfg.hooks.AfterAgent) ? cfg.hooks.AfterAgent : [];
+AA = AA.map(function(g){
+  if (!Array.isArray(g.hooks)) return g;
+  return Object.assign({}, g, { hooks: g.hooks.filter(function(h){ return !(typeof h.command === 'string' && h.command.includes('verify-gate.sh --platform GEMINI')); }) });
+}).filter(function(g){ return !Array.isArray(g.hooks) || g.hooks.length > 0; });
+var already = AA.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(function(h){ return typeof h.command === 'string' && h.command.includes('stop-gate.sh --platform GEMINI'); }); });
+if (!already) AA.push({ matcher: '*', hooks: [{ type: 'command', command: 'bash $GATE_SCRIPT --platform GEMINI' }] });
+cfg.hooks.AfterAgent = AA;
+var BT = Array.isArray(cfg.hooks.BeforeTool) ? cfg.hooks.BeforeTool : [];
+BT = BT.map(function(g){
+  if (!Array.isArray(g.hooks)) return g;
+  return Object.assign({}, g, { hooks: g.hooks.filter(function(h){ return !(typeof h.command === 'string' && h.command.includes('gemini-before-tool-gate.sh')); }) });
+}).filter(function(g){ return !Array.isArray(g.hooks) || g.hooks.length > 0; });
+BT.push({ matcher: '*', hooks: [{ name: 'forgewright-policy', type: 'command', command: 'bash $PROJECT_ROOT/scripts/lite/gemini-before-tool-gate.sh', timeout: 5000 }] });
+cfg.hooks.BeforeTool = BT;
 fs.writeFileSync('$GEMINI_SETTINGS', JSON.stringify(cfg, null, 2));
 "
-            log_info "  → Fixed: Added AfterAgent hook array to Gemini settings"
+            log_info "  → Fixed: Added Gemini BeforeTool and AfterAgent hooks"
         fi
     fi
 else
@@ -249,6 +282,19 @@ else
         cat <<EOF > "$GEMINI_SETTINGS"
 {
   "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "forgewright-policy",
+            "type": "command",
+            "command": "bash $PROJECT_ROOT/scripts/lite/gemini-before-tool-gate.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "AfterAgent": [
       {
         "matcher": "*",
@@ -263,16 +309,74 @@ else
   }
 }
 EOF
-        log_info "  → Fixed: Created Gemini settings with AfterAgent hook"
+        log_info "  → Fixed: Created Gemini settings with BeforeTool and AfterAgent hooks"
     fi
 fi
 
-# 3. Cursor Hook Configuration
+# 3. Antigravity CLI Hook Configuration
+ANTIGRAVITY_HOOKS="${HOME}/.gemini/config/hooks.json"
+ANTIGRAVITY_GATE="${PROJECT_ROOT}/scripts/lite/antigravity-pre-tool-gate.sh"
+if [[ -f "$ANTIGRAVITY_HOOKS" ]]; then
+    log_pass "Antigravity hook registry exists"
+    antigravity_schema=$(node -e "try { var fs=require('fs'), path=require('path'); var c=JSON.parse(fs.readFileSync('$ANTIGRAVITY_HOOKS')); var n=c['forgewright-policy']; var home=fs.realpathSync('$HOME'); function exactGate(h){ if ((h.type !== undefined && h.type !== 'command') || typeof h.command !== 'string') return false; var m=h.command.trim().match(/^bash\\s+(?:\"([^\"]+)\"|'([^']+)'|([^\\s\"']+))$/); if (!m) return false; var gate=fs.realpathSync(m[1] || m[2] || m[3]); return path.basename(gate)==='antigravity-pre-tool-gate.sh' && (gate===home || gate.startsWith(home+path.sep)); } var ok=n && n.enabled !== false && Array.isArray(n.PreToolUse) && n.PreToolUse.some(function(g){ return g.matcher === '*' && Array.isArray(g.hooks) && g.hooks.some(function(h){ return exactGate(h) && Number.isInteger(h.timeout) && h.timeout > 0; }); }); console.log(Boolean(ok)); } catch (_) { console.log(false); }" 2>/dev/null || echo "false")
+    if [[ "$antigravity_schema" == "true" ]]; then
+        log_pass "Antigravity PreToolUse policy hook uses the native named-hook schema"
+    else
+        log_warn "Antigravity PreToolUse policy hook is not configured correctly"
+        if [[ "$AUTO_FIX" == "true" ]]; then
+            cp "$ANTIGRAVITY_HOOKS" "${ANTIGRAVITY_HOOKS}.bak.$(date +%Y%m%d%H%M%S)"
+            node -e "
+var fs = require('fs');
+var file = '$ANTIGRAVITY_HOOKS';
+var cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
+if (!cfg || Array.isArray(cfg) || typeof cfg !== 'object') throw new Error('Antigravity hooks registry must be an object');
+cfg['forgewright-policy'] = { PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: 'bash $ANTIGRAVITY_GATE', timeout: 5 }] }] };
+fs.writeFileSync(file, JSON.stringify(cfg, null, 2));
+"
+            log_info "  → Fixed: Installed native Antigravity PreToolUse hook"
+        fi
+    fi
+else
+    log_warn "Antigravity hook registry not found: $ANTIGRAVITY_HOOKS"
+    if [[ "$AUTO_FIX" == "true" ]]; then
+        mkdir -p "$(dirname "$ANTIGRAVITY_HOOKS")"
+        cat <<EOF > "$ANTIGRAVITY_HOOKS"
+{
+  "forgewright-policy": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $ANTIGRAVITY_GATE",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+        log_info "  → Fixed: Created Antigravity hook registry"
+    fi
+fi
+
+ANTIGRAVITY_SETTINGS="${HOME}/.gemini/antigravity-cli/settings.json"
+if [[ -f "$ANTIGRAVITY_SETTINGS" ]]; then
+    antigravity_always_proceed=$(node -e "try { var c=JSON.parse(require('fs').readFileSync('$ANTIGRAVITY_SETTINGS')); console.log(c.toolPermission === 'always-proceed'); } catch (_) { console.log(false); }" 2>/dev/null || echo "false")
+    if [[ "$antigravity_always_proceed" == "true" ]]; then
+        log_warn "Antigravity toolPermission is always-proceed; Forgewright still gates tools, but native permission prompts are disabled"
+    fi
+fi
+
+# 4. Cursor Hook Configuration
 CURSOR_HOOKS="${HOME}/.cursor/hooks.json"
 if [[ -f "$CURSOR_HOOKS" ]]; then
     log_pass "Cursor hooks file exists"
-    if grep -q "verify-gate.sh --platform CURSOR" "$CURSOR_HOOKS" 2>/dev/null; then
-        log_pass "Cursor stop hook configured correctly"
+    cursor_schema=$(node -e "try { var c=JSON.parse(require('fs').readFileSync('$CURSOR_HOOKS')); var ok=c.version === 1 && c.hooks && Array.isArray(c.hooks.stop) && c.hooks.stop.some(function(h){ return typeof h.command === 'string' && h.command.includes('stop-gate.sh --platform CURSOR'); }); console.log(Boolean(ok)); } catch (_) { console.log(false); }" 2>/dev/null || echo "false")
+    if [[ "$cursor_schema" == "true" ]]; then
+        log_pass "Cursor stop hook uses the version 1 array schema"
     else
         log_warn "Cursor stop hook NOT configured correctly"
         if [[ "$AUTO_FIX" == "true" ]]; then
@@ -281,10 +385,16 @@ if [[ -f "$CURSOR_HOOKS" ]]; then
 var fs = require('fs');
 var cfg = JSON.parse(fs.readFileSync('$CURSOR_HOOKS', 'utf8'));
 if (!cfg.hooks) cfg.hooks = {};
-cfg.hooks.stop = 'bash $GATE_SCRIPT --platform CURSOR';
+cfg.version = 1;
+if (typeof cfg.hooks.stop === 'string') delete cfg.hooks.stop;
+var stop = Array.isArray(cfg.hooks.stop) ? cfg.hooks.stop : [];
+stop = stop.filter(function(h){ return !(typeof h.command === 'string' && h.command.includes('verify-gate.sh --platform CURSOR')); });
+var already = stop.some(function(h){ return typeof h.command === 'string' && h.command.includes('stop-gate.sh --platform CURSOR'); });
+if (!already) stop.push({ command: 'bash $GATE_SCRIPT --platform CURSOR' });
+cfg.hooks.stop = stop;
 fs.writeFileSync('$CURSOR_HOOKS', JSON.stringify(cfg, null, 2));
 "
-            log_info "  → Fixed: Added stop hook to Cursor hooks config"
+            log_info "  → Fixed: Installed Cursor version 1 stop hook schema"
         fi
     fi
 else
@@ -293,8 +403,13 @@ else
         mkdir -p "$(dirname "$CURSOR_HOOKS")"
         cat <<EOF > "$CURSOR_HOOKS"
 {
+  "version": 1,
   "hooks": {
-    "stop": "bash $GATE_SCRIPT --platform CURSOR"
+    "stop": [
+      {
+        "command": "bash $GATE_SCRIPT --platform CURSOR"
+      }
+    ]
   }
 }
 EOF
@@ -302,29 +417,71 @@ EOF
     fi
 fi
 
-# 4. Codex CLI Hook Configuration
+# 5. Codex CLI Hook Configuration
 CODEX_CONFIG="${HOME}/.codex/config.toml"
 if [[ -f "$CODEX_CONFIG" ]]; then
     log_pass "Codex config file exists"
-    if grep -q "verify-gate.sh --platform CODEX" "$CODEX_CONFIG" 2>/dev/null; then
-        log_pass "Codex Stop hook configured correctly"
+    codex_schema=$(python3 - "$CODEX_CONFIG" <<'PYEOF'
+import sys
+import tomllib
+
+try:
+    with open(sys.argv[1], "rb") as handle:
+        config = tomllib.load(handle)
+    groups = config.get("hooks", {}).get("Stop", [])
+    ok = isinstance(groups, list) and any(
+        isinstance(group, dict)
+        and any(
+            isinstance(hook, dict)
+            and hook.get("type") == "command"
+            and "stop-gate.sh --platform CODEX" in hook.get("command", "")
+            for hook in group.get("hooks", [])
+        )
+        for group in groups
+    )
+except (OSError, tomllib.TOMLDecodeError):
+    ok = False
+print(str(ok).lower())
+PYEOF
+)
+    if [[ "$codex_schema" == "true" ]]; then
+        log_pass "Codex Stop hook uses the native matcher-group schema"
     else
         log_warn "Codex Stop hook NOT configured correctly"
         if [[ "$AUTO_FIX" == "true" ]]; then
             cp "$CODEX_CONFIG" "${CODEX_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
-            cat <<EOF >> "$CODEX_CONFIG"
+            python3 - "$CODEX_CONFIG" <<'PYEOF'
+import re
+import sys
+from pathlib import Path
 
-[features]
-hooks = true
-
-[hooks]
-
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+legacy = re.compile(
+    r'\n?\[\[hooks\.Stop\]\]\n'
+    r'(?:matcher\s*=\s*"[^"]*"\n)?'
+    r'\[\[hooks\.Stop\.hooks\]\]\n'
+    r'type\s*=\s*"command"\n'
+    r'command\s*=\s*"[^"]*verify-gate\.sh --platform CODEX"\n?'
+)
+path.write_text(legacy.sub("\n", text), encoding="utf-8")
+PYEOF
+            needs_features=true
+            needs_hooks=true
+            grep -qF '[features]' "$CODEX_CONFIG" 2>/dev/null && needs_features=false
+            grep -qF '[hooks]' "$CODEX_CONFIG" 2>/dev/null && needs_hooks=false
+            {
+                echo ""
+                $needs_features && echo '[features]' && echo 'hooks = true' && echo ""
+                $needs_hooks && echo '[hooks]' && echo ""
+                cat <<EOF
 [[hooks.Stop]]
 matcher = "*"
 [[hooks.Stop.hooks]]
 type = "command"
 command = "bash $GATE_SCRIPT --platform CODEX"
 EOF
+            } >> "$CODEX_CONFIG"
             log_info "  → Fixed: Added hooks block to Codex config"
         fi
     fi

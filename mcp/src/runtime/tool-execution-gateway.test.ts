@@ -1,13 +1,70 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ToolExecutionGateway } from './tool-execution-gateway.js';
 
+const allowPolicy = { evaluate: async () => ({ action: 'allow' as const }) };
+
 describe('ToolExecutionGateway', () => {
+  it('preserves authorization and blocks a later policy denial with telemetry', async () => {
+    const calls: string[] = [];
+    const telemetry: unknown[] = [];
+    const gateway = new ToolExecutionGateway({
+      authorize: async () => {
+        calls.push('authorize');
+        return true;
+      },
+      policyEvaluator: {
+        evaluate: async () => {
+          calls.push('policy');
+          return { action: 'block', reason: 'denied by execution policy' };
+        },
+      },
+      telemetry: (event) => telemetry.push(event),
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+
+    const result = await gateway.execute(
+      { name: 'Bash', arguments: { cmd: 'rm -rf /tmp/x' }, sessionId: 's', turnNumber: 1 },
+      async () => {
+        calls.push('execute');
+        return { content: [{ type: 'text', text: 'unexpected' }] };
+      },
+    );
+
+    expect(calls).toEqual(['authorize', 'policy']);
+    expect(result.isError).toBe(true);
+    expect(telemetry).toEqual([
+      expect.objectContaining({ tool: 'Bash', authorized: false, policy: 'block' }),
+    ]);
+  });
+
+  it('does not evaluate policy when the existing authorize callback denies first', async () => {
+    let policyCalls = 0;
+    const gateway = new ToolExecutionGateway({
+      authorize: () => false,
+      policyEvaluator: {
+        evaluate: async () => {
+          policyCalls += 1;
+          return { action: 'allow' };
+        },
+      },
+    });
+
+    const result = await gateway.execute(
+      { name: 'forbidden', arguments: {}, sessionId: 's', turnNumber: 1 },
+      async () => ({ content: [{ type: 'text', text: 'unexpected' }] }),
+    );
+
+    expect(result.isError).toBe(true);
+    expect(policyCalls).toBe(0);
+  });
+
   it('reduces a representative large offloaded result by at least 60 percent with a reference', async () => {
     const root = mkdtempSync(join(tmpdir(), 'forgewright-tool-gateway-offload-'));
     const gateway = new ToolExecutionGateway({
+      policyEvaluator: allowPolicy,
       middleware: {
         tool_sandbox: { enabled: true, max_raw_size: 160, enable_audit: false },
         context_offload: {
@@ -31,6 +88,7 @@ describe('ToolExecutionGateway', () => {
 
   it('uses session-scoped epochs to invalidate only successful canonical mutations', async () => {
     const gateway = new ToolExecutionGateway({
+      policyEvaluator: allowPolicy,
       middleware: {
         session_deduplication: {
           enabled: true,
@@ -80,6 +138,7 @@ describe('ToolExecutionGateway', () => {
 
   it('keeps overlapping same-session reads with different arguments from sharing pending state', async () => {
     const gateway = new ToolExecutionGateway({
+      policyEvaluator: allowPolicy,
       middleware: {
         session_deduplication: { enabled: true, include_tools: ['fw_get_current_phase'] },
         tool_sandbox: { enabled: false },
@@ -106,8 +165,10 @@ describe('ToolExecutionGateway', () => {
       () => new Promise((resolve) => (resolveSecond = resolve)),
     );
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(resolveFirst).toBeTypeOf('function');
+      expect(resolveSecond).toBeTypeOf('function');
+    });
 
     resolveFirst({ content: [{ type: 'text', text: 'first result' }] });
     await first;
@@ -131,6 +192,7 @@ describe('ToolExecutionGateway', () => {
     const telemetry: unknown[] = [];
     const root = mkdtempSync(join(tmpdir(), 'forgewright-tool-gateway-'));
     const gateway = new ToolExecutionGateway({
+      policyEvaluator: allowPolicy,
       authorize: (tool) => tool !== 'forbidden',
       telemetry: (event) => telemetry.push(event),
       middleware: {

@@ -81,6 +81,8 @@ scripts/cf-dns-remove.sh
 .forgewright/active-goal.json
 .forgewright/quality-gate-events.jsonl
 .forgewright/verification-events.jsonl
+.forgewright/rule-ledger.jsonl
+.forgewright/telemetry/
 
 # Workspace-local MCP runtime evidence
 mcp/.forgewright/

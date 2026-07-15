@@ -4,3 +4,9 @@ sandbox_mode = "danger-full-access"
 hooks = true
 
 [hooks]
+
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+command = "bash scripts/lite/stop-gate.sh --platform CODEX"

@@ -6,6 +6,7 @@ import {
   rmSync,
   writeFileSync,
   renameSync,
+  realpathSync,
   statSync,
   mkdirSync,
 } from "node:fs";
@@ -104,10 +105,14 @@ ${input.prompt}
       "utf8",
     );
 
+    // Bench tasks run in disposable isolated fixtures. Sandbox + explicit edit
+    // mode bounds execution, but does not claim project rule-hook enforcement.
     const args = [
       "--model",
       input.model,
       "--sandbox",
+      "--mode",
+      "accept-edits",
       "--print",
       "Read WORKER_INSTRUCTIONS.md and CONTRACT.json, execute only the contracted task, run its verification commands, and write DELIVERY.json.",
     ];
@@ -119,6 +124,10 @@ ${input.prompt}
 
       const child = spawnFn("agy", args, {
         cwd: input.workspace,
+        env: {
+          ...process.env,
+          FORGEWRIGHT_WORKSPACE: realpathSync(input.workspace),
+        },
         shell: false,
         stdio: ["ignore", "pipe", "pipe"],
       });

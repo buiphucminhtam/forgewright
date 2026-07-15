@@ -24,9 +24,9 @@ Runtime guardrail configuration for tool execution. The policy lives in
    report the matched pattern to the user instead of retrying.
 3. Every match emits a `policy.deny` / `policy.warn` / `policy.audit`
    telemetry event via `scripts/lite/telemetry.sh` (best-effort).
-4. If the policy file is missing, the gate allows (bootstrap mode) and
-   emits `policy.nofile`. Unknown `mode` values fail closed (treated as
-   `strict`).
+4. If the policy file is missing, unreadable, empty, or malformed, the gate
+   blocks execution (fail-closed) and reports a policy configuration error.
+   Unknown `mode` values also fail closed (treated as `strict`).
 5. Orchestrators read scalars with `policy-check.sh get <key>`
    (e.g. escalation budget, verify requirement).
 

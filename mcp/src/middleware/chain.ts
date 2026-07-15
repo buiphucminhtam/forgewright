@@ -31,6 +31,7 @@ import { QualityGateMiddleware, type QualityGateReport } from './quality-gate.js
 import { SessionDeduplicationMiddleware } from './session-deduplication.js';
 import { ToolSandboxMiddleware } from './tool-sandbox.js';
 import { VerificationMiddleware, type VerificationReport } from './verification.js';
+import { GuardrailMiddleware, type PolicyEvaluation, type PolicyEvaluator } from './guardrail.js';
 
 export type MiddlewareHook = 'before_tool' | 'after_tool' | 'on_error';
 
@@ -44,6 +45,7 @@ export interface ChainOptions {
   ): void;
   onCacheHit?(toolName: string, dedup: { seenCount: number; tokensSaved: number }): void;
   onCacheMiss?(toolName: string): void;
+  policyEvaluator?: PolicyEvaluator;
 }
 
 export class MiddlewareChain {
@@ -52,10 +54,12 @@ export class MiddlewareChain {
   private contextOffload = new ContextOffloadMiddleware();
   private qualityGate = new QualityGateMiddleware();
   private verification = new VerificationMiddleware();
+  private guardrail: GuardrailMiddleware;
   private options: ChainOptions;
 
   constructor(options: ChainOptions) {
     this.options = options;
+    this.guardrail = new GuardrailMiddleware(options.policyEvaluator);
     this.sessionDedup.configure(options.config.session_deduplication);
     this.toolSandbox.configure(options.config.tool_sandbox || {});
     this.contextOffload.configure(options.config.context_offload);
@@ -84,6 +88,7 @@ export class MiddlewareChain {
     qualityGate?: QualityGateReport;
     verification?: VerificationReport;
     offloadRef?: string;
+    guardrail?: PolicyEvaluation;
   }> {
     const ctx: ToolContext = {
       call: toolCall,
@@ -99,7 +104,35 @@ export class MiddlewareChain {
     let middlewareMs = 0;
 
     // ── before_tool hooks ───────────────────────────────
-    // ④b SessionDeduplication (the only implemented hook so far)
+    // ④ Guardrail: policy authorization must happen before cache lookup or execution.
+    const guardrailStart = Date.now();
+    const guardrail = await this.guardrail.beforeTool(toolCall.toolName, toolCall.toolArgs);
+    const guardrailMs = Date.now() - guardrailStart;
+    this.options.onMetrics?.(
+      'guardrail',
+      'before_tool',
+      guardrailMs,
+      guardrail.action === 'allow' ? 'ok' : guardrail.action === 'warn' ? 'skip' : 'error',
+    );
+    if (guardrail.action === 'block' || guardrail.action === 'config-error') {
+      middlewareMs = Date.now() - chainStart;
+      return {
+        result: {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Blocked by execution policy (${guardrail.action}): ${guardrail.reason ?? 'no reason provided'}`,
+            },
+          ],
+          isError: true,
+        },
+        cached: false,
+        middlewareMs,
+        guardrail,
+      };
+    }
+
+    // ④b SessionDeduplication
     const dedupResult = this.sessionDedup.before_tool(ctx);
     middlewareMs = Date.now() - chainStart;
 
@@ -115,6 +148,7 @@ export class MiddlewareChain {
         cached: true,
         dedup: dedupResult.dedup,
         middlewareMs,
+        guardrail,
       };
     }
 
@@ -132,6 +166,7 @@ export class MiddlewareChain {
         },
         cached: false,
         middlewareMs,
+        guardrail,
       };
     }
 
@@ -214,6 +249,7 @@ export class MiddlewareChain {
           cached: false,
           middlewareMs: totalMs,
           qualityGate: qualityGateReport,
+          guardrail,
         };
       }
     }
@@ -256,6 +292,7 @@ export class MiddlewareChain {
           middlewareMs: totalMs,
           qualityGate: qualityGateReport,
           verification: verificationReport,
+          guardrail,
         };
       }
     }
@@ -276,6 +313,7 @@ export class MiddlewareChain {
       qualityGate: qualityGateReport,
       verification: verificationReport,
       offloadRef,
+      guardrail,
     };
   }
 

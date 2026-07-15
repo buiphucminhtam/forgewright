@@ -1,0 +1,422 @@
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def run(
+    *args: str,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+    stdin: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    merged = os.environ.copy()
+    merged.update(env or {})
+    return subprocess.run(
+        args,
+        cwd=cwd or ROOT,
+        env=merged,
+        input=stdin,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def policy(tmp_path: Path) -> Path:
+    path = tmp_path / "policy.yaml"
+    path.write_text(
+        """mode: strict
+require_verify: true
+max_escalations: 3
+refresh_interval_ticks: 10
+deny_patterns:
+  - "git[[:space:]]+reset[[:space:]]+--hard"
+""",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_policy_fails_closed_for_missing_empty_and_malformed_files(
+    tmp_path: Path,
+) -> None:
+    script = ROOT / "scripts/lite/policy-check.sh"
+    cases = [
+        tmp_path / "missing.yaml",
+        tmp_path / "empty.yaml",
+        tmp_path / "bad.yaml",
+        tmp_path / "duplicate.yaml",
+        tmp_path / "invalid-regex.yaml",
+    ]
+    cases[1].write_text("", encoding="utf-8")
+    cases[2].write_text("mode: definitely-not-valid\n", encoding="utf-8")
+    cases[3].write_text(
+        policy(tmp_path).read_text(encoding="utf-8") + "mode: strict\n",
+        encoding="utf-8",
+    )
+    cases[4].write_text(
+        policy(tmp_path)
+        .read_text(encoding="utf-8")
+        .replace('"git[[:space:]]+reset[[:space:]]+--hard"', '"[invalid"'),
+        encoding="utf-8",
+    )
+
+    for path in cases:
+        result = run(
+            "bash",
+            str(script),
+            "check",
+            "run_command",
+            "git status",
+            env={
+                "FORGEWRIGHT_POLICY_FILE": str(path),
+                "FORGEWRIGHT_TELEMETRY_DIR": str(tmp_path / "telemetry"),
+            },
+        )
+        assert result.returncode != 0, (path, result.stdout, result.stderr)
+
+
+def test_policy_blocks_wrappers_git_global_options_and_split_rm_flags(
+    tmp_path: Path,
+) -> None:
+    script = ROOT / "scripts/lite/policy-check.sh"
+    env = {
+        "FORGEWRIGHT_POLICY_FILE": str(policy(tmp_path)),
+        "FORGEWRIGHT_TELEMETRY_DIR": str(tmp_path / "telemetry"),
+    }
+    destructive = [
+        "command git -C . reset --hard",
+        "/usr/bin/env git reset --hard",
+        "sudo /usr/bin/git -c advice.detachedHead=false reset --hard",
+        "/bin/rm -r -f target",
+        "command rm -f -r target",
+    ]
+    for command in destructive:
+        result = run("bash", str(script), "check", "run_command", command, env=env)
+        assert result.returncode == 1, (command, result.stdout, result.stderr)
+
+
+def test_validator_requires_one_complete_adjacent_passing_verify_block(
+    tmp_path: Path,
+) -> None:
+    script = ROOT / "scripts/lite/rule-validator.py"
+    ledger = tmp_path / "ledger.jsonl"
+    env = {"FORGEWRIGHT_RULE_LEDGER": str(ledger)}
+    valid = """Done.
+CLAIM: behavior is verified
+COMMAND: pytest -q
+OUTPUT: 1 passed
+continued output
+EXIT CODE: 0
+VERDICT: PASS
+"""
+    result = run("python3", str(script), "--runtime", env=env, stdin=valid)
+    assert result.returncode == 0, result.stderr
+
+    invalid_payloads = [
+        "CLAIM: behavior works\nVERDICT: PASS\n",
+        "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: failed\nEXIT CODE: 1\nVERDICT: FAIL\n",
+        "CLAIM: behavior works\n\nCOMMAND: pytest\nOUTPUT: ok\nEXIT CODE: 0\nVERDICT: PASS\n",
+        "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: ok\n\nEXIT CODE: 0\nVERDICT: PASS\n",
+        "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: ok\nEXIT CODE: 0\n\nVERDICT: PASS\n",
+        "",
+    ]
+    for payload in invalid_payloads:
+        result = run("python3", str(script), "--runtime", env=env, stdin=payload)
+        assert result.returncode != 0, (payload, result.stdout, result.stderr)
+
+
+def test_validator_accepts_json_hook_payload_and_propagates_ledger_failure(
+    tmp_path: Path,
+) -> None:
+    script = ROOT / "scripts/lite/rule-validator.py"
+    response = "CLAIM: ok\nCOMMAND: true\nOUTPUT: ok\nEXIT CODE: 0\nVERDICT: PASS"
+    payload = json.dumps({"response_content": response})
+    ok = run(
+        "python3",
+        str(script),
+        "--runtime",
+        env={"FORGEWRIGHT_RULE_LEDGER": str(tmp_path / "ledger.jsonl")},
+        stdin=payload,
+    )
+    assert ok.returncode == 0, ok.stderr
+
+    blocked_parent = tmp_path / "not-a-directory"
+    blocked_parent.write_text("x", encoding="utf-8")
+    failed = run(
+        "python3",
+        str(script),
+        "--runtime",
+        env={"FORGEWRIGHT_RULE_LEDGER": str(blocked_parent / "ledger.jsonl")},
+        stdin="CLAIM: bad\nVERDICT: PASS",
+    )
+    assert failed.returncode != 0
+
+
+def test_telemetry_emits_one_redacted_json_object(tmp_path: Path) -> None:
+    script = ROOT / "scripts/lite/telemetry.sh"
+    result = run(
+        "bash",
+        str(script),
+        "emit",
+        "audit.event",
+        json.dumps(
+            {"token": "super-secret", "nested": {"password": "hidden"}, "ok": True}
+        ),
+        env={"FORGEWRIGHT_TELEMETRY_DIR": str(tmp_path / "telemetry")},
+    )
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["data"] == {
+        "token": "***REDACTED***",
+        "nested": {"password": "***REDACTED***"},
+        "ok": True,
+    }
+    assert "super-secret" not in result.stdout + result.stderr
+    assert "hidden" not in result.stdout + result.stderr
+
+
+def test_telemetry_rejects_non_object_empty_and_multiple_documents(
+    tmp_path: Path,
+) -> None:
+    script = ROOT / "scripts/lite/telemetry.sh"
+    env = {"FORGEWRIGHT_TELEMETRY_DIR": str(tmp_path / "telemetry")}
+    for payload in ("", "[]", '"scalar"', "1", "{}\n{}"):
+        result = run("bash", str(script), "emit", "audit.event", payload, env=env)
+        assert result.returncode != 0, (payload, result.stdout, result.stderr)
+        assert result.stdout == ""
+    assert not list((tmp_path / "telemetry").glob("*.jsonl"))
+
+
+def test_ledger_filters_outcomes_and_refresh_shows_recent_violations(
+    tmp_path: Path,
+) -> None:
+    ledger = tmp_path / "ledger.jsonl"
+    entries = [
+        {"ts": "2026-01-01T00:00:00Z", "rule": "HR1", "outcome": "hit", "note": "ok"},
+        {
+            "ts": "2026-01-02T00:00:00Z",
+            "rule": "HR2",
+            "outcome": "violation",
+            "note": "old",
+        },
+        {
+            "ts": "2026-01-03T00:00:00Z",
+            "rule": "HR3",
+            "outcome": "violation",
+            "note": "new",
+        },
+    ]
+    ledger.write_text(
+        "".join(json.dumps(item) + "\n" for item in entries), encoding="utf-8"
+    )
+    env = {"FORGEWRIGHT_RULE_LEDGER": str(ledger)}
+    top = run(
+        "bash",
+        str(ROOT / "scripts/lite/rule-ledger.sh"),
+        "top",
+        "5",
+        "violation",
+        env=env,
+    )
+    assert top.returncode == 0
+    assert "HR1" not in top.stdout
+    assert "HR2" in top.stdout and "HR3" in top.stdout
+
+    refresh = run("bash", str(ROOT / "scripts/lite/rule-refresh.sh"), env=env)
+    assert refresh.returncode == 0
+    assert refresh.stdout.index("HR3") < refresh.stdout.index("HR2")
+    assert "HR1" not in refresh.stdout
+
+
+def test_context_manager_uses_project_root_tail_keywords_and_global_cap(
+    tmp_path: Path,
+) -> None:
+    fake_root = tmp_path / "project"
+    script_dir = fake_root / "scripts" / "lite"
+    script_dir.mkdir(parents=True)
+    source = ROOT / "scripts/lite/context-manager.py"
+    copied = script_dir / source.name
+    copied.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    memory = fake_root / ".forgewright" / "memory-bank"
+    summary_dir = fake_root / ".forgewright" / "subagent-context"
+    memory.mkdir(parents=True)
+    summary_dir.mkdir(parents=True)
+    (memory / "activeContext.md").write_text("A" * 3000, encoding="utf-8")
+    summary = [f"old-{index}" for index in range(30)] + ["LATEST-MARKER"]
+    (summary_dir / "CONVERSATION_SUMMARY.md").write_text(
+        "\n".join(summary), encoding="utf-8"
+    )
+
+    result = run(
+        "python3",
+        str(copied),
+        "load",
+        "--keywords",
+        "rule routing",
+        cwd=tmp_path,
+        env={"FORGEWRIGHT_SKIP_MEM0": "1", "FORGEWRIGHT_CONTEXT_CHAR_CAP": "2000"},
+    )
+    assert result.returncode == 0, result.stderr
+    assert "LATEST-MARKER" in result.stdout
+    assert "old-0" not in result.stdout
+    assert len(result.stdout) <= 2000
+
+
+def test_canonical_scripts_target_validated_workspace(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    fw_dir = workspace / ".forgewright"
+    memory_dir = fw_dir / "memory-bank"
+    fw_dir.mkdir(parents=True)
+    memory_dir.mkdir(parents=True)
+    (fw_dir / "execution-policy.yaml").write_text(
+        policy(tmp_path).read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (memory_dir / "activeContext.md").write_text(
+        "FAKE-WORKSPACE-MARKER", encoding="utf-8"
+    )
+    env = {
+        "FORGEWRIGHT_WORKSPACE": str(workspace),
+        "FORGEWRIGHT_SKIP_MEM0": "1",
+    }
+
+    checked = run(
+        "bash",
+        str(ROOT / "scripts/lite/policy-check.sh"),
+        "check",
+        "run_command",
+        "git status",
+        env=env,
+    )
+    assert checked.returncode == 0, checked.stderr
+
+    added = run(
+        "bash",
+        str(ROOT / "scripts/lite/rule-ledger.sh"),
+        "add",
+        "HR2",
+        "hit",
+        "workspace",
+        env=env,
+    )
+    assert added.returncode == 0, added.stderr
+    ledger = fw_dir / "rule-ledger.jsonl"
+    assert ledger.is_file()
+
+    emitted = run(
+        "bash",
+        str(ROOT / "scripts/lite/telemetry.sh"),
+        "emit",
+        "workspace.event",
+        "{}",
+        env=env,
+    )
+    assert emitted.returncode == 0, emitted.stderr
+    assert list((fw_dir / "telemetry").glob("events-*.jsonl"))
+
+    invalid = run(
+        "python3",
+        str(ROOT / "scripts/lite/rule-validator.py"),
+        "--runtime",
+        env=env,
+        stdin="CLAIM: incomplete\nVERDICT: PASS",
+    )
+    assert invalid.returncode != 0
+    assert "HR1-verify" in ledger.read_text(encoding="utf-8")
+
+    context = run(
+        "python3", str(ROOT / "scripts/lite/context-manager.py"), "load", env=env
+    )
+    assert context.returncode == 0, context.stderr
+    assert "FAKE-WORKSPACE-MARKER" in context.stdout
+
+
+def test_canonical_scripts_reject_invalid_workspace(tmp_path: Path) -> None:
+    env = {"FORGEWRIGHT_WORKSPACE": str(tmp_path / "missing-workspace")}
+    commands = (
+        ("bash", str(ROOT / "scripts/lite/policy-check.sh"), "show"),
+        ("bash", str(ROOT / "scripts/lite/rule-ledger.sh"), "top", "1"),
+        ("bash", str(ROOT / "scripts/lite/telemetry.sh"), "emit", "test.event", "{}"),
+        ("python3", str(ROOT / "scripts/lite/rule-validator.py"), "--runtime"),
+        ("python3", str(ROOT / "scripts/lite/context-manager.py"), "load"),
+    )
+    for command in commands:
+        result = run(*command, env=env, stdin="")
+        assert result.returncode != 0, (command, result.stdout, result.stderr)
+
+
+def test_ledger_and_telemetry_concurrent_appends_are_complete(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    env = {"FORGEWRIGHT_WORKSPACE": str(workspace)}
+    ledger_script = ROOT / "scripts/lite/rule-ledger.sh"
+    telemetry_script = ROOT / "scripts/lite/telemetry.sh"
+
+    def add_ledger(index: int) -> subprocess.CompletedProcess[str]:
+        return run(
+            "bash",
+            str(ledger_script),
+            "add",
+            f"HR{index}",
+            "hit",
+            f"note-{index}",
+            env=env,
+        )
+
+    def add_event(index: int) -> subprocess.CompletedProcess[str]:
+        return run(
+            "bash",
+            str(telemetry_script),
+            "emit",
+            "parallel.event",
+            json.dumps({"i": index}),
+            env=env,
+        )
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        ledger_results = list(pool.map(add_ledger, range(20)))
+        event_results = list(pool.map(add_event, range(20)))
+    assert all(result.returncode == 0 for result in ledger_results)
+    assert all(result.returncode == 0 for result in event_results)
+
+    ledger_path = workspace / ".forgewright" / "rule-ledger.jsonl"
+    ledger_records = [
+        json.loads(line)
+        for line in ledger_path.read_text(encoding="utf-8").splitlines()
+    ]
+    event_path = next((workspace / ".forgewright" / "telemetry").glob("events-*.jsonl"))
+    event_records = [
+        json.loads(line) for line in event_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(ledger_records) == 20
+    assert len(event_records) == 20
+    assert not Path(f"{ledger_path}.lock").exists()
+    assert not Path(f"{event_path}.lock").exists()
+
+
+def test_isolated_rule_loop_does_not_touch_tracked_runtime_files(
+    tmp_path: Path,
+) -> None:
+    tracked_ledger = ROOT / ".forgewright" / "rule-ledger.jsonl"
+    tracked_events = ROOT / ".forgewright" / "telemetry" / "events-202607.jsonl"
+    before = {
+        path: path.read_bytes() if path.exists() else None
+        for path in (tracked_ledger, tracked_events)
+    }
+    result = run(
+        "bash",
+        str(ROOT / "scripts/lite/test-rule-loop.sh"),
+        env={"TMPDIR": str(tmp_path)},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    after = {path: path.read_bytes() if path.exists() else None for path in before}
+    assert after == before
