@@ -200,6 +200,42 @@ node --version
 #   Windows: tải từ nodejs.org
 ```
 
+#### Nếu dùng Antigravity CLI (`agy`)
+
+`git pull` chỉ cập nhật source Forgewright, không tự cài hook cấp máy của
+Antigravity. Mỗi máy dev hoặc CI dùng `agy` cần chạy installer và doctor một lần:
+
+```bash
+bash forgewright/scripts/forgewright-install.sh --profile minimal --yes
+bash forgewright/scripts/forgewright-hook-doctor.sh --quick --fix
+```
+
+Installer sẽ thêm native named `PreToolUse` policy hook vào
+`~/.gemini/config/hooks.json`. Đây là cấu hình của Antigravity CLI, hoàn toàn
+tách biệt với `.gemini/settings.json` của Gemini CLI. Kiểm tra lại bằng:
+
+```bash
+bash forgewright/scripts/forgewright-hook-doctor.sh --quick
+```
+
+Nên gọi `agy` qua các luồng delegation, escalation, benchmark hoặc
+parallel-dispatch do Forgewright quản lý. Các luồng này dùng đúng binary `agy`,
+bật sandbox và mode rõ ràng, kiểm tra global policy hook, đồng thời truyền
+workspace chuẩn qua `FORGEWRIGHT_WORKSPACE`.
+
+Nếu chủ động chạy `agy` trực tiếp tại project root, phải truyền workspace và
+chọn mode rõ ràng:
+
+```bash
+FORGEWRIGHT_WORKSPACE="$PWD" agy --sandbox --mode accept-edits
+```
+
+Với `agy 1.1.2 --print`, runtime có thể gửi `workspacePaths` rỗng. Nếu thiếu
+`FORGEWRIGHT_WORKSPACE`, hook Forgewright sẽ fail-closed và có thể chặn cả tool
+call an toàn. File `.agents/hooks.json` vẫn được giữ để hỗ trợ project portability,
+nhưng runtime đã kiểm thử hiện chỉ load global registry; không được xóa global
+hook.
+
 ---
 
 ## The Flow — Forgewright làm việc thế nào?

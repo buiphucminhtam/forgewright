@@ -167,6 +167,43 @@ cp forgewright/CLAUDE.md .
 *Final Step:*
 You must restart your IDE completely (e.g., CMD+Q on Mac) to force it to load the newly installed MCP servers. Once the IDE has restarted, open your AI chat panel and verify the installation by running `/onboard`.
 
+#### Step 5: Enable Antigravity CLI (`agy`) Enforcement
+
+Pulling the repository updates the Forgewright code, but it does not install
+Antigravity's machine-level hook automatically. Every developer or CI machine
+that uses `agy` must run the installer and doctor once:
+
+```bash
+bash forgewright/scripts/forgewright-install.sh --profile minimal --yes
+bash forgewright/scripts/forgewright-hook-doctor.sh --quick --fix
+```
+
+The installer adds the native named `PreToolUse` policy hook to
+`~/.gemini/config/hooks.json`. This is Antigravity CLI configuration and is
+separate from Gemini CLI's `.gemini/settings.json`. Confirm the installation:
+
+```bash
+bash forgewright/scripts/forgewright-hook-doctor.sh --quick
+```
+
+Use Forgewright-managed delegation, escalation, benchmark, or parallel-dispatch
+commands whenever possible. These paths invoke the real `agy` binary with an
+explicit sandbox and mode, validate the global policy hook, and provide the
+canonical workspace through `FORGEWRIGHT_WORKSPACE`.
+
+If you intentionally invoke `agy` directly from a project root, provide the
+workspace and select a mode explicitly:
+
+```bash
+FORGEWRIGHT_WORKSPACE="$PWD" agy --sandbox --mode accept-edits
+```
+
+Current `agy 1.1.2 --print` builds may send an empty `workspacePaths` hook
+field. Without `FORGEWRIGHT_WORKSPACE`, the Forgewright hook therefore fails
+closed and can deny otherwise safe tool calls. The checked-in
+`.agents/hooks.json` is retained for project portability, but the tested runtime
+loaded the global registry; do not remove the global hook.
+
 ---
 
 ## Four Operating Levels
