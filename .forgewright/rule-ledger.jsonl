@@ -3,3 +3,7 @@
 {"ts":"2026-07-14T13:40:26Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - Claim made without VERDICT block"}
 {"ts":"2026-07-14T13:57:57Z","rule":"test-rule","outcome":"hit","note":"test run"}
 {"ts":"2026-07-15T03:52:27Z","rule":"3","outcome":"violation","note":"source: user"}
+{"ts":"2026-07-16T13:42:37Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT"}
+{"ts":"2026-07-16T13:42:46Z","rule":"stop_validator","outcome":"violation","note":"source: user"}
+{"ts":"2026-07-16T13:44:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT"}
+{"ts":"2026-07-16T13:44:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT"}
