@@ -2,7 +2,7 @@
 
 ## Context
 - **Asset type:** UI Button (interactive element)
-- **Project style:** READ FROM .style-guide.json
+- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
 - **Output format:** PNG with transparency (web) or SVG (vector)
 
 ## Style Constraints

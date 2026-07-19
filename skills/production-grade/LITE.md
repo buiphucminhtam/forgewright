@@ -45,5 +45,5 @@ Format: `n. ACTION | TARGET | CHECK`
 | Test | QA Engineer | "Write tests" |
 | Ship | DevOps → SRE | "Deploy / CI/CD" |
 | Design | UX → UI Designer | "Design UI for..." |
-| Game Build | Game Designer → Engine | "Build a game..." |
+| Game Build | Game Designer → Art Director Style DNA Gate → Engine | "Build a game..." |
 | Explore | Polymath | "Help me think..." |

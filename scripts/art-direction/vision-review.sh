@@ -15,8 +15,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FORGEWRIGHT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ASSET_TYPE="${ASSET_TYPE:-ui}"  # ui | game-2d | game-3d
-PROJECT_STYLE_GUIDE="${PROJECT_STYLE_GUIDE:-"$FORGEWRIGHT_DIR/.forgewright/style-guide.json"}"
-SCORES_DIR="${FORGEWRIGHT_DIR}/.forgewright/art-reviews"
+PROJECT_STYLE_GUIDE="${PROJECT_STYLE_GUIDE:-"$FORGEWRIGHT_DIR/.forgewright/art-direction/game-art-contract.json"}"
+STYLE_CONTRACT_TOOL="${SCRIPT_DIR}/style-contract.py"
+SCORES_DIR="${ART_REVIEW_SCORES_DIR:-"${FORGEWRIGHT_DIR}/.forgewright/art-reviews"}"
 
 # ---- helpers ----------------------------------------------------------------
 
@@ -28,13 +29,10 @@ need() { command -v "$1" &>/dev/null || die "Required: $1 (not found in PATH)"; 
 
 # Load style guide if exists
 load_style_guide() {
-    if [[ -f "$PROJECT_STYLE_GUIDE" ]]; then
-        log "Loading style guide: $PROJECT_STYLE_GUIDE"
-        cat "$PROJECT_STYLE_GUIDE"
-    else
-        log "No style guide found at $PROJECT_STYLE_GUIDE — using general design principles"
-        echo "{}"
-    fi
+    local style_guide_path="${1:-$PROJECT_STYLE_GUIDE}"
+    [[ -f "$style_guide_path" ]] || die "Style DNA contract not found: $style_guide_path"
+    python3 "$STYLE_CONTRACT_TOOL" validate "$style_guide_path" --stage generation >/dev/null
+    cat "$style_guide_path"
 }
 
 # Build review prompt for UI assets
@@ -308,15 +306,23 @@ review_image() {
     local image_name
     image_name="$(basename "$image_path")"
 
-    log "Reviewing: $image_name (type: $asset_type)"
+    log "Reviewing: $image_name (type: $asset_type)" >&2
 
+    local effective_style_guide="${style_guide_path:-$PROJECT_STYLE_GUIDE}"
+    log "Loading Style DNA contract: $effective_style_guide" >&2
     local style_guide_json
-    style_guide_json="$(load_style_guide)"
+    style_guide_json="$(load_style_guide "$effective_style_guide")"
 
-    local prompt_builder="build_${asset_type}_prompt"
+    local prompt_builder=""
+    case "$asset_type" in
+        ui) prompt_builder="build_ui_prompt" ;;
+        game-2d) prompt_builder="build_game2d_prompt" ;;
+        game-3d) prompt_builder="build_game3d_prompt" ;;
+        *) die "Unsupported asset type: $asset_type" ;;
+    esac
     local prompt
-    prompt="$("$prompt_builder" "$image_path" "$style_guide_json" | \
-        sed "s|STYLE_GUIDE_PLACEHOLDER|$style_guide_json|g")"
+    prompt="$("$prompt_builder" "$image_path" "$style_guide_json")"
+    prompt="${prompt//STYLE_GUIDE_PLACEHOLDER/$style_guide_json}"
 
     # Run Claude with vision
     local result
@@ -344,13 +350,15 @@ review_image() {
 # Calculate weighted score from dimension scores
 calc_weighted_score() {
     local asset_type="$1"
-    local scores_json="$2"
+    local scores_json
+    scores_json="$(cat)"
 
-    python3 - <<'PYEOF'
+    python3 - "$asset_type" "$scores_json" <<'PYEOF'
 import json, sys
 
-data = json.loads(sys.stdin.read())
+data = json.loads(sys.argv[2])
 scores = data.get("scores", {})
+requested_asset_type = sys.argv[1]
 
 weights = {
     "ui": {
@@ -379,15 +387,7 @@ weights = {
     }
 }
 
-w = weights.get("ui", {})  # default
-if scores:
-    # Detect asset type from available keys
-    if "palette_adherence" in scores:
-        w = weights["game-2d"]
-    elif "lighting_consistency" in scores:
-        w = weights["game-3d"]
-    else:
-        w = weights["ui"]
+w = weights[requested_asset_type]
 
 total = 0.0
 for dim, weight in w.items():
@@ -418,10 +418,10 @@ print_report() {
     local json="$1"
     local image_name="$2"
 
-    python3 - <<'PYEOF'
+    python3 - "$json" "$image_name" <<'PYEOF'
 import json, sys, os
 
-data = json.loads(sys.stdin.read())
+data = json.loads(sys.argv[1])
 scores = data.get("scores", {})
 verdict = data.get("verdict", "UNKNOWN")
 weighted = data.get("weighted_score", 0.0)
@@ -440,7 +440,7 @@ RESET = "\033[0m"
 vcolor = GREEN if verdict == "APPROVE" else (YELLOW if verdict == "REVISE" else RED)
 
 print(f"\n{'='*70}")
-print(f"{BOLD}VISION REVIEW REPORT — {os.path.basename(data.get('image', 'unknown'))}{RESET}")
+print(f"{BOLD}VISION REVIEW REPORT — {os.path.basename(sys.argv[2])}{RESET}")
 print(f"{'='*70}")
 
 print(f"\n{BOLD}VERDICT: {vcolor}{verdict}{RESET}  |  Score: {BOLD}{weighted}/10{RESET}")
@@ -483,7 +483,8 @@ save_report() {
     local json="$1"
     local image_path="$2"
     mkdir -p "$SCORES_DIR"
-    local report_file="$SCORES_DIR/$(basename "$image_path").review.json"
+    local report_file
+    report_file="$SCORES_DIR/$(basename "$image_path").review.json"
     echo "$json" | python3 -m json.tool > "$report_file" 2>/dev/null || echo "$json" > "$report_file"
     log "Report saved: $report_file"
 }
@@ -492,7 +493,8 @@ save_report() {
 
 cmd_review() {
     local image_path="${1:-}"
-    local style_guide="${2:-}"
+    shift || true
+    local style_guide="$PROJECT_STYLE_GUIDE"
     local asset_type="${ASSET_TYPE:-ui}"
 
     if [[ -z "$image_path" ]]; then
@@ -503,11 +505,31 @@ cmd_review() {
         die "Image not found: $image_path"
     fi
 
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --style-guide)
+                [[ $# -ge 2 ]] || die "--style-guide requires a path"
+                style_guide="$2"
+                shift 2
+                ;;
+            --type)
+                [[ $# -ge 2 ]] || die "--type requires ui, game-2d, or game-3d"
+                asset_type="$2"
+                shift 2
+                ;;
+            *) die "Unknown review option: $1" ;;
+        esac
+    done
+    case "$asset_type" in
+        ui|game-2d|game-3d) ;;
+        *) die "--type requires ui, game-2d, or game-3d" ;;
+    esac
+
     local result
     result=$(review_image "$image_path" "$style_guide" "$asset_type")
-    result=$(echo "$result" | calc_weighted_score "$asset_type" "$(echo "$result" | calc_weighted_score dummy)")
+    result=$(echo "$result" | calc_weighted_score "$asset_type")
 
-    print_report "$(echo "$result")" "$image_path"
+    print_report "$result" "$image_path"
     save_report "$result" "$image_path"
 }
 
@@ -519,8 +541,9 @@ cmd_batch() {
         die "Usage: vision-review.sh batch <glob-pattern> [--report]"
     fi
 
-    mkdir -p "$SCORES_DIR/batch-$(date +%Y%m%d-%H%M%S)"
-    local batch_dir="$SCORES_DIR/batch-$(date +%Y%m%d-%H%M%S)"
+    local batch_dir
+    batch_dir="$SCORES_DIR/batch-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$batch_dir"
     local approve=0 revise=0 reject=0 total=0
 
     for img in $glob_pattern; do
@@ -531,7 +554,6 @@ cmd_batch() {
         local result
         result=$(review_image "$img" "" "$ASSET_TYPE")
 
-        echo "$result" | calc_weighted_score "$ASSET_TYPE" >/dev/null 2>&1
         result=$(echo "$result" | calc_weighted_score "$ASSET_TYPE")
 
         local verdict
@@ -617,7 +639,7 @@ Examples:
 
 Environment:
   ASSET_TYPE          Asset type: ui (default), game-2d, game-3d
-  PROJECT_STYLE_GUIDE Path to style guide JSON (default: .forgewright/style-guide.json)
+  PROJECT_STYLE_GUIDE Path to Style DNA JSON (default: .forgewright/art-direction/game-art-contract.json)
 
 Output:
   Reports saved to .forgewright/art-reviews/

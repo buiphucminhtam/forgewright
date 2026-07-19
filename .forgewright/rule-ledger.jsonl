@@ -7,3 +7,4 @@
 {"ts":"2026-07-16T13:42:46Z","rule":"stop_validator","outcome":"violation","note":"source: user"}
 {"ts":"2026-07-16T13:44:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT"}
 {"ts":"2026-07-16T13:44:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT"}
+{"ts":"2026-07-19T04:49:58Z","rule":"hard-step-escalation","outcome":"violation","note":"source: self-report"}

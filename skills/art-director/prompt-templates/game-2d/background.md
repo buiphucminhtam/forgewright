@@ -2,7 +2,7 @@
 
 ## Context
 - **Asset type:** 2D Game Background / Environment
-- **Project style:** READ FROM .style-guide.json
+- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
 - **Game type:** [Side-scroller / Top-down / Isometric / Puzzle]
 - **Art style:** [Pixel art / Hand-drawn / Vector / Painted]
 - **Layer:** [Background / Midground / Foreground]
@@ -11,7 +11,7 @@
 
 - **Camera angle:** [CAMERA_ANGLE]
 - **Tile size:** [TILE_SIZE]px
-- **Color palette:** STRICT — READ FROM .style-guide.json
+- **Color palette:** STRICT — READ FROM .forgewright/art-direction/game-art-contract.json
 - **Lighting:** [LIGHTING_DIR]
 
 ## Generation Prompt

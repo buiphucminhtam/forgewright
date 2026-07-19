@@ -443,20 +443,28 @@ Build a game from concept to playable build. Full game development pipeline.
    5. **Three.js** (Web-native 3D, WebGPU/WebGL — browser-native 3D experiences)
    ```
 3. **Game Designer** — `skills/game-designer/SKILL.md` — design pillars, core loop, economy, mechanic specs, player flows
-4. **Engine Engineer** — based on chosen engine:
+4. **Art Director — Style DNA Gate** — `skills/art-director/SKILL.md`:
+   - Initialize `.forgewright/art-direction/game-art-contract.json` with `scripts/art-direction/art-pipeline.sh init <game-2d|game-3d|mixed> <project-name>`
+   - Analyze STYLE references into the versioned `game-art-contract/v2`; keep STYLE, TARGET, and CHARACTER reference roles separate
+   - Resolve every confidence value below `0.75`, pin observed palette/color-map hex values, and record engine import metadata
+   - Require explicit Gate 1 sign-off and `approval.status: approved`
+   - Run `python3 scripts/art-direction/style-contract.py validate <contract> --stage generation`; do not start asset production or engine implementation on failure
+   - After vision approval, register each asset with `art-pipeline.sh register <type> <name> <path>`; unchanged registrations are idempotent and changed content creates a new version
+   - Before engine handoff, require `art-pipeline.sh drift` to pass, then run `art-pipeline.sh manifest` and `art-pipeline.sh handoff <game-project-dir>`
+5. **Engine Engineer** — based on chosen engine:
    - Unity: `skills/unity-engineer/SKILL.md` — C# architecture, ScriptableObjects, Editor tools
    - Unreal: `skills/unreal-engineer/SKILL.md` — C++/Blueprint, GAS, AI, Blueprint layer
    - Godot: `skills/godot-engineer/SKILL.md` — GDScript, scene tree, signals
    - Phaser 3: `skills/phaser3-engineer/SKILL.md` — TypeScript, modular scenes, ECS-optional, WebGL/Canvas
    - Three.js: `skills/threejs-engineer/SKILL.md` — ECS architecture, WebGPU/WebGL, Rapier physics
-5. **Level Designer** — `skills/level-designer/SKILL.md` — level structure, encounters, pacing, blockouts
-6. **Narrative Designer** (if story-driven) — `skills/narrative-designer/SKILL.md` — dialogue, characters, lore
-7. **Technical Artist** — `skills/technical-artist/SKILL.md` — shaders, VFX, LOD, performance budgets
-8. **Game Audio Engineer** — `skills/game-audio-engineer/SKILL.md` — SFX, adaptive music, spatial audio
-9. **Engine-specific depth** (optional, based on game needs):
+6. **Level Designer** — `skills/level-designer/SKILL.md` — level structure, encounters, pacing, blockouts
+7. **Narrative Designer** (if story-driven) — `skills/narrative-designer/SKILL.md` — dialogue, characters, lore
+8. **Technical Artist** — `skills/technical-artist/SKILL.md` — shaders, VFX, LOD, performance budgets
+9. **Game Audio Engineer** — `skills/game-audio-engineer/SKILL.md` — SFX, adaptive music, spatial audio
+10. **Engine-specific depth** (optional, based on game needs):
    - Multiplayer: `skills/unity-multiplayer/SKILL.md`, `skills/unreal-multiplayer/SKILL.md`, `skills/godot-multiplayer/SKILL.md`
    - Shader/VFX: `skills/unity-shader-artist/SKILL.md`, `skills/unreal-technical-artist/SKILL.md`
-10. **QA** — per `skills/_shared/protocols/game-test-protocol.md` (extended for Phaser 3 and Three.js):
+11. **QA** — per `skills/_shared/protocols/game-test-protocol.md` (extended for Phaser 3 and Three.js):
     - Mechanics Validation (engine-specific tests: Unity UTF, Unreal Automation, Godot GUT, Phaser 3 Vitest/Jest, Three.js ECS system tests)
     - Balance Validation (economy, XP curves, difficulty scaling against GDD)
     - State Machine Validation (all mechanic transitions match GDD state diagrams)
@@ -464,10 +472,10 @@ Build a game from concept to playable build. Full game development pipeline.
     - Build Verification (compile, references, platform builds, boot test; Phaser 3: Vite build; Three.js: Vite bundle)
     - Integration Validation (cross-system regressions)
     - Platform Validation (web browsers, mobile WebGL, desktop WebGL/WebGPU)
-11. **Quality Gate** — run `skills/_shared/protocols/quality-gate.md` with game-specific thresholds (see `tests/coverage/thresholds.json`)
-12. **Task Validator** — run `skills/_shared/protocols/task-validator.md` to validate delivery against Task Contract
+12. **Quality Gate** — run `skills/_shared/protocols/quality-gate.md` with game-specific thresholds (see `tests/coverage/thresholds.json`)
+13. **Task Validator** — run `skills/_shared/protocols/task-validator.md` to validate delivery against Task Contract
 
-**4 gates:** After Game Designer GDD (step 3), after engine architecture (step 4), after first playable (step 9), and after QA test suite (step 10).
+**4 gates:** After Style DNA approval (step 4), after engine architecture (step 5), after first playable (step 10), and after QA test suite (step 11).
 
 ### XR Build Mode
 

@@ -54,11 +54,10 @@ You do NOT draw or design manually. You create the **constraints, templates, and
 │  ├── Reference mood board (3-5 images)                            │
 │  └── Prohibited elements (AI tells to avoid)                        │
 │                                                                     │
-│  Layer 2: PROMPT TEMPLATES (per asset type — reusable)             │
-│  ├── UI prompt template (menus, HUDs, buttons, forms)              │
-│  ├── Game 2D prompt template (sprites, backgrounds, icons)         │
-│  ├── Game 3D prompt template (scenes, characters, props)            │
-│  └── Each includes: style tokens embedded + negative prompts         │
+│  Layer 2: CONTRACT COMPILER (per asset type — deterministic)       │
+│  ├── Validates approval, references, confidence, and engine rules  │
+│  ├── Locks palette, shape language, camera, and negative prompts   │
+│  └── Rejects unresolved placeholders before generation             │
 │                                                                     │
 │  Layer 3: VISION REVIEW (quality gate — every output)              │
 │  ├── Screenshot capture (any source: browser, Unity, file)          │
@@ -98,7 +97,9 @@ Plus the **game-specific** database:
 | File | Records | Used For |
 |------|---------|---------|
 | `skills/_shared/data/game-visual-foundations.csv` | 200+ patterns | Game camera, lighting, art style rules |
-| `skills/_shared/data/game-asset-pipeline.csv` | 50+ rules | Asset generation, batch review, engine test |
+| `skills/art-director/contracts/game-art-contract.v2.schema.json` | v2 contract | Style DNA validation, reference roles, generation gate |
+| `skills/art-director/contracts/game-art-inventory.v1.schema.json` | v1 inventory | Idempotent asset identity and append-only versions |
+| `skills/art-director/contracts/game-art-engine-import.v1.schema.json` | v1 handoff | Drift-free engine import metadata and safe target paths |
 
 ---
 
@@ -118,9 +119,27 @@ Plus the **game-specific** database:
 ### Step 1.2: Build Style Guide Directory
 
 ```
+.forgewright/art-direction/
+├── game-art-contract.json       # Machine-readable game-art-contract/v2
+├── asset-inventory.json         # Machine-readable game-art-inventory/v1
+├── engine-import-manifest.json  # Machine-readable game-art-engine-import/v1
+├── color-palettes/
+├── typography/
+├── lighting/
+├── perspective/
+├── mood-board/                  # STYLE reference images
+└── prohibited/
+```
+
+The schema and compiler live in the Forgewright installation:
+
+```
+skills/art-director/contracts/game-art-contract.v2.schema.json
+scripts/art-direction/style-contract.py
+scripts/art-direction/asset-lifecycle.py
 skills/art-director/
-├── project-style-guide/
-│   ├── .style-guide.json        # Machine-readable style tokens
+├── project-style-guide/         # Optional human-readable exports
+│   ├── .style-guide.json        # Legacy v1; never use for v2 generation
 │   ├── color-palette.md          # Hex, HSL, usage per color
 │   ├── typography.md             # Font stack, scale, weights
 │   ├── lighting-style.md         # Direction, hardness, shadow style
@@ -311,11 +330,15 @@ skills/art-director/
 
 ---
 
-## Phase 2 — Build Prompt Template Library
+## Phase 2 — Compile Asset Prompts
 
-**Goal:** Create reusable prompt templates that encode style guide constraints.
+**Goal:** Compile deterministic prompts from the approved Style DNA contract.
 
-### Template Directory Structure
+The executable P0 path is `style-contract.py compile`; it does not read the
+Markdown files under `prompt-templates/`. Those files are legacy reference
+examples only and may contain placeholders or a partial historical catalog.
+
+### Legacy Reference Directory (non-executable)
 
 ```
 skills/art-director/
@@ -351,7 +374,7 @@ skills/art-director/
 
 ## Context
 - Asset type: UI Button
-- Project style: [READ FROM .style-guide.json]
+- Project style: [READ FROM .forgewright/art-direction/game-art-contract.json]
 - Output format: PNG with transparency or SVG
 
 ## Style Constraints (FROM PROJECT STYLE GUIDE)
@@ -421,7 +444,7 @@ Generate a [GAME_STYLE] game character matching these exact constraints:
 - Silhouette: [SILHOUETTE_DESCRIPTION] (readable at 16x16)
 
 **Color palette (STRICT — no deviations):**
-[READ PALETTE FROM .style-guide.json]
+[READ PALETTE FROM .forgewright/art-direction/game-art-contract.json]
 
 **Animation frames:**
 - Idle: [N] frames, [DURATION]ms per frame
@@ -525,7 +548,7 @@ Generate a UI card matching this specification:
 You are an expert Art Director reviewing [ASSET_TYPE].
 
 ## Project Style Guide (reference):
-[READ FROM .style-guide.json]
+[READ FROM .forgewright/art-direction/game-art-contract.json]
 
 ## Review Task:
 Analyze this image against the style guide. Rate each dimension 1-10.
@@ -558,6 +581,8 @@ Analyze this image against the style guide. Rate each dimension 1-10.
 }
 ```
 
+```
+
 ### Review Decision Matrix
 
 | Verdict | Meaning | Action |
@@ -573,30 +598,50 @@ Analyze this image against the style guide. Rate each dimension 1-10.
 ### Pipeline Script Usage
 
 ```bash
-# Generate single asset
-art-pipeline.sh generate [type] [name]
+# Create a draft v2 Style DNA contract
+scripts/art-direction/art-pipeline.sh init game-2d "Project Name"
+
+# Validate after reference analysis and Gate 1 approval
+python3 scripts/art-direction/style-contract.py validate \
+  .forgewright/art-direction/game-art-contract.json --stage generation
+
+# Compile one deterministic, placeholder-free asset prompt
+scripts/art-direction/art-pipeline.sh generate [type] [name]
 
 # Review existing image
-art-pipeline.sh review [image-path]
+scripts/art-direction/art-pipeline.sh review [image-path] --type game-2d
 
-# Batch generate
-art-pipeline.sh batch [asset-type] [count]
+# Batch review existing images
+scripts/art-direction/art-pipeline.sh batch [asset-type] [count]
+
+# Register only after the asset passes review; unchanged input is idempotent
+scripts/art-direction/art-pipeline.sh register [type] [name] [asset-path]
+
+# Fail on changed Style DNA, changed content, or missing source files
+scripts/art-direction/art-pipeline.sh drift
+
+# Build provider-neutral metadata from the current engine contract
+scripts/art-direction/art-pipeline.sh manifest
+
+# Copy versioned assets without overwriting target-side local changes
+scripts/art-direction/art-pipeline.sh handoff [game-project-dir]
 
 # Workflow:
 # 1. Load project style guide
-# 2. Select prompt template for [type]
-# 3. Inject style tokens into template
-# 4. Generate via AI tool
+# 2. Validate game-art-contract/v2 (approval, refs, confidence, hex)
+# 3. Compile a deterministic provider-neutral prompt
+# 4. Generate via a provider-managed image tool (P0 stops at the prompt)
 # 5. Screenshot output
 # 6. Run vision-review.sh
-# 7. If REJECT → regenerate (max 3 attempts)
-# 8. If APPROVE → save to asset library
-# 9. Update asset inventory
+# 7. If REJECT → apply review feedback and regenerate within the caller's retry budget
+# 8. If APPROVE → register in game-art-inventory/v1
+# 9. Require a clean drift report
+# 10. Generate game-art-engine-import/v1
+# 11. Hand off with hash verification and no conflicting overwrite
 ```
 
 ### Asset Naming Convention
 
-```markdown
 ## Naming Convention
 
 ### UI Assets
@@ -765,24 +810,25 @@ const config = {
 
 | To | Provide | Format |
 |----|---------|--------|
-| UI Designer | Style guide + prompt templates | `.style-guide.json` + `prompt-templates/` |
-| Game Engineer | Style guide + game templates | `.style-guide.json` + `game-2d/` + `game-3d/` |
+| UI Designer | Style contract + compiled prompts | `game-art-contract.json` + contract compiler |
+| Game Engineer | Approved Style DNA + versioned, drift-free assets | contract + inventory + engine import manifest |
 | QA Engineer | Review criteria + AI tells list | Scores rubric + prohibited elements |
-| Prompt Engineer | Style-constrained templates | `prompt-templates/` for optimization |
-| Frontend Engineer | Design tokens | `.style-guide.json` for Tailwind/CSS |
+| Prompt Engineer | Validated Style DNA + compiled prompt | `game-art-contract.json` + compiler output |
+| Frontend Engineer | Design tokens | `game-art-contract.json` palette and color map |
 
 ---
 
 ## Execution Checklist
 
 ### Style Guide Creation
-- [ ] Style guide created (`.style-guide.json` + markdown docs)
+- [ ] Style DNA contract created and generation-validated (`game-art-contract/v2`)
 - [ ] Color palette validated against WCAG (if app UI)
 - [ ] Game rules defined (camera, lighting, materials)
 - [ ] 3-5 visual style pillars documented
 
-### Prompt Templates
-- [ ] Prompt templates created for all asset types
+### Compiled Prompts
+- [ ] Compiler supports every required asset type
+- [ ] Generation validation rejects unresolved placeholders
 - [ ] Negative prompts list complete
 - [ ] Reference mood board assembled (3-5 images)
 - [ ] Asset naming convention documented
@@ -797,9 +843,12 @@ const config = {
 - [ ] Tailwind/CSS config generated
 - [ ] Asset library organized by type
 - [ ] Batch review workflow defined
+- [ ] Every approved asset registered in `game-art-inventory/v1`
+- [ ] Drift report is clean against current Style DNA and source hashes
+- [ ] `game-art-engine-import/v1` generated for the selected engine
+- [ ] Handoff completes without overwriting target-side changes
 
 ### Documentation
 - [ ] Prohibited elements list complete
 - [ ] Common mistakes documented for project type
 - [ ] Handoff notes prepared for all consumers
-```

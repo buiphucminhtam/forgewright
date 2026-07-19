@@ -1,0 +1,26 @@
+{
+  "$id": "game-art-inventory/v1",
+  "title": "Forgewright Game Art Inventory v1",
+  "description": "Append-only logical asset versions bound to approved Style DNA contract hashes.",
+  "required_top_level": [
+    "schema_version",
+    "project_name",
+    "contract_sha256",
+    "assets"
+  ],
+  "asset_required": [
+    "asset_id",
+    "asset_type",
+    "name",
+    "latest_version",
+    "versions"
+  ],
+  "version_required": [
+    "version",
+    "source_path",
+    "sha256",
+    "contract_sha256"
+  ],
+  "identity": "asset_type/name",
+  "version_rule": "Increment only when source hash, source path, or approved contract hash changes."
+}

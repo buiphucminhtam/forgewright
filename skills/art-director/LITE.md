@@ -10,6 +10,8 @@ version: 1.0.0
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
 | Project tech stack and rendering configurations are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Style DNA contract is generation-ready | `python3 scripts/art-direction/style-contract.py validate .forgewright/art-direction/game-art-contract.json --stage generation` | ... | run the check command and paste output |
+| Approved asset inventory has no drift | `scripts/art-direction/art-pipeline.sh drift` | ... | require exit code 0 before engine handoff |
 | Asset catalog directory is structured correctly | `find assets/ -name "*style*" -o -name "*palette*" -o -name "*theme*"` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Art Director Domain Slots)

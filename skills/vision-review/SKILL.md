@@ -325,7 +325,7 @@ scripts/art-direction/vision-review.sh review /path/to/image.png
 
 # Review with style guide
 scripts/art-direction/vision-review.sh review /path/to/image.png \
-  --style-guide .forgewright/style-guide.json
+  --style-guide .forgewright/art-direction/game-art-contract.json
 
 # Batch review multiple images
 scripts/art-direction/vision-review.sh batch /path/to/assets/*.png --report

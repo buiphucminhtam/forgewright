@@ -2,7 +2,7 @@
 
 ## Context
 - **Asset type:** 2D Game Character
-- **Project style:** READ FROM .style-guide.json
+- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
 - **Game type:** [Side-scroller / Top-down / Isometric / Platformer]
 - **Art style:** [Pixel art / Hand-drawn / Vector / Painted]
 
@@ -11,7 +11,7 @@
 - **Camera:** [CAMERA_ANGLE] (e.g., 3/4 top-down isometric)
 - **Tile size:** [TILE_SIZE]px
 - **Character height:** [CHAR_HEIGHT_TILES] tiles = [CALC_HEIGHT]px
-- **Color palette:** READ FROM .style-guide.json — STRICT adherence
+- **Color palette:** READ FROM .forgewright/art-direction/game-art-contract.json — STRICT adherence
 - **Lighting direction:** [LIGHTING_DIR] (e.g., top-left 45°)
 
 ## Generation Prompt
@@ -29,7 +29,7 @@ Generate a 2D game character matching these exact constraints. The character mus
 
 **Color Palette — MANDATORY:**
 ```
-[READ PALETTE FROM .style-guide.json]
+[READ PALETTE FROM .forgewright/art-direction/game-art-contract.json]
 Primary:    [PRIMARY_HEX]
 Secondary:  [ACCENT_HEX]
 Shadow:     [CALCULATE_SHADOW_FROM_PALETTE]

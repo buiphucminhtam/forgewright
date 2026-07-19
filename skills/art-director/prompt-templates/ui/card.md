@@ -2,7 +2,7 @@
 
 ## Context
 - **Asset type:** UI Card (content container)
-- **Project style:** READ FROM .style-guide.json
+- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
 - **Output format:** PNG or SVG
 
 ## Style Constraints

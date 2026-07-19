@@ -4,13 +4,17 @@
 # =============================================================================
 # Usage:
 #   art-pipeline.sh init                      Create project style guide scaffold
-#   art-pipeline.sh generate <type> <name>   Generate asset with auto-review
+#   art-pipeline.sh generate <type> <name>   Compile a validated asset prompt
 #   art-pipeline.sh review <image-path>      Run vision review on image
-#   art-pipeline.sh batch <type> <count>     Batch generate + review
+#   art-pipeline.sh batch <type> <count>     Print batch-review instructions
+#   art-pipeline.sh register <type> <name> <asset>  Version an approved asset
+#   art-pipeline.sh drift                    Check contract/content drift
+#   art-pipeline.sh manifest                 Build engine import manifest
+#   art-pipeline.sh handoff <target-dir>     Copy assets without overwrites
 #   art-pipeline.sh style-guide              Print current style guide
-#   art-pipeline.sh template <type>          Print prompt template for type
+#   art-pipeline.sh template <type>          Compile a prompt for type
 #
-# Pipeline: Style Guide → Prompt Template → Generate → Vision Review → Approve/Reject → Save
+# Pipeline: Style DNA Contract → Compile Prompt → Generate → Vision Review → Approve/Reject → Save
 # =============================================================================
 
 set -euo pipefail
@@ -18,12 +22,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FORGEWRIGHT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 STYLE_GUIDE_DIR="${FORGEWRIGHT_DIR}/.forgewright/art-direction"
-TEMPLATES_DIR="${FORGEWRIGHT_DIR}/skills/art-director/prompt-templates"
 REVIEWS_DIR="${FORGEWRIGHT_DIR}/.forgewright/art-reviews"
 VISION_REVIEW="${SCRIPT_DIR}/vision-review.sh"
+STYLE_CONTRACT_TOOL="${SCRIPT_DIR}/style-contract.py"
+ASSET_LIFECYCLE_TOOL="${SCRIPT_DIR}/asset-lifecycle.py"
 
-# Default style guide location
-PROJECT_STYLE_GUIDE="${STYLE_GUIDE_DIR}/.style-guide.json"
+# One canonical contract path shared by generation and review.
+PROJECT_STYLE_GUIDE="${PROJECT_STYLE_GUIDE:-"${STYLE_GUIDE_DIR}/game-art-contract.json"}"
+ASSET_INVENTORY="${ART_ASSET_INVENTORY:-"${STYLE_GUIDE_DIR}/asset-inventory.json"}"
+ENGINE_MANIFEST="${ART_ENGINE_MANIFEST:-"${STYLE_GUIDE_DIR}/engine-import-manifest.json"}"
 
 # ---- helpers ----------------------------------------------------------------
 
@@ -35,49 +42,14 @@ need()  { command -v "$1" &>/dev/null || die "Required: $1 (not found in PATH)";
 
 # Color codes
 BOLD="\033[1m"
-GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
-RED="\033[0;31m"
 CYAN="\033[0;36m"
 RESET="\033[0m"
 
-# Global for style guide temp file (avoids JSON # hex values breaking bash)
-_STYLE_GUIDE_TMP=""
-
 # ---- style guide helpers -----------------------------------------------------
-
-load_style_guide() {
-    if [[ -f "$PROJECT_STYLE_GUIDE" ]]; then
-        cat "$PROJECT_STYLE_GUIDE"
-    else
-        echo "{}"
-    fi
-}
-
-# Use temp file to avoid JSON breaking bash pattern substitution
-# (hex values like #6366F1 contain # which bash treats as comment)
-_load_sg_to_tmp() {
-    if [[ -n "$_STYLE_GUIDE_TMP" ]] && [[ -f "$_STYLE_GUIDE_TMP" ]]; then
-        return
-    fi
-    _STYLE_GUIDE_TMP="$(mktemp)"
-    load_style_guide > "$_STYLE_GUIDE_TMP"
-}
 
 style_guide_exists() {
     [[ -f "$PROJECT_STYLE_GUIDE" ]]
-}
-
-get_style_token() {
-    local key="$1"
-    _load_sg_to_tmp
-    python3 - "$_STYLE_GUIDE_TMP" "$key" <<'PYEOF'
-import json, sys
-path, key = sys.argv[1], sys.argv[2]
-with open(path) as f:
-    d = json.load(f)
-print(d.get(key, "NOT_SET"))
-PYEOF
 }
 
 # ---- command: init ----------------------------------------------------------
@@ -85,293 +57,72 @@ PYEOF
 
 cmd_init() {
     local project_type="${1:-app}"  # app | game-2d | game-3d | mixed
+    local project_name="${2:-Untitled Game}"
 
     log "Initializing Art Direction for project type: $project_type"
 
     mkdir -p "$STYLE_GUIDE_DIR"/{color-palettes,typography,lighting,perspective,mood-board,prohibited}
-    mkdir -p "$TEMPLATES_DIR"/{ui,game-2d,game-3d,_shared}
     mkdir -p "$REVIEWS_DIR"
 
-    # Create default style guide
-    cat > "$PROJECT_STYLE_GUIDE" <<'EOF'
-{
-  "version": "1.0.0",
-  "project_type": "app",
-  "created_at": "",
-  "primary_color": "#6366F1",
-  "accent_color": "#8B5CF6",
-  "background_color": "#FFFFFF",
-  "text_color": "#1F2937",
-  "muted_color": "#6B7280",
-  "border_color": "#E5E7EB",
-  "success_color": "#10B981",
-  "warning_color": "#F59E0B",
-  "error_color": "#EF4444",
-  "font_heading": "Inter",
-  "font_body": "Inter",
-  "font_mono": "JetBrains Mono",
-  "border_radius_sm": "6",
-  "border_radius_md": "8",
-  "border_radius_lg": "12",
-  "spacing_unit": "4",
-  "shadow_sm": "0 1px 2px rgba(0,0,0,0.05)",
-  "shadow_md": "0 4px 6px rgba(0,0,0,0.1)",
-  "shadow_lg": "0 10px 15px rgba(0,0,0,0.1)",
-  "camera_angle": "not-set",
-  "lighting_direction": "not-set",
-  "tile_size": "64",
-  "character_height_tiles": "4",
-  "ai_tells_prohibited": [
-    "purple_neon_glow",
-    "three_equal_columns",
-    "centered_hero_gradient",
-    "generic_inter_font",
-    "circular_spinner",
-    "pure_black_000000",
-    "fake_round_numbers",
-    "generic_placeholder_names",
-    "ai_buzzwords",
-    "outer_glow_shadows",
-    "default_shadcn"
-  ],
-  "generation_history": []
-}
-EOF
+    python3 "$STYLE_CONTRACT_TOOL" init "$PROJECT_STYLE_GUIDE" \
+        --project-type "$project_type" --project-name "$project_name"
 
-    # Update timestamp and project type
-    local sg_path="$PROJECT_STYLE_GUIDE"
-    local pt="$project_type"
-    python3 - "$sg_path" "$pt" <<'PYEOF'
-import json, datetime, sys
-path, proj_type = sys.argv[1], sys.argv[2]
-with open(path) as f:
-    d = json.load(f)
-d["created_at"] = datetime.datetime.now().isoformat()
-d["project_type"] = proj_type
-with open(path, 'w') as f:
-    json.dump(d, f, indent=2)
-PYEOF
-
-    log "Created style guide: $PROJECT_STYLE_GUIDE"
+    log "Created draft Style DNA contract: $PROJECT_STYLE_GUIDE"
     log ""
     log "Next steps:"
-    log "  1. Edit $PROJECT_STYLE_GUIDE with your project colors/fonts"
-    log "  2. Add reference images to $STYLE_GUIDE_DIR/mood-board/"
-    log "  3. Run: art-pipeline.sh generate <type> <name>"
+    log "  1. Replace draft values with observed Style DNA"
+    log "  2. Add STYLE reference paths and confidence values"
+    log "  3. Set approval.status=approved after Gate 1 sign-off"
+    log "  4. Run: art-pipeline.sh generate <type> <name>"
     log ""
     log "Available generation types:"
-    log "  UI:         button, card, modal, form, menu, hud, hero, dashboard"
-    log "  Game 2D:    character, sprite, background, tile, icon, environment"
-    log "  Game 3D:    character, prop, scene, lighting-setup"
+    log "  UI:         button, icon, panel, screen, ui-kit"
+    log "  Game 2D:    character, sprite, background, tile, environment, object, prop"
+    log "  Game 3D:    character, environment, object, prop"
 }
 
 # ---- command: generate ------------------------------------------------------
-# Generate asset: load template + inject style tokens + call AI + review
+# Generate asset: validate Style DNA and compile a deterministic prompt
 
 cmd_generate() {
     local asset_type="${1:-}"    # button, character, etc.
     local asset_name="${2:-}"    # custom name
-    local max_retries="${3:-3}"  # max regeneration attempts
 
-    if [[ -z "$asset_type" ]]; then
-        die "Usage: art-pipeline.sh generate <asset-type> <name> [--retry N]"
+    if [[ -z "$asset_type" ]] || [[ -z "$asset_name" ]]; then
+        die "Usage: art-pipeline.sh generate <asset-type> <name>"
     fi
 
     if ! style_guide_exists; then
-        warn "No style guide found. Run 'art-pipeline.sh init' first."
-        warn "Using generic defaults — results may vary."
+        die "No Style DNA contract found at $PROJECT_STYLE_GUIDE. Run 'art-pipeline.sh init' first."
     fi
 
     log "${BOLD}Generating:${RESET} $asset_type / $asset_name"
     log "Style guide: $PROJECT_STYLE_GUIDE"
 
-    # Determine template path
-    local template_path=""
-    local template_type="ui"
-
-    # Check UI templates
-    if [[ -f "$TEMPLATES_DIR/ui/$asset_type.md" ]]; then
-        template_path="$TEMPLATES_DIR/ui/$asset_type.md"
-        template_type="ui"
-    elif [[ -f "$TEMPLATES_DIR/game-2d/$asset_type.md" ]]; then
-        template_path="$TEMPLATES_DIR/game-2d/$asset_type.md"
-        template_type="game-2d"
-    elif [[ -f "$TEMPLATES_DIR/game-3d/$asset_type.md" ]]; then
-        template_path="$TEMPLATES_DIR/game-3d/$asset_type.md"
-        template_type="game-3d"
-    else
-        die "No template found for: $asset_type"$'\n'"Available types: button, card, character, sprite, etc."
-    fi
-
-    log "Using template: $template_path"
-
-    # Inject style tokens into template
+    # Compile from the approved contract. Validation and unresolved-placeholder
+    # rejection are fail-closed inside style-contract.py.
     local prompt
-    prompt=$(inject_style_tokens "$template_path")
+    if ! prompt=$(python3 "$STYLE_CONTRACT_TOOL" compile "$PROJECT_STYLE_GUIDE" \
+        --asset-type "$asset_type" --name "$asset_name"); then
+        die "Style DNA contract is not generation-ready"
+    fi
 
     log "Prompt generated (first 500 chars):"
     echo "$prompt" | head -c 500 | sed 's/^/  /'
     echo ""
 
-    # Check what generation tool is available
-    local gen_cmd=""
-    local output_file=""
-
-    if command -v claude &>/dev/null; then
-        info "Using Claude for generation (add --image flag support needed)"
-        # Claude doesn't auto-generate images — need to describe what to generate
-        # The user would generate via their preferred tool and then review
-        log "${YELLOW}Note: Claude CLI doesn't generate images directly.${RESET}"
-        log "Please generate the asset using your preferred AI image tool:"
-        log "  - Gemini CLI (Antigravity): gemini generate '<prompt>'"
-        log "  - Midjourney / DALL-E / Stable Diffusion"
-        log "  - Unity AI tools / Figma AI"
-        log ""
-        log "After generation, run:"
-        log "  art-pipeline.sh review <path-to-generated-image>"
-        log ""
-        log "Or use the prompt below as input for your image generation tool:"
-        log "${BOLD}${CYAN}--- GENERATION PROMPT ---${RESET}"
-        echo "$prompt"
-        log "${BOLD}${CYAN}--- END PROMPT ---${RESET}"
-        return 0
-    elif command -v gemini &>/dev/null; then
-        gen_cmd="gemini"
-    else
-        warn "No AI image generation CLI found (claude, gemini)."
-        log "Please install Antigravity CLI or use another image generation tool."
-        log ""
-        log "Displaying generation prompt:"
-        echo "$prompt"
-        return 0
-    fi
-
-    # Generation + review loop
-    local attempt=0
-    local review_result=""
-
-    while [[ $attempt -lt $max_retries ]]; do
-        attempt=$((attempt + 1))
-        log "--- Generation attempt $attempt/$max_retries ---"
-
-        # TODO: Actual generation call would go here
-        # For now, log what would happen
-        warn "Image generation requires integration with your preferred AI image tool."
-        warn "This script provides the prompt. Use it with your image generator, then:"
-        warn "  art-pipeline.sh review <output-path>"
-
-        break
-    done
-}
-
-# Inject style tokens from style guide into template
-inject_style_tokens() {
-    local template_path="$1"
-
-    # Load style guide to temp file (avoids # hex values breaking bash)
-    _load_sg_to_tmp
-
-    # Read template
-    local content
-    content=$(cat "$template_path")
-
-    # Replace all tokens using get_style_token (which uses the temp file)
-    # Note: we do these in a loop to avoid 30+ subshells from get_style_token calls
-    local replacements=""
-    _load_sg_to_tmp
-    replacements=$(python3 - "$_STYLE_GUIDE_TMP" <<'PYEOF'
-import json, sys
-path = sys.argv[1]
-with open(path) as f:
-    d = json.load(f)
-
-tokens = {
-    "PRIMARY_HEX": d.get("primary_color", "NOT_SET"),
-    "ACCENT_HEX": d.get("accent_color", "NOT_SET"),
-    "BG_HEX": d.get("background_color", "NOT_SET"),
-    "TEXT_HEX": d.get("text_color", "NOT_SET"),
-    "MUTED_HEX": d.get("muted_color", "NOT_SET"),
-    "BORDER_HEX": d.get("border_color", "NOT_SET"),
-    "SUCCESS_HEX": d.get("success_color", "NOT_SET"),
-    "WARNING_HEX": d.get("warning_color", "NOT_SET"),
-    "ERROR_HEX": d.get("error_color", "NOT_SET"),
-    "HEADING_FONT": d.get("font_heading", "NOT_SET"),
-    "BODY_FONT": d.get("font_body", "NOT_SET"),
-    "MONO_FONT": d.get("font_mono", "NOT_SET"),
-    "BR_SM": d.get("border_radius_sm", "NOT_SET"),
-    "BR_MD": d.get("border_radius_md", "NOT_SET"),
-    "BR_LG": d.get("border_radius_lg", "NOT_SET"),
-    "SHADOW_SM": d.get("shadow_sm", "NOT_SET"),
-    "SHADOW_MD": d.get("shadow_md", "NOT_SET"),
-    "SHADOW_LG": d.get("shadow_lg", "NOT_SET"),
-    "CAMERA_ANGLE": d.get("camera_angle", "NOT_SET"),
-    "LIGHTING_DIR": d.get("lighting_direction", "NOT_SET"),
-    "TILE_SIZE": d.get("tile_size", "NOT_SET"),
-    "CHAR_HEIGHT_TILES": d.get("character_height_tiles", "NOT_SET"),
-}
-for k, v in tokens.items():
-    print(f"{k}={v}")
-PYEOF
-    )
-
-    while IFS='=' read -r key value; do
-        content="${content//\[${key}\]/$value}"
-    done <<< "$replacements"
-
-    # Add style guide reference at top
-    local sg_summary
-    sg_summary=$(python3 - "$_STYLE_GUIDE_TMP" <<'PYEOF'
-import json, sys
-path = sys.argv[1]
-with open(path) as f:
-    d = json.load(f)
-tokens = {
-    "Project Type": d.get("project_type", "unknown"),
-    "Primary": d.get("primary_color", "NOT_SET"),
-    "Accent": d.get("accent_color", "NOT_SET"),
-    "Background": d.get("background_color", "NOT_SET"),
-    "Text": d.get("text_color", "NOT_SET"),
-    "Heading Font": d.get("font_heading", "NOT_SET"),
-    "Body Font": d.get("font_body", "NOT_SET"),
-    "Camera": d.get("camera_angle", "NOT_SET"),
-    "Lighting": d.get("lighting_direction", "NOT_SET"),
-}
-lines = ["## Project Style Guide", ""]
-for k, v in tokens.items():
-    lines.append(f"- **{k}**: `{v}`")
-print("\n".join(lines))
-PYEOF
-)
-    sg_summary=$(echo "$sg_summary" | sed 's/^/  /')
-
-    # Add prohibited elements
-    local prohibited
-    prohibited=$(python3 - "$_STYLE_GUIDE_TMP" <<'PYEOF'
-import json, sys
-path = sys.argv[1]
-with open(path) as f:
-    d = json.load(f)
-items = d.get("ai_tells_prohibited", [])
-if items:
-    lines = ["", "## Prohibited (AI Tells — NEVER include):", ""]
-    for item in items:
-        lines.append(f"- ~~{item}~~")
-    print("\n".join(lines))
-else:
-    print("")
-PYEOF
-)
-
-    echo "$sg_summary"
-    echo "$prohibited"
-    echo ""
-    echo "$content"
+    log "${YELLOW}Generation adapter is provider-managed; this P0 command emits the validated prompt.${RESET}"
+    log "${BOLD}${CYAN}--- GENERATION PROMPT ---${RESET}"
+    echo "$prompt"
+    log "${BOLD}${CYAN}--- END PROMPT ---${RESET}"
+    log "After generation: art-pipeline.sh review <path-to-generated-image> --type <ui|game-2d|game-3d>"
 }
 
 # ---- command: review --------------------------------------------------------
 
 cmd_review() {
     local image_path="${1:-}"
+    shift || true
 
     if [[ -z "$image_path" ]]; then
         die "Usage: art-pipeline.sh review <image-path>"
@@ -385,7 +136,7 @@ cmd_review() {
         chmod +x "$VISION_REVIEW"
     fi
 
-    "$VISION_REVIEW" review "$image_path"
+    "$VISION_REVIEW" review "$image_path" --style-guide "$PROJECT_STYLE_GUIDE" "$@"
 }
 
 # ---- command: batch ---------------------------------------------------------
@@ -402,11 +153,53 @@ cmd_batch() {
         die "Batch review requires Claude CLI. Install from https://claude.ai"
     fi
 
-    log "Batch generation + review: $asset_type (count: $count)"
-    log "Note: Batch review only — generation is manual."
+    log "Batch review instructions: $asset_type (target count: $count)"
+    log "Generation remains provider-managed in P0."
     log ""
     log "To batch review existing images:"
     log "  ./vision-review.sh batch './assets/*.png' --report"
+}
+
+# ---- commands: asset lifecycle ---------------------------------------------
+
+cmd_register() {
+    local asset_type="${1:-}"
+    local asset_name="${2:-}"
+    local asset_path="${3:-}"
+    if [[ -z "$asset_type" ]] || [[ -z "$asset_name" ]] || [[ -z "$asset_path" ]]; then
+        die "Usage: art-pipeline.sh register <asset-type> <name> <asset-path>"
+    fi
+    python3 "$ASSET_LIFECYCLE_TOOL" register \
+        --contract "$PROJECT_STYLE_GUIDE" \
+        --inventory "$ASSET_INVENTORY" \
+        --asset-type "$asset_type" \
+        --name "$asset_name" \
+        --asset "$asset_path"
+}
+
+cmd_drift() {
+    python3 "$ASSET_LIFECYCLE_TOOL" drift \
+        --contract "$PROJECT_STYLE_GUIDE" \
+        --inventory "$ASSET_INVENTORY"
+}
+
+cmd_manifest() {
+    local output="${1:-$ENGINE_MANIFEST}"
+    python3 "$ASSET_LIFECYCLE_TOOL" manifest \
+        --contract "$PROJECT_STYLE_GUIDE" \
+        --inventory "$ASSET_INVENTORY" \
+        --output "$output"
+}
+
+cmd_handoff() {
+    local target_dir="${1:-}"
+    local manifest="${2:-$ENGINE_MANIFEST}"
+    if [[ -z "$target_dir" ]]; then
+        die "Usage: art-pipeline.sh handoff <target-dir> [manifest-path]"
+    fi
+    python3 "$ASSET_LIFECYCLE_TOOL" handoff \
+        --manifest "$manifest" \
+        --target-dir "$target_dir"
 }
 
 # ---- command: style-guide ---------------------------------------------------
@@ -425,33 +218,16 @@ cmd_template() {
     local template_type="${1:-}"
 
     if [[ -z "$template_type" ]]; then
-        log "Available templates:"
-        echo ""
-        echo "  UI:"
-        ls "$TEMPLATES_DIR/ui/" 2>/dev/null | sed 's/^/    /'
-        echo ""
-        echo "  Game 2D:"
-        ls "$TEMPLATES_DIR/game-2d/" 2>/dev/null | sed 's/^/    /'
-        echo ""
-        echo "  Game 3D:"
-        ls "$TEMPLATES_DIR/game-3d/" 2>/dev/null | sed 's/^/    /'
-        echo ""
+        log "Compiler asset types: background, button, character, environment, icon, object, panel, prop, screen, sprite, tile, ui-kit"
         echo "Usage: art-pipeline.sh template <type>"
         return 0
     fi
 
-    local template_path=""
-    if [[ -f "$TEMPLATES_DIR/ui/$template_type.md" ]]; then
-        template_path="$TEMPLATES_DIR/ui/$template_type.md"
-    elif [[ -f "$TEMPLATES_DIR/game-2d/$template_type.md" ]]; then
-        template_path="$TEMPLATES_DIR/game-2d/$template_type.md"
-    elif [[ -f "$TEMPLATES_DIR/game-3d/$template_type.md" ]]; then
-        template_path="$TEMPLATES_DIR/game-3d/$template_type.md"
-    else
-        die "Template not found: $template_type"
+    if ! style_guide_exists; then
+        die "No Style DNA contract found at $PROJECT_STYLE_GUIDE"
     fi
-
-    inject_style_tokens "$template_path"
+    python3 "$STYLE_CONTRACT_TOOL" compile "$PROJECT_STYLE_GUIDE" \
+        --asset-type "$template_type" --name "${template_type}-template"
 }
 
 # ---- command: update-style --------------------------------------------------
@@ -469,19 +245,34 @@ cmd_update_style() {
         die "No style guide found. Run 'art-pipeline.sh init' first."
     fi
 
-    python3 - <<PYEOF
-import json, datetime
-path = """'"$PROJECT_STYLE_GUIDE"'"""
-with open(path) as f:
-    d = json.load(f)
-d["$key"] = "$value"
-d["updated_at"] = datetime.datetime.now().isoformat()
-with open(path, 'w') as f:
-    json.dump(d, f, indent=2)
-print(f"Updated: $key = $value")
+    python3 - "$PROJECT_STYLE_GUIDE" "$key" "$value" <<'PYEOF'
+import json
+import sys
+
+path, dotted, raw_value = sys.argv[1:]
+with open(path, encoding="utf-8") as handle:
+    document = json.load(handle)
+parts = dotted.split(".")
+target = document
+for part in parts[:-1]:
+    if not isinstance(target, dict) or part not in target:
+        raise SystemExit(f"Unknown contract path: {dotted}")
+    target = target[part]
+if not isinstance(target, dict) or parts[-1] not in target:
+    raise SystemExit(f"Unknown contract path: {dotted}")
+try:
+    value = json.loads(raw_value)
+except json.JSONDecodeError:
+    value = raw_value
+target[parts[-1]] = value
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(document, handle, indent=2)
+    handle.write("\n")
+print(f"Updated: {dotted} = {value}")
 PYEOF
 
-    log "Style guide updated: $key = $value"
+    python3 "$STYLE_CONTRACT_TOOL" validate "$PROJECT_STYLE_GUIDE" --stage draft
+    log "Style contract updated: $key = $value"
 }
 
 # ---- main -------------------------------------------------------------------
@@ -491,7 +282,7 @@ main() {
     shift || true
 
     # Ensure directories exist
-    mkdir -p "$STYLE_GUIDE_DIR" "$REVIEWS_DIR" "$TEMPLATES_DIR"
+    mkdir -p "$STYLE_GUIDE_DIR" "$REVIEWS_DIR"
 
     case "$cmd" in
         init)
@@ -505,6 +296,18 @@ main() {
             ;;
         batch)
             cmd_batch "$@"
+            ;;
+        register)
+            cmd_register "$@"
+            ;;
+        drift)
+            cmd_drift
+            ;;
+        manifest)
+            cmd_manifest "$@"
+            ;;
+        handoff)
+            cmd_handoff "$@"
             ;;
         style-guide|sg)
             cmd_style_guide
@@ -520,7 +323,7 @@ main() {
 art-pipeline.sh — Art Direction Pipeline
 
   Initialize project style guide:
-    art-pipeline.sh init [app|game-2d|game-3d|mixed]
+    art-pipeline.sh init [app|game-2d|game-3d|mixed] [project-name]
 
   Generate asset with style constraints:
     art-pipeline.sh generate <type> <name>
@@ -528,33 +331,50 @@ art-pipeline.sh — Art Direction Pipeline
   Run vision review on generated image:
     art-pipeline.sh review <image-path>
 
-  Batch review existing assets:
+  Print instructions for batch-reviewing existing assets:
     art-pipeline.sh batch <asset-type> <count>
+
+  Version an approved asset in the inventory:
+    art-pipeline.sh register <asset-type> <name> <asset-path>
+
+  Detect Style DNA, content, or missing-file drift:
+    art-pipeline.sh drift
+
+  Build a deterministic engine import manifest:
+    art-pipeline.sh manifest [output-path]
+
+  Hand off manifest assets without overwriting local changes:
+    art-pipeline.sh handoff <target-dir> [manifest-path]
 
   Show current style guide:
     art-pipeline.sh style-guide
 
-  Show prompt template:
+  Compile an asset prompt:
     art-pipeline.sh template <type>
 
   Update style token:
-    art-pipeline.sh update-style <key> <value>
+    art-pipeline.sh update-style <dotted-key> <json-or-string-value>
 
   Asset types:
-    UI:       button, card, modal, form, menu, hud, hero, dashboard
-    Game 2D:  character, sprite, background, tile, icon, environment
-    Game 3D:  character, prop, scene, lighting-setup
+    UI:       button, icon, panel, screen, ui-kit
+    Game 2D:  character, sprite, background, tile, environment, object, prop
+    Game 3D:  character, environment, object, prop
 
 Examples:
   art-pipeline.sh init game-2d
   art-pipeline.sh generate button primary-cta
   art-pipeline.sh generate character knight
   art-pipeline.sh review ./output/button-1.png
-  art-pipeline.sh update-style primary_color "#8B5CF6"
+  art-pipeline.sh register character knight ./output/knight.png
+  art-pipeline.sh drift
+  art-pipeline.sh manifest
+  art-pipeline.sh handoff ../my-game
+  art-pipeline.sh update-style approval.status approved
 
 Environment:
-  PROJECT_STYLE_GUIDE   Path to style guide JSON
-  TEMPLATES_DIR         Path to prompt templates
+  PROJECT_STYLE_GUIDE   Path to game-art-contract/v2 JSON
+  ART_ASSET_INVENTORY   Path to game-art-inventory/v1 JSON
+  ART_ENGINE_MANIFEST   Path to game-art-engine-import/v1 JSON
 EOF
             ;;
         *)

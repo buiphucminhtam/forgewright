@@ -1,0 +1,31 @@
+{
+  "$id": "game-art-engine-import/v1",
+  "title": "Forgewright Game Art Engine Import Manifest v1",
+  "description": "Provider-neutral, deterministic handoff manifest for approved and drift-free assets.",
+  "required_top_level": [
+    "schema_version",
+    "project_name",
+    "engine",
+    "contract_sha256",
+    "inventory_sha256",
+    "assets"
+  ],
+  "asset_required": [
+    "asset_id",
+    "version",
+    "source_path",
+    "sha256",
+    "relative_path",
+    "engine_uri",
+    "import_settings"
+  ],
+  "supported_engines": [
+    "unity",
+    "unreal",
+    "godot",
+    "phaser",
+    "threejs",
+    "generic"
+  ],
+  "handoff_rule": "Never overwrite a target whose content hash differs from the manifest."
+}

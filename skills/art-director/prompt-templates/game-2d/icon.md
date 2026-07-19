@@ -2,14 +2,14 @@
 
 ## Context
 - **Asset type:** Game UI Icon (inventory, abilities, items, HUD)
-- **Project style:** READ FROM .style-guide.json
+- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
 - **Art style:** [Pixel art / Vector / Hand-drawn]
 - **Size:** [SIZE]×[SIZE]px (e.g., 64×64, 32×32, 16×16)
 
 ## Style Constraints
 
 - **Size:** [SIZE]px (STRICT — icons must be exact size)
-- **Color palette:** READ FROM .style-guide.json (MAX 4 colors including outline)
+- **Color palette:** READ FROM .forgewright/art-direction/game-art-contract.json (MAX 4 colors including outline)
 - **Outline:** 1-2px, color [BORDER_COLOR]
 - **Grid:** Pixel-perfect (if pixel art)
 

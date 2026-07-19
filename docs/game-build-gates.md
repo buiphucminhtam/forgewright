@@ -60,6 +60,8 @@
 
 ### Checklist
 
+- [ ] **Versioned Style DNA contract:** `.forgewright/art-direction/game-art-contract.json` declares `schema_version: game-art-contract/v2`
+- [ ] **Reference roles separated:** STYLE references define appearance; TARGET references define content/layout; CHARACTER references define identity
 - [ ] **Visual pillars defined:** 3-5 keywords describing visual identity
 - [ ] **Color palette approved:** Primary, secondary, accent colors with hex codes
 - [ ] **Shape language consistent:** Character silhouette, UI geometry
@@ -70,12 +72,16 @@
 - [ ] **Reference collection:** Mood board with 5-10 visual references
 - [ ] **Technical feasibility:** Art style achievable within platform constraints
 - [ ] **Performance budget:** Estimated draw calls, texture memory for target style
+- [ ] **Confidence resolved:** Every populated `style.confidence` dimension is `>= 0.75`
+- [ ] **Generation approval recorded:** `approval.status` is `approved` with approver and timestamp
+- [ ] **Mechanical validation passes:** `python3 scripts/art-direction/style-contract.py validate .forgewright/art-direction/game-art-contract.json --stage generation`
 
 ### Exit Criteria
 
 ✅ All items checked  
 ✅ User approves visual direction  
 ✅ No conflicting visual elements identified
+✅ Style DNA contract passes generation-stage validation
 
 ### Template Output
 
@@ -104,9 +110,37 @@
 |-----------|--------|---------|
 | | | |
 
+### Style DNA Contract
+- Path: `.forgewright/art-direction/game-art-contract.json`
+- Schema: `game-art-contract/v2`
+- Validation: [ ] PASS
+- Low-confidence fields remaining: [ ] None
+
 **Approved:** [ ] Yes  [ ] No with changes
 **Sign-off:** _______________________
 ```
+
+---
+
+## Gate 1A: Asset Handoff Readiness
+
+**Approver:** Art Director + Engine Engineer
+
+**Triggers:** One or more generated assets passed vision review
+
+### Checklist
+
+- [ ] **Versioned inventory:** Every approved asset is registered with `scripts/art-direction/art-pipeline.sh register <type> <name> <path>`
+- [ ] **Idempotency:** Re-registering unchanged content does not create a new version
+- [ ] **Drift gate:** `scripts/art-direction/art-pipeline.sh drift` exits successfully against the current Style DNA and source files
+- [ ] **Engine manifest:** `scripts/art-direction/art-pipeline.sh manifest` emits `game-art-engine-import/v1`
+- [ ] **Safe handoff:** `scripts/art-direction/art-pipeline.sh handoff <game-project-dir>` verifies hashes and refuses to overwrite target-side changes
+
+### Exit Criteria
+
+✅ Asset inventory, current Style DNA, and source hashes agree
+✅ Engine import metadata carries pixels-per-unit, compression, atlas, and filter settings
+✅ Handoff manifest and copied assets pass hash verification
 
 ---
 

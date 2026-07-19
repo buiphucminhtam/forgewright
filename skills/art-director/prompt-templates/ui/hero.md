@@ -2,7 +2,7 @@
 
 ## Context
 - **Asset type:** Hero Section (landing page above-the-fold)
-- **Project style:** READ FROM .style-guide.json
+- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
 - **Output format:** Full-width composition
 
 ## Style Constraints
