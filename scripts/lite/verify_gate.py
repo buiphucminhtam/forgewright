@@ -330,27 +330,28 @@ _STUB_EXTS = _SKIP_STUB_EXTS  # same skip list
 def _lint_text(text: str, name: str) -> list[str]:
     errors: list[str] = []
     for idx, line in enumerate(text.splitlines(), 1):
-        if re.search(r"\bCHECK\b", line):
-            backticks = re.findall(r"`([^`]+)`", line)
-            if backticks:
-                cmd = backticks[0]
-                try:
-                    r = subprocess.run(
-                        ["bash", "-c", f"set -n; {cmd}"],
-                        capture_output=True,
-                        text=True,
-                        timeout=2,
-                    )
-                    if r.returncode != 0:
-                        errors.append(
-                            f"  {name}:{idx}: bash syntax error in `{cmd}`: {r.stderr.strip()}"
-                        )
-                except Exception:
-                    pass
-                if "->" not in line:
-                    errors.append(
-                        f"  {name}:{idx}: missing '->' transition in: {line.strip()}"
-                    )
+        check = re.search(r"\bCHECK\s*:\s*`([^`]*)`", line)
+        if not check:
+            continue
+        cmd = check.group(1)
+        if not cmd.strip():
+            errors.append(f"  {name}:{idx}: empty CHECK command")
+            continue
+        try:
+            r = subprocess.run(
+                ["bash", "-c", f"set -n; {cmd}"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            if r.returncode != 0:
+                errors.append(
+                    f"  {name}:{idx}: bash syntax error in `{cmd}`: {r.stderr.strip()}"
+                )
+        except Exception:
+            pass
+        if "->" not in line[check.end() :]:
+            errors.append(f"  {name}:{idx}: missing '->' transition in: {line.strip()}")
     return errors
 
 

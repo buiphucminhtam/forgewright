@@ -9,8 +9,9 @@
 #   with the platform hook JSON payload on stdin.
 #
 # Platform payload (stdin JSON) fields consumed:
-#   response_content  - AI response text (to check for VERIFY block)
-#   turn              - optional turn/session ID (forwarded to evidence lookup)
+#   response_content / last_assistant_message
+#                     - AI response text (to check for VERIFY block)
+#   turn / turn_id    - optional turn/session ID (forwarded to evidence lookup)
 #   files             - optional array of changed file paths
 #
 # Exit codes:
@@ -164,9 +165,23 @@ except json.JSONDecodeError:
     # Tolerate non-JSON payloads (treat as plain response text)
     payload = {"response_content": raw}
 
+response_content = payload.get("response_content")
+if not isinstance(response_content, str):
+    response_content = payload.get("last_assistant_message")
+if not isinstance(response_content, str):
+    response_content = payload.get("content", "")
+if not isinstance(response_content, str):
+    response_content = ""
+
+turn = payload.get("turn")
+if not isinstance(turn, str) or not turn.strip():
+    turn = payload.get("turn_id", "")
+if not isinstance(turn, str):
+    turn = ""
+
 fields = {
-    "response_content": payload.get("response_content", payload.get("content", "")),
-    "turn":             payload.get("turn", payload.get("turn_id", "")),
+    "response_content": response_content,
+    "turn":             turn,
     "files":            payload.get("files", payload.get("changed_files", [])),
 }
 # Normalize files to newline-separated string for easy bash consumption
@@ -298,6 +313,10 @@ log_info "Checking response content for a valid VERIFY block..."
 _has_verify_block() {
   local content="$1"
   [[ -z "$content" ]] && return 1
+  if echo "$content" | grep -qEi '^[[:space:]]*CLAIM[[:space:]]*:'; then
+    printf '%s' "$content" | python3 "${SCRIPT_DIR}/rule-validator.py" --runtime \
+      >/dev/null 2>&1 && return 0
+  fi
   echo "$content" | grep -qEi '```(verify|verification)' && return 0
   echo "$content" | grep -qEi '(^|[[:space:]])VERIFY([[:space:]:]|$|###|#)' && return 0
   echo "$content" | grep -qEi '(^|[[:space:]])VERIFICATION([[:space:]:]|$|###|#)' && return 0

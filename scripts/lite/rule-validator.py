@@ -148,9 +148,12 @@ def validate_verify_blocks(response: str) -> list[str]:
         ):
             errors.append(f"VERIFY block {number} fields are not consecutive")
             continue
-        for name in ("CLAIM", "COMMAND", "OUTPUT"):
+        for name in ("CLAIM", "COMMAND"):
             if not fields[name][1]:
                 errors.append(f"VERIFY block {number} has empty {name}")
+        output_lines = lines[output_pos + 1 : exit_pos]
+        if not fields["OUTPUT"][1] and not any(line.strip() for line in output_lines):
+            errors.append(f"VERIFY block {number} has empty OUTPUT")
         if fields["EXIT CODE"][1] != "0":
             errors.append(f"VERIFY block {number} EXIT CODE is not 0")
         if fields["VERDICT"][1].upper() != "PASS":

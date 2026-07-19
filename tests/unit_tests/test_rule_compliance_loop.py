@@ -120,12 +120,26 @@ VERDICT: PASS
     result = run("python3", str(script), "--runtime", env=env, stdin=valid)
     assert result.returncode == 0, result.stderr
 
+    valid_multiline_output = """Done.
+CLAIM: behavior is verified
+COMMAND: pytest -q
+OUTPUT:
+1 passed
+EXIT CODE: 0
+VERDICT: PASS
+"""
+    result = run(
+        "python3", str(script), "--runtime", env=env, stdin=valid_multiline_output
+    )
+    assert result.returncode == 0, result.stderr
+
     invalid_payloads = [
         "CLAIM: behavior works\nVERDICT: PASS\n",
         "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: failed\nEXIT CODE: 1\nVERDICT: FAIL\n",
         "CLAIM: behavior works\n\nCOMMAND: pytest\nOUTPUT: ok\nEXIT CODE: 0\nVERDICT: PASS\n",
         "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: ok\n\nEXIT CODE: 0\nVERDICT: PASS\n",
         "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: ok\nEXIT CODE: 0\n\nVERDICT: PASS\n",
+        "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT:\nEXIT CODE: 0\nVERDICT: PASS\n",
         "",
     ]
     for payload in invalid_payloads:

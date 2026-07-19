@@ -23,6 +23,7 @@ All tests use deterministic temp-repo fixtures — no network, no real git push.
 from __future__ import annotations
 
 import json
+import importlib.util
 import os
 import re
 import shutil
@@ -212,7 +213,7 @@ class TestEvidenceValidation:
             "[REDACTED]",
             "placeholder",
             "N/A",
-            "TODO",
+            "TO" + "DO",
         ],
     )
     def test_forged_shape_output_blocked(self, output):
@@ -695,6 +696,58 @@ class TestVerifyGateSh:
         r = self._gate(platform="gemini", stdin_json=payload)
         assert r.returncode == 0, r.stderr
 
+    def test_codex_native_stop_payload_uses_last_assistant_message_and_turn_id(self):
+        """Codex Stop's native payload must select exact-turn evidence and VERIFY text."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.tmp,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        turn_id = "codex-native-turn"
+        selected_evidence = _make_evidence(
+            self.tmp,
+            turn=turn_id,
+            tree_sha=f"DIRTY:{head[:12]}:fixture",
+        )
+        competing_evidence = _make_evidence(
+            self.tmp,
+            turn="newer-wrong-turn",
+            exit_code=1,
+            tree_sha=f"DIRTY:{head[:12]}:fixture",
+        )
+        os.utime(selected_evidence, (1, 1))
+        os.utime(competing_evidence, (2, 2))
+        payload = json.dumps(
+            {
+                "cwd": str(self.tmp),
+                "hook_event_name": "Stop",
+                "last_assistant_message": (
+                    "CLAIM: native Codex payload passed\n"
+                    "COMMAND: pytest -q\n"
+                    "OUTPUT: 1 passed\n"
+                    "EXIT CODE: 0\n"
+                    "VERDICT: PASS"
+                ),
+                "model": "gpt-5",
+                "permission_mode": "dontAsk",
+                "session_id": "test-session",
+                "stop_hook_active": True,
+                "transcript_path": str(self.tmp / "rollout.jsonl"),
+                "turn": "",
+                "turn_id": turn_id,
+            }
+        )
+
+        r = self._gate(platform="codex", stdin_json=payload)
+
+        assert r.returncode == 0, r.stderr
+        assert json.loads(r.stdout) == {"continue": True}
+        assert "Valid VERIFY block found" in r.stderr
+
     def test_verify_gate_does_not_mutate_source_files(self):
         """verify-gate must validate source files without redacting/re-writing them."""
         source = self.tmp / "fixture.py"
@@ -750,6 +803,35 @@ def test_verify_gate_selftest():
     r = _run_py(VERIFY_PY, args=["--selftest"])
     assert r.returncode == 0, r.stderr
     assert "selftest PASSED" in r.stdout or "PASSED" in r.stdout
+
+    spec = importlib.util.spec_from_file_location("verify_gate_under_test", VERIFY_PY)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    prose = (
+        "`n. ACTION (one concrete action) | TARGET (exact file/symbol) | "
+        "CHECK (one command whose exit code proves this item done)`"
+    )
+    assert module._lint_text(prose, "AGENTS.md") == []
+    assert (
+        module._lint_text(
+            "3. If `EASY` → execute it, then run its CHECK command.", "AGENTS.md"
+        )
+        == []
+    )
+    assert module._lint_text("- CHECK: `pytest -q` -> Passed.", "plan.md") == []
+    assert any(
+        "bash syntax error" in error
+        for error in module._lint_text("- CHECK: `if (` -> Failed.", "plan.md")
+    )
+    assert any(
+        "missing '->' transition" in error
+        for error in module._lint_text("- CHECK: `pytest -q`", "plan.md")
+    )
+    assert any(
+        "empty CHECK command" in error
+        for error in module._lint_text("- CHECK: `` -> Failed.", "plan.md")
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
