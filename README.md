@@ -520,6 +520,16 @@ Start with the
 [control-plane protocol](skills/_shared/protocols/game-studio-pipeline.md) as
 the source of truth for gates, role lanes, model-aware dispatch, and evidence.
 
+### 11. Token Efficiency Engine & System-1 Routing (Jev Integration)
+
+Forgewright integrates an evidence-gated efficiency architecture designed to eliminate redundant LLM reasoning turns and context bloat while preserving 100% output quality, verification contracts, and safety guardrails:
+
+- **Code Execution over LLM Polling:** Replaces repetitive LLM-driven process polling and status checks with deterministic execution in scripts, returning aggregated exit codes and actionable errors instead of consuming LLM context at each step.
+- **Progressive Disclosure Skills:** Deconstructs monolithic skill documents into compact routing entries and on-demand reference recipes (`references/`), reducing skill overlay payload by up to 73%.
+- **Evidence Envelope Contract:** Returns concise execution findings, status codes, and cryptographic artifact pointers instead of dumping voluminous raw logs into the agent's context window.
+- **Stable Prefix Caching:** Structures instruction headers statically ahead of dynamic session state, maximizing OpenAI and Anthropic Prompt Cache reuse across multi-turn workflows.
+- **Optional System-1 Skill Routing (Jev Adapter):** For ambiguous tasks where local metadata matching is inconclusive, Forgewright provides an optional, default-off adapter for System-1 fast decision models (e.g. Jev / TypeSafe). Configured with strict budget limits ($0 default), pinned version enforcement (`jev-1.13.0`), and automatic fallback to local routing on timeout, error, or abstention (`NONE`/`ESCALATE`).
+
 ---
 
 ## Architecture and Safety Model

@@ -290,6 +290,24 @@ def route_skills(
         selected_mode = requested_mode or (
             classify_mode(prompt, set(mode_map)) if auto_detect else None
         )
+        if selected_mode is None and auto_detect and prompt.strip():
+            try:
+                from scripts.runtime.jev_adapter import JevSkillRouterAdapter
+
+                _jev = JevSkillRouterAdapter()
+                if _jev.enabled:
+                    _decision = _jev.route_candidate(
+                        task_intent=prompt,
+                        candidates=list(mode_map.keys()),
+                    )
+                    if (
+                        _decision.status == "selected"
+                        and _decision.selected_skill in mode_map
+                    ):
+                        selected_mode = _decision.selected_skill
+                        selected_source = "jev"
+            except Exception:
+                pass
         if selected_mode is None:
             force_names = [
                 name

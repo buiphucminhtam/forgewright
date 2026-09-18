@@ -1,0 +1,89 @@
+{
+  "schema_version": 2,
+  "goal_id": "FW-CODEX-EFF-20260913",
+  "amendment": "EFF-20260918",
+  "goal": "Nâng cấp hiệu năng & tối ưu token cho ForgeWright (Core Pipeline Efficiency & Jev Evaluation)",
+  "status": "completed",
+  "execution_route": "codex_9router",
+  "session_id": "codex_a1cc444d5f0f4112bc4c",
+  "plan_path": "/Users/megadomac/github/forgewright/docs/plans/2026-09-18-token-efficiency-jev-upgrade.md",
+  "report_path": "/Users/megadomac/github/forgewright/.agent/reports/forgewright-efficiency-upgrade-20260918/PLAN.md",
+  "current_step": "EFF-10",
+  "priority_order": [
+    "EFF-00",
+    "EFF-01",
+    "core_efficiency",
+    "benchmark_core",
+    "optional_jev"
+  ],
+  "steps": [
+    {
+      "id": "EFF-00",
+      "title": "Đối chiếu hiện trạng",
+      "status": "completed",
+      "description": "Xác minh branch, worktree, lock, goal và thay đổi đang có; map EFF vào W/AC/RA/RC"
+    },
+    {
+      "id": "EFF-01",
+      "title": "Đo overhead",
+      "status": "completed",
+      "description": "Ghi nhận -38.11% instruction payload (27,737B -> 17,167B) và -73.78% skill overlay payload (54,376B -> 14,260B)"
+    },
+    {
+      "id": "EFF-02",
+      "title": "Chuyển thao tác cơ học sang code",
+      "status": "completed",
+      "description": "31 orchestrator tests + 5 bench command lifecycle tests pass"
+    },
+    {
+      "id": "EFF-03",
+      "title": "Nạp tool/skill theo nhu cầu",
+      "status": "completed",
+      "description": "Progressive disclosure routers; 5 skill routing tests + 7 optional discovery tests pass"
+    },
+    {
+      "id": "EFF-04",
+      "title": "Rút gọn tool output, giữ bằng chứng",
+      "status": "completed",
+      "description": "Evidence envelope contract; 15 bench verifier tests + 8 product command tests pass"
+    },
+    {
+      "id": "EFF-05",
+      "title": "Ổn định context và prefix",
+      "status": "completed",
+      "description": "Static 17,167B codex candidate profile; 16 profile tests + 15 continuity tests pass"
+    },
+    {
+      "id": "EFF-06",
+      "title": "Tối ưu chọn skill bằng dữ liệu local",
+      "status": "completed",
+      "description": "Metadata-first routing verified against 5 positive and 5 near-miss fixtures"
+    },
+    {
+      "id": "EFF-07",
+      "title": "Jev adapter tùy chọn",
+      "status": "completed",
+      "description": "JevSkillRouterAdapter implemented & verified with 6 unit tests (default-off, budget limit, abstention, fallback)"
+    },
+    {
+      "id": "EFF-08",
+      "title": "Regression và kiểm thử đối kháng",
+      "status": "completed",
+      "description": "74 CLI tests + unit tests pass with zero regression"
+    },
+    {
+      "id": "EFF-09",
+      "title": "Benchmark có đối chứng",
+      "status": "completed",
+      "description": "E0 vs E1 vs E2 configuration matrix and instruction-only frozen execution context contracts verified"
+    },
+    {
+      "id": "EFF-10",
+      "title": "Canary, review và bàn giao",
+      "status": "completed",
+      "description": "Native evidence per host/surface, rollback guarantees and execution receipts recorded"
+    }
+  ],
+  "created_at": "2026-09-18T01:32:01.817Z",
+  "updated_at": "2026-09-18T01:57:00.572Z"
+}
