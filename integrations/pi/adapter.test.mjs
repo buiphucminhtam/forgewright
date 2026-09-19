@@ -219,3 +219,53 @@ test('PI-20: candidate SDK requires Node >=22.19 and rejects unsupported host be
   for (const value of ['22.19.0', '22.20.0', '24.0.0']) assert.equal(supportsPiNode(value), true);
   if (!supportsPiNode(process.versions.node)) await assert.rejects(loadPinnedPiAgent(), code('pi_node_unsupported'));
 });
+
+// Regression contracts for the existing strict-AC and one-shot requirements.
+// FakeAgent deliberately retains callbacks; this is not real-SDK evidence.
+test('PI-21: sparse or missing acceptance entries are rejected before SDK loading', async () => {
+  for (const acceptance of [Array(1), ['Return findings', ,], [undefined], [null]]) {
+    const { adapter, observed } = fixture();
+    await assert.rejects(adapter.start({ ...task(), acceptance }), code('pi_invalid_task'));
+    assert.equal(observed.loads, 0);
+    assert.equal(observed.streams, 0);
+    assert.equal(adapter.getResult(), null);
+  }
+});
+
+test('PI-22: retained stream callbacks cannot dispatch after successful settlement', async () => {
+  for (const modelCalls of [4, 1]) {
+    const { adapter, observed } = fixture(undefined, { limits: { modelCalls } });
+    await adapter.start(task());
+    const before = adapter.getResult();
+    assert.throws(() => observed.options.streamFn(), code('pi_adapter_consumed'));
+    assert.equal(observed.streams, 1);
+    assert.deepEqual(adapter.getResult(), before);
+  }
+});
+
+test('PI-23: retained stream callbacks cannot dispatch after failed settlement', async () => {
+  const { adapter, observed } = fixture(() => { throw new Error('fixture failure'); }, { limits: { modelCalls: 4 } });
+  await assert.rejects(adapter.start(task()), code('pi_execution_failed'));
+  const before = adapter.getResult();
+  assert.throws(() => observed.options.streamFn(), code('pi_adapter_consumed'));
+  assert.equal(observed.streams, 1);
+  assert.deepEqual(adapter.getResult(), before);
+});
+
+test('PI-24: retained message callbacks cannot mutate settled results or telemetry', async () => {
+  for (const fail of [false, true]) {
+    let retained;
+    const { adapter } = fixture(function () {
+      retained = this.listener;
+      if (fail) throw new Error('fixture failure');
+      this.emit('accepted-analysis');
+    });
+    if (fail) await assert.rejects(adapter.start(task()), code('pi_execution_failed'));
+    else await adapter.start(task());
+    const before = adapter.getResult();
+    const telemetry = adapter.getTelemetry();
+    retained({ type: 'message_end', message: { role: 'assistant', stopReason: 'stop', content: [{ type: 'text', text: 'late-output-must-be-ignored' }] } });
+    assert.deepEqual(adapter.getResult(), before);
+    assert.deepEqual(adapter.getTelemetry(), telemetry);
+  }
+});
