@@ -117,6 +117,44 @@
         "tests/unit_tests/test_game_studio_pipeline.py",
         "tests/unit_tests/test_parallel_dispatch_runner.py"
       ]
+    },
+    {
+      "id": "token-efficiency-system1-routing",
+      "readme_heading": "Token Efficiency Engine & System-1 Routing (Jev Integration)",
+      "maturity": "experimental",
+      "placement": "core",
+      "evidence": [
+        "skills/_shared/protocols/tool-efficiency.md",
+        "scripts/runtime/jev_adapter.py",
+        "tests/unit_tests/test_jev_adapter.py"
+      ],
+      "verification_command": "pytest -q tests/unit_tests/test_jev_adapter.py",
+      "limitations": "The Jev adapter is optional. This inventory entry does not certify live-provider routing, measured token savings or hosted production readiness."
+    },
+    {
+      "id": "pi-worker-pilot",
+      "readme_heading": "Optional Pi Worker Pilot",
+      "maturity": "experimental",
+      "placement": "optional-pack",
+      "evidence": [
+        "docs/adr/ADR-pi-worker-runtime.md",
+        "integrations/pi/adapter.mjs",
+        "integrations/pi/adapter.test.mjs",
+        "integrations/pi/sdk.test.mjs",
+        "integrations/pi/harness.test.mjs",
+        "integrations/pi/host-adapter.mjs",
+        "integrations/pi/contracts.test.mjs",
+        "integrations/pi/budget.test.mjs",
+        "integrations/pi/release-gates.test.mjs",
+        "integrations/pi/canary-integration.test.mjs",
+        "integrations/pi/run-tests.mjs"
+      ],
+      "verification_command": "node integrations/pi/run-tests.mjs all",
+      "verification_prerequisites": [
+        "npm --prefix integrations/pi ci --ignore-scripts --no-audit --no-fund",
+        "npm run build"
+      ],
+      "limitations": "Default-off and not registered for canonical dispatch. The original analysis pilot has zero tools; the separate host bridge permits only host-registered tools through canonical policy/lifecycle. Tests use deterministic transport, not authenticated live-provider cost or a measured paired production pilot."
     }
   ],
   "optional_packs": [

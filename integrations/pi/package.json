@@ -1,0 +1,17 @@
+{
+  "name": "forgewright-pi-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional Pi pilot and default-off canonical host bridge; not registered for production",
+  "engines": { "node": ">=22.19.0" },
+  "scripts": {
+    "test": "node --test adapter.test.mjs",
+    "test:sdk": "node --test sdk.test.mjs",
+    "test:host": "node --test harness.test.mjs",
+    "test:bridge": "node run-tests.mjs bridge",
+    "test:release": "node run-tests.mjs release",
+    "test:all": "node run-tests.mjs all"
+  },
+  "dependencies": { "@earendil-works/pi-agent-core": "0.85.1" }
+}

@@ -48,6 +48,10 @@
     {
       "path": "product-manifest.json",
       "type": "metadata"
+    },
+    {
+      "path": "docs/adr/ADR-pi-worker-runtime.md",
+      "type": "architecture"
     }
   ],
   "project_docs": {
@@ -62,7 +66,8 @@
     "docs/active-roadmap.md",
     "docs/adr/ADR-011-central-docs-hub.md",
     "docs/adr/ADR-012-bounded-peer-collaboration.md",
-    "skills/_shared/protocols/documentation-governance.md"
+    "skills/_shared/protocols/documentation-governance.md",
+    "docs/adr/ADR-pi-worker-runtime.md"
   ],
   "adapters": {
     "git": true,
@@ -82,7 +87,8 @@
       "skills/_shared/protocols/peer-collaboration.md",
       "skills/_shared/protocols/documentation-governance.md",
       "docs/process/release-readiness.md",
-      "product-manifest.json"
+      "product-manifest.json",
+      "docs/adr/ADR-pi-worker-runtime.md"
     ],
     "exclude": [
       "docs/archive/**",

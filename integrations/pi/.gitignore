@@ -1,0 +1,5 @@
+# Legacy test invocations emitted canonical audit streams here. New invocations
+# run from the root; retain local audit history without publishing it as source.
+/.forgewright/verification-events.jsonl
+/.forgewright/quality-gate-events.jsonl
+/.forgewright/audit/

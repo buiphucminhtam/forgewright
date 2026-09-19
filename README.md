@@ -1,798 +1,275 @@
 <!-- markdownlint-disable MD013 MD033 -->
-# Forgewright — AI Orchestrator That Actually Learns
+# Forgewright
 
 <p align="center">
-  <img src="assets/forgewright-banner.png" alt="Forgewright Banner" width="600" />
+  <img src="assets/forgewright-banner.png" alt="Forgewright — engineering workflows for AI agents" width="720" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/buiphucminhtam/forgewright">
-    <img src="https://img.shields.io/github/stars/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Stars" alt="Stars" />
-  </a>
-  <a href="https://github.com/buiphucminhtam/forgewright/network/members">
-    <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
-  </a>
-  <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-84-brightgreen?style=flat-square" alt="Skills" />
-  <img src="https://img.shields.io/badge/MCP-Supported-purple?style=flat-square" alt="MCP Supported" />
-  <img src="https://img.shields.io/badge/Architecture-Agentic_Framework-orange?style=flat-square" alt="Agentic Framework" />
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
-  </a>
+  <strong>From a prompt to an engineering workflow you can inspect, verify, and control.</strong>
 </p>
 
----
+<p align="center">
+  <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version 8.7.0" />
+  <img src="https://img.shields.io/badge/skills-84-brightgreen?style=flat-square" alt="84 skills" />
+  <img src="https://img.shields.io/badge/verification-local--first-24292f?style=flat-square" alt="Local-first verification" />
+  <img src="https://img.shields.io/badge/integration-MCP-7057ff?style=flat-square" alt="MCP integration" />
+</p>
 
-> **An AI harness that records failures and reuses verified lessons.** Forgewright is designed to reduce repeated failure patterns; recurrence is measured rather than assumed away.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#what-you-can-build">Use cases</a> ·
+  <a href="#whats-new">What's new</a> ·
+  <a href="#verification">Verification</a> ·
+  <a href="README.vi.md">Tiếng Việt</a>
+</p>
 
-Forgewright is an open-source engineering harness that adds evidence-gated delivery workflows around the model provider and tools you configure. It coordinates definition, building, hardening, and shipping while keeping provider-specific execution inside that provider's native ecosystem.
+**Forgewright is a local-first engineering harness for AI-assisted software delivery.** It brings task definition, specialist workflows, code intelligence, tool controls, verification, and project continuity into one repository. Use it with the model runtime and tools you configure—not a mandatory hosted service or a second model subscription.
 
----
+The difference is not a longer prompt or a larger cast of agents. It is a delivery contract: **what should change, who may change it, how it is checked, and what remains unverified.**
 
-## Roadmap and Evidence Status
+## Why Forgewright
 
-The roadmap tracks 19 historical deliverables from P0.1 through P3.4 without collapsing artifact presence into product completion. The machine-readable [completion manifest](docs/roadmap-completion.json) records implementation, integration, activation, production evidence, and measured outcome separately, with executable local verifier contracts and rollback strategies; the [active roadmap](docs/active-roadmap.md) records the current dependency order and evidence boundaries.
+| Engineering problem | What Forgewright adds |
+| --- | --- |
+| The agent writes code before understanding the task | A goal, explicit acceptance criteria, risk assessment, and the minimum safe scope. |
+| Every specialist reads the entire conversation | Compact routing, on-demand skill overlays, bounded task context, and artifact references. |
+| Parallel workers overwrite one another | Dependency-aware dispatch, explicit ownership, and isolated worktrees where configured. |
+| “Done” means the model says it is done | Project-owned checks and schema-v2 evidence tied to the command, acceptance criteria, and exact worktree. |
+| A stopped task leaves effects or processes behind | Owned process leases, cancellation, lifecycle accounting, and honest cleanup status. |
+| The next session forgets decisions | Project-scoped checkpoints and canonical documentation; retrieved memory remains context, not authority. |
 
-- Verification runs locally and does not require GitHub Actions or paid hosted CI.
-- Provider and model selection is capability-driven. The core does not require one provider, model catalog, or API.
-- Provider-native execution stays within the selected provider's own CLI or ecosystem adapter.
-- Live adaptive-routing gates P2.2–P2.5 remain disabled until that provider produces trustworthy native receipts. Fixtures, generic CLI probes, and local smoke markers cannot enable them.
-- Gemini API integration is not part of the roadmap. Antigravity CLI may be used as one optional provider-side validation instance, not as a core dependency.
+**84 skills. 24 operating modes. One delivery pipeline.** The [product manifest](product-manifest.json) and [capability inventory](docs/capability-maturity.json) keep those claims tied to the repository rather than marketing copy.
 
-Replay the complete roadmap evidence contract locally:
+## What you can build
 
-```bash
-npm run verify:roadmap
+**Web products and internal tools.** Shape a brief, define architecture and acceptance, coordinate implementation and review, and retain the decisions needed for maintenance. The [Product Factory source](mcp/src/product-factory/) includes intent, environment-adapter, outcome-verification, and release contracts.
+
+**Games and mobile projects.** Coordinate systems design, engineering, art direction, QA, performance work, and release evidence. The [Game Studio workflow](workflows/game-studio-build.md) covers concept through release; Unity, Android, and web environment adapters have local tests. Each target still needs its own build tools, devices, and production evidence.
+
+**Existing codebases.** Investigate bugs, assess refactor impact, generate tests, review security-sensitive changes, and keep documentation aligned with the code. Start with a bounded task; parallel execution is an option, not a requirement.
+
+### A practical request
+
+```text
+Add save/continue to this game.
+
+Preserve the current gameplay and existing tests.
+Define acceptance for resume, corrupt saves, and duplicate rewards.
+Inspect affected systems before editing.
+Implement the smallest safe change, run the checks, and report:
+  changed files · observed results · remaining risks · rollback
+Do not publish or deploy without approval.
 ```
 
----
+This is an example input, not a fabricated execution transcript. Actual results depend on the connected runtime, project, tools, and checks.
 
-## Continuous Project Control Center
+## How it works
 
-This release turns project documentation from scattered Markdown snapshots into
-a continuously refreshed, local-first HTML control center:
-
-- **Canonical sources stay authoritative.** Documentation governance updates an
-  existing approved source whenever possible and rejects duplicate, transient,
-  out-of-scope, generated-source, or unresolved stale documentation.
-- **HTML stays current during delivery.** Material work requires a strict
-  baseline plus persistent build before edits, a canonical-state update and
-  rebuild at each meaningful checkpoint, then a worktree gate and final build
-  before handoff.
-- **Project flows are visual.** Every flow in `docs/project-state.json` is
-  rendered as an accessible Mermaid-derived static SVG, with the Mermaid source
-  and ordered steps retained as fallbacks.
-- **Dispatch is runtime- and cost-aware.** Each request identifies the active
-  Codex, Claude Code, Antigravity, Cursor, or other runtime. Candidate subagent
-  models are compared using current first-party input/cached-input/output token
-  prices, but routing prioritizes effectiveness, wall-clock speed, total tokens,
-  then estimated token cost. Small coupled work stays parent-owned.
-- **Canonical rules stay visible without blocking work.** Provider-native
-  lifecycle hooks inject a bounded inventory plus fair excerpts for every
-  active rule in `kernel/rule-manifest.json`. They default to advisory
-  `observe`, preserve the existing Stop/security gates, and fail open on
-  missing runtimes, malformed payloads, invalid manifests, or timeouts. Set
-  `FORGEWRIGHT_RULE_HOOK_MODE=off` for the immediate kill switch.
-- **Material visual direction is evidence-grounded.** Current project/user
-  references outrank generic taste; greenfield external direction uses current
-  production/design-system Evidence Cards plus a validated Visual Basis.
-  Model training prior may suggest research hypotheses but cannot authorize
-  palette, typography, layout, motion, art style, or a causal claim about why a
-  successful product succeeded.
-
-The generated site is written to `.forgewright/docs-hub/site/`; open
-`.forgewright/docs-hub/site/index.html` for the project overview or
-`.forgewright/docs-hub/site/projects/<project-id>/flows.html` for the Mermaid
-flow control view. Generated HTML is inspectable output, never source truth.
-
-The Stop lifecycle performs only a read-only Docs Hub continuity check. Its
-default `observe` mode reports stale or missing HTML evidence as `UNVERIFIED`
-without blocking; optional `FORGEWRIGHT_DOCS_CONTINUITY_MODE=enforce` may ask
-for one refresh when a present receipt is provably stale, then always allows
-the next pass to prevent retry storms. Use `off` to disable this check.
-
-**[Read the Docs Hub Guide ➔](docs/guides/docs-hub.md)** ·
-**[Read the Pipeline Reference ➔](docs/pipeline-reference.md)**
-
----
-
-## Pipeline Flow
-
-Forgewright separates delivery phases from the runtime controls that prove and
-close a task. Small local work may compress irrelevant phases; HARD work expands
-the same boundaries.
+`INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
 ```mermaid
 flowchart LR
-    A[User request] --> H[DETECT RUNTIME<br/>surface, provider, capabilities]
-    H --> W[SHAPE WORK<br/>dependencies and bounded roles]
-    W --> Q{Independent scopes<br/>benefit from dispatch?}
-    Q -->|No| B[INTERPRET<br/>objective, acceptance, risk]
-    Q -->|Yes| P[CHECK TOKEN PRICES<br/>exact advertised models]
-    P --> R[RANK CANDIDATES<br/>effectiveness → speed → tokens → cost]
-    R --> B
-    B --> C[DEFINE<br/>minimum safe scope]
-    C --> D[BUILD<br/>ground, impact, execute]
-    D --> E[HARDEN<br/>tests, security, review]
-    E --> F[SHIP<br/>only when requested]
-    F --> G[SUSTAIN<br/>measure, handoff, rollback]
-
-    E --> V[Schema-v2 evidence<br/>exact command + exact tree]
-    V --> S[Canonical Stop gate<br/>one evidence replay]
-    S -->|valid| X[allow_stop<br/>completion verified]
-    S -->|distinct invalid within budget| R[request_retry<br/>completion unverified]
-    R --> B
-    S -->|duplicate or retry budget exhausted| U[allow_stop<br/>completion still unverified]
+    A[Request and acceptance] --> B[Scope and risk]
+    B --> C[Select context and specialists]
+    C --> D[Execute through controlled tools]
+    D --> E[Tests and independent review]
+    E --> F{Evidence supports acceptance?}
+    F -->|Yes| G[Owner-approved delivery]
+    F -->|No| H[Revise or report blocker]
+    H --> B
+    G --> I[Checkpoint and maintain]
 ```
 
-| Boundary | Machine behavior | Loop/authority limit |
-| --- | --- | --- |
-| Host compatibility | `HarnessAdapter v1` negotiates owned/native loops and `start`, `resume`, `fork`, `steer`, `interrupt`, `checkpoint` support | Unknown or unsupported lifecycle operations fail closed; provider model IDs are not part of the core contract |
-| Verification | Schema-v2 evidence binds acceptance IDs, exact argv, negative paths, output digest, and exact worktree | A Stop event replays the canonical evidence command at most once |
-| Stop re-entry | At most two distinct invalid attempts are recorded per session/turn/tree scope; identical re-entry or exhausted budget terminates the host interaction | Termination never upgrades `completion_state`; suppressed retries remain `unverified` |
-| Runtime lifecycle | MCP instances reconcile prior leases at startup and hold owner-token leases bound to PID start, PGID, parent identity, command digest, session, TTL, and version | Only the positive PID of an exact owned lease may receive TERM/KILL; dead leases close without a signal, while reused, rotated, unowned, or in-flight processes are preserved |
-| Trajectory lifecycle | The canonical MCP path opens a `forgewright-trajectory-event/v1` hash-chained ledger, accounts each tool call, persists cancellation/LIFO disposer events, and supports exact-tip writer-epoch recovery at quiescent checkpoints | Hashes detect corruption rather than authenticate same-user rewrites; timeout records `not_confirmed`, and recovery refuses active work or pending disposer callbacks rather than replaying arbitrary cleanup code |
-| Application containment | Canonical tool effects use pinned runtime/policy trust, fail-closed capability admission, contained state/filesystem paths, minimized policy subprocess environment, and deny-by-default webhook destinations | This is not a kernel sandbox; arbitrary process execution, foreign tools, same-user bypass, and kernel egress isolation remain outside the local claim |
-| Context continuity | The agent proactively checkpoints before model/effect boundaries and after tool steps; checkpoints bind project/session/tree/ledger plus optional runtime trajectory/capability state and carry replay-safe step/tool limits | Checkpoints remain context-only; mismatch, corruption, expiry, replay, or budget overrun requires a fresh start and never authorizes tools or completion |
+Clear local work stays small. Security, billing, concurrency, public contracts, and release changes require stronger checks. A worker's successful generation is not product acceptance, and stopping a retry loop never turns an unverified result into a verified one.
 
-The current local upgrade completes the Stop/replay boundary, the
-`HarnessAdapter v1` contract, MCP ownership leases, event-driven continuity,
-the H2 trajectory lifecycle and H3 application-containment gates on the
-canonical MCP path. Safe-boundary checkpoint/resume is available locally;
-offline full-loop record/replay is locally verified; live provider evidence, portable OS process isolation,
-arbitrary disposer rebinding, and fresh-evaluator handoff remain ordered work in the
-[active roadmap](docs/active-roadmap.md).
-The design choices and their primary-source evidence are recorded in the
-[harness runtime research and decision log](docs/harness-runtime-research.md).
+The [pipeline reference](docs/pipeline-reference.md) describes orchestration; the [canonical runtime ADR](docs/adr/0001-canonical-production-runtime.md) documents the implemented enforcement boundaries.
 
----
+## Quick start
 
-## Why Forgewright / Who It Is For
+### 1. Build the local tools
 
-Raw language models are only a small part of a functional AI coding agent. Without a disciplined framework, agents hallucinate, lose context, and repeat errors. Forgewright wraps AI execution in an uncompromising delivery harness designed for professional engineering teams.
-
-### Key Outcomes
-
-- **Bounds repeated failure patterns**: The kernel stops the same failed approach after two attempts, requires new evidence or escalation, and bounds invalid Stop-hook re-entry without turning an unverified task into a verified one.
-- **Project-Specific Continuity**: Material decisions, verifier results, handoffs, blockers, and terminal boundaries can write a hash-chained project/session checkpoint. SQLite-backed memory remains optional retrieval context, never project truth.
-- **Pipeline Execution**: Requests use a right-sized engineering lifecycle. Clear local work stays compact; public contracts, security, concurrency, release, and other HARD signals expand verification and review before completion is claimed.
-- **Evidence-Gated Testing**: Test and verification integrations are available where configured. They provide local evidence for the checks actually run; they do not guarantee zero escaped bugs.
-- **Local-first state**: Project memory and orchestration state are stored in the workspace by default. Prompts, code excerpts, and tool results may still be sent to the model or tool providers you configure; use a local model and local tools when data must stay on-device.
-
-### Who It Is For
-
-- **Senior Engineers** needing an intelligent rubber-duck and rapid prototyping agent.
-- **Development Teams** looking to automate repetitive boilerplate, refactoring, and test generation.
-- **QA Engineers** desiring robust autonomous integration tests.
-
-**[Read the Full Product Overview ➔](docs/product-overview.md)**
-
----
-
-## 30-Second Example
-
-Forgewright takes abstract prompts and manages the complete lifecycle autonomously.
-
-```text
-You: "Build a React login form with JWT auth"
-
-Forgewright responds:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🤔 INTERPRETING...
-   Intent: Feature request
-   Mode: Feature
-   Confidence: HIGH
-
-📋 PLANNING (Plan Quality Loop)...
-   Score: 9.5/10 ✓
-
-⚡ EXECUTING...
-   [████████████████████░░░░] 85%
-   
-   ✓ Component created (auth/LoginForm.tsx)
-   ✓ JWT middleware added
-   ✓ Unit tests written (3 passing)
-   ✓ Security audit passed
-
-✅ DONE (Score: 92/100)
-   • 4 files created
-   • All tests passing
-   • No security issues
-   • Ready for production
-
-💡 Lesson learned: JWT refresh token rotation
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-For supported, configured paths, Forgewright can create files, run configured tests, and record verifier output. Whether a particular task uses those paths depends on the selected runtime and available tools; see the [canonical-runtime ADR](docs/adr/0001-canonical-production-runtime.md).
-
----
-
-## Prerequisites and Quick Start
-
-Forgewright is designed to run locally alongside your preferred IDE and development stack. It operates primarily as a Model Context Protocol (MCP) server, integrating seamlessly into modern AI-assisted editors.
-
-### Prerequisites
-
-Please ensure the following dependencies are installed and available in your system path:
-
-- **Node.js**: v22.x or higher for supported Forgewright runtime and CLI usage; CI validates Node.js 24 LTS with a Node.js 22 compatibility lane.
-- **Git**: v2.30+ (required for repository management and history tracking).
-- **Python**: v3.11+ for the hook installer, hook doctor, and Stop runtime. On Windows, the launcher may be exposed as `python3.exe`, `python.exe`, or `py.exe`; setup resolves a supported interpreter and the native PowerShell adapter re-resolves one at hook invocation. The optional FluxMem SQLite GraphRAG memory layer alone remains compatible with Python v3.8+.
-- **Windows shell**: Git Bash from Git for Windows is required for installer and hook shell entrypoints; those entrypoints support native Windows CPython rather than requiring WSL.
-- **Supported IDE**: Cursor, Claude Desktop, or Codex CLI.
-
-On Windows, the checked-in project Codex hooks are the exception to the shell
-entrypoint rule: `.codex/config.toml` selects `command_windows`, which invokes
-`scripts/lite/codex-hook-windows.ps1` with native PowerShell from any repository
-subdirectory. Git Bash remains required for setup, doctor, and the installed
-global shell entrypoint.
-
-### Verified Install Paths for Supported IDEs
-
-For the best experience, we recommend using Forgewright in **Cursor** or **Claude Desktop** via the Model Context Protocol (MCP). The following setup flow integrates Forgewright directly into your target repository as a submodule. This allows it to track your project's unique configuration securely and persistently across different developer machines.
-
-#### Step 1: Clone Forgewright as a Git Submodule
-
-Integrating Forgewright directly into your target repository allows it to maintain a project-specific memory bank and execution context. Open your terminal, navigate to the root of your project repository, and execute the following commands:
+Use **Node.js 22+**, **Python 3.11+**, and Git. The optional Pi package requires **Node.js 22.19+**. On Windows, use Git Bash for shell-based setup and gates; native PowerShell hook support is documented in the repository.
 
 ```bash
-cd /path/to/your-project
+git clone https://github.com/buiphucminhtam/forgewright.git
+cd forgewright
+npm run ci:bootstrap
+npm run build
+npm run build:cli
+node src/cli/dist/index.js --help
+```
+
+`ci:bootstrap` installs the checked-in Node/Python verification dependencies and configures this clone's Git hooks. It does not enable Pi, start production services, or require a paid CI runner. Model calls use your chosen provider's account and usage policy.
+
+### 2. Inspect a project without a model call
+
+Replace `/path/to/your-project` with an existing local project directory:
+
+```bash
+node src/cli/dist/index.js --json init /path/to/your-project
+node src/cli/dist/index.js --json onboard /path/to/your-project
+```
+
+The CLI creates project-local metadata and records filesystem facts. Existing files are preserved unless an explicit overwrite option is used. See the [init/onboard guide](docs/guides/forge-init-onboard.md).
+
+### 3. Connect the engineering workflow
+
+For project-local adoption, add Forgewright as a Git submodule from **your project's root**:
+
+```bash
 git submodule add -b main https://github.com/buiphucminhtam/forgewright.git forgewright
 git submodule update --init --recursive
-```
-
-#### Step 2: Install and Configure GitNexus
-
-GitNexus powers Forgewright's static code intelligence and impact analysis. It allows the AI to understand the relationships between different modules in your codebase without needing to read every file into its context window.
-
-```bash
-npm install -g gitnexus
-gitnexus setup
-gitnexus analyze
-```
-
-The `analyze` step builds the initial structural graph of your project. You should re-run `gitnexus analyze` whenever you introduce significant architectural changes.
-
-#### Step 3: Run the MCP Setup Script
-
-The MCP setup script automatically configures your local environment to recognize Forgewright's capabilities. It modifies the necessary configuration files for Claude Desktop, Cursor, Antigravity, and Codex CLI.
-
-```bash
 bash forgewright/scripts/forgewright-mcp-setup.sh
 ```
 
-#### Step 4: Initialize the Required Rules and Constraints
+Review the setup script and the configuration it writes. Merge the relevant instructions from `forgewright/AGENTS.md` or `forgewright/CLAUDE.md` into existing project instructions—**do not blindly overwrite your own rules**. Reload your client, check its MCP connection, then begin with `/onboard` where the client supports project workflows.
 
-Forgewright relies on strict system prompts to maintain its behavioral constraints. You must copy these rule files to the root of your project so that your IDE's AI assistant can read them automatically upon initialization.
+Host configuration is available for Codex, Claude, Cursor, and Antigravity; capability negotiation determines what the active host actually supports. Instructions alone are not a running MCP integration. Optional GitNexus indexing and host-specific hook installation are separate setup steps; consult the [GitNexus guide](docs/guides/gitnexus.md), [installer](scripts/forgewright-install.sh), and [hook doctor](scripts/forgewright-hook-doctor.sh).
 
-```bash
-cp forgewright/AGENTS.md .
-cp forgewright/CLAUDE.md .
-```
+## What's new
 
-*Final Step:*
-You must restart your IDE completely (e.g., CMD+Q on Mac) to force it to load the newly installed MCP servers. Once the IDE has restarted, open your AI chat panel and verify the installation by running `/onboard`.
+### Optional Pi execution, under Forgewright control
 
-#### Step 5: Enable Antigravity CLI (`agy`) Enforcement
+The [Pi integration](integrations/pi/) adds an isolated worker option without replacing Hermes, the current dispatcher, or Forgewright's ownership of goals and acceptance.
 
-Every developer or CI machine that uses `agy` must install the machine-level
-Antigravity hook and the parent repository's update hooks once:
+| Upgrade | Behavior |
+| --- | --- |
+| Pinned SDK | An independent lockfile pins `@earendil-works/pi-agent-core@0.85.1`; root installation does not install the optional package. |
+| Canonical host bridge | Uses the existing model/tool gateways, containment, lifecycle coordinator, and trajectory ledger. `start()` returns a session; `wait()` owns settlement. |
+| Explicit authority | Host-owned model, account, policy, tool registry, approvals, and scope; task text cannot grant permission. |
+| Account-level budgets | One billing-account cap spans multiple workspaces. Never-dispatched reservations are released; uncertain invoked calls retain escrow. |
+| Cancellation and deadlines | Late success cannot reopen a closed attempt. Cancellation also releases undispatched reservations when a binding callback hangs. |
+| Bounded context and receipts | Preserve acceptance and current bindings; missing native usage or price remains unavailable, not zero. |
+| Evaluation and rollback controls | Paired-report comparison plus default-off, single-active-worker canary admission, kill switch, and quarantine. |
 
-```bash
-bash forgewright/scripts/forgewright-install.sh --profile minimal --yes
-bash forgewright/scripts/forgewright-hook-doctor.sh --quick --fix
-bash forgewright/scripts/lite/install-submodule-update-hooks.sh "$PWD"
-```
-
-The installer distributes the complete Stop runtime as one adjacent bundle:
-`stop-gate.sh`, `stop_gate.py`, `verify_gate.py`, `evidence_common.py`,
-`continuity_check.py`, and `windows_secure_io.py`. The Stop state lock uses the
-POSIX backend on POSIX and
-the native Windows backend on Windows. On Windows, run setup and doctor from
-Git Bash with native Windows Python 3.11 or newer.
-
-The installer adds the native named `PreToolUse` policy hook to
-`~/.gemini/config/hooks.json`. This is Antigravity CLI configuration and is
-separate from Gemini CLI's `.gemini/settings.json`. Setup and `doctor --fix`
-also seed `.forgewright/execution-policy.yaml` into the parent workspace when
-it is missing; an existing file or symlink is always preserved. The doctor
-repairs missing or drifted members of the installed Stop bundle, but a valid
-hook schema alone is not runtime evidence. Confirm both configuration and the
-actual installed entrypoint:
+**Status: experimental and default-off.** The original analysis pilot exposes zero tools. The separate host bridge permits only explicitly registered tools through canonical controls. Neither is automatically registered for production. Local SDK and integration tests do not establish a live token-saving benchmark or production canary.
 
 ```bash
-bash forgewright/scripts/forgewright-hook-doctor.sh --quick
-
-# Run the installed CODEX entrypoint from outside every Git worktree.
-(
-  set -euo pipefail
-  installed_stop="${FORGEWRIGHT_DIR:-$HOME/.forgewright}/scripts/lite/stop-gate.sh"
-  smoke_dir="$(mktemp -d)"
-  trap 'cd / && rmdir "$smoke_dir"' EXIT
-  cd "$smoke_dir"
-  unset FORGEWRIGHT_WORKSPACE
-  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    echo "Stop smoke must run outside a Git worktree" >&2
-    exit 1
-  fi
-  printf '%s\n' '{"hook_event_name":"Stop","turn_id":"installed-runtime-smoke","session_id":"installed-runtime-smoke","last_assistant_message":""}' |
-    bash "$installed_stop" --platform CODEX |
-    node -e 'const fs=require("node:fs"),assert=require("node:assert/strict"); const actual=JSON.parse(fs.readFileSync(0,"utf8")); const expected={continue:true,forgewright:{schema:"forgewright-stop-decision/v1",host_action:"allow_stop",completion_state:"verified",retry_suppressed:false,reason_code:"no_code_changes"}}; assert.deepEqual(actual,expected); console.log("installed CODEX Stop runtime: PASS")'
-)
+npm --prefix integrations/pi ci --ignore-scripts --no-audit --no-fund
+npm run build
+npm --prefix integrations/pi run test:all
 ```
 
-From PowerShell on Windows, run that Git Bash pipeline explicitly; the installed
-entrypoint resolves `python3.exe`, `python.exe`, or `py.exe` and rejects anything
-older than native Windows CPython 3.11:
+Read the [Pi architecture and P0–P6 acceptance plan](docs/adr/ADR-pi-worker-runtime.md) for provider evidence, paired measurement, activation, and rollback gates.
 
-```powershell
-$gitBash = 'C:\Program Files\Git\bin\bash.exe'
-& $gitBash -lc @'
-set -euo pipefail
-installed_stop="${FORGEWRIGHT_DIR:-$HOME/.forgewright}/scripts/lite/stop-gate.sh"
-smoke_dir="$(mktemp -d)"
-trap 'cd / && rmdir "$smoke_dir"' EXIT
-cd "$smoke_dir"
-unset FORGEWRIGHT_WORKSPACE
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "Stop smoke must run outside a Git worktree" >&2
-  exit 1
-fi
-printf '%s\n' '{"hook_event_name":"Stop","turn_id":"installed-runtime-smoke","session_id":"installed-runtime-smoke","last_assistant_message":""}' |
-  bash "$installed_stop" --platform CODEX |
-  node -e 'const fs=require("node:fs"),assert=require("node:assert/strict"); const actual=JSON.parse(fs.readFileSync(0,"utf8")); const expected={continue:true,forgewright:{schema:"forgewright-stop-decision/v1",host_action:"allow_stop",completion_state:"verified",retry_suppressed:false,reason_code:"no_code_changes"}}; assert.deepEqual(actual,expected); console.log("installed CODEX Stop runtime: PASS")'
-'@
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-```
+### Leaner context and clearer project state
 
-After this one-time setup, `post-merge` and `post-checkout` in the parent
-repository automatically check `origin/main`. When the submodule is clean and
-can be fast-forwarded, Forgewright updates it and refreshes the installed
-Antigravity hook runtime, doctor checks, and MCP configuration. Local submodule
-changes or divergent history are never overwritten. Opening `agy` itself does
-not fetch Git; the automatic update happens during the preceding parent Git
-pull, merge, or checkout.
+Progressive skill loading, compact execution summaries, stable instruction prefixes, and deterministic tooling reduce unnecessary context handling. The optional Jev routing adapter stays separately gated. Efficiency mechanisms are implemented; savings vary with the task, model, cache, and runtime and must be measured rather than assumed.
 
-Use Forgewright-managed delegation, escalation, benchmark, or parallel-dispatch
-commands whenever possible. These paths invoke the real `agy` binary with an
-explicit sandbox and mode, validate the global policy hook, and provide the
-canonical workspace through `FORGEWRIGHT_WORKSPACE`.
-
-If you intentionally invoke `agy` directly from a project root, provide the
-workspace and select a mode explicitly:
+The **Docs Hub** builds a searchable local HTML control center from approved Markdown/JSON. Project structure, roadmap, blockers, and Mermaid-derived flow views come from canonical sources—not another manually maintained dashboard.
 
 ```bash
-FORGEWRIGHT_WORKSPACE="$PWD" agy --sandbox --mode accept-edits
+node src/cli/dist/index.js docs build .
+node src/cli/dist/index.js docs doctor . --strict
 ```
 
-Current `agy 1.1.2 --print` builds may send an empty `workspacePaths` hook
-field. Without `FORGEWRIGHT_WORKSPACE`, the Forgewright hook therefore fails
-closed and can deny otherwise safe tool calls. The checked-in
-`.agents/hooks.json` is retained for project portability, but the tested runtime
-loaded the global registry; do not remove the global hook.
-
----
-
-## Four Operating Levels
-
-Forgewright adapts to the scale of your project, offering different tiers of autonomy and intelligence based on the complexity of your requirements. You can start small and progressively enable more advanced features as your project matures.
-
-| Level | Features | Setup Required | Best For |
-| --- | --- | --- | --- |
-| **Level 1**<br/>Zero Setup | Basic chat, 84 auto-activated skills | Just run your AI chat | Quick questions, single-file scripts |
-| **Level 2**<br/>Code Intelligence | `gitnexus_impact`, `gitnexus_query`, `gitnexus_rename` | `gitnexus setup` | Refactoring, code reviews, debugging |
-| **Level 3**<br/>Continuity + GraphRAG | Event-driven bounded checkpoints plus optional local retrieval context | Python 3.8+ for GraphRAG; Python 3.11+ for lifecycle hooks and Stop | Long-running projects, complex domains |
-| **Level 4**<br/>Full Power | Parallel dispatch, multi-repo support, full pipeline orchestration | MCP Setup script | Team projects, end-to-end autonomous dev |
-
-### How to Access Different Levels
-
-#### Level 1: Zero Setup
-
-By default, executing Forgewright places you in Level 1. The agent will rely primarily on its base instructions and standard conversational abilities, using standard MCP tools for basic file reads and writes.
-
-#### Level 2: Code Intelligence
-
-To utilize Level 2 Code Intelligence, ensure `gitnexus` is installed globally and your project is indexed. Whenever you ask the agent to refactor code, it will autonomously invoke the code intelligence layer (`gitnexus_impact`) before making changes.
-
-#### Level 3: GraphRAG Memory
-
-The optional GraphRAG part of Level 3 requires Python 3.8+ and can add a local
-SQLite retrieval index; lifecycle hooks and the Stop runtime require Python
-3.11+. Durable resume state is stored separately as project/session-scoped
-continuity checkpoints under `.forgewright/runtime/`; retrieved memory is
-re-grounded against current files and cannot authorize execution or
-verification.
-
-#### Level 4: Full Power
-
-Level 4 unlocks the Parallel Dispatch workflows and the complete multi-agent pipeline. It requires the MCP server to be fully configured in your IDE. At this level, the orchestrator acts as an autonomous engineering team, breaking complex tasks into sub-tasks and executing them in isolated Git worktrees.
-
----
+Open `.forgewright/docs-hub/site/index.html`. See the [Docs Hub guide](docs/guides/docs-hub.md) for multi-project registration, privacy allowlists, and Obsidian export.
 
 ## Core Capabilities
 
-Forgewright bundles advanced software engineering workflows into focused, accessible tools that run directly inside your local environment.
+The maturity labels below follow the [capability inventory](docs/capability-maturity.json): **beta** means automated local evidence, **experimental** means incomplete production evidence, and **docs-only** means a documented integration or workflow—not a supported production runtime claim.
+
+<details>
+<summary><strong>Explore all 12 capability areas</strong></summary>
 
 ### 1. Code Intelligence (GitNexus)
 
-Forgewright can use GitNexus to construct a structural graph of a supported codebase. The documented kernel requires impact analysis before symbol edits when GitNexus is available; compatibility paths and user overrides are not universally enforced. Graph queries supplement rather than eliminate text search, and incomplete or stale indexes remain an explicit evidence boundary.
-**[Read the GitNexus Guide ➔](docs/guides/gitnexus.md)**
+**Docs-only integration.** Navigate relationships and assess impact before refactoring supported codebases. Stale indexes and dynamic code remain limitations; compatibility paths and user overrides are not universally enforced. [Guide](docs/guides/gitnexus.md).
 
 ### 2. Autonomous Testing Stack
 
-Automated shifting-left test logic can integrate Property-Based Testing (PBT), mutation testing, and Appium/Maestro where configured. Behavioral test oracles are requirement-locked: a red suite or the current implementation is not authority to rewrite assertions, expected outputs, snapshots/goldens, eval labels, skips, or scenarios. When expected behavior is missing or contradictory, Forgewright must ask the user/product owner; behavioral tests change only after an explicit current requirement/acceptance change. Test-runner and setup/teardown plumbing may be repaired independently only when the behavioral oracle and coverage remain unchanged. The checks that run are recorded as evidence; this repository does not claim that every runtime writes tests first or blocks every coverage decrease.
-**[Read the Testing Stack Guide ➔](docs/guides/testing-stack.md)**
+**Beta.** Project-owned checks, property-based tests, controlled mutations, and acceptance-bound evidence. Existing behavioral oracles cannot be weakened merely to make a suite green. [Testing guide](docs/guides/testing-stack.md).
 
 ### 3. Persistent Cognitive Memory (FluxMem)
 
-Memory-enabled configurations can retain project context across sessions using local SQLite-backed storage. Retrieval and staleness targets are documented in the [active roadmap](docs/active-roadmap.md); no universal recall or latency guarantee is claimed.
-**[Read the FluxMem Guide ➔](docs/guides/fluxmem.md)**
+**Experimental.** Optional local retrieval and project context across sessions. Current files and canonical checkpoints outrank recalled material; memory never grants tool authority. [Architecture](docs/architecture.md).
 
 ### 4. Parallel Skill Dispatch
 
-Executes independent QA, Build, and Review steps concurrently across Git worktrees. This parallelization drastically reduces waiting time and token context bloat by isolating tasks to specialized sub-agents.
-**[Read the Parallel Dispatch Guide ➔](docs/guides/parallel-dispatch.md)**
+**Experimental.** Decompose genuinely independent work into owned lanes and combine checked results. Keep coupled work serial; more workers are not automatically faster or cheaper. [Pipeline](docs/pipeline-reference.md).
 
 ### 5. Multi-Project Hub
 
-A unified management dashboard for handling multiple projects simultaneously. Monitor agent states, active execution pipelines, and Git diffs across your entire organization from one unified web portal.
-**[Read the Multica Hub Guide ➔](docs/guides/multica-hub.md)**
+**Docs-only management integration.** The broader multi-project management surface remains a documented capability. The implemented Docs Hub separately provides local project registration and static source-backed views. [Docs Hub](docs/guides/docs-hub.md).
 
 ### 6. Token Tracking & Cost Analytics
 
-Track reported LLM usage, estimate API costs from configured pricing, and surface optimization opportunities. Budgets and alerts reduce runaway-loop risk, but provider billing remains authoritative and must be reconciled when usage metadata or prices are unavailable.
-
-`forge bench` now binds per-attempt usage availability, provider topology,
-resolved settings, and paired quality/cost/latency deltas while storing only
-output digests and byte counts. Local A/B receipts never claim live production
-evidence; the current live provider client must be migrated before canary and
-rollback outcomes can be certified.
-
-Lite routing also keeps deferred specialist overlays out of the startup prompt.
-The MCP catalog lists skill metadata without reading full skill bodies, and a
-bounded exact-name loader can add one routed `LITE.md` only when the active task
-materially needs it; unlisted and duplicate loads are rejected locally.
-**[Read the Token Management Guide ➔](docs/guides/token-management.md)**
+**Beta.** Track reported usage, budget reservations, and benchmark observations. Distinguish measured usage, estimates, and unavailable pricing. [ForgeBench source](src/cli/src/bench/).
 
 ### 7. MCP Tool Sandbox
 
-The Tool Sandbox (DeerFlow IV) automatically intercepts all tool output, strips ANSI colors, scans for prompt injections, and redacts credentials or secrets before they enter the model context or cache.
-**[Read the Tool Sandbox Guide ➔](docs/guides/tool-sandbox.md)**
+**Beta application controls—not OS isolation.** Canonical gateway admission, policy checks, containment, and bounded output processing. These controls are not a guarantee against every prompt injection or malicious same-user host. [Runtime contract](docs/adr/0001-canonical-production-runtime.md).
 
 ### 8. The Adaptive Self-Improving Protocol (ASIP)
 
-ASIP remains an optional legacy learning workflow. The canonical failure path is
-the kernel STUCK rule: after the same step fails twice, isolate the assumption,
-search current project evidence, research authoritative sources only when a
-knowledge gap remains, then escalate or report the blocker. Lessons and memory
-may inform that work but cannot change guardrails or completion evidence.
-**[Read the ASIP Guide ➔](docs/guides/asip.md)**
+**Experimental legacy workflow.** Retain useful lessons, but do not automatically promote them into shared rules. The canonical stuck rule stops repeated failed approaches and requires new evidence or escalation. [Kernel](AGENTS.md).
 
 ### 9. Runtime Lifecycle Guard
 
-Agent sessions start dev servers, game editors, emulators and watchers — and forget to stop them. Ports pile up, RAM climbs, build caches grow without bound. The Runtime Lifecycle Guard closes that loop machine-wide, across Claude Code, Codex and Antigravity:
-
-- **Reuse instead of respawn.** `dev-run.sh` gives each project a stable port band and hands back the running instance rather than starting a second copy.
-- **Every long-running process holds a lease.** The reaper may only ever signal a process that has one; anything it did not start is out of bounds by construction, and infrastructure ports are allowlisted at install time.
-- **Reclaim by TTL.** A throttled sweep on the `Stop` hook reclaims expired leases — including those left behind by a session that crashed.
-- **Disk budgets and artifact TTLs** report per-project footprint and age out the pipeline's own evidence files.
-- **Reversible by design.** Observe mode by default, dry-run defaults on anything destructive, and a three-tier kill switch (`FORGEWRIGHT_RLG=off`, a `DISABLED` file, a per-project opt-out).
-
-```bash
-bash scripts/runtime/dev-run.sh --role web-dev --ttl 2h -- npm run dev   # sanctioned launch
-bash scripts/runtime/runtime-inventory.sh --all                          # what is running, machine-wide
-bash scripts/runtime/runtime-reap.sh                                     # dry-run: what would be reclaimed
-bash scripts/runtime/disk-budget.sh                                      # footprint vs budget
-touch ~/.forgewright/runtime/DISABLED                                    # stop the guard, instantly
-```
-
-**[Read ADR-010 ➔](docs/adr/ADR-010-runtime-lifecycle-guard.md)**
+**Beta.** Track owned process leases, reuse eligible services, and inspect cleanup and disk budgets. Unowned processes stay outside automatic reclamation. [Lifecycle ADR](docs/adr/ADR-010-runtime-lifecycle-guard.md).
 
 ### 10. Game Studio Control Plane
 
-Game Build mode now uses a seven-phase, artifact-gated operating model from
-concept through release:
-
-```text
-Concept → Systems Design → Technical Setup → Pre-Production
-        → Production → Polish → Release & Sustain
-```
-
-- **Phase-aware handoffs:** design-ready, implementation-ready, done, playtest,
-  build, and release evidence are required only when their phase makes them
-  applicable.
-- **Dependency-driven orchestration:** work stays serial when dependent and may
-  use bounded `pipeline`, `fan-out/fan-in`, or `hierarchical` topologies only for
-  genuinely independent scopes.
-- **Capability-aware subagents:** the control plane assigns `scout`, `builder`,
-  or `expert` tiers first, then resolves an optional concrete model from the
-  active runtime's verified capabilities. Model IDs are never hard-coded.
-- **Quality-preserving fan-in:** workers have explicit path ownership, checks,
-  budgets, deadlines, and stop conditions; high-risk work and independent
-  review stay on the expert tier.
-- **Release evidence:** a shipped milestone records artifact identity,
-  checksum, publish/deployment proof, telemetry and crash-reporting smoke
-  evidence, rollback readiness, and a post-release checkpoint.
-
-Start with the
-[Game Studio workflow](workflows/game-studio-build.md) and use the
-[control-plane protocol](skills/_shared/protocols/game-studio-pipeline.md) as
-the source of truth for gates, role lanes, model-aware dispatch, and evidence.
+**Beta optional pack.** Phase-aware handoffs from concept and systems design through production, polish, and release evidence. Real builds, devices, playtests, and store approval are project-specific. [Game Studio workflow](workflows/game-studio-build.md).
 
 ### 11. Token Efficiency Engine & System-1 Routing (Jev Integration)
 
-Forgewright integrates an evidence-gated efficiency architecture designed to eliminate redundant LLM reasoning turns and context bloat while preserving 100% output quality, verification contracts, and safety guardrails:
+**Experimental.** Compact overlays, deterministic tool work, and an optional bounded routing adapter. Jev is default-off with a zero default budget; no universal quality or savings percentage is promised. [Efficiency protocol](skills/_shared/protocols/tool-efficiency.md).
 
-- **Code Execution over LLM Polling:** Replaces repetitive LLM-driven process polling and status checks with deterministic execution in scripts, returning aggregated exit codes and actionable errors instead of consuming LLM context at each step.
-- **Progressive Disclosure Skills:** Deconstructs monolithic skill documents into compact routing entries and on-demand reference recipes (`references/`), reducing skill overlay payload by up to 73%.
-- **Evidence Envelope Contract:** Returns concise execution findings, status codes, and cryptographic artifact pointers instead of dumping voluminous raw logs into the agent's context window.
-- **Stable Prefix Caching:** Structures instruction headers statically ahead of dynamic session state, maximizing OpenAI and Anthropic Prompt Cache reuse across multi-turn workflows.
-- **Optional System-1 Skill Routing (Jev Adapter):** For ambiguous tasks where local metadata matching is inconclusive, Forgewright provides an optional, default-off adapter for System-1 fast decision models (e.g. Jev / TypeSafe). Configured with strict budget limits ($0 default), pinned version enforcement (`jev-1.13.0`), and automatic fallback to local routing on timeout, error, or abstention (`NONE`/`ESCALATE`).
+### 12. Optional Pi Worker Pilot
 
----
+**Experimental.** Pinned Pi SDK, zero-tool analysis pilot, and a separate canonical host bridge with explicit budgets, cancellation, scoped context, and release gates. Production admission remains off. [Pi ADR](docs/adr/ADR-pi-worker-runtime.md).
 
-## Architecture and Safety Model
+</details>
 
-The Forgewright pipeline revolves around predictable constraint enforcement. The phases remain canonical, but execution is right-sized: irrelevant phases are skipped rather than converted into make-work.
-`INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
+## Verification
 
-### Verification and Safety Layers
-
-- **Evidence-Gated Logic**: The documented kernel workflow requires script-layer verification before a success claim. Enforcement is scoped to the declared runtime and tests in the [canonical-runtime ADR](docs/adr/0001-canonical-production-runtime.md); legacy paths are not represented as universally enforced.
-- **Bounded Stop Logic**: Stop hooks normalize host routing metadata, run one canonical evidence replay, and expose a typed verified/unverified decision. Every supported host shares the same finite retry state; duplicate invalid re-entry is suppressed without manufacturing evidence.
-- **Lifecycle Ownership**: The canonical MCP process reconciles prior leases before acquiring a new external owner-token lease and closes its lease on stdin EOF, SIGINT, or SIGTERM. Command/PID identity is rechecked under a per-lease lock; only the exact positive PID can be signaled, while dead, reused, rotated, in-flight, and unowned records fail safe.
-- **Context-Only Continuity**: Compaction/handoff checkpoints bind workspace, session, tree, ledger head, sequence, expiry, and a head-anchored prior-checkpoint hash chain. A mismatch or corruption produces an explicit fresh start.
-- **Strict Guardrails**: Middleware behavior has local unit coverage on the MCP surface. The current production construction evidence does not establish that every legacy tool path traverses it; see the [conformance matrix](docs/adr/0001-canonical-production-runtime.md#claim-to-enforcement-conformance-matrix).
-- **Execution Blockers**: When the AI encounters the same error multiple times, the orchestration kernel halts repetition and requires new evidence, a materially different approach, or escalation instead of blind retries.
-- **Weak-Model Adversarial Gate**: CI replays compliant and deliberately bad agent behaviors and requires the grader to accept all compliant cases while rejecting stale-state, phantom-symbol, fake-success, make-work, self-mutation, provider-pinning, and scope-creep violations. Live model runs are recorded separately as empirical evidence.
-- **Visual Validation**: For UI changes, verification is proportional to risk; changed visual behavior is inspected with an appropriate preview/screenshot when structural tests cannot establish appearance.
-
-**[Read the Full Architecture Document ➔](docs/architecture.md)**
-
----
-
-## Common Workflows
-
-Forgewright automates extensive routine workflows via slash commands and integrated CLI tools.
-
-### Generate a Project Profile
-
-Once setup is complete, run the onboarding workflow to establish a baseline. In your AI chat, type:
-
-```text
-/onboard
-```
-
-*Creates a `.forgewright/project-profile.json` detailing your stack, coding conventions, and existing tech debt.*
-
-For a deterministic, model-free CLI path, use `forge --json init .` followed by `forge --json onboard .`. The [CLI init/onboard golden-path guide](docs/guides/forge-init-onboard.md) documents idempotency, overwrite behavior, recorded facts, and the required under-ten-minute test.
-
-### Parallel AI Worktrees
-
-Run multiple tasks concurrently via the command line manager to speed up large refactors.
+Forgewright's evidence is executable locally. Hosted CI can mirror it, but is not required.
 
 ```bash
-bash scripts/worktree-manager.sh --parallel 4 "build,test,deploy"
+# Core checks
+npm run lint
+npm run build
+npm test
+npm run typecheck:cli
+npm run build:cli
+
+# Documentation and declared roadmap contracts
+npm run ci:docs
+npm run verify:product-truth
+npm run verify:roadmap
+
+# Complete project-owned local pipeline
+npm run ci:local
 ```
 
-### Check Quality Gate Status
+Run optional Pi tests separately with the commands above; they include contract checks, real-SDK runtime checks, and owner-gated workflows in separate Node processes. `python3 scripts/ci/verify-readme.py` checks both front pages and runs the documented init/onboard commands in a disposable project without a model call. The [roadmap completion manifest](docs/roadmap-completion.json) separates **implementation, integration, activation, production evidence, and measured outcome**. A passing unit suite, a signed commit, and an accepted product outcome are different things.
 
-Score your repository health locally before committing changes to the main branch.
+### Trust boundaries
 
-```bash
-bash scripts/forge-validate.sh
-```
+The core is provider-neutral; execution stays within the selected provider's configured ecosystem. Local-first does not mean all data stays on-device: a remote model may receive prompts, selected code, and tool results. Use an appropriate local runtime when that is required.
 
-### Build the Local Docs Hub
+Tool containment is application-level, not a kernel sandbox. Trusted host callbacks retain host privileges. Hash-bound evidence detects mismatches; it does not authenticate against a same-user attacker. Production Pi activation, live adaptive routing, and arbitrary autonomous process execution require their separate gates. See [security guidance](SECURITY.md) and the [active roadmap](docs/active-roadmap.md).
 
-Create a privacy-safe manifest, register projects, and maintain a searchable
-static HTML/CSS control center without moving source documents. Initialization
-is one-time; the remaining commands are the continuous lifecycle for material
-project work.
+## Documentation
 
-```bash
-# One-time initialization
-forge docs init .
-forge docs registry add .
+| Start here | Purpose |
+| --- | --- |
+| [Product overview](docs/product-overview.md) | Scope, delivery model, and product direction. |
+| [Architecture](docs/architecture.md) / [pipeline reference](docs/pipeline-reference.md) | Components, ownership, and execution flow. |
+| [Quickstart details](docs/guides/forge-init-onboard.md) | Deterministic initialization and onboarding. |
+| [Docs Hub](docs/guides/docs-hub.md) | Source-backed local documentation and project views. |
+| [Visual grounding](skills/_shared/protocols/visual-grounding.md) | Design direction based on inspected references and evidence. |
+| [Game Studio](workflows/game-studio-build.md) | Game-production phases and handoff requirements. |
+| [Pi integration](docs/adr/ADR-pi-worker-runtime.md) | Optional worker architecture, limits, and rollout gates. |
+| [Capability inventory](docs/capability-maturity.json) / [active roadmap](docs/active-roadmap.md) | What exists, its maturity, and what remains open. |
+| [Changelog](CHANGELOG.md) | Maintained change history. |
 
-# Baseline before the first material edit
-forge docs doctor . --strict
-forge docs build .
+## Contributing and support
 
-# After each meaningful checkpoint, update canonical docs/project-state first
-forge docs build .
+Bring a concrete problem, a bounded change, and the checks that demonstrate it. Preserve existing behavioral tests; include a failing reproduction for a fix, update the canonical documentation, and run the local gates before opening a pull request. Do not commit generated runtime evidence, credentials, or personal workspace state.
 
-# Final handoff
-forge docs gate . --worktree
-forge docs build .
-```
+Use [GitHub issues](https://github.com/buiphucminhtam/forgewright/issues) for reproducible bugs and proposals. Security reports follow [SECURITY.md](SECURITY.md). Package-specific licensing is declared in the relevant package metadata, including [the CLI's MIT declaration](src/cli/package.json); review those declarations and upstream dependency licenses before redistribution.
 
-Use `forge docs build --all` for every registered project and
-`forge docs export obsidian --all` when an optional Obsidian vault is needed.
-The older `forgewright-wiki-sync*.sh` entry points remain legacy compatibility
-tools; new workflows should use the source-preserving Docs Hub.
-For material changes, `forge docs gate` is mandatory; it verifies the
-project-owned Markdown/JSON and canonical project state before accepting
-generated HTML/CSS output. The final persistent build ensures the user-facing
-portal matches the sources that passed the gate. Project flows are rendered as
-Mermaid-derived static SVG and remain readable without client-side JavaScript.
-
-**[Read the Docs Hub Guide ➔](docs/guides/docs-hub.md)**
-
-### Analyze Token Budget
-
-Review your LLM expenditures and current usage limits.
-
-```bash
-forge token report --period week
-```
-
----
-
-## Troubleshooting and FAQ
-
-### MCP server not responding in Cursor/Claude
-
-- Restart your IDE completely. Ensure no background zombie node processes are locking the socket.
-- Run `bash scripts/forgewright-mcp-setup.sh --force` to regenerate configuration files.
-- Verify Node v22+ is installed via `node -v` and accessible in your default path.
-
-### The GitNexus index is stale / Impact analysis fails
-
-- Run `gitnexus analyze` manually in your terminal to refresh the static index, then retry the command in your IDE.
-
-### How do I disable automatic memory persistence?
-
-- Message/tool counts do not create automatic checkpoints. Avoid the explicit
-  `memory-middleware.py checkpoint` command to keep continuity disabled for a
-  session. Optional SQLite retrieval data can be managed with
-  `scripts/memory/memory-hygiene.sh`; do not delete project state without first
-  reviewing the exact target.
-
-### The Orchestrator is stuck in a loop trying to fix a bug
-
-- The kernel must stop the same approach after two failures. Ask for the exact
-  failed command and current evidence if that boundary was missed. Stop-hook
-  re-entry itself is capped: repeated invalid payloads may allow the host to
-  stop, but the machine state remains explicitly unverified.
-
-### Dependencies missing during parallel execution
-
-- Ensure you have executed `npm install` inside the root workspace and that `.gitignore` permits sharing `node_modules` via symlink in the worktree configuration.
-
-**[See Full Troubleshooting Guide ➔](docs/troubleshooting/common-issues.md)**
-
----
-
-## Documentation Map
-
-- **[Product Overview](docs/product-overview.md)**: Product capabilities and long-term vision.
-- **[Architecture](docs/architecture.md)**: Deep dive into the orchestrator pipeline and safety model.
-- **[Active Roadmap](docs/active-roadmap.md)**: Upcoming features and planned upgrades.
-- **[Script Catalog](docs/reference/script-catalog.md)**: List of available utility scripts.
-- **[Protocol Catalog](docs/reference/protocol-catalog.md)**: Standardized interaction models and constraints.
-- **[Security Practices](.forgewright/security/README.md)**: Security scanner and vulnerability detection.
-- **[Advanced Guides](docs/guides/gitnexus.md)**: Detailed instructions for GitNexus, parallel dispatch, and testing.
-- **[ADR-010: Runtime Lifecycle Guard](docs/adr/ADR-010-runtime-lifecycle-guard.md)**: Port/process/disk reclamation across Claude, Codex and Antigravity.
-- **[Docs Hub](docs/guides/docs-hub.md)**: Multi-project static documentation, search, diagnostics, traceability, and Obsidian export.
-- **[ADR-011: Central Docs Hub](docs/adr/ADR-011-central-docs-hub.md)**: Source ownership, privacy, normalization, and rendering boundaries.
-- **[Changelog](CHANGELOG.md)**: Release history.
-
----
-
-## Contributing, Support, License
-
-**Contributing:**
-
-We welcome contributions! Please check the [good first issues](https://github.com/buiphucminhtam/forgewright/issues) and read the contributor guidelines.
-
-1. Fork the repo and create a branch.
-2. Commit your changes via `git commit -m 'feat: description'`.
-3. Open a Pull Request for review.
-
-**Support & Analytics:**
-
-If Forgewright has accelerated your workflow or saved your team time, consider supporting the project:
-
-<p align="left">
-  <img src="assets/donate/give-me-a-coffee-international.png" width="200" alt="Buy Me a Coffee" />
-</p>
-
-**License:**
-
-Forgewright is released under the [MIT License](https://opensource.org/licenses/MIT).
-
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
-<!-- padding -->
+**Build with more leverage. Ship with evidence.**
