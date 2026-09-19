@@ -49,14 +49,22 @@ function bounded(value, fallback, maximum) {
   return selected;
 }
 
+function validAcceptance(items) {
+  if (!Array.isArray(items) || items.length < 1 || items.length > 64) return false;
+  // Array#some skips holes; every AC must be an explicit non-empty string.
+  for (let index = 0; index < items.length; index += 1) {
+    if (!Object.hasOwn(items, index) || typeof items[index] !== 'string' || !items[index].trim()) return false;
+  }
+  return true;
+}
+
 function validateTask(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new PiWorkerError('pi_invalid_task');
   const allowed = new Set(['taskId', 'objective', 'acceptance', 'context']);
   if (Object.keys(input).some((key) => !allowed.has(key)) ||
       typeof input.taskId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(input.taskId) ||
       typeof input.objective !== 'string' || !input.objective.trim() ||
-      !Array.isArray(input.acceptance) || input.acceptance.length < 1 || input.acceptance.length > 64 ||
-      input.acceptance.some((item) => typeof item !== 'string' || !item.trim()) ||
+      !validAcceptance(input.acceptance) ||
       (input.context !== undefined && typeof input.context !== 'string')) {
     throw new PiWorkerError('pi_invalid_task');
   }
@@ -149,6 +157,8 @@ export function createPiWorkerAdapter(config = {}) {
           beforeToolCall: async () => ({ block: true, reason: 'pi_pilot_tools_disabled', terminate: true }),
           streamFn: (...args) => {
             if (interruption) throw interruption;
+            // Retained SDK callbacks lose admission when this attempt closes.
+            if (!running || settled) throw new PiWorkerError('pi_adapter_consumed');
             if (modelCalls >= limits.modelCalls) {
               stop('pi_model_budget_exceeded');
               throw interruption;
@@ -159,7 +169,7 @@ export function createPiWorkerAdapter(config = {}) {
         });
         if (interruption) { agent.abort(); throw interruption; }
         unsubscribe = agent.subscribe((event) => {
-          if (interruption || event?.type !== 'message_end' || event.message?.role !== 'assistant') return;
+          if (!running || settled || interruption || event?.type !== 'message_end' || event.message?.role !== 'assistant') return;
           if (['error', 'aborted'].includes(event.message.stopReason)) {
             stop(event.message.stopReason === 'aborted' ? 'pi_interrupted' : 'pi_execution_failed');
             return;
