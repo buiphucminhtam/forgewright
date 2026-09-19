@@ -60,8 +60,10 @@ normal root installation and canonical runtime registration are unchanged.
 
 The trusted host must supply `enabled: true`, its system policy, selected model,
 and `streamFn`. These are not accepted inside task data. A task contains only
-`taskId`, `objective`, `acceptance`, and optional supplied `context`. Fresh
-messages and an empty tool set are constructed for every adapter instance.
+`taskId`, `objective`, `acceptance`, and optional supplied `context`. Acceptance
+must contain 1-64 explicit non-empty strings; sparse or missing entries are
+rejected before SDK loading, not serialized into null criteria. Fresh messages
+and an empty tool set are constructed for every adapter instance.
 There is no filesystem reader: analysis uses only the supplied context.
 
 The adapter advertises `native-host-loop` with `start` and `interrupt` only.
@@ -79,7 +81,10 @@ be non-secret correlation IDs supplied by the host.
 | Model invocations | 1 | 4 | Calls through the supplied stream callback; provider-internal retries are not counted |
 | Attempt deadline | 60 seconds | 120 seconds | Includes SDK loading; timeout requests abort, not forced process termination |
 
-An instance cannot overlap tasks or be reused for replay. Timeout/interruption
+An instance cannot overlap tasks or be reused for replay. Retained stream
+callbacks lose admission after successful or failed settlement; retained
+message callbacks cannot mutate settled output or telemetry. This is a local
+callback gate, not proof that a remote provider has stopped. Timeout/interruption
 remain terminal even if a late SDK call finishes. `quiescence` reports whether
 the adapter's SDK promise settled; it is not proof of remote provider shutdown,
 OS isolation, or zero further billing. Non-cooperative work is not automatically
@@ -131,9 +136,11 @@ activation, without overwriting another lane's goal.
 - Keep the package default-off with no canonical dispatch registration.
 - Verify strict input, host-owned configuration, no tools, one-shot lifecycle,
   bounded attempts, redacted errors, cancellation and unavailable usage.
-- Run the checked-in PI-01 through PI-20 tests; bind their exact file/command
-  hashes. Repeat against the real pinned SDK with a deterministic test stream
-  on supported Node, then validate real `HarnessAdapter` negotiation.
+- Run the checked-in PI-01 through PI-24 tests; bind their exact file/command
+  hashes. PI-21 through PI-24 preserve the existing strict-AC and one-shot
+  requirements, including sparse entries and retained callbacks after success
+  or failure. Repeat against the real pinned SDK with a deterministic test
+  stream on supported Node, then validate real `HarnessAdapter` negotiation.
 - Generate and review the isolated dependency lockfile on the target; perform
   clean install with lifecycle scripts disabled. No root dependency churn.
 - **Exit:** fixture, real-SDK and target-host conformance are separately proven.
