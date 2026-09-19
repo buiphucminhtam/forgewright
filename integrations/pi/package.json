@@ -5,6 +5,11 @@
   "type": "module",
   "description": "Optional analysis-only Pi pilot; not a canonical production worker",
   "engines": { "node": ">=22.19.0" },
-  "scripts": { "test": "node --test adapter.test.mjs" },
+  "scripts": {
+    "test": "node --test adapter.test.mjs",
+    "test:sdk": "node --test sdk.test.mjs",
+    "test:host": "node --test harness.test.mjs",
+    "test:all": "node --test adapter.test.mjs sdk.test.mjs harness.test.mjs"
+  },
   "dependencies": { "@earendil-works/pi-agent-core": "0.85.1" }
 }

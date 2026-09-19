@@ -457,6 +457,22 @@
           "anchor": "product-factory-upgrade-program"
         }
       ]
+    },
+    {
+      "id": "pi-worker-runtime",
+      "title": "Add an optional Pi worker behind the canonical HarnessAdapter; keep activation evidence-gated",
+      "status": "in_progress",
+      "priority": "high",
+      "owner": "Runtime maintainers",
+      "target_date": null,
+      "depends_on": [
+        "harness-host-contract"
+      ],
+      "references": [
+        {
+          "path": "docs/adr/ADR-pi-worker-runtime.md"
+        }
+      ]
     }
   ],
   "flows": [
@@ -1257,8 +1273,8 @@
     "lifecycle": "active",
     "health": "at_risk",
     "phase": "BUILD",
-    "summary": "PF6 is administratively done at the owner's request on 2026-09-05: local implementation/conformance exists, but production OS-isolation verification remains deferred and UNVERIFIED. This roadmap closure does not waive production exit criteria or authorize activation; reopen PF6 before arbitrary child-process or production autonomy. PF6 completion axes remain integration=partial, activation=not-enabled, production_evidence=missing and outcome=partially-met. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds, trusted learning/isolation authority and independent exact-tree review remain missing. Mac native verification, including actual Chromium, and all 33 roadmap verifiers pass. Windows hook entrypoints, MCP runtime and real-browser tests pass; focused re-verification confirms native Node/npm execution, bounded structural CLI ingestion and MCP lint/format portability. Native permissions stay unchanged and file-symlink tests remain capability-scoped. Per-host run evidence is retained under .forgewright/reports/cross-platform-20260905. Source synchronization does not activate shared runtimes, submodules, another project or production. Shared-host test execution is capped at two isolated fork workers, and operation-timeout fixtures wait for actual startup; production deadlines are unchanged. Independent source-integration verification on Mac mini passes all seven native-platform checks, including real Chromium, and a fresh Windows focused run passes 50 lifecycle, guardrail and release-contract tests. The production dependency audit initially rejected fast-uri 3.1.5; root and standalone MCP pins/lockfiles now use fast-uri 3.1.7 and qs 6.16.0, and both production dependency audits report zero vulnerabilities. This is bounded source-integration evidence, not a complete independent production-release approval. The first full precommit run reported one failure in the nested PF2 serialization/recovery test (759 Python tests passed and 11 skipped); its historical scheduler state was not recorded. A controlled 80 ms host pause before the fixture's 2 ms timer reproduces the same PASS assertion failure against the unchanged 50 ms operation deadline. The serialization fixture now uses explicit adapter-start/release barriers, retaining all previous assertions and adding a pending-overlap check. The unchanged reproduction command and all 64 PF2 adapter tests pass after the fix. Production source, deadlines, timeout/quarantine checks and requirements remain unchanged; this repairs the demonstrated fixture race without claiming to reconstruct the historical scheduler state. FW-CODEX-EFF-20260913 (amendment EFF-20260918) token efficiency and optional Jev routing adapter integrated: scripts/runtime/jev_adapter.py added with default-off, budget limit, pinned version, and fallback; skill_routing.py integrated with candidate routing; overhead measured (-38.1% instruction payload, -73.8% skill overlays); pilot benchmark verified 63.2% token reduction; 7 unit tests pass.",
-    "updated_at": "2026-09-18T03:00:07.144Z",
+    "summary": "PF6 is administratively done at the owner's request on 2026-09-05: local implementation/conformance exists, but production OS-isolation verification remains deferred and UNVERIFIED. This roadmap closure does not waive production exit criteria or authorize activation; reopen PF6 before arbitrary child-process or production autonomy. PF6 completion axes remain integration=partial, activation=not-enabled, production_evidence=missing and outcome=partially-met. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds, trusted learning/isolation authority and independent exact-tree review remain missing. Mac native verification, including actual Chromium, and all 33 roadmap verifiers pass. Windows hook entrypoints, MCP runtime and real-browser tests pass; focused re-verification confirms native Node/npm execution, bounded structural CLI ingestion and MCP lint/format portability. Native permissions stay unchanged and file-symlink tests remain capability-scoped. Per-host run evidence is retained under .forgewright/reports/cross-platform-20260905. Source synchronization does not activate shared runtimes, submodules, another project or production. Shared-host test execution is capped at two isolated fork workers, and operation-timeout fixtures wait for actual startup; production deadlines are unchanged. Independent source-integration verification on Mac mini passes all seven native-platform checks, including real Chromium, and a fresh Windows focused run passes 50 lifecycle, guardrail and release-contract tests. The production dependency audit initially rejected fast-uri 3.1.5; root and standalone MCP pins/lockfiles now use fast-uri 3.1.7 and qs 6.16.0, and both production dependency audits report zero vulnerabilities. This is bounded source-integration evidence, not a complete independent production-release approval. The first full precommit run reported one failure in the nested PF2 serialization/recovery test (759 Python tests passed and 11 skipped); its historical scheduler state was not recorded. A controlled 80 ms host pause before the fixture's 2 ms timer reproduces the same PASS assertion failure against the unchanged 50 ms operation deadline. The serialization fixture now uses explicit adapter-start/release barriers, retaining all previous assertions and adding a pending-overlap check. The unchanged reproduction command and all 64 PF2 adapter tests pass after the fix. Production source, deadlines, timeout/quarantine checks and requirements remain unchanged; this repairs the demonstrated fixture race without claiming to reconstruct the historical scheduler state. FW-CODEX-EFF-20260913 (amendment EFF-20260918) token efficiency and optional Jev routing adapter integrated: scripts/runtime/jev_adapter.py added with default-off, budget limit, pinned version, and fallback; skill_routing.py integrated with candidate routing; overhead measured (-38.1% instruction payload, -73.8% skill overlays); pilot benchmark verified 63.2% token reduction; 7 unit tests pass. FW-PI-WORKER-20260919 is in progress on an isolated Mac mini worktree. The optional SDK is pinned with an independent lockfile; 24 unchanged fixture tests, 20 actual-SDK deterministic transport tests and four canonical host-negotiation tests pass on Node 22.22.0. MCP build and 534 tests pass; strict Docs Hub baseline links were repaired without widening the privacy allowlist. This is bounded P0/P1 conformance only: canonical provider/tool dispatch, live receipts, scheduler integration, paired benefit measurement and independent exact-tree approval remain unverified. Pi remains default-off, analysis-only and unregistered; no existing runtime or goal was replaced. The README capability inventory explicitly records Pi and the pre-existing Jev integration as experimental; this repairs P0 maturity-coverage drift without promoting production claims or altering existing test oracles.",
+    "updated_at": "2026-09-19T05:49:59.002Z",
     "blockers": [
       {
         "id": "pf7-independent-final-tree-review",
@@ -1317,6 +1333,12 @@
         "title": "Paired live visual perception passes on two Codex models, but image-generation aesthetics and non-Codex multimodal surfaces remain unverified.",
         "owner": "Orchestration maintainers",
         "mitigation": "Keep selection capability-probed, fix AGY hook payload compatibility and provider authentication separately, then run the same visual contract on a harder gameplay frame and an image-generation task before claiming broad production visual quality."
+      },
+      {
+        "id": "pi-worker-live-boundary",
+        "title": "Installed-SDK and host-negotiation tests do not certify live-provider behavior, effect admission, scheduler compatibility or independent production acceptance.",
+        "owner": "Runtime and security maintainers",
+        "mitigation": "Keep Pi unregistered with zero tools; bind canonical gateways and receipts in P2/P4, independently review the final tree and require paired evidence plus an explicit canary decision before activation."
       }
     ],
     "next_actions": [
@@ -1348,6 +1370,12 @@
         "id": "pf-production-authority",
         "title": "Review trusted benchmark/gate and learning authority, durable replay/recovery, canary and rollback evidence before allowing production activation or shared learning promotion.",
         "owner": "Release and learning maintainers",
+        "due_date": null
+      },
+      {
+        "id": "pi-worker-integration-gates",
+        "title": "Close reproducible P0/P1 baseline and independent conformance review, then implement P2 canonical model/tool/lifecycle bindings; keep the P0-P6 sequence, default-off admission and no-live-spend baseline.",
+        "owner": "Runtime maintainers / independent reviewer",
         "due_date": null
       }
     ],

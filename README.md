@@ -536,7 +536,7 @@ Pi is an optional execution adapter, not a replacement for Forgewright or
 Hermes. Goals, provider selection, memory, approvals, tool policy and completion
 verification remain with the existing control plane.
 
-The isolated `integrations/pi/` pilot is **default-off and analysis-only**. It
+The isolated `integrations/pi/` pilot is **experimental, default-off and analysis-only**. It
 uses the `HarnessAdapter v1` shape, accepts a bounded task/context, exposes no
 tools, and advertises only start/interrupt. It is not registered on the
 canonical runtime. Every result remains `completion_state: unverified` until
@@ -547,11 +547,23 @@ Forgewright's independent verification accepts the actual outcome.
 node --test integrations/pi/adapter.test.mjs
 ```
 
-The real SDK candidate requires Node >=22.19.0; its installation, dependency
-lock, target-host conformance and live provider evidence must pass separately.
-Token/cost/latency improvements are hypotheses until paired benchmarks prove
-them. No full-runtime replacement, new durable store or automatic provider
-fallback is enabled.
+The real SDK is pinned to `@earendil-works/pi-agent-core@0.85.1` with an
+isolated transitive lockfile and requires Node >=22.19.0. Its actual agent loop
+and the built canonical host negotiator have separate deterministic tests:
+
+```bash
+npm --prefix integrations/pi ci --ignore-scripts --no-audit --no-fund
+npm run build
+npm --prefix integrations/pi run test:all
+```
+
+These tests retain the 24 original adapter contracts and add 20 installed-SDK
+and four canonical host-negotiation contracts. They use a deterministic
+transport, not a live model. Passing them does not enable dispatch, prove
+native usage/cost, or complete independent production review. Token/cost/latency
+improvements remain hypotheses until paired benchmarks prove them. No
+full-runtime replacement, new durable store or automatic provider fallback is
+enabled.
 
 **[Pi architecture and gated implementation plan ➔](docs/adr/ADR-pi-worker-runtime.md)**
 

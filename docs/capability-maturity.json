@@ -117,6 +117,38 @@
         "tests/unit_tests/test_game_studio_pipeline.py",
         "tests/unit_tests/test_parallel_dispatch_runner.py"
       ]
+    },
+    {
+      "id": "token-efficiency-system1-routing",
+      "readme_heading": "Token Efficiency Engine & System-1 Routing (Jev Integration)",
+      "maturity": "experimental",
+      "placement": "core",
+      "evidence": [
+        "skills/_shared/protocols/tool-efficiency.md",
+        "scripts/runtime/jev_adapter.py",
+        "tests/unit_tests/test_jev_adapter.py"
+      ],
+      "verification_command": "pytest -q tests/unit_tests/test_jev_adapter.py",
+      "limitations": "The Jev adapter is optional. This inventory entry does not certify live-provider routing, measured token savings or hosted production readiness."
+    },
+    {
+      "id": "pi-worker-pilot",
+      "readme_heading": "Optional Pi Worker Pilot",
+      "maturity": "experimental",
+      "placement": "optional-pack",
+      "evidence": [
+        "docs/adr/ADR-pi-worker-runtime.md",
+        "integrations/pi/adapter.mjs",
+        "integrations/pi/adapter.test.mjs",
+        "integrations/pi/sdk.test.mjs",
+        "integrations/pi/harness.test.mjs"
+      ],
+      "verification_command": "node --test integrations/pi/adapter.test.mjs integrations/pi/sdk.test.mjs integrations/pi/harness.test.mjs",
+      "verification_prerequisites": [
+        "npm --prefix integrations/pi ci --ignore-scripts --no-audit --no-fund",
+        "npm run build"
+      ],
+      "limitations": "Default-off, analysis-only, zero tools and not registered for canonical dispatch. The installed SDK uses deterministic test transport; native usage, independent production review and measured benefit remain unverified."
     }
   ],
   "optional_packs": [

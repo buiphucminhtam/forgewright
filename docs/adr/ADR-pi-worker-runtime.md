@@ -13,8 +13,8 @@ canonical: true
 
 Add Pi as an optional worker behind the existing `HarnessAdapter v1`, not as
 another orchestrator. This is an additive Layer 5 decision under the existing
-[architecture](../architecture.md) and
-[canonical-runtime ADR](0001-canonical-production-runtime.md). The
+[architecture](https://github.com/buiphucminhtam/forgewright/blob/0d835e28740f112c5c3737345d8d0404becd0d1f/docs/architecture.md) and
+[canonical-runtime ADR](https://github.com/buiphucminhtam/forgewright/blob/0d835e28740f112c5c3737345d8d0404becd0d1f/docs/adr/0001-canonical-production-runtime.md). The
 [provider-native policy](../active-roadmap.md#provider-native-routing-policy),
 canonical tool/model gateways, requirement-locked tests, schema-v2 verification,
 Stop gates, process ownership, and context-only continuity remain authoritative.
@@ -92,13 +92,22 @@ retried. Every result retains `completion_state: unverified`.
 
 ### Dependency and trust boundary
 
-The inspected upstream source candidate is
-`@earendil-works/pi-agent-core@0.85.1`, whose manifest requires Node >=22.19.0.
-The loader checks Node and the direct package version before loading `Agent`.
-This is a **source candidate**, not evidence that npm installation or runtime
-compatibility has passed. Registry availability, exact transitive lockfile,
-integrity, license/audit results, and clean installation must be verified on the
-target before a live call. Do not silently substitute `latest`.
+The isolated package pins `@earendil-works/pi-agent-core@0.85.1`, whose
+manifest requires Node >=22.19.0. The loader checks Node and the direct package
+version before loading `Agent`. `integrations/pi/package-lock.json` pins the
+transitive graph and registry integrity values independently of the root
+workspaces; install it with `npm ci --ignore-scripts`, never substitute `latest`.
+
+The registry's published `gitHead` is
+`d981de1229ef899957bbe968bc8dcda02a21f477`; the immutable package manifest at
+that revision agrees with the installed version, Node requirement, MIT license
+and direct dependencies. The core tarball integrity recorded in the lock is
+`sha512-hIXIP3eAWueAYiAl8aMvWCvvZ8Q5gT3Dip5bE5uJyIGh4+YlWRjtMLI4BaeoXoSs93zndjue61u1B/vhefLnuA==`.
+Clean installation, actual SDK import and deterministic stream conformance
+have been exercised on the isolated Mac arm64 worktree with Node 22.22.0.
+This is not a live-provider, remote-cancellation or production certification.
+Rerun the dependency audit on the candidate lock before promotion; a clean
+advisory scan does not establish absence of vulnerabilities.
 
 The core package itself depends on Pi AI, telemetry and Chord. Therefore neither
 small footprint nor reduced token use is assumed. `pi-coding-agent`, extensions,
@@ -139,8 +148,11 @@ activation, without overwriting another lane's goal.
 - Run the checked-in PI-01 through PI-24 tests; bind their exact file/command
   hashes. PI-21 through PI-24 preserve the existing strict-AC and one-shot
   requirements, including sparse entries and retained callbacks after success
-  or failure. Repeat against the real pinned SDK with a deterministic test
-  stream on supported Node, then validate real `HarnessAdapter` negotiation.
+  or failure. Exercise the corresponding runtime boundaries through
+  `sdk.test.mjs` against the real pinned `Agent` and a deterministic transport,
+  then use `harness.test.mjs` to validate the actual built Forgewright
+  `HarnessAdapter` negotiator. Keep these evidence tiers separate: the SDK
+  suite does not replace the original fixture tests or certify live providers.
 - Generate and review the isolated dependency lockfile on the target; perform
   clean install with lifecycle scripts disabled. No root dependency churn.
 - **Exit:** fixture, real-SDK and target-host conformance are separately proven.
@@ -225,6 +237,25 @@ node --check integrations/pi/adapter.mjs
 node --test integrations/pi/adapter.test.mjs
 ```
 
+Real installed SDK and canonical host-contract conformance, without an API key:
+
+```bash
+npm --prefix integrations/pi ci --ignore-scripts --no-audit --no-fund
+npm run build
+npm --prefix integrations/pi run test:all
+npm --prefix integrations/pi audit --omit=dev
+```
+
+`test:all` retains the 24 fixture contracts and adds 20 actual-SDK transport
+contracts plus four canonical host-negotiation contracts. The SDK suite mocks
+only transport output; the installed agent loop, event handling and abort path
+execute normally. Its synthetic usage is intentionally not promoted into
+native billing evidence. A test-local fetch rejection is an accidental-network
+tripwire, not a general OS or network sandbox. Host negotiation does not
+register or enable the worker, and does not resolve scheduler start/wait
+semantics. The runtime source and original fixture oracles are unchanged by
+these conformance additions.
+
 On the target checkout, use the existing configured toolchain and gates:
 
 ```bash
@@ -239,18 +270,22 @@ Use the established Docs Hub lifecycle (`forge docs doctor . --strict`,
 the **base-to-head changeset** during PR review; a clean checkout's worktree-only
 gate is not evidence that the committed PR diff was checked.
 
-Offline fake-Agent tests prove adapter logic only. They do not prove actual SDK
-compatibility, target Mac execution, canonical integration, provider usage,
-sandboxing, throughput, cost savings, or independent approval. Current runtime
-blockers and exact next actions belong in the PR, not a fabricated PASS record.
+Offline fake-Agent tests prove adapter logic only. The separate installed-SDK
+and built-host tests add deterministic compatibility evidence on the tested
+Mac/Node version; they do not prove canonical dispatch integration, native
+provider usage, sandboxing, throughput, cost savings, scheduler compatibility
+or independent approval. Current runtime blockers and exact next actions
+belong in canonical project-state and the PR, not a fabricated PASS record.
 
 ## Primary sources
 
 - [Pi repository and permission model](https://github.com/earendil-works/pi)
-- [Agent package manifest](https://github.com/earendil-works/pi/blob/main/packages/agent/package.json)
-- [Agent API and implementation](https://github.com/earendil-works/pi/blob/main/packages/agent/src/agent.ts)
-- [Forgewright HarnessAdapter contract](../../mcp/src/runtime/harness-adapter.ts)
+- [Pinned agent package manifest](https://github.com/earendil-works/pi/blob/d981de1229ef899957bbe968bc8dcda02a21f477/packages/agent/package.json)
+- [Pinned agent API and implementation](https://github.com/earendil-works/pi/blob/d981de1229ef899957bbe968bc8dcda02a21f477/packages/agent/src/agent.ts)
+- [Forgewright HarnessAdapter contract](https://github.com/buiphucminhtam/forgewright/blob/0d835e28740f112c5c3737345d8d0404becd0d1f/mcp/src/runtime/harness-adapter.ts)
 - [Documentation governance](../../skills/_shared/protocols/documentation-governance.md)
 
-Upstream links are moving references. Re-read and bind an immutable upstream
-revision plus installed lockfile/integrity before certifying the actual SDK.
+The repository overview is a moving reference; the package/API references are
+bound to the published immutable revision above. A dependency upgrade requires
+reviewing the new revision and lockfile, then repeating target conformance and
+audit before any later activation decision.
