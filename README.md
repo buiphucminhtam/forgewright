@@ -530,6 +530,31 @@ Forgewright integrates an evidence-gated efficiency architecture designed to eli
 - **Stable Prefix Caching:** Structures instruction headers statically ahead of dynamic session state, maximizing OpenAI and Anthropic Prompt Cache reuse across multi-turn workflows.
 - **Optional System-1 Skill Routing (Jev Adapter):** For ambiguous tasks where local metadata matching is inconclusive, Forgewright provides an optional, default-off adapter for System-1 fast decision models (e.g. Jev / TypeSafe). Configured with strict budget limits ($0 default), pinned version enforcement (`jev-1.13.0`), and automatic fallback to local routing on timeout, error, or abstention (`NONE`/`ESCALATE`).
 
+### 12. Optional Pi Worker Pilot
+
+Pi is an optional execution adapter, not a replacement for Forgewright or
+Hermes. Goals, provider selection, memory, approvals, tool policy and completion
+verification remain with the existing control plane.
+
+The isolated `integrations/pi/` pilot is **default-off and analysis-only**. It
+uses the `HarnessAdapter v1` shape, accepts a bounded task/context, exposes no
+tools, and advertises only start/interrupt. It is not registered on the
+canonical runtime. Every result remains `completion_state: unverified` until
+Forgewright's independent verification accepts the actual outcome.
+
+```bash
+# Offline adapter contracts: no Pi installation or API credentials required
+node --test integrations/pi/adapter.test.mjs
+```
+
+The real SDK candidate requires Node >=22.19.0; its installation, dependency
+lock, target-host conformance and live provider evidence must pass separately.
+Token/cost/latency improvements are hypotheses until paired benchmarks prove
+them. No full-runtime replacement, new durable store or automatic provider
+fallback is enabled.
+
+**[Pi architecture and gated implementation plan ➔](docs/adr/ADR-pi-worker-runtime.md)**
+
 ---
 
 ## Architecture and Safety Model
@@ -654,8 +679,7 @@ forge token report --period week
 
 - The kernel must stop the same approach after two failures. Ask for the exact
   failed command and current evidence if that boundary was missed. Stop-hook
-  re-entry itself is capped: repeated invalid payloads may allow the host to
-  stop, but the machine state remains explicitly unverified.
+  re-entry itself is capped: repeated invalid re-entry is suppressed without manufacturing evidence.
 
 ### Dependencies missing during parallel execution
 

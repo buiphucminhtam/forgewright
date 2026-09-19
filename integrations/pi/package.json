@@ -1,0 +1,10 @@
+{
+  "name": "forgewright-pi-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional analysis-only Pi pilot; not a canonical production worker",
+  "engines": { "node": ">=22.19.0" },
+  "scripts": { "test": "node --test adapter.test.mjs" },
+  "dependencies": { "@earendil-works/pi-agent-core": "0.85.1" }
+}
