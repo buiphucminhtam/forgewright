@@ -117,6 +117,39 @@ conflicts, not isolation from a malicious same-user process. Native source/task
 acceptance is separate from comparative savings, broad canary rollout and the
 full earlier P0-P6 outcome program.
 
+### Reproducible consumer acceptance
+
+After dependency installation and building the current source, contract and
+runtime checks run without a model account:
+
+```bash
+python3 evals/keyless-routing/acceptance.py contract
+python3 evals/keyless-routing/acceptance.py runtime
+```
+
+For explicit live acceptance, `node evals/keyless-routing/live-consumer.mjs`
+creates an owned temporary parent Git repository with a real Forgewright Git
+submodule at the current commit, installs/builds it, and invokes the public
+CLI against the existing configured Codex subscription. It consumes that
+subscription's quota; it does not purchase API access or use simulated output.
+The tiny scoped source task, immutable verifier, pre-existing user edit and
+parent goal are independently checked. No personal project is activated.
+A missing or incompatible authorized provider fails rather than falling back.
+
+The resulting `.forgewright/runtime/keyless-pi/git-submodule-live.json` is
+required by the E2E replay command below. Replay revalidates the current commit,
+actual Gitlink, exact receipt and protected consumer artifacts, reruns the
+immutable verifier, then executes fresh public cancellation/capacity checks.
+It makes no extra model call and is not cryptographic provider attestation:
+
+```bash
+python3 evals/keyless-routing/acceptance.py e2e --consumer-report .forgewright/runtime/keyless-pi/git-submodule-live.json
+```
+
+These are bounded functionality and release checks, separate from the routing
+latency targets, synthetic mixed-project soak and broader P0-P6 production
+canary. A successful replay must not erase failed earlier measurements.
+
 ## Target architecture and current boundary
 
 ```mermaid
