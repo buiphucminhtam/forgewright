@@ -306,6 +306,14 @@ export async function runWorker({ projectRoot, contractPath, onStarted, signal: 
       try { rmdirSync(join(stateDirectory(root), 'active.lock')); }
       catch { quiescent = false; errorCode ??= 'pi_project_lock_cleanup_failed'; run.receipt.status = 'failed'; }
     }
+    // Passing task checks is not a successful run when owned cleanup cannot
+    // be confirmed. Preserve the quarantined reservation/lock and make the
+    // public CLI fail rather than letting status=finished mask finalization.
+    if (!quiescent) {
+      run.receipt.verified = false;
+      if (run.receipt.status === 'finished') run.receipt.status = 'failed';
+      errorCode ??= 'pi_finalization_unconfirmed';
+    }
     run.receipt.quiescence = quiescent ? 'confirmed' : 'not_confirmed';
     run.receipt.errorCode = errorCode ?? null; run.receipt.turns = turns;
     run.receipt.finishedAt = new Date().toISOString(); run.save();

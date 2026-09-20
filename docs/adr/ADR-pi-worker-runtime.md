@@ -90,7 +90,9 @@ Pre-existing dirty tracked write targets are rejected rather than overwritten.
 `delegate cancel RUN_ID` writes a durable cancellation marker and fences new
 file effects; it does not claim remote provider billing has stopped. Receipts
 are bounded and distinguish `ready`, actual provider observations, final
-verifier results, missing usage and local quiescence.
+verifier results, missing usage and local quiescence. Failed or unconfirmed
+finalization forces a non-successful CLI result even when task verifiers passed;
+verification is not promoted while the worker reservation remains quarantined.
 
 `host_admission_broker.py` and `host-governor.mjs` share a per-user SQLite
 transaction authority across processes: maximum two workers, one per project,

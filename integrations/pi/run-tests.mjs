@@ -6,7 +6,7 @@ const suites = {
   bridge: ['contracts.test.mjs', 'host-adapter.test.mjs', 'budget.test.mjs'],
   all: ['adapter.test.mjs', 'sdk.test.mjs', 'harness.test.mjs', 'deadline.test.mjs', 'contracts.test.mjs', 'host-adapter.test.mjs', 'release-gates.test.mjs', 'canary-integration.test.mjs', 'budget.test.mjs'],
   release: [],
-  worker: ['worker-runtime.test.mjs', 'verifier-runtime.test.mjs', 'config-consumer.test.mjs', 'governor-process.test.mjs', 'consumer-cancel.test.mjs', 'runtime-regressions.test.mjs', 'config-parser.test.mjs', 'activation-regressions.test.mjs', 'cli-portable.test.mjs'],
+  worker: ['worker-runtime.test.mjs', 'verifier-runtime.test.mjs', 'config-consumer.test.mjs', 'governor-process.test.mjs', 'consumer-cancel.test.mjs', 'runtime-regressions.test.mjs', 'config-parser.test.mjs', 'activation-regressions.test.mjs', 'cli-portable.test.mjs', 'finalization-regressions.test.mjs'],
 };
 const suite = process.argv[2] ?? 'all';
 if (!Object.hasOwn(suites, suite)) { console.error('Unknown Pi test suite'); process.exit(2); }
