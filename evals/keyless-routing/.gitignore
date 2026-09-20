@@ -1,0 +1,4 @@
+# Execution output is not a durable benchmark claim.
+*.txt
+results.json
+checks.json

@@ -1,0 +1,144 @@
+{"expected_mode": "game-build", "id": "game-build-1", "label": "clear", "language": "en", "prompt": "Build a Unity game"}
+{"expected_mode": "game-build", "id": "game-build-2", "label": "clear", "language": "en", "prompt": "Help me with Godot"}
+{"expected_mode": "game-build", "id": "game-build-3", "label": "clear", "language": "en", "prompt": "Prototype gameplay for Roblox"}
+{"expected_mode": "game-build", "id": "game-build-4", "label": "clear", "language": "en", "prompt": "Create a video game"}
+{"expected_mode": "game-build", "id": "game-build-5", "label": "clear", "language": "vi", "prompt": "Làm trò chơi với Unity"}
+{"expected_mode": "game-build", "id": "game-build-6", "label": "clear", "language": "vi", "prompt": "Tạo trò chơi 2D"}
+{"expected_mode": "game-build", "id": "game-build-7", "label": "clear", "language": "vi", "prompt": "Phát triển game bằng Godot"}
+{"expected_mode": "game-build", "id": "game-build-8", "label": "clear", "language": "vi", "prompt": "Giúp tôi với Unreal Engine"}
+{"expected_mode": "design", "id": "design-1", "label": "clear", "language": "en", "prompt": "Create a visual concept for the product"}
+{"expected_mode": "design", "id": "design-2", "label": "clear", "language": "en", "prompt": "Prepare concept art"}
+{"expected_mode": "design", "id": "design-3", "label": "clear", "language": "en", "prompt": "Choose art direction"}
+{"expected_mode": "design", "id": "design-4", "label": "clear", "language": "en", "prompt": "Sketch a character design"}
+{"expected_mode": "design", "id": "design-5", "label": "clear", "language": "vi", "prompt": "Thiết kế nhân vật chính"}
+{"expected_mode": "design", "id": "design-6", "label": "clear", "language": "vi", "prompt": "Vẽ minh họa cho sản phẩm"}
+{"expected_mode": "design", "id": "design-7", "label": "clear", "language": "vi", "prompt": "Làm bảng cảm hứng"}
+{"expected_mode": "design", "id": "design-8", "label": "clear", "language": "vi", "prompt": "Định hướng mỹ thuật cho dự án"}
+{"expected_mode": "full-build", "id": "full-build-1", "label": "clear", "language": "en", "prompt": "Scaffold a new project"}
+{"expected_mode": "full-build", "id": "full-build-2", "label": "clear", "language": "en", "prompt": "Build a web application"}
+{"expected_mode": "full-build", "id": "full-build-3", "label": "clear", "language": "en", "prompt": "Create a website"}
+{"expected_mode": "full-build", "id": "full-build-4", "label": "clear", "language": "en", "prompt": "Start a new project"}
+{"expected_mode": "full-build", "id": "full-build-5", "label": "clear", "language": "vi", "prompt": "Tạo dự án mới"}
+{"expected_mode": "full-build", "id": "full-build-6", "label": "clear", "language": "vi", "prompt": "Xây dựng ứng dụng web"}
+{"expected_mode": "full-build", "id": "full-build-7", "label": "clear", "language": "vi", "prompt": "Khởi tạo dự án"}
+{"expected_mode": "full-build", "id": "full-build-8", "label": "clear", "language": "vi", "prompt": "Tạo trang web bán sách"}
+{"expected_mode": "feature", "id": "feature-1", "label": "clear", "language": "en", "prompt": "Implement a feature for bookmarks"}
+{"expected_mode": "feature", "id": "feature-2", "label": "clear", "language": "en", "prompt": "Add functionality for exports"}
+{"expected_mode": "feature", "id": "feature-3", "label": "clear", "language": "en", "prompt": "Implement pagination"}
+{"expected_mode": "feature", "id": "feature-4", "label": "clear", "language": "en", "prompt": "Add a feature for search"}
+{"expected_mode": "feature", "id": "feature-5", "label": "clear", "language": "vi", "prompt": "Thêm tính năng tìm kiếm"}
+{"expected_mode": "feature", "id": "feature-6", "label": "clear", "language": "vi", "prompt": "Triển khai tính năng lọc"}
+{"expected_mode": "feature", "id": "feature-7", "label": "clear", "language": "vi", "prompt": "Bổ sung chức năng xuất dữ liệu"}
+{"expected_mode": "feature", "id": "feature-8", "label": "clear", "language": "vi", "prompt": "Cài đặt tính năng phân trang"}
+{"expected_mode": "test", "id": "test-1", "label": "clear", "language": "en", "prompt": "Run the unit tests"}
+{"expected_mode": "test", "id": "test-2", "label": "clear", "language": "en", "prompt": "Improve test coverage"}
+{"expected_mode": "test", "id": "test-3", "label": "clear", "language": "en", "prompt": "Perform QA on this module"}
+{"expected_mode": "test", "id": "test-4", "label": "clear", "language": "en", "prompt": "Write validation tests"}
+{"expected_mode": "test", "id": "test-5", "label": "clear", "language": "vi", "prompt": "Viết kiểm thử đơn vị"}
+{"expected_mode": "test", "id": "test-6", "label": "clear", "language": "vi", "prompt": "Chạy bộ kiểm thử"}
+{"expected_mode": "test", "id": "test-7", "label": "clear", "language": "vi", "prompt": "Tăng độ phủ kiểm thử"}
+{"expected_mode": "test", "id": "test-8", "label": "clear", "language": "vi", "prompt": "Kiểm thử mô đun này"}
+{"expected_mode": "review", "id": "review-1", "label": "clear", "language": "en", "prompt": "Perform a code review"}
+{"expected_mode": "review", "id": "review-2", "label": "clear", "language": "en", "prompt": "Review this pull request"}
+{"expected_mode": "review", "id": "review-3", "label": "clear", "language": "en", "prompt": "Review the patch"}
+{"expected_mode": "review", "id": "review-4", "label": "clear", "language": "en", "prompt": "Review the module for defects"}
+{"expected_mode": "review", "id": "review-5", "label": "clear", "language": "vi", "prompt": "Rà soát mã nguồn"}
+{"expected_mode": "review", "id": "review-6", "label": "clear", "language": "vi", "prompt": "Đánh giá mã nguồn"}
+{"expected_mode": "review", "id": "review-7", "label": "clear", "language": "vi", "prompt": "Xem xét bản vá"}
+{"expected_mode": "review", "id": "review-8", "label": "clear", "language": "vi", "prompt": "Rà soát thay đổi này"}
+{"expected_mode": "ship", "id": "ship-1", "label": "clear", "language": "en", "prompt": "Deploy the application"}
+{"expected_mode": "ship", "id": "ship-2", "label": "clear", "language": "en", "prompt": "Ship this version"}
+{"expected_mode": "ship", "id": "ship-3", "label": "clear", "language": "en", "prompt": "Prepare a release"}
+{"expected_mode": "ship", "id": "ship-4", "label": "clear", "language": "en", "prompt": "Release the package"}
+{"expected_mode": "ship", "id": "ship-5", "label": "clear", "language": "vi", "prompt": "Phát hành phiên bản mới"}
+{"expected_mode": "ship", "id": "ship-6", "label": "clear", "language": "vi", "prompt": "Đưa ứng dụng lên máy chủ"}
+{"expected_mode": "ship", "id": "ship-7", "label": "clear", "language": "vi", "prompt": "Xuất bản bản phát hành"}
+{"expected_mode": "ship", "id": "ship-8", "label": "clear", "language": "vi", "prompt": "Triển khai lên production"}
+{"expected_mode": "document", "id": "document-1", "label": "clear", "language": "en", "prompt": "Write documentation for this module"}
+{"expected_mode": "document", "id": "document-2", "label": "clear", "language": "en", "prompt": "Update the README"}
+{"expected_mode": "document", "id": "document-3", "label": "clear", "language": "en", "prompt": "Document the public interface"}
+{"expected_mode": "document", "id": "document-4", "label": "clear", "language": "en", "prompt": "Improve documentation examples"}
+{"expected_mode": "document", "id": "document-5", "label": "clear", "language": "vi", "prompt": "Viết tài liệu hướng dẫn"}
+{"expected_mode": "document", "id": "document-6", "label": "clear", "language": "vi", "prompt": "Cập nhật tài liệu API"}
+{"expected_mode": "document", "id": "document-7", "label": "clear", "language": "vi", "prompt": "Soạn tài liệu sử dụng"}
+{"expected_mode": "document", "id": "document-8", "label": "clear", "language": "vi", "prompt": "Bổ sung tài liệu kỹ thuật"}
+{"expected_mode": "optimize", "id": "optimize-1", "label": "clear", "language": "en", "prompt": "Optimize the database query"}
+{"expected_mode": "optimize", "id": "optimize-2", "label": "clear", "language": "en", "prompt": "Reduce latency"}
+{"expected_mode": "optimize", "id": "optimize-3", "label": "clear", "language": "en", "prompt": "Improve runtime performance"}
+{"expected_mode": "optimize", "id": "optimize-4", "label": "clear", "language": "en", "prompt": "Optimize memory usage"}
+{"expected_mode": "optimize", "id": "optimize-5", "label": "clear", "language": "vi", "prompt": "Tối ưu truy vấn dữ liệu"}
+{"expected_mode": "optimize", "id": "optimize-6", "label": "clear", "language": "vi", "prompt": "Giảm độ trễ"}
+{"expected_mode": "optimize", "id": "optimize-7", "label": "clear", "language": "vi", "prompt": "Cải thiện hiệu năng"}
+{"expected_mode": "optimize", "id": "optimize-8", "label": "clear", "language": "vi", "prompt": "Tối ưu bộ nhớ"}
+{"expected_mode": "research", "id": "research-1", "label": "clear", "language": "en", "prompt": "Research available storage approaches"}
+{"expected_mode": "research", "id": "research-2", "label": "clear", "language": "en", "prompt": "Investigate the parser behavior"}
+{"expected_mode": "research", "id": "research-3", "label": "clear", "language": "en", "prompt": "Research browser compatibility"}
+{"expected_mode": "research", "id": "research-4", "label": "clear", "language": "en", "prompt": "Investigate this dependency"}
+{"expected_mode": "research", "id": "research-5", "label": "clear", "language": "vi", "prompt": "Nghiên cứu cách lưu trữ"}
+{"expected_mode": "research", "id": "research-6", "label": "clear", "language": "vi", "prompt": "Khảo sát giải pháp hiện có"}
+{"expected_mode": "research", "id": "research-7", "label": "clear", "language": "vi", "prompt": "Tìm hiểu thư viện này"}
+{"expected_mode": "research", "id": "research-8", "label": "clear", "language": "vi", "prompt": "Nghiên cứu khả năng tương thích"}
+{"expected_mode": "architect", "id": "architect-1", "label": "clear", "language": "en", "prompt": "Plan the architecture"}
+{"expected_mode": "architect", "id": "architect-2", "label": "clear", "language": "en", "prompt": "Define the design system"}
+{"expected_mode": "architect", "id": "architect-3", "label": "clear", "language": "en", "prompt": "Architect the backend"}
+{"expected_mode": "architect", "id": "architect-4", "label": "clear", "language": "en", "prompt": "Evaluate architecture boundaries"}
+{"expected_mode": "architect", "id": "architect-5", "label": "clear", "language": "vi", "prompt": "Thiết kế kiến trúc hệ thống"}
+{"expected_mode": "architect", "id": "architect-6", "label": "clear", "language": "vi", "prompt": "Lập kiến trúc ứng dụng"}
+{"expected_mode": "architect", "id": "architect-7", "label": "clear", "language": "vi", "prompt": "Thiết kế hệ thống"}
+{"expected_mode": "architect", "id": "architect-8", "label": "clear", "language": "vi", "prompt": "Xác định kiến trúc dịch vụ"}
+{"expected_mode": "analyze", "id": "analyze-1", "label": "clear", "language": "en", "prompt": "Analyze these metrics"}
+{"expected_mode": "analyze", "id": "analyze-2", "label": "clear", "language": "en", "prompt": "Perform data analysis"}
+{"expected_mode": "analyze", "id": "analyze-3", "label": "clear", "language": "en", "prompt": "Analyze the data"}
+{"expected_mode": "analyze", "id": "analyze-4", "label": "clear", "language": "en", "prompt": "Interpret application metrics"}
+{"expected_mode": "analyze", "id": "analyze-5", "label": "clear", "language": "vi", "prompt": "Phân tích dữ liệu"}
+{"expected_mode": "analyze", "id": "analyze-6", "label": "clear", "language": "vi", "prompt": "Phân tích số liệu"}
+{"expected_mode": "analyze", "id": "analyze-7", "label": "clear", "language": "vi", "prompt": "Phân tích báo cáo sử dụng"}
+{"expected_mode": "analyze", "id": "analyze-8", "label": "clear", "language": "vi", "prompt": "Phân tích hành vi sử dụng"}
+{"expected_mode": null, "id": "ambiguous-1", "label": "ambiguous", "language": "en", "prompt": "Build a game and deploy it"}
+{"expected_mode": null, "id": "ambiguous-2", "label": "ambiguous", "language": "en", "prompt": "Review and test the module"}
+{"expected_mode": null, "id": "ambiguous-3", "label": "ambiguous", "language": "en", "prompt": "Research and implement this feature"}
+{"expected_mode": null, "id": "ambiguous-4", "label": "ambiguous", "language": "en", "prompt": "Document and optimize this API"}
+{"expected_mode": null, "id": "ambiguous-5", "label": "ambiguous", "language": "en", "prompt": "Create a website and write tests"}
+{"expected_mode": null, "id": "ambiguous-6", "label": "ambiguous", "language": "en", "prompt": "Analyze metrics and deploy the app"}
+{"expected_mode": null, "id": "ambiguous-7", "label": "ambiguous", "language": "en", "prompt": "Prepare concept art and review the code"}
+{"expected_mode": null, "id": "ambiguous-8", "label": "ambiguous", "language": "en", "prompt": "Optimize performance and update documentation"}
+{"expected_mode": null, "id": "ambiguous-9", "label": "ambiguous", "language": "en", "prompt": "Plan architecture and implement pagination"}
+{"expected_mode": null, "id": "ambiguous-10", "label": "ambiguous", "language": "en", "prompt": "Research and review the library"}
+{"expected_mode": null, "id": "ambiguous-11", "label": "ambiguous", "language": "en", "prompt": "Test and release the package"}
+{"expected_mode": null, "id": "ambiguous-12", "label": "ambiguous", "language": "en", "prompt": "Create a visual concept and analyze metrics"}
+{"expected_mode": null, "id": "ambiguous-13", "label": "ambiguous", "language": "en", "prompt": "Build a game or a mobile app"}
+{"expected_mode": null, "id": "ambiguous-14", "label": "ambiguous", "language": "en", "prompt": "Implement a feature or write documentation"}
+{"expected_mode": null, "id": "ambiguous-15", "label": "ambiguous", "language": "en", "prompt": "Research or deploy"}
+{"expected_mode": null, "id": "ambiguous-16", "label": "ambiguous", "language": "en", "prompt": "Review or analyze"}
+{"expected_mode": null, "id": "ambiguous-17", "label": "ambiguous", "language": "vi", "prompt": "Tạo trò chơi và phát hành phiên bản"}
+{"expected_mode": null, "id": "ambiguous-18", "label": "ambiguous", "language": "vi", "prompt": "Rà soát mã nguồn và kiểm thử"}
+{"expected_mode": null, "id": "ambiguous-19", "label": "ambiguous", "language": "vi", "prompt": "Nghiên cứu và thêm tính năng"}
+{"expected_mode": null, "id": "ambiguous-20", "label": "ambiguous", "language": "vi", "prompt": "Viết tài liệu và tối ưu bộ nhớ"}
+{"expected_mode": null, "id": "ambiguous-21", "label": "ambiguous", "language": "vi", "prompt": "Tạo trang web và viết kiểm thử"}
+{"expected_mode": null, "id": "ambiguous-22", "label": "ambiguous", "language": "vi", "prompt": "Phân tích dữ liệu và phát hành"}
+{"expected_mode": null, "id": "ambiguous-23", "label": "ambiguous", "language": "vi", "prompt": "Vẽ minh họa và rà soát mã nguồn"}
+{"expected_mode": null, "id": "ambiguous-24", "label": "ambiguous", "language": "vi", "prompt": "Tối ưu hiệu năng và viết tài liệu"}
+{"expected_mode": null, "id": "ambiguous-25", "label": "ambiguous", "language": "vi", "prompt": "Thiết kế kiến trúc và thêm tính năng"}
+{"expected_mode": null, "id": "ambiguous-26", "label": "ambiguous", "language": "vi", "prompt": "Nghiên cứu và rà soát thay đổi"}
+{"expected_mode": null, "id": "ambiguous-27", "label": "ambiguous", "language": "vi", "prompt": "Kiểm thử và phát hành"}
+{"expected_mode": null, "id": "ambiguous-28", "label": "ambiguous", "language": "vi", "prompt": "Thiết kế nhân vật và phân tích dữ liệu"}
+{"expected_mode": null, "id": "ambiguous-29", "label": "ambiguous", "language": "vi", "prompt": "Tạo trò chơi hoặc ứng dụng di động"}
+{"expected_mode": null, "id": "ambiguous-30", "label": "ambiguous", "language": "vi", "prompt": "Thêm tính năng hoặc viết tài liệu"}
+{"expected_mode": null, "id": "ambiguous-31", "label": "ambiguous", "language": "vi", "prompt": "Nghiên cứu hoặc phát hành"}
+{"expected_mode": null, "id": "ambiguous-32", "label": "ambiguous", "language": "vi", "prompt": "Rà soát mã nguồn hoặc phân tích dữ liệu"}
+{"expected_mode": null, "id": "out-of-scope-1", "label": "out-of-scope", "language": "en", "prompt": "Hello there"}
+{"expected_mode": null, "id": "out-of-scope-2", "label": "out-of-scope", "language": "en", "prompt": "What is the weather?"}
+{"expected_mode": null, "id": "out-of-scope-3", "label": "out-of-scope", "language": "en", "prompt": "Tell me a joke"}
+{"expected_mode": null, "id": "out-of-scope-4", "label": "out-of-scope", "language": "en", "prompt": "I bought a backgamemon board"}
+{"expected_mode": null, "id": "out-of-scope-5", "label": "out-of-scope", "language": "en", "prompt": "The scar is healing"}
+{"expected_mode": null, "id": "out-of-scope-6", "label": "out-of-scope", "language": "en", "prompt": "The latest contest was fun"}
+{"expected_mode": null, "id": "out-of-scope-7", "label": "out-of-scope", "language": "en", "prompt": "My radio is broken"}
+{"expected_mode": null, "id": "out-of-scope-8", "label": "out-of-scope", "language": "en", "prompt": "The paragraph is short"}
+{"expected_mode": null, "id": "out-of-scope-9", "label": "out-of-scope", "language": "vi", "prompt": "Xin chào"}
+{"expected_mode": null, "id": "out-of-scope-10", "label": "out-of-scope", "language": "vi", "prompt": "Hôm nay trời đẹp"}
+{"expected_mode": null, "id": "out-of-scope-11", "label": "out-of-scope", "language": "vi", "prompt": "Kể chuyện vui đi"}
+{"expected_mode": null, "id": "out-of-scope-12", "label": "out-of-scope", "language": "vi", "prompt": "Tôi muốn ăn phở"}
+{"expected_mode": null, "id": "out-of-scope-13", "label": "out-of-scope", "language": "vi", "prompt": "Bạn khỏe không"}
+{"expected_mode": null, "id": "out-of-scope-14", "label": "out-of-scope", "language": "vi", "prompt": "Mấy giờ rồi"}
+{"expected_mode": null, "id": "out-of-scope-15", "label": "out-of-scope", "language": "vi", "prompt": "Cảm ơn bạn"}
+{"expected_mode": null, "id": "out-of-scope-16", "label": "out-of-scope", "language": "vi", "prompt": "Đi dạo một chút"}

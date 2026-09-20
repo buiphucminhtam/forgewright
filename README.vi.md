@@ -141,19 +141,32 @@ Repo có cấu hình cho Codex, Claude, Cursor và Antigravity; capability của
 | Context và receipt | Bảo toàn AC và binding hiện tại; usage/giá còn thiếu được ghi là unavailable, không phải 0. |
 | Gate đánh giá và rollback | So sánh báo cáo đối chứng; canary tắt mặc định, chỉ một worker hoạt động trong controller, có kill switch và quarantine. |
 
-**Trạng thái: experimental, tắt mặc định.** Analysis pilot gốc không có tool. Host bridge riêng chỉ cho phép tool được đăng ký rõ ràng qua lớp kiểm soát canonical. Không tự đăng ký production; test SDK/integration local không phải benchmark tiết kiệm token hay production canary.
+**Trạng thái: experimental, tắt mặc định và bật chủ động theo project.** Lệnh `delegate` đã nối Pi worker thực tế từ project cha: đọc file, patch có before-hash và chạy verifier do host duyệt. Dùng quyền truy cập Codex/Pi OAuth hiện có hoặc model server loopback; không cần TypeSafe key, không tự chuyển sang API trả tiền. Analysis pilot không tool vẫn tồn tại nhưng không phải đường chạy coding worker.
 
 ```bash
 npm --prefix integrations/pi ci --ignore-scripts --no-audit --no-fund
 npm run build
+npm run build:cli
 npm --prefix integrations/pi run test:all
 ```
 
-[Kiến trúc Pi và kế hoạch nghiệm thu P0–P6](docs/adr/ADR-pi-worker-runtime.md) quy định bằng chứng provider, đo đối chứng, điều kiện bật và rollback.
+Sau khi build CLI/MCP, chạy từ **project cha có submodule**:
+
+```bash
+node forgewright/src/cli/dist/index.js delegate on --worker pi --provider openai-codex --auth-source codex --model <exact-codex-model-id>
+node forgewright/src/cli/dist/index.js delegate status --worker pi
+node forgewright/src/cli/dist/index.js delegate run --worker pi --contract task.json
+node forgewright/src/cli/dist/index.js delegate resources
+# node forgewright/src/cli/dist/index.js delegate cancel <run-id>
+```
+
+Cấu hình nằm trong `.production-grade.yaml` của project cha; giữ các mục không liên quan. `current` chỉ là tiện ích khi model hiện tại tương thích Codex và không có prefix provider; custom provider hoặc route kiểu `provider/model` sẽ bị từ chối thay vì bị hiểu nhầm thành OpenAI. Để ổn định, nên dùng explicit `openai-codex` như lệnh ở trên. Quyền subscription được đọc, không sao chép/refresh token của ứng dụng khác; hết hạn trả `pi_auth_required`. Không thêm phí dịch vụ không có nghĩa thuê bao hay quota hiện có là miễn phí vô hạn. Sandbox cho verifier hiện yêu cầu macOS và lệnh đơn process; chưa hỗ trợ npm/Unity build có process con. Đường `delegate run` có quản lý tài nguyên tạm từ chối worker Agy cũ vì chưa có contract admission/cleanup tương thích; không tự fallback sang Agy. Nền tảng chưa hỗ trợ phải báo rõ. `ready` chỉ xác nhận điều kiện khởi chạy, không thay cho kết quả task thật. [Pi ADR](docs/adr/ADR-pi-worker-runtime.md) có mẫu contract, provider local, cancellation và các giới hạn.
 
 ### Context gọn hơn, trạng thái dự án rõ hơn
 
-Nạp skill theo nhu cầu, trả tóm tắt thực thi có cấu trúc, giữ prefix ổn định và dùng công cụ xác định giúp giảm phần context không cần thiết. Adapter Jev là lựa chọn riêng, tắt mặc định. Mức tiết kiệm thực tế phải đo theo task, model, cache và runtime; không suy ra từ việc đã có cơ chế tối ưu.
+Routing System-1 dùng rules tiếng Việt/Anh có giới hạn, cache chính xác tùy chọn và từ chối chọn khi yêu cầu mơ hồ. Không import/gọi Jev, không cần `TYPESAFE_API_KEY`, không tải classifier hay gọi thêm model để chọn skill. Đây là tinh thần chọn trong shortlist của Jev, không phải model Jev được đổi tên.
+
+Nhiều project chia sẻ một bộ cấp tài nguyên: tối đa hai worker và một verifier nặng trên toàn user/máy; profile ít RAM giảm còn một worker. Mức reservation mặc định là **192 MiB cho Pi worker** và **128 MiB cho verifier đơn process**, hiệu chỉnh từ RSS quan sát trên Mac mục tiêu (~71–84 MiB cho Pi runtime đã load và ~42 MiB cho verifier Node nhỏ). Đây là ước lượng để scheduler cấp slot, không phải hard RAM cap; khi memory pressure tăng hệ thống vẫn dừng cấp việc mới để giữ headroom. Queue luân phiên theo project, giữ cách ly tác vụ chưa xác nhận dừng; broker nhẹ chỉ chạy khi cần và tự thoát sau 15 giây không hoạt động. Không dùng chung context/credential và không kill IDE hay process của anh. Chưa coi các giới hạn này là chứng nhận hiệu năng cho mọi máy 4 GB; mức tiết kiệm phải đo thực tế.
 
 **Docs Hub** build trang HTML local có tìm kiếm từ Markdown/JSON được duyệt. Cấu trúc dự án, roadmap, blocker và flow lấy từ nguồn canonical, không phải một dashboard cập nhật thủ công khác.
 
@@ -180,8 +193,8 @@ Mở `.forgewright/docs-hub/site/index.html`. [Hướng dẫn Docs Hub](docs/gui
 | ASIP | Experimental legacy workflow | Lưu bài học hữu ích nhưng không tự sửa shared rules; stuck rule vẫn có hiệu lực. |
 | Runtime Lifecycle Guard | Beta | Lease, reuse và cleanup process được sở hữu; không tự thu hồi process ngoài quyền quản lý. |
 | Game Studio Control Plane | Beta optional pack | Handoff theo phase; build, playtest, thiết bị và phát hành cần bằng chứng riêng. |
-| Token Efficiency / Jev | Experimental | Context gọn, tool xác định và routing tùy chọn với budget mặc định bằng 0. |
-| Pi Worker | Experimental | SDK pin, host bridge, ngân sách, cancellation và gate release; production vẫn tắt. |
+| Token Efficiency / Jev spirit | Experimental | Routing rules/cache local EN/VI, không key/model phụ; abstain khi mơ hồ. |
+| Pi Worker | Experimental, opt-in | CLI từ project cha, scoped patch/verifier, cancellation và governor đa project; không tự migrate production. |
 
 Nguồn trạng thái chi tiết: [capability inventory](docs/capability-maturity.json) và [active roadmap](docs/active-roadmap.md).
 
