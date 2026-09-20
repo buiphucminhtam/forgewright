@@ -153,14 +153,14 @@ npm --prefix integrations/pi run test:all
 Sau khi build CLI/MCP, chạy từ **project cha có submodule**:
 
 ```bash
-node forgewright/src/cli/dist/index.js delegate on --worker pi --provider current --auth-source codex
+node forgewright/src/cli/dist/index.js delegate on --worker pi --provider openai-codex --auth-source codex --model <exact-codex-model-id>
 node forgewright/src/cli/dist/index.js delegate status --worker pi
 node forgewright/src/cli/dist/index.js delegate run --worker pi --contract task.json
 node forgewright/src/cli/dist/index.js delegate resources
 # node forgewright/src/cli/dist/index.js delegate cancel <run-id>
 ```
 
-Cấu hình nằm trong `.production-grade.yaml` của project cha; giữ các mục không liên quan. Quyền subscription được đọc, không sao chép/refresh token của ứng dụng khác; hết hạn trả `pi_auth_required`. Không thêm phí dịch vụ không có nghĩa thuê bao hay quota hiện có là miễn phí vô hạn. Sandbox cho verifier hiện yêu cầu macOS và lệnh đơn process; chưa hỗ trợ npm/Unity build có process con. Đường `delegate run` có quản lý tài nguyên tạm từ chối worker Agy cũ vì chưa có contract admission/cleanup tương thích; không tự fallback sang Agy. Nền tảng chưa hỗ trợ phải báo rõ. `ready` chỉ xác nhận điều kiện khởi chạy, không thay cho kết quả task thật. [Pi ADR](docs/adr/ADR-pi-worker-runtime.md) có mẫu contract, provider local, cancellation và các giới hạn.
+Cấu hình nằm trong `.production-grade.yaml` của project cha; giữ các mục không liên quan. `current` chỉ là tiện ích khi model hiện tại tương thích Codex và không có prefix provider; custom provider hoặc route kiểu `provider/model` sẽ bị từ chối thay vì bị hiểu nhầm thành OpenAI. Để ổn định, nên dùng explicit `openai-codex` như lệnh ở trên. Quyền subscription được đọc, không sao chép/refresh token của ứng dụng khác; hết hạn trả `pi_auth_required`. Không thêm phí dịch vụ không có nghĩa thuê bao hay quota hiện có là miễn phí vô hạn. Sandbox cho verifier hiện yêu cầu macOS và lệnh đơn process; chưa hỗ trợ npm/Unity build có process con. Đường `delegate run` có quản lý tài nguyên tạm từ chối worker Agy cũ vì chưa có contract admission/cleanup tương thích; không tự fallback sang Agy. Nền tảng chưa hỗ trợ phải báo rõ. `ready` chỉ xác nhận điều kiện khởi chạy, không thay cho kết quả task thật. [Pi ADR](docs/adr/ADR-pi-worker-runtime.md) có mẫu contract, provider local, cancellation và các giới hạn.
 
 ### Context gọn hơn, trạng thái dự án rõ hơn
 

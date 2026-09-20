@@ -155,14 +155,14 @@ npm --prefix integrations/pi run test:all
 After building the CLI and MCP above, run from the **parent project**, not inside its submodule:
 
 ```bash
-node forgewright/src/cli/dist/index.js delegate on --worker pi --provider current --auth-source codex
+node forgewright/src/cli/dist/index.js delegate on --worker pi --provider openai-codex --auth-source codex --model <exact-codex-model-id>
 node forgewright/src/cli/dist/index.js delegate status --worker pi
 node forgewright/src/cli/dist/index.js delegate run --worker pi --contract task.json
 node forgewright/src/cli/dist/index.js delegate resources
 # node forgewright/src/cli/dist/index.js delegate cancel <run-id>
 ```
 
-Settings live in the parent's existing `.production-grade.yaml`; unrelated settings are preserved. `current` accepts a standard Codex profile; a custom provider profile is rejected instead of silently switching providers. To explicitly use an existing Codex subscription, select `--provider openai-codex --auth-source codex --model <exact-model-id>`. `CODEX_HOME` is respected. Subscription access is read-only and still consumes its existing quota; expired authorization reports `pi_auth_required`, not a paid fallback. Local execution needs a configured loopback model endpoint. Verifier isolation currently requires macOS and a single-process command; fork/spawn, network access and source writes are denied. Unsupported platforms fail closed. The governed `delegate run` entrypoint refuses legacy Agy execution until it has a compatible host-admission/cleanup contract; its low-level adapter and configuration are retained, not silently used as fallback. `ready` means prerequisites are present, while a successful task receipt requires actual execution. See the [Pi ADR](docs/adr/ADR-pi-worker-runtime.md) for the task contract, local-provider setup, cancellation, limitations and live-measurement gates.
+Settings live in the parent's existing `.production-grade.yaml`; unrelated settings are preserved. `current` is convenience-only and accepts a Codex-compatible unprefixed model selection; custom providers and provider-prefixed external routes are rejected instead of being reinterpreted as OpenAI. For deterministic setup, prefer the explicit `openai-codex` command above. To explicitly use an existing Codex subscription, select `--provider openai-codex --auth-source codex --model <exact-model-id>`. `CODEX_HOME` is respected. Subscription access is read-only and still consumes its existing quota; expired authorization reports `pi_auth_required`, not a paid fallback. Local execution needs a configured loopback model endpoint. Verifier isolation currently requires macOS and a single-process command; fork/spawn, network access and source writes are denied. Unsupported platforms fail closed. The governed `delegate run` entrypoint refuses legacy Agy execution until it has a compatible host-admission/cleanup contract; its low-level adapter and configuration are retained, not silently used as fallback. `ready` means prerequisites are present, while a successful task receipt requires actual execution. See the [Pi ADR](docs/adr/ADR-pi-worker-runtime.md) for the task contract, local-provider setup, cancellation, limitations and live-measurement gates.
 
 ### Leaner context and clearer project state
 

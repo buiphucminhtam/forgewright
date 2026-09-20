@@ -82,8 +82,11 @@ export async function resolveProvider(config, { home = homedir(), codexHome = pr
   const provider = openaiCodexProvider();
   if (config.provider === 'current' && config.authSource === 'codex') {
     const selected = readCurrentCodexSelection(authRoot);
-    // A custom route must not become a different subscription destination.
-    if (selected.provider !== 'openai') fail('pi_current_provider_incompatible');
+    // A custom route or provider-prefixed external model must not become a
+    // different subscription destination just because model_provider is absent.
+    if (selected.provider !== 'openai' ||
+        (selected.model != null && (typeof selected.model !== 'string' || selected.model.includes('/'))))
+      fail('pi_current_provider_incompatible');
     modelId ??= selected.model;
   }
   if (!modelId) fail('pi_model_required');

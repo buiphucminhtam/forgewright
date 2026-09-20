@@ -29,6 +29,12 @@ test('PARSE-02: malformed or unsupported current-provider configuration fails be
   await assert.rejects(resolveProvider({provider:'current',authSource:'codex'},p),/pi_current_provider_(?:unresolved|incompatible)/);
  }
 });
+test('PARSE-05: current rejects provider-prefixed external model IDs before auth lookup',async(t)=>{
+ const p=profile(t);
+ writeFileSync(join(p.codexHome,'config.toml'),"model = 'google-antigravity/gemini-3.8-flash'\n");
+ await assert.rejects(resolveProvider({provider:'current',authSource:'codex'},p),/pi_current_provider_incompatible/);
+});
+
 test('PARSE-03: standard TOML strings and comments retain exact model selection',async(t)=>{
  const p=profile(t);
  const access='e30.'+Buffer.from(JSON.stringify({exp:Math.floor(Date.now()/1000)+600,'https://api.openai.com/auth':{chatgpt_account_id:'fixture'}})).toString('base64url')+'.fixture';

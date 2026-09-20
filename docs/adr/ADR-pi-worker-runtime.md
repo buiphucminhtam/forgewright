@@ -46,7 +46,7 @@ submodule, and cannot register new tools or approval decisions.
 From a consumer root with Forgewright installed at `forgewright/`:
 
 ```bash
-node forgewright/src/cli/dist/index.js delegate on --worker pi --provider current --auth-source codex
+node forgewright/src/cli/dist/index.js delegate on --worker pi --provider openai-codex --auth-source codex --model EXACT_CODEX_MODEL_ID
 node forgewright/src/cli/dist/index.js delegate status --worker pi
 node forgewright/src/cli/dist/index.js delegate run --worker pi --contract task.json
 node forgewright/src/cli/dist/index.js delegate resources
@@ -61,8 +61,7 @@ submodule; config, files, goal and run receipts resolve from the parent.
 
 For an already-running local model, explicitly select `--provider local
 --endpoint http://127.0.0.1:PORT/v1 --model EXACT_ID`. Only literal loopback
-addresses are admitted. For a subscription, select `--provider current
---auth-source codex` or `--provider openai-codex --auth-source pi --model EXACT_ID`.
+addresses are admitted. For a subscription, prefer an explicit compatible route: `--provider openai-codex --auth-source codex --model EXACT_ID` (or Pi OAuth with `--auth-source pi`). `--provider current --auth-source codex` is accepted only when the current selection is an unprefixed Codex-compatible model; custom providers and provider-prefixed external routes fail closed before credential use.
 Credential access is read-only and explicit, with no browser-cookie extraction,
 project copy or automatic refresh of another application's tokens. Expiry,
 401/403 and quota exhaustion stop truthfully. No paid fallback is selected.

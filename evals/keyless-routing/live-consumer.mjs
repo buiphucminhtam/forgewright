@@ -59,7 +59,10 @@ try{
  report.baselineVerifier=JSON.parse(baseline.stdout);assert.equal(report.baselineVerifier.sandbox,'darwin-scoped-single-process');assert.equal(report.baselineVerifier.assertionFailure,true,'Baseline must fail its original assertion, not setup');
  const cli=join(pkg,'src/cli/dist/index.js');
  const action=(args,timeout=30000,expected=0)=>exec(process.execPath,[cli,'delegate',...args],project,timeout,expected);
- const setup=JSON.parse(action(['on','--worker','pi','--provider','current','--auth-source','codex']).stdout);report.setup=setup;
+ const e2eModel=process.env.FORGEWRIGHT_PI_E2E_MODEL||'gpt-6-astra';
+ // Release acceptance must not inherit an unrelated current Codex route
+ // (for example a 9router/Antigravity model) and reinterpret it as OpenAI.
+ const setup=JSON.parse(action(['on','--worker','pi','--provider','openai-codex','--auth-source','codex','--model',e2eModel]).stdout);report.setup=setup;
  assert.equal(setup.ready,true,`Provider prerequisites unavailable: ${setup.reason}`);
  assert.equal(setup.packageRoot.replace(/\/$/,''),pkg);
  const configurationHash=sha(readFileSync(join(project,'.production-grade.yaml')));
