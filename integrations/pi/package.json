@@ -11,7 +11,8 @@
     "test:host": "node --test harness.test.mjs",
     "test:bridge": "node run-tests.mjs bridge",
     "test:release": "node run-tests.mjs release",
+    "test:worker": "node run-tests.mjs worker",
     "test:all": "node run-tests.mjs all"
   },
-  "dependencies": { "@earendil-works/pi-agent-core": "0.85.1" }
+  "dependencies": { "@earendil-works/pi-agent-core": "0.85.1", "@earendil-works/pi-ai": "0.85.1" }
 }

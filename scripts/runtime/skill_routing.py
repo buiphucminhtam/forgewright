@@ -8,11 +8,23 @@ the small prompt classifier needed to select a configured mode.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
 from pathlib import Path
 from typing import Any
+
+# Direct script invocation from a consumer cwd must import this trusted package,
+# rather than requiring PYTHONPATH or finding a consumer's unrelated scripts/.
+if not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.runtime.local_routing import (
+    ExactRoutingCache,
+    select_mode,
+    valid_name,
+    validate_candidates,
+)
 
 
 def _result(
@@ -23,8 +35,19 @@ def _result(
     skills: list[dict[str, Any]] | None = None,
     errors: list[str] | None = None,
     context_budget: dict[str, Any] | None = None,
+    routing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
+        "routing": routing
+        or {
+            "status": "error" if status == "error" else "abstain",
+            "mode": None,
+            "source": source,
+            "rule_score": 0,
+            "score_kind": "rule-score-not-calibrated",
+            "backend": "python-stdlib",
+            "reason": "routing-error" if status == "error" else "no-selection",
+        },
         "status": status,
         "mode": mode,
         "source": source,
@@ -53,6 +76,8 @@ def _mode_skill_map(config: dict[str, Any]) -> dict[str, list[str]]:
     if not isinstance(raw_map, dict):
         raise ValueError("mode_skill_map must be an object")
 
+    if len(raw_map) > 64:
+        raise ValueError("mode_skill_map exceeds 64 modes")
     result: dict[str, list[str]] = {}
     for raw_mode, raw_skills in raw_map.items():
         if not isinstance(raw_mode, str) or not raw_mode.strip():
@@ -63,7 +88,15 @@ def _mode_skill_map(config: dict[str, Any]) -> dict[str, list[str]]:
             raise ValueError(
                 f"mode_skill_map[{raw_mode!r}] must be a list of skill names"
             )
-        result[_normalise_mode(raw_mode)] = [skill.strip() for skill in raw_skills]
+        mode_name = _normalise_mode(raw_mode)
+        if not valid_name(mode_name) or mode_name in result:
+            raise ValueError("invalid or duplicate normalized mode name")
+        if len(raw_skills) > 128:
+            raise ValueError("mode skill list exceeds 128 entries")
+        names = [skill.strip() for skill in raw_skills]
+        if any(not valid_name(name) for name in names):
+            raise ValueError("invalid skill name or path escapes skills root")
+        result[mode_name] = names
     return result
 
 
@@ -137,6 +170,10 @@ def _contains_path(path: Path, root: Path) -> bool:
 def _verified_skill(skill_name: str, *, skills_root: Path) -> dict[str, str]:
     if not isinstance(skill_name, str) or not skill_name.strip():
         raise ValueError("mode_skill_map contains an invalid skill name")
+    if not valid_name(skill_name):
+        raise ValueError(
+            f"invalid skill name or path escapes skills root: {skill_name}"
+        )
     candidate_path = skills_root / skill_name
     if candidate_path.is_symlink():
         raise ValueError(f"symlinked skill directory is not allowed: {skill_name}")
@@ -244,12 +281,107 @@ def classify_mode(prompt: str, configured_modes: set[str] | None = None) -> str 
     return None
 
 
+def _resolve_skills_root(root: Path, override: str | Path | None) -> Path:
+    """Separate consumer config from the installed package's skill catalog.
+
+    An explicit override is host input, never prompt text. Retain the historical
+    standalone project_root/skills layout when it exists; a package nested in a
+    consumer (including a submodule) always uses its own skills by default.
+    """
+    package = Path(__file__).resolve().parents[2]
+    if override is not None:
+        candidate = Path(override).expanduser()
+        if not candidate.is_absolute():
+            candidate = root / candidate
+    elif package != root and _contains_path(package, root):
+        candidate = package / "skills"
+    elif (root / "skills").exists() or (root / "skills").is_symlink():
+        candidate = root / "skills"
+    else:
+        candidate = package / "skills"
+    if candidate.is_symlink():
+        raise ValueError("symlinked skills root is not allowed")
+    candidate = candidate.resolve()
+    if not candidate.is_dir():
+        raise ValueError(f"missing skills root: {candidate}")
+    return candidate
+
+
+def _routing_fingerprint(
+    root: Path,
+    config: Path,
+    document: dict,
+    skills_root: Path,
+    mode_map: dict,
+    settings: dict,
+) -> str:
+    # No overlay contents are read. Changes in catalog metadata invalidate hits;
+    # selected entries are revalidated even on a cache hit.
+    names = {name for values in mode_map.values() for name in values}
+    names.update(name for name in settings if not name.startswith("_"))
+    if len(names) > 512 or any(not valid_name(name) for name in names):
+        raise ValueError("invalid or oversized skill catalog (max 512)")
+    catalog = []
+    for name in sorted(names):
+        for leaf in ("", "SKILL.md", "LITE.md"):
+            path = skills_root / name / leaf
+            try:
+                st = path.lstat()
+                stamp = (
+                    st.st_mode,
+                    st.st_size,
+                    st.st_mtime_ns,
+                    st.st_ctime_ns,
+                    st.st_ino,
+                )
+            except FileNotFoundError:
+                stamp = None
+            catalog.append((name, leaf, stamp))
+    policy = root / ".forgewright" / "execution-policy.yaml"
+    policy_digest = None
+    if policy.exists():
+        with policy.open("rb") as handle:
+            contents = handle.read(1024 * 1024 + 1)
+        if len(contents) > 1024 * 1024:
+            raise ValueError("routing policy fingerprint input exceeds 1 MiB")
+        policy_digest = hashlib.sha256(contents).hexdigest()
+    payload = [
+        str(root),
+        str(config),
+        str(skills_root),
+        document,
+        catalog,
+        policy_digest,
+    ]
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def _allowed_modes(document: dict, mode_map: dict, allowed_modes) -> list[str]:
+    policy = document.get("routing_policy", {})
+    if not isinstance(policy, dict):
+        raise ValueError("routing_policy must be an object")
+    enabled = policy.get("enabled", True)
+    if not isinstance(enabled, bool):
+        raise ValueError("routing_policy.enabled must be a boolean")
+    modes = list(mode_map)
+    if "allowed_modes" in policy:
+        allowed = validate_candidates(policy["allowed_modes"])
+        modes = [mode for mode in modes if mode in allowed]
+    if allowed_modes is not None:
+        allowed = validate_candidates(allowed_modes)
+        modes = [mode for mode in modes if mode in allowed]
+    return modes if enabled else []
+
+
 def route_skills(
     *,
     prompt: str = "",
     mode: str | None = None,
     config_path: str | Path | None = None,
     project_root: str | Path | None = None,
+    skills_root: str | Path | None = None,
+    allowed_modes: list[str] | None = None,
+    cache: ExactRoutingCache | None = None,
 ) -> dict[str, Any]:
     """Return verified, ordered skill overlays from the local project config."""
     root = Path(project_root or Path.cwd()).expanduser().resolve()
@@ -258,7 +390,7 @@ def route_skills(
         .expanduser()
         .resolve()
     )
-    source = "explicit" if mode is not None else "prompt"
+    source = "explicit" if mode is not None else "local-rules"
     requested_mode = _normalise_mode(mode) if mode is not None else None
 
     if not config.is_file():
@@ -270,13 +402,32 @@ def route_skills(
         )
     try:
         with config.open("r", encoding="utf-8") as handle:
-            document = json.load(handle)
+            raw = handle.read(1024 * 1024 + 1)
+            if len(raw) > 1024 * 1024:
+                raise ValueError("skills config exceeds 1 MiB")
+            document = json.loads(raw)
         if not isinstance(document, dict):
             raise ValueError("config root must be an object")
         mode_map = _mode_skill_map(document)
         settings = _skill_settings(document)
+        if len(settings) > 512:
+            raise ValueError("skills settings exceeds 512 entries")
+        for name, value in settings.items():
+            if not name.startswith("_"):
+                if not valid_name(name):
+                    raise ValueError("invalid skill name or path escapes skills root")
+                _enabled_value(value, name)
+        skills_root = _resolve_skills_root(root, skills_root)
+        candidates = _allowed_modes(document, mode_map, allowed_modes)
+        fingerprint = (
+            _routing_fingerprint(
+                root, config, document, skills_root, mode_map, settings
+            )
+            if cache is not None
+            else "uncached"
+        )
         cap, description_budget = _context_budget(document)
-    except (OSError, json.JSONDecodeError, ValueError) as error:
+    except (OSError, UnicodeError, ValueError) as error:
         return _result(
             status="error", mode=requested_mode, source=source, errors=[str(error)]
         )
@@ -287,27 +438,16 @@ def route_skills(
         auto_detect = document.get("auto_detect", True)
         if not isinstance(auto_detect, bool):
             raise ValueError("auto_detect must be a boolean")
-        selected_mode = requested_mode or (
-            classify_mode(prompt, set(mode_map)) if auto_detect else None
+        decision = select_mode(
+            prompt=prompt if auto_detect else "",
+            candidates=candidates,
+            project_root=root,
+            fingerprint=fingerprint,
+            explicit=requested_mode,
+            cache=cache,
         )
-        if selected_mode is None and auto_detect and prompt.strip():
-            try:
-                from scripts.runtime.jev_adapter import JevSkillRouterAdapter
-
-                _jev = JevSkillRouterAdapter()
-                if _jev.enabled:
-                    _decision = _jev.route_candidate(
-                        task_intent=prompt,
-                        candidates=list(mode_map.keys()),
-                    )
-                    if (
-                        _decision.status == "selected"
-                        and _decision.selected_skill in mode_map
-                    ):
-                        selected_mode = _decision.selected_skill
-                        selected_source = "jev"
-            except Exception:
-                pass
+        selected_mode = decision["mode"]
+        selected_source = decision["source"]
         if selected_mode is None:
             force_names = [
                 name
@@ -317,7 +457,11 @@ def route_skills(
                 and _enabled_value(value, name) == "true"
             ]
             selected_names = force_names
-            selected_source = "manual" if force_names else "none"
+            if force_names:
+                selected_source = "explicit"
+                decision = dict(
+                    decision, source="explicit", reason="host-forced-skills"
+                )
         else:
             if selected_mode not in mode_map:
                 message = (
@@ -352,14 +496,6 @@ def route_skills(
 
     # Validate before applying the cap so a bad configured path can never be
     # hidden by ordering or truncation.
-    skills_root = (root / "skills").resolve()
-    if not skills_root.is_dir():
-        return _result(
-            status="error",
-            mode=selected_mode,
-            source=selected_source,
-            errors=[f"missing skills root: {skills_root}"],
-        )
     verified: list[dict[str, str]] = []
     seen: set[str] = set()
     try:
@@ -416,6 +552,7 @@ def route_skills(
         mode=selected_mode,
         source=selected_source,
         skills=loaded,
+        routing=decision,
         context_budget={
             "limit": description_budget,
             "estimated_used": estimated_used,
@@ -431,6 +568,9 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--prompt")
     parser.add_argument("--mode")
     parser.add_argument("--config")
+    parser.add_argument(
+        "--skills-root", help="Explicit host-owned skill catalog override"
+    )
     parser.add_argument("--project-root", default=str(Path.cwd()))
     args = parser.parse_args(argv)
     if args.prompt is None and args.mode is None:
@@ -446,6 +586,7 @@ def main(argv: list[str] | None = None) -> int:
             mode=args.mode,
             config_path=args.config,
             project_root=args.project_root,
+            skills_root=args.skills_root,
         )
     except Exception as error:  # Keep CLI output structured even for bad input.
         output = _result(status="error", mode=None, source="cli", errors=[str(error)])

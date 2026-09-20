@@ -88,22 +88,19 @@ def test_route_skills_with_jev_integration(monkeypatch, tmp_path):
     from scripts.runtime.skill_routing import route_skills
     from scripts.runtime import jev_adapter
 
-    # Enable Jev in env
+    # Requirement amendment FW-KEYLESS-PI-20260920: the owner explicitly
+    # replaced cloud-Jev routing with free local System-1 routing. Historical
+    # flags must not turn the new default path into a paid/network dependency.
     monkeypatch.setenv("FORGEWRIGHT_JEV_ENABLED", "true")
     monkeypatch.setenv("TYPESAFE_API_KEY", "sk-test")
     monkeypatch.setenv("FORGEWRIGHT_JEV_BUDGET_USD", "1.0")
 
-    # Mock route_candidate
+    # A call is a regression, even if the provider would return a valid choice.
+    calls = []
+
     def mock_route_candidate(self, task_intent, candidates, simulator_response=None):
-        return jev_adapter.JevRoutingDecision(
-            status="selected",
-            selected_skill="test",
-            confidence=0.92,
-            model_version="jev-1.13.0",
-            latency_ms=45.0,
-            cost_usd=0.00004,
-            reason="Ambiguous prompt routed via mock Jev",
-        )
+        calls.append(task_intent)
+        raise AssertionError("Default keyless routing must not call cloud Jev")
 
     monkeypatch.setattr(
         jev_adapter.JevSkillRouterAdapter, "route_candidate", mock_route_candidate
@@ -111,5 +108,14 @@ def test_route_skills_with_jev_integration(monkeypatch, tmp_path):
 
     res = route_skills(prompt="Some weird ambiguous request without keywords")
     assert res["status"] == "ok"
-    assert res["mode"] == "test"
-    assert res["source"] == "jev"
+    assert res["mode"] is None
+    assert res["source"] == "local-rules"
+    assert res["routing"]["status"] == "abstain"
+    assert calls == []
+
+    selected = route_skills(prompt="Viết kiểm thử đơn vị")
+    assert selected["status"] == "ok"
+    assert selected["mode"] == "test"
+    assert selected["source"] == "local-rules"
+    assert selected["routing"]["backend"] == "python-stdlib"
+    assert calls == []

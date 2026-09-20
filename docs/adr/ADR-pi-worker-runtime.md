@@ -3,7 +3,7 @@ title: Optional Pi Worker Runtime
 status: accepted-for-pilot
 owner: Runtime maintainers
 scope: Optional execution adapter; no production activation
-last_reviewed: 2026-09-19
+last_reviewed: 2026-09-20
 canonical: true
 ---
 
@@ -24,7 +24,96 @@ implementation. The initial implementation is deliberately an isolated,
 default-off **analysis-only pilot**, not a registered production worker.
 Hermes retains operator identity/scheduling; Forgewright retains goals, routing,
 approvals, memory, and acceptance. No active local goal or running service is
-replaced by this decision. Existing Jev routing remains unchanged.
+replaced by this decision. The 2026-09-20 owner amendment below replaces cloud-Jev routing on the default path with bounded local routing.
+
+## 2026-09-20 amendment: usable keyless, low-resource consumer worker
+
+The owner approved a free System-1-style path without requiring the Jev model,
+a new API subscription, or a resident local classifier. `skill_routing.py` now
+uses explicit selection, optional exact cache, bounded EN/VI rules, then abstain.
+The older cloud-Jev fallback is no longer called. One historical integration
+test changes its expected route under this explicit requirement amendment;
+existing adapter-unit expectations and the original 135 Pi checks are retained.
+
+`worker-runtime.mjs` is the opt-in public entrypoint used by `forge delegate`.
+It runs the pinned Pi Agent and `pi-ai` provider stream directly, not a nested
+Codex coding-agent subprocess. The older constructor-only pilot and host bridge
+remain separate compatibility surfaces. A user-invoked contract authorizes only
+existing regular read/write files and named immutable verifier argv. The model
+cannot edit its contract, acceptance, tests, configuration, credentials or
+submodule, and cannot register new tools or approval decisions.
+
+From a consumer root with Forgewright installed at `forgewright/`:
+
+```bash
+node forgewright/src/cli/dist/index.js delegate on --worker pi --provider current --auth-source codex
+node forgewright/src/cli/dist/index.js delegate status --worker pi
+node forgewright/src/cli/dist/index.js delegate run --worker pi --contract task.json
+node forgewright/src/cli/dist/index.js delegate resources
+node forgewright/src/cli/dist/index.js delegate off --worker pi
+```
+
+The parent `.production-grade.yaml` owns `delegationMode.worker` (`cli`,
+`provider`, `model`, `authSource`, `endpoint`). Editing this section preserves
+unrelated configuration. Prototype `.forgewright/pi-worker.json` is read-only
+compatibility, not a new second authority. Package code/skills resolve from the
+submodule; config, files, goal and run receipts resolve from the parent.
+
+For an already-running local model, explicitly select `--provider local
+--endpoint http://127.0.0.1:PORT/v1 --model EXACT_ID`. Only literal loopback
+addresses are admitted. For a subscription, select `--provider current
+--auth-source codex` or `--provider openai-codex --auth-source pi --model EXACT_ID`.
+Credential access is read-only and explicit, with no browser-cookie extraction,
+project copy or automatic refresh of another application's tokens. Expiry,
+401/403 and quota exhaustion stop truthfully. No paid fallback is selected.
+Subscription USD stays null and quota still applies. The pinned Codex protocol
+does not provide a hard output-token cap; bounded turns, deadline, input/output
+bytes and one HTTP attempt per model turn are enforced instead.
+
+Example `task.json` (files must already exist; the caller approves the contract):
+
+```json
+{
+  "schema": "forgewright-pi-task/v1",
+  "taskId": "fix-sum",
+  "objective": "Fix sum and run the immutable check verifier",
+  "acceptance": ["sum(2,3) equals 5", "check passes after the final patch"],
+  "readPaths": ["source.mjs", "verify.mjs"],
+  "writePaths": ["source.mjs"],
+  "verifiers": [{"id": "check", "argv": ["node", "verify.mjs"]}]
+}
+```
+
+Host revisions advance only after a before-hash-checked own patch. Changed
+scoped source, policy, contract or config fails as a foreign-edit conflict.
+Pre-existing dirty tracked write targets are rejected rather than overwritten.
+`delegate cancel RUN_ID` writes a durable cancellation marker and fences new
+file effects; it does not claim remote provider billing has stopped. Receipts
+are bounded and distinguish `ready`, actual provider observations, final
+verifier results, missing usage and local quiescence.
+
+`host_admission_broker.py` and `host-governor.mjs` share a per-user SQLite
+transaction authority across processes: maximum two workers, one per project,
+and one heavy job with a matching parent lease. A low-memory/pressure profile
+reduces admission, queue service is project-fair, queue/history are bounded,
+and PID/start identity plus opaque owner tokens protect lease operations.
+Unknown cleanup or lost active ownership quarantines its reserved capacity;
+TTL alone never authorizes replay. The broker is demand-started and exits after
+15 idle seconds. It owns no product jobs, cloud connections or model weights.
+
+The resource limit covers cooperating Pi clients on the same user/machine,
+not arbitrary external IDEs. Never terminate unowned work to gain memory.
+Short five-process tests are not the required long mixed-project soak or a
+4 GiB hardware certification. Local routing performance numbers from the
+synthetic author-labeled corpus do not establish general production accuracy.
+
+Verifier commands execute inside the macOS OS sandbox with scoped reads,
+scratch-only writes, no network, minimized environment and owned cleanup.
+Other verifier platforms currently fail closed; do not call this cross-platform
+sandbox coverage. File CAS is application-level protection against observed
+conflicts, not isolation from a malicious same-user process. Native source/task
+acceptance is separate from comparative savings, broad canary rollout and the
+full earlier P0-P6 outcome program.
 
 ## Target architecture and current boundary
 

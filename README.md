@@ -143,19 +143,32 @@ The [Pi integration](integrations/pi/) adds an isolated worker option without re
 | Bounded context and receipts | Preserve acceptance and current bindings; missing native usage or price remains unavailable, not zero. |
 | Evaluation and rollback controls | Paired-report comparison plus default-off, single-active-worker canary admission, kill switch, and quarantine. |
 
-**Status: experimental and default-off.** The original analysis pilot exposes zero tools. The separate host bridge permits only explicitly registered tools through canonical controls. Neither is automatically registered for production. Local SDK and integration tests do not establish a live token-saving benchmark or production canary.
+**Status: experimental, explicitly opt-in.** The public `delegate` CLI now runs a real Pi worker from the parent project. It supports an existing authorized Codex/Pi OAuth subscription or an explicit loopback model server, without TypeSafe or a new paid API fallback. A host-approved task permits only named files, compare-and-swap patches and immutable verifier IDs. The original zero-tool analysis pilot remains available; it is not the coding-worker entrypoint.
 
 ```bash
 npm --prefix integrations/pi ci --ignore-scripts --no-audit --no-fund
 npm run build
+npm run build:cli
 npm --prefix integrations/pi run test:all
 ```
 
-Read the [Pi architecture and P0–P6 acceptance plan](docs/adr/ADR-pi-worker-runtime.md) for provider evidence, paired measurement, activation, and rollback gates.
+After building the CLI and MCP above, run from the **parent project**, not inside its submodule:
+
+```bash
+node forgewright/src/cli/dist/index.js delegate on --worker pi --provider current --auth-source codex
+node forgewright/src/cli/dist/index.js delegate status --worker pi
+node forgewright/src/cli/dist/index.js delegate run --worker pi --contract task.json
+node forgewright/src/cli/dist/index.js delegate resources
+# node forgewright/src/cli/dist/index.js delegate cancel <run-id>
+```
+
+Settings live in the parent's existing `.production-grade.yaml`; unrelated settings are preserved. `current` accepts a standard Codex profile; a custom provider profile is rejected instead of silently switching providers. To explicitly use an existing Codex subscription, select `--provider openai-codex --auth-source codex --model <exact-model-id>`. `CODEX_HOME` is respected. Subscription access is read-only and still consumes its existing quota; expired authorization reports `pi_auth_required`, not a paid fallback. Local execution needs a configured loopback model endpoint. Verifier isolation currently requires macOS and a single-process command; fork/spawn, network access and source writes are denied. Unsupported platforms fail closed. The governed `delegate run` entrypoint refuses legacy Agy execution until it has a compatible host-admission/cleanup contract; its low-level adapter and configuration are retained, not silently used as fallback. `ready` means prerequisites are present, while a successful task receipt requires actual execution. See the [Pi ADR](docs/adr/ADR-pi-worker-runtime.md) for the task contract, local-provider setup, cancellation, limitations and live-measurement gates.
 
 ### Leaner context and clearer project state
 
-Progressive skill loading, compact execution summaries, stable instruction prefixes, and deterministic tooling reduce unnecessary context handling. The optional Jev routing adapter stays separately gated. Efficiency mechanisms are implemented; savings vary with the task, model, cache, and runtime and must be measured rather than assumed.
+System-1 routing now uses bounded English/Vietnamese rules and optional exact caching, then abstains when the intent is ambiguous. It does not import or call Jev, require `TYPESAFE_API_KEY`, download a classifier, or spend an extra model call. It takes Jev's bounded-choice approach without claiming to run the Jev model. Progressive skill loading and compact execution summaries keep unrelated context out of the worker.
+
+A shared per-user SQLite admission authority limits Pi clients across projects to at most two active workers and one heavy verifier, with one worker on the low-memory profile, pressure backoff, project fairness and uncertain-operation quarantine. A small IPC broker starts on demand and exits after 15 idle seconds; project contexts and credentials remain separate. These are concurrency limits, not certified throughput for every 4 GiB workload. Unmanaged IDEs/processes are not killed. Savings and whole-machine overhead still require representative measurement.
 
 The **Docs Hub** builds a searchable local HTML control center from approved Markdown/JSON. Project structure, roadmap, blockers, and Mermaid-derived flow views come from canonical sources—not another manually maintained dashboard.
 
@@ -215,11 +228,11 @@ The maturity labels below follow the [capability inventory](docs/capability-matu
 
 ### 11. Token Efficiency Engine & System-1 Routing (Jev Integration)
 
-**Experimental.** Compact overlays, deterministic tool work, and an optional bounded routing adapter. Jev is default-off with a zero default budget; no universal quality or savings percentage is promised. [Efficiency protocol](skills/_shared/protocols/tool-efficiency.md).
+**Experimental.** Compact overlays plus keyless, bounded local EN/VI routing with honest abstention. The historical Jev adapter is not on the default route; no classifier/model download or cloud routing call is required. No universal quality or savings percentage is promised. [Efficiency protocol](skills/_shared/protocols/tool-efficiency.md).
 
 ### 12. Optional Pi Worker Pilot
 
-**Experimental.** Pinned Pi SDK, zero-tool analysis pilot, and a separate canonical host bridge with explicit budgets, cancellation, scoped context, and release gates. Production admission remains off. [Pi ADR](docs/adr/ADR-pi-worker-runtime.md).
+**Experimental, opt-in.** Pinned Pi SDK and a public consumer-project coding worker with scoped file tools, immutable verifiers, cancellation and shared low-memory admission. Existing subscription/local transport is explicit; no autonomous production migration or paired-savings claim. [Pi ADR](docs/adr/ADR-pi-worker-runtime.md).
 
 </details>
 
