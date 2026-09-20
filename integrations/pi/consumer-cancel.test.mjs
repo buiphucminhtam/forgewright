@@ -9,7 +9,11 @@ const delay=(n)=>new Promise(r=>setTimeout(r,n));
 
 test('CONSUMER-CANCEL-01: public CLI cancellation fences late provider tool requests, preserves source and releases slots', {timeout:35000},async()=>{
  const root=realpathSync(mkdtempSync('/tmp/fw-consumer-cancel-'));
- const home=join(root,'admission');const env={...process.env,FORGEWRIGHT_ADMISSION_HOME:home,FORGE_DELEGATION_NOTICE:'0'};
+ const home=join(root,'admission');
+ // The release/evidence gate intentionally exports FORGEWRIGHT_WORKSPACE for
+ // its own exact-tree validation. This subprocess is a disposable consumer,
+ // so it must override that parent value rather than configure the checkout.
+ const env={...process.env,FORGEWRIGHT_WORKSPACE:root,FORGEWRIGHT_ADMISSION_HOME:home,FORGE_DELEGATION_NOTICE:'0'};
  mkdirSync(join(root,'.forgewright'));
  copyFileSync(join(packageRoot,'.forgewright/execution-policy.yaml'),join(root,'.forgewright/execution-policy.yaml'));
  writeFileSync(join(root,'package.json'),'{"name":"cancel-fixture","private":true}\n');
