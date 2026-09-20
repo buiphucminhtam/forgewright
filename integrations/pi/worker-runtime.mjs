@@ -1,8 +1,8 @@
 /** Canonical public Pi runtime. CLI and any future MCP registration call here. */
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmdirSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { digest, fail, PiHostError } from './contracts.mjs';
 import { resolveProvider, createProviderRequest, safeRuntimeError } from './provider.mjs';
 import { loadTaskContract, createWorkspaceScope, relativeFile } from './workspace.mjs';
@@ -74,6 +74,72 @@ export async function workerStatus(projectRoot) {
   return result;
 }
 
+function verifierExecutable(command) {
+  const candidates = isAbsolute(command)
+    ? [command]
+    : (process.env.PATH ?? '').split(delimiter).filter(Boolean).map((root) => join(root, command));
+  for (const candidate of candidates) {
+    try { if (existsSync(candidate)) return realpathSync(candidate); } catch { /* Ignore unusable PATH entries. */ }
+  }
+  return null;
+}
+
+const DARWIN_RUNTIME_ROOT_CACHE = new Map();
+
+function runtimeDependencyRoots(candidate) {
+  if (!candidate) return [];
+  let executable;
+  try { executable = realpathSync(candidate); } catch { return []; }
+  if (DARWIN_RUNTIME_ROOT_CACHE.has(executable)) return DARWIN_RUNTIME_ROOT_CACHE.get(executable);
+  const roots = new Set([dirname(dirname(executable))]);
+  const queue = [executable];
+  const inspectedFiles = new Set();
+  // Homebrew and similar package-manager runtimes can have transitive dylibs.
+  // Compute a bounded read-only closure from Mach-O metadata. Never execute a
+  // discovered dependency, and never scan arbitrary directories.
+  while (queue.length && inspectedFiles.size < 128) {
+    const current = queue.shift();
+    if (inspectedFiles.has(current)) continue;
+    inspectedFiles.add(current);
+    const inspected = spawnSync('/usr/bin/otool', ['-L', current], {
+      encoding: 'utf8', timeout: 2000, maxBuffer: 256 * 1024,
+      env: { PATH: '/usr/bin:/bin', LANG: 'C' }, shell: false,
+    });
+    if (inspected.status !== 0 || inspected.error) continue;
+    for (const line of inspected.stdout.split('\n').slice(1, 257)) {
+      const match = /^\s*(\/.+?) \(compatibility version /.exec(line);
+      if (!match) continue;
+      const dependency = match[1];
+      roots.add(dirname(dependency));
+      try {
+        const resolved = realpathSync(dependency);
+        roots.add(dirname(resolved));
+        if (!inspectedFiles.has(resolved)) queue.push(resolved);
+      } catch { /* Missing loader dependencies remain a normal verifier failure. */ }
+    }
+  }
+  const result = [...roots];
+  if (DARWIN_RUNTIME_ROOT_CACHE.size >= 16) DARWIN_RUNTIME_ROOT_CACHE.delete(DARWIN_RUNTIME_ROOT_CACHE.keys().next().value);
+  DARWIN_RUNTIME_ROOT_CACHE.set(executable, result);
+  return result;
+}
+
+function darwinRuntimeReadRoots(command, projectRoot) {
+  const roots = new Set(['/System', '/usr', '/bin', '/sbin', '/Library', '/private/etc']);
+  const addRuntime = (candidate) => {
+    if (!candidate) return;
+    let executable;
+    try { executable = realpathSync(candidate); } catch { return; }
+    // Never turn an executable inside the consumer project into a recursive
+    // read capability. Project bytes stay governed by readPaths/verifierFiles.
+    if (executable === projectRoot || executable.startsWith(`${projectRoot}/`)) return;
+    for (const root of runtimeDependencyRoots(executable)) roots.add(root);
+  };
+  addRuntime(process.execPath);
+  addRuntime(verifierExecutable(command));
+  return [...roots];
+}
+
 export async function verifierRun({ verifier, contract, run, signal, scope, worker, governor, evaluator }) {
   scope.check();
   // The model supplies only an ID. Evaluate the exact host-approved argv as well.
@@ -93,7 +159,11 @@ export async function verifierRun({ verifier, contract, run, signal, scope, work
     if (!existsSync(scratch)) mkdirSync(scratch, { mode: 0o700 });
     // No network or project writes. Approved verifiers are still untrusted processes.
     const literal = (value) => JSON.stringify(value);
-    const readRoots = ['/System', '/usr', '/bin', '/sbin', '/Library', '/private/etc', dirname(dirname(process.execPath))];
+    // Dynamic package-manager runtimes (for example Homebrew Node) may load
+    // dylibs outside the executable's version directory. Discover only the
+    // host-approved executable's bounded transitive dylib directories before entering the
+    // sandbox; project executables never gain a recursive project read root.
+    const readRoots = darwinRuntimeReadRoots(verifier.argv[0], contract.root);
     const readFiles = [...new Set([...contract.task.readPaths, ...contract.task.writePaths, ...contract.verifierFiles])].map((file) => join(contract.root, file));
     // The loader needs read access to the root directory itself for getcwd,
     // not recursive access. Signals are confined to descendants in this sandbox.
@@ -108,7 +178,10 @@ export async function verifierRun({ verifier, contract, run, signal, scope, work
       scope.check(); signal.throwIfAborted();
       const child = spawn('/usr/bin/sandbox-exec', ['-p', profile, ...verifier.argv], { cwd,
         env: { PATH: process.env.PATH, HOME: scratch, TMPDIR: scratch, LANG: 'C.UTF-8',
-          PYTHONDONTWRITEBYTECODE: '1', NO_COLOR: '1' }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+          // Verifiers have no network authority and do not need host OpenSSL
+          // modules/config. Empty OPENSSL_CONF disables the compiled-in config
+          // path instead of widening sandbox reads into package-manager etc/.
+          OPENSSL_CONF: '', PYTHONDONTWRITEBYTECODE: '1', NO_COLOR: '1' }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
       let output = ''; let bytes = 0; let failure;
       const kill = () => { try { process.kill(-child.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') quiescent = false; } };
       const abort = () => { failure = new PiHostError('pi_cancelled'); kill(); };

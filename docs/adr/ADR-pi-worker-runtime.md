@@ -111,6 +111,18 @@ synthetic author-labeled corpus do not establish general production accuracy.
 
 Verifier commands execute inside the macOS OS sandbox with scoped reads,
 scratch-only writes, no network, minimized environment and owned cleanup.
+For package-manager runtimes that load dylibs outside their executable folder,
+the host computes a bounded transitive Mach-O dependency closure from the
+host-approved executable and grants read-only access only to those runtime
+library directories. Consumer-project executables never become recursive
+project-read roots. The verifier environment disables the host OpenSSL config
+path instead of granting access to package-manager `etc/`; verifiers have no
+network authority and do not inherit a need for host TLS/module configuration.
+Focused sandbox checks pass with Node 22, Node 24 and the dynamically linked
+Homebrew Node 26 present on the target Mac, while source/credential/network and
+detached-child denials remain unchanged. This is observed compatibility on the
+target, not certification of every package-manager runtime.
+
 Other verifier platforms currently fail closed; do not call this cross-platform
 sandbox coverage. File CAS is application-level protection against observed
 conflicts, not isolation from a malicious same-user process. Native source/task
@@ -159,7 +171,7 @@ flowchart TD
     C --> D[Existing native workers]
     C --> E[Optional Pi worker]
     E --> F[Scoped context and host-selected provider stream]
-    E -. P2: not connected in pilot .-> G[Canonical tool gateway and owned lifecycle]
+    E --> G[Scoped consumer tool gateway and owned lifecycle]
     F --> H[Analysis or artifacts plus measured metadata]
     G --> H
     H --> I[Forgewright verifier and independent review]
@@ -171,7 +183,7 @@ flowchart TD
 | Intent, acceptance and task priority | Forgewright; never delegated to Pi session state |
 | Model, provider credentials and spend authorization | Trusted host using the existing provider-native contract; no automatic provider switch |
 | Agent loop | Pi within one explicitly scoped worker |
-| Tool admission, workspace and approvals | Existing canonical gateway; pilot exposes **zero tools** |
+| Tool admission, workspace and approvals | Original analysis pilot exposes zero tools; opt-in consumer worker exposes only contract-scoped read/patch/verifier operations through host policy and lifecycle |
 | Memory, checkpoint validity and resume authority | Existing Forgewright continuity; Pi history is not project truth |
 | Usage/cost evidence | Existing receipt contract; missing usage stays unavailable, not zero |
 | Product completion | Forgewright verification; successful generation is not acceptance |
