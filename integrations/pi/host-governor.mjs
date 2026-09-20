@@ -13,6 +13,12 @@ import { fail } from './contracts.mjs';
 const SCHEMA = 'forgewright-host-admission/v1';
 const BROKER = fileURLToPath(new URL('../../scripts/runtime/host_admission_broker.py', import.meta.url));
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Scheduling estimates, not RSS limits. Target-Mac measurements after loading
+// the pinned Pi SDK/runtime were ~84 MiB (Node 22) / ~71 MiB (Homebrew Node
+// 26); a simple verifier peaked ~42 MiB. Keep >2x observed runtime margin for
+// the worker and >3x for a single-process verifier without reserving 768 MiB
+// before the verifier has even started.
+export const HOST_MEMORY_RESERVATION_MIB = Object.freeze({ worker: 192, heavy: 128 });
 let starting;
 
 function homePath() {
@@ -92,7 +98,7 @@ export async function getHostAdmissionStatus() {
   catch { fail('pi_host_admission_unavailable'); }
 }
 
-export async function acquireHostSlot({ projectRoot, runId, kind = 'worker', parentLeaseId, memoryMiB = kind === 'heavy' ? 512 : 256, signal, waitMs = 30000 }) {
+export async function acquireHostSlot({ projectRoot, runId, kind = 'worker', parentLeaseId, memoryMiB = HOST_MEMORY_RESERVATION_MIB[kind], signal, waitMs = 30000 }) {
   if (!Number.isSafeInteger(waitMs) || waitMs < 1 || waitMs > 180000) fail('pi_invalid_wait_limit');
   signal?.throwIfAborted();
   const home = homePath();

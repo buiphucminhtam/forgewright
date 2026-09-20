@@ -96,12 +96,19 @@ verification is not promoted while the worker reservation remains quarantined.
 
 `host_admission_broker.py` and `host-governor.mjs` share a per-user SQLite
 transaction authority across processes: maximum two workers, one per project,
-and one heavy job with a matching parent lease. A low-memory/pressure profile
-reduces admission, queue service is project-fair, queue/history are bounded,
-and PID/start identity plus opaque owner tokens protect lease operations.
-Unknown cleanup or lost active ownership quarantines its reserved capacity;
-TTL alone never authorizes replay. The broker is demand-started and exits after
-15 idle seconds. It owns no product jobs, cloud connections or model weights.
+and one heavy job with a matching parent lease. Default scheduling reservations
+are 192 MiB for a Pi worker and 128 MiB for one single-process verifier. Those
+values are bounded estimates, not RSS enforcement: the target Mac measured
+about 71–84 MiB after loading the pinned Pi runtime and about 42 MiB peak for a
+small Node verifier, so the reservations retain material margin without the
+previous 256+512 MiB over-reservation that repeatedly starved a verifier while
+the 8 GiB host was busy. A low-memory/pressure profile still reduces admission,
+and the 512 MiB normal-host headroom is unchanged. Queue service is
+project-fair, queue/history are bounded, and PID/start identity plus opaque
+owner tokens protect lease operations. Unknown cleanup or lost active ownership
+quarantines its reserved capacity; TTL alone never authorizes replay. The broker
+is demand-started and exits after 15 idle seconds. It owns no product jobs,
+cloud connections or model weights.
 
 The resource limit covers cooperating Pi clients on the same user/machine,
 not arbitrary external IDEs. Never terminate unowned work to gain memory.

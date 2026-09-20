@@ -120,6 +120,44 @@ def test_pressure_blocks_and_recovers_with_hysteresis(tmp_path):
     assert poll(a, "w0", 100)["state"] == "active"
 
 
+def test_measured_worker_and_verifier_reservations_fit_bounded_8gib_headroom(tmp_path):
+    a, _, sensor, _ = fixture(tmp_path)
+    # 900 MiB available is intentionally tight: 192 worker + 128 verifier +
+    # the 512 MiB normal 8 GiB headroom still fits, while the earlier
+    # 256+512 defaults would have queued the verifier indefinitely.
+    sensor["sample"] = MemorySnapshot(
+        8 * 1024**3, 900 * 1024**2, "normal", "test-fixture"
+    )
+    project = tmp_path / "p0"
+    project.mkdir(exist_ok=True)
+    assert (
+        a.enqueue(
+            job_id="worker-measured",
+            token="worker-measured-" + "x" * 40,
+            project_root=str(project),
+            run_id="run-measured",
+            owner_pid=100,
+            kind="worker",
+            memory_mib=192,
+        )["state"]
+        == "active"
+    )
+    assert (
+        a.enqueue(
+            job_id="heavy-measured",
+            token="heavy-measured-" + "x" * 40,
+            project_root=str(project),
+            run_id="run-measured",
+            owner_pid=100,
+            kind="heavy",
+            memory_mib=128,
+            parent_lease_id="worker-measured",
+        )["state"]
+        == "active"
+    )
+    assert a.status()["reservedMiB"] == 320
+
+
 def test_warning_degrades_to_one_worker_and_low_headroom_blocks(tmp_path):
     a, _, sensor, _ = fixture(tmp_path)
     sensor["sample"] = MemorySnapshot(

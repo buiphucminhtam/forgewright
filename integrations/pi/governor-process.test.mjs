@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {acquireHostSlot,getHostAdmissionStatus} from './host-governor.mjs';
+import {acquireHostSlot,getHostAdmissionStatus,HOST_MEMORY_RESERVATION_MIB} from './host-governor.mjs';
 
 const pause=(n)=>new Promise(r=>setTimeout(r,n));
 const SELF=fileURLToPath(import.meta.url);
@@ -17,6 +17,9 @@ if(process.argv[2]==='child'){
  await pause(80); await h.release(); await lease.release();
  console.log(JSON.stringify({event:'finished',runId}));
 }else{
+ test('GOVERNOR-MEM-01: default scheduling reservations retain measured low-resource margin',()=>{
+  assert.deepEqual(HOST_MEMORY_RESERVATION_MIB,{worker:192,heavy:128});
+ });
  test('GOV-PROCESS-01: five actual project processes share worker/heavy caps and finish, then broker exits idle', {timeout:35000},async()=>{
   const previous=process.env.FORGEWRIGHT_ADMISSION_HOME;
   const root=realpathSync(mkdtempSync(join(tmpdir(),'fw-gov-process-')));
