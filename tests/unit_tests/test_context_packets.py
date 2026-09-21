@@ -166,6 +166,69 @@ def test_review_package_uses_base_head_and_task_scope(tmp_path: Path):
     assert "private_reasoning" not in packet
 
 
+@pytest.mark.parametrize(
+    "literal_path",
+    [":(top)**", ":(glob)**", "*.txt", ":(exclude)a.txt"],
+)
+def test_task_review_paths_are_literal_not_git_pathspecs(
+    tmp_path: Path, literal_path: str
+):
+    _git(tmp_path, "init", "-b", "main")
+    _git(tmp_path, "config", "user.email", "tests@example.com")
+    _git(tmp_path, "config", "user.name", "Tests")
+    (tmp_path / "a.txt").write_text("one\n")
+    (tmp_path / "b.txt").write_text("one\n")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-m", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    (tmp_path / "a.txt").write_text("two\n")
+    (tmp_path / "b.txt").write_text("two\n")
+    _git(tmp_path, "commit", "-am", "change both")
+    head = _git(tmp_path, "rev-parse", "HEAD")
+
+    packet = compile_review_package(
+        tmp_path,
+        base_sha=base,
+        head_sha=head,
+        review_scope="task",
+        task_paths=[literal_path],
+    )
+    assert packet["scope"] == {
+        "scope": "task",
+        "reason": "bounded_task",
+        "cross_cutting_risks": [],
+    }
+    assert packet["changed_paths"] == []
+    assert packet["commits"] == []
+    assert packet["diff_stat"] == ""
+    assert packet["diff"] == ""
+
+
+def test_literal_path_named_like_git_magic_can_be_reviewed(tmp_path: Path):
+    _git(tmp_path, "init", "-b", "main")
+    _git(tmp_path, "config", "user.email", "tests@example.com")
+    _git(tmp_path, "config", "user.name", "Tests")
+    magic = tmp_path / ":(top)**"
+    magic.write_text("one\n")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-m", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    magic.write_text("two\n")
+    _git(tmp_path, "commit", "-am", "change literal magic name")
+    head = _git(tmp_path, "rev-parse", "HEAD")
+
+    packet = compile_review_package(
+        tmp_path,
+        base_sha=base,
+        head_sha=head,
+        review_scope="task",
+        task_paths=[":(top)**"],
+    )
+    assert packet["changed_paths"] == [":(top)**"]
+    assert "change literal magic name" in packet["commits"][0]
+    assert ":(top)**" in packet["diff"]
+
+
 def test_review_package_rejects_unrelated_base(tmp_path: Path):
     _git(tmp_path, "init", "-b", "main")
     _git(tmp_path, "config", "user.email", "tests@example.com")

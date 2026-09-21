@@ -327,10 +327,24 @@ def compile_review_package(
         raise ContextPacketError("task review requires explicit task_paths")
     path_args = ["--", *paths] if review_scope == "task" else []
     range_ = f"{base_sha}..{head_sha}"
+    # Task paths are repository-relative names, never Git pathspec expressions.
+    # `--literal-pathspecs` is a global Git option and must precede the subcommand.
+    # Apply it consistently to every path-scoped view so a task path such as
+    # `:(top)**`, `:(glob)**`, `*.py`, or `:(exclude)foo` cannot silently widen
+    # a bounded task review.
+    literal_prefix = ["--literal-pathspecs"] if review_scope == "task" else []
     changed_paths = [
         line
         for line in _git(
-            root, ["diff", "--name-only", "--no-ext-diff", range_, *path_args]
+            root,
+            [
+                *literal_prefix,
+                "diff",
+                "--name-only",
+                "--no-ext-diff",
+                range_,
+                *path_args,
+            ],
         ).splitlines()
         if line
     ]
@@ -338,17 +352,26 @@ def compile_review_package(
         line
         for line in _git(
             root,
-            ["log", "--format=%H%x09%s", range_],
+            [
+                *literal_prefix,
+                "log",
+                "--format=%H%x09%s",
+                range_,
+                *path_args,
+            ],
             maximum=128 * 1024,
         ).splitlines()
         if line
     ]
     diff_stat = _git(
         root,
-        ["diff", "--stat", "--no-ext-diff", range_, *path_args],
+        [*literal_prefix, "diff", "--stat", "--no-ext-diff", range_, *path_args],
         maximum=128 * 1024,
     )
-    diff = _git(root, ["diff", "--no-ext-diff", "--no-color", range_, *path_args])
+    diff = _git(
+        root,
+        [*literal_prefix, "diff", "--no-ext-diff", "--no-color", range_, *path_args],
+    )
     binding: dict[str, Any] = {"base_sha": base_sha, "head_sha": head_sha}
     if goal_id is not None:
         binding["goal_id"] = _id(goal_id, "goal_id")

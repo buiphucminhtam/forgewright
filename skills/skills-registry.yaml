@@ -182,7 +182,6 @@ skills:
     has_skill_md: true
     has_lite_md: true
     version: 1.0.0
-    version: 1.0.0
 
   - name: frontend-engineer
     type: canonical
