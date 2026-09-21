@@ -162,6 +162,47 @@
         "npm run build:cli"
       ],
       "limitations": "Opt-in public Pi CLI supports existing subscription or loopback provider, scoped file changes and immutable verifier IDs. Verification commands currently require macOS and a single process; Windows IPC and general npm/Unity builds are not supported. Shared admission governs cooperating Pi clients, not external IDEs. Subscription quota is not unlimited free inference; comparative benefit and broad production rollout remain separate gates."
+    },
+    {
+      "id": "agent-plugin-distribution",
+      "readme_heading": "Codex & Claude Plugin Distribution",
+      "maturity": "beta",
+      "placement": "core",
+      "verification_command": "python3 scripts/ci/verify-plugin-distribution.py --static",
+      "evidence": [
+        "plugin.json",
+        ".codex-plugin/plugin.json",
+        ".claude-plugin/plugin.json",
+        ".agents/plugins/marketplace.json",
+        ".claude-plugin/marketplace.json",
+        "skills/forgewright/SKILL.md",
+        "scripts/ci/verify-plugin-distribution.py",
+        "tests/unit_tests/test_plugin_distribution.py",
+        "docs/adr/ADR-agent-plugin-distribution.md",
+        "evals/plugin-quality/acceptance.py"
+      ],
+      "limitations": "Local isolated install/discovery is verified for the installed Codex and Claude CLIs. The default plugin is skills-only with no executable hook or local MCP side effect; official hosted marketplace publication and richer local runtime setup remain separate."
+    },
+    {
+      "id": "skill-quality-engine",
+      "readme_heading": "Behavioral Skill Quality Engine",
+      "maturity": "experimental",
+      "placement": "core",
+      "evidence": [
+        "scripts/runtime/skill_quality.py",
+        "scripts/runtime/skill_metadata.py",
+        "scripts/runtime/context_packets.py",
+        "scripts/runtime/plan_runtime.py",
+        "evals/skills/README.md",
+        "evals/skills/debugger/scenarios.jsonl",
+        "tests/unit_tests/test_skill_quality.py",
+        "tests/unit_tests/test_skill_metadata.py",
+        "tests/unit_tests/test_context_packets.py",
+        "tests/unit_tests/test_plan_runtime.py",
+        "docs/adr/ADR-agent-plugin-distribution.md",
+        "evals/plugin-quality/acceptance.py"
+      ],
+      "limitations": "Deterministic framework behavior and pressure fixtures are verified. Real-model baseline/current/candidate quality, token and latency gains require separate provider-specific evaluation and are not inferred from fixture tests."
     }
   ],
   "optional_packs": [

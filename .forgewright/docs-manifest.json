@@ -52,6 +52,10 @@
     {
       "path": "docs/adr/ADR-pi-worker-runtime.md",
       "type": "architecture"
+    },
+    {
+      "path": "docs/adr/ADR-agent-plugin-distribution.md",
+      "type": "architecture"
     }
   ],
   "project_docs": {
@@ -67,7 +71,8 @@
     "docs/adr/ADR-011-central-docs-hub.md",
     "docs/adr/ADR-012-bounded-peer-collaboration.md",
     "skills/_shared/protocols/documentation-governance.md",
-    "docs/adr/ADR-pi-worker-runtime.md"
+    "docs/adr/ADR-pi-worker-runtime.md",
+    "docs/adr/ADR-agent-plugin-distribution.md"
   ],
   "adapters": {
     "git": true,
@@ -88,7 +93,8 @@
       "skills/_shared/protocols/documentation-governance.md",
       "docs/process/release-readiness.md",
       "product-manifest.json",
-      "docs/adr/ADR-pi-worker-runtime.md"
+      "docs/adr/ADR-pi-worker-runtime.md",
+      "docs/adr/ADR-agent-plugin-distribution.md"
     ],
     "exclude": [
       "docs/archive/**",

@@ -48,7 +48,7 @@ def query_notebooklm(skill_name: str) -> str:
         f"The output must strictly follow the Forgewright Lite markdown template:\n\n"
         f"---\n"
         f"name: {skill_name}\n"
-        f'description: "<brief description of what the skill does>. Use when the user requests <list of triggers/scenarios where this skill should activate>."\n'
+        f'description: "Use when <trigger conditions only; do not describe the workflow, implementation steps, or skill behavior>."\n'
         f"version: 1.0.0\n"
         f"---\n\n"
         f"# {skill_name.replace('-', ' ').title()} (LITE)\n\n"
@@ -216,28 +216,33 @@ def main():
             continue
 
         clean_markdown = parse_markdown(raw_markdown)
-        skill_path = os.path.join(skills_dir, skill)
-        os.makedirs(skill_path, exist_ok=True)
-        lite_path = os.path.join(skill_path, "LITE.md")
-
-        with open(lite_path, "w") as f:
+        candidate_dir = os.path.join(
+            repo_root, ".forgewright", "runtime", "skill-candidates", skill
+        )
+        os.makedirs(candidate_dir, exist_ok=True)
+        candidate_path = os.path.join(candidate_dir, "LITE.md")
+        with open(candidate_path, "w") as f:
             f.write(clean_markdown + "\n")
 
-        log_success(f"Successfully wrote LITE.md for '{skill}'")
+        log_success(f"Staged candidate for '{skill}' at {candidate_path}")
+        log_info(
+            "Canonical skill/index remain unchanged. Evaluate baseline/current/candidate "
+            "with scripts/runtime/skill_quality.py, then use its 'promote' command with "
+            "the SHA-bound promotion report."
+        )
         processed_count += 1
 
-    # 2. Update Skill Index and Sync Kernel
-    if processed_count > 0 or not args.skill:
+    # Candidate generation is deliberately separate from promotion. Never update
+    # kernel/INDEX.md or shared skill files until behavioral evidence approves the
+    # exact candidate bytes.
+    if processed_count > 0:
+        log_success(
+            f"Batch completed. Staged {processed_count} candidate skill(s); 0 promoted."
+        )
+    elif not args.skill:
         update_index(skills_dir, index_path)
 
-        # Run sync-kernel script
-        sync_script = os.path.join(script_dir, "sync-kernel.sh")
-        if os.path.exists(sync_script):
-            log_info("Running kernel synchronization...")
-            subprocess.run(["bash", sync_script])
-            log_success("Kernel synchronization complete")
-
-    log_success(f"Batch completed. Processed {processed_count} skills.")
+    log_success("Skill promotion remains evidence-gated.")
 
 
 if __name__ == "__main__":

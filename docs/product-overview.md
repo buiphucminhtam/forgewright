@@ -118,12 +118,12 @@ Usage and cost figures are estimates derived from model-reported tokens and conf
 
 Forgewright is designed so you can start with zero setup and add power incrementally:
 
-### Level 1 — Basic (Zero Setup)
+### Level 1 — Plugin / Rule-File Entry
 
-Copy `AGENTS.md` and `CLAUDE.md` into your project root. Open your IDE and start talking. All 84 AI skills auto-activate through the rule files.
+For Codex or Claude Code, install the repository plugin marketplace and `forgewright` plugin; the plugin exposes the shared entry workflow and specialist skills without copying the framework into every project. Other supported clients can continue to use the generated rule files.
 
-- **Requirements:** None beyond an AI-capable IDE
-- **What you get:** Full skill routing, pipeline orchestration, quality gates
+- **Requirements:** A plugin-capable Codex/Claude CLI, or an AI-capable IDE that reads the generated rule files
+- **What you get:** Portable skill routing and engineering workflow guidance. Local MCP/runtime automation is a separate advanced setup.
 
 ### Level 2 — Lite (Code Intelligence)
 
@@ -166,15 +166,15 @@ Connect the Forgewright MCP server for maximum power: 12+ AI tools available dir
 | IDE / Platform | Config File | MCP Support | Maturity | Notes |
 |---------------|-------------|-------------|----------|-------|
 | **Cursor** | `AGENTS.md` | ✅ Full | Stable | Primary development IDE. Uses `.cursor/mcp.json` for MCP config. |
-| **Claude Code** | `CLAUDE.md` | ✅ Full | Stable | Direct Claude CLI integration. Supports hooks for auto-indexing. |
+| **Claude Code** | Plugin + `CLAUDE.md` fallback | Optional advanced MCP | Stable | Stable rule-file surface; beta repository plugin exposes shared skills without an unconditional SessionStart hook; full local MCP remains explicit setup. |
 | **Antigravity** | `AGENTS.md` | ✅ Full | Stable | Gemini-powered IDE. Uses `GEMINI.md` alongside `AGENTS.md`. |
 | **Gemini (CLI/IDE)** | `GEMINI.md` | ✅ Full | Stable | Gemini-native support with `thinking_level` optimization. |
-| **Codex (OpenAI)** | `AGENTS.md` | ✅ Full | Stable | Codex CLI integration via `forgewright-mcp-setup.sh --codex`. |
+| **Codex (OpenAI)** | Plugin + `AGENTS.md` fallback | Optional advanced MCP | Stable | Stable rule-file surface; beta repository plugin exposes shared skills; richer local MCP remains explicit setup. |
 | **Forge CLI** | `src/cli/package.json` | N/A | Beta | Agent-first command-line interface; package versioned independently. |
 
 ### Configuration Files
 
-Each IDE reads from standardized rule files at your project root:
+Plugin-capable Codex/Claude installs discover the shared `skills/` tree directly. Rule-file clients continue to read standardized files at the project root:
 
 - **`AGENTS.md`** — The primary rule file (Cursor, Antigravity, Codex)
 - **`CLAUDE.md`** — Claude Code-specific rules (identical kernel, platform-specific hooks)
@@ -191,12 +191,15 @@ All three files share the same kernel content (auto-synced via `scripts/lite/syn
 git clone https://github.com/buiphucminhtam/forgewright.git
 cd forgewright
 
-# 2. Copy config to your project
-cp AGENTS.md /path/to/your/project/
-cp CLAUDE.md /path/to/your/project/
+# 2a. Codex plugin
+codex plugin marketplace add buiphucminhtam/forgewright --ref main
+codex plugin add forgewright@forgewright-marketplace
 
-# 3. Open in IDE and start talking
-cursor /path/to/your/project/
+# 2b. Claude Code plugin
+claude plugin marketplace add buiphucminhtam/forgewright
+claude plugin install forgewright@forgewright-marketplace --scope user
+
+# Rule-file clients may instead copy the generated AGENTS.md / CLAUDE.md.
 
 # 4. (Optional) Add GitNexus for code intelligence
 npm install -g gitnexus && gitnexus setup && gitnexus analyze

@@ -1,6 +1,6 @@
 ---
 name: devops
-description: "Orchestrates local-first CI/CD automation, testing gates, containers, deployment scripts, package publishing, and infrastructure monitoring. Hosted CI providers are optional adapters only when explicitly requested."
+description: "Use for local-first CI/CD, build or release gates, containers, packaging, deployment scripts, publishing, or operational automation."
 version: 1.1.0
 ---
 

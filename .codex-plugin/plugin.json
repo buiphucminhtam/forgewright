@@ -1,0 +1,38 @@
+{
+  "name": "forgewright",
+  "version": "8.7.0",
+  "description": "Provider-neutral software production system with proportional engineering workflows, specialist skills, evidence gates, bounded parallel execution, and local-first automation.",
+  "author": {
+    "name": "Bui Phuc Minh Tam",
+    "url": "https://github.com/buiphucminhtam"
+  },
+  "homepage": "https://github.com/buiphucminhtam/forgewright",
+  "repository": "https://github.com/buiphucminhtam/forgewright",
+  "keywords": [
+    "software-engineering",
+    "skills",
+    "code-review",
+    "testing",
+    "planning",
+    "agents",
+    "local-first"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Forgewright",
+    "shortDescription": "Evidence-first software production workflows for coding agents",
+    "longDescription": "Use Forgewright to frame requirements, route specialist skills, implement and debug proportionally, coordinate bounded workers, review exact changes, and verify delivery with local-first evidence gates.",
+    "developerName": "Bui Phuc Minh Tam",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use Forgewright to implement this feature safely and verify it.",
+      "Use Forgewright to debug this issue and prove the root cause."
+    ],
+    "websiteURL": "https://github.com/buiphucminhtam/forgewright"
+  }
+}

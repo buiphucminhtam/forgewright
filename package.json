@@ -24,6 +24,7 @@
     "verify:roadmap": "node scripts/ci/local-ci.mjs roadmap",
     "verify:product-factory": "node scripts/ci/local-ci.mjs product-factory",
     "verify:platform": "node scripts/ci/local-ci.mjs platform",
+    "verify:plugins": "python3 scripts/ci/verify-plugin-distribution.py --install",
     "verify:web-reference": "npm --prefix mcp run build && npm --prefix product-factory/web-reference test",
     "ci:bootstrap": "node scripts/ci/local-ci.mjs bootstrap",
     "ci:local": "node scripts/ci/local-ci.mjs all",

@@ -1,0 +1,18 @@
+{
+  "name": "forgewright-marketplace",
+  "description": "Forgewright software production plugin",
+  "owner": {
+    "name": "Bui Phuc Minh Tam"
+  },
+  "plugins": [
+    {
+      "name": "forgewright",
+      "description": "Provider-neutral software production system with specialist skills and evidence-first delivery workflows",
+      "version": "8.7.0",
+      "source": "./",
+      "author": {
+        "name": "Bui Phuc Minh Tam"
+      }
+    }
+  ]
+}

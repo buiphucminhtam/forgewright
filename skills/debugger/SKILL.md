@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: "Systematic debugging and root-cause analysis — hypothesis-driven investigation, log analysis, bisection, reproduction strategies, and fix verification. Use when the user reports a bug, crash, error, exception, broken feature, failing test, performance degradation, or says something is 'not working'."
+description: "Use when the user reports a bug, crash, exception, broken behavior, failing test, regression, or performance degradation."
 version: 2.0.0
 ---
 
@@ -35,9 +35,19 @@ If you cannot explain WHY the bug occurs, you cannot fix it. Symptoms are clues,
 
 **Stop signals — return to Phase 1 if:**
 - Proposing solutions before tracing data flow
-- 3+ failed fix attempts (question architecture, not symptoms)
+- The same fix approach fails twice (classify the failure before any replan)
 - User shows frustration with the approach
 - No new evidence after 3 consecutive investigation steps
+
+### Rule 1.1: Failure Classification Before Retry
+
+After a failed approach, record exactly one evidence-backed class before selecting another action:
+- `hypothesis_wrong` — the experiment disproved the root-cause hypothesis.
+- `implementation_wrong` — the root-cause hypothesis remains supported, but the attempted change is wrong or incomplete.
+- `environment_wrong` — dependency, configuration, platform, fixture, or runtime evidence invalidated the assumed environment.
+- `architecture_wrong` — the failure reveals a broader design/shared-state/public-contract issue that needs replanning.
+
+The **same approach failing twice forbids a third cosmetic variant**. `hypothesis_wrong` and `environment_wrong` map to `material_assumption_invalidated`; `architecture_wrong` maps to `material_risk_discovered`; `implementation_wrong` stays inside the locked plan unless new evidence triggers an allowed replan.
 
 ### Rule 2: Evidence is Sacred
 

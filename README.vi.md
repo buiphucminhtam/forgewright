@@ -85,9 +85,35 @@ Xem [pipeline reference](docs/pipeline-reference.md) và [canonical runtime ADR]
 
 ## Bắt đầu
 
-### 1. Build công cụ local
+### 1. Cài Forgewright như plugin (khuyến nghị)
 
-Cần **Node.js 22+**, **Python 3.11+** và Git. Gói Pi tùy chọn cần **Node.js 22.19+**. Trên Windows, dùng Git Bash cho setup và các gate dạng shell; repo có hỗ trợ hook PowerShell native.
+Forgewright giờ có một nguồn plugin dùng chung cho **Codex** và **Claude Code**. Plugin cài entry workflow và specialist skills mà không bắt buộc thêm một gói model riêng.
+
+**Codex CLI**
+
+```bash
+codex plugin marketplace add buiphucminhtam/forgewright --ref main
+codex plugin add forgewright@forgewright-marketplace
+```
+
+**Claude Code**
+
+```bash
+claude plugin marketplace add buiphucminhtam/forgewright
+claude plugin install forgewright@forgewright-marketplace --scope user
+```
+
+Sau khi cài, mở session mới và giao việc bình thường; description dạng trigger-only giúp host chỉ nạp skill phù hợp khi cần. `forgewright` là entry/alias workflow nên số specialist canonical vẫn là **84 kỹ năng**.
+
+Plugin mặc định là **skills-only**: không SessionStart hook executable và không local MCP side effect. Chỉ cấu hình full local runtime khi cần tool chạy trên máy. Maintainer có thể test cài đặt trong HOME tạm, không đụng profile thật:
+
+```bash
+npm run verify:plugins
+```
+
+### 2. Build full local toolchain (nâng cao)
+
+Cần **Node.js 22+**, **Python 3.11+** và Git. Pi tùy chọn cần **Node.js 22.19+**. Clone repo khi cần Forge CLI, Docs Hub, MCP, local gates hoặc phát triển framework:
 
 ```bash
 git clone https://github.com/buiphucminhtam/forgewright.git
@@ -98,22 +124,16 @@ npm run build:cli
 node src/cli/dist/index.js --help
 ```
 
-`ci:bootstrap` cài dependency kiểm chứng của Node/Python và cấu hình Git hooks trong clone này. Lệnh không bật Pi hoặc khởi chạy dịch vụ production. Gọi model sử dụng tài khoản và chính sách usage của provider bạn chọn; kiểm chứng local không yêu cầu dịch vụ CI trả phí.
-
-### 2. Thử kiểm tra dự án mà chưa gọi model
-
-Thay `/path/to/your-project` bằng đường dẫn tới dự án local hiện có:
+Có thể init/onboard một dự án local mà chưa gọi model:
 
 ```bash
 node src/cli/dist/index.js --json init /path/to/your-project
 node src/cli/dist/index.js --json onboard /path/to/your-project
 ```
 
-CLI tạo metadata riêng cho dự án và ghi nhận thông tin filesystem. File hiện có được giữ nguyên trừ khi dùng tùy chọn ghi đè rõ ràng. [Hướng dẫn init/onboard](docs/guides/forge-init-onboard.md).
+### 3. Pin toàn bộ framework vào project (nâng cao)
 
-### 3. Kết nối workflow kỹ thuật
-
-Chạy từ **thư mục gốc của dự án cần tích hợp**:
+Nếu team cần runtime Forgewright được pin theo repo cùng local MCP setup, vẫn dùng Git submodule:
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forgewright.git forgewright
@@ -121,11 +141,24 @@ git submodule update --init --recursive
 bash forgewright/scripts/forgewright-mcp-setup.sh
 ```
 
-Đọc setup script và kiểm tra cấu hình được ghi. Tích hợp phần phù hợp từ `forgewright/AGENTS.md` hoặc `forgewright/CLAUDE.md` vào quy định hiện có—**không chép đè mù quáng lên rules của dự án**. Reload client, xác nhận MCP kết nối, rồi dùng `/onboard` tại client hỗ trợ project workflow.
-
-Repo có cấu hình cho Codex, Claude, Cursor và Antigravity; capability của runtime đang dùng mới quyết định tính năng thực sự khả dụng. Có file hướng dẫn không đồng nghĩa MCP đã chạy. GitNexus và hook theo từng host là các bước cài tùy chọn: xem [GitNexus](docs/guides/gitnexus.md), [installer](scripts/forgewright-install.sh) và [hook doctor](scripts/forgewright-hook-doctor.sh).
+Hãy review setup script và config sinh ra; merge rule cần thiết vào project thay vì ghi đè rule sẵn có. Plugin và submodule bổ sung cho nhau: plugin mang skill portable, còn submodule/full clone mang runtime code và gate local có thể reproduce.
 
 ## Đã nâng cấp gì
+
+### Plugin Codex/Claude + chất lượng skill có thể đo
+
+Forgewright không còn bắt buộc người dùng clone/submodule chỉ để có workflow: cùng một `skills/` source được đóng gói thành plugin cho Codex và Claude. Không copy 80+ skill sang hai bộ riêng nên tránh drift giữa harness.
+
+| Nâng cấp | Lợi ích |
+| --- | --- |
+| Skill Quality Engine | So sánh **baseline → current → candidate** bằng trigger accuracy, required/forbidden behavior, pressure/rationalization, abstention, tool call, context bytes và latency. Có regression thì không promote. |
+| Trigger-only metadata | Description chỉ nói **khi nào dùng skill**; workflow nằm trong body, giúp routing gọn hơn. |
+| Minimal worker packet | `PLAN_LOCKED` compile thành context tối thiểu có digest, goal/plan/task/scope/base binding; không nhét parent accounting vào worker. |
+| Scoped review | Review task chỉ xem phạm vi task; mở rộng branch/release phải có final-review intent hoặc cross-cutting risk cụ thể. |
+| Plan-scoped state | Runtime state tách theo `goal_id + plan_digest + base SHA`; success dọn sạch, failure giữ lại để debug/resume. |
+| Failure classification | Phân biệt `hypothesis_wrong`, `implementation_wrong`, `environment_wrong`, `architecture_wrong`; cùng cách làm fail hai lần thì không retry biến thể mù. |
+
+Framework eval là deterministic/provider-neutral. Chưa có benchmark model thật thì không tuyên bố chắc chắn giảm token, tăng chất lượng hay nhanh hơn bao nhiêu.
 
 ### Pi worker tùy chọn, vẫn do Forgewright kiểm soát
 
@@ -195,6 +228,8 @@ Mở `.forgewright/docs-hub/site/index.html`. [Hướng dẫn Docs Hub](docs/gui
 | Game Studio Control Plane | Beta optional pack | Handoff theo phase; build, playtest, thiết bị và phát hành cần bằng chứng riêng. |
 | Token Efficiency / Jev spirit | Experimental | Routing rules/cache local EN/VI, không key/model phụ; abstain khi mơ hồ. |
 | Pi Worker | Experimental, opt-in | CLI từ project cha, scoped patch/verifier, cancellation và governor đa project; không tự migrate production. |
+| Codex & Claude Plugin Distribution | Beta | Plugin manifests + shared entry skill + lazy discovery; mặc định không executable hook/MCP side effect. |
+| Behavioral Skill Quality Engine | Experimental | Pressure/rationalization eval, metadata lint, packet/review compiler và promotion gate; model benchmark thật vẫn là evidence riêng. |
 
 Nguồn trạng thái chi tiết: [capability inventory](docs/capability-maturity.json) và [active roadmap](docs/active-roadmap.md).
 
@@ -209,6 +244,7 @@ npm run build:cli
 npm run ci:docs
 npm run verify:product-truth
 npm run verify:roadmap
+npm run verify:plugins
 npm run ci:local
 ```
 
