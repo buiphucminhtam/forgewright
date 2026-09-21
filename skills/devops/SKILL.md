@@ -1,9 +1,6 @@
 ---
 name: devops
-description: >
-  [production-grade internal] Sets up deployment and infrastructure —
-  Docker, CI/CD pipelines, cloud provisioning, environment configuration.
-  Routed via the production-grade orchestrator.
+description: "Use for local-first CI/CD, build or release gates, containers, packaging, deployment scripts, publishing, or operational automation."
 ---
 
 # DevOps

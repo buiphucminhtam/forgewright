@@ -1297,6 +1297,41 @@ def test_collaboration_execute_fails_closed_before_agnostic_agy_spawn(
     assert not marker.exists()
 
 
+def test_collaboration_serial_fallback_does_not_create_resumable_runtime_state(
+    tmp_path: Path,
+) -> None:
+    request = collaboration_request(task_id="creative-collaboration-runtime-state")
+    manifest = write_manifest(tmp_path, request)
+
+    first = run_runner(
+        manifest,
+        "--execute",
+        "--allow-external-code-sharing",
+    )
+    assert first.returncode == 3, first.stderr
+    first_plan = json.loads(first.stdout)
+    binding = first_plan["runtime_binding"]
+    state_path = (
+        ROOT
+        / ".forgewright"
+        / "runtime"
+        / "goals"
+        / binding["goal_id"]
+        / binding["plan_digest"]
+    )
+    assert first_plan["execution"]["external_call"] is False
+    assert "runtime_state" not in first_plan
+    assert not state_path.exists()
+
+    second = run_runner(
+        manifest,
+        "--execute",
+        "--allow-external-code-sharing",
+    )
+    assert second.returncode == 3, second.stderr
+    assert not state_path.exists()
+
+
 def test_collaboration_role_mismatch_is_serial_fallback_in_runner(
     tmp_path: Path,
 ) -> None:

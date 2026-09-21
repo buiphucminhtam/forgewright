@@ -118,6 +118,23 @@ def test_skill_inventory_drift_has_clear_error(tmp_path: Path) -> None:
     assert "registry entries missing SKILL.md: beta" in result.stdout
 
 
+def test_duplicate_skill_registry_key_has_clear_error(tmp_path: Path) -> None:
+    root = _fixture(tmp_path)
+    registry = root / "skills/skills-registry.yaml"
+    registry.write_text(
+        registry.read_text().replace(
+            "  - name: alpha\n    type: canonical\n",
+            "  - name: alpha\n    type: canonical\n    type: alias\n",
+            1,
+        )
+    )
+
+    result = _run(root)
+
+    assert result.returncode == 1
+    assert "skills registry entry alpha contains duplicate key 'type'" in result.stdout
+
+
 def test_pipeline_drift_has_clear_error(tmp_path: Path) -> None:
     root = _fixture(tmp_path)
     readme = root / "README.md"

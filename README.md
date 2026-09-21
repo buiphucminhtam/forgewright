@@ -87,9 +87,37 @@ The [pipeline reference](docs/pipeline-reference.md) describes orchestration; th
 
 ## Quick start
 
-### 1. Build the local tools
+### 1. Install Forgewright as a plugin (recommended)
 
-Use **Node.js 22+**, **Python 3.11+**, and Git. The optional Pi package requires **Node.js 22.19+**. On Windows, use Git Bash for shell-based setup and gates; native PowerShell hook support is documented in the repository.
+Forgewright now ships one provider-neutral plugin source for **Codex** and **Claude Code**. It installs the entry workflow and specialist skills without requiring a second model subscription.
+
+**Codex CLI**
+
+```bash
+codex plugin marketplace add buiphucminhtam/forgewright --ref main
+codex plugin add forgewright@forgewright-marketplace
+```
+
+**Claude Code**
+
+```bash
+claude plugin marketplace add buiphucminhtam/forgewright
+claude plugin install forgewright@forgewright-marketplace --scope user
+```
+
+Start a fresh session after installation and ask for normal engineering work; trigger-only skill descriptions let the host discover the relevant skill on demand. The entry skill is an orchestration alias, so the canonical specialist inventory remains **84 skills**.
+
+Plugin installation is **skills-only by default**: no executable SessionStart hook and no local MCP side effect. Configure the richer local runtime separately when you want machine-local tools.
+
+Verify both installers in isolated profiles:
+
+```bash
+npm run verify:plugins
+```
+
+### 2. Build the full local toolchain (advanced)
+
+Use **Node.js 22+**, **Python 3.11+**, and Git. The optional Pi package requires **Node.js 22.19+**. Clone the repository when you need Forge CLI, Docs Hub, MCP, local gates, or framework development:
 
 ```bash
 git clone https://github.com/buiphucminhtam/forgewright.git
@@ -100,22 +128,18 @@ npm run build:cli
 node src/cli/dist/index.js --help
 ```
 
-`ci:bootstrap` installs the checked-in Node/Python verification dependencies and configures this clone's Git hooks. It does not enable Pi, start production services, or require a paid CI runner. Model calls use your chosen provider's account and usage policy.
+`ci:bootstrap` installs checked-in verification dependencies and configures this clone's Git hooks. It does not enable Pi, start production services, or require hosted CI. Model calls use the provider/account you explicitly configure.
 
-### 2. Inspect a project without a model call
-
-Replace `/path/to/your-project` with an existing local project directory:
+You can inspect/onboard a local project without a model call:
 
 ```bash
 node src/cli/dist/index.js --json init /path/to/your-project
 node src/cli/dist/index.js --json onboard /path/to/your-project
 ```
 
-The CLI creates project-local metadata and records filesystem facts. Existing files are preserved unless an explicit overwrite option is used. See the [init/onboard guide](docs/guides/forge-init-onboard.md).
+### 3. Pin the full framework inside a project (advanced)
 
-### 3. Connect the engineering workflow
-
-For project-local adoption, add Forgewright as a Git submodule from **your project's root**:
+For a repository-pinned runtime and local MCP setup, keep the Git-submodule workflow:
 
 ```bash
 git submodule add -b main https://github.com/buiphucminhtam/forgewright.git forgewright
@@ -123,11 +147,26 @@ git submodule update --init --recursive
 bash forgewright/scripts/forgewright-mcp-setup.sh
 ```
 
-Review the setup script and the configuration it writes. Merge the relevant instructions from `forgewright/AGENTS.md` or `forgewright/CLAUDE.md` into existing project instructions—**do not blindly overwrite your own rules**. Reload your client, check its MCP connection, then begin with `/onboard` where the client supports project workflows.
-
-Host configuration is available for Codex, Claude, Cursor, and Antigravity; capability negotiation determines what the active host actually supports. Instructions alone are not a running MCP integration. Optional GitNexus indexing and host-specific hook installation are separate setup steps; consult the [GitNexus guide](docs/guides/gitnexus.md), [installer](scripts/forgewright-install.sh), and [hook doctor](scripts/forgewright-hook-doctor.sh).
+Review the setup script and generated configuration. Merge relevant instructions into existing project rules instead of overwriting them. Plugin installation and submodule adoption are complementary: the plugin supplies portable skills; the submodule/full clone supplies reproducible local runtime code and project-owned gates.
 
 ## What's new
+
+### Plugin distribution + behavioral skill quality
+
+Forgewright can now be consumed as a Codex/Claude plugin from the same repository instead of requiring every user to clone or submodule the framework first. One shared `skills/` tree remains the source of truth; harness manifests point at it rather than maintaining copied skill packs.
+
+The Superpowers-inspired upgrade also makes skill changes measurable:
+
+| Upgrade | What it changes |
+| --- | --- |
+| Skill Quality Engine | Compares **baseline → current → candidate** behavior across trigger accuracy, required/forbidden events, pressure scenarios, rationalization traps, abstention, tool calls, context bytes, and latency. Promotion fails closed on regressions or critical forbidden behavior. |
+| Trigger-only metadata | Boot skill descriptions say **when to load the skill**, not how to execute it. Workflow details remain in the skill body, reducing routing/context leakage. |
+| Minimal worker packets | `PLAN_LOCKED` compiles into a digest-bound packet containing only objective, acceptance, owned scope, selected skill, decisions/interfaces, constraints, and verifier refs. Parent-only accounting is excluded from worker payloads. |
+| Scoped review packages | Review material is bound to exact `BASE..HEAD`. Task review stays task-scoped; branch/release review requires a planned final review or a named cross-cutting risk. |
+| Plan-scoped runtime state | Transient execution state is namespaced by `goal_id + plan_digest + base SHA`; successful runs clean it, failed runs retain it for diagnosis/resume. |
+| Failure classification | Debugging distinguishes `hypothesis_wrong`, `implementation_wrong`, `environment_wrong`, and `architecture_wrong`; the same approach failing twice forbids a third cosmetic retry. |
+
+The engine itself is deterministic and provider-neutral. A real model benchmark remains separate evidence; Forgewright does not claim universal quality, token, or latency gains from the framework change alone.
 
 ### Optional Pi execution, under Forgewright control
 
@@ -184,7 +223,7 @@ Open `.forgewright/docs-hub/site/index.html`. See the [Docs Hub guide](docs/guid
 The maturity labels below follow the [capability inventory](docs/capability-maturity.json): **beta** means automated local evidence, **experimental** means incomplete production evidence, and **docs-only** means a documented integration or workflow—not a supported production runtime claim.
 
 <details>
-<summary><strong>Explore all 12 capability areas</strong></summary>
+<summary><strong>Explore all 14 capability areas</strong></summary>
 
 ### 1. Code Intelligence (GitNexus)
 
@@ -234,6 +273,14 @@ The maturity labels below follow the [capability inventory](docs/capability-matu
 
 **Experimental, opt-in.** Pinned Pi SDK and a public consumer-project coding worker with scoped file tools, immutable verifiers, cancellation and shared low-memory admission. Existing subscription/local transport is explicit; no autonomous production migration or paired-savings claim. [Pi ADR](docs/adr/ADR-pi-worker-runtime.md).
 
+### 13. Codex & Claude Plugin Distribution
+
+**Beta.** Portable manifests, a shared plugin entry skill, lazy skill discovery, and an isolated install verifier support Codex and Claude Code from one source tree. The default plugin has no executable hook or local MCP side effect. [Plugin ADR](docs/adr/ADR-agent-plugin-distribution.md).
+
+### 14. Behavioral Skill Quality Engine
+
+**Experimental.** Deterministic RED/GREEN-style scenario scoring, pressure/rationalization checks, trigger-metadata linting, compact worker/reviewer packets, and promotion gates make skill changes testable. Real-model candidate comparisons remain provider-specific evidence and are not inferred from fixture tests. [Skill evals](evals/skills/README.md).
+
 </details>
 
 ## Verification
@@ -252,6 +299,7 @@ npm run build:cli
 npm run ci:docs
 npm run verify:product-truth
 npm run verify:roadmap
+npm run verify:plugins
 
 # Complete project-owned local pipeline
 npm run ci:local

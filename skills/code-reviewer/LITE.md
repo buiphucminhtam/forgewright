@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: "Reviews code for quality — architecture conformance, anti-patterns, performance issues, maintainability. Read-only analysis that detects circular dependencies, N+1 queries, dead code, naming violations, and layering breaches. Use when the user asks for a code review, wants feedback on code quality, PR review, tech debt analysis, or architecture conformance checks."
+description: "Use for code or pull-request review, architecture conformance, maintainability, performance, anti-pattern, or technical-debt assessment."
 version: 2.0.0
 tags: [code-review, quality, architecture, anti-patterns, tech-debt, maintainability]
 ---

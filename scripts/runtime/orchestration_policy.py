@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 import re
 from typing import Any
 
+from .context_packets import ContextPacketError, resolve_review_scope
 from .peer_collaboration import (
     PEER_PROFILES,
     CollaborationPolicy,
@@ -531,8 +532,17 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
 
     reviewer = None
     if reviewer_requested:
+        try:
+            review_scope = resolve_review_scope(
+                str(request.get("review_scope", "task")),
+                planned_final=request.get("review_planned_final") is True,
+                cross_cutting_risks=request.get("review_cross_cutting_risks", []),
+            )
+        except ContextPacketError as error:
+            raise PolicyError(str(error)) from error
         reviewer = {
             "role": "expert",
+            "review_scope": review_scope,
             "packet": {
                 "requirements": deepcopy(request.get("requirements", "")),
                 "diff": deepcopy(request.get("diff", "")),

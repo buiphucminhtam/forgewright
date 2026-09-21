@@ -18,8 +18,8 @@
     "root": "skills",
     "registry": "skills/skills-registry.yaml",
     "canonicalCount": 84,
-    "aliasCount": 2,
-    "installedCount": 86,
+    "aliasCount": 3,
+    "installedCount": 87,
     "excludedDirectories": [
       "_shared",
       "_test",
@@ -80,7 +80,7 @@
       "label": "Claude Code",
       "maturity": "stable",
       "truthFile": "docs/product-overview.md",
-      "truthMarker": "| **Claude Code** | `CLAUDE.md` | ✅ Full | Stable |"
+      "truthMarker": "| **Claude Code** | Plugin + `CLAUDE.md` fallback | Optional advanced MCP | Stable |"
     },
     {
       "id": "antigravity",
@@ -101,7 +101,7 @@
       "label": "Codex",
       "maturity": "stable",
       "truthFile": "docs/product-overview.md",
-      "truthMarker": "| **Codex (OpenAI)** | `AGENTS.md` | ✅ Full | Stable |"
+      "truthMarker": "| **Codex (OpenAI)** | Plugin + `AGENTS.md` fallback | Optional advanced MCP | Stable |"
     },
     {
       "id": "forge-cli",

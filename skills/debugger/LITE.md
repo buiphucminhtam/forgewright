@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: "Systematic debugging and root-cause analysis — hypothesis-driven investigation, log analysis, bisection, reproduction strategies, and fix verification. Use when the user reports a bug, crash, error, exception, broken feature, failing test, performance degradation, or says something is 'not working'."
+description: "Use when the user reports a bug, crash, exception, broken behavior, failing test, regression, or performance degradation."
 version: 2.0.0
 ---
 
@@ -25,3 +25,12 @@ Format: `n. ACTION | TARGET | CHECK`
 | Hypothesis | Likelihood (H/M/L) | Evidence / Clues | Verification Command | Status |
 |---|---|---|---|---|
 | e.g. Variable X is null | High | Stacktrace at line 42 | `grep -n "X =" src/main.py` | Open |
+
+## Failure Classification
+After a failed debugging approach, classify the evidence before choosing the next action:
+- `hypothesis_wrong` — the focused experiment disproved the root-cause hypothesis.
+- `implementation_wrong` — the hypothesis remains supported but the attempted fix is incorrect/incomplete.
+- `environment_wrong` — runtime, dependency, configuration, platform, or fixture evidence invalidated the assumed environment.
+- `architecture_wrong` — the local fix exposes a broader design/shared-state/contract problem that requires replanning.
+
+If the **same approach fails twice**, do not try a cosmetic variant. Record the class + evidence, isolate the failed assumption, and return to the parent/Stuck Rule with the corresponding replan trigger.

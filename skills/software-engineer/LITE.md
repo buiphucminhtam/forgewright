@@ -1,6 +1,6 @@
 ---
 name: software-engineer
-description: "[production-grade internal] Implements backend services, APIs, and business logic — builds features, fixes bugs, refactors code from specs. Includes error handling, idempotency, concurrency, and clean architecture patterns. Routed via the production-grade orchestrator."
+description: "Use for backend, API, service, or business-logic feature work, bounded bug fixes, and implementation refactors routed through the production pipeline."
 version: 2.0.0
 tags: [backend, api, services, implementation, clean-architecture, tdd]
 ---

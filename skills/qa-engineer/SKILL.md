@@ -1,10 +1,6 @@
 ---
 name: qa-engineer
-description: >
-  [production-grade internal] Quality assurance engineering for game projects — test strategy,
-  test case design, automated testing, regression prevention, and bug reporting.
-  Ensures every feature meets acceptance criteria before shipping.
-  Routed via the production-grade orchestrator (QA phase, Test mode, or CI/CD pipeline).
+description: "Use for test strategy, test-case design, regression coverage, acceptance verification, bug reporting, or quality-risk assessment."
 version: 3.0.0
 author: forgewright
 tags: [qa, quality-assurance, testing, test-cases, automated-testing, regression, bug-reporting, game-testing]

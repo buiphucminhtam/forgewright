@@ -34,6 +34,18 @@ from runtime.execution_contract import (
     summarize_execution_metrics,
     verify_locked_contract,
 )
+from runtime.context_packets import (
+    ContextPacketError,
+    compile_review_package,
+    compile_worker_packet,
+    worker_dispatch_view,
+)
+from runtime.plan_runtime import (
+    PlanRuntimeError,
+    cleanup as cleanup_plan_runtime,
+    initialize as initialize_plan_runtime,
+    write_artifact as write_plan_runtime_artifact,
+)
 from runtime.peer_collaboration import (
     InProcessBroker,
     JsonlEventLog,
@@ -452,16 +464,22 @@ def _worker_prompt(
     stop: list[str],
     execution_contract: dict[str, Any],
     routing: dict[str, str],
+    context_packet: dict[str, Any] | None,
 ) -> str:
     lines = [
         "[Forgewright bounded parallel worker]",
-        f"Requirements: {request.get('requirements', '')}",
         f"Role tier: {worker['role']}",
-        f"Scope: {worker['scope_id']}",
-        f"Advisory read-only paths: {json.dumps(worker['paths'], separators=(',', ':'))}",
-        f"Locked plan digest: {execution_contract['digest']}",
-        f"Locked acceptance: {json.dumps(execution_contract['acceptance_criteria'], ensure_ascii=False)}",
-        f"Locked out-of-scope: {json.dumps(execution_contract['out_of_scope'], ensure_ascii=False)}",
+        (
+            "Compiled worker packet: "
+            + json.dumps(
+                context_packet,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            if context_packet is not None
+            else f"Requirements: {request.get('requirements', '')}"
+        ),
         f"Execution routing: {json.dumps(routing, separators=(',', ':'))}",
         f"Stop when: {','.join(stop)}",
         "Do not revise the locked plan. Replan only through the parent when an allowed trigger is evidenced.",
@@ -589,6 +607,7 @@ def _native_dispatch_packet(
     prompt: str,
     execution_contract: dict[str, Any],
     routing: dict[str, str],
+    context_packet: dict[str, Any] | None,
 ) -> dict[str, Any]:
     """Build metadata for a host-owned native adapter, never a local spawn."""
     packet = worker.get("packet")
@@ -628,6 +647,7 @@ def _native_dispatch_packet(
             "scope_id": worker["scope_id"],
         },
         "routing": deepcopy(routing),
+        "context_packet": deepcopy(context_packet),
         "recursive_spawn": False,
     }
     if "artifact_refs" in (packet or {}):
@@ -641,17 +661,34 @@ def _reviewer_prompt(
     reviewer: dict[str, Any], execution_contract: dict[str, Any]
 ) -> str:
     packet = reviewer["packet"]
+    review_package = reviewer.get("review_package")
+    evidence_lines = (
+        [
+            "Review package: "
+            + json.dumps(
+                review_package,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+        ]
+        if review_package is not None
+        else [
+            f"Requirements: {json.dumps(packet['requirements'], ensure_ascii=False)}",
+            f"Diff: {json.dumps(packet['diff'], ensure_ascii=False)}",
+            f"Raw evidence: {json.dumps(packet['raw_evidence'], ensure_ascii=False)}",
+        ]
+    )
     return "\n".join(
         [
             "[Forgewright independent reviewer]",
             f"Locked plan digest: {execution_contract['digest']}",
             f"Locked acceptance: {json.dumps(execution_contract['acceptance_criteria'], ensure_ascii=False)}",
-            f"Requirements: {json.dumps(packet['requirements'], ensure_ascii=False)}",
-            f"Diff: {json.dumps(packet['diff'], ensure_ascii=False)}",
-            f"Raw evidence: {json.dumps(packet['raw_evidence'], ensure_ascii=False)}",
+            *evidence_lines,
+            f"Review scope: {json.dumps(reviewer.get('review_scope', {'scope': 'task', 'reason': 'legacy'}), ensure_ascii=False, sort_keys=True)}",
             "Review only this immutable packet. Do not use worker reasoning or worker results.",
             "Do not spawn subagents or expand the supplied scope.",
-            "Reject plan drift unless an allowed replan trigger is backed by raw evidence.",
+            "Reject plan drift unless an allowed replan trigger is backed by supplied evidence.",
             "Return independent findings with exact evidence; fail closed if evidence is insufficient.",
         ]
     )
@@ -665,6 +702,100 @@ def _provider_argv(
         argv.extend(["--model", selection["model"]])
     argv.extend(["--print", prompt])
     return argv
+
+
+def _observed_head(workspace: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=workspace,
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    value = result.stdout.strip()
+    return (
+        value
+        if result.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", value)
+        else None
+    )
+
+
+def _compile_worker_context(
+    request: dict[str, Any],
+    worker: dict[str, Any],
+    execution_contract: dict[str, Any],
+    workspace: Path,
+) -> dict[str, Any] | None:
+    base_sha = _observed_head(workspace)
+    if base_sha is None:
+        return None
+    task_id = str(request.get("task_id", "task"))
+    goal_id = request.get("goal_id") or f"ephemeral-{task_id}"
+    packet = worker.get("packet") or {}
+    skill = None
+    if packet.get("skill_name") and packet.get("skill_path"):
+        skill = {"name": packet["skill_name"], "path": packet["skill_path"]}
+    try:
+        compiled = compile_worker_packet(
+            goal_id=goal_id,
+            task_id=task_id,
+            scope_id=worker["scope_id"],
+            base_sha=base_sha,
+            execution_contract=execution_contract,
+            paths=worker["paths"],
+            skill=skill,
+            interfaces=request.get("interfaces", []),
+            decisions=request.get("decisions", []),
+            verifier_refs=request.get("verifier_refs", []),
+            constraints=request.get("worker_constraints", []),
+            specialist_checks=packet.get("acceptance_checks", []),
+        )
+        # Stats stay parent-side. In particular, collaboration/native packets
+        # must not gain token/quota semantics that the provider does not enforce.
+        # Re-hash the exact worker-visible bytes after removing those stats.
+        return {
+            "packet": worker_dispatch_view(compiled),
+            "stats": deepcopy(compiled["stats"]),
+        }
+    except ContextPacketError as error:
+        raise ManifestError(str(error)) from error
+
+
+def _compile_reviewer_context(
+    request: dict[str, Any],
+    reviewer: dict[str, Any],
+    execution_contract: dict[str, Any],
+    workspace: Path,
+) -> dict[str, Any] | None:
+    base_sha = request.get("review_base_sha")
+    head_sha = request.get("review_head_sha")
+    if base_sha is None and head_sha is None:
+        return None
+    if not isinstance(base_sha, str) or not isinstance(head_sha, str):
+        raise ManifestError(
+            "review_base_sha and review_head_sha must be supplied together"
+        )
+    review_scope = reviewer.get("review_scope", {})
+    try:
+        return compile_review_package(
+            workspace,
+            base_sha=base_sha,
+            head_sha=head_sha,
+            review_scope=str(review_scope.get("scope", "task")),
+            planned_final=request.get("review_planned_final") is True,
+            cross_cutting_risks=request.get("review_cross_cutting_risks", []),
+            task_paths=request.get("review_paths", []),
+            goal_id=request.get("goal_id"),
+            plan_digest=execution_contract["digest"],
+            acceptance=execution_contract["acceptance_criteria"],
+            verification_refs=request.get("review_verification_refs", []),
+        )
+    except ContextPacketError as error:
+        raise ManifestError(str(error)) from error
 
 
 def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
@@ -691,18 +822,32 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
     for worker in decision["workers"]:
         selection = select_model(worker["role"], provider, manifest_dir)
         routing = routing_for(worker["role"], phase="execution")
+        context_compilation = _compile_worker_context(
+            request, worker, execution_contract, workspace
+        )
+        context_packet = (
+            context_compilation["packet"] if context_compilation is not None else None
+        )
+        context_stats = (
+            context_compilation["stats"]
+            if context_compilation is not None and worker.get("collaboration") is None
+            else None
+        )
         prompt = _worker_prompt(
             request,
             worker,
             decision["stop_conditions"],
             execution_contract,
             routing,
+            context_packet,
         )
         planned_workers.append(
             {
                 **worker,
+                "context_packet": context_packet,
+                "context_stats": context_stats,
                 "native_dispatch_packet": _native_dispatch_packet(
-                    worker, prompt, execution_contract, routing
+                    worker, prompt, execution_contract, routing, context_packet
                 ),
                 "routing": routing,
                 "model_selection": selection,
@@ -716,8 +861,12 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
     if planned_reviewer is not None:
         selection = select_model("expert", provider, manifest_dir)
         audit_routing = routing_for("expert", phase="audit")
+        review_package = _compile_reviewer_context(
+            request, planned_reviewer, execution_contract, workspace
+        )
+        reviewer_context = {**planned_reviewer, "review_package": review_package}
         planned_reviewer = {
-            **planned_reviewer,
+            **reviewer_context,
             "id": "reviewer",
             "deadline_ms": adaptive_caps["deadline_ms"],
             "max_result_chars": adaptive_caps["max_result_chars"],
@@ -729,15 +878,26 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
             "routing": audit_routing,
             "model_selection": selection,
             "argv": _provider_argv(
-                "agy", selection, _reviewer_prompt(planned_reviewer, execution_contract)
+                "agy", selection, _reviewer_prompt(reviewer_context, execution_contract)
             ),
         }
 
+    observed_base = _observed_head(workspace)
+    runtime_binding = None
+    if observed_base is not None:
+        runtime_binding = {
+            "goal_id": request.get("goal_id")
+            or f"ephemeral-{request.get('task_id', 'task')}",
+            "plan_digest": execution_contract["digest"],
+            "base_sha": observed_base,
+            "owner": "parallel-dispatch",
+        }
     return {
         **decision,
         "workspace": str(workspace),
         "scope_enforcement": "advisory-read-only",
         "execution_contract": execution_contract,
+        "runtime_binding": runtime_binding,
         "adaptive_caps": adaptive_caps,
         "workers": planned_workers,
         "reviewer": planned_reviewer,
@@ -1247,6 +1407,21 @@ def execute_plan(
     return 0 if success else 1
 
 
+def _cli_requires_plan_runtime(plan: dict[str, Any]) -> bool:
+    """Return whether this CLI invocation can cross an execution boundary.
+
+    The public CLI does not own a trusted in-process collaboration host adapter.
+    Collaboration therefore serial-falls back before any worker/provider call and
+    must not create resumable failure state. Ordinary worker/reviewer dispatch does
+    cross the external execution boundary and keeps the existing plan runtime.
+    """
+
+    collaboration = plan.get("collaboration_plan")
+    if isinstance(collaboration, dict) and collaboration.get("enabled") is True:
+        return False
+    return bool(plan.get("workers") or plan.get("reviewer") is not None)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
@@ -1274,13 +1449,59 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+    runtime_initialized = False
+    binding = plan.get("runtime_binding")
     try:
+        if (
+            args.execute
+            and args.allow_external_code_sharing
+            and binding is not None
+            and _cli_requires_plan_runtime(plan)
+        ):
+            initialize_plan_runtime(Path(plan["workspace"]), **binding)
+            write_plan_runtime_artifact(
+                Path(plan["workspace"]),
+                **binding,
+                name="dispatch-plan.json",
+                value={
+                    "execution_contract": plan["execution_contract"],
+                    "worker_packet_digests": [
+                        worker.get("context_packet", {}).get("digest")
+                        for worker in plan["workers"]
+                        if worker.get("context_packet") is not None
+                    ],
+                    "review_scope": (
+                        plan["reviewer"].get("review_scope")
+                        if plan.get("reviewer") is not None
+                        else None
+                    ),
+                },
+            )
+            runtime_initialized = True
+            plan["runtime_state"] = {"status": "initialized"}
         rc = (
             execute_plan(plan)
             if args.execute and args.allow_external_code_sharing
             else 0
         )
-    except (OSError, ManifestError) as error:
+        if runtime_initialized:
+            write_plan_runtime_artifact(
+                Path(plan["workspace"]),
+                **binding,
+                name="execution-result.json",
+                value=plan.get("execution", {}),
+            )
+            if rc == 0:
+                cleanup_plan_runtime(Path(plan["workspace"]), **binding)
+                plan["runtime_state"] = {"status": "cleaned"}
+            else:
+                plan["runtime_state"] = {"status": "retained_for_failure"}
+    except (OSError, ManifestError, PlanRuntimeError) as error:
+        if runtime_initialized:
+            plan["runtime_state"] = {
+                "status": "retained_for_failure",
+                "reason": str(error)[:256],
+            }
         print(f"Dispatch denied: {error}", file=sys.stderr)
         return 2
     print(json.dumps(plan, ensure_ascii=False, sort_keys=True))

@@ -175,6 +175,12 @@ skills:
     alias_target: frontend-engineer
     has_skill_md: true
     has_lite_md: true
+
+  - name: forgewright
+    type: alias
+    alias_target: production-grade
+    has_skill_md: true
+    has_lite_md: true
     version: 1.0.0
 
   - name: frontend-engineer

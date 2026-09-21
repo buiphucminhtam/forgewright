@@ -1,6 +1,6 @@
 ---
 name: ui-designer
-description: "Senior UI specialist for information hierarchy, layout, typography, semantic tokens, component states, responsive behavior, accessibility and visual-system coherence."
+description: "Use for information hierarchy, layout, typography, semantic tokens, component states, responsive behavior, accessibility, or visual-system work."
 version: 3.0.0
 ---
 

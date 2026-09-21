@@ -1,11 +1,6 @@
 ---
 name: ui-designer
-description: >
-  [production-grade internal] UI design specialist for game interfaces — interaction design,
-  UI layout systems, component libraries, typography, color theory, responsive design,
-  accessibility, and UI-VFX integration.
-  Creates playable, polished UI that feels premium.
-  Routed via the production-grade orchestrator (Design or Game Build mode).
+description: "Use for information hierarchy, layout, typography, semantic tokens, component states, responsive behavior, accessibility, or visual-system work."
 version: 3.0.0
 author: forgewright
 tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-design, component-design, typography, color-theory, responsive-design, accessibility]

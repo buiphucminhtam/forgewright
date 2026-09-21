@@ -70,6 +70,37 @@ def _reject_conflicting_counts(
         )
 
 
+def _validate_registry_entry_keys(content: str, errors: list[str]) -> None:
+    """Reject duplicate scalar keys inside each skills-registry entry.
+
+    The product-truth verifier intentionally remains stdlib-only. The registry's
+    supported shape uses two-space list items and four-space scalar fields, so we
+    can fail closed on ambiguous duplicate fields without adding a YAML runtime
+    dependency.
+    """
+
+    current_name: str | None = None
+    seen: set[str] = set()
+    for line_number, line in enumerate(content.splitlines(), 1):
+        name_match = re.match(r"^\s{2}- name:\s*([^#\s]+)", line)
+        if name_match:
+            current_name = name_match.group(1)
+            seen = {"name"}
+            continue
+        if current_name is None:
+            continue
+        field_match = re.match(r"^\s{4}([A-Za-z_][A-Za-z0-9_-]*):", line)
+        if not field_match:
+            continue
+        key = field_match.group(1)
+        if key in seen:
+            errors.append(
+                f"skills registry entry {current_name} contains duplicate key {key!r} "
+                f"at line {line_number}"
+            )
+        seen.add(key)
+
+
 def _registry_inventory(content: str) -> dict[str, str]:
     inventory: dict[str, str] = {}
     current_name: str | None = None
@@ -246,7 +277,9 @@ def _validate_public_docs(
 def _validate_skills(root: Path, manifest: dict[str, Any], errors: list[str]) -> None:
     skill_truth = manifest["skills"]
     registry_path = str(skill_truth["registry"])
-    registry = _registry_inventory(_read(root, registry_path, errors))
+    registry_content = _read(root, registry_path, errors)
+    _validate_registry_entry_keys(registry_content, errors)
+    registry = _registry_inventory(registry_content)
     excluded = set(skill_truth["excludedDirectories"])
     skills_root = root / str(skill_truth["root"])
     installed = {
