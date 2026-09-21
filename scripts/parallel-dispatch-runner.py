@@ -1407,6 +1407,21 @@ def execute_plan(
     return 0 if success else 1
 
 
+def _cli_requires_plan_runtime(plan: dict[str, Any]) -> bool:
+    """Return whether this CLI invocation can cross an execution boundary.
+
+    The public CLI does not own a trusted in-process collaboration host adapter.
+    Collaboration therefore serial-falls back before any worker/provider call and
+    must not create resumable failure state. Ordinary worker/reviewer dispatch does
+    cross the external execution boundary and keeps the existing plan runtime.
+    """
+
+    collaboration = plan.get("collaboration_plan")
+    if isinstance(collaboration, dict) and collaboration.get("enabled") is True:
+        return False
+    return bool(plan.get("workers") or plan.get("reviewer") is not None)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
@@ -1437,7 +1452,12 @@ def main() -> int:
     runtime_initialized = False
     binding = plan.get("runtime_binding")
     try:
-        if args.execute and args.allow_external_code_sharing and binding is not None:
+        if (
+            args.execute
+            and args.allow_external_code_sharing
+            and binding is not None
+            and _cli_requires_plan_runtime(plan)
+        ):
             initialize_plan_runtime(Path(plan["workspace"]), **binding)
             write_plan_runtime_artifact(
                 Path(plan["workspace"]),
