@@ -28,7 +28,7 @@ def test_portable_and_harness_manifests_share_identity_and_version():
         package["version"]
     }
     assert codex["skills"] == "./skills/"
-    assert "hooks" not in codex
+    assert codex["hooks"] == "./hooks/hooks.json"
     assert "mcpServers" not in codex
     assert portable["repository"] == "https://github.com/buiphucminhtam/forgewright"
 
@@ -63,12 +63,20 @@ def test_plugin_entry_skill_and_specialist_tree_are_discoverable():
     assert ROOT / "skills/code-reviewer/SKILL.md" in public
 
 
-def test_plugin_defaults_to_lazy_skills_without_executable_hooks_or_mcp():
+def test_plugin_defaults_to_lazy_skills_with_only_bounded_pretool_bootstrap_hook():
     codex = load_json(".codex-plugin/plugin.json")
+    hooks = load_json("hooks/hooks.json")
     assert codex["skills"] == "./skills/"
-    assert "hooks" not in codex
+    assert codex["hooks"] == "./hooks/hooks.json"
     assert "mcpServers" not in codex
-    assert not (ROOT / "hooks/hooks.json").exists()
+    assert set(hooks["hooks"]) == {"PreToolUse"}
+    [group] = hooks["hooks"]["PreToolUse"]
+    assert group["matcher"] == "*"
+    [hook] = group["hooks"]
+    assert hook["type"] == "command"
+    assert hook["command"] == 'node "${PLUGIN_ROOT}/hooks/auto-bootstrap.mjs"'
+    assert 1 <= hook["timeout"] <= 310
+    assert (ROOT / "hooks/auto-bootstrap.mjs").is_file()
     assert not (ROOT / "hooks/session-start.sh").exists()
 
 
@@ -80,6 +88,8 @@ def test_plugin_manifests_do_not_embed_machine_paths_or_secrets():
         ".claude-plugin/marketplace.json",
         ".agents/plugins/marketplace.json",
         "skills/forgewright/SKILL.md",
+        "hooks/hooks.json",
+        "hooks/auto-bootstrap.mjs",
     ]
     forbidden = [
         re.compile(r"/Users/"),
@@ -109,7 +119,10 @@ def test_static_plugin_verifier_needs_no_codex_or_claude_cli(tmp_path: Path):
     report = json.loads(result.stdout)
     assert report["status"] == "pass"
     assert report["mode"] == "static"
-    assert report["skills_only"] is True
+    assert report["skills_first"] is True
+    assert report["auto_bootstrap_hook"] == "hooks/auto-bootstrap.mjs"
+    assert report["session_start_hook"] is False
+    assert report["automatic_mcp"] is False
     capability = load_json("docs/capability-maturity.json")
     plugin = next(
         row
@@ -132,10 +145,10 @@ def test_release_has_isolated_plugin_install_verifier():
 
 
 def test_plugin_installation_does_not_require_mcp_or_host_dependencies():
-    """The installable layer is skills-only by default.
+    """The installable layer is skills-first plus one consent-gated local hook.
 
     The repository still contains a richer local MCP runtime, but plugin discovery
-    must not advertise it until that runtime is bundled/self-contained.
+    must not advertise or start it until the global bootstrap policy opts in.
     """
     codex = load_json(".codex-plugin/plugin.json")
     portable = load_json("plugin.json")

@@ -1,0 +1,18 @@
+{
+  "description": "Forgewright one-time-consent project auto-bootstrap. No mutation occurs unless the user has enabled the global bootstrap policy.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/auto-bootstrap.mjs\"",
+            "timeout": 310,
+            "statusMessage": "Checking Forgewright project bootstrap"
+          }
+        ]
+      }
+    ]
+  }
+}

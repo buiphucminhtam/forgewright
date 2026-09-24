@@ -368,6 +368,11 @@ def test_roadmap_verifier_contract_and_failure_path_are_executable(
     assert "missing evidence path" in rejected_escape.stderr
 
 
+def test_runtime_python_bytecode_is_treated_as_verifier_volatile_output() -> None:
+    verifier = (ROOT / REPORT_CONTRACT["producer"]).read_text(encoding="utf-8")
+    assert '"scripts/runtime/__pycache__"' in verifier
+
+
 def test_all_declared_roadmap_verifiers_replay_on_unchanged_tree(
     tmp_path: Path,
 ) -> None:

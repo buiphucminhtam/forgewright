@@ -58,6 +58,7 @@ VERIFIER_VOLATILE_MOUNTS = {
     "mcp/node_modules/.vite": "Vitest dependency and result cache",
     "src/cli/node_modules/.vite": "CLI Vitest dependency and result cache",
     "src/cli/dist": "CLI build output exercised by the onboarding verifier",
+    "scripts/runtime/__pycache__": "Python bytecode cache emitted by runtime verification helpers",
 }
 
 

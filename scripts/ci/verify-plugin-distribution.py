@@ -66,8 +66,14 @@ def verify_static(root: Path) -> dict[str, Any]:
         raise PluginVerifyError("plugin version mismatch")
     if codex.get("skills") != "./skills/":
         raise PluginVerifyError("Codex plugin must discover the shared skills/ tree")
-    if "hooks" in codex or "mcpServers" in codex:
-        raise PluginVerifyError("default Codex plugin must remain skills-only")
+    if codex.get("hooks") != "./hooks/hooks.json":
+        raise PluginVerifyError(
+            "Codex plugin must bind the canonical bootstrap hook manifest"
+        )
+    if "mcpServers" in codex:
+        raise PluginVerifyError(
+            "plugin installation must not advertise local MCP automatically"
+        )
     if "dependencies" in claude:
         raise PluginVerifyError(
             "default Claude plugin must not declare host dependencies"
@@ -96,17 +102,56 @@ def verify_static(root: Path) -> dict[str, Any]:
     entry_skill = root / "skills" / "forgewright" / "SKILL.md"
     if not entry_skill.is_file():
         raise PluginVerifyError("Forgewright plugin entry skill is missing")
+    hooks = _load_json(root, "hooks/hooks.json")
+    if set(hooks) - {"description", "hooks"}:
+        raise PluginVerifyError(
+            "plugin hook manifest contains unsupported top-level fields"
+        )
+    hook_map = hooks.get("hooks")
+    if not isinstance(hook_map, dict) or set(hook_map) != {"PreToolUse"}:
+        raise PluginVerifyError(
+            "default plugin must expose exactly one PreToolUse hook event"
+        )
+    groups = hook_map.get("PreToolUse")
+    if not isinstance(groups, list) or len(groups) != 1:
+        raise PluginVerifyError("PreToolUse must contain exactly one group")
+    group = groups[0]
+    if not isinstance(group, dict) or group.get("matcher") != "*":
+        raise PluginVerifyError("auto-bootstrap PreToolUse matcher must be '*'")
+    commands = group.get("hooks")
+    if not isinstance(commands, list) or len(commands) != 1:
+        raise PluginVerifyError(
+            "auto-bootstrap PreToolUse must contain exactly one command"
+        )
+    command = commands[0]
+    expected_command = 'node "${PLUGIN_ROOT}/hooks/auto-bootstrap.mjs"'
+    if (
+        not isinstance(command, dict)
+        or command.get("type") != "command"
+        or command.get("command") != expected_command
+    ):
+        raise PluginVerifyError("auto-bootstrap hook command mismatch")
+    timeout = command.get("timeout")
+    if not isinstance(timeout, int) or not 1 <= timeout <= 310:
+        raise PluginVerifyError(
+            "auto-bootstrap hook timeout is outside the bounded contract"
+        )
+    hook_script = root / "hooks" / "auto-bootstrap.mjs"
+    if not hook_script.is_file() or hook_script.stat().st_size > 128 * 1024:
+        raise PluginVerifyError("bounded auto-bootstrap hook script is missing")
+    if (root / "hooks" / "session-start.sh").exists():
+        raise PluginVerifyError(
+            "default plugin must not inject SessionStart shell context"
+        )
     forbidden = ("/Users/", "TYPESAFE_API_KEY", "sk-")
-    for relative in PLUGIN_JSON_PATHS + ("skills/forgewright/SKILL.md",):
+    for relative in PLUGIN_JSON_PATHS + (
+        "skills/forgewright/SKILL.md",
+        "hooks/hooks.json",
+        "hooks/auto-bootstrap.mjs",
+    ):
         text = (root / relative).read_text(encoding="utf-8")
         if any(marker in text for marker in forbidden):
             raise PluginVerifyError(f"machine path or credential marker in {relative}")
-    if (root / "hooks" / "hooks.json").exists() or (
-        root / "hooks" / "session-start.sh"
-    ).exists():
-        raise PluginVerifyError(
-            "default plugin must not include executable lifecycle hooks"
-        )
 
     return {
         "schema": "forgewright-plugin-verification/v1",
@@ -114,8 +159,11 @@ def verify_static(root: Path) -> dict[str, Any]:
         "mode": "static",
         "root": str(root),
         "version": version,
-        "skills_only": True,
+        "skills_first": True,
         "entry_skill": "skills/forgewright/SKILL.md",
+        "auto_bootstrap_hook": "hooks/auto-bootstrap.mjs",
+        "session_start_hook": False,
+        "automatic_mcp": False,
     }
 
 
@@ -262,16 +310,19 @@ def verify(root: Path, *, install: bool) -> dict[str, Any]:
 
             claude_cache = home / ".claude" / "plugins" / "cache"
             claude_entry = list(claude_cache.rglob("skills/forgewright/SKILL.md"))
-            if not claude_entry:
+            claude_hook = list(claude_cache.rglob("hooks/auto-bootstrap.mjs"))
+            claude_manifest = list(claude_cache.rglob("hooks/hooks.json"))
+            if not claude_entry or not claude_hook or not claude_manifest:
                 raise PluginVerifyError(
-                    "Claude cache is missing the Forgewright entry skill"
+                    "Claude cache is missing the entry skill or auto-bootstrap hook package"
                 )
             installed.update(
                 {
                     "codex_listed": True,
                     "claude_listed": True,
                     "claude_entry_skill": True,
-                    "executable_hooks": False,
+                    "auto_bootstrap_hook": True,
+                    "session_start_hook": False,
                 }
             )
 

@@ -105,7 +105,7 @@ claude plugin install forgewright@forgewright-marketplace --scope user
 
 Sau khi cài, mở session mới và giao việc bình thường; description dạng trigger-only giúp host chỉ nạp skill phù hợp khi cần. `forgewright` là entry/alias workflow nên số specialist canonical vẫn là **84 kỹ năng**.
 
-Plugin mặc định là **skills-only**: không SessionStart hook executable và không local MCP side effect. Chỉ cấu hình full local runtime khi cần tool chạy trên máy. Maintainer có thể test cài đặt trong HOME tạm, không đụng profile thật:
+Plugin theo hướng **skills-first + consent-gated**. Gói plugin có một `PreToolUse` hook bootstrap nhỏ và bị giới hạn, nhưng chỉ cài plugin thì **không** sửa project, cài MCP, bật Pi, dò credential hay khởi động local runtime. Nếu chưa có global bootstrap policy do người dùng bật, hook sẽ thoát mà không thay đổi repository. Maintainer có thể test cài đặt trong HOME tạm, không đụng profile thật:
 
 ```bash
 npm run verify:plugins
@@ -124,6 +124,8 @@ npm run build:cli
 node src/cli/dist/index.js --help
 ```
 
+Muốn auto-bootstrap toàn máy, opt-in một lần bằng `forge bootstrap policy set --mode full --auto on` từ shared runtime. Từ đó project mới có thể tự lên mode đã chọn ở lần dùng plugin đầu tiên mà không cần submodule riêng. Xem [hướng dẫn auto-bootstrap](docs/guides/auto-bootstrap.md) để cấu hình allow/deny root, lifecycle và trust boundary.
+
 Có thể init/onboard một dự án local mà chưa gọi model:
 
 ```bash
@@ -141,7 +143,7 @@ git submodule update --init --recursive
 bash forgewright/scripts/forgewright-mcp-setup.sh
 ```
 
-Hãy review setup script và config sinh ra; merge rule cần thiết vào project thay vì ghi đè rule sẵn có. Plugin và submodule bổ sung cho nhau: plugin mang skill portable, còn submodule/full clone mang runtime code và gate local có thể reproduce.
+Hãy review setup script và config sinh ra; merge rule cần thiết vào project thay vì ghi đè rule sẵn có. Submodule vẫn hữu ích khi chính project cần pin framework source cố định, nhưng không còn là điều kiện để dùng global-policy auto-bootstrap.
 
 ## Đã nâng cấp gì
 

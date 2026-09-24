@@ -27,7 +27,15 @@ The repository root is the plugin source of truth.
 - .claude-plugin/plugin.json and .claude-plugin/marketplace.json expose the same source to Claude Code.
 - skills/forgewright/SKILL.md is an entry workflow and registry alias, not a new specialist. The canonical specialist count remains 84.
 
-The default plugin layer is deliberately skills-only: no unconditional SessionStart command and no advertised local MCP runtime. This preserves lazy loading, avoids adding boot context to every session, and keeps the portable install free of executable side effects. Clone/submodule setup remains the advanced path for Forge CLI, MCP, Docs Hub, Pi, and project-owned local gates.
+The default plugin layer is skills-first and consent-gated: there is no unconditional SessionStart command and no advertised local MCP runtime, but the package includes one bounded `PreToolUse` bootstrap hook. The hook is inert unless a user-owned global policy has explicitly enabled automatic bootstrap. This preserves lazy loading, avoids adding boot context to every session, and keeps plugin installation itself non-mutating.
+
+### One-time global bootstrap policy
+
+Users who want full machine-local automation create the shared Forgewright runtime once and explicitly run `forge bootstrap policy set --mode automation|full --auto on`. The policy is stored under the user's Forgewright config home, includes allow/deny roots, desired mode, update policy, selected MCP clients and Pi policy, and never stores credentials.
+
+On the first substantive plugin use inside an unmanaged repository, the hook performs a bounded local preflight. If policy permits, it invokes an idempotent bootstrap transaction that records project ownership receipts and can provision project profile/policy, GitNexus, Docs Hub registration, delegation readiness, and—only in `full` mode—the shared runtime integrations selected by policy. Once a valid project receipt is `ready`, later prompts perform only the cheap preflight.
+
+The transaction does not require a project submodule. A submodule remains available for teams that deliberately want project-pinned framework source.
 
 ### Behavioral skill quality
 
@@ -76,7 +84,9 @@ Local release evidence includes:
 
 - isolated Codex marketplace discovery/install in a temporary CODEX_HOME;
 - isolated Claude validate/install/list/details in a temporary HOME;
-- shared entry skill present in the installed Claude cache and no default executable hook declared;
+- shared entry skill and bounded auto-bootstrap hook present in the installed plugin package;
+- plugin installation alone remains non-mutating when no global bootstrap policy exists;
+- policy, project-state, ownership/rollback, repair/disable, concurrent-project admission and no-paid-fallback contracts are covered by deterministic tests;
 - plugin manifests contain no machine-specific paths or secrets;
 - deterministic skill-quality, metadata-lint, context-packet, review-scope, plan-runtime, and orchestration regression tests;
 - normal repository full hooks and exact-tree independent review before publication.
@@ -85,8 +95,9 @@ npm run verify:plugins intentionally uses isolated profiles and does not alter t
 
 ## Consequences and limits
 
-- Plugin installation is the lightweight front door; clone/submodule remains the full local-runtime path.
+- Plugin installation is the lightweight front door. Full auto-bootstrap requires a one-time shared runtime + global consent policy, but no per-project clone/submodule.
 - Claude local installation currently copies/caches the repository and can take substantially longer than Codex installation; this is packaging overhead, not agent inference latency.
 - Local plugin install evidence does not mean Forgewright is already listed in OpenAI/Anthropic official hosted marketplaces.
 - No universal token, latency, or quality improvement is claimed until representative real-model evaluations establish it.
 - Local MCP, Pi, and arbitrary tool execution retain their existing trust and production gates.
+- Deploy/publish, billing, credentials and destructive cleanup outside receipt-owned state are never implied by auto-bootstrap.

@@ -7,6 +7,7 @@ All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewrig
 > Features targeting v8.8.0 and beyond. Not yet released.
 
 ### Added
+- **Consent-gated Project Auto-Bootstrap** — One-time global `plugin|automation|full` policy, bounded plugin preflight hook, project bootstrap state/ownership receipts, rollback-safe automation/full transactions, repair/disable lifecycle, shared-runtime reuse, and cross-project resource admission. New repositories can reach the configured Forgewright mode on first substantive plugin use without a per-project submodule; plugin installation remains non-mutating until explicit opt-in.
 - **Forgewright Rule Compliance Loop** — Telemetry, Rule Ledger, Execution Policy, Context Manager, and Rule Validator to self-correct and enforce rules.
 - **AI Reasoning Research Integration** — Deep NotebookLM research across 14 sources (OpenAI o1/o3, Anthropic extended thinking, Claude Code best practices) producing 15 actionable lessons (reconstructed from docs).
 - **Reasoning Checkpoint** — SOLVE Step 6.4 mandates a 1–2 sentence reasoning pause after every CHECK result (reconstructed from docs).

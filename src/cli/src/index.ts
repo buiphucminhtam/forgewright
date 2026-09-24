@@ -25,6 +25,7 @@ import {
 import { registerBenchCommand } from "./commands/bench.js";
 import { registerProjectCommands } from "./commands/project.js";
 import { registerDocsCommands } from "./commands/docs.js";
+import { registerBootstrapCommand } from "./commands/bootstrap.js";
 import { VERSION } from "./version.js";
 import { EXIT_CODES } from "./exit-codes.js";
 import pc from "picocolors";
@@ -57,6 +58,7 @@ export function buildProgram(): Command {
   registerBenchCommand(program);
   registerProjectCommands(program);
   registerDocsCommands(program);
+  registerBootstrapCommand(program);
 
   // Initialize config
   const config = getConfig();
@@ -82,6 +84,8 @@ Examples:
   $ forge delegate auto               # Auto-enable when Codex/Claude + Agy are available
   $ forge docs init .                 # Create a privacy-safe docs manifest
   $ forge docs build .                # Build the static documentation portal
+  $ forge bootstrap policy status     # Show one-time global auto-bootstrap policy
+  $ forge bootstrap preflight .        # Cheap local project bootstrap decision
   $ forge --version                   # Show version
 
 Agent Mode:

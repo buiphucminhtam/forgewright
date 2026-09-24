@@ -56,6 +56,10 @@
     {
       "path": "docs/adr/ADR-agent-plugin-distribution.md",
       "type": "architecture"
+    },
+    {
+      "path": "docs/guides/auto-bootstrap.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -94,7 +98,8 @@
       "docs/process/release-readiness.md",
       "product-manifest.json",
       "docs/adr/ADR-pi-worker-runtime.md",
-      "docs/adr/ADR-agent-plugin-distribution.md"
+      "docs/adr/ADR-agent-plugin-distribution.md",
+      "docs/guides/auto-bootstrap.md"
     ],
     "exclude": [
       "docs/archive/**",
