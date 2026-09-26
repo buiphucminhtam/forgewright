@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version 8.7.0" />
+  <img src="https://img.shields.io/badge/version-8.7.1-blue?style=flat-square" alt="Version 8.7.1" />
   <img src="https://img.shields.io/badge/skills-84-brightgreen?style=flat-square" alt="84 skills" />
   <img src="https://img.shields.io/badge/verification-local--first-24292f?style=flat-square" alt="Local-first verification" />
   <img src="https://img.shields.io/badge/integration-MCP-7057ff?style=flat-square" alt="MCP integration" />
@@ -107,7 +107,7 @@ claude plugin install forgewright@forgewright-marketplace --scope user
 
 Start a fresh session after installation and ask for normal engineering work; trigger-only skill descriptions let the host discover the relevant skill on demand. The entry skill is an orchestration alias, so the canonical specialist inventory remains **84 skills**.
 
-Plugin installation is **skills-only by default**: no executable SessionStart hook and no local MCP side effect. Configure the richer local runtime separately when you want machine-local tools.
+The plugin is **skills-first and consent-gated**. Its bounded `PreToolUse` hook is inert until the user enables a global bootstrap policy; installation alone does not mutate projects or start local MCP/Pi/runtime setup.
 
 Verify both installers in isolated profiles:
 
@@ -130,6 +130,8 @@ node src/cli/dist/index.js --help
 
 `ci:bootstrap` installs checked-in verification dependencies and configures this clone's Git hooks. It does not enable Pi, start production services, or require hosted CI. Model calls use the provider/account you explicitly configure.
 
+For one-time global auto-bootstrap, run `forge bootstrap policy set --mode full --auto on` from the shared runtime. After reviewing and trusting the current host hook, new repositories bootstrap without a project submodule. An isolated macOS Codex ordinary-prompt acceptance has verified this path; Claude native execution remains deferred, and Windows, physical power-loss, and remote-host acceptance are not established. See the [auto-bootstrap guide](docs/guides/auto-bootstrap.md).
+
 You can inspect/onboard a local project without a model call:
 
 ```bash
@@ -147,7 +149,7 @@ git submodule update --init --recursive
 bash forgewright/scripts/forgewright-mcp-setup.sh
 ```
 
-Review the setup script and generated configuration. Merge relevant instructions into existing project rules instead of overwriting them. Plugin installation and submodule adoption are complementary: the plugin supplies portable skills; the submodule/full clone supplies reproducible local runtime code and project-owned gates.
+Review generated configuration before adoption. A project submodule is still useful when the project must pin exact framework source, but global-policy auto-bootstrap does not require one.
 
 ## What's new
 
@@ -275,7 +277,7 @@ The maturity labels below follow the [capability inventory](docs/capability-matu
 
 ### 13. Codex & Claude Plugin Distribution
 
-**Beta.** Portable manifests, a shared plugin entry skill, lazy skill discovery, and an isolated install verifier support Codex and Claude Code from one source tree. The default plugin has no executable hook or local MCP side effect. [Plugin ADR](docs/adr/ADR-agent-plugin-distribution.md).
+**Beta.** Codex and Claude Code share one plugin source, entry skill, lazy discovery, install verifier, and consent-gated bootstrap hook. Local MCP/Pi/runtime stages remain policy-controlled. [Plugin ADR](docs/adr/ADR-agent-plugin-distribution.md).
 
 ### 14. Behavioral Skill Quality Engine
 

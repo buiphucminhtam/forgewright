@@ -1,5 +1,6 @@
 ---
 name: code-reviewer-go
+description: Use when reviewing Go code, Go modules, concurrency, or Go-specific correctness and quality.
 extends: code-reviewer
 language: go
 version: 1.0.0

@@ -8,7 +8,7 @@
     {
       "name": "forgewright",
       "description": "Provider-neutral software production system with specialist skills and evidence-first delivery workflows",
-      "version": "8.7.0",
+      "version": "8.7.1",
       "source": "./",
       "author": {
         "name": "Bui Phuc Minh Tam"

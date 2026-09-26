@@ -8,7 +8,7 @@
 <p align="center"><strong>Từ một yêu cầu đến quy trình kỹ thuật có thể kiểm tra, kiểm chứng và kiểm soát.</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Phiên bản 8.7.0" />
+  <img src="https://img.shields.io/badge/version-8.7.1-blue?style=flat-square" alt="Phiên bản 8.7.1" />
   <img src="https://img.shields.io/badge/skills-84-brightgreen?style=flat-square" alt="84 kỹ năng" />
   <img src="https://img.shields.io/badge/verification-local--first-24292f?style=flat-square" alt="Kiểm chứng local-first" />
   <img src="https://img.shields.io/badge/integration-MCP-7057ff?style=flat-square" alt="Tích hợp MCP" />
@@ -105,7 +105,7 @@ claude plugin install forgewright@forgewright-marketplace --scope user
 
 Sau khi cài, mở session mới và giao việc bình thường; description dạng trigger-only giúp host chỉ nạp skill phù hợp khi cần. `forgewright` là entry/alias workflow nên số specialist canonical vẫn là **84 kỹ năng**.
 
-Plugin mặc định là **skills-only**: không SessionStart hook executable và không local MCP side effect. Chỉ cấu hình full local runtime khi cần tool chạy trên máy. Maintainer có thể test cài đặt trong HOME tạm, không đụng profile thật:
+Plugin theo hướng **skills-first + consent-gated**. Gói plugin có một `PreToolUse` hook bootstrap nhỏ và bị giới hạn, nhưng chỉ cài plugin thì **không** sửa project, cài MCP, bật Pi, dò credential hay khởi động local runtime. Nếu chưa có global bootstrap policy do người dùng bật, hook sẽ thoát mà không thay đổi repository. Maintainer có thể test cài đặt trong HOME tạm, không đụng profile thật:
 
 ```bash
 npm run verify:plugins
@@ -124,6 +124,8 @@ npm run build:cli
 node src/cli/dist/index.js --help
 ```
 
+Muốn auto-bootstrap toàn máy, opt-in một lần bằng `forge bootstrap policy set --mode full --auto on` từ shared runtime. Sau khi review và trust hook hiện tại trong host, project mới có thể tự lên mode đã chọn ở lần dùng plugin đầu tiên, không cần submodule riêng. Một lượt prompt thông thường của Codex trên profile macOS cô lập đã kiểm chứng đường này; native Claude vẫn do người dùng hoãn, còn Windows, mất điện vật lý và host từ xa chưa được xác nhận. Xem [hướng dẫn auto-bootstrap](docs/guides/auto-bootstrap.md) để cấu hình allow/deny root, lifecycle và trust boundary.
+
 Có thể init/onboard một dự án local mà chưa gọi model:
 
 ```bash
@@ -141,7 +143,7 @@ git submodule update --init --recursive
 bash forgewright/scripts/forgewright-mcp-setup.sh
 ```
 
-Hãy review setup script và config sinh ra; merge rule cần thiết vào project thay vì ghi đè rule sẵn có. Plugin và submodule bổ sung cho nhau: plugin mang skill portable, còn submodule/full clone mang runtime code và gate local có thể reproduce.
+Hãy review setup script và config sinh ra; merge rule cần thiết vào project thay vì ghi đè rule sẵn có. Submodule vẫn hữu ích khi chính project cần pin framework source cố định, nhưng không còn là điều kiện để dùng global-policy auto-bootstrap.
 
 ## Đã nâng cấp gì
 
@@ -228,7 +230,7 @@ Mở `.forgewright/docs-hub/site/index.html`. [Hướng dẫn Docs Hub](docs/gui
 | Game Studio Control Plane | Beta optional pack | Handoff theo phase; build, playtest, thiết bị và phát hành cần bằng chứng riêng. |
 | Token Efficiency / Jev spirit | Experimental | Routing rules/cache local EN/VI, không key/model phụ; abstain khi mơ hồ. |
 | Pi Worker | Experimental, opt-in | CLI từ project cha, scoped patch/verifier, cancellation và governor đa project; không tự migrate production. |
-| Codex & Claude Plugin Distribution | Beta | Plugin manifests + shared entry skill + lazy discovery; mặc định không executable hook/MCP side effect. |
+| Codex & Claude Plugin Distribution | Beta | Plugin manifests + shared entry skill + lazy discovery; hook có trong gói nhưng mặc định không có side effect lên project/MCP/runtime trước global opt-in. |
 | Behavioral Skill Quality Engine | Experimental | Pressure/rationalization eval, metadata lint, packet/review compiler và promotion gate; model benchmark thật vẫn là evidence riêng. |
 
 Nguồn trạng thái chi tiết: [capability inventory](docs/capability-maturity.json) và [active roadmap](docs/active-roadmap.md).

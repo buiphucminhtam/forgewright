@@ -191,6 +191,88 @@ def test_dead_owner_quarantines_instead_of_replaying_effects(tmp_path):
         release(a, "w0", 101)
 
 
+def test_exact_dead_owner_lease_can_be_explicitly_reconciled(tmp_path):
+    a, identities, _, _ = fixture(tmp_path)
+    project = tmp_path / "p0"
+    request(a, project, 100, "w0")
+    identity = identities[100]
+
+    with pytest.raises(AdmissionError, match="owner-still-live"):
+        a.reconcile_quarantined(
+            job_id="w0",
+            token="w0-" + "x" * 40,
+            project_root=str(project),
+            run_id="run-100",
+            owner_pid=100,
+            owner_identity=identity,
+        )
+
+    identities.pop(100)
+    assert a.status()["quarantined"] == 1
+
+    with pytest.raises(AdmissionError, match="owner-mismatch"):
+        a.reconcile_quarantined(
+            job_id="w0",
+            token="wrong-" + "x" * 40,
+            project_root=str(project),
+            run_id="run-100",
+            owner_pid=100,
+            owner_identity=identity,
+        )
+
+    result = a.reconcile_quarantined(
+        job_id="w0",
+        token="w0-" + "x" * 40,
+        project_root=str(project),
+        run_id="run-100",
+        owner_pid=100,
+        owner_identity=identity,
+    )
+    assert result["state"] == "released"
+    assert a.status()["quarantined"] == 0
+
+
+def test_worker_reconciliation_waits_for_exact_child_release(tmp_path):
+    a, identities, _, _ = fixture(tmp_path)
+    project = tmp_path / "p0"
+    request(a, project, 100, "w0")
+    request(a, project, 100, "h0", "heavy", parent_lease_id="w0")
+    identity = identities.pop(100)
+
+    with pytest.raises(AdmissionError, match="children-active"):
+        a.reconcile_quarantined(
+            job_id="w0",
+            token="w0-" + "x" * 40,
+            project_root=str(project),
+            run_id="run-100",
+            owner_pid=100,
+            owner_identity=identity,
+        )
+
+    assert (
+        a.reconcile_quarantined(
+            job_id="h0",
+            token="h0-" + "x" * 40,
+            project_root=str(project),
+            run_id="run-100",
+            owner_pid=100,
+            owner_identity=identity,
+        )["state"]
+        == "released"
+    )
+    assert (
+        a.reconcile_quarantined(
+            job_id="w0",
+            token="w0-" + "x" * 40,
+            project_root=str(project),
+            run_id="run-100",
+            owner_pid=100,
+            owner_identity=identity,
+        )["state"]
+        == "released"
+    )
+
+
 def test_wrong_token_pid_and_duplicate_identity_are_rejected(tmp_path):
     a, identities, _, _ = fixture(tmp_path)
     request(a, tmp_path / "p0", 100, "w0")

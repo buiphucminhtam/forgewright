@@ -1,7 +1,7 @@
 {
   "name": "forgewright",
   "description": "Provider-neutral software production system for Claude Code: proportional engineering, specialist skills, evidence-first verification, and bounded delivery workflows.",
-  "version": "8.7.0",
+  "version": "8.7.1",
   "author": {
     "name": "Bui Phuc Minh Tam"
   },

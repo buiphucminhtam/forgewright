@@ -1,7 +1,6 @@
 {
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "forgewright",
-  "version": "8.7.0",
+  "version": "8.7.1",
   "description": "Provider-neutral software production system with proportional engineering workflows, specialist skills, evidence gates, bounded parallel execution, and local-first automation.",
   "author": {
     "name": "Bui Phuc Minh Tam",

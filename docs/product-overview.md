@@ -1,6 +1,6 @@
 # Forgewright — Product Overview
 
-> **Version:** 8.7.0 · **License:** MIT · **Repository:** [github.com/buiphucminhtam/forgewright](https://github.com/buiphucminhtam/forgewright)
+> **Version:** 8.7.1 · **License:** MIT · **Repository:** [github.com/buiphucminhtam/forgewright](https://github.com/buiphucminhtam/forgewright)
 
 ---
 

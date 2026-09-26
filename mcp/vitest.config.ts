@@ -1,5 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
+const workerBudget = process.env.FORGEWRIGHT_TEST_WORKERS ?? '2';
+if (workerBudget !== '1' && workerBudget !== '2') {
+  throw new Error('FORGEWRIGHT_TEST_WORKERS must be 1 or 2');
+}
+
 export default defineConfig({
   test: {
     globals: true,
@@ -9,7 +14,7 @@ export default defineConfig({
     // can saturate memory and durable ledger I/O with dozens of Node workers.
     // Bound file-level concurrency without relaxing assertions or timeouts.
     isolate: true,
-    poolOptions: { forks: { minForks: 1, maxForks: 2 } },
+    poolOptions: { forks: { minForks: 1, maxForks: Number(workerBudget) } },
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',

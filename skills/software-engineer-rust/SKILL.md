@@ -1,5 +1,6 @@
 ---
 name: software-engineer-rust
+description: Use when implementing or modifying Rust applications, crates, services, or tests.
 extends: software-engineer
 language: rust
 version: 1.0.0

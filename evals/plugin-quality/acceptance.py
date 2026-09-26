@@ -169,7 +169,7 @@ def main() -> int:
                 "limitations": [
                     "No real-model quality/token/latency gain is inferred from deterministic fixtures.",
                     "Official hosted marketplace publication is outside this source-release acceptance.",
-                    "The default plugin is skills-only and does not imply local MCP or executable hook deployment.",
+                    "The plugin bootstrap hook is inert without explicit global consent and does not imply local MCP, Pi, credential, deploy, publish, or billing authority.",
                 ],
             },
             ensure_ascii=False,

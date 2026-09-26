@@ -113,6 +113,38 @@ def test_policy_seeder_is_atomic_under_concurrent_installers(tmp_path: Path) -> 
     assert not list((target / ".forgewright").glob(".execution-policy.yaml.*"))
 
 
+def test_policy_seeder_rechecks_concurrent_regular_file_winner(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    target = tmp_path / "target"
+    (source / ".forgewright").mkdir(parents=True)
+    target.mkdir()
+    shutil.copy2(POLICY, source / ".forgewright" / POLICY.name)
+
+    # Inject at the existence-classification boundary. In the old split
+    # checks, this lands after the first type check and before existence.
+    race_hook = tmp_path / "race-hook.sh"
+    race_hook.write_text(
+        r"""set -T
+trap 'case "$BASH_COMMAND" in *'\''[[ -e "$target_policy"'\''*) trap - DEBUG; cp -- "$source_policy" "$target_policy" ;; esac' DEBUG
+""",
+        encoding="utf-8",
+    )
+    raced = run(
+        "bash",
+        str(SEEDER),
+        str(source),
+        str(target),
+        cwd=target,
+        env={"BASH_ENV": str(race_hook)},
+    )
+
+    assert raced.returncode == 0, raced.stderr
+    assert "preserved" in raced.stdout
+    assert (target / ".forgewright" / POLICY.name).read_bytes() == POLICY.read_bytes()
+
+
 def test_policy_seeder_installs_cleanup_trap_and_preserves_symlinks(
     tmp_path: Path,
 ) -> None:

@@ -1,5 +1,6 @@
 ---
 name: code-reviewer-python
+description: Use when reviewing Python code, Python packaging, or Python-specific correctness and quality.
 extends: code-reviewer
 language: python
 version: 1.0.0

@@ -12,10 +12,7 @@
       "readme_heading": "Code Intelligence (GitNexus)",
       "maturity": "docs-only",
       "placement": "core",
-      "evidence": [
-        "docs/guides/gitnexus.md",
-        "AGENTS.md"
-      ]
+      "evidence": ["docs/guides/gitnexus.md", "AGENTS.md"]
     },
     {
       "id": "testing-stack",
@@ -53,10 +50,7 @@
       "readme_heading": "Multi-Project Hub",
       "maturity": "docs-only",
       "placement": "core",
-      "evidence": [
-        "docs/active-roadmap.md",
-        "docs/architecture.md"
-      ]
+      "evidence": ["docs/active-roadmap.md", "docs/architecture.md"]
     },
     {
       "id": "token-analytics",
@@ -176,12 +170,20 @@
         ".agents/plugins/marketplace.json",
         ".claude-plugin/marketplace.json",
         "skills/forgewright/SKILL.md",
+        "hooks/hooks.json",
+        "hooks/auto-bootstrap.mjs",
+        "src/cli/src/bootstrap/state.ts",
+        "src/cli/src/commands/bootstrap.ts",
+        "scripts/runtime/bootstrap_manager.py",
         "scripts/ci/verify-plugin-distribution.py",
         "tests/unit_tests/test_plugin_distribution.py",
+        "tests/unit_tests/test_auto_bootstrap.py",
+        "tests/unit_tests/test_auto_bootstrap_hook.py",
+        "src/cli/tests/bootstrap.test.ts",
         "docs/adr/ADR-agent-plugin-distribution.md",
         "evals/plugin-quality/acceptance.py"
       ],
-      "limitations": "Local isolated install/discovery is verified for the installed Codex and Claude CLIs. The default plugin is skills-only with no executable hook or local MCP side effect; official hosted marketplace publication and richer local runtime setup remain separate."
+      "limitations": "Local isolated install/discovery is verified for the installed Codex and Claude CLIs. The plugin packages one bounded PreToolUse bootstrap hook, but project/runtime mutation is disabled until the user explicitly enables a global bootstrap policy. Full mode still requires a shared local Forgewright runtime; deploy/publish, billing, credential changes, paid-provider fallback and official hosted marketplace publication remain separate."
     },
     {
       "id": "skill-quality-engine",
@@ -210,33 +212,25 @@
       "id": "game",
       "maturity": "docs-only",
       "placement": "optional-pack",
-      "evidence": [
-        "docs/active-roadmap.md"
-      ]
+      "evidence": ["docs/active-roadmap.md"]
     },
     {
       "id": "xr",
       "maturity": "docs-only",
       "placement": "optional-pack",
-      "evidence": [
-        "docs/active-roadmap.md"
-      ]
+      "evidence": ["docs/active-roadmap.md"]
     },
     {
       "id": "research",
       "maturity": "docs-only",
       "placement": "optional-pack",
-      "evidence": [
-        "docs/active-roadmap.md"
-      ]
+      "evidence": ["docs/active-roadmap.md"]
     },
     {
       "id": "growth",
       "maturity": "docs-only",
       "placement": "optional-pack",
-      "evidence": [
-        "docs/active-roadmap.md"
-      ]
+      "evidence": ["docs/active-roadmap.md"]
     }
   ]
 }

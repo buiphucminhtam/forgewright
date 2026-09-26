@@ -1,5 +1,6 @@
 ---
 name: software-engineer-go
+description: Use when implementing or modifying Go applications, services, modules, or tests.
 extends: software-engineer
 language: go
 version: 1.0.0
