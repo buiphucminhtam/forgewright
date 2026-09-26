@@ -270,10 +270,6 @@
       "authority": "shared_protocol"
     },
     {
-      "path": "skills/_test/SKILL.md",
-      "authority": "routed_skill"
-    },
-    {
       "path": "skills/accessibility-engineer/LITE.md",
       "authority": "routed_lite"
     },

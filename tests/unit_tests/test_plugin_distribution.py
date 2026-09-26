@@ -19,10 +19,9 @@ def test_portable_and_harness_manifests_share_identity_and_version():
     codex = load_json(".codex-plugin/plugin.json")
     claude = load_json(".claude-plugin/plugin.json")
 
-    assert (
-        portable["$schema"]
-        == "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
-    )
+    # Binding the Agent Plugins schema masks native hooks in the supported host.
+    # This changes the packaging adapter, not any consent/behavioral oracle.
+    assert "$schema" not in portable
     assert {portable["name"], codex["name"], claude["name"]} == {"forgewright"}
     assert {portable["version"], codex["version"], claude["version"]} == {
         package["version"]
@@ -74,7 +73,7 @@ def test_plugin_defaults_to_lazy_skills_with_only_bounded_pretool_bootstrap_hook
     assert group["matcher"] == "*"
     [hook] = group["hooks"]
     assert hook["type"] == "command"
-    assert hook["command"] == 'node "${PLUGIN_ROOT}/hooks/auto-bootstrap.mjs"'
+    assert hook["command"] == 'node "${CLAUDE_PLUGIN_ROOT}/hooks/auto-bootstrap.mjs"'
     assert 1 <= hook["timeout"] <= 310
     assert (ROOT / "hooks/auto-bootstrap.mjs").is_file()
     assert not (ROOT / "hooks/session-start.sh").exists()

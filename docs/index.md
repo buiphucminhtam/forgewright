@@ -80,7 +80,7 @@ See the [Technical Writer skill](../skills/technical-writer/SKILL.md) for docume
 
 ## Version
 
-Current version: **8.7.0**
+Current version: **8.7.1**
 Last updated: 2026-07-09
 
 ---

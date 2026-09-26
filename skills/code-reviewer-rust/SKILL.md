@@ -1,5 +1,6 @@
 ---
 name: code-reviewer-rust
+description: Use when reviewing Rust code, ownership, lifetimes, concurrency, or Cargo projects.
 extends: code-reviewer
 language: rust
 version: 1.0.0

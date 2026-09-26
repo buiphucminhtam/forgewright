@@ -7,7 +7,6 @@ All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewrig
 > Features targeting v8.8.0 and beyond. Not yet released.
 
 ### Added
-- **Consent-gated Project Auto-Bootstrap** — One-time global `plugin|automation|full` policy, bounded plugin preflight hook, project bootstrap state/ownership receipts, rollback-safe automation/full transactions, repair/disable lifecycle, shared-runtime reuse, and cross-project resource admission. New repositories can reach the configured Forgewright mode on first substantive plugin use without a per-project submodule; plugin installation remains non-mutating until explicit opt-in.
 - **Forgewright Rule Compliance Loop** — Telemetry, Rule Ledger, Execution Policy, Context Manager, and Rule Validator to self-correct and enforce rules.
 - **AI Reasoning Research Integration** — Deep NotebookLM research across 14 sources (OpenAI o1/o3, Anthropic extended thinking, Claude Code best practices) producing 15 actionable lessons (reconstructed from docs).
 - **Reasoning Checkpoint** — SOLVE Step 6.4 mandates a 1–2 sentence reasoning pause after every CHECK result (reconstructed from docs).
@@ -28,6 +27,22 @@ All notable changes to [Forgewright](https://github.com/buiphucminhtam/forgewrig
 - **Script Reorganization** — Reorganized `scripts/` into subdirectories (`bootstrap`, `ci`, `docs`, `hooks`, `mcp`, `memory`, `release`, `runtime`, `skills`, `telemetry`, `testing`, `utilities`) and generated shims for backward compatibility.
 
 ---
+
+## [8.7.1] — Release candidate
+
+### Added
+- **Consent-gated Project Auto-Bootstrap** — One-time global `plugin|automation|full` policy, bounded plugin preflight hook, project bootstrap state/ownership receipts, rollback-safe automation/full transactions, repair/disable lifecycle, shared-runtime reuse, and cross-project resource admission. New repositories can reach the configured Forgewright mode on first substantive plugin use without a per-project submodule; plugin installation remains non-mutating until explicit opt-in.
+
+### Fixed
+- Native Codex/Claude hook packaging uses the documented compatible environment variable and native compatibility manifests. A recognized Agent Plugins root schema is deliberately not selected because the target Codex loader suppresses its hooks.
+- Bootstrap safety boundaries: receipt path/ancestor validation, durable project opt-out, source/root binding, truthful verification, stage recovery, scoped shared configuration, and supervised child cleanup.
+- Native skill entrypoints now include required routing metadata; internal self-test documentation is not exported as an agent skill. Isolated installation verifies Git-visible candidate files rather than copying local dependency caches.
+- Admission failure closes its connection, and uncertain heavy-adapter cleanup quarantines capacity before releasing the parent lease.
+- The shared launcher pins a verified Python 3.11+ interpreter; native host PATH changes cannot select incompatible system Python. Entry skills no longer replace disabled/untrusted hooks with automatic direct CLI setup. Docs cleanup safely accepts an already-removed globally owned entry during retry.
+- Production dependency locks align on patched Hono, js-yaml, and AJV without broad unrelated dependency upgrades.
+- Standalone CLI source builds own their process-supervision dependency; the plugin hook reuses the same implementation through a compatibility entrypoint instead of making CLI compilation depend on the repository-level hooks directory.
+- Native CI can select one isolated MCP test worker with `FORGEWRIGHT_TEST_WORKERS=1`; invalid budgets are rejected and the existing two-worker default remains. Production timeouts, test expectations and coverage thresholds are unchanged.
+- An isolated macOS Codex ordinary-prompt acceptance verified the trusted current hook, full ready receipt, and default 16-tool MCP connection. Claude native execution remains user-deferred; this release candidate does not claim native Windows, physical power-loss, remote-host, or model-MCP-invocation coverage.
 
 ## [8.7.0] — 2026-07-01
 

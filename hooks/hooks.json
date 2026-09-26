@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/auto-bootstrap.mjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/auto-bootstrap.mjs\"",
             "timeout": 310,
             "statusMessage": "Checking Forgewright project bootstrap"
           }

@@ -37,6 +37,8 @@ On the first substantive plugin use inside an unmanaged repository, the hook per
 
 The transaction does not require a project submodule. A submodule remains available for teams that deliberately want project-pinned framework source.
 
+Global consent is necessary but does not replace native host hook approval. Automatic mutation belongs to the trusted hook, never a skill-side fallback that invokes setup while a hook is disabled or untrusted. Explicit owner-requested CLI setup is a separate path. The shared launcher pins a verified Python 3.11+ interpreter and the installing Node executable so a host's sanitized PATH cannot silently select an incompatible system Python.
+
 ### Behavioral skill quality
 
 scripts/runtime/skill_quality.py evaluates a candidate across baseline/current/candidate arms with versioned JSON contracts. Promotion is blocked by trigger/compliance regressions, increased forbidden behavior/rationalization, or critical forbidden behavior. A candidate also needs measured behavioral or efficiency improvement.
@@ -89,7 +91,8 @@ Local release evidence includes:
 - policy, project-state, ownership/rollback, repair/disable, concurrent-project admission and no-paid-fallback contracts are covered by deterministic tests;
 - plugin manifests contain no machine-specific paths or secrets;
 - deterministic skill-quality, metadata-lint, context-packet, review-scope, plan-runtime, and orchestration regression tests;
-- normal repository full hooks and exact-tree independent review before publication.
+- normal repository full hooks and exact-tree independent review before publication;
+- one isolated macOS Codex ordinary-prompt turn with the trusted current `PreToolUse` hook, a ready full project receipt, and a connected default 16-tool MCP catalog.
 
 npm run verify:plugins intentionally uses isolated profiles and does not alter the user's real Codex or Claude configuration.
 
@@ -99,5 +102,5 @@ npm run verify:plugins intentionally uses isolated profiles and does not alter t
 - Claude local installation currently copies/caches the repository and can take substantially longer than Codex installation; this is packaging overhead, not agent inference latency.
 - Local plugin install evidence does not mean Forgewright is already listed in OpenAI/Anthropic official hosted marketplaces.
 - No universal token, latency, or quality improvement is claimed until representative real-model evaluations establish it.
-- Local MCP, Pi, and arbitrary tool execution retain their existing trust and production gates.
+- Local MCP, Pi, and arbitrary tool execution retain their existing trust and production gates. The Codex acceptance did not exercise model MCP invocation; Claude native execution is user-deferred, and native Windows, physical power-loss, and remote-host acceptance remain unverified.
 - Deploy/publish, billing, credentials and destructive cleanup outside receipt-owned state are never implied by auto-bootstrap.

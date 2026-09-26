@@ -1,5 +1,6 @@
 ---
 name: software-engineer-python
+description: Use when implementing or modifying Python applications, services, packages, or tests.
 extends: software-engineer
 language: python
 version: 1.0.0

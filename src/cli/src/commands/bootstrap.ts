@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { runBootstrapProcess } from "../bootstrap/process.mjs";
 import { Option, type Command } from "commander";
 import pc from "picocolors";
 import {
@@ -9,6 +9,7 @@ import {
   installBootstrapLauncher,
   loadBootstrapPolicy,
   preflightBootstrap,
+  resolveBootstrapPython,
   saveBootstrapPolicy,
   setBootstrapPolicyOff,
   type BootstrapMode,
@@ -119,15 +120,15 @@ function managerPath(): string {
   return path;
 }
 
-function runManager(
+async function runManager(
   command: "ensure" | "repair" | "verify" | "disable" | "explain" | "status",
   target: string,
   options: ProjectBootstrapOptions,
-): {
+): Promise<{
   ok: boolean;
   data: unknown;
   error: { code: string; message: string } | null;
-} {
+}> {
   const args = [managerPath(), command, target];
   if (
     options.mode &&
@@ -138,19 +139,15 @@ function runManager(
   if (command === "disable" && options.keepProfile) {
     args.push("--keep-profile");
   }
-  const result = spawnSync("python3", args, {
-    encoding: "utf8",
-    shell: false,
-    timeout: 300_000,
+  if (command === "ensure" && options.auto) args.push("--auto");
+  const result = await runBootstrapProcess(resolveBootstrapPython(), args, {
+    timeout: 260_000,
     env: {
       ...process.env,
       FORGEWRIGHT_CLI_ENTRY: resolve(process.argv[1]),
       FORGEWRIGHT_NODE: process.execPath,
     },
   });
-  if (result.error) {
-    throw result.error;
-  }
   const output = result.stdout.trim().split(/\r?\n/).filter(Boolean);
   const last = output.at(-1);
   if (!last) {
@@ -176,11 +173,38 @@ function runManager(
   ) {
     throw new Error("Bootstrap manager response contract mismatch.");
   }
-  return parsed as {
+  const response = parsed as {
     ok: boolean;
     data: unknown;
     error: { code: string; message: string } | null;
   };
+  if (result.status !== 0 || response.ok !== true) {
+    return {
+      ...response,
+      ok: false,
+      error: response.error ?? {
+        code: "manager_failed",
+        message: "Bootstrap manager failed",
+      },
+    };
+  }
+  if (
+    command === "verify" &&
+    (typeof response.data !== "object" ||
+      response.data === null ||
+      (response.data as Record<string, unknown>).ok !== true ||
+      (response.data as Record<string, unknown>).status !== "ready")
+  ) {
+    return {
+      ...response,
+      ok: false,
+      error: {
+        code: "verification_failed",
+        message: "Bootstrap verification did not confirm readiness",
+      },
+    };
+  }
+  return response;
 }
 
 export function registerBootstrapCommand(program: Command): void {
@@ -393,7 +417,7 @@ export function registerBootstrapCommand(program: Command): void {
       );
     }
     builder.action(
-      (target: string | undefined, options: ProjectBootstrapOptions) => {
+      async (target: string | undefined, options: ProjectBootstrapOptions) => {
         const startedAt = Date.now();
         const json = useJson(program, options);
         try {
@@ -409,17 +433,22 @@ export function registerBootstrapCommand(program: Command): void {
                 "Auto-bootstrap is blocked by root policy: " + decision.reason,
               );
             }
-            if (decision.action === "none" && decision.reason === "ready") {
+            if (options.mode && options.mode !== decision.desired_mode) {
+              throw new Error(
+                "Automatic bootstrap cannot override the globally consented mode",
+              );
+            }
+            if (decision.action === "none") {
               writeSuccess(
                 "forge.bootstrap.ensure",
-                { status: "ready", changed: false, preflight: decision },
+                { status: decision.state, changed: false, preflight: decision },
                 json,
                 startedAt,
               );
               return;
             }
           }
-          const result = runManager(
+          const result = await runManager(
             command,
             resolve(target ?? process.cwd()),
             options,
@@ -462,34 +491,36 @@ export function registerBootstrapCommand(program: Command): void {
     )
     .option("--keep-profile", "Keep project manifest/profile facts")
     .option("-j, --json", "Output as JSON")
-    .action((target: string | undefined, options: ProjectBootstrapOptions) => {
-      const startedAt = Date.now();
-      const json = useJson(program, options);
-      try {
-        const result = runManager(
-          "disable",
-          resolve(target ?? process.cwd()),
-          options,
-        );
-        if (!result.ok) {
+    .action(
+      async (target: string | undefined, options: ProjectBootstrapOptions) => {
+        const startedAt = Date.now();
+        const json = useJson(program, options);
+        try {
+          const result = await runManager(
+            "disable",
+            resolve(target ?? process.cwd()),
+            options,
+          );
+          if (!result.ok) {
+            writeFailure(
+              "forge.bootstrap.disable",
+              result.error?.message ?? "Bootstrap disable failed",
+              result.data,
+              json,
+              startedAt,
+            );
+            return;
+          }
+          writeSuccess("forge.bootstrap.disable", result.data, json, startedAt);
+        } catch (error) {
           writeFailure(
             "forge.bootstrap.disable",
-            result.error?.message ?? "Bootstrap disable failed",
-            result.data,
+            error instanceof Error ? error.message : String(error),
+            null,
             json,
             startedAt,
           );
-          return;
         }
-        writeSuccess("forge.bootstrap.disable", result.data, json, startedAt);
-      } catch (error) {
-        writeFailure(
-          "forge.bootstrap.disable",
-          error instanceof Error ? error.message : String(error),
-          null,
-          json,
-          startedAt,
-        );
-      }
-    });
+      },
+    );
 }

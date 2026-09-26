@@ -58,6 +58,8 @@ def test_mcp_vitest_limits_isolated_forks_for_shared_native_hosts() -> None:
     source = r"""
         import assert from 'node:assert/strict';
         import { loadConfigFromFile } from 'vite';
+        // This fixture proves the unchanged default; override behavior has separate tests.
+        delete process.env.FORGEWRIGHT_TEST_WORKERS;
         const loaded = await loadConfigFromFile(
             { command: 'serve', mode: 'test' }, 'mcp/vitest.config.ts',
         );

@@ -93,6 +93,7 @@ export interface BootstrapPreflight {
     | "root_denied"
     | "root_not_allowed"
     | "project_unmanaged"
+    | "project_disabled"
     | "mode_upgrade_required"
     | "source_changed"
     | "source_changed_manual"
@@ -111,8 +112,35 @@ function sha256(value: string): string {
 
 function normalizeRoot(input: string): string {
   const absolute = resolve(input);
-  if (!existsSync(absolute)) return absolute;
-  return realpathSync(absolute);
+  if (existsSync(absolute)) return realpathSync(absolute);
+  const parent = dirname(absolute);
+  return parent === absolute
+    ? absolute
+    : join(normalizeRoot(parent), basename(absolute));
+}
+
+// Canonicalize the trusted root before calling this; do not resolve links inside it.
+function assertSafeBootstrapPath(path: string): void {
+  let current = path;
+  while (true) {
+    try {
+      const info = lstatSync(current);
+      if (
+        info.isSymbolicLink() ||
+        (current !== path && !info.isDirectory()) ||
+        (current === path && (!info.isFile() || info.nlink > 1))
+      ) {
+        throw new Error(
+          "Unsafe bootstrap state file or symlink ancestry: " + path,
+        );
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
 }
 
 function isUnder(root: string, parent: string): boolean {
@@ -128,11 +156,11 @@ function isUnder(root: string, parent: string): boolean {
 
 export function getBootstrapHome(): string {
   const explicit = process.env.FORGEWRIGHT_BOOTSTRAP_HOME?.trim();
-  if (explicit) return resolve(explicit);
+  if (explicit) return normalizeRoot(explicit);
   const xdg = process.env.XDG_CONFIG_HOME?.trim();
   return xdg
-    ? join(resolve(xdg), "forgewright")
-    : join(homedir(), ".config", "forgewright");
+    ? normalizeRoot(join(xdg, "forgewright"))
+    : normalizeRoot(join(homedir(), ".config", "forgewright"));
 }
 
 export function getBootstrapPolicyPath(): string {
@@ -152,7 +180,61 @@ export function getBootstrapLauncherPath(): string {
 }
 
 function shellSingleQuote(value: string): string {
-  return "'" + value.replaceAll("'", "'\\\"'\\\"'") + "'";
+  return "'" + value.replaceAll("'", "'\"'\"'") + "'";
+}
+
+export function resolveBootstrapPython(): string {
+  const configured = process.env.FORGEWRIGHT_BOOTSTRAP_PYTHON?.trim();
+  const candidates = configured ? [configured] : ["python3", "python"];
+  for (const candidate of candidates) {
+    const probe = spawnSync(
+      candidate,
+      [
+        "-I",
+        "-c",
+        "import json,sys; import tomllib; assert sys.version_info >= (3,11); print(json.dumps(sys.executable))",
+      ],
+      { encoding: "utf8", shell: false, timeout: 3_000 },
+    );
+    if (probe.error || probe.status !== 0) continue;
+    try {
+      const executable: unknown = JSON.parse(probe.stdout.trim());
+      if (
+        typeof executable === "string" &&
+        isAbsolute(executable) &&
+        existsSync(executable) &&
+        !/[\r\n\0]/.test(executable)
+      )
+        return executable;
+    } catch {
+      /* Never infer a usable interpreter from invalid probe output. */
+    }
+  }
+  throw new Error(
+    "Python 3.11+ with tomllib is required. Re-run bootstrap policy set from the configured shared-runtime environment.",
+  );
+}
+
+function bootstrapGitDirectory(): string | null {
+  // Apple's /usr/bin/git is a developer-tool shim. Resolve its selected Git
+  // once at opt-in, just as the launcher pins Node/Python, not on each prompt.
+  if (process.platform !== "darwin") return null;
+  const selected = (process.env.PATH ?? "")
+    .split(":")
+    .map((directory) => join(directory, "git"))
+    .find((candidate) => existsSync(candidate));
+  if (!selected || realpathSync(selected) !== "/usr/bin/git") return null;
+  const probe = spawnSync("/usr/bin/xcrun", ["--find", "git"], {
+    encoding: "utf8",
+    shell: false,
+    timeout: 3000,
+  });
+  const executable = probe.status === 0 ? probe.stdout.trim() : "";
+  return isAbsolute(executable) &&
+    !/[\r\n\0]/.test(executable) &&
+    existsSync(executable)
+    ? dirname(executable)
+    : null;
 }
 
 export function installBootstrapLauncher(policy: BootstrapPolicy): string {
@@ -170,23 +252,62 @@ export function installBootstrapLauncher(policy: BootstrapPolicy): string {
         "; run npm run build:cli once in the shared Forgewright runtime.",
     );
   }
+  const lightEntry = join(dirname(cliEntry), "bootstrap-entry.js");
+  // Older shared runtimes remain usable until their CLI is rebuilt.
+  const launcherEntry = existsSync(lightEntry) ? lightEntry : cliEntry;
+  const python = policy.mode === "plugin" ? null : resolveBootstrapPython();
+  const gitDirectory = bootstrapGitDirectory();
+  const pinnedPath = [
+    dirname(process.execPath),
+    ...(python ? [dirname(python)] : []),
+    ...(gitDirectory ? [gitDirectory] : []),
+  ].join(process.platform === "win32" ? ";" : ":");
   const launcher = getBootstrapLauncherPath();
+  assertSafeBootstrapPath(launcher);
   mkdirSync(dirname(launcher), { recursive: true, mode: 0o700 });
   const content =
     process.platform === "win32"
-      ? '@echo off\r\n"' + process.execPath + '" "' + cliEntry + '" %*\r\n'
-      : "#!/usr/bin/env sh\nexec " +
+      ? "@echo off\r\nsetlocal DisableDelayedExpansion\r\n" +
+        (python
+          ? 'set "FORGEWRIGHT_BOOTSTRAP_PYTHON=' +
+            python.replaceAll("%", "%%") +
+            '"\r\n'
+          : "") +
+        'set "PATH=' +
+        pinnedPath.replaceAll("%", "%%") +
+        ';%PATH%"\r\n' +
+        '"' +
+        process.execPath.replaceAll("%", "%%") +
+        '" "' +
+        launcherEntry.replaceAll("%", "%%") +
+        '" %*\r\n'
+      : "#!/bin/sh\n" +
+        (python
+          ? "export FORGEWRIGHT_BOOTSTRAP_PYTHON=" +
+            shellSingleQuote(python) +
+            "\n"
+          : "") +
+        "export PATH=" +
+        shellSingleQuote(pinnedPath) +
+        ':"${PATH:-/usr/bin:/bin}"\nexec ' +
         shellSingleQuote(process.execPath) +
         " " +
-        shellSingleQuote(cliEntry) +
+        shellSingleQuote(launcherEntry) +
         ' "$@"\n';
-  writeFileSync(launcher, content, { encoding: "utf8", mode: 0o700 });
+  assertSafeBootstrapPath(launcher);
+  const temporary = launcher + "." + randomBytes(8).toString("hex") + ".tmp";
+  writeFileSync(temporary, content, {
+    encoding: "utf8",
+    mode: 0o700,
+    flag: "wx",
+  });
+  renameSync(temporary, launcher);
   if (process.platform !== "win32") chmodSync(launcher, 0o700);
   return launcher;
 }
 
 export function getProjectBootstrapPath(projectRoot: string): string {
-  return join(projectRoot, ".forgewright", "bootstrap.json");
+  return join(normalizeRoot(projectRoot), ".forgewright", "bootstrap.json");
 }
 
 function ancestorForgewrightRoot(input: string): string | null {
@@ -232,6 +353,7 @@ export function currentForgewrightCommit(root: string): string | null {
 }
 
 function safeJsonRead(path: string, maximum = 1024 * 1024): unknown {
+  assertSafeBootstrapPath(path);
   if (!existsSync(path)) return null;
   const info = lstatSync(path);
   if (
@@ -362,10 +484,14 @@ export function loadProjectBootstrapState(
   ) {
     throw new Error("Malformed bootstrap project state");
   }
+  if (value.project_root_digest !== projectRootDigest(projectRoot)) {
+    throw new Error("Foreign bootstrap state: project root digest mismatch");
+  }
   return value as unknown as BootstrapProjectState;
 }
 
 function atomicWriteJson(path: string, value: unknown): void {
+  assertSafeBootstrapPath(path);
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   if (existsSync(path)) {
     const info = lstatSync(path);
@@ -576,6 +702,34 @@ export function preflightBootstrap(target = process.cwd()): BootstrapPreflight {
       target_command: null,
     };
   }
+  const disabled = safeJsonRead(
+    join(
+      getBootstrapHome(),
+      "disabled",
+      projectRootDigest(repository) + ".json",
+    ),
+  );
+  if (disabled !== null) {
+    if (
+      typeof disabled !== "object" ||
+      !disabled ||
+      (disabled as Record<string, unknown>).schema !==
+        "forgewright-bootstrap-disabled/v1" ||
+      (disabled as Record<string, unknown>).project_root_digest !==
+        projectRootDigest(repository)
+    ) {
+      throw new Error("Invalid project disable receipt");
+    }
+    return {
+      ...base,
+      current_mode: state?.mode ?? null,
+      state: state?.status ?? "unmanaged",
+      action: "none",
+      reason: "project_disabled",
+      source_commit: sourceCommit,
+      target_command: null,
+    };
+  }
   if (!state) {
     return {
       ...base,
@@ -585,28 +739,6 @@ export function preflightBootstrap(target = process.cwd()): BootstrapPreflight {
       reason: "project_unmanaged",
       source_commit: sourceCommit,
       target_command: targetCommand,
-    };
-  }
-  if (rank(state.mode) < rank(policy.mode)) {
-    return {
-      ...base,
-      current_mode: state.mode,
-      state: state.status,
-      action: "ensure",
-      reason: "mode_upgrade_required",
-      source_commit: sourceCommit,
-      target_command: targetCommand,
-    };
-  }
-  if (sourceCommit && state.source_commit !== sourceCommit) {
-    return {
-      ...base,
-      current_mode: state.mode,
-      state: state.status,
-      action: policy.auto_update ? "ensure" : "none",
-      reason: policy.auto_update ? "source_changed" : "source_changed_manual",
-      source_commit: sourceCommit,
-      target_command: policy.auto_update ? targetCommand : null,
     };
   }
   if (state.status === "degraded") {
@@ -653,6 +785,28 @@ export function preflightBootstrap(target = process.cwd()): BootstrapPreflight {
       reason: "state_not_ready",
       source_commit: sourceCommit,
       target_command: targetCommand,
+    };
+  }
+  if (rank(state.mode) < rank(policy.mode)) {
+    return {
+      ...base,
+      current_mode: state.mode,
+      state: state.status,
+      action: "ensure",
+      reason: "mode_upgrade_required",
+      source_commit: sourceCommit,
+      target_command: targetCommand,
+    };
+  }
+  if (sourceCommit && state.source_commit !== sourceCommit) {
+    return {
+      ...base,
+      current_mode: state.mode,
+      state: state.status,
+      action: policy.auto_update ? "ensure" : "none",
+      reason: policy.auto_update ? "source_changed" : "source_changed_manual",
+      source_commit: sourceCommit,
+      target_command: policy.auto_update ? targetCommand : null,
     };
   }
   return {

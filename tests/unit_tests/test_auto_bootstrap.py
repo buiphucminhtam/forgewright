@@ -25,6 +25,23 @@ def bm():
     return module()
 
 
+def index_fixture(project):
+    path = project / ".gitnexus"
+    path.mkdir(exist_ok=True)
+    (path / "gitnexus.json").write_text(
+        json.dumps(
+            {
+                "repoPath": str(project),
+                "lastCommit": "a" * 40,
+                "indexedAt": "2026-09-25T00:00:00Z",
+                "stats": {"files": 1, "nodes": 1, "edges": 0},
+            }
+        )
+    )
+    (path / "lbug").write_bytes(b"unit database stand-in")
+    return {"status": "ready", "stdout": "indexed"}
+
+
 @pytest.fixture
 def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
     home = tmp_path / "home"
@@ -35,10 +52,42 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
     root = tmp_path / "forgewright"
     (root / ".forgewright").mkdir(parents=True)
     (root / ".forgewright/execution-policy.yaml").write_text(
-        "version: 1\nmode: enforce\n", encoding="utf-8"
+        "mode: strict\n"
+        "require_verify: true\n"
+        "max_escalations: 3\n"
+        "refresh_interval_ticks: 10\n"
+        "deny_patterns:\n"
+        '  - "rm"\n',
+        encoding="utf-8",
     )
     monkeypatch.setenv("FORGEWRIGHT_BOOTSTRAP_HOME", str(home))
     monkeypatch.setenv("FORGEWRIGHT_ADMISSION_HOME", str(home / "admission"))
+    monkeypatch.setenv("FORGEWRIGHT_HOME", str(home / "docs-home"))
+    # The mocked bootstrap adapters require an available-memory fixture, not
+    # an idle developer machine. Keep the real scheduler, locks and PID checks;
+    # dedicated pressure regressions exercise admission refusal separately.
+    from host_resources import MemorySnapshot
+
+    # Unit adapters do not spawn a bootstrap owner. Model its identity where
+    # the test sandbox denies ps; native process/lease evidence belongs to the
+    # host suite. Production inspection and cleanup remain unchanged.
+    identity = bm.sha256_bytes(f"unit-owner:{os.getpid()}".encode())
+    monkeypatch.setattr(
+        bm, "inspect_process", lambda pid: identity if pid == os.getpid() else None
+    )
+    real_admission = bm.HostAdmission
+    if isinstance(real_admission, type):
+        monkeypatch.setattr(
+            bm,
+            "HostAdmission",
+            lambda directory: real_admission(
+                directory,
+                sensor=lambda: MemorySnapshot(
+                    8 * 1024**3, 6 * 1024**3, "normal", "unit-fixture"
+                ),
+                inspector=lambda pid: identity if pid == os.getpid() else None,
+            ),
+        )
     policy = {
         "schema": bm.POLICY_SCHEMA,
         "enabled": True,
@@ -59,7 +108,7 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
     monkeypatch.setattr(
         bm,
         "gitnexus",
-        lambda _project: {"status": "ready", "stdout": "indexed"},
+        index_fixture,
     )
 
     calls: list[list[str]] = []
@@ -75,10 +124,16 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
             target = Path(project) / ".forgewright/project-profile.json"
             if not target.exists():
                 target.write_text(
-                    '{"schema_version":1,"facts":{"git_present":true}}\n',
+                    '{"schema_version":1,"facts":{'
+                    '"git_present":true,"package_json_present":false,'
+                    '"lockfiles":[],"declared_test_script":null}}\n',
                     encoding="utf-8",
                 )
         elif args[:2] == ["docs", "init"]:
+            state = Path(project) / "docs/project-state.json"
+            state.parent.mkdir(parents=True, exist_ok=True)
+            if not state.exists():
+                state.write_text('{"schema_version":1}')
             manifest = Path(project) / ".forgewright/docs-manifest.json"
             manifest.parent.mkdir(parents=True, exist_ok=True)
             if not manifest.exists():
@@ -95,6 +150,12 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
                     encoding="utf-8",
                 )
         elif args[:3] == ["docs", "registry", "add"]:
+            registry = bm._docs_registry()
+            if not any(x["root"] == str(project) for x in registry["projects"]):
+                registry["projects"].append(
+                    {"id": Path(project).name, "root": str(project)}
+                )
+            bm.atomic_json(bm._docs_registry_path(), registry)
             return {
                 "status": "ready",
                 "stdout": json.dumps(
@@ -107,6 +168,12 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
                     }
                 ),
             }
+        elif args[:3] == ["docs", "registry", "remove"]:
+            registry = bm._docs_registry()
+            registry["projects"] = [
+                x for x in registry["projects"] if x["root"] != str(project)
+            ]
+            bm.atomic_json(bm._docs_registry_path(), registry)
         return {"status": "ready", "stdout": json.dumps({"ok": True, "data": {}})}
 
     monkeypatch.setattr(bm, "call_forge", fake_call_forge)
@@ -406,7 +473,7 @@ def test_five_projects_share_one_heavy_slot_and_keep_registry_entries(
         time.sleep(0.04)
         with mutex:
             active -= 1
-        return {"status": "ready", "created_dirs": []}
+        return index_fixture(_project)
 
     monkeypatch.setattr(bm, "gitnexus", slow_gitnexus)
     with ThreadPoolExecutor(max_workers=5) as pool:

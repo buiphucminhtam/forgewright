@@ -1,6 +1,6 @@
 {
   "name": "forgewright",
-  "version": "8.7.0",
+  "version": "8.7.1",
   "description": "Adaptive AI Orchestrator — 84 skills, 24 modes. SaaS, game dev, XR, AI/ML, data engineering. Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN",
   "private": true,
   "engines": {

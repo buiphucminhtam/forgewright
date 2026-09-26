@@ -1,3 +1,8 @@
+---
+name: eval-engineer
+description: Use when designing, running, or interpreting skill capability evaluations and regression benchmarks.
+---
+
 # Eval Engineer Skill
 
 > **Role:** Design, implement, and maintain pass@k evaluation frameworks for Forgewright skills.

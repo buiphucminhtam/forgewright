@@ -16,13 +16,13 @@ Before substantive work **inside a repository**, run one cheap local preflight. 
 forge bootstrap preflight . --json
 ```
 
-- If the result says `action=ensure`, run `forge bootstrap ensure . --auto --json` before loading heavy project context, then continue the user's original task without asking for a separate setup prompt.
+- The trusted native hook owns automatic mutation. If preflight says `action=ensure`, do not invoke setup yourself: the enabled, trusted host hook must perform it. Global policy alone does not authorize an agent to bypass missing or revoked native hook trust. Continue the original task plugin-only when safe; explicit user-requested setup is a separate operation.
 - If the result is `ready`, continue immediately; do not repeat heavy setup.
 - If it is `state_degraded`, `state_blocked`, `state_busy`, `root_denied`, or `root_not_allowed`, do **not** loop or bypass policy. Continue plugin-only when the requested work can still be done safely; surface the bootstrap limitation only when it materially blocks the requested task.
 - If `forge` is not available, continue plugin-only. Never improvise a clone, submodule, credential lookup, paid provider fallback, MCP edit, or global runtime install.
 - Pure conversation, factual questions, and work outside a repository do not run bootstrap preflight.
 
-Plugin installation itself remains side-effect-free. Auto-bootstrap only becomes mutating after the user has explicitly enabled a global bootstrap policy once.
+Plugin installation itself remains side-effect-free. Automatic bootstrap requires both one-time global user opt-in and the host's current native-hook approval; do not replace a disabled/untrusted hook with a direct CLI call.
 
 ## Core flow
 

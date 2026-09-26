@@ -10,8 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
-import { execNpmSync } from "../../../scripts/ci/native-node-commands.mjs";
+import { describe, expect, it } from "vitest";
 import {
   PRODUCT_FACTORY_BENCHMARK_LANES,
   createProductFactoryBenchmarkSuite,
@@ -173,13 +172,6 @@ function runCommand(
 }
 
 describe("product receipt benchmark CLI ingestion", () => {
-  beforeAll(() => {
-    execNpmSync(["run", "build"], {
-      cwd: process.cwd(),
-      stdio: "pipe",
-    });
-  });
-
   it("writes a four-lane structural report that is always unverified", async () => {
     const value = fixture();
     try {

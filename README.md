@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version 8.7.0" />
+  <img src="https://img.shields.io/badge/version-8.7.1-blue?style=flat-square" alt="Version 8.7.1" />
   <img src="https://img.shields.io/badge/skills-84-brightgreen?style=flat-square" alt="84 skills" />
   <img src="https://img.shields.io/badge/verification-local--first-24292f?style=flat-square" alt="Local-first verification" />
   <img src="https://img.shields.io/badge/integration-MCP-7057ff?style=flat-square" alt="MCP integration" />
@@ -130,7 +130,7 @@ node src/cli/dist/index.js --help
 
 `ci:bootstrap` installs checked-in verification dependencies and configures this clone's Git hooks. It does not enable Pi, start production services, or require hosted CI. Model calls use the provider/account you explicitly configure.
 
-For one-time global auto-bootstrap, run `forge bootstrap policy set --mode full --auto on` from the shared runtime. New repositories then bootstrap without a project submodule. See the [auto-bootstrap guide](docs/guides/auto-bootstrap.md).
+For one-time global auto-bootstrap, run `forge bootstrap policy set --mode full --auto on` from the shared runtime. After reviewing and trusting the current host hook, new repositories bootstrap without a project submodule. An isolated macOS Codex ordinary-prompt acceptance has verified this path; Claude native execution remains deferred, and Windows, physical power-loss, and remote-host acceptance are not established. See the [auto-bootstrap guide](docs/guides/auto-bootstrap.md).
 
 You can inspect/onboard a local project without a model call:
 

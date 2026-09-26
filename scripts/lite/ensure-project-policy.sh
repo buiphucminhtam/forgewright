@@ -31,12 +31,14 @@ fi
 
 mkdir -p -- "$target_dir"
 
-# Preserve both regular files and symlinks, including broken symlinks.
-if [[ -f "$target_policy" || -L "$target_policy" ]]; then
-    echo "preserved:$target_policy"
-    exit 0
-fi
-if [[ -e "$target_policy" ]]; then
+# Preserve both regular files and symlinks, including broken symlinks. Recheck
+# the accepted types after existence: a concurrent installer can publish a
+# regular file between separate conditionals.
+if [[ -e "$target_policy" || -L "$target_policy" ]]; then
+    if [[ -f "$target_policy" || -L "$target_policy" ]]; then
+        echo "preserved:$target_policy"
+        exit 0
+    fi
     echo "error: execution-policy path exists but is not a file or symlink: $target_policy" >&2
     exit 65
 fi
