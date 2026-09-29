@@ -8,7 +8,7 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import re
-from typing import Any
+from typing import Any, Mapping
 
 from .context_packets import ContextPacketError, resolve_review_scope
 from .peer_collaboration import (
@@ -37,6 +37,7 @@ PACKET_FIELDS = (
     "handoff_type",
     "acceptance_checks",
     "artifact_refs",
+    "supplemental_context_request",
 )
 PACKET_LIST_FIELDS = {"input_artifacts", "output_artifacts", "acceptance_checks"}
 MAX_PACKET_LIST_ITEMS = 32
@@ -354,7 +355,11 @@ def validate_dispatch_packet(
         if field not in packet:
             continue
         value = packet[field]
-        if field == "artifact_refs":
+        if field == "supplemental_context_request":
+            if not isinstance(value, Mapping):
+                raise PolicyError(f"{context}.{field} must be a mapping")
+            normalized[field] = deepcopy(dict(value))
+        elif field == "artifact_refs":
             normalized[field] = _validate_artifact_refs(
                 value, context=f"{context}.{field}"
             )
@@ -436,6 +441,14 @@ def _scopes(request: dict[str, Any]) -> list[dict[str, Any]]:
         if "packet" in scope:
             scope["packet"] = validate_dispatch_packet(
                 scope["packet"], context=f"scope {scope_id}.packet"
+            )
+        if "supplemental_context_request" in scope:
+            if not isinstance(scope["supplemental_context_request"], Mapping):
+                raise PolicyError(
+                    f"scope {scope_id}.supplemental_context_request must be a mapping"
+                )
+            scope["supplemental_context_request"] = deepcopy(
+                dict(scope["supplemental_context_request"])
             )
         seen.add(scope_id)
     return scopes
@@ -528,6 +541,21 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
             worker["collaboration"] = deepcopy(collaboration_by_scope[scope["id"]])
         if scope.get("packet") is not None:
             worker["packet"] = deepcopy(scope["packet"])
+        if scope.get("supplemental_context_request") is not None:
+            worker["supplemental_context_request"] = deepcopy(
+                scope["supplemental_context_request"]
+            )
+        elif scope.get("packet", {}).get("supplemental_context_request") is not None:
+            worker["supplemental_context_request"] = deepcopy(
+                scope["packet"]["supplemental_context_request"]
+            )
+        elif (
+            isinstance(request.get("supplemental_context_requests"), Mapping)
+            and scope["id"] in request["supplemental_context_requests"]
+        ):
+            worker["supplemental_context_request"] = deepcopy(
+                request["supplemental_context_requests"][scope["id"]]
+            )
         workers.append(worker)
 
     reviewer = None

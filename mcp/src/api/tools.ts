@@ -10,6 +10,12 @@ import {
   productIntentToolErrorCode,
 } from '../product-factory/product-intent-runtime.js';
 import {
+  createLearningFoundryToolRuntime,
+  isLearningFoundryToolName,
+  LearningFoundryToolRuntimeFactory,
+  learningFoundryToolErrorCode,
+} from '../product-factory/learning-foundry-runtime.js';
+import {
   startPipeline,
   getState,
   advancePhase,
@@ -32,6 +38,7 @@ export function registerTools(
     sessionId?: string;
     deferredSkillNames?: readonly string[];
     productIntentRuntimeFactory?: ProductIntentToolRuntimeFactory;
+    learningFoundryRuntimeFactory?: LearningFoundryToolRuntimeFactory;
   } = {},
 ) {
   // stdio serves one MCP client per server process. Keep its cache namespace
@@ -45,6 +52,10 @@ export function registerTools(
   const getProductIntentRuntime = () =>
     (productIntentRuntime ??=
       context.productIntentRuntimeFactory?.() ?? createProductIntentToolRuntime());
+  let learningFoundryRuntime: ReturnType<LearningFoundryToolRuntimeFactory> | undefined;
+  const getLearningFoundryRuntime = () =>
+    (learningFoundryRuntime ??=
+      context.learningFoundryRuntimeFactory?.() ?? createLearningFoundryToolRuntime());
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -301,6 +312,48 @@ export function registerTools(
             additionalProperties: false,
           },
         },
+        {
+          name: 'fw_record_learning_candidate',
+          description:
+            'Record an outcome-bound learning candidate lesson into the Learning Foundry from an accepted task outcome, binding project, task, plan digest, source revision, and verifier evidence.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Canonical project ID.' },
+              taskId: { type: 'string', description: 'Task ID.' },
+              planDigest: { type: 'string', description: 'Current plan SHA-256 digest.' },
+              sourceRevision: { type: 'string', description: 'Source commit or revision SHA.' },
+              treeFingerprint: { type: 'string', description: 'Tree fingerprint hash.' },
+              acceptanceCriteriaDigest: {
+                type: 'string',
+                description: 'Acceptance criteria digest.',
+              },
+              sourceVerifierSha256s: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'SHA-256 hashes of verification evidence.',
+              },
+              trigger: {
+                type: 'string',
+                description: 'Sanitized trigger or root cause description.',
+              },
+              correction: { type: 'string', description: 'Sanitized proposed corrective action.' },
+              scope: { type: 'string', description: 'Optional product scope identifier.' },
+            },
+            required: [
+              'projectId',
+              'taskId',
+              'planDigest',
+              'sourceRevision',
+              'treeFingerprint',
+              'acceptanceCriteriaDigest',
+              'sourceVerifierSha256s',
+              'trigger',
+              'correction',
+            ],
+            additionalProperties: false,
+          },
+        },
       ],
     };
   });
@@ -325,6 +378,17 @@ export function registerTools(
                 );
               } catch (error) {
                 const code = productIntentToolErrorCode(error);
+                return { isError: true, content: [{ type: 'text', text: code }] };
+              }
+            }
+            if (isLearningFoundryToolName(request.params.name)) {
+              try {
+                return await getLearningFoundryRuntime().execute(
+                  request.params.name,
+                  (request.params.arguments ?? {}) as Record<string, unknown>,
+                );
+              } catch (error) {
+                const code = learningFoundryToolErrorCode(error);
                 return { isError: true, content: [{ type: 'text', text: code }] };
               }
             }

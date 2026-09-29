@@ -70,7 +70,7 @@ export interface InstinctsConfig {
 }
 
 const DEFAULT_CONFIG: InstinctsConfig = {
-  enabled: true,
+  enabled: false,
   minSequenceLength: 3,
   sequenceWindowSize: 10,
   minInitialConfidence: 0.35,
@@ -80,10 +80,10 @@ const DEFAULT_CONFIG: InstinctsConfig = {
   maxPatterns: 1000,
   pruneThreshold: 0.15,
   logLevel: 'info',
-  autoSuggest: true,
+  autoSuggest: false,
   maxSuggestionsPerSession: 3,
   suggestionDebounceMs: 5000,
-  crossProjectTracking: true,
+  crossProjectTracking: false,
   hashArguments: true,
 };
 
@@ -103,7 +103,7 @@ export function getInstinctsConfig(overrides?: Partial<InstinctsConfig>): Instin
   let config: InstinctsConfig = { ...DEFAULT_CONFIG };
   
   // Override from environment
-  config.enabled = loadEnvBool(ENV_VARS.ENABLED, DEFAULT_CONFIG.enabled);
+  config.enabled = loadEnvBool(ENV_VARS.ENABLED, false);
   config.logLevel = loadEnvEnum(
     ENV_VARS.LOG_LEVEL,
     ['silent', 'error', 'info', 'debug'],
@@ -187,7 +187,8 @@ function loadEnvNum(key: string, defaultValue: number, min?: number, max?: numbe
 
 // ─── CLI Interface ────────────────────────────────────────────────
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isDirect_instincts_config_ts = process.argv[1] && (process.argv[1].endsWith('instincts-config.ts') || process.argv[1].endsWith('instincts-config.js'));
+if (isDirect_instincts_config_ts) {
   console.log('Current Instincts Configuration:');
   console.log(JSON.stringify(getInstinctsConfig(), null, 2));
 }

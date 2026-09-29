@@ -1,0 +1,13 @@
+{
+  "schema": "forgewright-ecc-local-contracts/v1",
+  "authority": "test-only",
+  "version": "1.0.0",
+  "requiredScenarios": ["game-save-idempotency", "web-api-layout-contract", "app-refresh-cache"],
+  "requirements": {
+    "game-save-idempotency": ["A reward identifier is credited once across save and resume", "Unknown save versions and negative rewards are rejected"],
+    "web-api-layout-contract": ["API results are consistent across viewport widths", "The layout geometry stays inside 320, 390, 768 and 1024 pixel widths", "Missing resources return 404"],
+    "app-refresh-cache": ["One unauthorized response triggers at most one refresh and one retry", "Failed retry never overwrites the last valid cache", "Successful response updates the cache once"]
+  },
+  "comparison": {"sameRequirementAndFixtureRequired": true, "minimumAcceptanceRate": 1, "maximumScenarioTimeMs": 5000},
+  "limitations": ["Node contract fixtures, not a running Unity or mobile build", "Layout geometry is not rendered visual or aesthetic evidence", "No live model run, token savings, user retention or revenue claim"]
+}

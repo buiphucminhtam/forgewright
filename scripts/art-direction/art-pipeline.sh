@@ -115,7 +115,9 @@ cmd_generate() {
     fi
 
     log "Prompt generated (first 500 chars):"
-    echo "$prompt" | head -c 500 | sed 's/^/  /'
+    # Slice before writing: head can close its pipe early and trigger SIGPIPE
+    # in the producer under pipefail, aborting an otherwise valid generation.
+    printf '%s\n' "${prompt:0:500}" | sed 's/^/  /'
     echo ""
 
     log "${YELLOW}Generation adapter is provider-managed; this P0 command emits the validated prompt.${RESET}"

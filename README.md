@@ -85,6 +85,31 @@ Clear local work stays small. Security, billing, concurrency, public contracts, 
 
 The [pipeline reference](docs/pipeline-reference.md) describes orchestration; the [canonical runtime ADR](docs/adr/0001-canonical-production-runtime.md) documents the implemented enforcement boundaries.
 
+## Evidence loop: observation, context and learning
+
+The ECC-inspired upgrade adds project-isolated, opt-in observation, bounded supplemental worker context, native candidate intake, and source-bound handoff. It does not install a second agent stack, start a paid learning model or automatically promote frequent tool sequences.
+
+```sh
+# Verify shipped observer code and source consistency.
+npm run check:observer
+
+# Run actual local game/web/app reference workloads and negative controls.
+npm run bench:ecc
+
+# Verify the ECC integration, native intake, regression and paired-comparison gates.
+npm run verify:ecc
+
+# Maintained research and handoff entrypoints.
+python3 scripts/runtime/research_decision.py --help
+python3 scripts/runtime/resumable_handoff.py --help
+```
+
+The native MCP `fw_record_learning_candidate` tool remains inactive without a project-owned task descriptor. A trusted parent supplies the locked contract, actual schema-v2 verifier artifacts and terminal task ledger using the adapter's `writeNativeTaskDescriptor()` API. The adapter checks the current project/task/plan/tree, rejects stale or mismatched evidence, and persists an **unapproved proposal**, leaving the active registry unchanged. It does not replace the existing independent review, replay, non-regression or rollback gates.
+
+Worker context requests go through the actual dispatcher with a parent-owned three-round/64 KiB budget. Missing required context blocks execution; context captured before a source change cannot silently authorize later work. Research decisions and resumable checkpoints remain non-authoritative data.
+
+The local scenario report is **test-only**: it verifies reference behavior, not live model savings, game retention, UI aesthetics or revenue. Token/cost values stay unavailable when not measured. See [architecture and activation boundaries](docs/architecture.md#evidence-gated-learning-and-worker-context-protocols) and the [Instinct System operating contract](skills/instinct-system/SKILL.md).
+
 ## Quick start
 
 ### 1. Install Forgewright as a plugin (recommended)

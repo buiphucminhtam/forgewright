@@ -15,6 +15,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { registerPrompts } from './api/prompts.js';
 import { registerTools } from './api/tools.js';
+import { createNativeLearningRuntimeFactory } from './product-factory/native-learning-adapter.js';
 import { LifecycleLeaseStore, type LifecycleLease } from './runtime/lifecycle-lease.js';
 import {
   McpRuntimeLifecycle,
@@ -197,6 +198,7 @@ export async function run(): Promise<void> {
   registerTools(server, gateway, {
     sessionId: exactSessionId,
     deferredSkillNames: deferredSkillAllowlist(),
+    learningFoundryRuntimeFactory: createNativeLearningRuntimeFactory(process.cwd()),
   });
   installShutdownHandlers();
   const transport = new StdioServerTransport();

@@ -5,7 +5,7 @@
  * GDPR-aware: patterns are hashed, no raw code or user-specific data stored.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, lstatSync, statSync, renameSync, unlinkSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
@@ -43,6 +43,7 @@ export interface StoreConfig {
   storePath: string;
   maxPatterns: number;
   pruneThreshold: number;          // Confidence below this gets pruned
+  crossProjectTracking?: boolean;
 }
 
 // ─── Defaults ──────────────────────────────────────────────────────
@@ -51,6 +52,7 @@ const DEFAULT_CONFIG: StoreConfig = {
   storePath: resolve(process.env.FORGEWRIGHT_DIR || '', '.forgewright/instincts/store.json'),
   maxPatterns: 1000,
   pruneThreshold: 0.15,
+  crossProjectTracking: false,
 };
 
 // ─── Utility Functions ─────────────────────────────────────────────
@@ -78,6 +80,29 @@ function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
+function isStorePathSafe(storePath: string): boolean {
+  try {
+    let curr: string = resolve(storePath);
+    while (curr && curr !== "/" && curr !== ".") {
+      let stat;
+      try {
+        stat = lstatSync(curr);
+      } catch {
+        stat = null;
+      }
+      if (stat && stat.isSymbolicLink()) {
+        return false;
+      }
+      const parent = dirname(curr);
+      if (parent === curr) break;
+      curr = parent;
+    }
+  } catch {
+    return false;
+  }
+  return true;
+}
+
 // ─── Store Class ───────────────────────────────────────────────────
 
 export class InstinctStoreManager {
@@ -96,14 +121,17 @@ export class InstinctStoreManager {
   private load(): InstinctStore {
     const { storePath } = this.config;
     
-    // Ensure directory exists
-    const dir = dirname(storePath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    if (!isStorePathSafe(storePath)) {
+      return this.createFresh();
     }
+
 
     if (existsSync(storePath)) {
       try {
+        const stat = statSync(storePath);
+        if (stat.size > 256 * 1024) {
+          return this.createFresh();
+        }
         const raw = readFileSync(storePath, 'utf-8');
         const parsed = JSON.parse(raw) as InstinctStore;
         return {
@@ -111,8 +139,7 @@ export class InstinctStoreManager {
           version: parsed.version || '1.0.0',
           lastUpdated: parsed.lastUpdated || new Date().toISOString(),
         };
-      } catch (err) {
-        console.error(`[InstinctStore] Failed to parse store, creating fresh:`, err);
+      } catch {
         return this.createFresh();
       }
     }
@@ -134,22 +161,33 @@ export class InstinctStoreManager {
   /**
    * Persist store to disk (debounced writes)
    */
-  save(): void {
-    if (!this.dirty) return;
-
+  save(): boolean {
+    if (!this.dirty) return true;
     const { storePath } = this.config;
-    const dir = dirname(storePath);
-    
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-
+    let ownedTemporaryPath: string | null = null;
     try {
+      if (!isStorePathSafe(storePath)) return false;
+      const dir = dirname(storePath);
+      mkdirSync(dir, { recursive: true });
+      if (!statSync(dir).isDirectory() || !isStorePathSafe(storePath)) return false;
       this.store.lastUpdated = new Date().toISOString();
-      writeFileSync(storePath, JSON.stringify(this.store, null, 2), 'utf-8');
+      const payload = JSON.stringify(this.store, null, 2);
+      if (Buffer.byteLength(payload, 'utf8') > 256 * 1024) return false;
+      const tmpPath = `${storePath}.tmp.${process.pid}.${Date.now()}`;
+      writeFileSync(tmpPath, payload, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+      ownedTemporaryPath = tmpPath;
+      if (!isStorePathSafe(storePath)) return false;
+      renameSync(tmpPath, storePath);
+      ownedTemporaryPath = null;
       this.dirty = false;
-    } catch (err) {
-      console.error(`[InstinctStore] Failed to save store:`, err);
+      return true;
+    } catch {
+      // Keep pending state and report failure to the observer; never claim a write succeeded.
+      return false;
+    } finally {
+      if (ownedTemporaryPath) {
+        try { unlinkSync(ownedTemporaryPath); } catch { /* owned temporary cleanup only */ }
+      }
     }
   }
 
@@ -166,7 +204,12 @@ export class InstinctStoreManager {
     const now = new Date().toISOString();
 
     // Find existing pattern
-    const existing = this.store.patterns.find(p => p.id === hash);
+    let existing: InstinctPattern | undefined;
+    if (!this.config.crossProjectTracking) {
+      existing = this.store.patterns.find(p => p.id === hash && p.projectIds.includes(projectId));
+    } else {
+      existing = this.store.patterns.find(p => p.id === hash);
+    }
 
     if (existing) {
       // Update existing pattern
@@ -220,8 +263,11 @@ export class InstinctStoreManager {
   /**
    * Find patterns matching a tool sequence
    */
-  findPattern(toolSequence: string[]): InstinctPattern | null {
+  findPattern(toolSequence: string[], projectId?: string): InstinctPattern | null {
     const hash = hashToolSequence(toolSequence);
+    if (!this.config.crossProjectTracking && projectId) {
+      return this.store.patterns.find(p => p.id === hash && p.projectIds.includes(projectId)) || null;
+    }
     return this.store.patterns.find(p => p.id === hash) || null;
   }
 
@@ -307,18 +353,29 @@ export class InstinctStoreManager {
 
 // ─── Singleton Instance ───────────────────────────────────────────
 
-let _instance: InstinctStoreManager | null = null;
+const _instances = new Map<string, InstinctStoreManager>();
 
 export function getInstinctStore(config?: Partial<StoreConfig>): InstinctStoreManager {
-  if (!_instance) {
-    _instance = new InstinctStoreManager(config);
+  const effectiveConfig = { ...DEFAULT_CONFIG, ...config };
+  const key = effectiveConfig.storePath;
+  if (!_instances.has(key)) {
+    if (_instances.size >= 50) {
+      const oldest = _instances.keys().next().value;
+      if (oldest !== undefined) _instances.delete(oldest);
+    }
+    _instances.set(key, new InstinctStoreManager(effectiveConfig));
   }
-  return _instance;
+  return _instances.get(key)!;
+}
+
+export function resetStoreManager(): void {
+  _instances.clear();
 }
 
 // ─── CLI Interface ────────────────────────────────────────────────
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isDirect_instinct_store_ts = process.argv[1] && (process.argv[1].endsWith('instinct-store.ts') || process.argv[1].endsWith('instinct-store.js'));
+if (isDirect_instinct_store_ts) {
   // Direct execution: show stats
   const store = getInstinctStore();
   const stats = store.getStats();
