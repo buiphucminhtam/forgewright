@@ -342,6 +342,30 @@ export class ToolSandboxMiddleware {
     const toolOverride = this.config.tool_overrides?.[toolName] ?? {};
     const maxRaw = toolOverride.max_raw_size ?? this.config.max_raw_size;
 
+    // MCP structured data must survive the chain only as complete, bounded and
+    // already-safe JSON. Do not forward it through an unsanitized side channel.
+    let structuredContent: Record<string, unknown> | undefined;
+    let structuredRejected = false;
+    if (result.structuredContent !== undefined) {
+      try {
+        const raw = JSON.stringify(result.structuredContent);
+        const limit = maxRaw > 0 ? Math.min(maxRaw, 64 * 1024) : 64 * 1024;
+        if (!raw || Buffer.byteLength(raw, 'utf8') > limit) throw new Error('STRUCTURED_LIMIT');
+        const value: unknown = JSON.parse(raw);
+        const redacted = JSON.stringify(redactAuditValue(value));
+        const safe = sanitize(redacted);
+        if (safe.injectionBlocked || safe.text !== raw) {
+          injectionBlocked = injectionBlocked || safe.injectionBlocked;
+          throw new Error('STRUCTURED_UNSAFE');
+        }
+        if (!value || typeof value !== 'object' || Array.isArray(value))
+          throw new Error('STRUCTURED_INVALID');
+        structuredContent = value as Record<string, unknown>;
+      } catch {
+        structuredRejected = true;
+      }
+    }
+
     // Compress large outputs
     if (this.config.compress_large && maxRaw > 0 && combinedText.length > maxRaw) {
       const truncated = truncate(combinedText, maxRaw);
@@ -392,7 +416,8 @@ export class ToolSandboxMiddleware {
           text: combinedText || summary,
         },
       ],
-      isError: result.isError,
+      isError: structuredRejected ? true : result.isError,
+      ...(structuredContent === undefined ? {} : { structuredContent }),
     };
 
     return { result: processedResult, sandbox };

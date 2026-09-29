@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
+  copyFileSync,
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -12,7 +16,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { TrajectoryLedger, canonicalJson } from '../runtime/trajectory-ledger.js';
 import { createEmptyLearningRegistry } from './learning-foundry.js';
 import {
@@ -144,6 +148,11 @@ async function fixture(options: { ledgerPlan?: string; outcome?: 'completed' | '
   git('add', 'test_rule.py', '.gitignore');
   git('commit', '-m', 'local acceptance fixture');
   mkdirSync(join(root, '.forgewright/runtime/learning'), { recursive: true });
+  // A real spawned MCP requires the unchanged project policy before evidence capture.
+  copyFileSync(
+    join(framework, '.forgewright/execution-policy.yaml'),
+    join(root, '.forgewright/execution-policy.yaml'),
+  );
   const contractCode =
     'import sys,json;sys.path.insert(0,sys.argv[1]);from scripts.runtime.execution_contract import lock_execution_contract;print(json.dumps(lock_execution_contract({"requirements":"Verify bounded local input","acceptance_criteria":["Local input rule accepts valid input and rejects invalid input"],"out_of_scope":["No network"],"task_class":"standard"},[{"scope_id":"local"}]),ensure_ascii=False))';
   const contract = JSON.parse(
@@ -237,7 +246,219 @@ async function fixture(options: { ledgerPlan?: string; outcome?: 'completed' | '
   };
 }
 
+async function withNativeClient<T>(
+  root: string,
+  mode: 'local' | 'production',
+  action: (client: Client) => Promise<T>,
+  installedEntry?: string,
+): Promise<T> {
+  const runtimeRoot = join(root, '.forgewright/runtime/protocol-smoke');
+  mkdirSync(join(runtimeRoot, 'home'), { recursive: true });
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [installedEntry ?? join(framework, 'mcp/build/index.js')],
+    cwd: root,
+    stderr: 'pipe',
+    maxBufferSize: 256 * 1024,
+    env: {
+      PATH: process.env.PATH ?? '',
+      HOME: join(runtimeRoot, 'home'),
+      LANG: process.env.LANG ?? 'en_US.UTF-8',
+      TMPDIR: tmpdir(),
+      ...(installedEntry ? {} : { FORGEWRIGHT_DIR: framework }),
+      FORGEWRIGHT_WORKSPACE: root,
+      FORGEWRIGHT_RUNTIME_MODE: mode,
+      FORGEWRIGHT_CALLER_ID: 'native-protocol-test',
+      FORGEWRIGHT_CONTAINMENT_PROFILE: 'application',
+      FORGEWRIGHT_MCP_LEASE_ROOT: join(runtimeRoot, 'leases'),
+      FORGEWRIGHT_TRAJECTORY_ROOT: join(runtimeRoot, 'trajectories'),
+      FORGEWRIGHT_TRAJECTORY_ID: 'protocol-session',
+      FORGEWRIGHT_SESSION_ID: 'protocol-session',
+      FORGEWRIGHT_TELEMETRY_DIR: join(root, '.forgewright/telemetry'),
+      FORGEWRIGHT_LIFECYCLE_SHUTDOWN_TIMEOUT_MS: '5000',
+      PYTHONDONTWRITEBYTECODE: '1',
+    },
+  });
+  let diagnostics = '';
+  transport.stderr?.on('data', (chunk: Buffer) => {
+    diagnostics = (diagnostics + chunk.toString('utf8')).slice(-8192);
+  });
+  const client = new Client({ name: 'forgewright-native-protocol-test', version: '1.0.0' });
+  try {
+    await client.connect(transport);
+    return await action(client);
+  } catch (error) {
+    if (error instanceof Error) error.message += `\nNative process diagnostics: ${diagnostics}`;
+    throw error;
+  } finally {
+    await client.close();
+    await transport.close();
+    expect(transport.pid).toBeNull();
+  }
+}
+
 describe('native-learning-adapter', () => {
+  it('real stdio works in the copied canonical installation without checkout helpers', async () => {
+    const f = await fixture();
+    const installation = join(tempDir(), 'mcp-server');
+    mkdirSync(installation);
+    cpSync(join(framework, 'mcp/build'), join(installation, 'build'), { recursive: true });
+    copyFileSync(join(framework, 'mcp/package.json'), join(installation, 'package.json'));
+    // Match this package's resolved dependencies, not a hoisted incompatible
+    // major version (the workspace also contains a separate Zod v4 package).
+    const dependencies = Object.keys(
+      JSON.parse(readFileSync(join(framework, 'mcp/package.json'), 'utf8')).dependencies,
+    );
+    for (const name of dependencies) {
+      const local = join(framework, 'mcp/node_modules', name);
+      const source = existsSync(local) ? local : join(framework, 'node_modules', name);
+      const destination = join(installation, 'node_modules', name);
+      mkdirSync(dirname(destination), { recursive: true });
+      symlinkSync(source, destination, 'dir');
+    }
+    execFileSync(
+      'bash',
+      [
+        '-c',
+        'source "$1"; FORGEWRIGHT_DIR="$2"; CANONICAL_STAGE_DIR="$3"; stage_runtime_support',
+        'stage-support',
+        join(framework, 'scripts/mcp/forgewright-mcp-setup.sh'),
+        framework,
+        installation,
+      ],
+      { cwd: installation },
+    );
+    for (const name of ['evidence_common.py', 'policy-check.sh', 'telemetry.sh']) {
+      expect(readFileSync(join(installation, 'runtime-support/scripts/lite', name))).toEqual(
+        readFileSync(join(framework, 'scripts/lite', name)),
+      );
+    }
+    const packagedTree = execFileSync(
+      'python3',
+      [
+        '-I',
+        '-B',
+        '-c',
+        'import sys; from pathlib import Path; sys.path.insert(0,sys.argv[1]); from scripts.lite.evidence_common import worktree_fingerprint; print(worktree_fingerprint(Path(sys.argv[2])))',
+        join(installation, 'runtime-support'),
+        f.root,
+      ],
+      { cwd: join(installation, 'runtime-support'), encoding: 'utf8' },
+    ).trim();
+    expect(packagedTree).toBe(f.args.treeFingerprint);
+    const before = readFileSync(f.registryPath);
+    await withNativeClient(
+      f.root,
+      'local',
+      async (client) => {
+        const result = await client.callTool({
+          name: 'fw_record_learning_candidate',
+          arguments: f.args,
+        });
+        expect(
+          (result.structuredContent as Record<string, unknown> | undefined)?.status,
+          JSON.stringify(result),
+        ).toBe('candidate_created');
+        expect((result.structuredContent as Record<string, unknown> | undefined)?.promoted).toBe(
+          false,
+        );
+        expect(readFileSync(f.registryPath)).toEqual(before);
+      },
+      join(installation, 'build/index.js'),
+    );
+  }, 90000);
+
+  it.each(['local', 'production'] as const)(
+    'real stdio %s reaches bounded candidate intake with all gates enabled',
+    async (mode) => {
+      const f = await fixture();
+      const registryBefore = readFileSync(f.registryPath);
+      await withNativeClient(f.root, mode, async (client) => {
+        const names = (await client.listTools()).tools.map((tool) => tool.name);
+        expect(names).toContain('fw_record_learning_candidate');
+        const accepted = await client.callTool({
+          name: 'fw_record_learning_candidate',
+          arguments: f.args,
+        });
+        expect(accepted.isError, JSON.stringify(accepted)).not.toBe(true);
+        expect(
+          (accepted.structuredContent as Record<string, unknown> | undefined)?.status,
+          JSON.stringify(accepted),
+        ).toBe('candidate_created');
+        expect((accepted.structuredContent as Record<string, unknown> | undefined)?.promoted).toBe(
+          false,
+        );
+        const id = (accepted.structuredContent as Record<string, unknown> | undefined)
+          ?.candidateId as string;
+        expect(
+          existsSync(join(f.root, '.forgewright/runtime/learning/candidates', id + '.json')),
+        ).toBe(true);
+        expect(readFileSync(f.registryPath)).toEqual(registryBefore);
+        const wrongTask = await client.callTool({
+          name: 'fw_record_learning_candidate',
+          arguments: { ...f.args, taskId: 'other-task' },
+        });
+        expect((wrongTask.structuredContent as Record<string, unknown> | undefined)?.status).toBe(
+          'rejected',
+        );
+        const evidence = await client.callTool({
+          name: 'fw_record_learning_candidate',
+          arguments: { ...f.args, sourceVerifierSha256s: ['0'.repeat(64)] },
+        });
+        expect((evidence.structuredContent as Record<string, unknown> | undefined)?.status).toBe(
+          'rejected',
+        );
+        const escaped = await client.callTool({
+          name: 'fw_record_learning_candidate',
+          arguments: { ...f.args, path: '../outside.json', command: 'echo rejected' },
+        });
+        expect(escaped.isError).toBe(true);
+        expect(escaped.content).toContainEqual({
+          type: 'text',
+          text: 'CONTAINMENT_INVALID_ARGUMENTS',
+        });
+        const unknown = await client.callTool({
+          name: 'fw_record_learning_candidate_typo',
+          arguments: f.args,
+        });
+        expect(unknown.isError).toBe(true);
+        expect(unknown.content).toContainEqual({ type: 'text', text: 'CONTAINMENT_UNKNOWN_TOOL' });
+        writeFileSync(
+          join(f.root, '.forgewright/execution-policy.yaml'),
+          'mode: altered-test-policy\n',
+        );
+        const changed = await client.callTool({
+          name: 'fw_record_learning_candidate',
+          arguments: f.args,
+        });
+        expect(changed.isError).toBe(true);
+        expect(changed.content).toContainEqual({
+          type: 'text',
+          text: 'CONTAINMENT_POLICY_CHANGED',
+        });
+        expect(readFileSync(f.registryPath)).toEqual(registryBefore);
+      });
+    },
+    90000,
+  );
+
+  it('real stdio without a descriptor reaches missing-host validation rather than unknown-tool denial', async () => {
+    const f = await fixture();
+    rmSync(join(f.root, '.forgewright/runtime/native-task-context.json'));
+    await withNativeClient(f.root, 'local', async (client) => {
+      const result = await client.callTool({
+        name: 'fw_record_learning_candidate',
+        arguments: f.args,
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content).toContainEqual({
+        type: 'text',
+        text: 'LEARNING_HOST_CAPABILITY_UNAVAILABLE',
+      });
+      expect(readFileSync(f.registryPath).length).toBeGreaterThan(0);
+    });
+  }, 60000);
+
   it('reads and writes task descriptor and inspects status', () => {
     const root = tempDir();
     expect(inspectNativeLearning(root).status).toBe('disabled');

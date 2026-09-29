@@ -4,7 +4,13 @@ import { homedir } from 'node:os';
 import { relative, resolve, sep } from 'node:path';
 
 export type ContainmentMode = 'local' | 'production';
-export type ToolEffect = 'state' | 'bounded-skill-read' | 'filesystem' | 'process' | 'network';
+export type ToolEffect =
+  | 'state'
+  | 'bounded-skill-read'
+  | 'bounded-learning-proposal'
+  | 'filesystem'
+  | 'process'
+  | 'network';
 export interface RuntimeTrustContext {
   mode: ContainmentMode;
   workspace: string;
@@ -38,8 +44,59 @@ const EFFECTS: Record<string, ToolEffect> = {
   fw_get_product_goal_projection: 'state',
   fw_evaluate_product_clarification: 'state',
   fw_load_skill_overlay: 'bounded-skill-read',
+  // Host-owned project paths and evidence verification remain in the native adapter.
+  // This classification grants neither general file/process access nor promotion.
+  fw_record_learning_candidate: 'bounded-learning-proposal',
 };
 const digest = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
+const PROPOSAL_KEYS = new Set([
+  'projectId',
+  'taskId',
+  'planDigest',
+  'sourceRevision',
+  'treeFingerprint',
+  'acceptanceCriteriaDigest',
+  'sourceVerifierSha256s',
+  'trigger',
+  'correction',
+  'scope',
+]);
+const PROPOSAL_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+const SHA256 = /^[a-f0-9]{64}$/;
+
+function boundedLearningProposal(args: Record<string, unknown>): boolean {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return false;
+  if (Object.keys(args).some((key) => !PROPOSAL_KEYS.has(key))) return false;
+  const text = (key: string, maximum: number): boolean =>
+    typeof args[key] === 'string' && args[key].length > 0 && args[key].length <= maximum;
+  if (
+    !text('projectId', 128) ||
+    !PROPOSAL_ID.test(args.projectId as string) ||
+    !text('taskId', 128) ||
+    !PROPOSAL_ID.test(args.taskId as string) ||
+    !text('planDigest', 64) ||
+    !SHA256.test(args.planDigest as string) ||
+    !text('sourceRevision', 64) ||
+    !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(args.sourceRevision as string) ||
+    !text('treeFingerprint', 69) ||
+    !/^TREE:[a-f0-9]{64}$/.test(args.treeFingerprint as string) ||
+    !text('acceptanceCriteriaDigest', 64) ||
+    !SHA256.test(args.acceptanceCriteriaDigest as string) ||
+    !text('trigger', 1024) ||
+    !text('correction', 2048)
+  )
+    return false;
+  if (args.scope !== undefined && (!text('scope', 64) || !PROPOSAL_ID.test(args.scope as string)))
+    return false;
+  const verifiers = args.sourceVerifierSha256s;
+  return (
+    Array.isArray(verifiers) &&
+    verifiers.length >= 1 &&
+    verifiers.length <= 64 &&
+    verifiers.every((value) => typeof value === 'string' && SHA256.test(value)) &&
+    new Set(verifiers).size === verifiers.length
+  );
+}
 
 function policySnapshot(workspace: string) {
   const path = resolve(workspace, '.forgewright/execution-policy.yaml');
@@ -73,10 +130,13 @@ export class ExecutionContainment {
     } catch {
       return this.deny('CONTAINMENT_POLICY_INVALID');
     }
-    const effect = EFFECTS[toolName];
+    const effect = Object.hasOwn(EFFECTS, toolName) ? EFFECTS[toolName] : undefined;
     if (!effect) return this.deny('CONTAINMENT_UNKNOWN_TOOL');
     if (effect === 'process' || effect === 'network') return this.deny('CONTAINMENT_EFFECT_DENIED');
     if (effect === 'filesystem') return this.deny('CONTAINMENT_EFFECT_DENIED');
+    if (effect === 'bounded-learning-proposal' && !boundedLearningProposal(arguments_)) {
+      return this.deny('CONTAINMENT_INVALID_ARGUMENTS');
+    }
     if (
       effect === 'bounded-skill-read' &&
       (typeof arguments_.name !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(arguments_.name))

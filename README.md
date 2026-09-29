@@ -104,6 +104,8 @@ python3 scripts/runtime/research_decision.py --help
 python3 scripts/runtime/resumable_handoff.py --help
 ```
 
+The native MCP `fw_record_learning_candidate` tool is admitted as a specific bounded proposal operation, not general filesystem/process authority. Its actual stdio route is tested with containment, policy, quality and output-sandbox middleware enabled, including local and production trust modes. Safe structured results survive middleware; unsafe metadata remains blocked. The canonical installer carries the reviewed policy and fingerprint helpers inside the atomically published runtime, so a copied installation does not depend on the original source checkout.
+
 The native MCP `fw_record_learning_candidate` tool remains inactive without a project-owned task descriptor. A trusted parent supplies the locked contract, actual schema-v2 verifier artifacts and terminal task ledger using the adapter's `writeNativeTaskDescriptor()` API. The adapter checks the current project/task/plan/tree, rejects stale or mismatched evidence, and persists an **unapproved proposal**, leaving the active registry unchanged. It does not replace the existing independent review, replay, non-regression or rollback gates.
 
 Worker context requests go through the actual dispatcher with a parent-owned three-round/64 KiB budget. Missing required context blocks execution; context captured before a source change cannot silently authorize later work. Research decisions and resumable checkpoints remain non-authoritative data.

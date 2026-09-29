@@ -3209,6 +3209,22 @@ commit_runtime_transaction() {
     cleanup_owned_runtime_trash || log_warn "Deferred runtime trash cleanup until the next invocation"
 }
 
+stage_runtime_support() {
+    # The installed MCP must not depend on the original checkout or consumer
+    # project Python modules. Copy existing reviewed helpers into owned staging;
+    # they are published/rolled back atomically with the rest of the runtime.
+    [[ -f "$FORGEWRIGHT_DIR/mcp/src/product-factory/native-learning-adapter.ts" ]] || return 0
+    local support_dir="$CANONICAL_STAGE_DIR/runtime-support/scripts/lite" support_file
+    mkdir -p "$support_dir"
+    for support_file in evidence_common.py policy-check.sh telemetry.sh; do
+        if [[ ! -f "$FORGEWRIGHT_DIR/scripts/lite/$support_file" ]] || [[ -L "$FORGEWRIGHT_DIR/scripts/lite/$support_file" ]]; then
+            log_error "Missing or unsafe required runtime support: $support_file"
+            return 1
+        fi
+        cp -p "$FORGEWRIGHT_DIR/scripts/lite/$support_file" "$support_dir/$support_file" || return 1
+    done
+}
+
 sync_canonical_server() {
     local src_dir="${FORGEWRIGHT_DIR}/mcp" canonical_parent
     if [[ ! -d "$src_dir" ]]; then
@@ -3276,6 +3292,8 @@ for path in source.iterdir():
         shutil.copy2(path, target, follow_symlinks=False)
 PYEOF
     fi
+
+    stage_runtime_support || return 1
 
     if [[ -d "$CANONICAL_SERVER_DIR/.forgewright" ]]; then
         cp -a "$CANONICAL_SERVER_DIR/.forgewright" "$CANONICAL_STAGE_DIR/"

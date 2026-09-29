@@ -38,7 +38,10 @@ import {
 } from './learning-foundry-runtime.js';
 
 const execFileAsync = promisify(execFile);
-const FRAMEWORK_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+const PACKAGED_SUPPORT = fileURLToPath(new URL('../../runtime-support/', import.meta.url));
+const FRAMEWORK_ROOT = existsSync(join(PACKAGED_SUPPORT, 'scripts/lite/evidence_common.py'))
+  ? PACKAGED_SUPPORT
+  : fileURLToPath(new URL('../../../', import.meta.url));
 const MAX_RECORD_BYTES = 4 * 1024 * 1024;
 const NATIVE_RUNTIME = '.forgewright/runtime';
 const DESCRIPTOR_PATH = `${NATIVE_RUNTIME}/native-task-context.json`;

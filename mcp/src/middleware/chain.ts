@@ -243,8 +243,14 @@ export class MiddlewareChain {
                     .map((item) => `${item.name}: ${item.reason}`)
                     .join('; '),
               },
+              // Preserve the sandboxed machine-readable reason of an already
+              // failed tool while retaining this gate's blocked/error decision.
+              ...(processedResult.isError ? processedResult.content : []),
             ],
             isError: true,
+            ...(processedResult.isError && processedResult.structuredContent
+              ? { structuredContent: processedResult.structuredContent }
+              : {}),
           },
           cached: false,
           middlewareMs: totalMs,
