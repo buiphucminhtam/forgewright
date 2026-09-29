@@ -666,6 +666,24 @@ Each worker receives a Task Contract (JSON) defining:
 
 ---
 
+## Evidence-Gated Learning and Worker Context Protocols
+
+The ECC evidence loop reuses the existing observer, worker packets, Learning Foundry and local verifiers rather than adding another orchestrator or memory database.
+
+**Native admission and distribution.** `ExecutionContainment` explicitly classifies the learning tool as `bounded-learning-proposal` and rejects unknown tools or added path/command authority. All existing policy/quality/verification middleware still runs. Structured MCP output is returned only as complete, bounded, sanitized JSON; an underlying safe error reason remains observable without turning a blocked call into success. Real stdio integration tests exercise the complete server, including missing evidence and changed policy. The transactional MCP installer stages reviewed `runtime-support` policy/fingerprint helpers with the runtime; no project Python module or original checkout is required by an installed candidate intake.
+
+**Outcome-bound proposals.** The native MCP factory is wired in `mcp/src/index.ts` but stays inactive until a trusted parent configures `.forgewright/runtime/native-task-context.json`. `native-learning-adapter.ts` checks a real locked task contract, current Git/worktree identity, bounded verifier artifacts and a terminal task ledger. It creates an unapproved, project-owned candidate and never changes the active registry. The original Learning Foundry remains the only promotion/replay/review/rollback authority. Real epoch-millisecond timestamps use a timestamp schema, not the capped observation-count schema. Keyless artifact integrity does not authenticate same-user writers; the adapter never executes a command from untrusted evidence merely to validate it.
+
+**Bounded context at the dispatch boundary.** `scripts/runtime/context_packets.py` validates requests and responses semantically, pins physical file reads, rejects malformed UTF-8 and checks excerpt provenance. A native parent owns `ParentRetrievalSession` and the optional `parent_retrieval_sessions` registry accepted by `build_plan`; serialized manifests cannot supply or reset this state. Up to three rounds share a 64 KiB cumulative budget and retain previously delivered content. Unresolved mandatory facts yield `BLOCKED_CONTEXT` before provider calls. Context is rebound to the current workspace/tree before dispatch; a same-HEAD dirty change invalidates it. The stateless helper remains a compatibility API, not authority for resetting a multi-round budget.
+
+**Research and handoff.** The maintained CLI modules expose `research_decision.py compile|verify` and `resumable_handoff.py compile|validate`. Research records include actual sources/access status, alternatives, rationale and validation; trivial local work can explicitly take the bounded no-research path. Handoffs bind physical workspace identity, goal/plan/base/HEAD/tree and actual verifier bytes. A hash-only checkpoint is `UNVERIFIED`; matching artifact bytes are `BYTES_VERIFIED`, not a new acceptance verdict. Resume still requires verifier rerun and never grants tool authority. Older checkpoints without the physical identity binding must be recompiled rather than silently accepted.
+
+**Executable local reference workloads.** `npm run bench:ecc` executes `evals/ecc` game save/idempotency, web API/layout geometry and app refresh/cache scenarios twice under the same frozen contract, with mutation-based negative controls. Reports are test-only, have no promotion eligibility, and leave absent model usage/cost as null. These are deterministic Node workloads, not a Unity build, rendered UI review, Android-device test or evidence of a faster/cheaper model. Existing ForgeBench paired-comparison and Learning Foundry rollback tests remain separate checks.
+
+**Observation is opt-in.** The shipped observer bundle is checked with `npm run check:observer`; default-off and degradation behavior are documented in the [Instinct System skill](../skills/instinct-system/SKILL.md). Hook registration, host support and measured performance are reported separately. A frequency score or successful tool call is not an accepted task outcome.
+
+---
+
 ## Design Principles
 
 The architecture is governed by the [10 Principles](../VISION.md), summarized:

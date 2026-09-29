@@ -108,6 +108,7 @@ export type PipelineMode =
 export interface ToolResult {
   content: Array<{ type: 'text'; text: string }>;
   isError?: boolean;
+  structuredContent?: Record<string, unknown>;
 }
 
 export interface ToolCall {

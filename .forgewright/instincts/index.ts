@@ -1,8 +1,8 @@
 /**
  * Instinct System — Main Entry Point
- * 
+ *
  * Exports all instinct modules for easy import.
- * 
+ *
  * Usage:
  *   import { observeToolCall, promotePatterns, getInstinctsConfig } from './instincts/index.js';
  */
@@ -80,8 +80,12 @@ export function initInstincts(): void {
 }
 
 /**
- * Process a tool call through the instinct system
- * Returns any suggestions if patterns meet confidence threshold
+ * Process a tool call through the instinct system.
+ *
+ * @deprecated Frequency-only automatic promotion has been removed in favor of
+ * outcome-bound Learning Foundry review gates. Observations alone must never
+ * count as accepted product outcomes. This method remains as a compatibility
+ * shim and returns null.
  */
 export async function processToolCall(
   toolName: string,
@@ -91,12 +95,12 @@ export async function processToolCall(
   sessionId: string = 'default'
 ) {
   const config = getInstinctsConfig();
-  
+
   if (!config.enabled) {
     return null;
   }
-  
-  const result = await observeToolCall(
+
+  await observeToolCall(
     {
       toolName,
       arguments: args,
@@ -106,14 +110,8 @@ export async function processToolCall(
     },
     projectRoot
   );
-  
-  // Check for promotion
-  if (result.shouldPersist) {
-    const promotion = promotePatterns(undefined, sessionId);
-    if (promotion.suggestions.length > 0) {
-      return promotion.suggestions[0];
-    }
-  }
-  
+
+  // Frequency-only auto-promotion is deprecated. Exclusive promotion authority
+  // resides with the Learning Foundry following accepted task/AC verification.
   return null;
 }

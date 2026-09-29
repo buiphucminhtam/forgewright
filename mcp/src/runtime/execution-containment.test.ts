@@ -10,7 +10,51 @@ function fixture() {
   writeFileSync(join(root, '.forgewright', 'execution-policy.yaml'), 'mode: strict\n');
   return root;
 }
+const proposal = () => ({
+  projectId: 'project-one',
+  taskId: 'task-one',
+  planDigest: 'a'.repeat(64),
+  sourceRevision: 'b'.repeat(40),
+  treeFingerprint: 'TREE:' + 'c'.repeat(64),
+  acceptanceCriteriaDigest: 'd'.repeat(64),
+  sourceVerifierSha256s: ['e'.repeat(64)],
+  trigger: 'Local verified task outcome',
+  correction: 'Keep the validated precondition',
+});
+
 describe('ExecutionContainment', () => {
+  it('admits only the bounded learning-proposal shape without expanding general authority', () => {
+    const root = fixture();
+    const containment = new ExecutionContainment(
+      loadRuntimeTrustContext({ FORGEWRIGHT_WORKSPACE: root }),
+    );
+    expect(containment.admit('fw_record_learning_candidate', proposal()).allowed).toBe(true);
+    for (const args of [
+      {},
+      { ...proposal(), command: 'arbitrary command' },
+      { ...proposal(), path: '../outside' },
+      { ...proposal(), sourceVerifierSha256s: [] },
+      { ...proposal(), sourceVerifierSha256s: ['e'.repeat(64), 'e'.repeat(64)] },
+      { ...proposal(), trigger: 'x'.repeat(1025) },
+      { ...proposal(), projectId: '../escape' },
+      { ...proposal(), treeFingerprint: 'unverified' },
+      { ...proposal(), scope: false },
+    ])
+      expect(containment.admit('fw_record_learning_candidate', args).code).toBe(
+        'CONTAINMENT_INVALID_ARGUMENTS',
+      );
+    for (const name of [
+      'fw_record_learning_candidate_typo',
+      'constructor',
+      '__proto__',
+      'toString',
+      'Bash',
+      'WebFetch',
+    ]) {
+      expect(containment.admit(name, proposal()).code).toBe('CONTAINMENT_UNKNOWN_TOOL');
+    }
+  });
+
   it('allows registered state tools and denies unknown and filesystem effects', () => {
     const root = fixture();
     const containment = new ExecutionContainment(

@@ -308,7 +308,7 @@ def test_roadmap_verifier_contract_and_failure_path_are_executable(
     mutation_item["verification"]["command"] = [
         "python3",
         "-c",
-        "from pathlib import Path; Path('.forgewright/reports/roadmap-verifier-ignored-probe.txt').write_text('mutated')",
+        "from pathlib import Path; probe = Path('.forgewright/reports/roadmap-verifier-ignored-probe.txt'); probe.parent.mkdir(parents=True, exist_ok=True); probe.write_text('mutated')",
         "tests/unit_tests/test_product_truth.py",
     ]
     mutation_item["verification"]["test_refs"] = [
@@ -344,6 +344,9 @@ def test_roadmap_verifier_contract_and_failure_path_are_executable(
     mutation_report = json.loads(mutated.stdout)
     assert mutated.returncode != 0
     assert mutation_report["status"] == "fail"
+    # The verifier must actually perform the mutation. Missing fixture parents
+    # must not turn this into a mere subprocess-error test.
+    assert mutation_report["deliverables"][0]["exit_code"] == 0
     assert mutation_report["tree_unchanged"] is False
 
     escaped = _manifest()

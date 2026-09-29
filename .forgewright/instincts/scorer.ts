@@ -1,6 +1,6 @@
 /**
  * Instinct Scorer — Confidence scoring for observed patterns
- * 
+ *
  * Scores range from 0.3 to 0.9 based on:
  * - Frequency: more occurrences = higher confidence
  * - Consistency: same pattern across files = higher confidence
@@ -68,19 +68,19 @@ function calculateRecencyScore(lastSeen: string, firstSeen: string): number {
   const now = Date.now();
   const last = new Date(lastSeen).getTime();
   const first = new Date(firstSeen).getTime();
-  
+
   const hoursSinceLast = (now - last) / (1000 * 60 * 60);
   const hoursSinceFirst = (now - first) / (1000 * 60 * 60);
-  
+
   // Decay function: exponential decay over 30 days
   const decayRate = 1 / (THRESHOLDS.recency.month); // Decay to ~37% after 30 days
-  
+
   // Last-seen recency (most important)
   let lastSeenScore = Math.exp(-decayRate * hoursSinceLast);
-  
+
   // First-seen recency (bonus for established patterns)
   let firstSeenScore = Math.exp(-decayRate * hoursSinceFirst * 0.5); // Slower decay
-  
+
   // Combine with more weight on last seen
   return (lastSeenScore * 0.7) + (firstSeenScore * 0.3);
 }
@@ -94,11 +94,11 @@ function calculateFrequencyScore(occurrences: number): number {
     return 0.2 + (occurrences / THRESHOLDS.frequency.initial) * 0.3;
   }
   if (occurrences < THRESHOLDS.frequency.good) {
-    return 0.5 + ((occurrences - THRESHOLDS.frequency.initial) / 
+    return 0.5 + ((occurrences - THRESHOLDS.frequency.initial) /
       (THRESHOLDS.frequency.good - THRESHOLDS.frequency.initial)) * 0.2;
   }
   if (occurrences < THRESHOLDS.frequency.excellent) {
-    return 0.7 + ((occurrences - THRESHOLDS.frequency.good) / 
+    return 0.7 + ((occurrences - THRESHOLDS.frequency.good) /
       (THRESHOLDS.frequency.excellent - THRESHOLDS.frequency.good)) * 0.2;
   }
   return 0.9; // Cap at excellent
@@ -114,12 +114,12 @@ function calculateConsistencyScore(
   affectedFiles?: string[]
 ): number {
   let score = 0.5; // Base score
-  
+
   // Bonus for context specificity
   if (projectContext?.language) score += 0.1;
   if (projectContext?.framework) score += 0.1;
   if (projectContext?.projectType) score += 0.1;
-  
+
   // Bonus for file type diversity (consistent across different file types)
   if (affectedFiles && affectedFiles.length > 1) {
     const extensions = new Set(
@@ -131,10 +131,10 @@ function calculateConsistencyScore(
       score += Math.min(0.1, extensions.size * 0.03);
     }
   }
-  
+
   // Higher occurrences with consistent context = higher score
   if (occurrences >= 5) score += 0.1;
-  
+
   return Math.min(score, 1.0);
 }
 
@@ -149,13 +149,13 @@ function calculateCrossProjectScore(
     // More projects = higher score (diminishing returns)
     return Math.min(0.9, 0.5 + (projectIds.length - 1) * 0.15);
   }
-  
+
   // Single project: check if it's been used enough to suggest it might generalize
   // This is a soft signal, so lower score
   if (projectIds.length === 1) {
     return 0.3;
   }
-  
+
   return 0.1;
 }
 
@@ -168,14 +168,14 @@ export function calculateInitialConfidence(
 ): number {
   // New patterns start with base confidence
   let base = 0.3;
-  
+
   // Bonus for longer tool sequences (more complex = more intentional)
   if (toolCount >= 3) base += 0.1;
   if (toolCount >= 5) base += 0.05;
-  
+
   // Bonus for language-specific context
   if (projectContext?.language) base += 0.05;
-  
+
   return Math.min(base, MAX_CONFIDENCE);
 }
 
@@ -259,10 +259,10 @@ export function updateConfidence(
 ): number {
   // Gradual update to avoid volatility
   const updateRate = 0.1; // 10% weight on new information
-  
+
   const delta = isRecent ? 0.05 : -0.02;
   const newConfidence = currentConfidence + delta * updateRate;
-  
+
   return Math.min(MAX_CONFIDENCE, Math.max(MIN_CONFIDENCE, newConfidence));
 }
 
@@ -291,11 +291,11 @@ function normalizeToolName(tool: string): string {
  */
 export function analyzeToolSequence(tools: string[]): ToolSequenceAnalysis {
   const toolSet = new Set(tools.map(t => normalizeToolName(t)));
-  
+
   // Detect intent categories (order matters - more specific first)
   let intent = 'general';
   let description = 'Tool sequence';
-  
+
   if (toolSet.has('read') && (toolSet.has('str_replace') || toolSet.has('edit'))) {
     intent = 'edit';
     description = 'Read and modify code';
@@ -312,18 +312,18 @@ export function analyzeToolSequence(tools: string[]): ToolSequenceAnalysis {
     intent = 'explore';
     description = 'Project exploration and discovery';
   }
-  
+
   // Complexity based on sequence length and diversity
   const uniqueRatio = toolSet.size / tools.length;
   const complexity = Math.min(5, Math.ceil(
-    (tools.length * 0.3) + 
-    (uniqueRatio * 2) + 
+    (tools.length * 0.3) +
+    (uniqueRatio * 2) +
     (toolSet.size * 0.2)
   ));
-  
+
   // Habitual if same tools used frequently in similar sequence
   const isHabitual = tools.length >= 3 && uniqueRatio < 0.8;
-  
+
   return {
     complexity,
     intent,
@@ -334,7 +334,8 @@ export function analyzeToolSequence(tools: string[]): ToolSequenceAnalysis {
 
 // ─── CLI Interface ────────────────────────────────────────────────
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isDirect_scorer_ts = process.argv[1] && (process.argv[1].endsWith('scorer.ts') || process.argv[1].endsWith('scorer.js'));
+if (isDirect_scorer_ts) {
   // Demo: score a sample pattern
   const sample: ScoringInput = {
     occurrences: 5,
@@ -345,7 +346,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     projectIds: ['project-a', 'project-b'],
     affectedFiles: ['src/App.tsx', 'src/components/Button.tsx'],
   };
-  
+
   console.log('Sample scoring:');
   console.log(JSON.stringify(scorePattern(sample), null, 2));
 }

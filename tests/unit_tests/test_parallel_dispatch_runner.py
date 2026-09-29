@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -1687,4 +1688,204 @@ def test_hung_trusted_adapter_is_cut_off_at_policy_deadline(
     assert not any(
         event["sender_id"] in {"concept-artist", "art-director"}
         for event in plan["execution"].get("events", [])
+    )
+
+
+def test_manifest_with_unresolved_supplemental_context_blocks_provider_execution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = runner_module()
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", *args], cwd=tmp_path, text=True).strip()
+
+    git("init", "-b", "main")
+    git("config", "user.email", "tests@example.com")
+    git("config", "user.name", "Tests")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "lib").mkdir()
+    (tmp_path / "src" / "present.txt").write_text("hello" + chr(10))
+    git("add", ".")
+    git("commit", "-m", "init")
+    head = git("rev-parse", "HEAD")
+
+    monkeypatch.setattr(runner, "_observed_head", lambda _: head)
+
+    from scripts.runtime.context_packets import create_supplemental_request
+    from scripts.runtime.execution_contract import lock_execution_contract
+
+    locked = lock_execution_contract(
+        {
+            "requirements": "Bounded task with missing fact.",
+            "acceptance_criteria": ["All required files are verified."],
+            "out_of_scope": ["No external calls."],
+            "task_class": "standard",
+        },
+        [{"scope_id": "scope-1"}, {"scope_id": "scope-2"}],
+    )
+
+    supp_req = create_supplemental_request(
+        goal_id="goal-test",
+        task_id="task-test",
+        scope_id="scope-1",
+        base_sha=head,
+        plan_digest=locked["digest"],
+        round_index=1,
+        missing_facts=[
+            {
+                "fact_id": "f-missing",
+                "kind": "code",
+                "target_path": "src/missing.txt",
+                "reason": "Missing critical fact",
+                "mandatory": True,
+            }
+        ],
+    )
+
+    manifest_data = {
+        "version": 1,
+        "request": {
+            "task_id": "task-test",
+            "goal_id": "goal-test",
+            "task_size": "medium",
+            "task_class": "standard",
+            "requirements": "Bounded task with missing fact.",
+            "acceptance_criteria": ["All required files are verified."],
+            "out_of_scope": ["No external calls."],
+            "scopes": [
+                {
+                    "id": "scope-1",
+                    "paths": ["src"],
+                    "independent": True,
+                    "risk_signals": [],
+                    "supplemental_context_request": supp_req,
+                },
+                {
+                    "id": "scope-2",
+                    "paths": ["lib"],
+                    "independent": True,
+                    "risk_signals": [],
+                },
+            ],
+            "limits": {"concurrency": 2, "deadline_ms": 30000},
+            "workspace": str(tmp_path),
+        },
+        "provider": {"cli": "agy"},
+    }
+
+    plan = runner.build_plan(manifest_data, tmp_path)
+    assert len(plan["workers"]) == 2
+    worker_packet = plan["workers"][0]["context_packet"]
+    assert worker_packet["status"] == "BLOCKED_CONTEXT"
+    assert worker_packet["blocked"] is True
+
+    provider_calls = []
+
+    def recording_executor(received_plan: dict[str, Any], prompt: str) -> bool:
+        provider_calls.append(prompt)
+        return True
+
+    rc = runner.execute_plan(plan, serial_executor=recording_executor)
+    assert rc == 2
+    assert len(provider_calls) == 0, (
+        "Provider must not be invoked when mandatory context is unresolved"
+    )
+    assert plan["execution"]["status"] == "BLOCKED_CONTEXT"
+    assert plan["execution"]["reason"] == "mandatory_context_unresolved"
+
+
+def test_manifest_with_resolved_supplemental_context_executes_successfully(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = runner_module()
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", *args], cwd=tmp_path, text=True).strip()
+
+    git("init", "-b", "main")
+    git("config", "user.email", "tests@example.com")
+    git("config", "user.name", "Tests")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "lib").mkdir()
+    (tmp_path / "src" / "present.txt").write_text("hello world" + chr(10))
+    git("add", ".")
+    git("commit", "-m", "init")
+    head = git("rev-parse", "HEAD")
+
+    monkeypatch.setattr(runner, "_observed_head", lambda _: head)
+    monkeypatch.setattr(
+        runner, "validate_global_antigravity_hook", lambda: Path("/fake")
+    )
+    monkeypatch.setattr(runner, "_resolve_trusted_agy", lambda: Path("/fake/agy"))
+    monkeypatch.setattr(runner, "_apply_runtime_model_selection", lambda p, e: None)
+
+    from scripts.runtime.context_packets import create_supplemental_request
+    from scripts.runtime.execution_contract import lock_execution_contract
+
+    locked = lock_execution_contract(
+        {
+            "requirements": "Bounded task with present fact.",
+            "acceptance_criteria": ["All required files are verified."],
+            "out_of_scope": ["No external calls."],
+            "task_class": "standard",
+        },
+        [{"scope_id": "scope-1"}, {"scope_id": "scope-2"}],
+    )
+
+    supp_req = create_supplemental_request(
+        goal_id="goal-test",
+        task_id="task-test",
+        scope_id="scope-1",
+        base_sha=head,
+        plan_digest=locked["digest"],
+        round_index=1,
+        missing_facts=[
+            {
+                "fact_id": "f-present",
+                "kind": "code",
+                "target_path": "src/present.txt",
+                "reason": "Inspect present fact",
+                "mandatory": True,
+            }
+        ],
+    )
+
+    manifest_data = {
+        "version": 1,
+        "request": {
+            "task_id": "task-test",
+            "goal_id": "goal-test",
+            "task_size": "medium",
+            "task_class": "standard",
+            "requirements": "Bounded task with present fact.",
+            "acceptance_criteria": ["All required files are verified."],
+            "out_of_scope": ["No external calls."],
+            "scopes": [
+                {
+                    "id": "scope-1",
+                    "paths": ["src"],
+                    "independent": True,
+                    "risk_signals": [],
+                    "supplemental_context_request": supp_req,
+                },
+                {
+                    "id": "scope-2",
+                    "paths": ["lib"],
+                    "independent": True,
+                    "risk_signals": [],
+                },
+            ],
+            "limits": {"concurrency": 2, "deadline_ms": 30000},
+            "workspace": str(tmp_path),
+        },
+        "provider": {"cli": "agy"},
+    }
+
+    plan = runner.build_plan(manifest_data, tmp_path)
+    assert len(plan["workers"]) == 2
+    worker_packet = plan["workers"][0]["context_packet"]
+    assert worker_packet["status"] == "READY"
+    assert worker_packet["blocked"] is False
+    assert (
+        "hello world" in worker_packet["supplemental_context"]["excerpts"][0]["content"]
     )

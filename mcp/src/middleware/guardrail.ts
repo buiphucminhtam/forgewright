@@ -3,6 +3,7 @@ import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export type PolicyAction = 'allow' | 'warn' | 'block' | 'config-error';
 
@@ -98,6 +99,10 @@ function defaultScriptPath(workspaceRoot: string): string {
     const configuredScript = resolve(configuredRoot, 'scripts/lite/policy-check.sh');
     if (existsSync(configuredScript)) return configuredScript;
   }
+  const packagedScript = fileURLToPath(
+    new URL('../../runtime-support/scripts/lite/policy-check.sh', import.meta.url),
+  );
+  if (existsSync(packagedScript)) return packagedScript;
   const workspaceScript = findPolicyScript(workspaceRoot);
   if (existsSync(workspaceScript)) return workspaceScript;
   const canonicalScript = resolve(

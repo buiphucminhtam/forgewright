@@ -36,6 +36,8 @@ from runtime.execution_contract import (
 )
 from runtime.context_packets import (
     ContextPacketError,
+    capture_context_snapshot,
+    verify_context_snapshot,
     compile_review_package,
     compile_worker_packet,
     worker_dispatch_view,
@@ -729,6 +731,8 @@ def _compile_worker_context(
     worker: dict[str, Any],
     execution_contract: dict[str, Any],
     workspace: Path,
+    *,
+    retrieval_session: Any | None = None,
 ) -> dict[str, Any] | None:
     base_sha = _observed_head(workspace)
     if base_sha is None:
@@ -754,11 +758,55 @@ def _compile_worker_context(
             constraints=request.get("worker_constraints", []),
             specialist_checks=packet.get("acceptance_checks", []),
         )
+        supp_req = worker.get("supplemental_context_request") or packet.get(
+            "supplemental_context_request"
+        )
+        if supp_req is not None:
+            try:
+                from runtime.context_packets import (
+                    retrieve_supplemental_context,
+                    attach_supplemental_context,
+                )
+            except ImportError:
+                from scripts.runtime.context_packets import (
+                    retrieve_supplemental_context,
+                    attach_supplemental_context,
+                )
+            snapshot = None
+            if retrieval_session is not None:
+                snapshot = capture_context_snapshot(workspace)
+                if snapshot["head_sha"] != base_sha:
+                    raise ContextPacketError(
+                        "source revision changed during packet compilation"
+                    )
+                if retrieval_session.tree_fingerprint is None:
+                    retrieval_session.tree_fingerprint = snapshot["tree_fingerprint"]
+                supp_resp = retrieval_session.handle_request(supp_req)
+                if capture_context_snapshot(workspace) != snapshot:
+                    raise ContextPacketError("source changed while retrieving context")
+            else:
+                supp_resp = retrieve_supplemental_context(
+                    workspace,
+                    supp_req,
+                    allowed_scope_paths=worker["paths"],
+                )
+            compiled = attach_supplemental_context(compiled, supp_resp)
+            if snapshot is not None:
+                compiled["runtime_context_binding"] = snapshot
+
         # Stats stay parent-side. In particular, collaboration/native packets
         # must not gain token/quota semantics that the provider does not enforce.
         # Re-hash the exact worker-visible bytes after removing those stats.
+        dispatch_packet = worker_dispatch_view(compiled)
+        if compiled.get("blocked"):
+            dispatch_packet["blocked"] = True
+            dispatch_packet["status"] = compiled.get("status", "BLOCKED_CONTEXT")
+        if "supplemental_context" in compiled:
+            dispatch_packet["supplemental_context"] = deepcopy(
+                compiled["supplemental_context"]
+            )
         return {
-            "packet": worker_dispatch_view(compiled),
+            "packet": dispatch_packet,
             "stats": deepcopy(compiled["stats"]),
         }
     except ContextPacketError as error:
@@ -798,7 +846,17 @@ def _compile_reviewer_context(
         raise ManifestError(str(error)) from error
 
 
-def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
+def build_plan(
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    *,
+    parent_retrieval_sessions: dict[tuple[str, str, str, str], Any] | None = None,
+) -> dict[str, Any]:
+    """Compile a plan; optional continuation state is owned by the native parent.
+
+    The registry is never read from the serialized manifest. A one-shot CLI has
+    no previous session and therefore cannot accept an unsolicited round two.
+    """
     _reject_recursive(manifest)
     request = manifest["request"]
     validate_disjoint_paths(request)
@@ -819,11 +877,79 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
     provider = manifest.get("provider", {})
     validate_provider_safety(provider)
     planned_workers = []
+    if parent_retrieval_sessions is not None and (
+        type(parent_retrieval_sessions) is not dict
+        or len(parent_retrieval_sessions) > 50
+    ):
+        raise ManifestError(
+            "parent retrieval registry must be a bounded native mapping"
+        )
+    parent_sessions = (
+        parent_retrieval_sessions if parent_retrieval_sessions is not None else {}
+    )
     for worker in decision["workers"]:
+        supp_req = (
+            worker.get("supplemental_context_request")
+            or (worker.get("packet") or {}).get("supplemental_context_request")
+            or (request.get("supplemental_context_requests") or {}).get(
+                worker["scope_id"]
+            )
+            or (manifest.get("supplemental_context_requests") or {}).get(
+                worker["scope_id"]
+            )
+        )
+        session = None
+        if supp_req is not None:
+            session_key = (
+                str(workspace.resolve()),
+                str(
+                    request.get("goal_id")
+                    or f"ephemeral-{request.get('task_id', 'task')}"
+                ),
+                str(request.get("task_id", "task")),
+                worker["scope_id"],
+            )
+            session = parent_sessions.get(session_key)
+            if session is None:
+                if len(parent_sessions) >= 50:
+                    raise ManifestError("native retrieval session capacity exhausted")
+                try:
+                    from runtime.context_packets import ParentRetrievalSession
+                except ImportError:
+                    from scripts.runtime.context_packets import ParentRetrievalSession
+                head_sha = _observed_head(workspace)
+                if head_sha is None:
+                    raise ManifestError(
+                        "supplemental context requires a verified current revision"
+                    )
+                task_id = str(request.get("task_id", "task"))
+                goal_id = request.get("goal_id") or f"ephemeral-{task_id}"
+                session = ParentRetrievalSession(
+                    workspace,
+                    goal_id=goal_id,
+                    task_id=task_id,
+                    scope_id=worker["scope_id"],
+                    plan_digest=execution_contract["digest"],
+                    base_sha=head_sha,
+                    allowed_scope_paths=worker["paths"],
+                    current_revision=head_sha,
+                )
+                parent_sessions[session_key] = session
+            elif (
+                not hasattr(session, "handle_request")
+                or session.workspace != workspace.resolve()
+                or session.allowed_scope_paths != worker["paths"]
+            ):
+                raise ManifestError("parent retrieval continuation scope mismatch")
+
         selection = select_model(worker["role"], provider, manifest_dir)
         routing = routing_for(worker["role"], phase="execution")
         context_compilation = _compile_worker_context(
-            request, worker, execution_contract, workspace
+            request,
+            worker,
+            execution_contract,
+            workspace,
+            retrieval_session=session,
         )
         context_packet = (
             context_compilation["packet"] if context_compilation is not None else None
@@ -1342,6 +1468,26 @@ def execute_plan(
     serial_executor: Callable[[dict[str, Any], str], bool] | None = None,
 ) -> int:
     verify_execution_contract(plan)
+    for worker in plan.get("workers", []):
+        packet = worker.get("context_packet")
+        if isinstance(packet, dict) and (
+            packet.get("status") == "BLOCKED_CONTEXT" or packet.get("blocked") is True
+        ):
+            if "execution" not in plan or not isinstance(plan["execution"], dict):
+                plan["execution"] = {}
+            plan["execution"]["status"] = "BLOCKED_CONTEXT"
+            plan["execution"]["reason"] = "mandatory_context_unresolved"
+            return 2
+        if isinstance(packet, dict) and "supplemental_context" in packet:
+            try:
+                verify_context_snapshot(packet, Path(plan["workspace"]))
+            except (ContextPacketError, OSError, KeyError, ValueError):
+                plan["execution"] = {
+                    "status": "BLOCKED_CONTEXT",
+                    "reason": "stale_or_unbound_supplemental_context",
+                    "external_call": False,
+                }
+                return 2
     collaboration_plan = plan.get("collaboration_plan")
     if (
         isinstance(collaboration_plan, dict)

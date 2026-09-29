@@ -80,7 +80,7 @@ function compare(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function canonicalJson(value: unknown): string {
+export function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value !== null && typeof value === 'object') {
     const record = value as Record<string, unknown>;
@@ -94,7 +94,7 @@ function canonicalJson(value: unknown): string {
   return encoded;
 }
 
-function assertPrivateDataAbsent(
+export function assertPrivateDataAbsent(
   value: unknown,
   fieldName: string | null = null,
   depth = 0,
@@ -195,6 +195,8 @@ const HashSchema = z.string().regex(HASH);
 const SafeIdSchema = z.string().min(1).max(96).regex(SAFE_ID);
 const VersionSchema = z.number().int().min(0).max(MAX_COUNT);
 const CountSchema = z.number().int().min(0).max(MAX_COUNT);
+// Epoch milliseconds are not counters: production clocks exceed MAX_COUNT.
+const TimestampMsSchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const AuthoritySchema = z.enum(['production', 'test-only']);
 const SourceAuthoritySchema = z.enum(['production', 'test-only', 'unverified']);
 const TipSchema = z
@@ -219,8 +221,8 @@ const SanitizedTrajectorySummaryInputSchema = z
     ledgerId: SafeIdSchema,
     origin: SafeIdSchema,
     sourceAuthority: SourceAuthoritySchema,
-    startedAt: CountSchema,
-    terminalAt: CountSchema,
+    startedAt: TimestampMsSchema,
+    terminalAt: TimestampMsSchema,
     ledgerHead: TipSchema,
     terminalOutcome: z.enum(['completed', 'failed', 'cancelled', 'timed_out']),
     quiescence: z.literal('confirmed'),
@@ -784,6 +786,16 @@ export async function issueLocalTestLearningHostCapability(
   return capability;
 }
 
+export function isTrustedHostCapability(
+  capability: unknown,
+): capability is TrustedLearningHostCapability {
+  return (
+    typeof capability === 'object' &&
+    capability !== null &&
+    TRUSTED_HOST_CAPABILITIES.has(capability)
+  );
+}
+
 const ActiveIntelligenceSchema = z
   .object({
     version: VersionSchema,
@@ -1051,6 +1063,29 @@ export class InMemoryLearningRegistryRepository implements LearningRegistryRepos
       release();
     }
   }
+}
+
+export function createReadOnlyTrajectorySummarizer(
+  options: {
+    now?: () => number;
+    freshnessHorizonMs?: number;
+  } = {},
+): {
+  summarizeTrajectory(input: {
+    ledger: TrajectoryLedger;
+    expectedTip: LedgerTip;
+  }): Promise<Readonly<SanitizedTrajectorySummary>>;
+} {
+  const now = options.now ?? Date.now;
+  const freshnessHorizonMs = options.freshnessHorizonMs ?? 24 * 60 * 60 * 1000;
+  return {
+    async summarizeTrajectory(input: {
+      ledger: TrajectoryLedger;
+      expectedTip: LedgerTip;
+    }): Promise<Readonly<SanitizedTrajectorySummary>> {
+      return summarizeLedger(input.ledger, input.expectedTip, now(), freshnessHorizonMs);
+    },
+  };
 }
 
 const ReversiblePackageSchema = z
