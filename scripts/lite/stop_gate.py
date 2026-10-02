@@ -10,6 +10,7 @@ unverified.
 from __future__ import annotations
 
 import argparse
+from functools import partial
 import hashlib
 import json
 import os
@@ -662,6 +663,7 @@ def _emit_allow(
     suppressed: bool,
     *,
     diagnostic: str = "",
+    native: bool = False,
 ) -> int:
     decision = _typed("allow_stop", completion, suppressed, reason)
     if diagnostic:
@@ -669,7 +671,14 @@ def _emit_allow(
     if platform == "CODEX":
         payload: dict[str, Any] = {"continue": True}
         if typed:
-            payload["forgewright"] = decision
+            if native:
+                print("[FORGEWRIGHT-STOP] " + json.dumps(decision, sort_keys=True), file=sys.stderr)
+                if os.environ.get("FORGEWRIGHT_STOP_DIAGNOSTICS") == "1":
+                    metadata = json.dumps(decision, sort_keys=True)
+                    if len(metadata.encode("utf-8")) <= 1024:
+                        payload["systemMessage"] = metadata
+            else:
+                payload["forgewright"] = decision
         print(json.dumps(payload, sort_keys=True))
     return 0
 
@@ -680,12 +689,20 @@ def _emit_block(
     reason: str,
     *,
     reason_code: str = "validation_failed",
+    native: bool = False,
 ) -> int:
     decision = _typed("request_retry", "unverified", False, reason_code)
     if platform == "CODEX":
         payload: dict[str, Any] = {"decision": "block", "reason": reason[:512]}
         if typed:
-            payload["forgewright"] = decision
+            if native:
+                print("[FORGEWRIGHT-STOP] " + json.dumps(decision, sort_keys=True), file=sys.stderr)
+                if os.environ.get("FORGEWRIGHT_STOP_DIAGNOSTICS") == "1":
+                    metadata = json.dumps(decision, sort_keys=True)
+                    if len(metadata.encode("utf-8")) <= 1024:
+                        payload["systemMessage"] = metadata
+            else:
+                payload["forgewright"] = decision
         print(json.dumps(payload, sort_keys=True))
         return 0
     print(
@@ -768,14 +785,20 @@ def main() -> int:
             platform,
             args.typed_stop_decision,
             "Forgewright stop payload exceeds 1 MiB.",
+            native=platform == "CODEX",
         )
     root = _project_root()
     payload = _normalize_payload(root, _parse_payload(raw))
     payload["platform"] = platform
+    # The native host rejects custom top-level fields. Keep the typed decision
+    # on stderr while preserving the existing verifier/CLI output contract.
+    native = platform == "CODEX" and payload.get("hook_event_name") == "Stop"
+    emit_allow = partial(_emit_allow, native=native)
+    emit_block = partial(_emit_block, native=native)
     files = _files_to_check(root, payload)
     continuity: ContinuityResult = check_continuity(root, payload, files=files)
     if continuity.status == "retry":
-        return _emit_block(
+        return emit_block(
             platform,
             args.typed_stop_decision,
             f"Docs Hub continuity requires one bounded refresh: {continuity.reason}.",
@@ -798,7 +821,7 @@ def main() -> int:
     if not has_code and not stop_marker_requires_validation:
         if platform != "CODEX":
             print("[VERIFY-GATE] No code changes detected — gate OPEN")
-        return _emit_allow(
+        return emit_allow(
             platform,
             args.typed_stop_decision,
             "unverified" if continuity_unverified else "verified",
@@ -812,7 +835,7 @@ def main() -> int:
     scope, key = _identity(root, payload)
     suppressed, suppression_reason = _retry_state(root, scope, key, record=False)
     if suppressed:
-        return _emit_allow(
+        return emit_allow(
             platform,
             args.typed_stop_decision,
             "unverified",
@@ -837,7 +860,7 @@ def main() -> int:
                 "[VERIFY-GATE] Strict VERIFY response correlation passed",
                 file=sys.stderr,
             )
-        return _emit_allow(
+        return emit_allow(
             platform,
             args.typed_stop_decision,
             "unverified" if continuity_unverified else "verified",
@@ -850,10 +873,10 @@ def main() -> int:
 
     suppressed, suppression_reason = _retry_state(root, scope, key, record=True)
     if suppressed:
-        return _emit_allow(
+        return emit_allow(
             platform, args.typed_stop_decision, "unverified", suppression_reason, True
         )
-    return _emit_block(platform, args.typed_stop_decision, reason)
+    return emit_block(platform, args.typed_stop_decision, reason)
 
 
 if __name__ == "__main__":

@@ -1462,8 +1462,20 @@ def write_state(project: Path, state: dict[str, Any]) -> None:
 
 
 def registry() -> dict[str, Any]:
-    path = bootstrap_home() / "registry.json"
+    home = bootstrap_home()
+    path = home / "bootstrap-registry.json"
     value = load_json(path, maximum=512 * 1024)
+    if value is None:
+        # Older bootstrap releases shared this name with the MCP registry.
+        # Read compatible bootstrap data without ever rewriting the old file.
+        value = load_json(home / "registry.json", maximum=512 * 1024)
+        if (
+            value is not None
+            and "schema" not in value
+            and value.get("version") == "1.0"
+            and isinstance(value.get("projects"), dict)
+        ):
+            value = None
     if value is None:
         return {"schema": REGISTRY_SCHEMA, "projects": []}
     if value.get("schema") != REGISTRY_SCHEMA or not isinstance(
@@ -1474,7 +1486,7 @@ def registry() -> dict[str, Any]:
 
 
 def save_registry(value: dict[str, Any]) -> None:
-    atomic_json(bootstrap_home() / "registry.json", value)
+    atomic_json(bootstrap_home() / "bootstrap-registry.json", value)
 
 
 def register_project(project: Path, mode: str, status: str) -> None:
@@ -3197,13 +3209,35 @@ def _read_tombstone(project: Path) -> dict[str, Any] | None:
     return value
 
 
+def _validate_preserved_directory(path: Path) -> None:
+    """Check structure without hashing or claiming ownership of existing data."""
+    _safe_path(path, directory=True)
+    pending = [path]
+    entries = 0
+    while pending:
+        directory = pending.pop()
+        _safe_path(directory, directory=True)
+        with os.scandir(directory) as children:
+            for child in children:
+                entries += 1
+                if entries > 5000:
+                    raise BootstrapError(
+                        "preserved_directory_too_large",
+                        "preserved directory exceeds entry inspection bound",
+                    )
+                member = Path(child.path)
+                _safe_path(member)
+                if child.is_dir(follow_symlinks=False):
+                    pending.append(member)
+
+
 def _preflight_project(project: Path) -> None:
     snapshot(project)
     _safe_existing_file(state_path(project))
     for name in PROJECT_DIRS:
         path = _project_path(project, name, directory=True)
         if path.exists():
-            directory_digest(path)
+            _validate_preserved_directory(path)
 
 
 def _docs_registry_path() -> Path:

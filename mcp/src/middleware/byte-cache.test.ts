@@ -1,0 +1,53 @@
+import { describe, it, expect } from 'vitest';
+import { ByteBudget, ByteBoundedMap } from './byte-cache.js';
+describe('bounded result cache', () => {
+  it('evicts project LRU before another project and shares global cap across owners', () => {
+    const budget = new ByteBudget({ total: 100, project: 60, entry: 50, ttlMs: 1000 });
+    const a = new ByteBoundedMap<number>('a', (n) => n, budget);
+    const a2 = new ByteBoundedMap<number>('a', (n) => n, budget);
+    const b = new ByteBoundedMap<number>('b', (n) => n, budget);
+    a.set('old', 30);
+    b.set('b', 30);
+    a2.set('new', 40);
+    expect(a.has('old')).toBe(false);
+    expect(b.has('b')).toBe(true);
+    b.set('b2', 30);
+    expect(budget.stats().bytes).toBe(100);
+    a2.get('new');
+    a.set('last', 20);
+    expect(b.has('b')).toBe(false);
+    expect(budget.stats()).toMatchObject({ bytes: 90, projects: { a: 60, b: 30 } });
+  });
+  it('rejects oversized entries, accounts replacement and reclaims only owned copies', () => {
+    const budget = new ByteBudget({ total: 100, project: 60, entry: 50, ttlMs: 1000 });
+    const a = new ByteBoundedMap<number>('a', (n) => n, budget);
+    const b = new ByteBoundedMap<number>('b', (n) => n, budget);
+    a.set('x', 40);
+    a.set('x', 20);
+    a.set('large', 51);
+    b.set('keep', 30);
+    expect(a.has('large')).toBe(false);
+    expect(budget.stats().bytes).toBe(50);
+    a.clear();
+    expect(budget.stats().bytes).toBe(30);
+    expect(b.get('keep')).toBe(30);
+    b.delete('keep');
+    expect(budget.stats()).toMatchObject({ bytes: 0, projects: {} });
+  });
+  it('expires idle entries across projects and touch renews retention', () => {
+    let time = 0;
+    const budget = new ByteBudget({ total: 100, project: 60, entry: 50, ttlMs: 100 }, () => time);
+    const a = new ByteBoundedMap<number>('a', (n) => n, budget);
+    a.set('cold', 20);
+    a.set('warm', 20);
+    time = 80;
+    a.get('warm');
+    time = 110;
+    budget.prune();
+    expect(a.has('cold')).toBe(false);
+    expect(a.has('warm')).toBe(true);
+    time = 181;
+    budget.prune();
+    expect(budget.stats().bytes).toBe(0);
+  });
+});

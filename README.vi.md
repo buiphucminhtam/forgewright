@@ -124,7 +124,7 @@ npm run build:cli
 node src/cli/dist/index.js --help
 ```
 
-Muốn auto-bootstrap toàn máy, opt-in một lần bằng `forge bootstrap policy set --mode full --auto on` từ shared runtime. Sau khi review và trust hook hiện tại trong host, project mới có thể tự lên mode đã chọn ở lần dùng plugin đầu tiên, không cần submodule riêng. Một lượt prompt thông thường của Codex trên profile macOS cô lập đã kiểm chứng đường này; native Claude vẫn do người dùng hoãn, còn Windows, mất điện vật lý và host từ xa chưa được xác nhận. Xem [hướng dẫn auto-bootstrap](docs/guides/auto-bootstrap.md) để cấu hình allow/deny root, lifecycle và trust boundary.
+Auto-bootstrap cần đồng ý bật policy và trust hook trong host. Nên bắt đầu với mode `automation`, `--allow-root` cụ thể, Pi disabled và không chọn MCP client. Phạm vi gồm các repo con đủ điều kiện. Đọc [hướng dẫn auto-bootstrap](docs/guides/auto-bootstrap.md) trước khi bật. Cài đặt, trust và hook chạy xong chưa chứng minh project sẵn sàng. Cần kiểm tra receipt và index sau prompt native thật. Kết quả trên profile macOS cô lập trước đây không chứng nhận bản source hoặc cache vừa cập nhật.
 
 Có thể init/onboard một dự án local mà chưa gọi model:
 
@@ -146,6 +146,14 @@ bash forgewright/scripts/forgewright-mcp-setup.sh
 Hãy review setup script và config sinh ra; merge rule cần thiết vào project thay vì ghi đè rule sẵn có. Submodule vẫn hữu ích khi chính project cần pin framework source cố định, nhưng không còn là điều kiện để dùng global-policy auto-bootstrap.
 
 ## Đã nâng cấp gì
+
+### Game chạy được và bộ nhớ có giới hạn
+
+**Đây là bản source local chưa publish.** Cài từ marketplace chưa bao gồm thay đổi chưa xuất bản trong checkout này.
+
+[Signal Dash](tests/game/fixtures/threejs-lifecycle/README.md) là game Three.js nhỏ với seed, bước mô phỏng cố định, bàn phím/touch, thắng/thua, pause và restart. Bộ kiểm tra biên dịch ví dụ skill, dùng input browser thật và lưu ảnh gắn build hash. Sau build và test, chạy `npm --prefix tests/game/fixtures/threejs-lifecycle run serve` để chơi local.
+
+Cache kết quả MCP giới hạn 512 KiB mỗi entry, 2 MiB mỗi project và 8 MiB chung trong một process MCP. Entry không dùng hết hạn sau năm phút. Đây là giới hạn byte được hạch toán, không phải trần RSS hoặc thao tác xóa dữ liệu nguồn. [Game test guide](tests/game/README.md) tách fixture chạy được khỏi template. [Unity setup](docs/unity-mcp-setup.md) dùng Unity Test Framework đúng project, còn Editor và hiệu năng mobile thật vẫn cần kiểm chứng riêng.
 
 ### Plugin Codex/Claude + chất lượng skill có thể đo
 
@@ -201,7 +209,9 @@ Cấu hình nằm trong `.production-grade.yaml` của project cha; giữ các m
 
 Routing System-1 dùng rules tiếng Việt/Anh có giới hạn, cache chính xác tùy chọn và từ chối chọn khi yêu cầu mơ hồ. Không import/gọi Jev, không cần `TYPESAFE_API_KEY`, không tải classifier hay gọi thêm model để chọn skill. Đây là tinh thần chọn trong shortlist của Jev, không phải model Jev được đổi tên.
 
-Nhiều project chia sẻ một bộ cấp tài nguyên: tối đa hai worker và một verifier nặng trên toàn user/máy; profile ít RAM giảm còn một worker. Mức reservation mặc định là **192 MiB cho Pi worker** và **128 MiB cho verifier đơn process**, hiệu chỉnh từ RSS quan sát trên Mac mục tiêu (~71–84 MiB cho Pi runtime đã load và ~42 MiB cho verifier Node nhỏ). Đây là ước lượng để scheduler cấp slot, không phải hard RAM cap; khi memory pressure tăng hệ thống vẫn dừng cấp việc mới để giữ headroom. Queue luân phiên theo project, giữ cách ly tác vụ chưa xác nhận dừng; broker nhẹ chỉ chạy khi cần và tự thoát sau 15 giây không hoạt động. Không dùng chung context/credential và không kill IDE hay process của anh. Chưa coi các giới hạn này là chứng nhận hiệu năng cho mọi máy 4 GB; mức tiết kiệm phải đo thực tế.
+Bộ cấp tài nguyên SQLite dùng chung giới hạn hai worker và một verifier nặng, giảm còn một worker trên host tối đa 8 GiB RAM. Admission xét pressure, tải OS, reservation, headroom và swap activity. Trên macOS, bộ nhớ tức thời được tách khỏi cache có thể thu hồi theo ước lượng. Không suy ra thiếu RAM chỉ từ free pages.
+
+Mức **192 MiB cho Pi worker** và **128 MiB cho verifier đơn process** là budget điều phối, không phải trần RSS hay số đo build bất kỳ. Broker tự thoát sau 15 giây rảnh. Cleanup chỉ xử lý tài nguyên có ownership, giữ nguyên ứng dụng và phiên chưa lưu của người dùng. Mức tiết kiệm toàn build và giảm nhiệt vẫn chưa được chứng minh.
 
 **Docs Hub** build trang HTML local có tìm kiếm từ Markdown/JSON được duyệt. Cấu trúc dự án, roadmap, blocker và flow lấy từ nguồn canonical, không phải một dashboard cập nhật thủ công khác.
 
@@ -236,6 +246,8 @@ Mở `.forgewright/docs-hub/site/index.html`. [Hướng dẫn Docs Hub](docs/gui
 Nguồn trạng thái chi tiết: [capability inventory](docs/capability-maturity.json) và [active roadmap](docs/active-roadmap.md).
 
 ## Kiểm chứng
+
+Bản nâng cấp game/resource đã có aggregate gate và Chromium desktop pass ở các snapshot được ghi nhận. **Chưa nghiệm thu xong toàn bộ upgrade** vì còn final-tree HARD gate mới và native bootstrap/index/receipt thật. Cache đã cài không đồng nghĩa live activation thành công. Xem [trạng thái canonical](docs/project-state.json) và receipt hiện hành. Kết quả cũ không chứng nhận source vừa sửa, cloud, Unity hay hiệu năng mobile thật.
 
 ```bash
 npm run lint

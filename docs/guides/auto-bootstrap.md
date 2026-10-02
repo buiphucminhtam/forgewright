@@ -42,6 +42,30 @@ After policy opt-in:
 
 No Forgewright submodule is required in the project. A submodule remains an option when the project intentionally wants to pin an exact framework revision.
 
+For native diagnostics, distinguish hook dispatch from bootstrap readiness.
+Observe the host's `hook/started` and `hook/completed` events, then check
+`forge bootstrap status` and the project receipt. A completed hook can be a
+no-op and does not prove that indexing or setup ran. Set
+`FORGEWRIGHT_BOOTSTRAP_DIAGNOSTICS=1` only for a diagnostic host invocation to
+emit bounded stage/reason records on hook stderr and one native `systemMessage`.
+These records omit input,
+environment values, paths and child output. They do not change admission or
+bootstrap policy. The single native message keeps diagnostics visible on hosts
+that discard successful hook stderr.
+
+Native Codex Stop payloads use the host's standard JSON fields on stdout.
+Forgewright's typed completion decision is emitted separately on stderr with
+the `[FORGEWRIGHT-STOP]` prefix. Standalone verifier payloads retain the typed
+JSON envelope. Neither transport changes validation or bounded retry behavior.
+For a diagnostic native Codex invocation, set
+`FORGEWRIGHT_STOP_DIAGNOSTICS=1` to also expose that decision through the host's
+`systemMessage` field. The message is bounded to 1 KiB of valid JSON and contains
+only `schema`, `host_action`, `completion_state`, `retry_suppressed`, and
+`reason_code`; it includes no validator output or response text. The default
+stdout remains unchanged. A completed hook alone is not verified completion:
+the correlated project Stop decision must say `allow_stop`, `verified`,
+`validation_passed`, and `retry_suppressed=false` to establish that outcome.
+
 An isolated macOS Codex acceptance has observed this normal-prompt path through a trusted current `PreToolUse` hook to a full ready receipt. Its default MCP catalog connected with 16 tools; that check did not assert a deferred skill overlay or a model MCP invocation. Claude native execution remains deferred by user, and native Windows, physical power-loss, and remote-host acceptance remain unverified.
 
 The installed launcher uses a small entrypoint for the hook's JSON preflight and loads the full CLI for other commands. Preflight does not invoke a model, contact a provider, install packages, or scan the project. Re-run policy setup after rebuilding an older shared runtime to refresh its launcher.
@@ -79,7 +103,17 @@ For local bootstrap acceptance, `bash scripts/ci/verify-auto-bootstrap-local.sh 
 
 ## Recovery and concurrency
 
-Each project has a lock and an ownership journal in the user-owned global bootstrap store, outside the repository. A project-local `bootstrap.json` hash is not deletion authority: cleanup receipts must match that trusted journal. Failed stages roll back only confirmed Forgewright-owned effects and leave unrelated project files untouched. Global host admission limits concurrent workers/heavy stages so multiple new repositories do not independently saturate a weak machine.
+Bootstrap registration uses `bootstrap-registry.json` inside the global bootstrap
+home, normally `~/.config/forgewright`. The legacy MCP `registry.json` keeps its
+`version: "1.0"` and object-valued `projects` untouched. If the namespaced file
+does not exist, an old `registry.json` with the exact
+`forgewright-bootstrap-registry/v1` schema and a project array remains readable.
+The next locked registration write copies that bootstrap data to the namespaced
+file and retains the original bytes. The namespaced registry takes precedence
+once present. Unknown schemas and malformed files fail closed, including a
+malformed namespaced file beside valid old bootstrap data.
+
+Each project has a lock and an ownership journal in the user-owned global bootstrap store, outside the repository. A project-local `bootstrap.json` hash is not deletion authority: cleanup receipts must match that trusted journal. Failed stages roll back only confirmed Forgewright-owned effects and leave unrelated project files untouched. Global host admission serializes workers on hosts with at most 8 GiB RAM and allows at most one heavy stage. Higher-memory hosts admit at most two workers. Memory pressure, unavailable pressure telemetry and high normalized OS load backpressure new requests with a 15-second recovery hold. Active user sessions are never suspended or killed to reclaim capacity. This governs cooperating adapters, not arbitrary IDE terminals or applications. See [host resource contract](../adr/ADR-pi-worker-runtime.md) for telemetry and platform limits.
 
 Queued worker and heavy-stage requests can wait up to 60 seconds for capacity within the existing 90-second operation budget. This allows concurrent projects to take turns without raising the memory or concurrency limits. A host that cannot supply capacity within that budget still fails explicitly and releases its queued reservation.
 
@@ -90,5 +124,11 @@ File rollback checks the expected current hash before an atomic replacement. Dir
 Selected MCP clients share a write-ahead transaction. A later client conflict rolls back earlier owned insertions; explicit recovery handles a process stopping before or after a config write. The journal stores inserted bytes and hashes, not a copy of unrelated client configuration or credentials. Recovery restores original bytes when possible and preserves unrelated edits. A changed or reformatted owned insertion blocks cleanup when exact ownership can no longer be established. Expected-hash checks detect observed preimage changes; portable file replacement is not an atomic compare-and-swap against an external writer racing after that check.
 
 Readiness checks are independent of ownership: preserved policy and project/profile files must pass their canonical validators, usable index metadata and the live Docs registry entry must exist, and preserved documentation must pass Docs doctor. A saved `ready` label does not override invalid, missing, or modified live components. Failed worker-lease release cannot publish successful completion.
+
+Existing index directories remain user-owned. Preflight checks their structure
+within a 5,000-entry bound and rejects symlinks, hardlinks and special files
+without reading database contents into memory. Metadata and database readability
+checks still determine readiness. The 64 MiB digest bound continues to apply to
+directories created and owned by bootstrap for rollback, not preserved indexes.
 
 A `ready` receipt is bound to the canonical project root digest and Forgewright source commit. Stale/foreign state fails closed; degraded/blocked state is not auto-looped on every prompt. Admission may refuse setup before project state exists when real host memory is under pressure. Restore host headroom rather than bypassing the guard; this is not a ready/bootstrap-success result. An already removed, globally owned Docs registry entry is treated as `already_missing` during cleanup so interrupted removal remains retryable.

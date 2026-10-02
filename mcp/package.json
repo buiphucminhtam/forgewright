@@ -1,14 +1,14 @@
 {
   "name": "forgewright-mcp-global",
   "version": "1.0.0",
-  "description": "Global MCP Server for Forgewright — works across all projects",
+  "description": "Global MCP Server for Forgewright \u2014 works across all projects",
   "type": "module",
   "main": "build/index.js",
   "engines": {
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "npm run typecheck && npm run build:emit",
     "start": "node build/index.js",
     "dev": "tsc --watch",
     "lint": "eslint src/",
@@ -16,7 +16,9 @@
     "format:write": "prettier --write \"src/**/*.ts\"",
     "test": "vitest run --reporter=basic",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --reporter=basic"
+    "test:coverage": "vitest run --coverage --reporter=basic",
+    "typecheck": "tsc --noEmit",
+    "build:emit": "tsc --noCheck"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
@@ -40,7 +42,7 @@
     "fast-check": "^4.8.0",
     "prettier": "^3.2.4",
     "tsx": "^4.22.4",
-    "typescript": "^5.3.3",
+    "typescript": "^5.7.3",
     "vitest": "^1.2.2"
   },
   "overrides": {

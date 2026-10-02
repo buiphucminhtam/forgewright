@@ -70,7 +70,7 @@ Game deliveries are validated against Task Contracts:
 
 | Engine | Framework | Command |
 |--------|-----------|---------|
-| Unity | Unity Test Framework (UTF) + NUnit | `dotnet test` or Unity Editor |
+| Unity | Unity Test Framework (UTF) + NUnit | Unity Editor `-runTests` with the project-pinned UTF |
 | Unreal | Automation System + Functional Testing Plugin | `RunUAT RunUnreal` or Editor |
 | Godot | GDScript tests + `godot --test` | `godot --headless --test` |
 | Roblox | Roblox Test Runner + LuaUnit | Studio or CLI |
@@ -104,7 +104,7 @@ Game deliveries are validated against Task Contracts:
         skillMultiplier: 1.5f,
         isCritical: true
     );
-    Assert.AreEqual(60f, damage); // (50 * 1.5 - 20 * 0.5) * 2 = 60
+    Assert.AreEqual(130f, damage); // (50 * 1.5 - 20 * 0.5) * 2 = 130
 }
 
 [Test] public void Combat_CriticalHit_10PercentChance()
@@ -196,7 +196,7 @@ describe('DamageCalculator', () => {
             skillMultiplier: 1.5,
             isCritical: true,
         });
-        expect(damage).toBe(60); // (50 * 1.5 - 20 * 0.5) * 2 = 60
+        expect(damage).toBe(130); // (50 * 1.5 - 20 * 0.5) * 2 = 130
     });
 
     it('should never deal less than 1 damage', () => {
@@ -243,14 +243,14 @@ describe('EnemyFactory', () => {
 import { CombatSystem } from '../../src/systems/gameplay/CombatSystem';
 
 describe('CombatSystem', () => {
-    private combat: CombatSystem;
+    let combat: CombatSystem;
 
     beforeEach(() => { combat = new CombatSystem(); });
 
     it('damage formula matches GDD specification', () => {
-        // (50 * 1.5 - 20 * 0.5) * 2 = 60
+        // (50 * 1.5 - 20 * 0.5) * 2 = 130
         const damage = combat.calculateDamage(50, 20, 1.5, true);
-        expect(damage).toBe(60);
+        expect(damage).toBe(130);
     });
 
     it('minimum damage is 1', () => {
@@ -370,12 +370,14 @@ describe('Object Pool', () => {
 ```typescript
 // tests/performance/DrawCallBudget.test.ts
 describe('Draw Call Budget', () => {
-    it('should stay under 100 draw calls per frame', () => {
+    it('should stay under 100 draw calls per frame', async () => {
+        // Example project budget, not a universal device capability.
         const MAX_DRAW_CALLS = 100;
         const renderer = new WebGPURenderer();
         const scene = setupScene();
 
-        renderer.render(scene, camera);
+        await renderer.init();
+        await renderer.renderAsync(scene, camera);
         const info = renderer.info;
 
         expect(info.render.calls).toBeLessThanOrEqual(MAX_DRAW_CALLS);
@@ -389,33 +391,24 @@ describe('Draw Call Budget', () => {
         scene.add(mesh);
         scene.remove(mesh);
 
-        // Manually dispose (or via CleanupSystem)
+        const geometryDisposed = vi.fn();
+        const materialDisposed = vi.fn();
+        geometry.addEventListener('dispose', geometryDisposed);
+        material.addEventListener('dispose', materialDisposed);
         geometry.dispose();
         material.dispose();
-
-        expect(geometry disposed).toBe(true);
-        expect(material disposed).toBe(true);
+        expect(geometryDisposed).toHaveBeenCalledTimes(1);
+        expect(materialDisposed).toHaveBeenCalledTimes(1);
+        // These events prove API calls, not physical GPU-memory reclamation.
     });
 });
 
-// tests/performance/ObjectPool.test.ts
-describe('ObjectPool', () => {
-    it('should reuse mesh instances without allocating new GPU buffers', () => {
-        const pool = new ObjectPool(
-            () => new THREE.Mesh(boxGeo, mat),
-            m => m.setVisible(false),
-            50
-        );
-
-        const before = GPU.memory.allocate;
-        for (let i = 0; i < 1000; i++) {
-            const m = pool.acquire();
-            pool.release(m);
-        }
-        // Should reuse instances, not allocate new GPU memory
-        expect(GPU.memory.allocate - before).toBeLessThan(1000 * boxGeo.size);
-    });
-});
+// Runnable, bounded pooling/disposal and damage contracts:
+// tests/game/fixtures/threejs-lifecycle/unit.test.mjs
+// Compile the paired TypeScript first, then run npm test in that fixture.
+// Count factory calls and assert object identity reuse. Browser GPU memory is
+// not exposed by a portable GPU.memory.allocate API. Renderer resource counts
+// are diagnostics, not GPU byte measurements or mobile performance proof.
 ```
 [Test] public void Performance_60FPS_OnMainMenu()
 {
@@ -798,13 +791,11 @@ Before implementing any game mechanic, run Plan Quality Loop with game-specific 
 When game tests fail:
 
 ```
-1. RETRY — Same test, 3 attempts (games can be non-deterministic)
-2. ISOLATE — Run failing test in isolation
-3. INVESTIGATE — Check if deterministic or flaky:
-   - Deterministic → Log as bug, continue other tests
-   - Flaky → Log as flaky, retry 3x, mark as PASS if any retry succeeds
-4. ESCALATE — After 3 retries, mark as FAIL and escalate
-5. AUTO-ROLLBACK — If critical test fails, revert to last good build
+1. PRESERVE — Record every failure with its seed, inputs and build identity
+2. ISOLATE — Investigate with the same test and unchanged acceptance criteria
+3. STOP — If the same step fails twice, follow the SOLVE Stuck rule
+4. REPORT — A passing retry does not erase a failure or prove flaky acceptance
+5. ROLLBACK — Restore a known-good state only within the authorized owned scope
 ```
 
 ### Self-Healing for Games
@@ -825,9 +816,9 @@ Common game build errors and auto-fix strategies:
 | Canvas resize mismatch | Re-scale game canvas via `this.scale.resize()` |
 | **Three.js — Additional** | |
 | `webglcontextlost` event | Save state, wait for `webglcontextrestored`, re-upload textures |
-| GPU memory leak | Force `renderer.info` check, warn if triangles increasing |
+| Suspected GPU resource leak | Compare `renderer.info.memory` allocation counts across the same lifecycle. Counts are not GPU bytes or proof of a leak. |
 | WebGPU not available | Auto-fallback to `WebGLRenderer` — no game logic change |
-| Geometry not disposed | Add to CleanupSystem, dispose on entity removal |
+| Geometry not disposed | Check ownership. Dispose owned resources once after their final user releases them. Preserve borrowed resources until their owner releases them. |
 
 ---
 
@@ -850,10 +841,10 @@ For Phaser 3 web games:
   5. SAVE COMPATIBILITY — LocalStorage format versioning, migration on load
 
 For Three.js web games:
-  1. BASELINE — Capture draw calls, triangles, memory from renderer.info
+  1. BASELINE — Capture draw calls, triangles and resource counts from renderer.info
   2. REGRESSION CHECK — Run Playwright smoke test on every commit
   3. SCOPE BOUNDARY — New ECS systems in new files, existing systems untouched
-  4. PERFORMANCE BASELINE — < 100 draw calls, < 60fps target
+  4. PERFORMANCE BASELINE — Measure the approved frame-time/FPS and draw-call budgets on named target hardware
   5. SAVE COMPATIBILITY — LocalStorage format versioning, migration on load
 ```
 
@@ -876,8 +867,8 @@ For Three.js web games:
 | Scene Structure | 100% | Boot → Menu → Gameplay → GameOver flow | Yes |
 | **Three.js** | **Minimum Coverage** | **Critical Tests** | **Blocking** |
 | ECS Architecture | 100% | All systems implement, components registered | Yes |
-| Draw Calls | 100% | < 100/frame on target hardware | Yes |
-| Memory Disposal | 100% | geometry/material/texture disposed on entity removal | Yes |
+| Draw Calls | 100% | Measured draw calls meet the approved budget on named target hardware | Yes |
+| Memory Disposal | 100% | Owned geometry/material/texture disposed once after final use, borrowed resources preserved until owner cleanup | Yes |
 | WebGPU Fallback | 100% | Falls back to WebGL2 gracefully | Yes |
 
 ---
@@ -896,3 +887,7 @@ For Three.js web games:
 ---
 
 > **Derived from:** QA Engineer Skill, Quality Gate Protocol, Task Validator Protocol, Plan Quality Loop Protocol, Self-Healing Execution Protocol.
+
+## Maintained Three.js fixture
+
+The executable reference is [threejs-lifecycle](../../../tests/game/fixtures/threejs-lifecycle/README.md). It locks damage arithmetic, bounded typed pooling, fixed-step state transitions and public input playtests. Engine-specific snippets above still require their project systems and test imports. They are templates, not standalone passing test evidence.

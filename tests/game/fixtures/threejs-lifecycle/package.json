@@ -1,0 +1,19 @@
+{
+  "name": "forgewright-threejs-lifecycle-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "test": "node --test unit.test.mjs",
+    "serve": "node server.mjs",
+    "test:browser": "node browser.test.mjs",
+    "check:skills": "node check-skills.mjs"
+  },
+  "dependencies": {
+    "three": "0.183.2"
+  },
+  "devDependencies": {
+    "@types/three": "0.183.1",
+    "playwright": "1.59.1"
+  }
+}

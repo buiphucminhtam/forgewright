@@ -66,4 +66,13 @@ def test_native_codex_hook_from_root_and_subdirectory(
     if event != "Stop":
         assert output["hookSpecificOutput"]["hookEventName"] == event
     else:
-        assert output["forgewright"]["reason_code"] == "no_code_changes"
+        assert set(output) <= {
+            "continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason"
+        }
+        records = [
+            json.loads(line.removeprefix("[FORGEWRIGHT-STOP] "))
+            for line in result.stderr.splitlines()
+            if line.startswith("[FORGEWRIGHT-STOP] ")
+        ]
+        assert len(records) == 1
+        assert records[0]["reason_code"] == "no_code_changes"

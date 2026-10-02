@@ -47,7 +47,7 @@ You are the **Three.js Engineer** — a 3D web specialist who builds interactive
 
 - **Separate update from render** — Game logic in update, rendering in render loop
 - **Use Object3D groups** — Organize scenes hierarchically
-- **Dispose properly** — Every geometry/material must be disposed when removed
+- **Dispose owned resources** — Remove meshes separately from disposing geometry/material. Shared resources are disposed once by their lifetime owner, after the final user releases them.
 - **Use shared materials** — One material, many meshes when possible
 
 ### Performance Budgets
@@ -127,6 +127,9 @@ class App {
     private scene!: THREE.Scene;
     private camera!: THREE.PerspectiveCamera;
     private animationId: number = 0;
+    private readonly onWindowResize = () => this.onResize();
+    private readonly ownedResources = new Set<{dispose(): void}>();
+    private disposed = false;
 
     constructor() {
         this.canvas = this.createCanvas();
@@ -187,6 +190,8 @@ class App {
             roughness: 0.8,
             metalness: 0.2,
         });
+        this.ownedResources.add(groundGeometry);
+        this.ownedResources.add(groundMaterial);
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
@@ -200,6 +205,7 @@ class App {
         const sun = new THREE.DirectionalLight(0xffffff, 1);
         sun.position.set(10, 20, 10);
         sun.castShadow = true;
+        this.ownedResources.add(sun.shadow);
         sun.shadow.mapSize.width = 2048;
         sun.shadow.mapSize.height = 2048;
         sun.shadow.camera.near = 0.5;
@@ -212,7 +218,7 @@ class App {
     }
 
     private addEventListeners(): void {
-        window.addEventListener('resize', this.onResize.bind(this));
+        window.addEventListener('resize', this.onWindowResize);
     }
 
     private onResize(): void {
@@ -227,18 +233,15 @@ class App {
     };
 
     public dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
         cancelAnimationFrame(this.animationId);
+        window.removeEventListener('resize', this.onWindowResize);
+        // Register only resources created and owned by this App, never borrowed assets.
+        for (const resource of this.ownedResources) resource.dispose();
+        this.ownedResources.clear();
         this.renderer.dispose();
-        this.scene.traverse((object) => {
-            if (object instanceof THREE.Mesh) {
-                object.geometry.dispose();
-                if (Array.isArray(object.material)) {
-                    object.material.forEach((m) => m.dispose());
-                } else {
-                    object.material.dispose();
-                }
-            }
-        });
+        this.canvas.remove();
     }
 }
 
@@ -339,6 +342,7 @@ export class FirstPersonCamera {
     private euler: THREE.Euler;
     private velocity: THREE.Vector3;
     private direction: THREE.Vector3;
+    private readonly listeners = new AbortController();
 
     constructor(
         private camera: THREE.PerspectiveCamera,
@@ -353,7 +357,7 @@ export class FirstPersonCamera {
     private setupEventListeners(): void {
         this.domElement.addEventListener('click', () => {
             this.domElement.requestPointerLock();
-        });
+        }, { signal: this.listeners.signal });
 
         document.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === this.domElement) {
@@ -363,7 +367,12 @@ export class FirstPersonCamera {
                 this.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.euler.x));
                 this.camera.quaternion.setFromEuler(this.euler);
             }
-        });
+        }, { signal: this.listeners.signal });
+    }
+
+    public dispose(): void {
+        this.listeners.abort();
+        if (document.pointerLockElement === this.domElement) document.exitPointerLock();
     }
 
     public update(keys: Record<string, boolean>, delta: number): void {
@@ -471,145 +480,23 @@ export class MaterialFactory {
 
 ### Step 3.2: Lighting System
 
-```typescript
-export class LightingSystem {
-    private lights: THREE.Light[] = [];
-    private ambient!: THREE.AmbientLight;
-    private sun!: THREE.DirectionalLight;
+Track every light created by the subsystem, including ambient, directional and
+hemisphere lights. Track spotlight targets separately. Remove owned lights and
+targets from their parents on cleanup, and dispose their owned shadow resources
+once. Borrowed lights remain the caller's responsibility. Test repeated setup and
+cleanup before using this in a long-lived editor or restart loop.
 
-    constructor(private scene: THREE.Scene) {
-        this.setup();
-    }
-
-    private setup(): void {
-        // Ambient
-        this.ambient = new THREE.AmbientLight(0xffffff, 0.3);
-        this.scene.add(this.ambient);
-
-        // Main directional light
-        this.sun = new THREE.DirectionalLight(0xffffff, 1);
-        this.sun.position.set(10, 20, 10);
-        this.sun.castShadow = true;
-        this.sun.shadow.mapSize.width = 2048;
-        this.sun.shadow.mapSize.height = 2048;
-        this.sun.shadow.camera.near = 0.5;
-        this.sun.shadow.camera.far = 100;
-        this.sun.shadow.camera.left = -30;
-        this.sun.shadow.camera.right = 30;
-        this.sun.shadow.camera.top = 30;
-        this.sun.shadow.camera.bottom = -30;
-        this.sun.shadow.bias = -0.0001;
-        this.scene.add(this.sun);
-
-        // Hemisphere light for natural sky/ground colors
-        const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362412, 0.5);
-        this.scene.add(hemi);
-    }
-
-    public addPointLight(
-        position: THREE.Vector3,
-        color: number = 0xffffff,
-        intensity: number = 1,
-        distance: number = 10
-    ): THREE.PointLight {
-        const light = new THREE.PointLight(color, intensity, distance);
-        light.position.copy(position);
-        this.scene.add(light);
-        this.lights.push(light);
-        return light;
-    }
-
-    public addSpotLight(
-        position: THREE.Vector3,
-        target: THREE.Vector3,
-        config: { angle?: number; penumbra?: number; intensity?: number } = {}
-    ): THREE.SpotLight {
-        const light = new THREE.SpotLight(
-            0xffffff,
-            config.intensity ?? 1,
-            20,
-            config.angle ?? Math.PI / 6,
-            config.penumbra ?? 0.3
-        );
-        light.position.copy(position);
-        light.target.position.copy(target);
-        light.castShadow = true;
-        light.shadow.mapSize.width = 1024;
-        light.shadow.mapSize.height = 1024;
-        this.scene.add(light);
-        this.scene.add(light.target);
-        this.lights.push(light);
-        return light;
-    }
-
-    public setAmbientIntensity(intensity: number): void {
-        this.ambient.intensity = intensity;
-    }
-
-    public dispose(): void {
-        this.lights.forEach((light) => {
-            this.scene.remove(light);
-            light.dispose();
-        });
-        this.lights = [];
-    }
-}
-```
 
 ### Step 3.3: Environment Map
 
-```typescript
-export class EnvironmentManager {
-    private pmremGenerator!: THREE.PMREMGenerator;
-    private envMap!: THREE.Texture;
+Use the loader import appropriate to the pinned Three.js version. Keep the full
+render target returned by PMREM conversion, not only its `.texture`. The owner
+must dispose the previous target when replacing an environment, release the
+source texture after conversion and dispose the generator on final teardown.
+Guard asynchronous completion after cancellation/disposal and detach scene
+references before releasing an active target. This advanced path is not covered
+by the small lifecycle fixture and needs its own rendered replacement/cancel test.
 
-    constructor(private renderer: THREE.WebGLRenderer) {
-        this.pmremGenerator = new THREE.PMREMGenerator(renderer);
-        this.pmremGenerator.compileEquirectangularShader();
-    }
-
-    public loadFromURL(url: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            new THREE.HDRCubeTextureLoader().load(
-                url,
-                (texture) => {
-                    this.envMap = this.pmremGenerator.fromCubemap(texture).texture;
-                    texture.dispose();
-                    resolve();
-                },
-                undefined,
-                reject
-            );
-        });
-    }
-
-    public loadFromPath(path: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.RGBELoader();
-            loader.load(
-                path,
-                (texture) => {
-                    texture.mapping = THREE.EquirectangularReflectionMapping;
-                    this.envMap = this.pmremGenerator.fromEquirectangular(texture).texture;
-                    texture.dispose();
-                    resolve();
-                },
-                undefined,
-                reject
-            );
-        });
-    }
-
-    public getEnvMap(): THREE.Texture | undefined {
-        return this.envMap;
-    }
-
-    public dispose(): void {
-        if (this.envMap) this.envMap.dispose();
-        this.pmremGenerator.dispose();
-    }
-}
-```
 
 ## Phase 4 — Object Systems
 
@@ -619,6 +506,8 @@ export class EnvironmentManager {
 export class GameObject extends THREE.Object3D {
     public uuid: string;
     public tags: Set<string> = new Set();
+    // Only register resources created by this object or explicitly transferred.
+    public readonly ownedResources = new Set<{dispose(): void}>();
 
     constructor() {
         super();
@@ -642,16 +531,8 @@ export class GameObject extends THREE.Object3D {
     }
 
     public dispose(): void {
-        this.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                child.geometry.dispose();
-                if (Array.isArray(child.material)) {
-                    child.material.forEach((m) => m.dispose());
-                } else {
-                    child.material.dispose();
-                }
-            }
-        });
+        for (const resource of this.ownedResources) resource.dispose();
+        this.ownedResources.clear();
         this.clear();
     }
 }
@@ -659,72 +540,14 @@ export class GameObject extends THREE.Object3D {
 
 ### Step 4.2: Object Pool
 
-```typescript
-export class ObjectPool<T extends GameObject> {
-    private available: T[] = [];
-    private inUse: Set<T> = new Set();
-    private factory: () => T;
-    private resetFn: (obj: T) => void;
-
-    constructor(factory: () => T, reset: (obj: T) => void, initialSize = 10) {
-        this.factory = factory;
-        this.resetFn = reset;
-        this.prewarm(initialSize);
-    }
-
-    public acquire(): T {
-        let obj: T;
-
-        if (this.available.length > 0) {
-            obj = this.available.pop()!;
-        } else {
-            obj = this.factory();
-        }
-
-        obj.visible = true;
-        obj.active = true;
-        this.inUse.add(obj);
-        return obj;
-    }
-
-    public release(obj: T): void {
-        if (!this.inUse.has(obj)) return;
-
-        obj.active = false;
-        obj.visible = false;
-        this.resetFn(obj);
-        this.inUse.delete(obj);
-        this.available.push(obj);
-    }
-
-    public prewarm(count: number): void {
-        for (let i = 0; i < count; i++) {
-            const obj = this.factory();
-            obj.visible = false;
-            obj.active = false;
-            this.available.push(obj);
-        }
-    }
-
-    public releaseAll(): void {
-        for (const obj of this.inUse) {
-            this.release(obj);
-        }
-    }
-
-    public getActiveCount(): number {
-        return this.inUse.size;
-    }
-
-    public dispose(): void {
-        for (const obj of [...this.available, ...this.inUse]) {
-            obj.dispose();
-        }
-        this.available = [];
-        this.inUse.clear();
-    }
-}
-```
+Use the compiled, bounded implementation in
+[`tests/game/fixtures/threejs-lifecycle/src/pool.ts`](../../tests/game/fixtures/threejs-lifecycle/src/pool.ts).
+Its generic constraint requires `visible`, not a nonexistent `Mesh.active` or
+`Mesh.dispose`. Pass explicit reset and destroy callbacks. Exhaustion is explicit,
+duplicate release cannot grow the cache, and disposal is idempotent. Shared
+geometry/material lifetimes belong to their owner, not every pooled mesh.
+The paired executable test checks creation count, identity reuse and disposal
+signals instead of inventing a GPU byte counter.
 
 ### Step 4.3: Instanced Objects
 
@@ -733,6 +556,7 @@ export class InstancedObjects {
     private mesh!: THREE.InstancedMesh;
     private count: number;
     private index = 0;
+    private disposed = false;
     private matrix: THREE.Matrix4;
     private position: THREE.Vector3;
     private quaternion: THREE.Quaternion;
@@ -780,11 +604,11 @@ export class InstancedObjects {
     }
 
     public dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
         this.scene.remove(this.mesh);
-        this.mesh.geometry.dispose();
-        if (this.mesh.material instanceof THREE.Material) {
-            this.mesh.material.dispose();
-        }
+        this.mesh.dispose();
+        // Geometry/material are borrowed from the caller and remain its responsibility.
     }
 }
 ```
@@ -793,61 +617,21 @@ export class InstancedObjects {
 
 ### Step 5.1: Effects Composer Setup
 
-```typescript
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+Keep an explicit ownership list of added passes. Dispose each owned pass once,
+then the composer. Composer disposal does not establish that bloom/pass-owned
+render targets were released. Update composer/pass sizes on resize. Choose
+post-processing from measured device budget, not user-agent detection. The
+lifecycle fixture intentionally uses a basic material with no effects. An effects
+pipeline needs rendered resize/restart checks before claiming lifecycle coverage.
 
-export class PostProcessing {
-    private composer!: EffectComposer;
-
-    constructor(
-        private renderer: THREE.WebGLRenderer,
-        private scene: THREE.Scene,
-        private camera: THREE.PerspectiveCamera
-    ) {
-        this.setup();
-    }
-
-    private setup(): void {
-        this.composer = new EffectComposer(this.renderer);
-
-        // Base render pass
-        const renderPass = new RenderPass(this.scene, this.camera);
-        this.composer.addPass(renderPass);
-
-        // Bloom (only on desktop)
-        if (!this.isMobile()) {
-            const bloomPass = new UnrealBloomPass(
-                new THREE.Vector2(window.innerWidth, window.innerHeight),
-                0.5,  // strength
-                0.4,  // radius
-                0.85  // threshold
-            );
-            this.composer.addPass(bloomPass);
-        }
-    }
-
-    private isMobile(): boolean {
-        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-               window.innerWidth < 768;
-    }
-
-    public render(): void {
-        this.composer.render();
-    }
-
-    public dispose(): void {
-        this.composer.dispose();
-    }
-}
-```
 
 ### Step 5.2: Custom Shader Pass
 
+This integration fragment assumes a caller-owned `composer`. The caller must
+register and later dispose `vignettePass` under the pass ownership contract above.
+
 ```typescript
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 // Vignette shader
 const VignetteShader = {
     uniforms: {
@@ -894,6 +678,7 @@ export class InteractionSystem {
     private raycaster: THREE.Raycaster;
     private mouse: THREE.Vector2;
     private intersected: THREE.Object3D[] = [];
+    private readonly listeners = new AbortController();
 
     constructor(
         private camera: THREE.PerspectiveCamera,
@@ -905,8 +690,8 @@ export class InteractionSystem {
     }
 
     private setupEventListeners(): void {
-        this.domElement.addEventListener('mousemove', this.onMouseMove.bind(this));
-        this.domElement.addEventListener('click', this.onClick.bind(this));
+        this.domElement.addEventListener('mousemove', this.onMouseMove.bind(this), { signal: this.listeners.signal });
+        this.domElement.addEventListener('click', this.onClick.bind(this), { signal: this.listeners.signal });
     }
 
     private updateMouse(event: MouseEvent): void {
@@ -938,6 +723,12 @@ export class InteractionSystem {
                 new CustomEvent('object-clicked', { detail: { object } })
             );
         }
+    }
+
+    public dispose(): void {
+        this.listeners.abort();
+        this.intersected = [];
+        this.domElement.style.cursor = 'default';
     }
 
     public setTargets(objects: THREE.Object3D[]): void {
@@ -1053,7 +844,7 @@ gsap.to(mesh.rotation, {
 | # | Mistake | Why It Fails | Solution |
 |---|---------|---------------|----------|
 | 1 | Creating objects in render loop | GC spikes, FPS drops | Pool, reuse |
-| 2 | Not disposing materials | Memory leak | Dispose on remove |
+| 2 | Not disposing materials | Memory leak | Dispose owned resources after their final user releases them |
 | 3 | Too many lights | Shadow map overhead | Baked lighting, few lights |
 | 4 | No LOD | Mobile GPU overload | Level of detail |
 | 5 | High-poly meshes everywhere | Performance death | LOD, instancing |
@@ -1126,3 +917,7 @@ gsap.to(mesh.rotation, {
 - [ ] Mobile optimization
 - [ ] Memory profiling
 - [ ] FPS monitoring
+
+## Executable lifecycle reference
+
+See [the Three.js fixture](../../tests/game/fixtures/threejs-lifecycle/README.md) for a pinned TypeScript build and a seeded playable loop with actual keyboard/touch events, bounded pool tests, pause/restart and build-linked screenshots. Keep CPU/GPU performance claims UNVERIFIED until measured on the intended device.

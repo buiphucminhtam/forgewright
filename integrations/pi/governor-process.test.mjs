@@ -20,14 +20,23 @@ if(process.argv[2]==='child'){
  test('GOVERNOR-MEM-01: default scheduling reservations retain measured low-resource margin',()=>{
   assert.deepEqual(HOST_MEMORY_RESERVATION_MIB,{worker:192,heavy:128});
  });
- test('GOV-PROCESS-01: five actual project processes share worker/heavy caps and finish, then broker exits idle', {timeout:35000},async()=>{
+ test('GOV-PROCESS-01: five actual project processes share worker/heavy caps and finish, then broker exits idle', {timeout:100000},async()=>{
   const previous=process.env.FORGEWRIGHT_ADMISSION_HOME;
   const root=realpathSync(mkdtempSync(join(tmpdir(),'fw-gov-process-')));
   const home=join(root,'state');process.env.FORGEWRIGHT_ADMISSION_HOME=home;
   const children=[];
   try{
-   const baseline=await getHostAdmissionStatus();
-   assert.equal(baseline.paused,false,`Host under pressure: ${JSON.stringify(baseline)}`);
+   // Startup now requires a fresh 15-second observation window. Keep the
+   // readiness budget bounded and fail with telemetry rather than skip caps.
+   const readyDeadline=performance.now()+45000;
+   let baseline;
+   do {
+    baseline=await getHostAdmissionStatus();
+    if(!baseline.paused && baseline.availableMiB-baseline.reservedMiB>=baseline.headroomMiB+128) break;
+    await pause(500);
+   } while(performance.now()<readyDeadline);
+   assert.equal(baseline.paused,false,`Host readiness timed out: ${JSON.stringify(baseline)}`);
+   assert.ok(baseline.availableMiB-baseline.reservedMiB>=baseline.headroomMiB+128,`Host budget unavailable: ${JSON.stringify(baseline)}`);
    const results=await Promise.all(Array.from({length:5},(_,i)=>{
     const project=join(root,`p${i}`);mkdirSync(project);
     return new Promise((resolve,reject)=>{
@@ -37,12 +46,14 @@ if(process.argv[2]==='child'){
     });
    }));
    const events=results.flat();assert.equal(events.filter(e=>e.event==='finished').length,5);
-   for(const e of events.filter(e=>e.state)){assert.ok(e.state.active_workers<=2);assert.ok(e.state.active_heavy<=1);assert.equal(e.state.quarantined,0);}
+   for(const e of events.filter(e=>e.state)){assert.ok(e.state.active_workers<=e.state.worker_limit);assert.ok(e.state.worker_limit<=2);assert.ok(e.state.active_heavy<=1);assert.equal(e.state.quarantined,0);}
    const state=await getHostAdmissionStatus();assert.equal(state.active_workers,0);assert.equal(state.active_heavy,0);assert.equal(state.queued,0);
    const end=Date.now()+18000;while(existsSync(join(home,'broker.sock'))&&Date.now()<end)await pause(100);
    assert.equal(existsSync(join(home,'broker.sock')),false,'Broker must exit rather than remain resident for idle projects');
   }finally{
    for(const child of children)if(child.exitCode===null)child.kill();
+   const cleanupDeadline=Date.now()+18000;
+   while(existsSync(join(home,'broker.sock'))&&Date.now()<cleanupDeadline)await pause(100);
    if(previous===undefined)delete process.env.FORGEWRIGHT_ADMISSION_HOME;else process.env.FORGEWRIGHT_ADMISSION_HOME=previous;
    if(!existsSync(join(home,'broker.sock')))rmSync(root,{recursive:true,force:true});
   }

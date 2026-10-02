@@ -21,10 +21,16 @@ class MemorySnapshot:
     available_bytes: int
     pressure: str
     source: str
+    # One-minute runnable/blocked load per logical CPU, not temperature or CPU %.
+    load_ratio: float | None = None
+    # Discounted file cache estimate, never guaranteed allocatable memory.
+    reclaimable_estimate_bytes: int = 0
+    swap_total_bytes: int | None = None
+    immediate_bytes: int | None = None
 
     @property
     def worker_limit(self) -> int:
-        return 1 if self.total_bytes <= 4 * GIB or self.pressure != "normal" else 2
+        return 1 if self.total_bytes <= 8 * GIB or self.pressure != "normal" else 2
 
     @property
     def headroom(self) -> int:
@@ -103,6 +109,10 @@ def inspect_process(pid: int) -> str | None:
 def memory_snapshot() -> MemorySnapshot:
     """Use OS pressure and available/reclaimable memory, not free percent alone."""
     try:
+        load_ratio = os.getloadavg()[0] / max(1, os.cpu_count() or 1)
+    except (AttributeError, OSError):
+        load_ratio = None
+    try:
         if sys.platform == "darwin":
             values = command(
                 [
@@ -119,15 +129,36 @@ def memory_snapshot() -> MemorySnapshot:
             available = (
                 sum(
                     int(pages.get(k, 0))
-                    for k in ("Pages free", "Pages inactive", "Pages speculative")
+                    # Inactive anonymous pages may require swap before reuse.
+                    # Count only free, speculative and explicitly purgeable pages.
+                    for k in ("Pages free", "Pages purgeable", "Pages speculative")
                 )
                 * page_size
             )
-            pressure = (
-                "critical" if level >= 4 else "warning" if level >= 2 else "normal"
+            pressure = {1: "normal", 2: "warning", 4: "critical"}.get(level, "unknown")
+            # File-backed includes speculative and may overlap purgeable.
+            # Subtract both before a policy 50% uncertainty discount. Neither
+            # inactive anonymous pages nor compressor storage earns credit.
+            reclaimable = (
+                max(
+                    0,
+                    int(pages["File-backed pages"])
+                    - int(pages["Pages speculative"])
+                    - int(pages["Pages purgeable"]),
+                )
+                * page_size
+                // 2
             )
+            swap_total = (int(pages["Swapins"]) + int(pages["Swapouts"])) * page_size
             return MemorySnapshot(
-                total, available, pressure, "darwin-vm-stat+memorystatus"
+                total,
+                available,
+                pressure,
+                "darwin-vm-stat+memorystatus",
+                load_ratio,
+                reclaimable,
+                swap_total,
+                available,
             )
         if sys.platform.startswith("linux"):
             rows = dict(
@@ -154,7 +185,9 @@ def memory_snapshot() -> MemorySnapshot:
                     if some >= 5
                     else "normal"
                 )
-            return MemorySnapshot(total, available, pressure, "linux-memavailable+psi")
+            return MemorySnapshot(
+                total, available, pressure, "linux-memavailable+psi", load_ratio
+            )
         if os.name == "nt":
             rows = json.loads(
                 command(
