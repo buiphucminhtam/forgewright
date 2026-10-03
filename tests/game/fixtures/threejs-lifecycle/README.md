@@ -48,9 +48,10 @@ Separate schema-v2 verification records bind the exact tested source tree.
 Current upgrade acceptance is tracked separately in
 [canonical project status](../../../../docs/project-state.json).
 
-The observed unit mutation changed the compiled win transition, failed the same
-unit oracle, restored exact bytes and passed again. Browser mutation remains
-planned and UNVERIFIED until host admission permits the browser oracle. Never
+The observed unit and browser mutations changed the compiled win transition to
+a loss. Each failed its unchanged oracle, restored exact bytes and passed again.
+The browser run used the pinned Chromium revision and actual keyboard and
+emulated touch input. Physical mobile performance remains UNVERIFIED. Never
 weaken assertions to accept a mutation.
 
 ## Basis
