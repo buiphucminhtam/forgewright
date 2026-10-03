@@ -43,9 +43,9 @@ The interactive server defaults to `http://127.0.0.1:4173`. Stop it with Ctrl+C.
   Unity execution and production suitability remain UNVERIFIED.
 
 Recorded local runs have passed TypeScript, unit and desktop Chromium checks.
-The browser receipt identifies the tested source tree, served build and rendered
-screenshots. Consult that receipt for the exact snapshot, not this README as
-proof for a later edit. Current upgrade acceptance is tracked separately in
+The browser receipt records the served-byte build hash and rendered screenshots.
+Separate schema-v2 verification records bind the exact tested source tree.
+Current upgrade acceptance is tracked separately in
 [canonical project status](../../../../docs/project-state.json).
 
 The observed unit mutation changed the compiled win transition, failed the same

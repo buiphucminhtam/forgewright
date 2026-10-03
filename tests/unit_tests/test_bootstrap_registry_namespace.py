@@ -126,16 +126,19 @@ def test_invalid_registry_namespace_fails_closed(bm, fixture, name, payload):
 
 
 def test_cli_bootstrap_registry_namespace_uses_the_canonical_path():
+    from tests.ci_tools import node_module_file
+
+    root = Path(__file__).resolve().parents[2]
     result = subprocess.run(
         [
             "node",
-            "node_modules/vitest/vitest.mjs",
+            node_module_file(root, "cli", "vitest/vitest.mjs"),
             "run",
             "tests/bootstrap.test.ts",
             "-t",
             "namespaces bootstrap registration",
         ],
-        cwd=Path(__file__).resolve().parents[2] / "src/cli",
+        cwd=root / "src/cli",
         capture_output=True,
         text=True,
         timeout=45,

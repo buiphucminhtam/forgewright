@@ -262,7 +262,7 @@ The maturity labels below follow the [capability inventory](docs/capability-matu
 
 ### 1. Code Intelligence (GitNexus)
 
-**Docs-only integration.** Relationship navigation and impact analysis, limited by stale indexes and dynamic code. [Guide](docs/guides/gitnexus.md).
+**Docs-only integration.** Relationship navigation and impact analysis remain limited by stale indexes and dynamic code, and compatibility paths and user overrides are not universally enforced. [Guide](docs/guides/gitnexus.md).
 
 ### 2. Autonomous Testing Stack
 

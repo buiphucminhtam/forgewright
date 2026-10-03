@@ -4,6 +4,8 @@ from pathlib import Path
 import os
 import subprocess
 
+from tests.ci_tools import node_module_file
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -11,7 +13,7 @@ def test_native_mcp_startup_contention_and_ownership_contract():
     result = subprocess.run(
         [
             "node",
-            "node_modules/vitest/vitest.mjs",
+            node_module_file(ROOT, "mcp", "vitest/vitest.mjs"),
             "run",
             "src/runtime/lifecycle-lease.test.ts",
             "--reporter=basic",
