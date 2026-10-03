@@ -625,7 +625,7 @@ class LocalCI:
         self.run(
             "required-repository-checks",
             [self.bash, "scripts/ci/run-required-checks.sh"],
-            timeout=1800,
+            timeout=max(1800, self.timeout),
         )
         self.run(
             "skill-contracts",
@@ -946,7 +946,9 @@ class LocalCI:
         cli_vitest = self._node_module_file("cli", "vitest/vitest.mjs")
         assert mcp_tsc and cli_tsc and mcp_vitest and cli_vitest
         if self.run("mcp-typecheck", [mcp_tsc, "--noEmit"], cwd=ROOT / "mcp") != 0:
-            raise GateFailure("MCP strict checking failed, dependent emit/tests blocked")
+            raise GateFailure(
+                "MCP strict checking failed, dependent emit/tests blocked"
+            )
         # Emit only after strict checking, before real stdio tests consume build/.
         if self.run("mcp-emit", [mcp_tsc, "--noCheck"], cwd=ROOT / "mcp") != 0:
             raise GateFailure("MCP emit failed, dependent native tests blocked")
