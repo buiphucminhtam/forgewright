@@ -118,7 +118,12 @@ function redactSecrets(text: string): string {
 }
 
 function redactAuditValue(value: unknown, key?: string): unknown {
-  if (key && /(?:token|secret|password|api[_-]?key|authorization)/i.test(key)) {
+  // A sensitive key name redacts its value. The one exception is a numeric
+  // token count (`tokens`, `summaryTokens`): it is a size estimate, never a
+  // credential. Numeric values under any other sensitive key stay redacted.
+  const tokenCount =
+    typeof value === 'number' && Number.isFinite(value) && /tokens$/i.test(key ?? '');
+  if (key && !tokenCount && /(?:token|secret|password|api[_-]?key|authorization)/i.test(key)) {
     return '[REDACTED]';
   }
   if (typeof value === 'string') return redactSecrets(value);

@@ -66,6 +66,49 @@ describe('MiddlewareChain', () => {
     }
   });
 
+  it('preserves a numeric token count without relaxing credential redaction', async () => {
+    // fw_load_skill_overlay reports an estimated token count under "tokens".
+    // That number is not a credential and must not fail the result.
+    const chain = new MiddlewareChain({
+      config: { session_deduplication: { enabled: false }, tool_sandbox: { enable_audit: false } },
+      policyEvaluator: { evaluate: async () => ({ action: 'allow' }) },
+    });
+    const overlay: ToolResult = {
+      content: [{ type: 'text', text: '# Software Engineer (LITE)' }],
+      structuredContent: {
+        name: 'software-engineer',
+        digest: 'a'.repeat(64),
+        bytes: 26,
+        tokens: 7,
+      },
+    };
+    const result = await executeRead(
+      chain,
+      makeToolCall('fw_load_skill_overlay', { name: 'software-engineer' }),
+      overlay,
+    );
+    expect(result.result.isError).toBeFalsy();
+    expect(result.qualityGate?.blocked).toBe(false);
+    expect(result.result.structuredContent).toEqual(overlay.structuredContent);
+    for (const structuredContent of [
+      { tokens: 'very-private-synthetic-token' },
+      { token: 'very-private-synthetic-token' },
+      { apiKey: 'very-private-synthetic-token' },
+      { token: 123456789 },
+      { password: 123456789 },
+    ]) {
+      const blocked = await executeRead(
+        chain,
+        makeToolCall('fw_load_skill_overlay', { name: 'software-engineer' }),
+        { ...overlay, structuredContent },
+      );
+      expect(blocked.result.isError).toBe(true);
+      expect(blocked.result.structuredContent).toBeUndefined();
+      expect(JSON.stringify(blocked.result)).not.toContain('very-private-synthetic-token');
+      expect(JSON.stringify(blocked.result)).not.toContain('123456789');
+    }
+  });
+
   it('keeps a safe underlying error reason while still blocking the failed tool', async () => {
     const chain = new MiddlewareChain({
       config: { tool_sandbox: { enable_audit: false } },
