@@ -4,6 +4,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
+# shellcheck source=scripts/ci/docs-continuity.sh
+source "$root/scripts/ci/docs-continuity.sh"
 
 # MCP middleware tests append runtime-only quality events below the package cwd.
 # Preserve the caller's exact state so this verifier can be replayed without
@@ -97,6 +99,6 @@ run_check canonical-state \
     tests/unit_tests/test_docs_project_state_schema.py \
     tests/unit_tests/test_documentation_governance_protocol.py
 run_check kernel-token-budget bash scripts/lite/test-kernel-tokens.sh
-run_check docs-gate \
-  npm --prefix src/cli exec -- tsx src/cli/src/index.ts docs gate . --worktree --json
+run_check docs-gate run_docs_continuity \
+  npm --prefix src/cli exec -- tsx src/cli/src/index.ts
 run_check diff-check git diff --check
