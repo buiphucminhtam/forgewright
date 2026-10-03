@@ -109,6 +109,55 @@ describe('MiddlewareChain', () => {
     }
   });
 
+  it('rejects numeric credential keys ending in tokens and redacts audit arguments', async () => {
+    const auditDir = mkdtempSync(join(tmpdir(), 'forgewright-chain-audit-'));
+    const chain = new MiddlewareChain({
+      config: {
+        session_deduplication: { enabled: false },
+        tool_sandbox: { enable_audit: true, audit_log_dir: auditDir },
+      },
+      policyEvaluator: { evaluate: async () => ({ action: 'allow' }) },
+    });
+    const sensitive = {
+      secretTokens: 123456789,
+      authorizationTokens: 123456789,
+      api_key_tokens: 123456789,
+      nested: { passwordTokens: 123456789 },
+      array: [{ SECRET_TOKENS: 123456789 }],
+    };
+    const overlay: ToolResult = {
+      content: [{ type: 'text', text: '# Software Engineer (LITE)' }],
+      structuredContent: { name: 'software-engineer', tokens: 7 },
+    };
+    const allowed = await executeRead(
+      chain,
+      makeToolCall('fw_load_skill_overlay', { ...sensitive, tokens: 123456789 }),
+      overlay,
+    );
+    expect(allowed.result.isError).toBeFalsy();
+    expect(allowed.result.structuredContent).toEqual(overlay.structuredContent);
+    const auditPath = join(auditDir, 'test-session', '1', 'fw_load_skill_overlay');
+    const audit = readFileSync(join(auditPath, readdirSync(auditPath)[0]), 'utf8');
+    expect(audit).not.toContain('123456789');
+    expect(JSON.parse(audit).args).toEqual({
+      secretTokens: '[REDACTED]',
+      authorizationTokens: '[REDACTED]',
+      api_key_tokens: '[REDACTED]',
+      nested: { passwordTokens: '[REDACTED]' },
+      array: [{ SECRET_TOKENS: '[REDACTED]' }],
+      tokens: '[REDACTED]',
+    });
+    for (const [key, value] of Object.entries(sensitive)) {
+      const blocked = await executeRead(chain, makeToolCall('fw_load_skill_overlay', {}), {
+        ...overlay,
+        structuredContent: { [key]: value },
+      });
+      expect(blocked.result.isError).toBe(true);
+      expect(blocked.result.structuredContent).toBeUndefined();
+      expect(JSON.stringify(blocked.result)).not.toContain('123456789');
+    }
+  });
+
   it('keeps a safe underlying error reason while still blocking the failed tool', async () => {
     const chain = new MiddlewareChain({
       config: { tool_sandbox: { enable_audit: false } },
