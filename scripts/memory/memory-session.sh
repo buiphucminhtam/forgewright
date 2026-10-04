@@ -50,44 +50,105 @@ init_session() {
     project_name=$(git remote get-url origin 2>/dev/null) || project_name="local"
     project_name=$(basename "${project_name}" .git)
 
-    python3 -c '
+    local initial_json
+    initial_json=$(python3 -c '
 import json, sys
 session_id, project, now = sys.argv[1:]
 print(json.dumps({
     "session_id": session_id, "project": project, "started_at": now,
     "message_count": 0, "last_checkpoint_at": now, "checkpoints": [],
 }, indent=2))
-' "${session_id}" "${project_name}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${SESSION_FILE}"
+' "${session_id}" "${project_name}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)")
+    state_transaction "${1:-start}" "${initial_json}" >/dev/null
 
     log "Session started: ${session_id}"
     log "Project: ${project_name}"
     log "Checkpoint interval: every ${CHECKPOINT_INTERVAL} messages"
 }
 
-load_session() {
+ensure_session() {
     if [[ ! -f "${SESSION_FILE}" ]]; then
-        init_session >&2
+        init_session initialize >&2
     fi
-    python3 -c '
-import json, sys
-with open(sys.argv[1]) as stream:
-    data = json.load(stream)
-if not isinstance(data, dict):
-    raise ValueError("memory session must be an object")
-count = data.get("message_count", 0)
-if type(count) is not int or count < 0:
-    raise ValueError("memory session message_count must be a nonnegative integer")
-if not isinstance(data.get("checkpoints", []), list):
-    raise ValueError("memory session checkpoints must be a list")
-data.setdefault("message_count", 0)
-data.setdefault("checkpoints", [])
-print(json.dumps(data))
-' "${SESSION_FILE}"
 }
 
-save_session() {
-    local session_data="$1"
-    echo "${session_data}" > "${SESSION_FILE}"
+load_session() {
+    ensure_session
+    state_transaction read
+}
+
+state_transaction() {
+    # The process owning the kernel lock also owns the complete state mutation.
+    # No child writer can outlive a dead lock owner on Windows or POSIX.
+    python3 -c '
+import json, os, sys, tempfile, time
+from pathlib import Path
+target, operation, *args = sys.argv[1:]
+target = Path(target)
+with open(target.with_suffix(".lock"), "a+b") as lock:
+    if os.name == "nt":
+        import msvcrt
+        def acquire():
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        def acquire():
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            acquire()
+            break
+        except OSError:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("memory session writer is busy")
+            time.sleep(0.05)
+    if operation == "start" or (operation == "initialize" and not target.exists()):
+        data = json.loads(args[0])
+    else:
+        with target.open() as stream:
+            data = json.load(stream)
+    if not isinstance(data, dict):
+        raise ValueError("memory session must be an object")
+    count = data.get("message_count", 0)
+    if type(count) is not int or count < 0:
+        raise ValueError("memory session message_count must be a nonnegative integer")
+    if not isinstance(data.get("checkpoints", []), list):
+        raise ValueError("memory session checkpoints must be a list")
+    data.setdefault("message_count", 0)
+    data.setdefault("checkpoints", [])
+    checkpoint = None
+    if operation in ("tick", "checkpoint"):
+        if operation == "tick":
+            interval = int(args.pop(0))
+            if interval <= 0:
+                raise ValueError("memory checkpoint interval must be positive")
+            count += 1
+            data["message_count"] = count
+        if operation == "checkpoint" or count % interval == 0:
+            checkpoint_id, reason, now, summary = args
+            checkpoint = {"id": checkpoint_id, "reason": reason, "at": now, "summary": summary}
+            data["message_count"] = 0
+            data["last_checkpoint_at"] = now
+            data["checkpoints"].append(checkpoint)
+    if operation != "read" and not (operation == "initialize" and target.exists()):
+        fd, temporary = tempfile.mkstemp(prefix=".current-session-", dir=target.parent)
+        try:
+            with os.fdopen(fd, "w") as stream:
+                json.dump(data, stream, indent=2)
+                stream.write("\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, target)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+    if operation == "read":
+        print(json.dumps(data))
+    else:
+        print(json.dumps({"checkpoint": checkpoint, "checkpoint_message_count": count}))
+' "${SESSION_FILE}" "$@"
 }
 
 #────────────────────────────────────────────────────────────────────────────
@@ -97,19 +158,22 @@ save_session() {
 do_checkpoint() {
     local reason="${1:-manual}"
 
-    # Load current session
-    local session_json
-    session_json=$(load_session)
-
-    # Extract values
-    local message_count
-    message_count=$(echo "${session_json}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['message_count'])")
+    ensure_session
 
     local checkpoint_id="cp-$(date +%Y%m%d-%H%M%S)"
 
     # Generate checkpoint summary
     local summary
     summary=$(generate_checkpoint_summary "${reason}")
+
+    local result message_count
+    result=$(state_transaction checkpoint "${checkpoint_id}" "${reason}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${summary}")
+    message_count=$(printf '%s\n' "${result}" | python3 -c 'import sys,json; print(json.load(sys.stdin)["checkpoint_message_count"])')
+    record_checkpoint "${checkpoint_id}" "${message_count}" "${reason}" "${summary}"
+}
+
+record_checkpoint() {
+    local checkpoint_id="$1" message_count="$2" reason="$3" summary="$4"
 
     # Save to memory (Legacy Token-Savior / mem0)
     if command -v python3 &>/dev/null; then
@@ -133,22 +197,6 @@ do_checkpoint() {
                 --threshold 1.0 2>/dev/null || true
         fi
     fi
-
-    # Update session
-    local updated_json
-    updated_json=$(echo "${session_json}" | python3 -c '
-import sys, json
-d = json.load(sys.stdin)
-checkpoint_id, reason, now, summary = sys.argv[1:]
-d["message_count"] = 0
-d["last_checkpoint_at"] = now
-d["checkpoints"].append({
-    "id": checkpoint_id, "reason": reason, "at": now, "summary": summary,
-})
-print(json.dumps(d, indent=2))
-' "${checkpoint_id}" "${reason}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${summary}")
-
-    save_session "${updated_json}"
 
     # Update conversation summary file
     append_to_summary "${checkpoint_id}" "${reason}" "${summary}"
@@ -194,29 +242,15 @@ EOF
 #────────────────────────────────────────────────────────────────────────────
 
 increment_message() {
-    local session_json
-    session_json=$(load_session)
-
-    local new_count
-    new_count=$(echo "${session_json}" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-d['message_count'] = d.get('message_count', 0) + 1
-print(d['message_count'])
-print(json.dumps(d))
-" 2>/dev/null)
-
-    local new_json
-    # Do not pipe a growing session through head: early close raises SIGPIPE
-    # under pipefail once the checkpoint history exceeds the pipe buffer.
-    new_json="${new_count#*$'\n'}"
-    new_count="${new_count%%$'\n'*}"
-
-    save_session "${new_json}"
-
-    # Check if checkpoint needed
-    if [[ $(( new_count % CHECKPOINT_INTERVAL )) -eq 0 ]]; then
-        do_checkpoint "interval:${CHECKPOINT_INTERVAL}"
+    ensure_session
+    local reason="interval:${CHECKPOINT_INTERVAL}"
+    local checkpoint_id="cp-$(date +%Y%m%d-%H%M%S)"
+    local summary result message_count
+    summary=$(generate_checkpoint_summary "${reason}")
+    result=$(state_transaction tick "${CHECKPOINT_INTERVAL}" "${checkpoint_id}" "${reason}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${summary}")
+    message_count=$(printf '%s\n' "${result}" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["checkpoint_message_count"] if d["checkpoint"] else "")')
+    if [[ -n "${message_count}" ]]; then
+        record_checkpoint "${checkpoint_id}" "${message_count}" "${reason}" "${summary}"
     fi
 }
 
