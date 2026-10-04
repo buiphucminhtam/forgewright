@@ -111,3 +111,11 @@ tests/game/
 Xem `tests/coverage/thresholds.json` — `game_test_quality` section.
 
 Xem `skills/_shared/protocols/game-test-protocol.md` — chi tiet day du.
+
+## Executable Three.js reference
+
+[Signal Dash](fixtures/threejs-lifecycle/README.md) provides a pinned TypeScript
+fixture for damage arithmetic, bounded mesh pooling, lifecycle cleanup and a
+seeded playable loop. Its browser tests use keyboard/touch input and save
+build-linked screenshots. Runtime receipts, not this documentation, establish
+which checks actually ran. Mobile hardware performance remains unverified.

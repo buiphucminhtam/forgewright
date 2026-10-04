@@ -47,18 +47,17 @@ init_session() {
 
     local session_id="session-$(date +%Y%m%d-%H%M%S)"
     local project_name
-    project_name=$(git remote get-url origin 2>/dev/null | basename -s .git 2>/dev/null || echo "local")
+    project_name=$(git remote get-url origin 2>/dev/null) || project_name="local"
+    project_name=$(basename "${project_name}" .git)
 
-    cat > "${SESSION_FILE}" << EOF
-{
-  "session_id": "${session_id}",
-  "project": "${project_name}",
-  "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "message_count": 0,
-  "last_checkpoint_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "checkpoints": []
-}
-EOF
+    python3 -c '
+import json, sys
+session_id, project, now = sys.argv[1:]
+print(json.dumps({
+    "session_id": session_id, "project": project, "started_at": now,
+    "message_count": 0, "last_checkpoint_at": now, "checkpoints": [],
+}, indent=2))
+' "${session_id}" "${project_name}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${SESSION_FILE}"
 
     log "Session started: ${session_id}"
     log "Project: ${project_name}"
@@ -67,9 +66,23 @@ EOF
 
 load_session() {
     if [[ ! -f "${SESSION_FILE}" ]]; then
-        init_session
+        init_session >&2
     fi
-    cat "${SESSION_FILE}"
+    python3 -c '
+import json, sys
+with open(sys.argv[1]) as stream:
+    data = json.load(stream)
+if not isinstance(data, dict):
+    raise ValueError("memory session must be an object")
+count = data.get("message_count", 0)
+if type(count) is not int or count < 0:
+    raise ValueError("memory session message_count must be a nonnegative integer")
+if not isinstance(data.get("checkpoints", []), list):
+    raise ValueError("memory session checkpoints must be a list")
+data.setdefault("message_count", 0)
+data.setdefault("checkpoints", [])
+print(json.dumps(data))
+' "${SESSION_FILE}"
 }
 
 save_session() {
@@ -90,7 +103,7 @@ do_checkpoint() {
 
     # Extract values
     local message_count
-    message_count=$(echo "${session_json}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message_count',0))" 2>/dev/null || echo "0")
+    message_count=$(echo "${session_json}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['message_count'])")
 
     local checkpoint_id="cp-$(date +%Y%m%d-%H%M%S)"
 
@@ -123,19 +136,17 @@ do_checkpoint() {
 
     # Update session
     local updated_json
-    updated_json=$(echo "${session_json}" | python3 -c "
+    updated_json=$(echo "${session_json}" | python3 -c '
 import sys, json
 d = json.load(sys.stdin)
-d['message_count'] = 0  # Reset counter
-d['last_checkpoint_at'] = '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
-d['checkpoints'].append({
-    'id': '${checkpoint_id}',
-    'reason': '${reason}',
-    'at': '$(date -u +%Y-%m-%dT%H:%M:%SZ)',
-    'summary': '${summary}'
+checkpoint_id, reason, now, summary = sys.argv[1:]
+d["message_count"] = 0
+d["last_checkpoint_at"] = now
+d["checkpoints"].append({
+    "id": checkpoint_id, "reason": reason, "at": now, "summary": summary,
 })
 print(json.dumps(d, indent=2))
-" 2>/dev/null || echo "${session_json}")
+' "${checkpoint_id}" "${reason}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${summary}")
 
     save_session "${updated_json}"
 
@@ -196,8 +207,10 @@ print(json.dumps(d))
 " 2>/dev/null)
 
     local new_json
-    new_json=$(echo "${new_count}" | tail -1)
-    new_count=$(echo "${new_count}" | head -1)
+    # Do not pipe a growing session through head: early close raises SIGPIPE
+    # under pipefail once the checkpoint history exceeds the pipe buffer.
+    new_json="${new_count#*$'\n'}"
+    new_count="${new_count%%$'\n'*}"
 
     save_session "${new_json}"
 

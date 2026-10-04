@@ -386,7 +386,12 @@ The canonical Forgewright MCP process acquires an external
 transport. The lease binds a 256-bit owner token, monotonic version, workspace,
 session, PID start, PGID, parent PID/start, command digest, TTL, and in-flight
 count. EOF, SIGINT, and SIGTERM close the exact owned lease idempotently. A
-startup reconciliation pass closes dead leases without a signal. For an expired
+startup reconciliation pass runs before acquisition and closes dead leases
+without a signal. Each startup entry gets one exclusive lock attempt. A
+contended entry reports `reconcile_error` without waiting, altering the lease,
+signalling its process, or removing its lock; the pass continues to later
+entries. Direct reaping, release, and handoff retain bounded lock retries.
+For an expired
 live lease, the reaper holds a per-lease lock and rechecks identity, command
 digest, ownership, version, and in-flight state immediately before TERM and
 KILL. It signals only the positive leased PID; PID reuse, token rotation,

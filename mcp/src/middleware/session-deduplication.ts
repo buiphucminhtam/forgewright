@@ -11,6 +11,8 @@
  */
 
 import { createHash } from 'node:crypto';
+import { realpathSync } from 'node:fs';
+import { ByteBoundedMap, CACHE_BYTE_LIMITS } from './byte-cache.js';
 import type { ToolContext, MiddlewareResult, ToolResult, MiddlewareConfig } from './types.js';
 
 /** Tools that should NEVER be deduplicated — they have side effects. */
@@ -29,7 +31,8 @@ interface DedupEntry {
   key: string;
   toolName: string;
   argsHash: string;
-  result: ToolResult;
+  serializedResult: string;
+  bytes: number;
   firstSeen: number;
   lastSeen: number;
   firstSeenTurn: number;
@@ -108,7 +111,8 @@ export class SessionDeduplicationMiddleware {
   name = 'session-deduplication';
   enabled = true;
 
-  private store = new Map<string, DedupEntry>();
+  private projectRoot = realpathSync(process.cwd());
+  private store = new ByteBoundedMap<DedupEntry>(this.projectRoot, (entry) => entry.bytes);
   // A pending miss belongs to one call, session, and epoch. A late read must
   // never be cached into an epoch that a concurrent mutation has advanced.
   private pendingKeys = new Map<string, PendingDedupEntry>();
@@ -125,6 +129,14 @@ export class SessionDeduplicationMiddleware {
 
   configure(config: MiddlewareConfig['session_deduplication']): void {
     if (!config) return;
+    if (config.project_root !== undefined) {
+      const project = realpathSync(config.project_root);
+      if (project !== this.projectRoot) {
+        this.reset();
+        this.projectRoot = project;
+        this.store = new ByteBoundedMap<DedupEntry>(project, (entry) => entry.bytes);
+      }
+    }
     this.enabled = config.enabled ?? this.enabled;
     const c = config as Record<string, unknown>;
     this.config = {
@@ -240,7 +252,6 @@ export class SessionDeduplicationMiddleware {
       existing.lastSeen = Date.now();
       existing.lastSeenTurn = ctx.turnNumber;
       existing.seenCount++;
-      existing.resultTokens = estimateTokens(existing.result);
 
       const tokensSaved = existing.resultTokens;
       const turnsAgo = ctx.turnNumber - existing.firstSeenTurn;
@@ -254,7 +265,7 @@ export class SessionDeduplicationMiddleware {
       return {
         action: 'cached',
         context: ctx,
-        cachedResult: existing.result,
+        cachedResult: JSON.parse(existing.serializedResult) as ToolResult,
         dedup: {
           seenCount: existing.seenCount,
           firstSeenTurn: existing.firstSeenTurn,
@@ -299,11 +310,32 @@ export class SessionDeduplicationMiddleware {
     const tokens = estimateTokens(result);
     if (tokens > 25_000) return;
 
+    // Serialize a private snapshot, including structuredContent. A bounded
+    // replacer rejects huge fields before constructing their serialized output.
+    let serializedResult: string;
+    let traversed = 0;
+    try {
+      serializedResult = JSON.stringify(result, (key, value: unknown) => {
+        traversed += key.length * 2 + 32;
+        if (typeof value === 'string')
+          traversed += value.length * 2 + Buffer.byteLength(value, 'utf8');
+        if (traversed > CACHE_BYTE_LIMITS.entry) throw new Error('cache-entry-too-large');
+        return value;
+      });
+    } catch {
+      return;
+    }
+    if (typeof serializedResult !== 'string') return;
+    const bytes =
+      512 +
+      2 * (serializedResult.length + pending.key.length + this.projectRoot.length) +
+      Buffer.byteLength(serializedResult, 'utf8');
     this.store.set(pending.key, {
       key: pending.key,
       toolName: ctx.call.toolName,
       argsHash: shortHash(normalizeArgs(ctx.call.toolArgs)),
-      result,
+      serializedResult,
+      bytes,
       firstSeen: Date.now(),
       lastSeen: Date.now(),
       firstSeenTurn: ctx.turnNumber,

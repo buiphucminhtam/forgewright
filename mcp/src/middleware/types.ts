@@ -156,6 +156,8 @@ export interface Middleware {
 
 export interface MiddlewareConfig {
   session_deduplication?: {
+    /** Host-configured project root, never taken from model tool arguments. Defaults to process cwd. */
+    project_root?: string;
     enabled?: boolean;
     window_turns?: number;
     window_ms?: number;

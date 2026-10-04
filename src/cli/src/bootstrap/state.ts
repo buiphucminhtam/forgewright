@@ -168,7 +168,7 @@ export function getBootstrapPolicyPath(): string {
 }
 
 export function getBootstrapRegistryPath(): string {
-  return join(getBootstrapHome(), "registry.json");
+  return join(getBootstrapHome(), "bootstrap-registry.json");
 }
 
 export function getBootstrapLauncherPath(): string {

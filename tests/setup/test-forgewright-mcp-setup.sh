@@ -1778,7 +1778,7 @@ ${BLUE}▶ Testing Durable Client-Config Ownership Ledger${NC}"
     local canonical_tsx="$TEST_HOME/.forgewright/mcp-server/node_modules/.bin/tsx"
     local canonical_server="$TEST_HOME/.forgewright/mcp-server/src/index.ts"
     local gitnexus_path
-    gitnexus_path="$(command -v gitnexus)"
+    gitnexus_path="$(source "$SCRIPT_DIR/forgewright-mcp-setup.sh"; resolve_gitnexus_executable)"
     mkdir -p "$(dirname "$codex_config")"
     cat > "$codex_config" <<EOF
 [mcp_servers.forgewright]

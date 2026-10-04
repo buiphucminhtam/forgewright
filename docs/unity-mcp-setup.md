@@ -4,14 +4,23 @@
 
 Hướng dẫn cài đặt và cấu hình **Unity-MCP** (IvanMurzak/Unity-MCP) để tích hợp với Forgewright Unity skills.
 
-**Unity-MCP** cung cấp 100+ MCP tools để thao tác với Unity Editor từ AI agents như Claude Code, Cursor, Gemini.
+Số tool, phiên bản Editor hỗ trợ và cách kết nối phụ thuộc bản Unity-MCP được pin.
+Chưa có Unity Editor/bridge được xác minh trên máy dùng cho đợt nâng cấp này, nên
+Unity live smoke hiện là **UNVERIFIED**.
+
+Các cấu hình bên dưới là mẫu tham khảo lịch sử, chưa phải cấu hình đã kiểm chứng
+cho upstream hiện tại. Trước khi cài, xác minh Editor từ `ProjectVersion.txt`,
+Test Framework từ package lock và pin chính xác bridge local. Chỉ dùng loopback.
+Không tự chạy installer, đăng nhập cloud OAuth, tạo credentials hoặc bật quyền
+reflection/Roslyn. Các ví dụ Docker/HTTP không phải lựa chọn mặc định cho local
+ForgeWright. Không thực hiện bước đó trong đợt nâng cấp này.
 
 ---
 
 ## Prerequisites
 
-- Unity 2021.3+ (LTS recommended)
-- Node.js 18+ (cho CLI)
+- Unity Editor đúng phiên bản của project và tương thích bản bridge đã pin
+- Runtime CLI theo yêu cầu của đúng bản bridge đã pin
 - AI agent hỗ trợ MCP (Claude Code, Cursor, Gemini, Copilot)
 
 > **⚠️ Important:** Project path không được chứa spaces
@@ -22,7 +31,7 @@ Hướng dẫn cài đặt và cấu hình **Unity-MCP** (IvanMurzak/Unity-MCP) 
 
 ## Installation
 
-### Option 1: CLI (Recommended)
+### Option 1: CLI (historical example, verify before use)
 
 #### 1.1 Install unity-mcp-cli
 
@@ -140,10 +149,14 @@ gemini mcp add ai-game-developer <command>
 
 ## Docker Deployment
 
+Các mẫu transport lịch sử dưới đây vẫn **UNVERIFIED**. Trước khi sử dụng, pin
+image bằng digest đã kiểm chứng và duyệt riêng bước chạy bridge. Port chỉ được
+bind vào loopback. Không chạy các mẫu này trong đợt nâng cấp hiện tại.
+
 ### streamableHttp Transport
 
 ```bash
-docker run -p 8080:8080 ivanmurzakdev/unity-mcp-server
+docker run -p 127.0.0.1:8080:8080 ivanmurzakdev/unity-mcp-server
 ```
 
 ```json
@@ -159,7 +172,7 @@ docker run -p 8080:8080 ivanmurzakdev/unity-mcp-server
 ### stdio Transport
 
 ```bash
-docker run -t -e MCP_PLUGIN_CLIENT_TRANSPORT=stdio -p 8080:8080 ivanmurzakdev/unity-mcp-server
+docker run -t -e MCP_PLUGIN_CLIENT_TRANSPORT=stdio -p 127.0.0.1:8080:8080 ivanmurzakdev/unity-mcp-server
 ```
 
 ---
@@ -441,13 +454,20 @@ public static class BuildScript
 
 ### Unity Test Framework Commands
 
-| Test Type | Command | Framework |
-|-----------|---------|-----------|
-| All tests | `dotnet test` | NUnit via Unity Test Framework |
-| Mechanics tests | `dotnet test --filter "Category=Mechanics"` | NUnit |
-| Combat tests | `dotnet test --filter "Category=Combat"` | NUnit |
-| UI tests | `dotnet test --filter "Category=UI"` | NUnit |
-| Editor tests | `unity -batchmode -executeMethod UnityEditor.TestTools.TestRunner.Runner.RunAllTests` | Unity Editor |
+Use the actual Unity Editor executable, not `dotnet test`, to run Unity Test Framework tests. Resolve the Editor version from `ProjectSettings/ProjectVersion.txt` and UTF from `Packages/packages-lock.json` before selecting versioned flags. No Editor was found at the standard Hub location on this Mac during this task, so native Unity execution remains **UNVERIFIED**.
+
+```bash
+# Supply paths discovered from the installed Editor and selected project.
+"$UNITY_EDITOR" -batchmode -projectPath "$UNITY_PROJECT" -runTests \
+  -testPlatform EditMode -testResults "$RESULTS/editmode.xml" -logFile "$RESULTS/editmode.log"
+"$UNITY_EDITOR" -batchmode -projectPath "$UNITY_PROJECT" -runTests \
+  -testPlatform PlayMode -testCategory Mechanics \
+  -testResults "$RESULTS/mechanics.xml" -logFile "$RESULTS/mechanics.log"
+```
+
+The [UTF 1.3 command reference](https://docs.unity3d.com/Packages/com.unity.test-framework@1.3/manual/reference-command-line.html) documents `-runTests`, `-testPlatform` and `-testCategory`. This is a versioned reference, not a claim that UTF 1.3 is installed. Use the documentation matching the locked package. Validate exit code plus the XML tests/results and reject missing or zero executed tests. Headless graphics limitations can affect PlayMode tests.
+
+Before using Unity MCP, inspect the installed bridge and pin its exact version. Prefer loopback/local-only transport. Cloud OAuth, reflection/Roslyn execution and remote endpoints are separate capabilities requiring explicit authority. Do not infer their approval from permission to run local tests.
 
 ### Headless Play Mode Test
 

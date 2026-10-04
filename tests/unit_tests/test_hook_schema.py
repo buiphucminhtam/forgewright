@@ -571,6 +571,9 @@ def test_lifecycle_context_hooks_fail_open_when_interpreter_is_missing(
 
 def test_global_codex_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:
     clean_git_workspace(tmp_path)
+    project_lite = tmp_path / "scripts" / "lite"
+    project_lite.mkdir(parents=True)
+    shutil.copy2(ROOT / "scripts/lite/stop-gate.sh", project_lite / "stop-gate.sh")
     project_config = tmp_path / ".codex" / "config.toml"
     project_config.parent.mkdir(parents=True)
     project_config.write_text(

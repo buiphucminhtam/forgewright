@@ -3,6 +3,7 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -18,6 +19,7 @@ import {
   currentForgewrightCommit,
   getBootstrapLauncherPath,
   getBootstrapPolicyPath,
+  getBootstrapRegistryPath,
   getProjectBootstrapPath,
   installBootstrapLauncher,
   loadBootstrapPolicy,
@@ -57,6 +59,19 @@ afterEach(() => {
 });
 
 describe("bootstrap global policy and preflight", () => {
+  it("namespaces bootstrap registration away from the legacy MCP registry", () => {
+    const home = tempRoot("registry-namespace");
+    process.env.FORGEWRIGHT_BOOTSTRAP_HOME = home;
+    const legacy = join(home, "registry.json");
+    const contents =
+      '{"version":"1.0","projects":{"/other":{"owner":"legacy"}}}\n';
+    writeFileSync(legacy, contents);
+    expect(getBootstrapRegistryPath()).toBe(
+      join(realpathSync(home), "bootstrap-registry.json"),
+    );
+    expect(readFileSync(legacy, "utf8")).toBe(contents);
+  });
+
   it("keeps plugin installation side-effect free until policy exists", () => {
     const home = tempRoot("home-none");
     process.env.FORGEWRIGHT_BOOTSTRAP_HOME = home;

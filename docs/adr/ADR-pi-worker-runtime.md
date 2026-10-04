@@ -94,7 +94,8 @@ finalization forces a non-successful CLI result even when task verifiers passed;
 verification is not promoted while the worker reservation remains quarantined.
 
 `host_admission_broker.py` and `host-governor.mjs` share a per-user SQLite
-transaction authority across processes: maximum two workers, one per project,
+transaction authority across processes: one worker on hosts with at most 8 GiB
+RAM, otherwise at most two workers, one per project,
 and one heavy job with a matching parent lease. Default scheduling reservations
 are 192 MiB for a Pi worker and 128 MiB for one single-process verifier. Those
 values are bounded estimates, not RSS enforcement: the target Mac measured
@@ -108,6 +109,56 @@ owner tokens protect lease operations. Unknown cleanup or lost active ownership
 quarantines its reserved capacity; TTL alone never authorizes replay. The broker
 is demand-started and exits after 15 idle seconds. It owns no product jobs,
 cloud connections or model weights.
+
+Admission also pauses new work when one-minute OS load divided by logical CPU
+count reaches 1.0, with a 15-second recovery hold. Load is a contention signal,
+not a temperature reading or CPU percentage. Existing workers keep their leases
+and are never suspended or killed by this sensor. Unknown memory pressure blocks
+new admission, including Linux without PSI and Windows without a verified pressure
+sensor. On macOS `immediateMiB` counts the printed free + speculative +
+purgeable pages. It is not the OS's total allocatable RAM. `reclaimableEstimateMiB`
+is half of max(0, file-backed - speculative - purgeable) bytes. This 50% discount
+is a conservative project policy, not an Apple guarantee that pages are clean.
+Inactive anonymous and compressed pages earn no credit. The estimator requires
+known normal pressure, load below 1.0, and monotonic cumulative swap-in plus swap-out counters across at least 15 seconds
+of observations. Gaps over 30 seconds, counter resets and unknown or unhealthy
+telemetry restart observation. Ordinary swap activity alone is not memory pressure.
+The larger of the latest sampled rate and the elapsed-time-weighted rate in the
+current window (at most 30 seconds) is multiplied by the existing 15-second recovery
+interval. This byte-valued heuristic reserve is subtracted only from discounted
+cache credit, clamped at zero. Swap I/O is not RAM allocation, so this projection
+is explicitly a risk reserve, not a physical consumption measurement. Headroom
+and known reservations remain separate. Large sustained swap or a recent spike
+can exhaust cache credit without vetoing ample immediate memory under normal
+pressure. No swap-rate cutoff or reduced headroom is introduced.
+Only one worker may use this estimated budget even on larger Macs.
+
+`availableMiB` is the current admission budget, including discounted cache only
+after observation. `headroomMiB` remains 512 on this 8 GiB machine. Known active
+and quarantined reservations are subtracted before each grant. Thus a 192 MiB
+worker needs a 704 MiB budget, and its 128 MiB heavy stage needs 832 MiB including
+the worker reservation. Neither number is a measured OS allocation requirement.
+A machine with sustained normal pressure, low load and sufficient net cache credit can progress despite low free pages and modest swap activity.
+Insufficient estimated budget remains queued and is never overridden by elapsed
+queue time. `swapCumulativeBytes` is historical activity, while
+`swapBytesPerSecond` is a sampled rate or null when the observation is uncertain.
+Swap used on disk alone does not diagnose current memory pressure or temperature.
+
+Apple's [Activity Monitor guidance](https://support.apple.com/guide/activity-monitor/view-memory-usage-actmntr1004/mac)
+distinguishes pressure, swap rate and cached files. The [vm_stat source](https://github.com/apple-oss-distributions/system_cmds/blob/system_cmds-950/vm_stat.tproj/vm_stat.c)
+prints free pages excluding speculative pages. These sources support the signal
+semantics, not the project's discount or thresholds. Reservations remain
+estimates, not per-process RSS limits. The routing LRU remains bounded to 512
+hashed decisions per cache instance, and terminal admission history to 256 rows.
+These bounds do not authorize deletion of user caches or unsaved editor state.
+
+The maintained host E2E first polls readiness for at most 45 seconds and fails
+with telemetry if capacity remains unavailable. It does not skip cap assertions.
+A separate bounded fixture drives the public JavaScript client through real Unix
+IPC and the Python scheduler. It covers an observed queued cancellation, timeout,
+15-second recovery, rejected and admitted heavy reservations, a subsequent worker,
+and voluntary broker exit. Its telemetry is synthetic and cannot certify the
+live memory sensor, host temperature, fullgate or installation readiness.
 
 The resource limit covers cooperating Pi clients on the same user/machine,
 not arbitrary external IDEs. Never terminate unowned work to gain memory.
@@ -562,3 +613,34 @@ The repository overview is a moving reference; the package/API references are
 bound to the published immutable revision above. A dependency upgrade requires
 reviewing the new revision and lockfile, then repeating target conformance and
 audit before any later activation decision.
+
+### MCP result cache follow-up
+
+The byte-bounded source candidate is documented in the canonical repository
+protocol `skills/_shared/protocols/session-deduplication.md`, section
+“Bounded result memory”. This source protocol is not included in the Docs Hub
+publication catalog.
+It accounts 512 KiB per entry, 2 MiB per physical project and 8 MiB per MCP process,
+including structured output snapshots. These limits complement host scheduling
+reservations and do not establish a host-wide RAM limit. Source data is never
+evicted. Focused verification passed 31 Vitest cases and six native middleware
+contracts, including observed baseline and mutation failures with exact restoration.
+The full aggregate gate and installed activation remain pending, so the prior
+governor gate must not be reused to certify this new cache tree.
+
+
+### Separate MCP compiler phases
+
+MCP build now runs strict `typecheck` before `build:emit` sequentially. Emit uses
+TypeScript `--noCheck` only after the complete `--noEmit` check. The same project
+configuration and file set remain in both phases, including tests. The default
+`npm run build` retains both phases and fails when either fails. Precommit also
+emits after checking and before native stdio tests, which require current build
+artifacts. The compiler minimum matches the root workspace range `^5.7.3` and
+supports `--noCheck`. Existing lockfile resolutions are unchanged.
+
+This separation allows individual peak-RSS measurement and avoids repeating
+semantic checking while producing artifacts. It does not establish a smaller
+reservation, remove strict validation, or prove a measured memory reduction.
+Task admission reservations remain unchanged until phase measurements justify a
+reviewed workload profile. A successful emit alone is never a completed build.

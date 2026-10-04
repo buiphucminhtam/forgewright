@@ -119,6 +119,40 @@ def test_local_ci_dry_run_can_plan_without_hosted_provider() -> None:
     assert "forgewright-local-ci/v1" in text
 
 
+@pytest.mark.parametrize("requested, expected", [(600, 1800), (30, 1800), (3600, 3600)])
+def test_full_aggregate_honors_larger_explicit_timeout(
+    requested: int,
+    expected: int,
+) -> None:
+    module = _module()
+    runner = module.LocalCI(
+        dry_run=True, keep_going=False, timeout=requested, base_ref=None
+    )
+    runner._require_node_dependencies = lambda: None
+    runner._require_python_dependencies = lambda *packages: None
+    calls = []
+    original_run = runner.run
+
+    def capture(name, argv, **kwargs):
+        calls.append((name, kwargs.get("timeout"), argv))
+        return original_run(name, argv, **kwargs)
+
+    runner.run = capture
+    runner.full()
+    assert calls[0] == (
+        "required-repository-checks",
+        expected,
+        [runner.bash, "scripts/ci/run-required-checks.sh"],
+    )
+    assert calls[1][1] == 900
+    assert [name for name, _, _ in calls] == [
+        "required-repository-checks",
+        "skill-contracts",
+        "lite-overlays",
+        "kernel-token-budget",
+    ]
+
+
 def test_precommit_runs_mandatory_docs_continuity_gate() -> None:
     module = _module()
     runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
@@ -265,3 +299,62 @@ def test_effective_env_omits_absent_local_bins_and_primary_node(
         parent_path,
     ]
     assert "FORGEWRIGHT_EFFECTIVE_NODE_BIN" not in env
+
+
+def test_precommit_checks_then_emits_before_native_stdio_tests() -> None:
+    module = _module()
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    runner._require_node_dependencies = lambda: None
+    runner._require_python_dependencies = lambda *packages: None
+    runner.review = lambda: None
+    runner._format_staged = lambda: None
+    runner.primary_node = "/tmp/fake-node/bin/node"
+    runner._node_bin = lambda component, name: f"/{component}/{name}"
+    runner._node_module_file = lambda component, relative: Path(
+        f"/{component}/{relative}"
+    )
+    runner.precommit()
+    names = [step.name for step in runner.results]
+    steps = {step.name: step.argv for step in runner.results}
+    assert (
+        names.index("mcp-typecheck")
+        < names.index("mcp-emit")
+        < names.index("mcp-tests")
+    )
+    assert steps["mcp-typecheck"] == ["/mcp/tsc", "--noEmit"]
+    assert steps["mcp-emit"] == ["/mcp/tsc", "--noCheck"]
+    import json
+
+    scripts = json.loads((ROOT / "mcp/package.json").read_text())["scripts"]
+    assert scripts["build"] == "npm run typecheck && npm run build:emit"
+    assert scripts["typecheck"] == "tsc --noEmit"
+    assert scripts["build:emit"] == "tsc --noCheck"
+
+
+@pytest.mark.parametrize("failed_phase", ["mcp-typecheck", "mcp-emit"])
+def test_precommit_compiler_failure_blocks_dependents_with_keep_going(
+    failed_phase,
+) -> None:
+    module = _module()
+    runner = module.LocalCI(dry_run=True, keep_going=True, timeout=1, base_ref=None)
+    runner._require_node_dependencies = lambda: None
+    runner._require_python_dependencies = lambda *packages: None
+    runner.review = lambda: None
+    runner._format_staged = lambda: None
+    runner.primary_node = "/tmp/fake-node/bin/node"
+    runner._node_bin = lambda component, name: f"/{component}/{name}"
+    runner._node_module_file = lambda component, relative: Path(
+        f"/{component}/{relative}"
+    )
+    calls = []
+
+    def failing_run(name, *args, **kwargs):
+        calls.append(name)
+        return 1 if name == failed_phase else 0
+
+    runner.run = failing_run
+    with pytest.raises(module.GateFailure):
+        runner.precommit()
+    assert "mcp-tests" not in calls
+    if failed_phase == "mcp-typecheck":
+        assert "mcp-emit" not in calls

@@ -117,17 +117,22 @@ function redactSecrets(text: string): string {
   return redacted;
 }
 
-function redactAuditValue(value: unknown, key?: string): unknown {
-  if (key && /(?:token|secret|password|api[_-]?key|authorization)/i.test(key)) {
+function redactAuditValue(value: unknown, key?: string, allowTokenCount = false): unknown {
+  // Only structured result metadata may carry the public numeric `tokens`
+  // count. Audit arguments and all other sensitive keys remain redacted.
+  const tokenCount =
+    allowTokenCount && key === 'tokens' && typeof value === 'number' && Number.isFinite(value);
+  if (key && !tokenCount && /(?:token|secret|password|api[_-]?key|authorization)/i.test(key)) {
     return '[REDACTED]';
   }
   if (typeof value === 'string') return redactSecrets(value);
-  if (Array.isArray(value)) return value.map((item) => redactAuditValue(item));
+  if (Array.isArray(value))
+    return value.map((item) => redactAuditValue(item, undefined, allowTokenCount));
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([entryKey, item]) => [
         entryKey,
-        redactAuditValue(item, entryKey),
+        redactAuditValue(item, entryKey, allowTokenCount),
       ]),
     );
   }
@@ -352,7 +357,7 @@ export class ToolSandboxMiddleware {
         const limit = maxRaw > 0 ? Math.min(maxRaw, 64 * 1024) : 64 * 1024;
         if (!raw || Buffer.byteLength(raw, 'utf8') > limit) throw new Error('STRUCTURED_LIMIT');
         const value: unknown = JSON.parse(raw);
-        const redacted = JSON.stringify(redactAuditValue(value));
+        const redacted = JSON.stringify(redactAuditValue(value, undefined, true));
         const safe = sanitize(redacted);
         if (safe.injectionBlocked || safe.text !== raw) {
           injectionBlocked = injectionBlocked || safe.injectionBlocked;

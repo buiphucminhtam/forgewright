@@ -979,6 +979,15 @@ def _keyless_hard_review(tmp: Path, turn: str = "keyless-review") -> tuple[Path,
 # ══════════════════════════════════════════════════════════════════════════════
 
 
+def native_stop_result(result):
+    """Assert the native wire schema and retain all typed decision assertions."""
+    wire = json.loads(result.stdout)
+    assert not set(wire) - {"continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason"}
+    decisions = [json.loads(line.removeprefix("[FORGEWRIGHT-STOP] ")) for line in result.stderr.splitlines() if line.startswith("[FORGEWRIGHT-STOP] ")]
+    assert len(decisions) == 1, result.stderr
+    return {**wire, "forgewright": decisions[0]}
+
+
 class TestEvidenceValidation:
     def setup_method(self):
         self.tmp = _make_temp_git_repo()
@@ -2375,7 +2384,7 @@ class TestVerifyGateSh:
         )
 
         assert result.returncode == 0, result.stderr
-        assert json.loads(result.stdout) == {
+        assert native_stop_result(result) == {
             "continue": True,
             "forgewright": {
                 "schema": "forgewright-stop-decision/v1",
@@ -2441,9 +2450,9 @@ class TestVerifyGateSh:
             timeout=30,
         )
         assert docs_result.returncode == 0, docs_result.stderr
-        assert json.loads(docs_result.stdout)["continue"] is True
+        assert native_stop_result(docs_result)["continue"] is True
         assert (
-            json.loads(docs_result.stdout)["forgewright"]["completion_state"]
+            native_stop_result(docs_result)["forgewright"]["completion_state"]
             == "unverified"
         )
 
@@ -2468,7 +2477,7 @@ class TestVerifyGateSh:
             timeout=30,
         )
         assert code_result.returncode == 0, code_result.stderr
-        assert json.loads(code_result.stdout)["decision"] == "block"
+        assert native_stop_result(code_result)["decision"] == "block"
 
     def test_invalid_platform_blocked(self):
         """Unknown platform name → gate blocks with error."""
@@ -2568,7 +2577,7 @@ class TestVerifyGateSh:
 
         accepted = self._stop_gate(payload)
         assert accepted.returncode == 0, accepted.stderr
-        accepted_payload = json.loads(accepted.stdout)
+        accepted_payload = native_stop_result(accepted)
         assert accepted_payload["continue"] is True
         assert accepted_payload["forgewright"]["completion_state"] == "verified"
         assert accepted_payload["forgewright"]["host_action"] == "allow_stop"
@@ -2578,7 +2587,7 @@ class TestVerifyGateSh:
         )
         rejected = self._stop_gate(payload)
         assert rejected.returncode == 0, rejected.stderr
-        assert json.loads(rejected.stdout)["decision"] == "block"
+        assert native_stop_result(rejected)["decision"] == "block"
 
     def test_codex_unmapped_platform_turn_field_discovers_correlated_final_evidence(
         self,
@@ -2599,7 +2608,7 @@ class TestVerifyGateSh:
         accepted = self._stop_gate(payload)
 
         assert accepted.returncode == 0, accepted.stderr
-        parsed = json.loads(accepted.stdout)
+        parsed = native_stop_result(accepted)
         assert parsed["continue"] is True
         assert parsed["forgewright"]["completion_state"] == "verified"
         assert parsed["forgewright"]["host_action"] == "allow_stop"
@@ -2640,8 +2649,8 @@ class TestVerifyGateSh:
             input=json.dumps(payload),
         )
 
-        first_payload = json.loads(first.stdout)
-        second_payload = json.loads(second.stdout)
+        first_payload = native_stop_result(first)
+        second_payload = native_stop_result(second)
         assert first_payload["decision"] == "block"
         assert first_payload["forgewright"] == {
             "schema": "forgewright-stop-decision/v1",

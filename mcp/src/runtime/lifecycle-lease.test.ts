@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -220,5 +220,89 @@ describe('MCP lifecycle ownership lease', () => {
     expect(source.indexOf('await leaseStore.reconcile()')).toBeLessThan(
       source.indexOf('await leaseStore.acquire('),
     );
+  });
+
+  it('skips a contended startup lease without waiting or touching it and still reclaims a later dead lease', async () => {
+    const { root, store, signals } = fixture();
+    const leases = await Promise.all(
+      [0, 1].map(async (index) =>
+        store.acquire({
+          workspaceId: 'workspace-a',
+          sessionId: `session-${index}`,
+          identity: await store.inspectCurrent(901),
+          ttlMs: 0,
+        }),
+      ),
+    );
+    leases.sort((a, b) => a.leaseId.localeCompare(b.leaseId));
+    const [contended, dead] = leases;
+    const lock = join(root, `${contended.leaseId}.lock`);
+    const leasePath = join(root, `${contended.leaseId}.json`);
+    writeFileSync(lock, 'another owner', { flag: 'wx', mode: 0o600 });
+    const before = { inode: statSync(lock).ino, lease: readFileSync(leasePath, 'utf8') };
+    const waits: number[] = [];
+    let inspections = 0;
+    const startup = new LifecycleLeaseStore({
+      root,
+      now: () => 1_000,
+      inspector: {
+        inspect: async () => {
+          inspections += 1;
+          return null;
+        },
+      },
+      sender: {
+        signal: async (pid, signal) => {
+          signals.push({ pid, signal });
+        },
+      },
+      wait: async (delay) => {
+        waits.push(delay);
+      },
+    });
+
+    expect(await startup.reconcile()).toEqual([
+      { leaseId: contended.leaseId, result: 'reconcile_error' },
+      { leaseId: dead.leaseId, result: 'dead_reclaimed' },
+    ]);
+    expect(waits).toEqual([]);
+    expect(inspections).toBe(1);
+    expect(signals).toEqual([]);
+    expect(statSync(lock).ino).toBe(before.inode);
+    expect(readFileSync(lock, 'utf8')).toBe('another owner');
+    expect(readFileSync(leasePath, 'utf8')).toBe(before.lease);
+    expect(JSON.parse(readFileSync(join(root, `${dead.leaseId}.json`), 'utf8')).status).toBe(
+      'closed',
+    );
+  });
+
+  it('retains direct reaper lock retries until the existing owner releases', async () => {
+    const { root, store, signals } = fixture();
+    const lease = await store.acquire({
+      workspaceId: 'workspace-a',
+      sessionId: 'direct-reap',
+      identity: await store.inspectCurrent(901),
+      ttlMs: 0,
+    });
+    const lock = join(root, `${lease.leaseId}.lock`);
+    writeFileSync(lock, 'existing owner', { flag: 'wx', mode: 0o600 });
+    const waits: number[] = [];
+    const direct = new LifecycleLeaseStore({
+      root,
+      inspector: { inspect: async () => null },
+      sender: {
+        signal: async (pid, signal) => {
+          signals.push({ pid, signal });
+        },
+      },
+      wait: async (delay) => {
+        waits.push(delay);
+        unlinkSync(lock);
+      },
+    });
+    expect(await direct.reap(lease.leaseId, lease.ownerToken)).toBe('dead_reclaimed');
+    expect(waits).toEqual([5]);
+    expect(signals).toEqual([]);
+    expect(() => statSync(lock)).toThrow();
   });
 });

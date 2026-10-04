@@ -780,8 +780,11 @@ def _actual_record(workspace: Path, relative: str) -> str:
         payload = os.readlink(path).encode("utf-8", "surrogateescape")
         kind = "symlink"
     elif stat.S_ISREG(info.st_mode):
-        payload = path.read_bytes()
-        kind = "file"
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            while chunk := stream.read(1024 * 1024):
+                digest.update(chunk)
+        return f"worktree|{relative}|{mode:o}|file|{digest.hexdigest()}"
     else:
         payload = b""
         kind = "other"

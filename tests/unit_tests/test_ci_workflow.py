@@ -61,11 +61,19 @@ def test_docs_continuity_is_in_docs_ci_and_required_release_checks():
 
     required = REQUIRED_CHECKS.read_text(encoding="utf-8")
     assert "run_required cli-build npm run build:cli" in required
-    assert "run_required docs-continuity run_docs_continuity" in required
-    assert "FORGEWRIGHT_DOCS_BASE_REF" in required
-    assert "origin/main...HEAD" in required
-    assert 'docs gate . --base-ref "$base_ref" --json' in required
-    assert "docs gate . --worktree --json" in required
+    orchestration = (ROOT / "scripts/ci/verify-orchestration-efficiency.sh").read_text()
+    selector = (ROOT / "scripts/ci/docs-continuity.sh").read_text()
+    for aggregate in (required, orchestration):
+        assert 'source "$root/scripts/ci/docs-continuity.sh"' in aggregate
+    assert (
+        "run_required docs-continuity run_docs_continuity node src/cli/dist/index.js"
+        in required
+    )
+    assert "run_check docs-gate run_docs_continuity" in orchestration
+    assert "FORGEWRIGHT_DOCS_BASE_REF" in selector
+    assert "origin/main...HEAD" in selector
+    assert 'docs gate . --base-ref "$base_ref" --json' in selector
+    assert "docs gate . --worktree --json" in selector
 
 
 def test_roadmap_evidence_verifier_is_in_required_release_checks():

@@ -26,8 +26,6 @@
 
 **Forgewright is a local-first engineering harness for AI-assisted software delivery.** It brings task definition, specialist workflows, code intelligence, tool controls, verification, and project continuity into one repository. Use it with the model runtime and tools you configure—not a mandatory hosted service or a second model subscription.
 
-The difference is not a longer prompt or a larger cast of agents. It is a delivery contract: **what should change, who may change it, how it is checked, and what remains unverified.**
-
 ## Why Forgewright
 
 | Engineering problem | What Forgewright adds |
@@ -104,13 +102,9 @@ python3 scripts/runtime/research_decision.py --help
 python3 scripts/runtime/resumable_handoff.py --help
 ```
 
-The native MCP `fw_record_learning_candidate` tool is admitted as a specific bounded proposal operation, not general filesystem/process authority. Its actual stdio route is tested with containment, policy, quality and output-sandbox middleware enabled, including local and production trust modes. Safe structured results survive middleware; unsafe metadata remains blocked. The canonical installer carries the reviewed policy and fingerprint helpers inside the atomically published runtime, so a copied installation does not depend on the original source checkout.
+The native MCP `fw_record_learning_candidate` tool requires a parent-owned task descriptor, matching project/task/plan/tree, schema-v2 evidence and a terminal ledger. It writes an **unapproved proposal** without changing the active registry. Its stdio tests retain containment, policy, quality and output-sandbox controls. Independent review, replay, non-regression and rollback gates still apply.
 
-The native MCP `fw_record_learning_candidate` tool remains inactive without a project-owned task descriptor. A trusted parent supplies the locked contract, actual schema-v2 verifier artifacts and terminal task ledger using the adapter's `writeNativeTaskDescriptor()` API. The adapter checks the current project/task/plan/tree, rejects stale or mismatched evidence, and persists an **unapproved proposal**, leaving the active registry unchanged. It does not replace the existing independent review, replay, non-regression or rollback gates.
-
-Worker context requests go through the actual dispatcher with a parent-owned three-round/64 KiB budget. Missing required context blocks execution; context captured before a source change cannot silently authorize later work. Research decisions and resumable checkpoints remain non-authoritative data.
-
-The local scenario report is **test-only**: it verifies reference behavior, not live model savings, game retention, UI aesthetics or revenue. Token/cost values stay unavailable when not measured. See [architecture and activation boundaries](docs/architecture.md#evidence-gated-learning-and-worker-context-protocols) and the [Instinct System operating contract](skills/instinct-system/SKILL.md).
+Worker context has a parent-owned three-round/64 KiB budget. Missing required context blocks execution, and stale context cannot authorize changed source. Local scenario reports are **test-only**, with no inferred model savings or product outcomes. See [architecture and activation boundaries](docs/architecture.md#evidence-gated-learning-and-worker-context-protocols) and the [Instinct System contract](skills/instinct-system/SKILL.md).
 
 ## Quick start
 
@@ -157,7 +151,7 @@ node src/cli/dist/index.js --help
 
 `ci:bootstrap` installs checked-in verification dependencies and configures this clone's Git hooks. It does not enable Pi, start production services, or require hosted CI. Model calls use the provider/account you explicitly configure.
 
-For one-time global auto-bootstrap, run `forge bootstrap policy set --mode full --auto on` from the shared runtime. After reviewing and trusting the current host hook, new repositories bootstrap without a project submodule. An isolated macOS Codex ordinary-prompt acceptance has verified this path; Claude native execution remains deferred, and Windows, physical power-loss, and remote-host acceptance are not established. See the [auto-bootstrap guide](docs/guides/auto-bootstrap.md).
+Auto-bootstrap needs explicit policy consent and host hook trust. Start with `automation` mode and an explicit `--allow-root`, with Pi disabled and no MCP clients selected. Eligible descendants are included. Review the [auto-bootstrap guide](docs/guides/auto-bootstrap.md) before enabling it. Installation, trust and a completed hook event do not prove readiness. Check the actual bootstrap receipt and index after a native prompt. Earlier isolated macOS acceptance does not certify a later source or installed-cache update.
 
 You can inspect/onboard a local project without a model call:
 
@@ -180,20 +174,28 @@ Review generated configuration before adoption. A project submodule is still use
 
 ## What's new
 
+### Game fixture and bounded memory
+
+**Local source candidate, not yet published.** Marketplace installation does not include unpublished checkout changes.
+
+[Signal Dash](tests/game/fixtures/threejs-lifecycle/README.md) is a playable Three.js reference with seeded fixed stepping, keyboard/touch controls, win/loss, pause and restart. Its checks compile the affected skill examples, exercise real browser input and record screenshots with a build hash. Run the fixture's build and tests, then `npm --prefix tests/game/fixtures/threejs-lifecycle run serve` to play locally.
+
+MCP result caching accounts for bytes, with a 512 KiB entry limit, 2 MiB per project and 8 MiB shared within one MCP process. Idle entries expire after five minutes. These bounds do not cap process RSS or remove source data. The [game test guide](tests/game/README.md) separates executable fixtures from engine templates, and the [Unity setup guide](docs/unity-mcp-setup.md) uses the project-matched Unity Test Framework. Unity execution and physical mobile performance still need their own evidence.
+
 ### Plugin distribution + behavioral skill quality
 
-Forgewright can now be consumed as a Codex/Claude plugin from the same repository instead of requiring every user to clone or submodule the framework first. One shared `skills/` tree remains the source of truth; harness manifests point at it rather than maintaining copied skill packs.
+Codex and Claude share one plugin source and one `skills/` tree. Harness manifests reference that tree, avoiding copied skill packs.
 
-The Superpowers-inspired upgrade also makes skill changes measurable:
+Skill changes are checked against observable behavior:
 
 | Upgrade | What it changes |
 | --- | --- |
-| Skill Quality Engine | Compares **baseline → current → candidate** behavior across trigger accuracy, required/forbidden events, pressure scenarios, rationalization traps, abstention, tool calls, context bytes, and latency. Promotion fails closed on regressions or critical forbidden behavior. |
-| Trigger-only metadata | Boot skill descriptions say **when to load the skill**, not how to execute it. Workflow details remain in the skill body, reducing routing/context leakage. |
-| Minimal worker packets | `PLAN_LOCKED` compiles into a digest-bound packet containing only objective, acceptance, owned scope, selected skill, decisions/interfaces, constraints, and verifier refs. Parent-only accounting is excluded from worker payloads. |
-| Scoped review packages | Review material is bound to exact `BASE..HEAD`. Task review stays task-scoped; branch/release review requires a planned final review or a named cross-cutting risk. |
-| Plan-scoped runtime state | Transient execution state is namespaced by `goal_id + plan_digest + base SHA`; successful runs clean it, failed runs retain it for diagnosis/resume. |
-| Failure classification | Debugging distinguishes `hypothesis_wrong`, `implementation_wrong`, `environment_wrong`, and `architecture_wrong`; the same approach failing twice forbids a third cosmetic retry. |
+| Skill Quality Engine | Compares **baseline → current → candidate**, blocking regressions and forbidden behavior. |
+| Trigger-only metadata | Boot descriptions say when to load a skill. Its body owns execution details. |
+| Minimal worker packets | Digest-bound `PLAN_LOCKED` packets carry task scope, acceptance, constraints and verifier references. |
+| Scoped review packages | Reviews bind exact `BASE..HEAD` and an explicit task or release scope. |
+| Plan-scoped runtime state | State binds goal, plan and base SHA. Failed runs retain diagnostic evidence. |
+| Failure classification | Distinguishes hypothesis, implementation, environment and architecture faults. Two failed attempts require a new approach. |
 
 The engine itself is deterministic and provider-neutral. A real model benchmark remains separate evidence; Forgewright does not claim universal quality, token, or latency gains from the framework change alone.
 
@@ -211,7 +213,7 @@ The [Pi integration](integrations/pi/) adds an isolated worker option without re
 | Bounded context and receipts | Preserve acceptance and current bindings; missing native usage or price remains unavailable, not zero. |
 | Evaluation and rollback controls | Paired-report comparison plus default-off, single-active-worker canary admission, kill switch, and quarantine. |
 
-**Status: experimental, explicitly opt-in.** The public `delegate` CLI now runs a real Pi worker from the parent project. It supports an existing authorized Codex/Pi OAuth subscription or an explicit loopback model server, without TypeSafe or a new paid API fallback. A host-approved task permits only named files, compare-and-swap patches and immutable verifier IDs. The original zero-tool analysis pilot remains available; it is not the coding-worker entrypoint.
+**Status: experimental, explicitly opt-in.** The public `delegate` CLI runs a Pi worker from the parent project using an existing authorized Codex/Pi subscription or an explicit loopback model server. Approved tasks name allowed files, compare-and-swap patches and immutable verifiers. There is no new paid API fallback.
 
 ```bash
 npm --prefix integrations/pi ci --ignore-scripts --no-audit --no-fund
@@ -230,13 +232,17 @@ node forgewright/src/cli/dist/index.js delegate resources
 # node forgewright/src/cli/dist/index.js delegate cancel <run-id>
 ```
 
-Settings live in the parent's existing `.production-grade.yaml`; unrelated settings are preserved. `current` is convenience-only and accepts a Codex-compatible unprefixed model selection; custom providers and provider-prefixed external routes are rejected instead of being reinterpreted as OpenAI. For deterministic setup, prefer the explicit `openai-codex` command above. To explicitly use an existing Codex subscription, select `--provider openai-codex --auth-source codex --model <exact-model-id>`. `CODEX_HOME` is respected. Subscription access is read-only and still consumes its existing quota; expired authorization reports `pi_auth_required`, not a paid fallback. Local execution needs a configured loopback model endpoint. Verifier isolation currently requires macOS and a single-process command; fork/spawn, network access and source writes are denied. Unsupported platforms fail closed. The governed `delegate run` entrypoint refuses legacy Agy execution until it has a compatible host-admission/cleanup contract; its low-level adapter and configuration are retained, not silently used as fallback. `ready` means prerequisites are present, while a successful task receipt requires actual execution. See the [Pi ADR](docs/adr/ADR-pi-worker-runtime.md) for the task contract, local-provider setup, cancellation, limitations and live-measurement gates.
+Settings live in the parent's `.production-grade.yaml`, preserving unrelated settings. Prefer the explicit provider/model above. `current` only accepts compatible unprefixed Codex selections. `CODEX_HOME` is respected, subscription access is read-only, and expired authorization returns `pi_auth_required`. Existing quota still applies.
+
+Verifier isolation currently requires macOS and a single-process command. Fork/spawn, network and source writes are denied. Unsupported platforms and unmanaged legacy Agy execution fail closed. `ready` means prerequisites, not successful execution. The [Pi ADR](docs/adr/ADR-pi-worker-runtime.md) owns setup, cancellation, lifecycle and measurement contracts.
 
 ### Leaner context and clearer project state
 
 System-1 routing now uses bounded English/Vietnamese rules and optional exact caching, then abstains when the intent is ambiguous. It does not import or call Jev, require `TYPESAFE_API_KEY`, download a classifier, or spend an extra model call. It takes Jev's bounded-choice approach without claiming to run the Jev model. Progressive skill loading and compact execution summaries keep unrelated context out of the worker.
 
-A shared per-user SQLite admission authority limits Pi clients across projects to at most two active workers and one heavy verifier, with one worker on the low-memory profile, pressure backoff, project fairness and uncertain-operation quarantine. Default scheduling estimates are **192 MiB per Pi worker** and **128 MiB per single-process verifier**, calibrated against observed target-Mac process RSS (~71–84 MiB for the loaded Pi runtime and ~42 MiB for a small Node verifier). These are admission estimates, not hard RSS caps; memory pressure still blocks new work and preserves host headroom. A small IPC broker starts on demand and exits after 15 idle seconds; project contexts and credentials remain separate. These are concurrency limits, not certified throughput for every 4 GiB workload. Unmanaged IDEs/processes are not killed. Savings and whole-machine overhead still require representative measurement.
+A shared per-user SQLite authority limits governed clients to two workers and one heavy verifier, or one worker on hosts with at most 8 GiB RAM. Admission considers OS pressure, load, known reservations, headroom and observed swap activity. On macOS, immediate pages and estimated reclaimable cache remain separate. Free pages alone do not measure available capacity.
+
+Default estimates of **192 MiB per Pi worker** and **128 MiB per single-process verifier** are scheduling budgets, not RSS caps or generic build measurements. The broker exits after 15 idle seconds, and cleanup is limited to owned resources. User apps and unsaved sessions stay outside automatic reclamation. Whole-build savings and temperature reduction remain unverified.
 
 The **Docs Hub** builds a searchable local HTML control center from approved Markdown/JSON. Project structure, roadmap, blockers, and Mermaid-derived flow views come from canonical sources—not another manually maintained dashboard.
 
@@ -256,65 +262,67 @@ The maturity labels below follow the [capability inventory](docs/capability-matu
 
 ### 1. Code Intelligence (GitNexus)
 
-**Docs-only integration.** Navigate relationships and assess impact before refactoring supported codebases. Stale indexes and dynamic code remain limitations; compatibility paths and user overrides are not universally enforced. [Guide](docs/guides/gitnexus.md).
+**Docs-only integration.** Relationship navigation and impact analysis remain limited by stale indexes and dynamic code, and compatibility paths and user overrides are not universally enforced. [Guide](docs/guides/gitnexus.md).
 
 ### 2. Autonomous Testing Stack
 
-**Beta.** Project-owned checks, property-based tests, controlled mutations, and acceptance-bound evidence. Existing behavioral oracles cannot be weakened merely to make a suite green. [Testing guide](docs/guides/testing-stack.md).
+**Beta.** Local checks, controlled mutations and acceptance-bound evidence with requirement-locked oracles. [Guide](docs/guides/testing-stack.md).
 
 ### 3. Persistent Cognitive Memory (FluxMem)
 
-**Experimental.** Optional local retrieval and project context across sessions. Current files and canonical checkpoints outrank recalled material; memory never grants tool authority. [Architecture](docs/architecture.md).
+**Experimental.** Optional project retrieval. Current evidence outranks memory, which grants no authority. [Architecture](docs/architecture.md).
 
 ### 4. Parallel Skill Dispatch
 
-**Experimental.** Decompose genuinely independent work into owned lanes and combine checked results. Keep coupled work serial; more workers are not automatically faster or cheaper. [Pipeline](docs/pipeline-reference.md).
+**Experimental.** Owned lanes for independent tasks. Coupled work stays serial. [Pipeline](docs/pipeline-reference.md).
 
 ### 5. Multi-Project Hub
 
-**Docs-only management integration.** The broader multi-project management surface remains a documented capability. The implemented Docs Hub separately provides local project registration and static source-backed views. [Docs Hub](docs/guides/docs-hub.md).
+**Docs-only management integration.** Docs Hub separately implements local registration and static project views. [Guide](docs/guides/docs-hub.md).
 
 ### 6. Token Tracking & Cost Analytics
 
-**Beta.** Track reported usage, budget reservations, and benchmark observations. Distinguish measured usage, estimates, and unavailable pricing. [ForgeBench source](src/cli/src/bench/).
+**Beta.** Reported usage, reservations and benchmarks distinguish measurements from estimates. [ForgeBench](src/cli/src/bench/).
 
 ### 7. MCP Tool Sandbox
 
-**Beta application controls—not OS isolation.** Canonical gateway admission, policy checks, containment, and bounded output processing. These controls are not a guarantee against every prompt injection or malicious same-user host. [Runtime contract](docs/adr/0001-canonical-production-runtime.md).
+**Beta application controls.** Admission, policy, containment and output bounds do not provide OS isolation. [Contract](docs/adr/0001-canonical-production-runtime.md).
 
 ### 8. The Adaptive Self-Improving Protocol (ASIP)
 
-**Experimental legacy workflow.** Retain useful lessons, but do not automatically promote them into shared rules. The canonical stuck rule stops repeated failed approaches and requires new evidence or escalation. [Kernel](AGENTS.md).
+**Experimental legacy workflow.** Lessons need review before promotion. Repeated failures require new evidence or escalation. [Kernel](AGENTS.md).
 
 ### 9. Runtime Lifecycle Guard
 
-**Beta.** Track owned process leases, reuse eligible services, and inspect cleanup and disk budgets. Unowned processes stay outside automatic reclamation. [Lifecycle ADR](docs/adr/ADR-010-runtime-lifecycle-guard.md).
+**Beta.** Owned process leases, service reuse and cleanup accounting. No reclamation of unowned processes. [ADR](docs/adr/ADR-010-runtime-lifecycle-guard.md).
 
 ### 10. Game Studio Control Plane
 
-**Beta optional pack.** Phase-aware handoffs from concept and systems design through production, polish, and release evidence. Real builds, devices, playtests, and store approval are project-specific. [Game Studio workflow](workflows/game-studio-build.md).
+**Beta optional pack.** Game production handoffs with project-specific builds, playtests and release evidence. [Workflow](workflows/game-studio-build.md).
 
 ### 11. Token Efficiency Engine & System-1 Routing (Jev Integration)
 
-**Experimental.** Compact overlays plus keyless, bounded local EN/VI routing with honest abstention. The historical Jev adapter is not on the default route; no classifier/model download or cloud routing call is required. No universal quality or savings percentage is promised. [Efficiency protocol](skills/_shared/protocols/tool-efficiency.md).
+**Experimental.** Bounded local EN/VI routing with abstention. No default Jev model, download or cloud routing call. [Protocol](skills/_shared/protocols/tool-efficiency.md).
 
 ### 12. Optional Pi Worker Pilot
 
-**Experimental, opt-in.** Pinned Pi SDK and a public consumer-project coding worker with scoped file tools, immutable verifiers, cancellation and shared low-memory admission. Existing subscription/local transport is explicit; no autonomous production migration or paired-savings claim. [Pi ADR](docs/adr/ADR-pi-worker-runtime.md).
+**Experimental, opt-in.** Scoped coding workers, immutable verifiers, cancellation and shared admission. No production or paired-savings claim. [ADR](docs/adr/ADR-pi-worker-runtime.md).
 
 ### 13. Codex & Claude Plugin Distribution
 
-**Beta.** Codex and Claude Code share one plugin source, entry skill, lazy discovery, install verifier, and consent-gated bootstrap hook. Local MCP/Pi/runtime stages remain policy-controlled. [Plugin ADR](docs/adr/ADR-agent-plugin-distribution.md).
+**Beta.** Shared source, lazy discovery, isolated install checks and consent-gated bootstrap. [ADR](docs/adr/ADR-agent-plugin-distribution.md).
 
 ### 14. Behavioral Skill Quality Engine
 
-**Experimental.** Deterministic RED/GREEN-style scenario scoring, pressure/rationalization checks, trigger-metadata linting, compact worker/reviewer packets, and promotion gates make skill changes testable. Real-model candidate comparisons remain provider-specific evidence and are not inferred from fixture tests. [Skill evals](evals/skills/README.md).
+**Experimental.** Deterministic behavioral scenarios and promotion gates. Fixture results do not establish real-model gains. [Skill evals](evals/skills/README.md).
 
 </details>
 
 ## Verification
 
 Forgewright's evidence is executable locally. Hosted CI can mirror it, but is not required.
+
+The local game/resource upgrade has observed aggregate-gate and desktop Chromium passes on recorded snapshots. **End-to-end upgrade acceptance remains open** pending fresh final-tree HARD verification and native bootstrap/index/receipt proof. Installed cache is a separate state from live activation. Consult [canonical project status](docs/project-state.json) and current runtime receipts. Earlier passes do not certify later edits, cloud execution, Unity or physical mobile performance.
 
 ```bash
 # Core checks

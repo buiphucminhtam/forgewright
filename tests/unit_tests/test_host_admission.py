@@ -11,7 +11,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/runtime"))
 from host_admission import AdmissionError, HostAdmission, MemorySnapshot  # noqa: E402
 
-NORMAL = MemorySnapshot(8 * 1024**3, 6 * 1024**3, "normal", "test-fixture")
+# Two-worker contracts use a larger host. The explicit 8 GiB profile is tested
+# separately against the owner's low-memory requirement.
+NORMAL = MemorySnapshot(16 * 1024**3, 6 * 1024**3, "normal", "test-fixture")
 
 
 def fixture(tmp_path):

@@ -245,46 +245,48 @@ export class LifecycleLeaseStore {
   }
 
   async reap(leaseId: string, ownerToken: string): Promise<ReapResult> {
-    return this.withLock(leaseId, async () => {
-      const initial = await this.readLease(leaseId);
-      if (initial === null) return 'unowned';
-      if (initial.ownerToken !== ownerToken) return 'owner_mismatch';
-      if (initial.status !== 'open') return 'closed';
-      if (initial.inFlight > 0) return 'in_flight';
-      if (!hasBoundCommandIdentity(initial)) return 'identity_mismatch';
+    return this.withLock(leaseId, () => this.reapWithinLock(leaseId, ownerToken));
+  }
 
-      const observed = await this.inspector.inspect(initial.identity.pid);
-      if (observed === null) {
-        await this.closeWithinLock(initial);
-        return 'dead_reclaimed';
-      }
-      if (!sameIdentity(initial.identity, observed)) return 'identity_mismatch';
-      if (this.now() < initial.expiresAtMs) return 'not_expired';
+  private async reapWithinLock(leaseId: string, ownerToken: string): Promise<ReapResult> {
+    const initial = await this.readLease(leaseId);
+    if (initial === null) return 'unowned';
+    if (initial.ownerToken !== ownerToken) return 'owner_mismatch';
+    if (initial.status !== 'open') return 'closed';
+    if (initial.inFlight > 0) return 'in_flight';
+    if (!hasBoundCommandIdentity(initial)) return 'identity_mismatch';
 
-      const beforeTerm = await this.readLease(leaseId);
-      const termIdentity = await this.inspector.inspect(initial.identity.pid);
-      const termStatus = this.validateSignalTarget(beforeTerm, initial, ownerToken, termIdentity);
-      if (termStatus !== null) return termStatus;
+    const observed = await this.inspector.inspect(initial.identity.pid);
+    if (observed === null) {
+      await this.closeWithinLock(initial);
+      return 'dead_reclaimed';
+    }
+    if (!sameIdentity(initial.identity, observed)) return 'identity_mismatch';
+    if (this.now() < initial.expiresAtMs) return 'not_expired';
 
-      await this.sender.signal(initial.identity.pid, 'SIGTERM');
-      await this.wait(this.graceMs);
+    const beforeTerm = await this.readLease(leaseId);
+    const termIdentity = await this.inspector.inspect(initial.identity.pid);
+    const termStatus = this.validateSignalTarget(beforeTerm, initial, ownerToken, termIdentity);
+    if (termStatus !== null) return termStatus;
 
-      const afterTerm = await this.inspector.inspect(initial.identity.pid);
-      if (afterTerm !== null) {
-        const beforeKill = await this.readLease(leaseId);
-        const killIdentity = await this.inspector.inspect(initial.identity.pid);
-        const killStatus = this.validateSignalTarget(beforeKill, initial, ownerToken, killIdentity);
-        if (killStatus !== null) return killStatus;
-        await this.sender.signal(initial.identity.pid, 'SIGKILL');
-      }
-      const final = await this.readLease(leaseId);
-      if (final === null || final.ownerToken !== ownerToken || final.version !== initial.version) {
-        return 'owner_mismatch';
-      }
-      if (final.status !== 'open') return 'closed';
-      await this.closeWithinLock(final);
-      return 'reaped';
-    });
+    await this.sender.signal(initial.identity.pid, 'SIGTERM');
+    await this.wait(this.graceMs);
+
+    const afterTerm = await this.inspector.inspect(initial.identity.pid);
+    if (afterTerm !== null) {
+      const beforeKill = await this.readLease(leaseId);
+      const killIdentity = await this.inspector.inspect(initial.identity.pid);
+      const killStatus = this.validateSignalTarget(beforeKill, initial, ownerToken, killIdentity);
+      if (killStatus !== null) return killStatus;
+      await this.sender.signal(initial.identity.pid, 'SIGKILL');
+    }
+    const final = await this.readLease(leaseId);
+    if (final === null || final.ownerToken !== ownerToken || final.version !== initial.version) {
+      return 'owner_mismatch';
+    }
+    if (final.status !== 'open') return 'closed';
+    await this.closeWithinLock(final);
+    return 'reaped';
   }
 
   async reconcile(): Promise<Array<{ leaseId: string; result: ReapResult | 'reconcile_error' }>> {
@@ -299,7 +301,14 @@ export class LifecycleLeaseStore {
       const lease = await this.readLease(leaseId);
       if (lease === null || lease.status !== 'open') continue;
       try {
-        results.push({ leaseId, result: await this.reap(leaseId, lease.ownerToken) });
+        // Startup must not wait behind another owner's lease lock. The same
+        // guarded reaper still handles every lease whose lock we acquire.
+        const result = await this.withLock(
+          leaseId,
+          () => this.reapWithinLock(leaseId, lease.ownerToken),
+          false,
+        );
+        results.push({ leaseId, result });
       } catch {
         results.push({ leaseId, result: 'reconcile_error' });
       }
@@ -387,12 +396,18 @@ export class LifecycleLeaseStore {
     }
   }
 
-  private async withLock<T>(leaseId: string, action: () => Promise<T>): Promise<T> {
+  private async withLock<T>(
+    leaseId: string,
+    action: () => Promise<T>,
+    waitForLock = true,
+  ): Promise<T> {
     await this.ensureRoot();
     const lockPath = join(this.root, `${leaseId}.lock`);
     let handle;
     const retryDelayMs = 5;
-    const maxAttempts = Math.max(20, Math.ceil((this.graceMs + 1_000) / retryDelayMs));
+    const maxAttempts = waitForLock
+      ? Math.max(20, Math.ceil((this.graceMs + 1_000) / retryDelayMs))
+      : 1;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       try {
         handle = await open(lockPath, 'wx', 0o600);
@@ -404,7 +419,7 @@ export class LifecycleLeaseStore {
         // enter the critical section without obtaining the exclusive handle.
         const windowsSharingViolation =
           process.platform === 'win32' && (code === 'EPERM' || code === 'EACCES');
-        if (code !== 'EEXIST' && !windowsSharingViolation) throw error;
+        if (!waitForLock || (code !== 'EEXIST' && !windowsSharingViolation)) throw error;
         await this.wait(retryDelayMs);
       }
     }
