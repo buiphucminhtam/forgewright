@@ -91,6 +91,19 @@ Full mode installs missing Runtime Lifecycle Guard and shared MCP assets in priv
 
 The shared MCP installation includes a regular copy of the canonical skills and the policy-checker/telemetry scripts needed at startup. It owns those individual scripts while preserving other files in the shared script directory. An explicit `ensure` or `repair` can migrate an unchanged, owned installation to the selected source revision after verifying runtime quiescence. Automatic migration additionally requires `--auto-update`. Migration preserves mutable guard state, including leases, project registrations, mode and logs; foreign or modified assets block replacement.
 
+An older shared installation without the current asset receipt cannot be adopted
+by `ensure` or `repair`. Preserve its bytes and mutable guard state in a separate
+local recovery backup before explicitly reconciling occupied destinations. Do
+not fabricate a receipt, remove an unrelated recovery directory, or use a force
+option to skip ownership checks.
+
+The memory `tick` and `checkpoint` hooks initialize a missing session and encode
+project names and summaries as JSON data. Invalid JSON or an invalid message
+counter fails without overwriting the session file. Counter parsing also retains
+large checkpoint histories without an early pipe close. To recover an existing
+corrupt session, preserve that file first, then explicitly start a new session
+with `bash scripts/memory-session.sh start` from the configured source checkout.
+
 Existing shared MCP files without a verifiable bootstrap asset receipt are preserved and reported as unverified; bootstrap does not adopt them automatically. The source revision is a Git commit: uncommitted edits at the same commit do not trigger a runtime migration. Local development verification therefore also records the exact worktree and installed asset digests.
 
 Auto-bootstrap never grants authority for credentials/auth changes, billing, deploy/publish/release, branch-protection changes, paid-provider fallback, or destructive cleanup outside Forgewright-owned receipts. External config edits use structured merges/receipts instead of whole-file overwrite.
