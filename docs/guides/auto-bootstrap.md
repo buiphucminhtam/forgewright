@@ -89,6 +89,13 @@ The installed launcher uses a small entrypoint for the hook's JSON preflight and
 
 Full mode installs missing Runtime Lifecycle Guard and shared MCP assets in private staging, verifies them, and publishes only receipt-owned targets that are safe to create. It reuses verified shared installations, configures only clients selected by policy, and checks existing Pi readiness. Explicit Pi activation remains a separate operation. A saved ready component label or config file alone is not native MCP handshake evidence. Pi stays optional and does not discover or enable a paid provider automatically when no exact permitted route is configured.
 
+When Pi is selected locally, both `delegate status` and `delegate status --worker pi`
+return Pi's status object. Bootstrap accepts that transport only when `worker`
+is `pi`, `ready` and `enabled` are JSON booleans, and no `ok` envelope field is
+present. An explicit unsuccessful envelope remains a failure. Parsing a status
+object does not enable Pi or establish a successful provider request; configured
+Pi readiness still requires the selected model and enabled/ready flags.
+
 The shared MCP installation includes a regular copy of the canonical skills and the policy-checker/telemetry scripts needed at startup. It owns those individual scripts while preserving other files in the shared script directory. An explicit `ensure` or `repair` can migrate an unchanged, owned installation to the selected source revision after verifying runtime quiescence. Automatic migration additionally requires `--auto-update`. Migration preserves mutable guard state, including leases, project registrations, mode and logs; foreign or modified assets block replacement.
 
 An older shared installation without the current asset receipt cannot be adopted
