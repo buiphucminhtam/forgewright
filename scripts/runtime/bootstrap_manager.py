@@ -789,8 +789,9 @@ def call_forge(
     if result["status"] == "ready":
         envelope = parse_json_envelope(result.get("stdout", ""))
         pi_status = (
-            args == ["delegate", "status", "--worker", "pi"]
+            args in (["delegate", "status"], ["delegate", "status", "--worker", "pi"])
             and isinstance(envelope, dict)
+            and "ok" not in envelope
             and envelope.get("worker") == "pi"
             and type(envelope.get("ready")) is bool
             and type(envelope.get("enabled")) is bool
