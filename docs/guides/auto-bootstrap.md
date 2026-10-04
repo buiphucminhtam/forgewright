@@ -150,6 +150,13 @@ Explicit `repair` can reconcile completed rollback and recorded interrupted tran
 
 File rollback checks the expected current hash before an atomic replacement. Directory rollback records a transaction and renames the owned directory to a sibling tombstone before removing only unchanged manifest members. Added or edited user files are retained, and ambiguous cleanup is reported instead of deleting the whole tree. Journal paths and manifests cannot authorize traversal outside the owned directory.
 
+Owned directory cleanup uses the same 64 MiB bound as receipt creation, so a
+receipt-owned binary index larger than 4 MiB can be removed or recovered after
+an interrupted rename. JSON state and ownership journals keep their separate
+4 MiB cap. Root containment, regular-file and single-link checks, exact manifest
+hashes and preservation of user changes still apply; preserved unowned indexes
+are not adopted by this cleanup path.
+
 Selected MCP clients share a write-ahead transaction. A later client conflict rolls back earlier owned insertions; explicit recovery handles a process stopping before or after a config write. The journal stores inserted bytes and hashes, not a copy of unrelated client configuration or credentials. Recovery restores original bytes when possible and preserves unrelated edits. A changed or reformatted owned insertion blocks cleanup when exact ownership can no longer be established. Expected-hash checks detect observed preimage changes; portable file replacement is not an atomic compare-and-swap against an external writer racing after that check.
 
 Readiness checks are independent of ownership: preserved policy and project/profile files must pass their canonical validators, usable index metadata and the live Docs registry entry must exist, and preserved documentation must pass Docs doctor. A saved `ready` label does not override invalid, missing, or modified live components. Failed worker-lease release cannot publish successful completion.
