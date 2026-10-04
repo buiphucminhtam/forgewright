@@ -11,7 +11,7 @@ def test_public_client_admission_recovery_and_cleanup():
         cwd=root,
         capture_output=True,
         text=True,
-        timeout=65,
+        timeout=100,  # Two sequential pressure profiles, each with real recovery/idle waits.
         check=False,
     )
     print(result.stdout)

@@ -49,7 +49,7 @@ class HostScheduler(AdmissionStore):
                 sample.swap_total_bytes is not None
                 and sample.load_ratio is not None
                 and sample.load_ratio < 1.0
-                and sample.pressure == "normal"
+                and sample.pressure in {"normal", "warning"}
             )
             reset_observation = (
                 not valid
@@ -58,6 +58,10 @@ class HostScheduler(AdmissionStore):
                 or now < previous_at
                 or now - previous_at > 30
                 or sample.swap_total_bytes < previous_swap
+                or (
+                    sample.pressure == "warning"
+                    and not self.meta("estimate_was_warning")
+                )
             )
             if reset_observation:
                 self.set_meta("estimate_quiet_since", now)
@@ -66,6 +70,7 @@ class HostScheduler(AdmissionStore):
                 swap_rate = -1
             self.set_meta("swap_rate", swap_rate)
             self.set_meta("estimate_previous_valid", int(valid))
+            self.set_meta("estimate_was_warning", int(sample.pressure == "warning"))
             if (
                 reset_observation
                 or not previous_at
@@ -89,8 +94,9 @@ class HostScheduler(AdmissionStore):
             # reserve against uncertain cache reclaimability, not an OS metric.
             swap_reserve = math.ceil(max(0, swap_rate, average_rate) * 15)
             self.set_meta("swap_reserve_bytes", swap_reserve)
-            # Require fresh normal-pressure/low-load observations. Ordinary
-            # monotonic swap activity spends cache credit instead of vetoing it.
+            # Warning restricts concurrency and increases headroom; it is not
+            # a permanent veto. Require fresh non-critical/low-load observations.
+            # Monotonic swap activity spends cache credit instead of vetoing it.
             if not ready:
                 self.set_meta("blocked_until", now)
                 return sample, 1, True
@@ -127,6 +133,9 @@ class HostScheduler(AdmissionStore):
             reason = (
                 "host-load"
                 if self.now() < self.meta("load_blocked_until")
+                else "insufficient-memory"
+                if sample.pressure in {"normal", "warning"}
+                and sample.available_bytes < sample.headroom
                 else "memory-pressure"
             )
             self.connection.execute(

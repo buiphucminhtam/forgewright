@@ -3,7 +3,7 @@ title: Optional Pi Worker Runtime
 status: accepted-for-pilot
 owner: Runtime maintainers
 scope: Optional execution adapter; no production activation
-last_reviewed: 2026-09-20
+last_reviewed: 2026-10-04
 canonical: true
 ---
 
@@ -120,9 +120,13 @@ purgeable pages. It is not the OS's total allocatable RAM. `reclaimableEstimateM
 is half of max(0, file-backed - speculative - purgeable) bytes. This 50% discount
 is a conservative project policy, not an Apple guarantee that pages are clean.
 Inactive anonymous and compressed pages earn no credit. The estimator requires
-known normal pressure, load below 1.0, and monotonic cumulative swap-in plus swap-out counters across at least 15 seconds
+known normal or warning pressure, load below 1.0, and monotonic cumulative swap-in plus swap-out counters across at least 15 seconds
 of observations. Gaps over 30 seconds, counter resets and unknown or unhealthy
-telemetry restart observation. Ordinary swap activity alone is not memory pressure.
+telemetry restart observation. Entering warning also starts a fresh 15-second
+window, including when immediate memory is ample. Warning no longer resets this
+window on every poll: it restricts admission to one worker with unchanged
+1,024 MiB headroom. Critical and unknown pressure still prevent new admission.
+Ordinary swap activity alone is not memory pressure.
 The larger of the latest sampled rate and the elapsed-time-weighted rate in the
 current window (at most 30 seconds) is multiplied by the existing 15-second recovery
 interval. This byte-valued heuristic reserve is subtracted only from discounted
@@ -138,7 +142,13 @@ after observation. `headroomMiB` remains 512 on this 8 GiB machine. Known active
 and quarantined reservations are subtracted before each grant. Thus a 192 MiB
 worker needs a 704 MiB budget, and its 128 MiB heavy stage needs 832 MiB including
 the worker reservation. Neither number is a measured OS allocation requirement.
-A machine with sustained normal pressure, low load and sufficient net cache credit can progress despite low free pages and modest swap activity.
+A machine with sustained normal or warning pressure, low load and sufficient
+net cache credit can progress despite low free pages and modest swap activity.
+Under warning, a 192 MiB Pi worker needs a 1,216 MiB net budget; its 128 MiB heavy
+stage needs 1,344 MiB including the worker reservation. These estimates preserve
+the larger warning headroom and do not guarantee that every warning sample can
+run a task. The swap reserve can exhaust cache credit; it is not an independently
+verified thrashing detector or a hard RSS limit.
 Insufficient estimated budget remains queued and is never overridden by elapsed
 queue time. `swapCumulativeBytes` is historical activity, while
 `swapBytesPerSecond` is a sampled rate or null when the observation is uncertain.

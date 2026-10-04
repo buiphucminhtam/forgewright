@@ -156,7 +156,7 @@ def test_reclaimable_memory_progress_and_reservations(tmp_path):
 
 @pytest.mark.parametrize(
     "signal",
-    ["warning", "critical", "unknown", "swap", "load", "missing-load", "missing-swap"],
+    ["critical", "unknown", "swap", "load", "missing-load", "missing-swap"],
 )
 def test_reclaimable_estimate_never_overrides_pressure_or_uncertainty(tmp_path, signal):
     admission, _, sensor, clock = fixture(tmp_path)
@@ -333,5 +333,160 @@ def test_swap_spike_uneven_poll_and_counter_reset(tmp_path):
         assert admission.status()["paused"] is True
         clock["now"] += 16
         assert admission.status()["paused"] is False
+    finally:
+        admission.close()
+
+
+@pytest.mark.parametrize("immediate,cache", [(2048, 0), (144, 1600)])
+def test_stable_warning_admits_one_worker_and_parent_verifier(
+    tmp_path, immediate, cache
+):
+    """Warning restricts capacity; it must not reset a healthy window forever."""
+    admission, _, sensor, clock = fixture(tmp_path)
+    sensor["sample"] = resources.MemorySnapshot(
+        16 * resources.GIB,
+        immediate * resources.MIB,
+        "warning",
+        "darwin-vm-stat+memorystatus",
+        load_ratio=0.2,
+        reclaimable_estimate_bytes=cache * resources.MIB,
+        swap_total_bytes=100,
+    )
+    try:
+        assert request(admission, tmp_path / "a", 100, "a")["state"] == "queued"
+        clock["now"] += 14
+        assert poll(admission, "a", 100)["state"] == "queued"
+        clock["now"] += 2
+        assert poll(admission, "a", 100)["state"] == "active"
+        status = admission.status()
+        assert status["pressure"] == "warning"
+        assert status["headroomMiB"] == 1024
+        assert status["worker_limit"] == 1
+        assert request(admission, tmp_path / "b", 101, "b")["state"] == "queued"
+        assert (
+            request(
+                admission, tmp_path / "a", 100, "heavy", "heavy", parent_lease_id="a"
+            )["state"]
+            == "active"
+        )
+        release(admission, "heavy", 100)
+        release(admission, "a", 100)
+        assert poll(admission, "b", 101)["state"] == "active"
+    finally:
+        admission.close()
+
+
+def test_warning_retains_headroom_and_accounts_for_swap_debit(tmp_path):
+    admission, _, sensor, clock = fixture(tmp_path)
+
+    def sample(cache, swap):
+        return resources.MemorySnapshot(
+            16 * resources.GIB,
+            144 * resources.MIB,
+            "warning",
+            "darwin-vm-stat+memorystatus",
+            load_ratio=0.2,
+            reclaimable_estimate_bytes=cache * resources.MIB,
+            swap_total_bytes=swap,
+        )
+
+    try:
+        sensor["sample"] = sample(1000, 0)
+        assert request(admission, tmp_path / "a", 100, "a")["state"] == "queued"
+        clock["now"] += 16
+        assert poll(admission, "a", 100)["state"] == "queued"
+        assert admission.status()["headroomMiB"] == 1024
+        sensor["sample"] = sample(1600, 16 * 64 * resources.MIB)
+        clock["now"] += 16
+        assert poll(admission, "a", 100)["state"] == "queued"
+        assert admission.status()["swapReserveMiB"] >= 960
+        assert admission.status()["availableMiB"] < 1152
+        release(admission, "a", 100)
+    finally:
+        admission.close()
+
+
+@pytest.mark.parametrize("bad", ["critical", "unknown", "load", "missing-swap"])
+def test_warning_recovery_starts_fresh_after_unsafe_telemetry(tmp_path, bad):
+    admission, _, sensor, clock = fixture(tmp_path)
+
+    def sample(unsafe=False):
+        return resources.MemorySnapshot(
+            16 * resources.GIB,
+            144 * resources.MIB,
+            bad if unsafe and bad in {"critical", "unknown"} else "warning",
+            "darwin-vm-stat+memorystatus",
+            load_ratio=1.1 if unsafe and bad == "load" else 0.2,
+            reclaimable_estimate_bytes=1600 * resources.MIB,
+            swap_total_bytes=None if unsafe and bad == "missing-swap" else 100,
+        )
+
+    try:
+        sensor["sample"] = sample()
+        assert request(admission, tmp_path / "a", 100, "a")["state"] == "queued"
+        clock["now"] += 14
+        sensor["sample"] = sample(True)
+        assert poll(admission, "a", 100)["state"] == "queued"
+        clock["now"] += 2
+        sensor["sample"] = sample()
+        assert poll(admission, "a", 100)["state"] == "queued"
+        clock["now"] += 16
+        assert poll(admission, "a", 100)["state"] == "active"
+    finally:
+        admission.close()
+
+
+@pytest.mark.parametrize("reset", ["enter-warning", "counter", "gap", "clock"])
+def test_warning_observation_resets_on_transition_or_stale_sample(tmp_path, reset):
+    from dataclasses import replace
+
+    admission, _, sensor, clock = fixture(tmp_path)
+    sensor["sample"] = resources.MemorySnapshot(
+        16 * resources.GIB,
+        2048 * resources.MIB,
+        "normal" if reset == "enter-warning" else "warning",
+        "darwin-vm-stat+memorystatus",
+        load_ratio=0.2,
+        swap_total_bytes=100,
+    )
+    try:
+        assert admission.status()["paused"] is True
+        clock["now"] += 16
+        assert admission.status()["paused"] is False
+        if reset == "enter-warning":
+            sensor["sample"] = replace(sensor["sample"], pressure="warning")
+        elif reset == "counter":
+            sensor["sample"] = replace(sensor["sample"], swap_total_bytes=0)
+        else:
+            clock["now"] += 31 if reset == "gap" else -1
+        assert request(admission, tmp_path / "a", 100, "a")["state"] == "queued"
+        clock["now"] += 14
+        assert poll(admission, "a", 100)["state"] == "queued"
+        clock["now"] += 2
+        assert poll(admission, "a", 100)["state"] == "active"
+        release(admission, "a", 100)
+    finally:
+        admission.close()
+
+
+def test_stable_warning_low_budget_reports_insufficient_memory(tmp_path):
+    admission, _, sensor, clock = fixture(tmp_path)
+    sensor["sample"] = resources.MemorySnapshot(
+        16 * resources.GIB,
+        144 * resources.MIB,
+        "warning",
+        "darwin-vm-stat+memorystatus",
+        load_ratio=0.2,
+        reclaimable_estimate_bytes=700 * resources.MIB,
+        swap_total_bytes=100,
+    )
+    try:
+        request(admission, tmp_path / "a", 100, "a")
+        clock["now"] += 16
+        result = poll(admission, "a", 100)
+        assert result["state"] == "queued"
+        assert result["reason"] == "insufficient-memory"
+        assert admission.status()["availableMiB"] == 844
+        release(admission, "a", 100)
     finally:
         admission.close()

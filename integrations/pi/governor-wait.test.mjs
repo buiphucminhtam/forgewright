@@ -8,7 +8,8 @@ import {spawn} from 'node:child_process';
 import {setTimeout as pause} from 'node:timers/promises';
 import {acquireHostSlot, getHostAdmissionStatus} from './host-governor.mjs';
 
-test('GOV-WAIT-01: real client times out, cancels, recovers, respects reservations and cleans owned broker', {timeout:50000}, async()=>{
+for (const profile of [{pressure:'normal',cacheMiB:700,headroomMiB:512},{pressure:'warning',cacheMiB:1200,headroomMiB:1024}]) {
+test(`GOV-WAIT-01 ${profile.pressure}: real client times out, cancels, recovers, respects reservations and cleans owned broker`, {timeout:50000}, async()=>{
  const root=mkdtempSync('/tmp/fw-wait-');
  const home=join(root,'state'); const project=join(root,'project'); mkdirSync(project);
  const telemetry=join(root,'telemetry.json');
@@ -39,15 +40,17 @@ test('GOV-WAIT-01: real client times out, cancels, recovers, respects reservatio
   await assert.rejects(pending,{name:'AbortError'});
   let status=await getHostAdmissionStatus();
   assert.equal(status.queued,0); assert.equal(status.active_workers,0);
-  sample.pressure='normal'; writeFileSync(telemetry,JSON.stringify(sample));
-  assert.equal((await getHostAdmissionStatus()).paused,true,'first normal sample cannot bypass recovery');
+  sample.pressure=profile.pressure; sample.reclaimable_estimate_bytes=profile.cacheMiB*1024**2;
+  writeFileSync(telemetry,JSON.stringify(sample));
+  assert.equal((await getHostAdmissionStatus()).paused,true,'first healthy sample cannot bypass recovery');
   const recoveredAt=performance.now();
   const worker=await acquireHostSlot({...options,waitMs:25000}); leases.push(worker);
   assert.ok(performance.now()-recoveredAt>=14000,'must observe the recovery window');
   status=await getHostAdmissionStatus();
   assert.equal(status.worker_limit,1); assert.equal(status.active_workers,1);
+  assert.equal(status.pressure,profile.pressure); assert.equal(status.headroomMiB,profile.headroomMiB);
   assert.equal(status.reservedMiB,128);
-  // 744 - 128 worker - 128 child < unchanged 512 MiB headroom.
+  // Both profiles lack budget for a 128 MiB child, but retain room for 64 MiB.
   await assert.rejects(acquireHostSlot({...options,kind:'heavy',parentLeaseId:worker.id,waitMs:300}),{code:'pi_host_capacity_timeout'});
   assert.equal((await getHostAdmissionStatus()).active_heavy,0);
   const heavy=await acquireHostSlot({...options,kind:'heavy',memoryMiB:64,parentLeaseId:worker.id,waitMs:1000}); leases.push(heavy);
@@ -71,3 +74,4 @@ test('GOV-WAIT-01: real client times out, cancels, recovers, respects reservatio
   rmSync(root,{recursive:true,force:true});
  }
 });
+}
