@@ -59,6 +59,7 @@ PROJECT_FILES = (
     ".production-grade.yaml",
 )
 MAX_STATE_BYTES = 4 * 1024 * 1024
+MAX_OWNED_DIRECTORY_BYTES = 64 * 1024 * 1024
 BOOTSTRAP_WORKER_MIB = 128
 BOOTSTRAP_HEAVY_MIB = 128
 BOOTSTRAP_ADMISSION_WAIT_SECONDS = 60.0
@@ -979,7 +980,7 @@ def _cleanup_directory_tombstone(project: Path, record: dict[str, Any]) -> str:
             )
         if not candidate.exists():
             continue
-        _safe_existing_file(candidate)
+        _safe_existing_file(candidate, maximum=MAX_OWNED_DIRECTORY_BYTES)
         if sha256_bytes(candidate.read_bytes()) != expected:
             return "user_modified_preserved"
         candidate.unlink()
@@ -1572,7 +1573,7 @@ def directory_digest(path: Path) -> str:
             )
         files += 1
         total += child.stat().st_size
-        if files > 5000 or total > 64 * 1024 * 1024:
+        if files > 5000 or total > MAX_OWNED_DIRECTORY_BYTES:
             raise BootstrapError(
                 "owned_directory_too_large",
                 f"owned directory exceeds safety bound: {path}",
