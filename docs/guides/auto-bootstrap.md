@@ -107,7 +107,14 @@ option to skip ownership checks.
 The memory `tick` and `checkpoint` hooks initialize a missing session and encode
 project names and summaries as JSON data. Invalid JSON or an invalid message
 counter fails without overwriting the session file. Counter parsing also retains
-large checkpoint histories without an early pipe close. To recover an existing
+large checkpoint histories without an early pipe close. A single Python process
+owns the kernel lock and the whole state read/modify/write transaction, including
+interval checkpoints. POSIX hosts use `fcntl`; Windows/Git Bash uses `msvcrt`.
+Lock acquisition fails closed after five seconds, and the OS releases the lock
+when its owner exits. State is published from a private, flushed temporary file
+by atomic replacement; failed publication preserves the previous complete state.
+Optional memory adapters run after publication, outside this critical section.
+To recover an existing
 corrupt session, preserve that file first, then explicitly start a new session
 with `bash scripts/memory-session.sh start` from the configured source checkout.
 
