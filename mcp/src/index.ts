@@ -27,7 +27,12 @@ import {
   type RuntimeShutdownReason,
 } from './runtime/mcp-runtime-lifecycle.js';
 import { ToolExecutionGateway } from './runtime/tool-execution-gateway.js';
-import { ExecutionContainment, loadRuntimeTrustContext } from './runtime/execution-containment.js';
+import {
+  ExecutionContainment,
+  loadRuntimeWorkspaceContext,
+  loadRuntimeTrustContextIfPolicyPresent,
+} from './runtime/execution-containment.js';
+import { PolicyReadyToolGateway } from './runtime/policy-ready-tool-gateway.js';
 import { setWorkspaceRoot } from './state/pipeline-manager.js';
 import { setMcpServer, setRuntimeTrustContext } from './state/rpc-client.js';
 
@@ -134,7 +139,11 @@ export async function run(): Promise<void> {
   setWorkspaceRoot();
   setMcpServer(server);
   registerPrompts(server);
-  const trust = loadRuntimeTrustContext();
+  const workspace = loadRuntimeWorkspaceContext().workspace;
+  // Pin the caller context for this transport. Missing policy is the only
+  // deferred condition; invalid roots, identities and existing policy still fail.
+  const trustEnvironment = { ...process.env, FORGEWRIGHT_WORKSPACE: workspace };
+  const trust = loadRuntimeTrustContextIfPolicyPresent(trustEnvironment);
 
   const reconciled = await leaseStore.reconcile();
   for (const result of reconciled) {
@@ -149,7 +158,7 @@ export async function run(): Promise<void> {
   if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) {
     throw new Error('FORGEWRIGHT_MCP_LEASE_TTL_MS must be a positive integer');
   }
-  const exactWorkspaceId = workspaceId(trust.workspace);
+  const exactWorkspaceId = workspaceId(workspace);
   const exactSessionId = sessionId();
   const shutdownTimeoutMs = lifecycleShutdownTimeoutMs();
   activeLease = await leaseStore.acquire({
@@ -190,11 +199,16 @@ export async function run(): Promise<void> {
     log: (message) => console.error(message),
   });
 
-  setRuntimeTrustContext(trust, exactWorkspaceId, exactSessionId);
-  const gateway = new ToolExecutionGateway({
-    ...runtime.gatewayContext,
-    containment: new ExecutionContainment(trust),
-  });
+  const gatewayContext = runtime.gatewayContext;
+  const gateway = new PolicyReadyToolGateway(
+    () => loadRuntimeTrustContextIfPolicyPresent(trustEnvironment),
+    (readyTrust) => {
+      const containment = new ExecutionContainment(readyTrust);
+      setRuntimeTrustContext(readyTrust, exactWorkspaceId, exactSessionId);
+      return new ToolExecutionGateway({ ...gatewayContext, containment });
+    },
+    trust,
+  );
   registerTools(server, gateway, {
     sessionId: exactSessionId,
     deferredSkillNames: deferredSkillAllowlist(),

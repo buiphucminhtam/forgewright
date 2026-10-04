@@ -40,6 +40,8 @@ After policy opt-in:
 4. If the project is unmanaged and policy allows it, `forge bootstrap ensure . --auto --json` runs the idempotent bootstrap transaction.
 5. A valid `.forgewright/bootstrap.json` receipt marks the project ready. Later prompts do not repeat heavy setup.
 
+The MCP transport and tool catalog can start before an allowed project has its execution policy. Only an absent canonical policy is pending: tool calls return `EXECUTION_POLICY_NOT_READY` and cannot write project state. After trusted external bootstrap creates the policy, the same MCP process binds its guarded gateway on the next call, without a client reload. Existing invalid policy, broad roots and invalid caller context still fail closed. Once bound, policy replacement is rejected; MCP never seeds policy, runs bootstrap or falls back to an unguarded gateway. Its owned lifecycle lease and private trajectory remain subject to normal EOF/signal cleanup, including while policy is pending.
+
 No Forgewright submodule is required in the project. A submodule remains an option when the project intentionally wants to pin an exact framework revision.
 
 For native diagnostics, distinguish hook dispatch from bootstrap readiness.
@@ -66,7 +68,7 @@ stdout remains unchanged. A completed hook alone is not verified completion:
 the correlated project Stop decision must say `allow_stop`, `verified`,
 `validation_passed`, and `retry_suppressed=false` to establish that outcome.
 
-An isolated macOS Codex acceptance has observed this normal-prompt path through a trusted current `PreToolUse` hook to a full ready receipt. Its default MCP catalog connected with 16 tools; that check did not assert a deferred skill overlay or a model MCP invocation. Claude native execution remains deferred by user, and native Windows, physical power-loss, and remote-host acceptance remain unverified.
+Native acceptance must separately observe trusted `PreToolUse` on a fresh project, a current full receipt and readable index, a successful MCP tool invocation after bootstrap, a positively verified Stop decision, and owned process/lease cleanup. Deterministic stdio tests do not substitute for that host sequence. Claude native execution remains deferred by user, and native Windows, physical power-loss, and remote-host acceptance remain unverified.
 
 The installed launcher uses a small entrypoint for the hook's JSON preflight and loads the full CLI for other commands. Preflight does not invoke a model, contact a provider, install packages, or scan the project. Re-run policy setup after rebuilding an older shared runtime to refresh its launcher.
 
