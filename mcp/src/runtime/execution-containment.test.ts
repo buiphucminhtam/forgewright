@@ -1,8 +1,12 @@
-import { mkdtempSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, mkdirSync, writeFileSync, renameSync, chmodSync, symlinkSync } from 'node:fs';
+import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ExecutionContainment, loadRuntimeTrustContext } from './execution-containment.js';
+import {
+  ExecutionContainment,
+  loadRuntimeTrustContext,
+  loadRuntimeTrustContextIfPolicyPresent,
+} from './execution-containment.js';
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'containment-'));
@@ -23,6 +27,46 @@ const proposal = () => ({
 });
 
 describe('ExecutionContainment', () => {
+  it('defers only absent policy after validating workspace and caller', () => {
+    const root = mkdtempSync(join(tmpdir(), 'pending-containment-'));
+    expect(loadRuntimeTrustContextIfPolicyPresent({ FORGEWRIGHT_WORKSPACE: root })).toBeNull();
+    for (const workspace of ['/', homedir()]) {
+      expect(() =>
+        loadRuntimeTrustContextIfPolicyPresent({ FORGEWRIGHT_WORKSPACE: workspace }),
+      ).toThrow('RUNTIME_WORKSPACE_BROAD_ROOT');
+    }
+    for (const environment of [
+      { FORGEWRIGHT_WORKSPACE: root, FORGEWRIGHT_RUNTIME_MODE: 'production' },
+      { FORGEWRIGHT_WORKSPACE: root, FORGEWRIGHT_RUNTIME_MODE: 'other' },
+      {
+        FORGEWRIGHT_WORKSPACE: root,
+        FORGEWRIGHT_RUNTIME_MODE: 'production',
+        FORGEWRIGHT_CALLER_ID: 'safe',
+        FORGEWRIGHT_CONTAINMENT_PROFILE: 'other',
+      },
+    ])
+      expect(() => loadRuntimeTrustContextIfPolicyPresent(environment)).toThrow(
+        'RUNTIME_TRUST_CONTEXT_INVALID',
+      );
+  });
+
+  it('does not defer an existing unsafe policy or a symlink', () => {
+    const root = fixture();
+    const path = join(root, '.forgewright', 'execution-policy.yaml');
+    if (process.platform !== 'win32') {
+      chmodSync(path, 0o666);
+      expect(() => loadRuntimeTrustContextIfPolicyPresent({ FORGEWRIGHT_WORKSPACE: root })).toThrow(
+        'EXECUTION_POLICY_INVALID',
+      );
+      chmodSync(path, 0o600);
+      renameSync(path, path + '.original');
+      symlinkSync(path + '.original', path);
+      expect(() => loadRuntimeTrustContextIfPolicyPresent({ FORGEWRIGHT_WORKSPACE: root })).toThrow(
+        'EXECUTION_POLICY_INVALID',
+      );
+    }
+  });
+
   it('admits only the bounded learning-proposal shape without expanding general authority', () => {
     const root = fixture();
     const containment = new ExecutionContainment(

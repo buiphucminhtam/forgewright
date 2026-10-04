@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { relative, resolve, sep } from 'node:path';
+import { parse, relative, resolve, sep } from 'node:path';
 
 export type ContainmentMode = 'local' | 'production';
 export type ToolEffect =
@@ -149,25 +149,47 @@ export class ExecutionContainment {
   }
 }
 
-export function loadRuntimeTrustContext(environment = process.env): RuntimeTrustContext {
+export function loadRuntimeWorkspaceContext(
+  environment = process.env,
+): Omit<RuntimeTrustContext, 'policyDigest'> {
   const rawMode = environment.FORGEWRIGHT_RUNTIME_MODE;
   if (rawMode !== undefined && rawMode !== 'local' && rawMode !== 'production') {
     throw new Error('RUNTIME_TRUST_CONTEXT_INVALID');
   }
   const mode: ContainmentMode = rawMode === 'production' ? 'production' : 'local';
   const workspace = realpathSync(resolve(environment.FORGEWRIGHT_WORKSPACE ?? process.cwd()));
-  if (workspace === '/' || workspace === homedir()) throw new Error('RUNTIME_WORKSPACE_BROAD_ROOT');
+  if (workspace === parse(workspace).root || workspace === homedir())
+    throw new Error('RUNTIME_WORKSPACE_BROAD_ROOT');
   const callerId = environment.FORGEWRIGHT_CALLER_ID ?? null;
   const profile = environment.FORGEWRIGHT_CONTAINMENT_PROFILE ?? 'application';
   if (mode === 'production' && (!callerId || !SAFE_ID.test(callerId) || profile !== 'application'))
     throw new Error('RUNTIME_TRUST_CONTEXT_INVALID');
-  const policy = policySnapshot(workspace);
   return {
     mode,
     workspace,
     callerId,
     profile,
     profileDigest: digest(`${mode}:${profile}`),
-    policyDigest: policy.digest,
   };
+}
+
+export function loadRuntimeTrustContext(environment = process.env): RuntimeTrustContext {
+  const context = loadRuntimeWorkspaceContext(environment);
+  return { ...context, policyDigest: policySnapshot(context.workspace).digest };
+}
+
+export function loadRuntimeTrustContextIfPolicyPresent(
+  environment = process.env,
+): RuntimeTrustContext | null {
+  // Validate the workspace and caller before treating a missing policy as pending.
+  const context = loadRuntimeWorkspaceContext(environment);
+  const path = resolve(context.workspace, '.forgewright/execution-policy.yaml');
+  try {
+    return { ...context, policyDigest: policySnapshot(context.workspace).digest };
+  } catch (error) {
+    const failure = error as NodeJS.ErrnoException;
+    if (failure.code === 'ENOENT' && failure.syscall === 'lstat' && failure.path === path)
+      return null;
+    throw error;
+  }
 }

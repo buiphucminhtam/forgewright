@@ -33,7 +33,7 @@ import {
 
 export function registerTools(
   server: Server,
-  toolGateway = new ToolExecutionGateway(),
+  toolGateway: Pick<ToolExecutionGateway, 'execute'> = new ToolExecutionGateway(),
   context: {
     sessionId?: string;
     deferredSkillNames?: readonly string[];
