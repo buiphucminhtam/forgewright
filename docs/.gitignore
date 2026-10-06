@@ -33,5 +33,6 @@ assets/!(donate)
 !guides/docs-hub.md
 !guides/peer-collaboration.md
 !guides/auto-bootstrap.md
+!guides/game-vfx.md
 !process/
 !process/release-readiness.md

@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,97 @@ from scripts.runtime.local_routing import (
     valid_name,
     validate_candidates,
 )
+
+
+def excludes_game_vfx(prompt: str) -> bool:
+    """Conservative EN/VI boundary for the VFX overlay, not a mode classifier.
+
+    Native hosts use SKILL.md's semantic description. The local game preset
+    needs this narrow guard because a game trailer can still contain 'game'.
+    Mixed video/game requests require controller decomposition, not guessing.
+    """
+    text = unicodedata.normalize("NFD", prompt[:8192].casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = text.replace("đ", "d")
+    text = re.sub(r"[^\w]+", " ", text).strip()
+    terms = (
+        "video editing",
+        "edit video",
+        "edit a video",
+        "edit the video",
+        "editing video",
+        "video editor",
+        "video ad",
+        "video ads",
+        "video advertisement",
+        "video advertisements",
+        "advertising video",
+        "promo video",
+        "promotional video",
+        "video commercial",
+        "trailer",
+        "montage",
+        "gameplay footage",
+        "gameplay recording",
+        "image editing",
+        "edit image",
+        "edit images",
+        "edit an image",
+        "edit photo",
+        "edit photos",
+        "edit a photo",
+        "edit a picture",
+        "photo editing",
+        "retouch",
+        "screenshot editing",
+        "edit screenshot",
+        "edit screenshots",
+        "edit game screenshots",
+        "dung video",
+        "chinh sua video",
+        "sua video",
+        "bien tap video",
+        "quang cao video",
+        "video quang cao",
+        "dung phim",
+        "sua anh",
+        "chinh sua anh",
+        "chinh anh",
+    )
+    return any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in terms)
+
+
+def requests_game_vfx(prompt: str) -> bool:
+    """Prioritize VFX only inside an already selected, configured skill list."""
+    if excludes_game_vfx(prompt):
+        return False
+    text = unicodedata.normalize("NFD", prompt[:8192].casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[^\w]+", " ", text.replace("đ", "d")).strip()
+    terms = (
+        "vfx",
+        "particle",
+        "particles",
+        "game feel",
+        "game juice",
+        "combo effect",
+        "combo effects",
+        "combo feedback",
+        "combo animation",
+        "win effects",
+        "level win celebration",
+        "environment animation",
+        "animate the game environment",
+        "animate game environment",
+        "sprite quality",
+        "game assets",
+        "hieu ung game",
+        "cam giac thao tac",
+        "hieu ung combo",
+        "an mung thang man",
+        "hoat anh moi truong",
+    )
+    return any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in terms)
 
 
 def _result(
@@ -511,7 +603,15 @@ def route_skills(
                 enabled = _enabled_value(settings[name], name)
             if enabled == "false":
                 continue
-            verified.append(_verified_skill(name, skills_root=skills_root))
+            verified_skill = _verified_skill(name, skills_root=skills_root)
+            if (
+                name == "game-asset-vfx"
+                and enabled != "true"
+                and auto_detect
+                and excludes_game_vfx(prompt)
+            ):
+                continue
+            verified.append(verified_skill)
     except (OSError, ValueError) as error:
         return _result(
             status="error",
@@ -519,6 +619,25 @@ def route_skills(
             source=selected_source,
             errors=[str(error)],
         )
+
+    # Keep the creative handoff first, then fit requested VFX before unrelated
+    # engine overlays consume the context budget. Validate the entire catalog
+    # first; never bypass config enablement, count or token limits.
+    if auto_detect and requests_game_vfx(prompt):
+        vfx = next(
+            (skill for skill in verified if skill["name"] == "game-asset-vfx"), None
+        )
+        if vfx is not None:
+            verified.remove(vfx)
+            art_index = next(
+                (
+                    i
+                    for i, skill in enumerate(verified)
+                    if skill["name"] == "art-director"
+                ),
+                -1,
+            )
+            verified.insert(art_index + 1, vfx)
 
     capped = verified[:cap] if cap else []
     loaded: list[dict[str, Any]] = []

@@ -1,0 +1,153 @@
+{
+  "scope": "Native semantic trigger review plus local game preset inclusion/exclusion; local mode selection remains unchanged.",
+  "positive": [
+    {
+      "id": "particles-en",
+      "prompt": "Add game particles for tile clear feedback in Three.js",
+      "auto_game_mode": true
+    },
+    {
+      "id": "particles-vi",
+      "prompt": "Thêm hạt particle khi xóa ô trong trò chơi Canvas",
+      "auto_game_mode": true
+    },
+    {
+      "id": "feel-en",
+      "prompt": "Improve game feel for drag and drop",
+      "auto_game_mode": true
+    },
+    {
+      "id": "feel-vi",
+      "prompt": "Làm cảm giác thao tác trong trò chơi rõ hơn",
+      "auto_game_mode": true
+    },
+    {
+      "id": "combo-en",
+      "prompt": "Add combo effects to a puzzle game",
+      "auto_game_mode": true
+    },
+    {
+      "id": "combo-vi",
+      "prompt": "Thêm hiệu ứng combo cho game puzzle",
+      "auto_game_mode": true
+    },
+    {
+      "id": "win-en",
+      "prompt": "Design a level-win celebration for a Unity game",
+      "auto_game_mode": true
+    },
+    {
+      "id": "win-vi",
+      "prompt": "Làm hiệu ứng ăn mừng thắng màn trong trò chơi",
+      "auto_game_mode": true
+    },
+    {
+      "id": "environment-en",
+      "prompt": "Add environment animation to the game background",
+      "auto_game_mode": true
+    },
+    {
+      "id": "environment-vi",
+      "prompt": "Thêm hoạt ảnh môi trường trong game",
+      "auto_game_mode": true
+    },
+    {
+      "id": "optimize-en",
+      "prompt": "Optimize game VFX on a physical phone",
+      "auto_game_mode": false
+    },
+    {
+      "id": "optimize-vi",
+      "prompt": "Tối ưu VFX cho game Capacitor",
+      "auto_game_mode": false
+    },
+    {
+      "id": "asset-en",
+      "prompt": "Improve sprite quality for a Phaser game",
+      "auto_game_mode": true
+    },
+    {
+      "id": "video-game-term",
+      "prompt": "Improve particles in this video game",
+      "auto_game_mode": true
+    },
+    {
+      "id": "environment-natural",
+      "prompt": "Animate the game environment",
+      "auto_game_mode": true
+    },
+    {
+      "id": "combo-natural",
+      "prompt": "Improve a Canvas puzzle's combo and win effects",
+      "auto_game_mode": false
+    }
+  ],
+  "negative": [
+    {
+      "id": "video-en",
+      "prompt": "Add game particles during video editing of gameplay footage"
+    },
+    {
+      "id": "video-vi",
+      "prompt": "Chỉnh sửa video gameplay và thêm hiệu ứng hạt"
+    },
+    {
+      "id": "ad-en",
+      "prompt": "Create a video ad for a puzzle game with confetti"
+    },
+    {
+      "id": "ad-vi",
+      "prompt": "Làm quảng cáo video cho trò chơi với hiệu ứng combo"
+    },
+    {
+      "id": "trailer",
+      "prompt": "Create a game trailer with a level-win celebration"
+    },
+    {
+      "id": "photo-en",
+      "prompt": "Edit an image of game particles"
+    },
+    {
+      "id": "photo-vi",
+      "prompt": "Sửa ảnh chụp game để thêm hiệu ứng thắng màn"
+    },
+    {
+      "id": "unaccented-vi",
+      "prompt": "Chinh sua anh game voi particle"
+    },
+    {
+      "id": "mixed",
+      "prompt": "Add game combo effects and make a promo video"
+    },
+    {
+      "id": "photo-natural",
+      "prompt": "Edit a photo of my game"
+    },
+    {
+      "id": "screenshots",
+      "prompt": "Edit game screenshots"
+    },
+    {
+      "id": "video-plural",
+      "prompt": "Create video advertisements for the puzzle game"
+    }
+  ],
+  "behavior_review": [
+    {
+      "prompt": "Improve a Canvas puzzle's combo and win effects",
+      "expected": "Identify Canvas first; preserve renderer, specify readable layers, independent reward, caps and reduced motion."
+    },
+    {
+      "prompt": "Use Unity ObjectPool.maxSize to enforce an active particle cap",
+      "expected": "Explain retention versus active admission, verify Unity version and add separate active accounting."
+    },
+    {
+      "prompt": "Use GPU particles because they are always faster on mobile",
+      "expected": "Reject universal speed claim; compare equivalent art on real phones using CPU/GPU tails, overdraw and thermal evidence."
+    },
+    {
+      "prompt": "A win tween should award coins when it finishes",
+      "expected": "Reward authority commits idempotently before presentation; cancel/disable/failure must not change reward or continue."
+    }
+  ]
+}

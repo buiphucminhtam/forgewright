@@ -72,8 +72,11 @@ Forgewright includes 55+ skills organized into 8 categories. Skills are loaded o
 | **level-designer** | Level creation, difficulty curves | "Create a level" |
 | **narrative-designer** | Story, dialogue, world-building | "Write the game story" |
 | **game-audio-engineer** | Sound effects, music | "Add game audio" |
-| **game-asset-vfx** | Visual effects, particles | "Add visual effects" |
+| **game-asset-vfx** | Real-time particles, game feel, combo/win, environment animation, VFX optimization (EN/VI) | "Improve game feel" / "Thêm hiệu ứng combo cho game" |
 | **technical-artist** | Graphics optimization, shaders | "Optimize game graphics" |
+
+See [Game VFX selection](guides/game-vfx.md) for bilingual triggers, exclusions,
+engine references and native/local installation behavior.
 
 ## AI/ML
 
