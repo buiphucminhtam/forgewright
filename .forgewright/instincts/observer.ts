@@ -311,6 +311,11 @@ export function saveHookHealth(projectRoot: string = process.cwd(), healthToSave
   const instinctsDir = resolve(canonicalRoot, '.forgewright', 'instincts');
   const hp = resolve(instinctsDir, 'health.json');
   try {
+    // Health persistence must not create a missing project root. In particular,
+    // recursive mkdir below a nonexistent /proc path can hang in Node.
+    if (!statSync(canonicalRoot).isDirectory()) {
+      throw new Error('Project root is not a directory');
+    }
     if (!existsSync(instinctsDir)) {
       mkdirSync(instinctsDir, { recursive: true });
     }

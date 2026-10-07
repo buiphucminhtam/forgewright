@@ -23,6 +23,7 @@ def run_node(code: str, env: dict[str, str] | None = None) -> str:
         capture_output=True,
         text=True,
         check=True,
+        timeout=15,
     )
     return res.stdout.strip()
 
@@ -328,8 +329,39 @@ def test_unwritable_storage_handled_gracefully(tmp_path: Path):
         success: true
     };
     const res = await observeToolCall(event, '/proc/nonexistent/unwritable');
-    const health = getHookHealth();
+    const health = getHookHealth('/proc/nonexistent/unwritable');
     console.log(JSON.stringify({ res, health }));
     """
     output = json.loads(run_node(code))
     assert output["res"]["pattern"] is None
+    assert output["health"]["state"] == "degraded"
+    assert output["health"]["lastError"] == "health_write_failed"
+
+
+def test_health_write_does_not_create_missing_project_root(tmp_path: Path):
+    project_root = tmp_path / "missing" / "project"
+    code = f"""
+    import {{ getHookHealth, saveHookHealth }} from './.forgewright/instincts/observer.mjs';
+    const root = {json.dumps(str(project_root))};
+    saveHookHealth(root, {{ ...getHookHealth(root), state: 'running' }});
+    console.log(JSON.stringify(getHookHealth(root)));
+    """
+    health = json.loads(run_node(code))
+    assert not project_root.exists()
+    assert health["state"] == "degraded"
+    assert health["lastError"] == "health_write_failed"
+
+
+def test_health_write_rejects_file_project_root(tmp_path: Path):
+    project_root = tmp_path / "project-file"
+    project_root.write_text("preserve me", encoding="utf-8")
+    code = f"""
+    import {{ getHookHealth, saveHookHealth }} from './.forgewright/instincts/observer.mjs';
+    const root = {json.dumps(str(project_root))};
+    saveHookHealth(root, {{ ...getHookHealth(root), state: 'running' }});
+    console.log(JSON.stringify(getHookHealth(root)));
+    """
+    health = json.loads(run_node(code))
+    assert project_root.read_text(encoding="utf-8") == "preserve me"
+    assert health["state"] == "degraded"
+    assert health["lastError"] == "health_write_failed"

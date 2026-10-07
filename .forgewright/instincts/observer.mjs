@@ -747,6 +747,9 @@ function saveHookHealth(projectRoot = process.cwd(), healthToSave) {
   const instinctsDir = resolve3(canonicalRoot, ".forgewright", "instincts");
   const hp = resolve3(instinctsDir, "health.json");
   try {
+    if (!statSync2(canonicalRoot).isDirectory()) {
+      throw new Error("Project root is not a directory");
+    }
     if (!existsSync3(instinctsDir)) {
       mkdirSync2(instinctsDir, { recursive: true });
     }

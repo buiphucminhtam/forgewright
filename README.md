@@ -174,6 +174,25 @@ Review generated configuration before adoption. A project submodule is still use
 
 ## What's new
 
+### Evidence-led game skill evolution
+
+The [game skill evolution workflow](workflows/game-skill-evolution.md) connects
+original-source research, **impact assessment before edits**, staged candidates,
+baseline/current/candidate evaluation, review, bilingual README updates and
+authorized commit/push. It prioritizes game correctness and game feel, then VFX
+and target-device performance. Shared engineering habits are assessed through
+observable decisions and cross-role regressions.
+
+Each invocation handles one question and may end with no change or a precise
+evidence blocker. The workflow uses existing research and skill-quality tools;
+it does not install an evaluator or a recurring agent. Scheduled execution needs
+a separately configured host, budget and retained handoff. Desktop/web checks
+do not establish physical-device performance or player-outcome improvements.
+
+The observer now rejects missing or non-directory project roots before writing
+health metadata. Invalid roots retain an in-memory degraded health result,
+without creating a project directory or hanging on a nonexistent `/proc` path.
+
 ### Game fixture and bounded memory
 
 **Local source candidate, not yet published.** Marketplace installation does not include unpublished checkout changes.

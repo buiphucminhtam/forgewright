@@ -64,6 +64,26 @@
     {
       "path": "docs/guides/game-vfx.md",
       "type": "operations"
+    },
+    {
+      "path": "workflows/game-skill-evolution.md",
+      "type": "operations"
+    },
+    {
+      "path": "workflows/deep-research.md",
+      "type": "operations"
+    },
+    {
+      "path": "skills/_shared/protocols/research-gate.md",
+      "type": "operations"
+    },
+    {
+      "path": "skills/_shared/protocols/skill-specialization-contract.md",
+      "type": "operations"
+    },
+    {
+      "path": "evals/skills/README.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -80,7 +100,8 @@
     "docs/adr/ADR-012-bounded-peer-collaboration.md",
     "skills/_shared/protocols/documentation-governance.md",
     "docs/adr/ADR-pi-worker-runtime.md",
-    "docs/adr/ADR-agent-plugin-distribution.md"
+    "docs/adr/ADR-agent-plugin-distribution.md",
+    "workflows/game-skill-evolution.md"
   ],
   "adapters": {
     "git": true,
@@ -104,7 +125,12 @@
       "docs/adr/ADR-pi-worker-runtime.md",
       "docs/adr/ADR-agent-plugin-distribution.md",
       "docs/guides/auto-bootstrap.md",
-      "docs/guides/game-vfx.md"
+      "docs/guides/game-vfx.md",
+      "workflows/game-skill-evolution.md",
+      "workflows/deep-research.md",
+      "skills/_shared/protocols/research-gate.md",
+      "skills/_shared/protocols/skill-specialization-contract.md",
+      "evals/skills/README.md"
     ],
     "exclude": [
       "docs/archive/**",

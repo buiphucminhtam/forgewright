@@ -147,6 +147,25 @@ Hãy review setup script và config sinh ra; merge rule cần thiết vào proje
 
 ## Đã nâng cấp gì
 
+### Research và nâng cấp skill game dựa trên bằng chứng
+
+[Workflow nâng cấp skill game](workflows/game-skill-evolution.md) nối research
+nguồn gốc, **đánh giá impact trước khi sửa**, tạo candidate, so sánh
+baseline/current/candidate, review, cập nhật README Anh/Việt và commit/push trong
+phạm vi được cấp quyền. Ưu tiên tính đúng đắn của gameplay và game feel, sau đó
+là VFX và hiệu năng trên thiết bị mục tiêu. Thay đổi mindset được đánh giá qua
+quyết định quan sát được và kiểm tra hồi quy ở các vai trò bị ảnh hưởng.
+
+Mỗi lần chạy xử lý một câu hỏi; có thể kết thúc không thay đổi hoặc chỉ rõ bằng
+chứng còn thiếu. Flow dùng công cụ research/đánh giá skill hiện có, chưa cài
+evaluator hay bật agent chạy định kỳ. Chạy theo lịch cần host, ngân sách và nơi
+lưu handoff được cấu hình riêng. Test desktop/web không chứng minh hiệu năng
+trên điện thoại thật hoặc cải thiện trải nghiệm của người chơi.
+
+Observer kiểm tra project root trước khi ghi health metadata. Root không tồn
+tại hoặc là file sẽ trả trạng thái degraded trong bộ nhớ, không tự tạo thư mục
+project và không treo khi nhận đường dẫn `/proc` không tồn tại.
+
 ### Game chạy được và bộ nhớ có giới hạn
 
 **Đây là bản source local chưa publish.** Cài từ marketplace chưa bao gồm thay đổi chưa xuất bản trong checkout này.

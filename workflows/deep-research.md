@@ -1,114 +1,80 @@
 ---
-description: Deep research workflow using web search + NotebookLM MCP for grounded, citation-backed analysis
+title: Deep research workflow
+description: Resolve material research questions using original sources and explicit evidence limits
+status: active
+owner: Forgewright maintainers
+scope: Source discovery and decision-focused synthesis
+last_reviewed: 2026-10-07
+canonical: false
 ---
 
-# Deep Research Workflow
+# Deep research workflow
 
-Use this workflow when you need thorough, grounded research on any topic — technology evaluation, competitive analysis, domain exploration, architecture research, etc.
+Use the canonical [Research Gate](../skills/_shared/protocols/research-gate.md)
+for source trust, instruction isolation, conflicts and decision requirements.
+This workflow gathers and synthesizes evidence with tools actually available.
+For changes to game skills or engineering judgment, continue through
+[game skill evolution](game-skill-evolution.md), including impact review,
+evaluation, README updates and authorized Git delivery.
 
-**Key advantage:** NotebookLM provides Gemini-grounded, zero-hallucination answers with citations from your collected sources. Results are significantly richer than web search alone.
+## 1. Define the question and baseline
 
-## Prerequisites
-- NotebookLM MCP tools available (check for `mcp_notebooklm_*` or `mcp__notebooklm-mcp__*`)
-- Authenticated session (`nlm login` or `mcp_notebooklm_refresh_auth`)
-- If MCP unavailable → workflow degrades gracefully to web search only
+State the unknown and decision it can change. Inspect code, tests, configuration
+and relevant earlier research before browsing. Record engine/package/version,
+platform and acceptance. If local evidence resolves it, external research is
+unnecessary.
 
-## Steps
+## 2. Inspect original sources
 
-### Phase 1: Web Discovery (Always Available)
+Check current search, browsing and retrieval capabilities. Prefer official
+documentation, source, specifications, release notes or primary research;
+practitioner reports provide experience signals with limitations. Follow
+provided network/authentication settings. Record source access failures and
+their impact.
 
-1. **Define research questions** — clarify what you need to learn
-2. **Broad web search** — 3-5 parallel search_web calls covering different angles:
-   ```
-   search_web("[topic] overview comparison 2026")
-   search_web("[topic] best practices patterns")
-   search_web("[topic] challenges limitations risks")
-   search_web("[topic] real-world case studies")
-   ```
-3. **Collect URLs** — save 5-15 most relevant URLs from search results
-4. **Quick read** — use `read_url_content` on top 3-5 URLs for initial understanding
+For each material claim retain original URL/path, publisher, applicable
+version/date, access date and supporting excerpt/section. A URL list does not
+prove its contents were read. Separate facts, inferences and recommendations;
+seek contrary evidence for consequential decisions. Stop when evidence
+supports the decision.
 
-> **If NotebookLM MCP is NOT available:** Stop here. Synthesize findings from web search into a report. This is still valuable research, just without the grounding layer.
+If search is unavailable, direct access to a known primary source may suffice.
+If neither original sources nor current local evidence support a required
+claim, mark it UNKNOWN and block the dependent decision. Model recollection
+does not replace missing evidence.
 
-### Phase 2: NotebookLM Deep Research (Enhanced, Optional)
+## 3. Use synthesis tools when useful and available
 
-5. **Session check** — verify authentication:
-   ```python
-   server_info()  # If fails, run nlm login and refresh_auth
-   ```
-6. **Create research notebook:**
-   ```python
-   notebook_create(title="Research: [Topic] — [Date]")
-   ```
-7. **Add sources from Phase 1:**
-   ```python
-   # Add each URL collected in Phase 1 (wait 2s between each)
-   source_add(notebook_id=nb_id, source_type="url", url="https://...")
-   ```
-8. **Run deep research** for additional sources:
-   ```python
-   research_start(query="[topic]", notebook_id=nb_id, mode="deep")
-   research_status(notebook_id=nb_id, max_wait=300)  # Wait up to 5 min
-   research_import(notebook_id=nb_id, task_id=task_id)  # Import all
-   ```
-9. **Iterative querying** — build understanding through follow-ups:
-   ```python
-   # Round 1: Broad overview
-   r1 = notebook_query(nb_id, "Comprehensive overview of [topic]")
+NotebookLM or another assistant may organize authorized sources and expose
+citations. Inspect current tool schemas and authentication before use; do not
+assume tool names, quotas, session durations or arguments from old examples.
+Honor observed rate limits, use bounded polling and communicate during long
+operations.
 
-   # Round 2: Deep specifics
-   r2 = notebook_query(nb_id, "Implementation challenges and trade-offs?",
-                        conversation_id=r1["conversation_id"])
+Check every material conclusion against the original source. Grounded summaries
+can be incomplete or wrong; no tool guarantees correct answers. Tool access
+does not authorize uploading private files, secrets or transcripts, installing
+a provider or initiating a paid fallback.
 
-   # Round 3: Gaps and risks
-   r3 = notebook_query(nb_id, "What's missing? Edge cases? Risks?",
-                        conversation_id=r1["conversation_id"])
+Without a synthesis tool, continue with inspected sources and the same evidence
+standard. NotebookLM is optional, not a grounding gate.
 
-   # Round 4: Actionable synthesis
-   r4 = notebook_query(nb_id, "Key decisions and recommendations?",
-                        conversation_id=r1["conversation_id"])
-   ```
+## 4. Synthesize, decide and verify
 
-### Phase 3: Synthesize & Output
+Use the Research Gate's compact output:
 
-10. **Generate structured output** (choose based on need):
-    ```python
-    # Briefing document
-    studio_create(nb_id, artifact_type="report",
-                  report_format="Briefing Doc", confirm=True)
+```text
+UNKNOWN: exact question and decision at stake
+EVIDENCE: original source/section + authority/version/date + applicability
+CONFLICT/DISCONFIRMATION: contrary findings and their effect on confidence
+SYNTHESIS: 1–3 findings labeled FACT / INFERENCE / RECOMMENDATION / UNKNOWN
+DECISION: supported next action, no change, or blocked with missing evidence
+RESIDUAL UNCERTAINTY: explicit limitations
+CHECK: next local test, measurement or review
+```
 
-    # Mind map for visual overview
-    studio_create(nb_id, artifact_type="mind_map",
-                  title="[Topic] Overview", confirm=True)
-
-    # Study guide for deep learning
-    studio_create(nb_id, artifact_type="report",
-                  report_format="Study Guide", confirm=True)
-    ```
-11. **Download artifacts:**
-    ```python
-    download_artifact(nb_id, artifact_type="report", output_path="research-report.md")
-    ```
-12. **Write synthesis** — combine web search findings + NotebookLM grounded answers into a final research report with:
-    - Key findings (with citations)
-    - Trade-off analysis
-    - Risk assessment
-    - Actionable recommendations
-
-## Guard Rails
-
-- **Dedicated account:** Use a separate Google account for NotebookLM automation
-- **Rate limiting:** Wait 2s between source operations, 5s between content generation
-- **Session timeout:** Re-authenticate if commands fail (sessions expire ~20 min)
-- **Fallback always:** If NotebookLM is unavailable, Phase 1 alone provides solid research
-- **Free tier limit:** ~50 queries/day — plan queries efficiently
-
-## Integration with Forgewright Skills
-
-| Skill | How Research Helps |
-|-------|--------------------|
-| **Polymath** | Pre-flight research grounded in real sources, not training data |
-| **Product Manager** | Market research with citations for BRD |
-| **Solution Architect** | Technology evaluation with real-world evidence |
-| **Data Scientist** | Model/framework comparison with benchmarks |
-| **Security Engineer** | Threat intelligence with current vulnerability data |
+Research alone does not authorize a code or skill change. Complete impact
+review before applying a decision, then run project verification. Keep scratch
+research in ignored task state; update canonical docs only for a durable,
+source-supported decision under
+[documentation governance](../skills/_shared/protocols/documentation-governance.md).
