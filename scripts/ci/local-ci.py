@@ -864,6 +864,95 @@ class LocalCI:
             ROOT / item for item in raw.split("\0") if item and (ROOT / item).is_file()
         ]
 
+    def _staged_test_paths(self) -> list[str]:
+        # Selection must include deletions and both sides of a rename. Formatter
+        # admission intentionally has different semantics and must not be reused.
+        raw = self.capture(
+            ["git", "diff", "--cached", "--no-renames", "--name-status", "-z"], cwd=ROOT
+        )
+        # A status byte precedes each path, so capture's outer strip cannot
+        # remove a leading space from the first filename.
+        parts = raw.split("\0")
+        if parts[-1] == "":
+            parts.pop()
+        if len(parts) % 2 or any(not part for part in parts):
+            raise GateFailure("Malformed staged Git path observation")
+        return parts[1::2]
+
+    def _select_tests(self, paths: list[str]) -> dict:
+        lanes = {"python"}  # Cross-component distribution/hook contracts.
+        full = not paths
+        reasons = []
+        critical = (
+            "scripts/",
+            "kernel/",
+            ".husky/",
+            "tests/lite/",
+            "mcp/src/runtime/",
+            "mcp/src/middleware/",
+            "mcp/src/product-factory/",
+        )
+        critical_files = {
+            "mcp/src/index.ts",
+            "docs/roadmap-completion.json",
+            "docs/active-roadmap.md",
+            "docs/process/release-readiness.md",
+            "tests/unit_tests/test_local_ci.py",
+            "tests/unit_tests/test_ci_workflow.py",
+            "tests/unit_tests/test_ci_test_selection.py",
+            "tests/unit_tests/test_roadmap_completion.py",
+        }
+        for path in paths:
+            if path.startswith(critical) or path in critical_files:
+                full = True
+                reasons.append(f"shared/runtime/release boundary: {path}")
+            elif path.startswith("mcp/src/"):
+                lanes.add("mcp")
+            elif path.startswith(("src/cli/src/", "src/cli/tests/")):
+                lanes.add("cli")
+            elif path.startswith("tests/unit_tests/") and path.endswith(".py"):
+                pass
+            elif (
+                path
+                in {
+                    "README.md",
+                    "README.vi.md",
+                    "docs/project-state.json",
+                    ".forgewright/docs-manifest.json",
+                }
+                or path.startswith(("skills/", "workflows/", "docs/"))
+                and path.endswith(".md")
+            ):
+                # Both consumers discover shipped documentation/skills. Keep
+                # their whole suites, not a speculative filename-based subset.
+                lanes.update(("mcp", "cli"))
+            else:
+                full = True
+                reasons.append(f"unmapped change: {path}")
+        if full:
+            lanes.update(("mcp", "cli"))
+        omitted = (
+            []
+            if full
+            else [
+                "tests/unit_tests/test_roadmap_completion.py::test_all_declared_roadmap_verifiers_replay_on_unchanged_tree"
+            ]
+        )
+        return {
+            "paths": paths,
+            "lanes": sorted(lanes),
+            "full_precommit": full,
+            "release_replay": full,
+            "omitted_release_tests": omitted,
+            "reason": "; ".join(reasons)
+            if reasons
+            else (
+                "empty changeset: full fallback"
+                if full
+                else "component lanes plus Python cross-component contracts; full release replay remains required"
+            ),
+        }
+
     def _format_staged(self) -> None:
         staged = self._staged_files()
         if not staged:
@@ -940,6 +1029,8 @@ class LocalCI:
         )
         self.review()
         self._format_staged()
+        self.test_selection = self._select_tests(self._staged_test_paths())
+        print("[local-ci] test selection: " + json.dumps(self.test_selection))
         mcp_tsc = self._node_bin("mcp", "tsc")
         cli_tsc = self._node_bin("cli", "tsc")
         mcp_vitest = self._node_module_file("mcp", "vitest/vitest.mjs")
@@ -966,27 +1057,36 @@ class LocalCI:
                 "--json",
             ],
         )
-        self.run(
-            "mcp-tests",
-            [self.node, mcp_vitest, "run", "--reporter=basic"],
-            cwd=ROOT / "mcp",
-            env=TEST_GIT_ENV,
-        )
-        self.run(
-            "cli-tests",
-            [self.node, cli_vitest, "run"],
-            cwd=ROOT / "src" / "cli",
-            env=TEST_GIT_ENV,
-        )
+        if "mcp" in self.test_selection["lanes"]:
+            self.run(
+                "mcp-tests",
+                [self.node, mcp_vitest, "run", "--reporter=basic"],
+                cwd=ROOT / "mcp",
+                env=TEST_GIT_ENV,
+            )
+        if "cli" in self.test_selection["lanes"]:
+            self.run(
+                "cli-tests",
+                [self.node, cli_vitest, "run"],
+                cwd=ROOT / "src" / "cli",
+                env=TEST_GIT_ENV,
+            )
+        python_selection = [
+            arg
+            for ref in self.test_selection["omitted_release_tests"]
+            for arg in ("--deselect", ref)
+        ]
         self.run(
             "python-unit-tests",
             [
                 self.python,
                 "-m",
                 "pytest",
+                "--durations=15",
                 "-p",
                 "no:cacheprovider",
                 "tests/unit_tests/",
+                *python_selection,
             ],
             timeout=PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS,
             env=TEST_GIT_ENV,
@@ -1043,6 +1143,7 @@ class LocalCI:
                 "nodeBinary": self.primary_node or "",
             },
             "repository": {"head": head, "branch": branch},
+            "test_selection": getattr(self, "test_selection", None),
             "steps": [asdict(item) for item in self.results],
         }
         timestamped = REPORT_DIR / now.strftime("%Y%m%dT%H%M%SZ.json")

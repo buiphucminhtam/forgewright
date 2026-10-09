@@ -3,8 +3,12 @@ id: qa-test-protocol
 title: QA Testing & Test Case Design Protocol — Shared Reference
 summary: Core protocol for qa test protocol.
 status: active
-version: 1.0.0
+version: 1.1.0
 owners: [core]
+owner: Core maintainers
+scope: Test value, oracle integrity and evidence-based regression selection
+last_reviewed: 2026-10-09
+canonical: true
 triggers: []
 used_by: [all]
 related: []
@@ -65,6 +69,40 @@ mọi assertion/oracle tương đương.
 Failure triage mặc định: requirement rõ + test fail => sửa product code; requirement
 không đủ rõ => hỏi; requirement đã thay đổi rõ ràng => cập nhật requirement-linked
 test rồi mới dùng nó để verify implementation.
+
+### 1.6 Test Value — Create, Audit, Optimize
+
+**Create:** trước khi thêm test, ghi ngắn gọn năm quyết định: hành vi nào đổi;
+lỗi thực tế nào có thể xảy ra; test hiện tại nào đã chứng minh acceptance;
+lớp thấp nhất vẫn đáng tin cậy để kiểm tra; cần thêm, mở rộng hay tái sử dụng test.
+Nếu coverage hiện tại đủ, không thêm test. Expected result phải đến từ requirement
+hoặc oracle độc lập. Phải chỉ ra thay đổi ở production hoặc contract phân phối
+nào làm test fail. Bản sao SUT, mock trả đúng giá trị rồi assert lại mock, và phép
+tính chỉ nằm trong test không chứng minh product behavior. Text/schema checks
+có giá trị khi chính artifact phân phối là contract; không gọi chúng là bằng
+chứng runtime, browser control hoặc agent compliance.
+
+**Audit:** phân biệt test runtime, contract phân phối, ví dụ và giả lập. Chỉ
+prune test hiển nhiên/không dùng SUT hoặc merge duplicate sau khi chỉ rõ coverage
+độc nhất và negative paths còn được giữ ở đâu. Yêu cầu audit/cleanup của owner
+cho phép dọn test không có contract product hoặc duplicate đã được chứng minh;
+không cho phép xóa hành vi requirement-linked độc nhất hay test đang fail để xanh.
+Không tự thêm skip/xfail, disabled/todo, comment-out hoặc nới tolerance: cần
+explicit owner approval. Skip có sẵn do platform/capability phải giữ lý do và
+báo rõ host chưa kiểm chứng; không diễn giải thành pass.
+
+**Optimize:** đo duration của command/lane trước khi đổi; chọn regression theo
+dependency closure gồm callers, consumers, config và test infrastructure. Unknown,
+shared runtime, runner hoặc release boundary dùng full fallback. Ghi paths,
+lanes, lý do, thời gian và phần chưa chạy; PASS của lane không phải PASS toàn suite.
+Giữ full suite cho stable release. Không chuyển một failing test sang lane khác
+để né lỗi. Một replay integration đã xanh, lặp lại toàn bộ product verifiers,
+có thể thuộc lane release nếu default/full suite vẫn chạy nó và quyết định
+deselect ở lane thường được ghi rõ. Không tự suy ra tiền tiết kiệm từ số test.
+
+**Failure:** tái hiện lỗi, đọc assertion và trace requirement trước khi sửa.
+Chỉ gọi lỗi “không liên quan” khi có bằng chứng về scope/baseline; vẫn báo blocker
+và kết quả fail. Deadline hoặc bill không cấp quyền làm yếu oracle.
 
 ---
 
@@ -159,7 +197,7 @@ SHIFT-LEFT (Phòng ngừa lỗi sớm) ◄─── [ PHÁT TRIỂN / CI ] ─�
 *   **Mô hình cảnh báo sớm STREW:** Theo dõi tỷ lệ giữa Code kiểm thử / Code logic nghiệp vụ, tỷ lệ cảnh báo biên dịch mẫu (pattern warnings), và cấu trúc kiểu dữ liệu để dự báo mật độ lỗi trước khi release.
 
 ### 5.2 Tối ưu hóa Bộ kiểm thử Hồi quy (Regression Suite Optimization)
-1.  **Thu nhỏ bộ test (Test Suite Minimization):** Tối ưu **tập test được chọn để chạy** bằng Hitting Set mà không tự xóa hay thay đổi các test case requirement-linked đang tồn tại. Xóa/merge/đổi behavioral test case trong repository vẫn là test-oracle mutation và chỉ được phép sau explicit requirement change.
+1.  **Thu nhỏ bộ test (Test Suite Minimization):** Tối ưu tập test được chọn theo dependency closure. Prune ví dụ/duplicate theo §1.6; unique behavioral oracles vẫn requirement-locked theo §1.5.
 2.  **Lựa chọn test case thông minh (Regression Test Selection - RTS):** Chỉ chọn chạy các test case đi qua các phân vùng mã nguồn có sự thay đổi (được chỉnh sửa, thêm mới hoặc xóa bỏ) thông qua giải thuật Graph-Walk.
 3.  **Sắp xếp thứ tự ưu tiên (Test Case Prioritization):** Sắp xếp thứ tự chạy test case để đạt chỉ số **APFD (Average Percentage of Fault Detection)** cao nhất, giúp phát hiện lỗi nhanh nhất có thể trong quá trình chạy CI.
 
@@ -173,5 +211,5 @@ SHIFT-LEFT (Phòng ngừa lỗi sớm) ◄─── [ PHÁT TRIỂN / CI ] ─�
 - [ ] Viết kịch bản Gherkin (Given-When-Then) rõ ràng trước khi code (Shift-Left).
 - [ ] Đảm bảo 100% độ bao phủ (Branch Coverage) đối với các luồng nghiệp vụ cốt lõi (Critical Paths).
 - [ ] Thực hiện dọn dẹp môi trường (setup/tear down) độc lập giữa các test case để tránh flaky tests.
-- [ ] Tích hợp chạy tự động toàn bộ Unit/Integration tests vào CI/CD gate trước khi merge PR.
+- [ ] Chạy lane theo phạm vi ảnh hưởng trước commit/PR; unknown/shared impact dùng full fallback. Full Unit/Integration và release gates bắt buộc trước stable release.
 - [ ] Giám sát tỷ lệ Change Failure Rate (CFR) sau mỗi đợt phát hành sản phẩm.

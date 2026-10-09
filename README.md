@@ -83,6 +83,12 @@ Clear local work stays small. Security, billing, concurrency, public contracts, 
 
 The [pipeline reference](docs/pipeline-reference.md) describes orchestration; the [canonical runtime ADR](docs/adr/0001-canonical-production-runtime.md) documents the implemented enforcement boundaries.
 
+## Tests that earn their cost
+
+The [QA protocol](skills/_shared/protocols/qa-test-protocol.md) requires a changed behavior, plausible fault, existing-coverage check and independent oracle before adding tests. Reuse sufficient coverage; new skips or weaker assertions require owner authorization. Audit cleanup preserves unique negative paths and distinguishes shipped-document contracts from runtime proof.
+
+Local precommit reports its staged paths and conservative test lanes. MCP/CLI changes retain Python cross-component contracts; documentation retains both consumer suites. Shared runtime, runner, dependency and unmapped changes use the full precommit fallback. A passing scoped lane is not a full-suite result. Scoped precommit lanes deselect one named whole-roadmap replay, which remains in default pytest. Before stable release, `node scripts/ci/local-ci.mjs full` runs every roadmap verifier directly and avoids duplicating that replay in its Python step. Type checks, emit, Docs Hub, formatting and review gates remain mandatory. Selection and timings are recorded in `.forgewright/reports/local-ci/`.
+
 ## Evidence loop: observation, context and learning
 
 The ECC-inspired upgrade adds project-isolated, opt-in observation, bounded supplemental worker context, native candidate intake, and source-bound handoff. It does not install a second agent stack, start a paid learning model or automatically promote frequent tool sequences.

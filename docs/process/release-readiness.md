@@ -7,6 +7,14 @@
 
 Before any stable release is published, the following criteria must be met and checked off. All evidence of passing checks must be linked.
 
+Precommit uses conservative component lanes recorded by `scripts/ci/local-ci.py`.
+Scoped precommit success does not satisfy this release checklist. Default pytest
+retains the whole-roadmap replay; shared, unmapped, runner or release-boundary
+changes also include it in precommit. `node scripts/ci/local-ci.mjs full` runs
+all roadmap verifiers directly, then deselects the duplicate replay in its Python
+step as before. No unique release coverage is dropped by scoped precommit. See the
+[QA test-value contract](../../skills/_shared/protocols/qa-test-protocol.md).
+
 ## 1. Truth and Consistency
 - [ ] Version truth across package files (`package.json`), documentation (`README.md`, `CHANGELOG.md`), and generated rule files.
 - [ ] Generated catalog freshness: Protocol and script catalogs are fully up-to-date and pass drift checks in CI.

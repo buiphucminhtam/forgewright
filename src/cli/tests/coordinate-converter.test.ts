@@ -284,12 +284,6 @@ describe("T10: Edge - Origin Point (0,0,0)", () => {
       vectorsAlmostEqual(convertPosition(origin, "unity", "unreal"), origin),
     ).toBe(true);
   });
-
-  it("should have zero distance from origin", () => {
-    const origin: Vector3 = { x: 0, y: 0, z: 0 };
-    const distance = Math.sqrt(origin.x ** 2 + origin.y ** 2 + origin.z ** 2);
-    expect(distance).toBe(0);
-  });
 });
 
 describe("T11: Edge - Negative Coordinates", () => {

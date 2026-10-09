@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -242,14 +243,21 @@ def test_runtime_asset_recovery_preserves_permission_modified_file(
         ):
             raise Crash()
 
-    with pytest.raises(Crash):
-        adapter.install_shared_runtime(
-            transaction,
-            progress_path=progress,
-            runner=bm.run,
-            write_json=crash_after_receipt_publish,
-        )
+    # Ensure chmod(0600) changes the receipt's recorded mode, even when the
+    # host creates files under umask077. Restore the host mask on Crash too.
+    previous_umask = os.umask(0o022)
+    try:
+        with pytest.raises(Crash):
+            adapter.install_shared_runtime(
+                transaction,
+                progress_path=progress,
+                runner=bm.run,
+                write_json=crash_after_receipt_publish,
+            )
+    finally:
+        os.umask(previous_umask)
     installed_from = rlg_home / "INSTALLED_FROM"
+    assert installed_from.stat().st_mode & 0o777 != 0o600
     installed_from.chmod(0o600)
 
     with pytest.raises(adapter.SharedRuntimeError, match="modified.*preserved"):

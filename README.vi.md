@@ -83,6 +83,12 @@ Việc nhỏ được xử lý gọn. Thay đổi bảo mật, billing, concurre
 
 Xem [pipeline reference](docs/pipeline-reference.md) và [canonical runtime ADR](docs/adr/0001-canonical-production-runtime.md) để biết phạm vi thực thi của từng lớp kiểm soát.
 
+## Test phải chứng minh hành vi có thể gãy
+
+[QA protocol](skills/_shared/protocols/qa-test-protocol.md) yêu cầu xác định hành vi đổi, lỗi có thể xảy ra, coverage hiện tại và oracle độc lập trước khi thêm test. Coverage đã đủ thì tái sử dụng; skip mới hoặc nới assertion cần owner cho phép. Khi dọn duplicate/ví dụ không dùng SUT, phải giữ các negative paths độc nhất và phân biệt contract tài liệu phân phối với bằng chứng runtime.
+
+Precommit local ghi staged paths và lane được chọn. Thay đổi MCP/CLI giữ Python cross-component contracts; tài liệu giữ cả hai consumer suites. Shared runtime, runner, dependency hoặc path chưa map dùng full precommit fallback. PASS lane không có nghĩa toàn suite đã pass. Lane precommit có phạm vi rõ chỉ deselect một replay toàn roadmap được chỉ đích danh; default pytest vẫn chạy test này. Trước stable release, `node scripts/ci/local-ci.mjs full` chạy trực tiếp toàn bộ roadmap verifier và tránh lặp replay đó trong bước Python. Type check, emit, Docs Hub, formatter và review vẫn bắt buộc. Lý do chọn lane và thời gian nằm trong `.forgewright/reports/local-ci/`.
+
 ## Bắt đầu
 
 ### 1. Cài Forgewright như plugin (khuyến nghị)

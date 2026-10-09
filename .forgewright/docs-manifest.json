@@ -88,6 +88,10 @@
     {
       "path": "skills/_shared/protocols/guardrail.md",
       "type": "operations"
+    },
+    {
+      "path": "skills/_shared/protocols/qa-test-protocol.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -106,7 +110,8 @@
     "docs/adr/ADR-pi-worker-runtime.md",
     "docs/adr/ADR-agent-plugin-distribution.md",
     "workflows/game-skill-evolution.md",
-    "skills/_shared/protocols/guardrail.md"
+    "skills/_shared/protocols/guardrail.md",
+    "skills/_shared/protocols/qa-test-protocol.md"
   ],
   "adapters": {
     "git": true,
@@ -136,7 +141,8 @@
       "skills/_shared/protocols/research-gate.md",
       "skills/_shared/protocols/skill-specialization-contract.md",
       "evals/skills/README.md",
-      "skills/_shared/protocols/guardrail.md"
+      "skills/_shared/protocols/guardrail.md",
+      "skills/_shared/protocols/qa-test-protocol.md"
     ],
     "exclude": [
       "docs/archive/**",

@@ -1,7 +1,7 @@
 ---
 name: qa-engineer
 description: "Use for test strategy, test-case design, regression coverage, acceptance verification, bug reporting, or quality-risk assessment."
-version: 3.0.0
+version: 3.1.0
 author: forgewright
 tags: [qa, quality-assurance, testing, test-cases, automated-testing, regression, bug-reporting, game-testing]
 ---
@@ -81,6 +81,7 @@ Test count is derived from acceptance criteria, risk, state/branch surface, and 
 ### Test Case Design Principles
 
 Refer to [qa-test-protocol.md](../_shared/protocols/qa-test-protocol.md) for full methodologies:
+- **Test value decision** — changed behavior → plausible fault → existing coverage → lowest reliable layer → add/extend/reuse. Reuse sufficient coverage. Audit proven duplicates/no-SUT examples; optimize measured lanes with unknown/shared fallback and full stable-release gates. New skips/xfails need explicit owner approval.
 - **Requirement traceability comes first** — every behavioral oracle maps to an approved requirement/acceptance criterion; existing oracles stay read-only unless that requirement changes
 - **Each test case has ONE assertion** (or one logical assertion group)
 - **Tests are independent** — no shared state between tests, always clean up using setup/teardown hooks

@@ -127,6 +127,7 @@ describe('isForgewrightError', () => {
         expect(isForgewrightError({ code: 'FW001', message: 'test' })).toBe(false);
         expect(isForgewrightError(null)).toBe(false);
         expect(isForgewrightError(undefined)).toBe(false);
+        expect(isForgewrightError(123)).toBe(false);
     });
 });
 describe('getErrorMessage', () => {
