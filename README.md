@@ -193,6 +193,18 @@ The observer now rejects missing or non-directory project roots before writing
 health metadata. Invalid roots retain an in-memory degraded health result,
 without creating a project directory or hanging on a nonexistent `/proc` path.
 
+### Browser tab guardrail
+
+[Guardrail Rule 15](skills/_shared/protocols/guardrail.md#15-browser-tab-lifecycle--deny-fail-closed)
+requires agents to reuse one owned browser tab, with at most two live interactive tabs across
+the task and its workers. Temporary opens require verified IDs and list/close
+capabilities; otherwise agents use fetch or saved artifacts. Cleanup covers
+success, errors and cancellation, with failed cleanup blocking further opens.
+Only an explicitly requested preview may remain, with one retained tab.
+Managed headless tests keep their bounded runner concurrency and verified teardown.
+The rule is included in generated agent instructions. It does not install
+native browser-host enforcement or guarantee cleanup after a host crash.
+
 ### Game fixture and bounded memory
 
 **Local source candidate, not yet published.** Marketplace installation does not include unpublished checkout changes.

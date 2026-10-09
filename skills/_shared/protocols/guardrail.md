@@ -3,8 +3,12 @@ id: guardrail
 title: Guardrail Protocol
 summary: Core protocol for guardrail.
 status: active
-version: 1.0.0
+version: 1.1.0
 owners: [core]
+owner: Core maintainers
+scope: Tool admission and resource cleanup across all agent skills
+last_reviewed: 2026-10-09
+canonical: true
 triggers: []
 used_by: [all]
 related: [documentation-governance]
@@ -20,7 +24,8 @@ superseded_by: null
 - **Every tool call** during any skill execution
 - **Every file write** during parallel dispatch workers
 - **Every command execution** proposed by any skill
-- **NOT applied** to read-only operations **except** for sensitive file access (Rule 2, configurable)
+- **Every browser tab/window/context creation**, including research, preview, test reports, shell auto-open commands, and worker-created tabs (Rule 15)
+- **NOT applied** to read-only operations **except** for sensitive file access (Rule 2, configurable); browser resource creation is governed by Rule 15
 
 ## Configuration
 
@@ -285,6 +290,59 @@ DENY Rules:
   - Action: BLOCK + report the missing decision/source/state/baseline/checkpoint/final-build/gate evidence
 ```
 
+### 15. Browser Tab Lifecycle — DENY (fail-closed)
+
+Opening a browser resource has side effects; the read-only exemption does not apply.
+This rule applies across research, game/UI testing, previews, and browser panels.
+
+**Admission, before opening an interactive tab/window/panel:**
+
+- Default to one reusable task-owned tab; allow at most two live task-owned tabs
+  across the parent and all workers. The parent owns the budget and serializes
+  opens; workers reuse an assigned tab or return evidence requests to the parent.
+  A second tab requires an actual simultaneous comparison or isolated browser
+  context; a new URL or retry alone does not justify another tab.
+- Verify the available tools can list, identify, and close the temporary resource.
+  Snapshot pre-existing tabs and record each created tab's returned ID and owner
+  in existing task state. A URL match or before/after difference alone is not
+  proof of ownership. Never navigate or close user tabs or tabs with unknown ownership.
+- Reuse or close an owned tab before opening another. Count each popup, report
+  window, and interactive page in a new context against the same budget. Disable automatic
+  report/demo opens; use headless tests and HTML reporters with `open: 'never'`
+  (or `PLAYWRIGHT_HTML_OPEN=never`). Preserve reports for manual viewing.
+- If identity, listing, closing, or budget cannot be verified, DENY temporary
+  opens and use HTTP/fetch, saved artifacts, or an exclusively owned headless
+  context with verified teardown. Never retry through another tool to bypass
+  the denied open. List/close failures do not authorize closing a shared browser.
+
+Managed headless test runners use their existing bounded runner concurrency and
+verified fixture teardown; the interactive two-tab budget does not change that
+runner concurrency. Page/Context handles may identify exclusively owned headless
+resources instead of host tab IDs. Ad-hoc headless scripts must also bound their
+pages/workers and prove owned teardown; headless mode alone does not permit
+unbounded spawning. If an HTML-open environment override is present, set
+`PLAYWRIGHT_HTML_OPEN=never` for the invocation.
+
+**Cleanup, before completion or handoff:**
+
+- Close temporary owned resources on success, error, timeout, and cancellation,
+  using `finally`/the available teardown path. Close by recorded ID; close a
+  whole browser/context only when that entire instance is exclusively task-owned.
+- Re-list and confirm they are absent before declaring cleanup complete. For an
+  exclusively owned headless instance, verify its teardown instead. If creation
+  has an ambiguous result, a popup is untracked, or cleanup fails, freeze further opens,
+  record unresolved IDs/status, and report cleanup as `UNVERIFIED`.
+- If the user explicitly requested a persistent preview, keep at most one retained tab
+  within the same two-tab budget, record its ID and retention reason, and reuse
+  that ID on later updates. Retention never authorizes repeated opens. If the
+  host cannot identify/reuse the preview, provide its URL instead.
+
+This is an agent admission/cleanup contract; it does not install a host hook or
+create unavailable tab-control APIs. Enforce it before the agent calls a tool.
+`policy-check.sh` regexes alone cannot account for tab ownership or live counts.
+Cleanup after a host crash or forced termination requires host-owned leases or
+teardown support; instruction checks do not prove that runtime behavior.
+
 ## Decision Matrix
 
 | Rule Type | Read | Write | Execute | Delete |
@@ -304,6 +362,7 @@ DENY Rules:
 | **Network exfiltration** (Rule 12) | — | — | WARN | — |
 | **Supply chain** (Rule 13) | — | — | WARN | — |
 | **Documentation continuity/governance** (Rule 14) | WARN | DENY unauthorized, duplicate, out-of-scope, transient, stale-truth, or generated-source writes | DENY if gate is missing or fails | DENY unless authorized archive/supersession preserves active truth |
+| **Browser tabs (Rule 15)** | ALLOW fetch/list; tab creation is not a read exemption | DENY interactive opens without identity, cleanup capability, or shared budget | DENY unnecessary repeated/auto opens and opens after cleanup failure | ALLOW verified owned-ID/handle cleanup only |
 
 ## Response Format
 
@@ -423,11 +482,11 @@ guardrail:
 IF guardrail rule evaluation fails (regex error, config parse error):
   1. Log error: "⚠ Guardrail rule evaluation failed: [rule_name]"
   2. Only for a NON-SECURITY custom rule explicitly running in permissive mode: ALLOW and continue (fail-open)
-  3. For SECURITY rules (Rules 1–4, 7–12), documentation governance (Rule 14), custom rules with critical: true, strict mode, or any policy/configuration error: DENY and halt the affected tool/pipeline branch (fail-closed)
+  3. For SECURITY rules (Rules 1–4, 7–12), documentation governance (Rule 14), browser lifecycle (Rule 15), custom rules with critical: true, strict mode, or any policy/configuration error: DENY and halt the affected tool/pipeline branch (fail-closed)
   4. Surface the diagnostic; never continue after a security, strict-mode, or policy/configuration error
 
 Note: "Fail-open" applies ONLY to non-security custom rules explicitly configured as permissive in .production-grade.yaml.
-All built-in security rules (1–4, 7–12) and documentation governance (Rule 14) ALWAYS fail-closed (DENY on error).
+All built-in security rules (1–4, 7–12), documentation governance (Rule 14), and browser lifecycle (Rule 15) ALWAYS fail-closed (DENY on error).
 Consistent with middleware-chain.md Rule 3: Guardrail is the kill switch.
 ```
 

@@ -166,6 +166,18 @@ Observer kiểm tra project root trước khi ghi health metadata. Root không t
 tại hoặc là file sẽ trả trạng thái degraded trong bộ nhớ, không tự tạo thư mục
 project và không treo khi nhận đường dẫn `/proc` không tồn tại.
 
+### Guardrail chống mở dư browser tab
+
+[Guardrail Rule 15](skills/_shared/protocols/guardrail.md#15-browser-tab-lifecycle--deny-fail-closed)
+bắt buộc agent tái sử dụng một tab thuộc task, tối đa hai tab tương tác đang mở cho cả
+parent và worker. Mở tab tạm cần xác minh ID và khả năng liệt kê/đóng tab;
+thiếu thì dùng fetch hoặc artifact đã lưu. Agent phải dọn tab khi xong, lỗi
+hoặc hủy; cleanup thất bại sẽ chặn mở thêm. Chỉ giữ tối đa một tab preview
+khi người dùng yêu cầu rõ ràng.
+Test headless giữ giới hạn worker của runner và phải xác minh teardown.
+Quy tắc nằm trong instruction được sinh cho các agent. Đây là guardrail hành vi,
+chưa cài cơ chế cưỡng chế của browser host hay bảo đảm dọn tab sau khi host crash.
+
 ### Game chạy được và bộ nhớ có giới hạn
 
 **Đây là bản source local chưa publish.** Cài từ marketplace chưa bao gồm thay đổi chưa xuất bản trong checkout này.

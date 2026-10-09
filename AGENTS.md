@@ -157,7 +157,7 @@ Stop retrying the same approach. **A variant of a failed fix is still the same f
 ## 9. CONTINUITY & RUNTIME CLOSE — Only When Applicable
 - Persist only durable decisions/blockers/handoffs/resume state. **No mandatory per-turn memory writes.**
 - Never auto-migrate session lessons into shared framework guidance.
-- Reclaim processes started this turn or identify deliberately kept ones.
+- Reclaim task-owned processes/tabs or record deliberate retention. Browser: reuse 1, max 2 task-wide (interactive); require tab IDs + close/list tools for temporary opens; verify cleanup on success/error/cancel. Headless uses bounded runners + owned teardown. Failure blocks opens; only explicit user previews stay (guardrail Rule 15).
 - Write rule-ledger entries only for observed/explicit violations, never routine closeout.
 <!-- END OF SOLVE.md -->
 

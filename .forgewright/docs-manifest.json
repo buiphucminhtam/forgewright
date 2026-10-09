@@ -84,6 +84,10 @@
     {
       "path": "evals/skills/README.md",
       "type": "operations"
+    },
+    {
+      "path": "skills/_shared/protocols/guardrail.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -101,7 +105,8 @@
     "skills/_shared/protocols/documentation-governance.md",
     "docs/adr/ADR-pi-worker-runtime.md",
     "docs/adr/ADR-agent-plugin-distribution.md",
-    "workflows/game-skill-evolution.md"
+    "workflows/game-skill-evolution.md",
+    "skills/_shared/protocols/guardrail.md"
   ],
   "adapters": {
     "git": true,
@@ -130,7 +135,8 @@
       "workflows/deep-research.md",
       "skills/_shared/protocols/research-gate.md",
       "skills/_shared/protocols/skill-specialization-contract.md",
-      "evals/skills/README.md"
+      "evals/skills/README.md",
+      "skills/_shared/protocols/guardrail.md"
     ],
     "exclude": [
       "docs/archive/**",
