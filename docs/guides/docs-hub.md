@@ -307,6 +307,18 @@ small local script only progressively enhances search.
 
 ## Doctor and local CI
 
+When the GitNexus adapter is enabled, Docs reads canonical
+`.gitnexus/gitnexus.json` (falling back to the legacy mirror only when absent)
+and invokes the installed `gitnexus status --json` in the project directory.
+Only that subprocess is pinned to the validated local index storage path.
+Current repository, commit, indexed time, analyzer provenance, complete index,
+and native per-file content proof are required. Git dirtiness remains visible
+but is not itself index drift: indexed dirty content can be current, while a
+clean revert away from indexed bytes is stale. Missing hash/provenance evidence
+or an unavailable native command fails closed and requires a supported reindex
+or tool restoration; Docs does not install a verifier, execute a repository
+runner, or weaken the adapter to pass.
+
 Run a strict project diagnosis:
 
 ```bash

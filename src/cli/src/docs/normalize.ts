@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { extname, join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { isDeepStrictEqual } from "node:util";
 import { parseDiagram } from "./diagrams.js";
 import { normalizeRelativePath } from "./privacy.js";
 import type {
@@ -288,7 +289,64 @@ function runGit(projectRoot: string, args: string[]): string | null {
     timeout: 5000,
     stdio: ["ignore", "pipe", "ignore"],
   });
-  return result.status === 0 ? result.stdout.trim() || null : null;
+  return result.status === 0 ? result.stdout.trim() : null;
+}
+
+type GitNexusMetadata = {
+  repoPath?: unknown;
+  storagePath?: unknown;
+  lastCommit?: unknown;
+  indexedAt?: unknown;
+  runnerIdentity?: unknown;
+  fileHashes?: Record<string, unknown>;
+  stats?: { processes?: unknown; nodes?: unknown };
+};
+
+// Consume the installed analyzer's coverage/provenance verifier rather than
+// confusing Git dirtiness with index drift. Never install, execute a repository
+// runner, use --repo (which skips drift), or select an executable from metadata.
+function nativeGitNexusFreshness(
+  projectRoot: string,
+  metadataPath: string,
+  metadataBytes: string,
+  meta: GitNexusMetadata,
+  commit: string | null,
+  gitStatusRead: boolean,
+): ProjectFacts["gitnexus"]["status"] {
+  try {
+    const root = realpathSync(projectRoot);
+    if (!gitStatusRead || !commit || !/^[a-f0-9]{40}$/.test(commit) ||
+        commit !== meta.lastCommit || typeof meta.indexedAt !== "string" ||
+        !Number.isFinite(Date.parse(meta.indexedAt)) ||
+        typeof meta.repoPath !== "string" || realpathSync(meta.repoPath) !== root ||
+        typeof meta.storagePath !== "string" ||
+        realpathSync(meta.storagePath) !== realpathSync(join(root, ".gitnexus")) ||
+        !meta.runnerIdentity || !meta.fileHashes ||
+        Object.keys(meta.fileHashes).length === 0) return "stale";
+    const result = spawnSync("gitnexus", ["status", "--json"], {
+      cwd: root, encoding: "utf8", shell: false, timeout: 10000,
+      // Bind the native resolver to the local index validated above. Inherited
+      // storage-root overrides or registry slots must not certify another index.
+      env: { ...process.env, GITNEXUS_STORAGE_PATH: realpathSync(join(root, ".gitnexus")) },
+      maxBuffer: 1024 * 1024, stdio: ["ignore", "pipe", "ignore"],
+    });
+    if (result.error || result.status !== 0) return "unavailable";
+    const proof = JSON.parse(result.stdout);
+    if (readFileSync(metadataPath, "utf8") !== metadataBytes ||
+        runGit(root, ["rev-parse", "HEAD"]) !== commit) return "stale";
+    // Normal native status intentionally has no storagePath field. Metadata is
+    // bound locally above; native storage resolver verifies ownership itself.
+    return proof?.schemaVersion === 1 && proof.status === "up-to-date" &&
+      typeof proof.repository === "string" && realpathSync(proof.repository) === root &&
+      proof.current?.commit === commit && proof.index?.commit === commit &&
+      proof.index?.indexedAt === meta.indexedAt &&
+      isDeepStrictEqual(proof.index?.runnerIdentity, meta.runnerIdentity) &&
+      proof.index?.runnerIdentityStatus === "current" &&
+      Array.isArray(proof.index?.incompleteReasons) && proof.index.incompleteReasons.length === 0 &&
+      proof.contentDrift?.status === "current" ? "available" : "stale";
+  } catch {
+    return "unavailable";
+  }
 }
 
 function readCuratedProfile(projectRoot: string): Record<string, unknown> {
@@ -352,16 +410,18 @@ export function collectProjectFacts(
   manifest: DocsManifest,
 ): ProjectFacts {
   const gitEnabled = manifest.adapters?.git !== false;
-  const commit = gitEnabled ? runGit(projectRoot, ["rev-parse", "HEAD"]) : null;
+  const commit = (gitEnabled ? runGit(projectRoot, ["rev-parse", "HEAD"]) : null) || null;
   const branch = gitEnabled
-    ? runGit(projectRoot, ["branch", "--show-current"])
+    ? runGit(projectRoot, ["branch", "--show-current"]) || null
     : null;
   const dirtyOutput = gitEnabled
     ? runGit(projectRoot, ["status", "--porcelain", "--untracked-files=no"])
     : null;
 
   const gitnexusEnabled = manifest.adapters?.gitnexus === true;
-  const gitnexusPath = join(projectRoot, ".gitnexus", "meta.json");
+  const canonicalGitnexusPath = join(projectRoot, ".gitnexus", "gitnexus.json");
+  const gitnexusPath = existsSync(canonicalGitnexusPath)
+    ? canonicalGitnexusPath : join(projectRoot, ".gitnexus", "meta.json");
   let gitnexus: ProjectFacts["gitnexus"] = {
     status: gitnexusEnabled ? "unavailable" : "disabled",
     indexedCommit: null,
@@ -371,20 +431,13 @@ export function collectProjectFacts(
   };
   if (gitnexusEnabled && existsSync(gitnexusPath)) {
     try {
-      const meta = JSON.parse(readFileSync(gitnexusPath, "utf8")) as {
-        lastCommit?: unknown;
-        indexedAt?: unknown;
-        stats?: { processes?: unknown; nodes?: unknown };
-      };
+      const metadataBytes = readFileSync(gitnexusPath, "utf8");
+      const meta = JSON.parse(metadataBytes) as GitNexusMetadata;
       const indexedCommit =
         typeof meta.lastCommit === "string" ? meta.lastCommit : null;
       gitnexus = {
-        status:
-          commit &&
-          indexedCommit &&
-          (commit !== indexedCommit || Boolean(dirtyOutput))
-            ? "stale"
-            : "available",
+        status: nativeGitNexusFreshness(projectRoot, gitnexusPath, metadataBytes,
+          meta, commit, dirtyOutput !== null),
         indexedCommit,
         indexedAt: typeof meta.indexedAt === "string" ? meta.indexedAt : null,
         processes:
@@ -404,7 +457,7 @@ export function collectProjectFacts(
       available: commit !== null,
       branch,
       commit,
-      dirty: commit === null ? null : Boolean(dirtyOutput),
+      dirty: commit === null || dirtyOutput === null ? null : Boolean(dirtyOutput),
     },
     gitnexus,
     profile: readCuratedProfile(projectRoot),
