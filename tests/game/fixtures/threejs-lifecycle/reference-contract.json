@@ -1,0 +1,223 @@
+{
+  "schema": "game-reference-contract/v1",
+  "id": "signal-dash-reference-v1",
+  "referenceBuild": "4545f5945914640ce1aec3c132ba53fb8b18404a2db555bdeab9fc086139361a",
+  "sourceRef": "c9a62a0f5bb67c85f49cb7d0a91cc1a7d535e629",
+  "expectationBasis": "Frozen source-rule expectations; actual rendered baseline must still be observed on each run.",
+  "seed": 7,
+  "environment": {
+    "engine": "threejs",
+    "viewport": [
+      960,
+      800
+    ],
+    "browser": "chromium",
+    "fixedStepHz": 60
+  },
+  "fields": [
+    "phase",
+    "lane",
+    "ticks",
+    "score"
+  ],
+  "tolerances": {
+    "ticks": 4
+  },
+  "equalTicks": [
+    [
+      "pause",
+      "pause-holds"
+    ]
+  ],
+  "approvedPolish": [
+    "#start box-shadow only"
+  ],
+  "notApplicable": {
+    "lives": "Signal Dash has no lives mechanic"
+  },
+  "inputs": [
+    {
+      "id": "boot",
+      "action": "observe"
+    },
+    {
+      "id": "start",
+      "action": "click",
+      "target": "#start"
+    },
+    {
+      "id": "left",
+      "action": "key",
+      "key": "ArrowLeft"
+    },
+    {
+      "id": "gate-one",
+      "action": "wait",
+      "ms": 2050
+    },
+    {
+      "id": "pause",
+      "action": "click",
+      "target": "#pause"
+    },
+    {
+      "id": "pause-holds",
+      "action": "wait",
+      "ms": 1000
+    },
+    {
+      "id": "resume",
+      "action": "click",
+      "target": "#pause"
+    },
+    {
+      "id": "gate-two",
+      "action": "wait",
+      "ms": 2000
+    },
+    {
+      "id": "right",
+      "action": "key",
+      "key": "ArrowRight"
+    },
+    {
+      "id": "win",
+      "action": "wait",
+      "ms": 2000
+    },
+    {
+      "id": "restart",
+      "action": "click",
+      "target": "#start"
+    },
+    {
+      "id": "wrong-lane",
+      "action": "key",
+      "key": "ArrowRight"
+    },
+    {
+      "id": "loss",
+      "action": "wait",
+      "ms": 2050
+    }
+  ],
+  "expected": [
+    {
+      "id": "boot",
+      "state": {
+        "phase": "ready",
+        "lane": 1,
+        "ticks": 0,
+        "score": 0
+      }
+    },
+    {
+      "id": "start",
+      "state": {
+        "phase": "playing",
+        "lane": 1,
+        "ticks": 0,
+        "score": 0
+      }
+    },
+    {
+      "id": "left",
+      "state": {
+        "phase": "playing",
+        "lane": 0,
+        "ticks": 0,
+        "score": 0
+      }
+    },
+    {
+      "id": "gate-one",
+      "state": {
+        "phase": "playing",
+        "lane": 0,
+        "ticks": 122,
+        "score": 1
+      }
+    },
+    {
+      "id": "pause",
+      "state": {
+        "phase": "paused",
+        "lane": 0,
+        "ticks": 122,
+        "score": 1
+      }
+    },
+    {
+      "id": "pause-holds",
+      "state": {
+        "phase": "paused",
+        "lane": 0,
+        "ticks": 122,
+        "score": 1
+      }
+    },
+    {
+      "id": "resume",
+      "state": {
+        "phase": "playing",
+        "lane": 0,
+        "ticks": 122,
+        "score": 1
+      }
+    },
+    {
+      "id": "gate-two",
+      "state": {
+        "phase": "playing",
+        "lane": 0,
+        "ticks": 242,
+        "score": 2
+      }
+    },
+    {
+      "id": "right",
+      "state": {
+        "phase": "playing",
+        "lane": 1,
+        "ticks": 242,
+        "score": 2
+      }
+    },
+    {
+      "id": "win",
+      "state": {
+        "phase": "won",
+        "lane": 1,
+        "ticks": 360,
+        "score": 3
+      }
+    },
+    {
+      "id": "restart",
+      "state": {
+        "phase": "playing",
+        "lane": 1,
+        "ticks": 0,
+        "score": 0
+      }
+    },
+    {
+      "id": "wrong-lane",
+      "state": {
+        "phase": "playing",
+        "lane": 2,
+        "ticks": 0,
+        "score": 0
+      }
+    },
+    {
+      "id": "loss",
+      "state": {
+        "phase": "lost",
+        "lane": 2,
+        "ticks": 120,
+        "score": 0
+      }
+    }
+  ]
+}

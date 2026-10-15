@@ -60,6 +60,40 @@ The browser run used the pinned Chromium revision and actual keyboard and
 emulated touch input. Physical mobile performance remains UNVERIFIED. Never
 weaken assertions to accept a mutation.
 
+## Frozen reference and approved polish
+
+The opt-in experiment uses `reference-contract.json`, pinned to the original
+served-byte build and source commit. Its expectations come from the fixed-step
+source rules; each run must still observe the reference before comparing the
+candidate. Inputs are fixed before candidate execution and never consult its
+next-lane hint. The original adaptive browser smoke remains separate.
+
+```bash
+npm --prefix tests/game/fixtures/threejs-lifecycle run build
+npm --prefix tests/game/fixtures/threejs-lifecycle run test:reference-contract
+npm --prefix tests/game/fixtures/threejs-lifecycle run test:reference
+```
+
+The comparison serves a separately identified visual-only candidate with a
+declared button-shadow delta and identical game code. It checks state, score,
+lane and protected tick snapshots, exact pause invariance, win/loss and restart.
+Snapshot tick tolerance is declared up front for animation-frame alignment;
+it is not removed by web normalization. There is no lives mechanic (N/A).
+Missing/stale build, environment, input/step, engine, playtest or cleanup evidence
+is UNVERIFIED; a mechanics mismatch is FAIL. The same validator command is a
+required evidence item in the existing studio clone/polish gate.
+
+One managed browser/context owns sequentially reused/closed pages and build-linked
+screenshots. PASS is emitted only after confirmed cleanup. Capacity/telemetry
+failure writes UNVERIFIED with no successful comparison claim. The new experiment
+has not obtained a fresh real-browser PASS in the current managed cloud because
+applicable Linux memory-pressure telemetry is unavailable; the host governor
+remains unchanged. Offline validator/served-build tests do not fill this gap.
+Only frozen input/snapshot order is checked; intra-step gameplay event order
+is unverified. Contracts declaring `requireGameplayEventTrace: true` stay
+UNVERIFIED until a separate observed trace verifier exists. Native engine/device
+performance and human game feel remain unverified.
+
 ## Basis
 
 The [OpenAI game-studio routing reference](https://github.com/openai/plugins/tree/main/plugins/game-studio)

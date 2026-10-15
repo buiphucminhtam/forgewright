@@ -4,13 +4,17 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 const root=fileURLToPath(new URL('.',import.meta.url));
-export async function serve(port=0) {
+export async function serve(port=0,{polish=false}={}) {
  const files=new Map([
   ['/', ['index.html','text/html']],
   ...['app','model','pool','lifecycle'].map(name=>[`/dist/${name}.js`,[`dist/${name}.js`,'text/javascript']]),
   ...['three.module','three.core'].map(name=>[`/vendor/${name}.js`,[`node_modules/three/build/${name}.js`,'text/javascript']]),
  ]);
  const content=new Map([...files].map(([url,[path,type]])=>[url,{body:readFileSync(join(root,path)),type}]));
+ if(polish){
+  const entry=content.get('/');
+  entry.body=Buffer.from(entry.body.toString().replace('</style>','#start{box-shadow:0 0 0 3px #35576b,0 4px 16px #081524}</style>'));
+ }
  const hash=createHash('sha256');
  for(const [url,item] of content)hash.update(url).update(item.body);
  const build=hash.digest('hex');

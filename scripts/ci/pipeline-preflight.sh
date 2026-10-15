@@ -118,7 +118,7 @@ fi
 if [[ -f "$STATE_FILE" ]]; then
   state_status="$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(s.status || '')" "$STATE_FILE")"
   current_mode="$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(s.currentMode || '')" "$STATE_FILE")"
-  mtime_epoch="$(stat -f %m "$STATE_FILE" 2>/dev/null || stat -c %Y "$STATE_FILE")"
+  mtime_epoch="$(node -e "const value=Math.floor(require('fs').statSync(process.argv[1]).mtimeMs / 1000); if(!Number.isSafeInteger(value))process.exit(1); process.stdout.write(String(value))" "$STATE_FILE")"
   now_epoch="$(date +%s)"
   age_minutes=$(( (now_epoch - mtime_epoch) / 60 ))
   if [[ "$state_status" == "IDLE" || "$state_status" == "COMPLETED" || "$age_minutes" -le "$MAX_STATE_AGE_MINUTES" ]]; then

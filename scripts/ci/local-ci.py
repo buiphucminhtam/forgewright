@@ -16,7 +16,9 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
+import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -858,10 +860,22 @@ class LocalCI:
 
     def _staged_files(self) -> list[Path]:
         raw = self.capture(
-            ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"]
+            [
+                "git",
+                "diff",
+                "--cached",
+                "--no-renames",
+                "--name-status",
+                "--diff-filter=ACMR",
+                "-z",
+            ]
         )
+        # Status is the first byte; capture's outer strip cannot eat filename
+        # whitespace. NUL termination preserves every subsequent path byte.
         return [
-            ROOT / item for item in raw.split("\0") if item and (ROOT / item).is_file()
+            ROOT / item
+            for item in raw.split("\0")[1::2]
+            if item and (ROOT / item).is_file()
         ]
 
     def _staged_test_paths(self) -> list[str]:
@@ -973,6 +987,24 @@ class LocalCI:
             for path in staged
             if path.suffix == ".sh" and (ROOT / "scripts") in path.parents
         ]
+        # Inspect the active index before any formatter can mutate worktree bytes.
+        # Re-staging a whole partially staged file would commit unrelated hunks.
+        unstaged = set(
+            self.capture(["git", "diff", "--no-renames", "--name-status", "-z"]).split(
+                "\0"
+            )[1::2]
+        )
+        mixed = [
+            path.relative_to(ROOT).as_posix()
+            for path in [*python_files, *mcp_ts, *cli_ts]
+            if path.relative_to(ROOT).as_posix() in unstaged
+        ]
+        if mixed:
+            raise GateFailure(
+                "Formatter refused partially staged files with unstaged changes: "
+                + ", ".join(mixed)
+                + ". Format first, then explicitly stage the intended hunks."
+            )
         touched: list[Path] = []
         if python_files:
             self.run(
@@ -1146,11 +1178,28 @@ class LocalCI:
             "test_selection": getattr(self, "test_selection", None),
             "steps": [asdict(item) for item in self.results],
         }
-        timestamped = REPORT_DIR / now.strftime("%Y%m%dT%H%M%SZ.json")
-        timestamped.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        (REPORT_DIR / "latest.json").write_text(
-            json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+        timestamped = REPORT_DIR / (
+            now.strftime("%Y%m%dT%H%M%S.%fZ") + f"-{mode}-{uuid.uuid4().hex}.json"
         )
+        encoded = json.dumps(payload, indent=2) + "\n"
+        fd, temporary = tempfile.mkstemp(prefix=".receipt-", dir=REPORT_DIR)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                stream.write(encoded)
+                stream.flush()
+                os.fsync(stream.fileno())
+            # Atomic publication with exclusive destination creation. A collision
+            # must fail, never replace an earlier immutable receipt.
+            os.link(temporary, timestamped)
+        finally:
+            Path(temporary).unlink(missing_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=".latest-", dir=REPORT_DIR)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                stream.write(encoded)
+            os.replace(temporary, REPORT_DIR / "latest.json")
+        finally:
+            Path(temporary).unlink(missing_ok=True)
         return timestamped
 
 

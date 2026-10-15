@@ -9,6 +9,7 @@ import os
 import re
 import stat
 import subprocess
+from pytest_receipts import is_pytest, receipt_errors, run_observed
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -338,15 +339,8 @@ def _replay_final_commands(
     for command_tuple, command_records in commands.items():
         command = list(command_tuple)
         try:
-            result = subprocess.run(
-                command,
-                cwd=str(project_root),
-                env=_replay_env(),
-                shell=False,
-                capture_output=True,
-                text=True,
-                timeout=_replay_timeout(),
-                check=False,
+            result, observed = run_observed(
+                command, cwd=project_root, env=_replay_env(), timeout=_replay_timeout()
             )
         except subprocess.TimeoutExpired as error:
             detail = _bounded_replay_detail(
@@ -368,6 +362,25 @@ def _replay_final_commands(
 
         detail = _bounded_replay_detail((result.stdout or "") + (result.stderr or ""))
         for label, record in command_records:
+            if is_pytest(command):
+                current_tree = _current_tree_sha(project_root)
+                fresh = (
+                    {**observed, "tree_sha": current_tree}
+                    if observed is not None
+                    else None
+                )
+                errors.extend(
+                    f"REPLAY: {label} {error}"
+                    for error in receipt_errors(
+                        fresh,
+                        command,
+                        project_root,
+                        record.get("test_refs", []),
+                        record.get("phase"),
+                        result.returncode,
+                        record.get("tree_sha"),
+                    )
+                )
             expected = record.get("exit_code")
             if result.returncode != expected:
                 errors.append(

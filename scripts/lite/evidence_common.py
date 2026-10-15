@@ -329,7 +329,20 @@ def execution_errors(ev: dict[str, Any]) -> list[str]:
         return errors
     if ev.get("execution") != manifest:
         return ["FORGED: execution manifest does not match the exact command"]
-    return []
+    if __package__:
+        from .pytest_receipts import receipt_errors
+    else:
+        from pytest_receipts import receipt_errors
+
+    return receipt_errors(
+        ev.get("test_execution"),
+        command,
+        Path(workspace_value),
+        refs,
+        ev.get("phase"),
+        ev.get("exit_code"),
+        ev.get("tree_sha"),
+    )
 
 
 def acceptance_errors(criteria: Any, global_test_refs: Any = None) -> list[str]:

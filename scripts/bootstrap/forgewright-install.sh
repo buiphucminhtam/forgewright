@@ -679,7 +679,7 @@ install_hooks() {
     local context_hook="${FORGEWRIGHT_DIR}/scripts/lite/rule-context-hook.py"
     local context_workspace="${FORGEWRIGHT_DIR}"
     local gate_runtime_file
-    for gate_runtime_file in stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py windows_secure_io.py \
+    for gate_runtime_file in stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py \
         gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh verify-gate.sh verify_gate.py \
         run-check.sh run_check.py rule-validator.py rule-ledger.sh policy-check.sh telemetry.sh; do
         atomic_copy_file "${source_dir}/scripts/lite/${gate_runtime_file}" "${gate_runtime_dir}/${gate_runtime_file}"

@@ -15,6 +15,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from pytest_receipts import is_pytest, run_observed
 
 from evidence_common import (
     CHANGE_KINDS,
@@ -389,20 +390,15 @@ def main() -> None:
     do_redact = not args.no_redact and args.redact.lower() not in {"0", "false", "no"}
     started = datetime.now(timezone.utc)
     try:
-        process = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            cwd=str(workspace),
-            timeout=300,
-            check=False,
-        )
+        process, test_execution = run_observed(command, cwd=workspace, timeout=300)
         exit_code = process.returncode
         raw_output = (process.stdout or "") + (process.stderr or "")
     except FileNotFoundError as error:
+        test_execution = None
         exit_code = 127
         raw_output = f"[run-check] Command not found: {error}"
     except subprocess.TimeoutExpired:
+        test_execution = None
         exit_code = 124
         raw_output = "[run-check] Command timed out after 300s"
 
@@ -434,6 +430,12 @@ def main() -> None:
     }
     if args.risk is not None:
         ev["risk"] = args.risk
+    if is_pytest(command):
+        ev["test_execution"] = (
+            {**test_execution, "tree_sha": ev["tree_sha"]}
+            if test_execution is not None
+            else None
+        )
     if links:
         ev["links"] = links
 

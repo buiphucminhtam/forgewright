@@ -21,6 +21,48 @@ SHA-256; changing the candidate after evaluation or a `hold` result blocks the
 atomic `promote` command. The legacy skill upgrader therefore stages candidates
 under `.forgewright/runtime/skill-candidates/` instead of overwriting live skills.
 
+Application additionally binds the canonical current target path and
+`SKILL.md`/`LITE.md` variant, rechecks evaluated current bytes under a cooperative
+writer lock, and publishes the exact candidate buffer that was hashed. A newer
+current version is preserved. Equal zero costs never establish efficiency gain.
+An existing promotion lock fails closed; inspect its owner before recovery.
+
+Declared JSON runner metrics alone are insufficient for application. The Python
+host API `promote_candidate(..., verify_observed=...)` requires an out-of-band
+trusted verifier that checks raw host trajectory, unchanged independent oracles,
+cost provenance and exact artifacts. No report JSON can supply that callback.
+The standalone CLI has no observed-host adapter and refuses application; `run`
+can still report quantitative eligibility. Contract/synthetic/fixture reports
+are explicitly ineligible even with a callback. A cooperative lock and hashes do
+not authenticate a host or exclude arbitrary external writers.
+
+## Game role coverage and contract experiments
+
+The game-designer, game-engineer, art-director and qa-engineer corpora contain
+12 scenarios covering clone preservation, timing, creative authority, resource
+ownership, real test execution and stale playtest evidence, with negative
+triggers and pressure cases. They specify desired behavior, not measured agent
+compliance. Real-model baseline/current/candidate gains remain unmeasured.
+
+After producing raw captures with the managed Signal Dash experiment, run:
+
+```bash
+python3 scripts/runtime/game_skill_eval.py \
+  --contract tests/game/fixtures/threejs-lifecycle/reference-contract.json \
+  --reference .forgewright/runtime/game-reference/reference.json \
+  --candidate .forgewright/runtime/game-reference/candidate.json \
+  --current-build CURRENT_BUILD_SHA256 --repeats 3 \
+  --out .forgewright/runtime/game-reference/contract-eval.json
+```
+
+This executes the independent Node validator nine times with cache disabled,
+fresh execution IDs and measured verifier wall time. It rechecks artifact hashes
+and stops on timeout/incomplete evidence. The three arm labels repeat the same
+captures; they are **not agent variants or independent provider samples**. The
+result is structurally `contract-replay`, `promotion_eligible=false`, with zero
+model calls. Contract PASS proves validator/adapter behavior only. It cannot
+measure player enjoyment, model latency, token cost or skill uplift.
+
 Provider-specific adapters may call a local or subscription model, but such calls
 are separate owner-authorized evidence. The core engine and unit suite require no
 network, API key, or model spend.

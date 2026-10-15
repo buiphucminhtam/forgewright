@@ -198,13 +198,15 @@
         "evals/skills/README.md",
         "evals/skills/debugger/scenarios.jsonl",
         "tests/unit_tests/test_skill_quality.py",
+        "scripts/runtime/game_skill_eval.py",
+        "tests/unit_tests/test_game_skill_eval.py",
         "tests/unit_tests/test_skill_metadata.py",
         "tests/unit_tests/test_context_packets.py",
         "tests/unit_tests/test_plan_runtime.py",
         "docs/adr/ADR-agent-plugin-distribution.md",
         "evals/plugin-quality/acceptance.py"
       ],
-      "limitations": "Deterministic framework behavior and pressure fixtures are verified. Real-model baseline/current/candidate quality, token and latency gains require separate provider-specific evaluation and are not inferred from fixture tests."
+      "limitations": "Deterministic framework behavior and pressure fixtures are verified. Real-model baseline/current/candidate quality, token and latency gains require separate provider-specific evaluation and are not inferred from fixture tests. Application additionally requires an out-of-band trusted observed-run verifier and exact current target/variant freshness; standalone CLI declared metrics cannot apply candidates. Game-role corpora and repeated contract validators are not live agent evaluations and remain ineligible for promotion."
     }
   ],
   "optional_packs": [

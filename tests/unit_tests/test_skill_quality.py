@@ -189,19 +189,22 @@ def test_candidate_promotion_is_bound_to_evaluated_bytes(tmp_path: Path):
     candidate.write_text(
         "---\nname: debugger\ndescription: Use when debugging.\n---\n# Candidate\n"
     )
-    current = tmp_path / "current.md"
+    root = tmp_path / "repo"
+    target = root / "skills/debugger/LITE.md"
+    target.parent.mkdir(parents=True)
+    current = target
     current.write_text("current\n")
     report = m.bind_skill_artifacts(
         m.build_report(scenarios, rows),
         current_skill=current,
         candidate_skill=candidate,
     )
-    root = tmp_path / "repo"
-    target = root / "skills/debugger/LITE.md"
-    target.parent.mkdir(parents=True)
-    target.write_text("old\n")
     promoted = m.promote_candidate(
-        root=root, report=report, candidate=candidate, target=target
+        root=root,
+        report=report,
+        candidate=candidate,
+        target=target,
+        verify_observed=lambda _: True,
     )
     assert promoted == target.resolve()
     assert target.read_bytes() == candidate.read_bytes()
@@ -261,6 +264,90 @@ def test_legacy_skill_upgrader_stages_candidate_instead_of_overwriting_live_skil
     assert "0 promoted" in text
     assert "skill_quality.py" in text and "promote" in text
     assert 'with open(lite_path, "w")' not in text
+
+
+def test_promotion_rechecks_current_after_observed_verification(tmp_path: Path):
+    m = module()
+    target = tmp_path / "skills/debugger/LITE.md"
+    target.parent.mkdir(parents=True)
+    target.write_text("evaluated A\n")
+    candidate = tmp_path / "candidate.md"
+    candidate.write_text("candidate B\n")
+    scenarios = [m.validate_scenario(scenario("one"))]
+    rows = [
+        m.validate_result(
+            result("one", arm, context=700 if arm == "candidate" else 1000)
+        )
+        for arm in ("baseline", "current", "candidate")
+    ]
+    report = m.bind_skill_artifacts(
+        m.build_report(scenarios, rows), current_skill=target, candidate_skill=candidate
+    )
+
+    with pytest.raises(m.SkillQualityError, match="observed"):
+        m.promote_candidate(
+            root=tmp_path, report=report, candidate=candidate, target=target
+        )
+    assert target.read_text() == "evaluated A\n"
+
+    def observe(_):
+        target.write_text("newer C\n")
+        return True
+
+    with pytest.raises(m.SkillQualityError, match="current|target"):
+        m.promote_candidate(
+            root=tmp_path,
+            report=report,
+            candidate=candidate,
+            target=target,
+            verify_observed=observe,
+        )
+    assert target.read_text() == "newer C\n"
+
+
+@pytest.mark.parametrize("wall", [float("nan"), float("inf")])
+def test_nonfinite_observed_latency_is_rejected(wall):
+    m = module()
+    row = result("one", "current")
+    row["wall_ms"] = wall
+    with pytest.raises(m.SkillQualityError, match="finite|wall_ms"):
+        m.validate_result(row)
+
+
+def test_promotion_never_follows_foreign_predictable_temporary_symlink(tmp_path: Path):
+    import os
+
+    m = module()
+    target = tmp_path / "skills/debugger/LITE.md"
+    target.parent.mkdir(parents=True)
+    target.write_text("evaluated A\n")
+    candidate = tmp_path / "candidate.md"
+    candidate.write_text("candidate B\n")
+    victim = tmp_path / "unrelated.md"
+    victim.write_text("unrelated preserved\n")
+    foreign = target.with_name(f".{target.name}.promotion-{os.getpid()}.tmp")
+    foreign.symlink_to(victim)
+    scenarios = [m.validate_scenario(scenario("one"))]
+    rows = [
+        m.validate_result(
+            result("one", arm, context=700 if arm == "candidate" else 1000)
+        )
+        for arm in ("baseline", "current", "candidate")
+    ]
+    report = m.bind_skill_artifacts(
+        m.build_report(scenarios, rows), current_skill=target, candidate_skill=candidate
+    )
+    m.promote_candidate(
+        root=tmp_path,
+        report=report,
+        candidate=candidate,
+        target=target,
+        verify_observed=lambda _: True,
+    )
+    assert victim.read_text() == "unrelated preserved\n"
+    assert not target.is_symlink()
+    assert target.read_bytes() == candidate.read_bytes()
+    assert foreign.is_symlink()
 
 
 def test_cli_hold_returns_nonzero_for_no_measured_improvement(tmp_path: Path):

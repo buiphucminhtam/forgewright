@@ -7,7 +7,9 @@
     "test": "node --test unit.test.mjs",
     "serve": "node server.mjs",
     "test:browser": "node browser.test.mjs",
-    "check:skills": "node check-skills.mjs"
+    "check:skills": "node check-skills.mjs",
+    "test:reference": "node reference-browser.test.mjs",
+    "test:reference-contract": "node --test reference.test.mjs ../../../../tests/runtime/game-reference.test.mjs"
   },
   "dependencies": {
     "three": "0.183.2"

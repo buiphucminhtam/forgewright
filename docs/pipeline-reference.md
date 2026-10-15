@@ -294,6 +294,19 @@ Code-change completion is fail-closed and exact-turn correlated:
 2. `negative_paths` is required. Every entry has a required
    `negative_path_bindings` record: binding ID, exact claim, acceptance IDs, and
    concrete refs that the execution manifest shows were invoked.
+
+   For pytest, argv is only invocation intent. `run_check` also collects a
+   run-unique `forgewright-pytest-execution/v1` receipt using the versioned local
+   observer, bound to the command, workspace and final tree. Completion replay
+   collects a new receipt. Exact nodes, parameter containers and class/file refs
+   require their complete matching collected set to execute; a file ref is not
+   partial coverage. Final evidence needs passing setup/call/teardown. Deselect,
+   skip, xfail/xpass, collect-only, missing/disabled observers, partial receipts
+   and teardown errors cannot prove acceptance. RED/mutation require a failed call among the bound refs; unrelated failures
+   and missing calls do not prove the acceptance failed. Non-pytest contracts
+   are unchanged. Active distributed pytest runners are rejected by this observer.
+   Local receipts detect mismatch; they do not authenticate hostile same-user
+   tests/plugins or reviewer identity.
 3. The record preserves tier, exact argv/output digest, limitations, phase,
    reviewer state, and a full-worktree fingerprint over HEAD, index, tracked
    and untracked project files including ignored content. A narrow explicit

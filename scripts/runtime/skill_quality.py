@@ -10,6 +10,7 @@ import math
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -135,6 +136,7 @@ def validate_observation(value: Any) -> dict[str, Any]:
     if (
         isinstance(wall_ms, bool)
         or not isinstance(wall_ms, (int, float))
+        or not math.isfinite(wall_ms)
         or wall_ms < 0
     ):
         raise SkillQualityError("observation.wall_ms must be a non-negative number")
@@ -340,8 +342,16 @@ def assess_promotion(report: Mapping[str, Any]) -> dict[str, Any]:
         for m in ("forbidden_behavior_rate", "rationalization_rate")
     )
     efficiency_improved = (
-        candidate["context_bytes_avg"] <= current["context_bytes_avg"] * 0.90
-        or candidate["tool_calls_avg"] <= current["tool_calls_avg"] * 0.90
+        (
+            current["context_bytes_avg"] > 0
+            and candidate["context_bytes_avg"] < current["context_bytes_avg"]
+            and candidate["context_bytes_avg"] <= current["context_bytes_avg"] * 0.90
+        )
+        or (
+            current["tool_calls_avg"] > 0
+            and candidate["tool_calls_avg"] < current["tool_calls_avg"]
+            and candidate["tool_calls_avg"] <= current["tool_calls_avg"] * 0.90
+        )
         or candidate["unnecessary_actions_avg"] < current["unnecessary_actions_avg"]
     )
     if not quality_improved and not efficiency_improved:
@@ -402,6 +412,9 @@ def bind_skill_artifacts(
     artifacts = {
         "current": _artifact_record(current_skill),
         "candidate": _artifact_record(candidate_skill),
+        "target": None
+        if current_skill is None
+        else {"path": str(current_skill.resolve()), "variant": current_skill.name},
     }
     return {
         **dict(report),
@@ -429,6 +442,7 @@ def verify_report(report: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(artifacts, dict) or set(artifacts) != {
             "current",
             "candidate",
+            "target",
         }:
             raise SkillQualityError("skill quality artifact binding is malformed")
         if report.get("artifact_digest") != canonical_digest(artifacts):
@@ -437,8 +451,17 @@ def verify_report(report: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def promote_candidate(
-    *, root: Path, report: Mapping[str, Any], candidate: Path, target: Path
+    *,
+    root: Path,
+    report: Mapping[str, Any],
+    candidate: Path,
+    target: Path,
+    verify_observed=None,
 ) -> Path:
+    # The verifier is an out-of-band trusted host callback, never report JSON.
+    # Explicit fixture/replay output cannot become eligible through that callback.
+    if report.get("evaluation_kind") in {"contract-replay", "synthetic", "fixture"}:
+        raise SkillQualityError("contract/synthetic evaluation cannot promote a skill")
     report = verify_report(report)
     promotion = report["promotion"]
     if promotion.get("promotion_allowed") is not True:
@@ -448,7 +471,10 @@ def promote_candidate(
         artifacts.get("candidate"), dict
     ):
         raise SkillQualityError("promotion report is not bound to a candidate artifact")
-    candidate_record = _artifact_record(candidate)
+    if not candidate.is_file() or candidate.stat().st_size > 2 * 1024 * 1024:
+        raise SkillQualityError("bounded skill candidate file required")
+    data = candidate.read_bytes()
+    candidate_record = {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
     if candidate_record != artifacts["candidate"]:
         raise SkillQualityError("candidate bytes differ from evaluated artifact")
 
@@ -465,10 +491,46 @@ def promote_candidate(
         raise SkillQualityError("promotion target skill is not covered by the report")
     if not target.parent.is_dir():
         raise SkillQualityError("promotion target skill directory does not exist")
-    data = candidate.resolve().read_bytes()
-    temporary = target.with_name(f".{target.name}.promotion-{os.getpid()}.tmp")
-    temporary.write_bytes(data)
-    os.replace(temporary, target)
+    if artifacts.get("target") != {"path": str(target), "variant": target.name}:
+        raise SkillQualityError(
+            "promotion target/variant differs from evaluated current"
+        )
+    lock = target.with_name(f".{target.name}.promotion.lock")
+    try:
+        descriptor = os.open(lock, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as error:
+        raise SkillQualityError(
+            "promotion target is locked by another supported writer"
+        ) from error
+    temporary = None
+    try:
+        os.close(descriptor)
+        if _artifact_record(target) != artifacts.get("current"):
+            raise SkillQualityError(
+                "current target bytes differ from evaluated artifact"
+            )
+        if not callable(verify_observed) or verify_observed(report) is not True:
+            raise SkillQualityError(
+                "promotion requires trusted observed-run verification; declared runner metrics are insufficient"
+            )
+        if _artifact_record(target) != artifacts.get("current"):
+            raise SkillQualityError(
+                "current target changed during observed verification"
+            )
+        descriptor, path = tempfile.mkstemp(
+            prefix=f".{target.name}.promotion-", suffix=".tmp", dir=target.parent
+        )
+        temporary = Path(path)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.chmod(target.stat().st_mode & 0o777)
+        os.replace(temporary, target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+        lock.unlink(missing_ok=True)
     return target
 
 

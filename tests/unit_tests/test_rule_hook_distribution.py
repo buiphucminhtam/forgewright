@@ -1671,3 +1671,83 @@ def test_installer_and_stop_runtime_accept_python_exe_without_python3(
     )
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["forgewright"]["reason_code"] == "no_code_changes"
+
+
+@pytest.mark.parametrize("repair", [False, True], ids=["installer", "doctor-repair"])
+def test_installed_runtime_observes_pytest_without_source_checkout(tmp_path, repair):
+    home = tmp_path / "home"
+    home.mkdir()
+    framework = home / ".forgewright"
+    installed = run_installer(home, framework)
+    assert installed.returncode == 0, installed.stdout + installed.stderr
+    runtime = framework / "scripts/lite"
+    if repair:
+        for name in ("pytest_receipts.py", "forgewright_pytest_receipt.py"):
+            (runtime / name).unlink(missing_ok=True)
+        fixed = run_doctor(home, framework, "--quick", "--fix")
+        assert "Stop runtime dependency closure repaired" in fixed.stdout, (
+            fixed.stdout + fixed.stderr
+        )
+    project = tmp_path / "consumer"
+    project.mkdir()
+    (project / "test_behavior.py").write_text(
+        "def test_sum():\n    assert sum([2, 3]) == 5\n"
+    )
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith("GIT_") and k not in {"PYTHONPATH", "PYTHONHOME"}
+    }
+    env["GIT_CEILING_DIRECTORIES"] = str(tmp_path.parent)
+    command = [
+        sys.executable,
+        str(runtime / "run_check.py"),
+        "--turn",
+        "installed",
+        "--acceptance",
+        "behavior=consumer call executed",
+        "--test-ref",
+        "test_behavior.py::test_sum",
+        "--tier",
+        "runtime",
+        "--negative-path",
+        "missing installed observer must fail closed",
+        "--limitations",
+        "isolated local Python runtime only",
+        "--change-kind",
+        "test",
+        "--phase",
+        "verification",
+        "--implementer-id",
+        "installed-runtime-test",
+        "--reviewer-status",
+        "not_required",
+        "--",
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "--rootdir=.",
+        "--confcutdir=.",
+        "-p",
+        "no:cacheprovider",
+        "test_behavior.py::test_sum",
+    ]
+    observed = subprocess.run(
+        command, cwd=project, env=env, capture_output=True, text=True, timeout=30
+    )
+    assert observed.returncode == 0, observed.stdout + observed.stderr
+    receipt = load_json(project / ".forgewright/verify/installed.json")[
+        "test_execution"
+    ]
+    assert receipt["tests"][0]["phases"]["call"] == "passed"
+    # The installed verifier must also start without the checkout on sys.path.
+    verifier = subprocess.run(
+        [sys.executable, str(runtime / "verify_gate.py"), "--selftest"],
+        cwd=project,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert verifier.returncode == 0, verifier.stderr

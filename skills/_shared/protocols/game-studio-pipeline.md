@@ -122,6 +122,30 @@ updates the state file; it does not erase prior evidence.
 
 ## Phase Gate Record
 
+For reference-game clone/polish work, attach a frozen mechanics contract to the
+existing design-ready handoff and ProductIntent/Delta: reference build/source,
+fixed input/step IDs, observed state/score/timing/order, protected rules,
+predeclared tolerances, approved cosmetic deltas, and genuine N/A fields. Keep
+Visual Basis and creative ownership authoritative. Candidate hints must not
+choose the replay inputs. Web-capture normalization must not erase protected
+cooldowns, timing or gameplay order.
+
+Where automated browser comparison applies, require the existing-gate evidence
+command below, plus normal phase-specific human/device evidence:
+
+```bash
+node scripts/runtime/game-reference.mjs contract.json reference.json candidate.json CURRENT_BUILD_SHA256
+```
+
+This validator consumes raw captures, checks the frozen journey and current
+build, and requires observed engine capability, applicable completed public-input
+playtest and confirmed cleanup. `FAIL` or `UNVERIFIED` blocks this evidence item;
+a declared PASS, stale build or missing playtest cannot replace it. The command
+does not prevent arbitrary Markdown edits or certify subjective feel, all studio
+gates, native engines or mobile performance. Its ordered snapshots do not prove
+intra-step gameplay event order; contracts requiring that trace stay UNVERIFIED. The opt-in Signal Dash experiment
+and its source-pinned expectations are documented in the fixture README.
+
 Append this record to `production/session-state/game-studio.md`:
 
 ```markdown

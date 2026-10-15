@@ -3216,7 +3216,7 @@ stage_runtime_support() {
     [[ -f "$FORGEWRIGHT_DIR/mcp/src/product-factory/native-learning-adapter.ts" ]] || return 0
     local support_dir="$CANONICAL_STAGE_DIR/runtime-support/scripts/lite" support_file
     mkdir -p "$support_dir"
-    for support_file in evidence_common.py policy-check.sh telemetry.sh; do
+    for support_file in evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py policy-check.sh telemetry.sh; do
         if [[ ! -f "$FORGEWRIGHT_DIR/scripts/lite/$support_file" ]] || [[ -L "$FORGEWRIGHT_DIR/scripts/lite/$support_file" ]]; then
             log_error "Missing or unsafe required runtime support: $support_file"
             return 1
