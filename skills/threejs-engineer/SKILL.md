@@ -5,7 +5,7 @@ description: >
   lighting, materials, geometry, animation, post-processing, and performance optimization.
   Creates interactive 3D visualizations and games.
   Routed via the production-grade orchestrator (Web/3D mode).
-version: 2.0.0
+version: 2.1.0
 author: forgewright
 tags: [threejs, three.js, 3d, webgl, web-3d, 3d-graphics, webxr, visualization, game-development]
 ---
@@ -921,3 +921,7 @@ gsap.to(mesh.rotation, {
 ## Executable lifecycle reference
 
 See [the Three.js fixture](../../tests/game/fixtures/threejs-lifecycle/README.md) for a pinned TypeScript build and a seeded playable loop with actual keyboard/touch events, bounded pool tests, pause/restart and build-linked screenshots. Keep CPU/GPU performance claims UNVERIFIED until measured on the intended device.
+
+## Complete web-game experience
+
+Use the game-experience handoff and UI kit contract for applicable screen/state/wireframe, character/environment/UI concept and runtime asset coverage. GLB/glTF import needs consistent units/pivot/scale, required clip names and source-bound observations; actually render/animate on target before claiming runtime readiness. Menus gate camera/keyboard/pointer-lock input and restore control deliberately. Existing authored UI may satisfy the contract; no forced React, ECS, WebGPU or UI framework. Source: [WebGLRenderer](https://github.com/mrdoob/three.js/blob/ec2b7458eae7bf3718b10a4d7b867fb746a2b70a/src/renderers/WebGLRenderer.js#L60).

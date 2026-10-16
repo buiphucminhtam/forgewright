@@ -1,0 +1,21 @@
+{
+  "schema_version": "game-art-inventory/v1",
+  "project_name": "Signal Dash experience",
+  "contract_sha256": "6e293769bf9970cb1fb2a48fb6326463e47b43682f80816d240737142763eb5b",
+  "assets": [
+    {
+      "asset_id": "character/courier",
+      "asset_type": "character",
+      "name": "courier",
+      "latest_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "source_path": "tests/game/fixtures/threejs-lifecycle/assets/courier.glb",
+          "sha256": "6223d4737136764eb63ab4dd559640d796b811a32d4d27cc20d976db1ee65971",
+          "contract_sha256": "6e293769bf9970cb1fb2a48fb6326463e47b43682f80816d240737142763eb5b"
+        }
+      ]
+    }
+  ]
+}

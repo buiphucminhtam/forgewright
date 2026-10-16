@@ -11,7 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-8.7.1-blue?style=flat-square" alt="Version 8.7.1" />
-  <img src="https://img.shields.io/badge/skills-84-brightgreen?style=flat-square" alt="84 skills" />
+  <img src="https://img.shields.io/badge/skills-85-brightgreen?style=flat-square" alt="85 skills" />
   <img src="https://img.shields.io/badge/verification-local--first-24292f?style=flat-square" alt="Local-first verification" />
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-0078d4?style=flat-square" alt="macOS | Linux | Windows" />
   <img src="https://img.shields.io/badge/integration-MCP-7057ff?style=flat-square" alt="MCP integration" />
@@ -32,7 +32,7 @@
 **Forgewright is a local-first, provider-neutral engineering harness and orchestrator for AI coding agents** (Codex, Claude Code, Cursor, Antigravity, Gemini CLI/IDE, and Forge CLI).
 
 Instead of relying on ad-hoc prompts or letting an agent edit files blindly and declare success without proof, Forgewright wraps your existing model runtime in a structured software delivery system:
-- **84 canonical specialist skills** across **24 operating modes** (backend, frontend, fullstack, architecture, QA, security, DevOps, data/AI, mobile, Unity/Unreal/Godot/Phaser/Three.js game production, UX/UI, and product management).
+- **85 canonical specialist skills** across **24 operating modes** (backend, frontend, fullstack, architecture, QA, security, DevOps, data/AI, mobile, Unity/Unreal/Godot/Phaser/Three.js game production, UX/UI, and product management).
 - **Pre-tool execution guardrails** that block destructive commands and enforce project-owned safety policies across macOS, Linux, and Windows before a tool call runs.
 - **Schema-v2 completion verification** that binds every completion claim to an exact command, exit code, output digest, acceptance criterion, and full worktree fingerprint (`TREE:<sha256>`).
 - **Code intelligence & continuity** via GitNexus blast-radius analysis, bounded worker context packets, and a static local **Docs Hub** generated from canonical project state.
@@ -92,7 +92,7 @@ flowchart LR
 ```
 
 1. **Right-size the effort:** Clear local edits take the `QUICK` path (1–3 actions, focused check, zero ceremony). Feature or debug work takes `STANDARD`. Touching payment, billing, IAP, auth, public contracts, concurrency, or release triggers `DEEP` and `HARD` escalation ([ESCALATE.md](kernel/ESCALATE.md)).
-2. **Route only the needed specialist:** The boot table selects one compact `LITE.md` skill overlay on demand instead of loading all **84 skills**.
+2. **Route only the needed specialist:** The boot table selects one compact `LITE.md` skill overlay on demand instead of loading all **85 skills**.
 3. **Gate every tool call and completion claim:** Pre-tool hooks validate commands against `.forgewright/execution-policy.yaml` ([POLICY.md](kernel/POLICY.md)). On completion, `stop_gate.py` verifies the exact-turn schema-v2 record in `.forgewright/verify/` ([VERIFY.md](kernel/VERIFY.md)).
 
 See the [pipeline reference](docs/pipeline-reference.md) and [canonical runtime ADR](docs/adr/0001-canonical-production-runtime.md) for enforcement boundaries.
@@ -107,7 +107,7 @@ See the [pipeline reference](docs/pipeline-reference.md) and [canonical runtime 
 
 ### 2. Codex & Claude plugin distribution + Behavioral Skill Quality Engine
 
-Forgewright ships one unified plugin source for **Codex** and **Claude Code** ([plugin manifest](plugin.json)), exposing the entry workflow and **84 skills** with trigger-only descriptions and a consent-gated `PreToolUse` bootstrap hook ([auto-bootstrap.mjs](hooks/auto-bootstrap.mjs)). The [Skill Quality Engine](evals/skills/README.md) evaluates **baseline → current → candidate** behavior, minimal `PLAN_LOCKED` worker packets, and failure classification (`hypothesis_wrong`, `implementation_wrong`, `environment_wrong`, `architecture_wrong`).
+Forgewright ships one unified plugin source for **Codex** and **Claude Code** ([plugin manifest](plugin.json)), exposing the entry workflow and **85 skills** with trigger-only descriptions and a consent-gated `PreToolUse` bootstrap hook ([auto-bootstrap.mjs](hooks/auto-bootstrap.mjs)). The [Skill Quality Engine](evals/skills/README.md) evaluates **baseline → current → candidate** behavior, minimal `PLAN_LOCKED` worker packets, and failure classification (`hypothesis_wrong`, `implementation_wrong`, `environment_wrong`, `architecture_wrong`).
 
 ### 3. Evidence loop: observation, context, and learning (ECC)
 
@@ -151,7 +151,7 @@ node forgewright/src/cli/dist/index.js delegate resources
 
 ### 6. Specialist research across all skills
 
-The [skill catalog](docs/skill-catalog.md) covers **84 canonical skills and 3 aliases**,
+The [skill catalog](docs/skill-catalog.md) covers **85 canonical skills and 3 aliases**,
 with **168 profession-specific research questions** and proposed domain verifiers.
 Seven skills receive bounded reference/example repairs: Game Engineer, API Designer,
 Solution Architect, MCP Generator, Eval Engineer, SRE and XLSX Engineer.
@@ -168,6 +168,12 @@ checks, not repeated model benchmarks or proof of better game feel or player out
 A Godot buffer candidate is held because its proposed overflow policy conflicts with
 the existing reconciliation consumer. Remaining candidates and evidence gaps are
 listed explicitly in the catalog; an audit does not require changing every skill.
+
+### 5. Phaser 4 / Three.js production handoff
+
+New 2D web work targets **Phaser 4**; 3D targets **Three.js**. The [engine router](scripts/runtime/skill_routing.py) accepts an explicit grounded selector while retaining legacy Phaser 3 projects, manual skill controls and context budgets. The [experience checker](scripts/art-direction/game-experience.py) connects required screen/state flows, wireframes, character/environment/UI concepts, component states and source/import manifests. The optional [UI kit](templates/game/ui-kit/README.md) provides working DOM controls and a state gallery. The existing [studio](skills/_shared/protocols/game-studio-pipeline.md) supports an isolated early prototype and separate clone-fidelity/differentiation evidence.
+
+The [Phaser 4.2.1 pilot](tests/game/fixtures/phaser4-lifecycle/README.md) and [Three.js experience entry](tests/game/fixtures/threejs-lifecycle/README.md#additional-experience-handoff-and-glb-pilot) have local build, contract and model/DOM checks. Their current cloud browser attempts were blocked before launch (`pi_host_capacity_timeout`); rendered gameplay/asset quality, live specialist uplift, real-device performance and player benefit remain **UNVERIFIED**. Synthetic fixture approval records are conformance data, not production approvals.
 
 ## Quick start
 

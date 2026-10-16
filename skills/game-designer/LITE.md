@@ -49,3 +49,7 @@ For milestone/cross-discipline game work, the **pipeline** remains authoritative
 
 ## Domain Handoff
 Provide the design-ready handoff: player promise/pillars, loop/state diagrams, system rules, progression/economy model, tunable tables, onboarding sequence, game-feel event specs, acceptance and playtest hypotheses. Engineering/art/audio receive explicit implications; cross-domain discoveries return as `DOMAIN_FINDING`.
+
+## Playable-first web workflow
+
+Use the studio protocol’s isolated early-prototype branch for one risky core-loop hypothesis before committing production art/backlog. Iterate low-fi player/screen flow with the prototype; production promotion still requires approved concepts, Style DNA and design/implementation-ready handoffs. Map the declared required states/components/assets through `game-experience/v1`. For clone/polish keep fidelity and approved differentiation separate, with player-benefit evidence rather than inferred fun from tests.

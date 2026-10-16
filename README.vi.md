@@ -9,7 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-8.7.1-blue?style=flat-square" alt="Phiên bản 8.7.1" />
-  <img src="https://img.shields.io/badge/skills-84-brightgreen?style=flat-square" alt="84 kỹ năng" />
+  <img src="https://img.shields.io/badge/skills-85-brightgreen?style=flat-square" alt="85 kỹ năng" />
   <img src="https://img.shields.io/badge/verification-local--first-24292f?style=flat-square" alt="Kiểm chứng local-first" />
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-0078d4?style=flat-square" alt="macOS | Linux | Windows" />
   <img src="https://img.shields.io/badge/integration-MCP-7057ff?style=flat-square" alt="Tích hợp MCP" />
@@ -30,7 +30,7 @@
 **Forgewright là bộ khung điều phối kỹ thuật (engineering harness & orchestrator) local-first, không phụ thuộc nhà cung cấp model, dành cho các AI coding agent** (Codex, Claude Code, Cursor, Antigravity, Gemini CLI/IDE và Forge CLI).
 
 Thay vì để AI đọc prompt rồi sửa file tùy ý và tự tuyên bố “đã xong”, Forgewright đặt agent vào một quy trình kỹ thuật có kỷ luật:
-- **84 kỹ năng chuyên gia (canonical skills)** trên **24 chế độ vận hành (modes)**: từ Backend, Frontend, Fullstack, Kiến trúc, QA, Bảo mật, DevOps, AI/Data cho tới Mobile và phát triển Game (Unity, Unreal, Godot, Phaser 3, Three.js).
+- **85 kỹ năng chuyên gia (canonical skills)** trên **24 chế độ vận hành (modes)**: từ Backend, Frontend, Fullstack, Kiến trúc, QA, Bảo mật, DevOps, AI/Data cho tới Mobile và phát triển Game (Unity, Unreal, Godot, Phaser 4, Three.js).
 - **Cổng kiểm soát công cụ trước khi chạy (Pre-tool Guardrails):** Chặn lệnh phá hủy dữ liệu, giới hạn mở dư tab trình duyệt/emulator và áp dụng chính sách an toàn trên cả **macOS, Linux và Windows**.
 - **Nghiệm thu bằng bằng chứng thực thi (Schema-v2 Evidence):** Mọi tuyên bố hoàn thành phải gắn với lệnh kiểm tra thực tế, mã thoát `0`, mã băm `OUTPUT: sha256:...`, tiêu chí nghiệm thu (AC) và chữ ký toàn bộ cây thư mục (`TREE:<sha256>`).
 - **Trí tuệ mã nguồn & tính liên tục dự án:** Kết hợp đồ thị mã nguồn [GitNexus](docs/guides/gitnexus.md), gói ngữ cảnh tối thiểu cho worker và cổng tài liệu tĩnh **Docs Hub** sinh trực tiếp từ trạng thái chuẩn của dự án.
@@ -90,7 +90,7 @@ flowchart LR
 ```
 
 1. **Định cỡ nỗ lực theo rủi ro (Right-size):** Việc nhỏ, cục bộ, dễ hoàn tác đi theo luồng `QUICK` (1–3 bước, 1 lệnh kiểm tra trọng tâm). Tính năng/sửa lỗi thông thường đi theo `STANDARD`. Các thay đổi chạm tới thanh toán (payment/billing/IAP), xác thực, hợp đồng API công khai, đồng thời (concurrency) hoặc phát hành bắt buộc nâng lên `DEEP` và `HARD` ([ESCALATE.md](kernel/ESCALATE.md)).
-2. **Định tuyến chuyên gia theo nhu cầu:** Chỉ nạp overlay `LITE.md` của kỹ năng cần thiết thay vì nạp toàn bộ 84 kỹ năng vào đầu phiên.
+2. **Định tuyến chuyên gia theo nhu cầu:** Chỉ nạp overlay `LITE.md` của kỹ năng cần thiết thay vì nạp toàn bộ 85 kỹ năng vào đầu phiên.
 3. **Kiểm chứng từng bước và tại cổng kết thúc:** Mọi lệnh gọi công cụ được kiểm tra qua `.forgewright/execution-policy.yaml` ([POLICY.md](kernel/POLICY.md)), và khi kết thúc lượt, `stop_gate.py` đối chiếu bản ghi schema-v2 trong `.forgewright/verify/` ([VERIFY.md](kernel/VERIFY.md)).
 
 Xem chi tiết tại [pipeline reference](docs/pipeline-reference.md) và [canonical runtime ADR](docs/adr/0001-canonical-production-runtime.md).
@@ -149,7 +149,7 @@ node forgewright/src/cli/dist/index.js delegate resources
 
 ### 6. Research chuyên môn trên toàn bộ skill
 
-[Catalog skill](docs/skill-catalog.md) bao phủ **84 skill chính và 3 alias**, với
+[Catalog skill](docs/skill-catalog.md) bao phủ **85 skill chính và 3 alias**, với
 **168 câu hỏi theo chuyên môn** và cách kiểm chứng riêng. Bảy skill có bản sửa
 reference/ví dụ giới hạn: Game Engineer, API Designer, Solution Architect,
 MCP Generator, Eval Engineer, SRE và XLSX Engineer. So sánh thực thi ghi nhận đạn
@@ -166,6 +166,12 @@ benchmark model lặp lại hay bằng chứng game feel/trải nghiệm ngườ
 Candidate buffer Godot được giữ lại vì chính sách xử lý tràn đề xuất xung đột với
 consumer reconciliation hiện có. Catalog ghi rõ các candidate và bằng chứng còn
 thiếu; audit không đồng nghĩa phải sửa mọi skill.
+
+### 5. Hoàn thiện handoff game Phaser 4 / Three.js
+
+Game web 2D mới hướng tới **Phaser 4**, game 3D dùng **Three.js**; giữ nguyên project Phaser 3 cũ và cấu hình người dùng. [Router](scripts/runtime/skill_routing.py) chọn specialist theo engine đã xác minh. [Checker handoff](scripts/art-direction/game-experience.py) nối flow màn hình/state → wireframe → concept nhân vật/môi trường/UI → component/asset và manifest import. [UI kit](templates/game/ui-kit/README.md) có component DOM, trạng thái tương tác và gallery. [Studio flow](skills/_shared/protocols/game-studio-pipeline.md) cho phép thử prototype nhỏ sớm, giữ duyệt production và tách clone đúng mechanics khỏi cải tiến có chủ đích.
+
+[Pilot Phaser 4.2.1](tests/game/fixtures/phaser4-lifecycle/README.md) và [entry Three.js mới](tests/game/fixtures/threejs-lifecycle/README.md#additional-experience-handoff-and-glb-pilot) có kiểm tra build, contract và model/DOM. Browser trên cloud hiện bị chặn trước khi mở (`pi_host_capacity_timeout`); gameplay/render asset thực tế, hiệu quả specialist, thiết bị thật và lợi ích người chơi vẫn **UNVERIFIED**. Approval trong fixture là dữ liệu conformance tổng hợp, không phải duyệt production thật.
 
 ## Bắt đầu
 

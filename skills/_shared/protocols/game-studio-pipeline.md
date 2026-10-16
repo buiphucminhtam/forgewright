@@ -442,3 +442,13 @@ benedek-dev/RGS-Framework, and the explicit Codex adaptation rules from
 eiichimo/Codex-Game-Studios. It intentionally reuses Forgewright's existing
 orchestration policy, verification contracts, memory, guardrails, and engine
 skills instead of importing another runtime or duplicating an agent roster.
+
+## Early prototype and complete web-game handoff
+
+For new web work, ground 2D→Phaser 4 / 3D→Three.js; preserve existing package pins. Before production art/system commitment, an isolated throwaway prototype may answer one recorded question from the brief. Record scope, target/input/camera, minimum technical readiness, temporary path, actual observations, keep/change/kill and limitations in the existing studio state. This is an experiment, not an eighth phase or an approved production deliverable. Do not promote its placeholders/code without the applicable design/implementation-ready and creative gates.
+
+Prototype and low-fi player/screen flow iterate together. Then produce applicable character/environment/UI concepts, approve Style DNA, and hand off a game-specific UI kit plus sprite/GLB contracts. Use `game-experience/v1` to map required screen states→wireframes→concepts→component/token/asset IDs→runtime entries. The required set comes from the approved design-ready handoff; edits go through existing change authority. Missing items cannot be waived by deleting the required set or inventing N/A.
+
+The existing design-ready gate consumes `game-experience.py validate <manifest> --project-root <project> --stage design`; implementation-ready consumes `--stage implementation`. Resolve the script under the installed framework root, not an assumed consumer scripts directory. Preserve legacy packet contracts; adopt existing projects incrementally. Stage PASS certifies declared completeness and local hashes only. Current-build public-input playtest, rendered evidence, target performance and cleanup remain separate studio evidence.
+
+Build a whole-loop vertical slice before production scale-up, then observe a second unit/level to measure repeatable production cost. For clone/polish, retain protected reference mechanics and compare them with the existing comparator. Evaluate approved differentiation separately through ProductDelta, a player-benefit hypothesis and new playtest criteria. Never loosen the old oracle to make an intentional mechanic change appear equivalent; never equate a cosmetic delta or passing replay with increased fun.

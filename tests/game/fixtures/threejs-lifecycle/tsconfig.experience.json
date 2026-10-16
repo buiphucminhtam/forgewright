@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "experience-dist",
+    "rootDir": "../../../.."
+  },
+  "include": [
+    "experience/**/*.ts",
+    "../../../../templates/game/ui-kit/index.ts"
+  ]
+}

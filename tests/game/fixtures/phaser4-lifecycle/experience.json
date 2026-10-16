@@ -1,0 +1,601 @@
+{
+  "schema": "game-experience/v1",
+  "project_id": "fixture-phaser",
+  "engine": {
+    "name": "phaser",
+    "version": "4.2.1"
+  },
+  "intent": {
+    "path": "tests/game/fixtures/phaser4-lifecycle/handoff/intent.md",
+    "sha256": "604b7e3c8dca6eff22072621e9818a9fd646767eb856aa1eb003a9a26af094ee"
+  },
+  "targets": {
+    "viewports": [
+      [
+        960,
+        800
+      ],
+      [
+        390,
+        844
+      ]
+    ],
+    "inputs": [
+      "keyboard",
+      "touch"
+    ],
+    "camera": "top-down 2D"
+  },
+  "required": {
+    "states": [
+      "ready",
+      "playing",
+      "paused",
+      "won",
+      "lost",
+      "settings"
+    ],
+    "components": {
+      "start": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "left": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "right": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "pause": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "settings": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "options": [
+        "default"
+      ],
+      "motion": [
+        "default",
+        "focus"
+      ],
+      "contrast": [
+        "default",
+        "focus"
+      ],
+      "close-settings": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "advance": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ]
+    },
+    "assets": [
+      "character/hero",
+      "environment/garden",
+      "panel/frame"
+    ],
+    "concepts": [
+      "character",
+      "environment",
+      "ui"
+    ]
+  },
+  "journeys": [
+    {
+      "id": "core-loop",
+      "states": [
+        "ready",
+        "playing",
+        "paused",
+        "won",
+        "lost",
+        "settings"
+      ],
+      "transitions": [
+        [
+          "ready",
+          "playing"
+        ],
+        [
+          "playing",
+          "paused"
+        ],
+        [
+          "paused",
+          "playing"
+        ],
+        [
+          "playing",
+          "won"
+        ],
+        [
+          "playing",
+          "lost"
+        ],
+        [
+          "won",
+          "playing"
+        ],
+        [
+          "lost",
+          "playing"
+        ],
+        [
+          "playing",
+          "settings"
+        ],
+        [
+          "settings",
+          "playing"
+        ]
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "ready",
+      "states": [
+        "ready"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings",
+        "advance"
+      ]
+    },
+    {
+      "id": "playing",
+      "states": [
+        "playing"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings",
+        "advance"
+      ]
+    },
+    {
+      "id": "paused",
+      "states": [
+        "paused"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings",
+        "advance"
+      ]
+    },
+    {
+      "id": "won",
+      "states": [
+        "won"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings",
+        "advance"
+      ]
+    },
+    {
+      "id": "lost",
+      "states": [
+        "lost"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings",
+        "advance"
+      ]
+    },
+    {
+      "id": "settings",
+      "states": [
+        "settings"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "options",
+        "motion",
+        "contrast",
+        "close-settings"
+      ]
+    }
+  ],
+  "concepts": {
+    "character": {
+      "applicable": true,
+      "artifact": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/concepts.svg",
+        "sha256": "7ad9fc18b0dbbe7c8aae127224f721ad5ef13040f4cf23705e0f639d30441538"
+      }
+    },
+    "environment": {
+      "applicable": true,
+      "artifact": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/concepts.svg",
+        "sha256": "7ad9fc18b0dbbe7c8aae127224f721ad5ef13040f4cf23705e0f639d30441538"
+      }
+    },
+    "ui": {
+      "applicable": true,
+      "artifact": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/concepts.svg",
+        "sha256": "7ad9fc18b0dbbe7c8aae127224f721ad5ef13040f4cf23705e0f639d30441538"
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "start",
+      "states": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "left",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "right",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "pause",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "settings",
+      "states": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "options",
+      "states": [
+        "default"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "motion",
+      "states": [
+        "default",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "contrast",
+      "states": [
+        "default",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "close-settings",
+      "states": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "advance",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "character/hero",
+      "license": "CC0-1.0, original authored fixture; assets/LICENSE.md",
+      "artifact": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/assets/hero.png",
+        "sha256": "62dc7e8ede4f346b5981d1d48c4895f4d43bdf905f5ccfe9f6e79092a663ab78"
+      },
+      "import": {
+        "kind": "sprite",
+        "frame_width": 16,
+        "frame_height": 16,
+        "frame_count": 2,
+        "anchor": [
+          0.5,
+          1
+        ],
+        "scale": 5,
+        "animations": [
+          "idle"
+        ]
+      },
+      "observation": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/import-character-hero.json",
+        "sha256": "50ff8749044f9fa6d43333594c014b511978f159dfeda55ad8c0b00766dc0d36"
+      }
+    },
+    {
+      "id": "environment/garden",
+      "license": "CC0-1.0, original authored fixture; assets/LICENSE.md",
+      "artifact": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/assets/garden.svg",
+        "sha256": "836b9385285fa84a30fb0c44f680c115e81549195abb816ec7c0ff772b04f807"
+      },
+      "import": {
+        "kind": "image",
+        "width": 640,
+        "height": 480
+      },
+      "observation": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/import-environment-garden.json",
+        "sha256": "bf2ba46ca27b408b5fe0ab147d6d700f4ea9a06676aeae00bf3561d5b21a2a84"
+      }
+    },
+    {
+      "id": "panel/frame",
+      "license": "CC0-1.0, original authored fixture; assets/LICENSE.md",
+      "artifact": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/assets/panel.svg",
+        "sha256": "f0ef1bee58cb6d0a66bd8efd712a5c8558bfd040c53bf7700a947e3d956a4f43"
+      },
+      "import": {
+        "kind": "ui",
+        "width": 32,
+        "height": 32,
+        "nine_slice": [
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "observation": {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/import-panel-frame.json",
+        "sha256": "cc530db9d1d2dfa2977a3f2a2961454599bd1ab10069790e0f00c5475b0267b2"
+      }
+    }
+  ],
+  "tokens": {
+    "path": "templates/game/ui-kit/tokens.css",
+    "sha256": "2f42d53148e1e86aa514fc8258b3d0a727599f800260f107eb7a90029dc9fbb7"
+  },
+  "creative": {
+    "concept": {
+      "path": "tests/game/fixtures/phaser4-lifecycle/handoff/concept.json",
+      "sha256": "b16ac98da5dc7a5c238556683088a9cc9d1cd429e1c19b622aa8cd41b4f386ed"
+    },
+    "gates": {
+      "path": "tests/game/fixtures/phaser4-lifecycle/handoff/gates.json",
+      "sha256": "ce66207971d52b58bb4d3a6deeaaaa11cf95ef2b8d5847059eb5f83b9f47d6b0"
+    },
+    "visual_basis": {
+      "path": "tests/game/fixtures/phaser4-lifecycle/handoff/visual-basis.json",
+      "sha256": "09f1f59628a6543627d0174a11b132e9d3ed839d2e2bfc982f5da6c7729ab6e4"
+    },
+    "cards": [
+      {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/cards/product-1.json",
+        "sha256": "50ad45177ddd1dba918ee52b1d1046d22151f058a11bebfa0b955b263e3480c4"
+      },
+      {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/cards/product-2.json",
+        "sha256": "dcc32c5e0db5ae23e303d00d6f84ba9538a786590e99ca29570bdf9ff6e924c0"
+      },
+      {
+        "path": "tests/game/fixtures/phaser4-lifecycle/handoff/cards/product-3.json",
+        "sha256": "fc44972476c38fd66cc9b1f5c26228840672c4a6bb3ccee9ee6eab58367052c9"
+      }
+    ],
+    "style_contract": {
+      "path": "tests/game/fixtures/phaser4-lifecycle/handoff/style.json",
+      "sha256": "dbdf1829d0b3bd399eccc6f3b0b5c73f32105458619158617152476af14f629e"
+    }
+  },
+  "inventory": {
+    "path": "tests/game/fixtures/phaser4-lifecycle/handoff/inventory.json",
+    "sha256": "9b5fb51108d18aee24c572a6ef83f044185e7370f316a1d012d38284f45decff"
+  },
+  "engine_manifest": {
+    "path": "tests/game/fixtures/phaser4-lifecycle/handoff/engine-manifest.json",
+    "sha256": "82a0c47f00238d2996f6205fd9ce10fe6b4cca623d67f7165766555717d10f0b"
+  },
+  "runtime": {
+    "path": "tests/game/fixtures/phaser4-lifecycle/src/app.ts",
+    "sha256": "e8b6bbfa9d084df212954a90241719d376704a38e43d20cc8871dc4fcf406417"
+  }
+}

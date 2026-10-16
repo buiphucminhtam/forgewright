@@ -17,7 +17,7 @@ import unicodedata
 
 MAX_INTENT_CHARS = 8192
 MAX_CANDIDATES = 64
-RULE_VERSION = "local-en-vi-1"
+RULE_VERSION = "local-en-vi-2"
 _NAME = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*\Z")
 
 # Whole Unicode words/phrases only. Specific design/game signals absorb generic
@@ -29,6 +29,9 @@ _RULES = {
         "roblox",
         "godot",
         "phaser",
+        "three.js",
+        "threejs",
+        "three js",
         "gameplay",
         "game",
         "video game",

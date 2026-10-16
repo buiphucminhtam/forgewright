@@ -1,0 +1,527 @@
+{
+  "schema": "game-experience/v1",
+  "project_id": "fixture-threejs",
+  "engine": {
+    "name": "threejs",
+    "version": "0.183.2"
+  },
+  "intent": {
+    "path": "tests/game/fixtures/threejs-lifecycle/handoff/intent.md",
+    "sha256": "cd52aec231f0e5fa444fdca7c72a86be9f3c854d3b8d6cd2569aadc493b0b109"
+  },
+  "targets": {
+    "viewports": [
+      [
+        960,
+        800
+      ],
+      [
+        390,
+        844
+      ]
+    ],
+    "inputs": [
+      "keyboard",
+      "touch"
+    ],
+    "camera": "three-quarter perspective"
+  },
+  "required": {
+    "states": [
+      "ready",
+      "playing",
+      "paused",
+      "won",
+      "lost",
+      "settings"
+    ],
+    "components": {
+      "start": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "left": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "right": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "pause": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "settings": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "options": [
+        "default"
+      ],
+      "motion": [
+        "default",
+        "focus"
+      ],
+      "contrast": [
+        "default",
+        "focus"
+      ],
+      "close-settings": [
+        "default",
+        "pressed",
+        "focus"
+      ]
+    },
+    "assets": [
+      "character/courier"
+    ],
+    "concepts": [
+      "character",
+      "environment",
+      "ui"
+    ]
+  },
+  "journeys": [
+    {
+      "id": "core-loop",
+      "states": [
+        "ready",
+        "playing",
+        "paused",
+        "won",
+        "lost",
+        "settings"
+      ],
+      "transitions": [
+        [
+          "ready",
+          "playing"
+        ],
+        [
+          "playing",
+          "paused"
+        ],
+        [
+          "paused",
+          "playing"
+        ],
+        [
+          "playing",
+          "won"
+        ],
+        [
+          "playing",
+          "lost"
+        ],
+        [
+          "won",
+          "playing"
+        ],
+        [
+          "lost",
+          "playing"
+        ],
+        [
+          "playing",
+          "settings"
+        ],
+        [
+          "settings",
+          "playing"
+        ]
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "id": "ready",
+      "states": [
+        "ready"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings"
+      ]
+    },
+    {
+      "id": "playing",
+      "states": [
+        "playing"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings"
+      ]
+    },
+    {
+      "id": "paused",
+      "states": [
+        "paused"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings"
+      ]
+    },
+    {
+      "id": "won",
+      "states": [
+        "won"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings"
+      ]
+    },
+    {
+      "id": "lost",
+      "states": [
+        "lost"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "start",
+        "left",
+        "right",
+        "pause",
+        "settings"
+      ]
+    },
+    {
+      "id": "settings",
+      "states": [
+        "settings"
+      ],
+      "wireframe": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "components": [
+        "options",
+        "motion",
+        "contrast",
+        "close-settings"
+      ]
+    }
+  ],
+  "concepts": {
+    "character": {
+      "applicable": true,
+      "artifact": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/concepts.svg",
+        "sha256": "7ad9fc18b0dbbe7c8aae127224f721ad5ef13040f4cf23705e0f639d30441538"
+      }
+    },
+    "environment": {
+      "applicable": true,
+      "artifact": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/concepts.svg",
+        "sha256": "7ad9fc18b0dbbe7c8aae127224f721ad5ef13040f4cf23705e0f639d30441538"
+      }
+    },
+    "ui": {
+      "applicable": true,
+      "artifact": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/concepts.svg",
+        "sha256": "7ad9fc18b0dbbe7c8aae127224f721ad5ef13040f4cf23705e0f639d30441538"
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "start",
+      "states": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "tests/game/fixtures/threejs-lifecycle/experience/app.ts",
+        "sha256": "04965ad6f676d7ade829191c4364937480a4107a43ebded7c05e2af41f340def"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "left",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "tests/game/fixtures/threejs-lifecycle/experience/app.ts",
+        "sha256": "04965ad6f676d7ade829191c4364937480a4107a43ebded7c05e2af41f340def"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "right",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "tests/game/fixtures/threejs-lifecycle/experience/app.ts",
+        "sha256": "04965ad6f676d7ade829191c4364937480a4107a43ebded7c05e2af41f340def"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "pause",
+      "states": [
+        "default",
+        "pressed",
+        "focus",
+        "disabled"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "tests/game/fixtures/threejs-lifecycle/experience/app.ts",
+        "sha256": "04965ad6f676d7ade829191c4364937480a4107a43ebded7c05e2af41f340def"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "settings",
+      "states": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "options",
+      "states": [
+        "default"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "motion",
+      "states": [
+        "default",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "contrast",
+      "states": [
+        "default",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    },
+    {
+      "id": "close-settings",
+      "states": [
+        "default",
+        "pressed",
+        "focus"
+      ],
+      "spec": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/wireframes.svg",
+        "sha256": "eb8cb4d2e692a291ae0efc9762fc099aa1baf28b23f39f750d43adddb8c9b92b"
+      },
+      "runtime": {
+        "path": "templates/game/ui-kit/index.ts",
+        "sha256": "2840942e775d332a9ef545975e854974901bf7eaf104075f201e8f8a938c3b70"
+      },
+      "preview": {
+        "path": "templates/game/ui-kit/preview.html",
+        "sha256": "d440635e27038b88a7016b343c05f91e6367564c6f78e0194c4fdfe686a8827f"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "character/courier",
+      "license": "CC0-1.0, original authored fixture; assets/LICENSE.md",
+      "artifact": {
+        "path": "tests/game/fixtures/threejs-lifecycle/assets/courier.glb",
+        "sha256": "6223d4737136764eb63ab4dd559640d796b811a32d4d27cc20d976db1ee65971"
+      },
+      "import": {
+        "kind": "model",
+        "units": "meters",
+        "up_axis": "Y",
+        "pivot": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "animations": [
+          "hover"
+        ]
+      },
+      "observation": {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/import-character-courier.json",
+        "sha256": "f010b33376cf29e69c0dccf413463f94a413e7fb1f873ea2c0ccdb3b18e7a549"
+      }
+    }
+  ],
+  "tokens": {
+    "path": "templates/game/ui-kit/tokens.css",
+    "sha256": "2f42d53148e1e86aa514fc8258b3d0a727599f800260f107eb7a90029dc9fbb7"
+  },
+  "creative": {
+    "concept": {
+      "path": "tests/game/fixtures/threejs-lifecycle/handoff/concept.json",
+      "sha256": "b1b5a43ea87f7dbf0229ebe8f3cf70526b975df5802bde550a86de061feb0302"
+    },
+    "gates": {
+      "path": "tests/game/fixtures/threejs-lifecycle/handoff/gates.json",
+      "sha256": "834d732708e7af858ca263046030ef11a9c03118e4fef5f4f0ba3a3f37ce6d89"
+    },
+    "visual_basis": {
+      "path": "tests/game/fixtures/threejs-lifecycle/handoff/visual-basis.json",
+      "sha256": "09f1f59628a6543627d0174a11b132e9d3ed839d2e2bfc982f5da6c7729ab6e4"
+    },
+    "cards": [
+      {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/cards/product-1.json",
+        "sha256": "a3bfb17fc5e4c4973aeb12945c489fdd885d31583ffbd33561f6d6deceb08e3a"
+      },
+      {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/cards/product-2.json",
+        "sha256": "99b795d0d96314301d0e321e8e9a6fa57a8dc83f7bb9bd3db86ce0e85c6aacb4"
+      },
+      {
+        "path": "tests/game/fixtures/threejs-lifecycle/handoff/cards/product-3.json",
+        "sha256": "0667ab5f4ff123c9fb84218032b83e191ffc68c64f78c5effed8aa282a013775"
+      }
+    ],
+    "style_contract": {
+      "path": "tests/game/fixtures/threejs-lifecycle/handoff/style.json",
+      "sha256": "0b97c00405e99a5f5442d08f324671be8d596955bc2d11089cbf849f8aeaf249"
+    }
+  },
+  "inventory": {
+    "path": "tests/game/fixtures/threejs-lifecycle/handoff/inventory.json",
+    "sha256": "204b557285c50b3d832ee61446186723e6ae744d715d880f120e149fb0c9809e"
+  },
+  "engine_manifest": {
+    "path": "tests/game/fixtures/threejs-lifecycle/handoff/engine-manifest.json",
+    "sha256": "15608e7a3a897227a2466879cc051c0e2611c76525de82a80ac1c2bc3754636c"
+  },
+  "runtime": {
+    "path": "tests/game/fixtures/threejs-lifecycle/experience/app.ts",
+    "sha256": "04965ad6f676d7ade829191c4364937480a4107a43ebded7c05e2af41f340def"
+  }
+}

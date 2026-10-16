@@ -1,97 +1,31 @@
 ---
 name: threejs-engineer
-description: "Orchestrates WebGL rendering pipelines, scene graphs, custom shaders, and 3D asset loaders via Three.js. Use when the user requests 3D interactive visualizations, browser-based games, custom GPU shaders, GLTF/GLB assets integration, or WebGL performance optimizations."
-version: 1.0.0
+description: Use when building Three.js browser games or interactive 3D scenes, camera/input systems, shaders, GLB assets, or rendering and resource-lifecycle optimizations.
+version: 2.1.0
 ---
 
-# Threejs Engineer (LITE)
+# Three.js Engineer (LITE)
 
-## SOLVE Step 2: GROUND (Threejs Engineer Domain Slots)
-| Assumption | Check command / file read | Result | Script-produced evidence |
-|---|---|---|---|
-| Target Three.js and associated packages are installed in the workspace | `cat package.json \| jq '.dependencies["three"]'` | ... | run the check command and paste output |
-| Existing WebGL components, canvases, or scenes are indexed | `find src/ -name "*canvas*" -o -name "*three*" -o -name "*scene*"` | ... | run the check command and paste output |
-| Playwright test harness is configured for Visual Regression Testing (VRT) | `cat playwright.config.ts` | ... | run the check command and paste output |
+## SOLVE Step 2: GROUND
 
-## SOLVE Step 3: DECOMPOSE (Threejs Engineer Domain Slots)
-Format: `n. ACTION | TARGET | CHECK`
+| Material assumption | Check |
+|---|---|
+| Actual engine/toolchain | Inspect package/lockfile; preserve existing pins. Reference fixture uses Three 0.183.2. |
+| Rendering and production context | Inspect canvas, chosen renderer, camera, input, asset ownership and named target hardware/budgets. |
+| Accepted experience | Consume the studio handoff, Visual Basis/Style DNA, required screen/state wireframes, applicable character/environment/UI concepts and component/asset IDs. |
 
-1. ALIGN | Map coordinate systems (e.g., Blender Z-up to Three.js Y-up) and camera bounds | Ensure clipping planes (`near`/`far`), field of view (`fov`), and canvas aspect ratios are configured dynamically.
-2. COMPILE | Create or optimize WebGL shader programs and material configurations | Verify custom glsl fragment and vertex shaders compile without syntax errors or register limits.
-3. LOAD | Load and traverse GLTF/GLB models using standard `GLTFLoader` engines | Validate that all loaded meshes utilize unified buffers, optimized geometries, and correct textures.
-4. SNAP | Capture rendering frames via local Playwright visual regression tests | Verify pixel-level render outputs against standard baseline snapshots to identify visual drift.
+## SOLVE Step 3: DECOMPOSE
 
-## Common Mistakes Checklist
-- **WebGL Memory leak via undisposed resources**: Creating new geometry, materials, or textures programmatically inside render or animation updates without calling `.dispose()`, triggering eventual GPU crashes.
-- **NPOT (Non-Power-of-Two) texture sizes**: Loading custom images or textures that do not utilize power-of-two dimensions (e.g., 512x512 or 1024x1024), breaking mipmap generation on older mobile GPUs.
-- **Mismatched light and material types**: Implementing PBR materials (e.g., `MeshStandardMaterial`) without configuring active lighting in the scene, resulting in fully black renders.
-- **Non-compliant naming patterns**: Saving documentation, test assets, or shader files using uppercase letters, camelCase, or spaces instead of strictly lowercase kebab-case (e.g., `threejs-renderer-audit.md`).
+1. RULES: keep serializable simulation outside rendering; apply elapsed time once. Use the project's architecture, not compulsory ECS.
+2. PRESENT: align coordinates, clipping/frustum and responsive aspect; keep playfield readable. GLB/glTF uses consistent units/pivots/scale, required clip names, material/texture expectations and applicable collision/LOD strategy. Actually load and animate before claiming runtime integration.
+3. INPUT: menus gate camera/keyboard/pointer-lock controls, manage focus and restore the intended control mode. Reuse the existing UI or the optional game UI kit; no forced React or world-space HUD.
+4. VERIFY: use the lowest reliable layer for changed rules/import/lifecycle; public input plus current rendered evidence for actual scene/viewport behavior. Measure approved target budgets; screenshots and counters do not prove GPU bytes or mobile performance.
+5. CLEANUP: cancel the owned loop/listeners and loader work; dispose owned geometry/material/texture/mixer resources once after final use. Preserve borrowed assets. Handle late loader completion and cached-page navigation explicitly.
 
-### Step 1: Check Three.js dependency version in package.json
-```bash
-cat package.json | grep -E "three"
-```
+WebGLRenderer requires WebGL2 since r163; do not impose old WebGL1 NPOT rules universally. WebGPU fallback applies only when required by the selected renderer/capability contract. Reduced motion and low quality remain separate; essential cues survive.
 
-### Step 2: Implement a lightweight, optimized WebGL renderer under `src/threejs-scene.ts`
-```typescript
-import * as THREE from 'three';
+Follow the existing game-studio and game-test protocols. Prototype evidence does not approve production art. Protect frozen reference mechanics; evaluate approved ProductDelta/player benefit separately. Missing runtime/visual evidence stays UNVERIFIED.
 
-export function createInteractiveScene(canvas: HTMLCanvasElement) {
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+Start long-running processes through `bash scripts/runtime/dev-run.sh --role <role> -- <command>`. Browser tests use `runGameTest`/`createGameBrowser`, existing admission, page reuse and confirmed owned cleanup. Never bypass unknown host pressure. Close with the runtime ledger.
 
-  // Set up standard lighting for PBR material compatibility
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-  scene.add(ambientLight);
-
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-  directionalLight.position.set(5, 5, 5);
-  scene.add(directionalLight);
-
-  // Generate a mesh using reusable geometries and materials
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.4 });
-  const cube = new THREE.Mesh(geometry, material);
-  scene.add(cube);
-
-  camera.position.z = 5;
-
-  let animationFrameId: number;
-
-  const animate = () => {
-    animationFrameId = requestAnimationFrame(animate);
-    // Safe: keep lightweight rotations inside the loop to preserve high FPS
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
-    renderer.render(scene, camera);
-  };
-
-  animate();
-
-  // Return explicit teardown hooks to prevent WebGL context memory leaks
-  return {
-    scene,
-    renderer,
-    dispose: () => {
-      cancelAnimationFrame(animationFrameId);
-      geometry.dispose();
-      material.dispose();
-      renderer.dispose();
-    }
-  };
-}
-```
-
-### Step 3: Run regression tests to verify canvas rendering
-```bash
-npx playwright test tests/visual-regression.spec.ts
-```
-
-## Runtime Lifecycle
-
-Start anything long-running (dev server, editor, emulator, watcher, container) with
-`bash scripts/runtime/dev-run.sh --role <role> -- <command>`. It reuses an instance that is
-already up instead of starting a second one, and registers a lease so the process is
-reclaimed instead of leaking a port and its RAM. Close the turn with VERIFY Template 4
-(RUNTIME LEDGER). See [ADR-010](../../docs/adr/ADR-010-runtime-lifecycle-guard.md).
+Read SKILL.md for full examples compiled by the existing fixture; see [UI handoff](../ui-designer/references/game-ui-kit.md) and [runtime ownership](../../docs/adr/ADR-010-runtime-lifecycle-guard.md).

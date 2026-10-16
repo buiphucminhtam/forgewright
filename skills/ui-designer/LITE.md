@@ -54,3 +54,7 @@ Format: `n. ACTION | TARGET | CHECK`
 
 ## Domain Verifiers / Handoff
 Verify token conformance, component-state completeness, target viewport overflow/wrapping, focus/semantic accessibility and rendered reference deviation. Hand downstream roles a concrete UI contract; return product/architecture/scope-changing discoveries as `DOMAIN_FINDING`.
+
+## Phaser 4 / Three.js experience handoff
+
+New 2D browser projects use Phaser 4; explicit 3D uses Three.js. Preserve verified existing engine/version pins. Map reachable gameplay/screen states to wireframes, applicable character/environment/UI concepts, approved Style DNA, component states and asset IDs. Follow [the game UI kit handoff](references/game-ui-kit.md); reuse an existing kit when it meets the contract. The optional DOM starter is `templates/game/ui-kit/`. A picture of a component family is not a usable interactive kit.

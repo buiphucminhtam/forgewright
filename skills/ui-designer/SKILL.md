@@ -476,7 +476,7 @@ Critical status must remain understandable without hue. Bind status colors to th
 - [ ] Design tokens exported
 
 ### Component Library
-- [ ] Button (all 5 styles, 3 sizes, states)
+- [ ] Button variants/sizes/states required by this game and approved UI contract
 - [ ] Container/panel families with evidence-bound surface and geometry roles
 - [ ] Progress bar (with/without label)
 - [ ] Slider (with keyboard support)
@@ -492,15 +492,15 @@ Critical status must remain understandable without hue. Bind status colors to th
 - [ ] Game Over screen
 - [ ] Settings screen
 - [ ] Pause menu
-- [ ] Achievement popup
+- [ ] Achievement popup only when required by the game scope
 
 ### Interactions
-- [ ] Button hover/press animations
-- [ ] Screen transitions (fade, wipe)
-- [ ] Staggered list animations
-- [ ] Loading spinners
-- [ ] Score count-up animation
-- [ ] Star rating animation
+- [ ] Relevant input/state feedback; hover only for supported input
+- [ ] Approved screen transitions that preserve readability
+- [ ] List motion only when it serves a declared UX need
+- [ ] Loading indication for actual asynchronous waits
+- [ ] Score feedback appropriate to game state and reduced motion
+- [ ] Rating feedback only when the game has a rating mechanic
 
 ### Responsive
 - [ ] Portrait layout
@@ -513,3 +513,7 @@ Critical status must remain understandable without hue. Bind status colors to th
 - [ ] High contrast mode
 - [ ] Reduced motion support
 - [ ] Colorblind-friendly icons
+
+## Phaser 4 / Three.js experience handoff
+
+New 2D browser projects use Phaser 4; explicit 3D uses Three.js. Preserve verified existing engine/version pins. Map reachable gameplay/screen states to wireframes, applicable character/environment/UI concepts, approved Style DNA, component states and asset IDs. Follow [the game UI kit handoff](references/game-ui-kit.md); reuse an existing kit when it meets the contract. The optional DOM starter is `templates/game/ui-kit/`. A picture of a component family is not a usable interactive kit.

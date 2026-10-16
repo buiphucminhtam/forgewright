@@ -1,0 +1,19 @@
+{
+  "source_sha256": "f0ef1bee58cb6d0a66bd8efd712a5c8558bfd040c53bf7700a947e3d956a4f43",
+  "engine": {
+    "name": "phaser",
+    "version": "4.2.1"
+  },
+  "import": {
+    "kind": "ui",
+    "width": 32,
+    "height": 32,
+    "nine_slice": [
+      8,
+      8,
+      8,
+      8
+    ]
+  },
+  "scope": "Source structure and authored import configuration; actual renderer/animation remains separate browser evidence."
+}

@@ -900,3 +900,7 @@ requirement to recreate existing documentation:
 │   └── feedback-spec.md            # Visual/audio/haptic
 └── handoff-notes.md                # Engineer notes
 ```
+
+## Playable-first web workflow
+
+Use the studio protocol’s isolated early-prototype branch for one risky core-loop hypothesis before committing production art/backlog. Iterate low-fi player/screen flow with the prototype; production promotion still requires approved concepts, Style DNA and design/implementation-ready handoffs. Map the declared required states/components/assets through `game-experience/v1`. For clone/polish keep fidelity and approved differentiation separate, with player-benefit evidence rather than inferred fun from tests.

@@ -2,7 +2,7 @@
 
 > **Central documentation index for Forgewright**
 
-Welcome to Forgewright — an adaptive orchestrator with 84 AI skills covering the full software development lifecycle.
+Welcome to Forgewright — an adaptive orchestrator with 85 AI skills covering the full software development lifecycle.
 
 ## Quick Navigation
 
@@ -41,7 +41,7 @@ Welcome to Forgewright — an adaptive orchestrator with 84 AI skills covering t
 
 | Feature | Description |
 |---------|-------------|
-| **Skill Health Check** | `bash scripts/skill-health.sh check` — validates all 84 canonical skills |
+| **Skill Health Check** | `bash scripts/skill-health.sh check` — validates all 85 canonical skills |
 | **Dependency Graph** | `bash scripts/dep-graph.sh` — detects cycles, generates DOT/Mermaid exports |
 | **Skill Versioning** | `bash scripts/skill-rollback.sh` — rollback skills to previous versions |
 | **Session Tracker** | `bash scripts/forgewright-session-tracker.sh` — tracks consecutive plan failures |

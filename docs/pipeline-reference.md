@@ -379,3 +379,9 @@ Generated evidence files are local runtime artifacts. Project source, tests, and
 ---
 
 *Updated: 2026-08-24*
+
+## Phaser 4 and Three.js game experience
+
+New 2D browser work uses Phaser 4, explicit 3D uses Three.js, and existing projects retain grounded package pins. `skill_routing.py --mode game-build --game-engine phaser4|threejs|phaser3` keeps creative order, config enablement and budgets. The [studio protocol](../skills/_shared/protocols/game-studio-pipeline.md) owns early-prototype applicability, seven production gates and protected reference vs approved ProductDelta authority.
+
+The [UI handoff guide](../skills/ui-designer/references/game-ui-kit.md) and `game-experience/v1` connect declared required states/screens, wireframes, applicable concepts, UI components and assets. Design and implementation checks validate only their own completeness stage and local hashes. Import checks parse source structure and compare declared/source-bound observations; current public-input render evidence is still required for actual engine integration. Source fixtures and synthetic creative approval records cannot promote learning or certify professional visual/player outcomes. Managed browser admission/ownership remains unchanged.

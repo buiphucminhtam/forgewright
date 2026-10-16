@@ -1232,7 +1232,18 @@ class ForgewrightAgent:
             # The local config owns ordered mode routing and its cap. Ordinary
             # prompts with no configured mode intentionally keep the safe base
             # Lite prompt without a skill overlay.
-            routing = route_skills(prompt=task, project_root=repo_root)
+            routing = route_skills(
+                prompt=task,
+                project_root=self.code_dir,
+                config_path=(
+                    Path(self.code_dir) / ".forgewright" / "skills-config.json"
+                )
+                if (
+                    Path(self.code_dir) / ".forgewright" / "skills-config.json"
+                ).is_file()
+                else Path(repo_root) / ".forgewright" / "skills-config.json",
+                skills_root=Path(repo_root) / "skills",
+            )
             if routing["status"] != "ok":
                 raise RuntimeError(
                     "skill routing failed: " + "; ".join(routing["errors"])

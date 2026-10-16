@@ -116,6 +116,18 @@
     {
       "path": "docs/skill-catalog.md",
       "type": "operations"
+    },
+    {
+      "path": "skills/ui-designer/references/game-ui-kit.md",
+      "type": "operations"
+    },
+    {
+      "path": "templates/game/ui-kit/README.md",
+      "type": "operations"
+    },
+    {
+      "path": "tests/game/fixtures/phaser4-lifecycle/README.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -173,7 +185,10 @@
       "skills/game-designer/SKILL.md",
       "skills/_shared/protocols/game-studio-pipeline.md",
       "skills/_shared/protocols/visual-grounding.md",
-      "docs/skill-catalog.md"
+      "docs/skill-catalog.md",
+      "skills/ui-designer/references/game-ui-kit.md",
+      "templates/game/ui-kit/README.md",
+      "tests/game/fixtures/phaser4-lifecycle/README.md"
     ],
     "exclude": [
       "docs/archive/**",

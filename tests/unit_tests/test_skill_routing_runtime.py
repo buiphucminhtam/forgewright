@@ -59,7 +59,7 @@ def _write_config(
     return config_path
 
 
-@pytest.mark.parametrize("engine", ["Unity", "Roblox", "Unreal"])
+@pytest.mark.parametrize("engine", ["Unity", "Roblox", "Unreal", "Three.js", "Threejs"])
 def test_game_engines_route_to_game_build_before_generic_build(engine: str) -> None:
     result = router.route_skills(
         prompt=f"I need help with {engine}", project_root=REPO_ROOT
@@ -426,8 +426,22 @@ def test_zero_skill_description_budget_returns_no_overlays(tmp_path: Path) -> No
     assert result["context_budget"]["deferred_skills"] == ["first", "second"]
 
 
+@pytest.mark.parametrize(
+    "brief,expected,pin",
+    [
+        ("Build a Unity game", None, None),
+        ("Build a Phaser 4 browser game", "phaser4-engineer", None),
+        ("Build a Three.js browser game", "threejs-engineer", None),
+        ("Build a 2D browser game", "phaser3-engineer", "^3.80.0"),
+    ],
+)
 def test_orchestrator_loads_ordered_game_creative_overlays(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    brief,
+    expected,
+    pin,
 ) -> None:
     orchestrator = _load_module("forgewright_orchestrator_runtime", ORCHESTRATOR_PATH)
     (tmp_path / ".antigravity").mkdir()
@@ -459,9 +473,16 @@ def test_orchestrator_loads_ordered_game_creative_overlays(
 
     agent = orchestrator.ForgewrightAgent("project", str(tmp_path))
     monkeypatch.setattr(agent, "_call_api", lambda _tools: {"content": "done"})
-    asyncio.run(agent.run("Build a Unity game"))
+    if pin:
+        (tmp_path / "package.json").write_text(
+            json.dumps({"dependencies": {"phaser": pin}})
+        )
+    asyncio.run(agent.run(brief))
 
     output = capsys.readouterr().out
+    if expected:
+        assert f"Loaded skill LITE overlay: {expected}" in output
+        assert "Loaded skill LITE overlay: unity-engineer" not in output
     assert "Loaded skill LITE overlay: concept-artist" in output
     assert "Loaded skill LITE overlay: art-director" in output
     assert "Loaded skill LITE overlay: software-engineer" not in output
@@ -755,3 +776,187 @@ def test_orchestrator_rejects_canonical_loader_without_inventory(
         asyncio.run(agent.run("Implement a feature"))
 
     assert exit_info.value.code == 1
+
+
+@pytest.mark.parametrize(
+    "engine,specialist",
+    [
+        ("phaser4", "phaser4-engineer"),
+        ("threejs", "threejs-engineer"),
+        ("phaser3", "phaser3-engineer"),
+    ],
+)
+def test_explicit_game_engine_keeps_creative_order_and_filters_auto_engines(
+    tmp_path, engine, specialist
+):
+    engines = [
+        "unity-engineer",
+        "phaser3-engineer",
+        "phaser4-engineer",
+        "threejs-engineer",
+    ]
+    _write_config(
+        tmp_path,
+        {"game-build": ["game-designer", "concept-artist", "art-director", *engines]},
+    )
+    result = router.route_skills(
+        mode="game-build", game_engine=engine, project_root=tmp_path
+    )
+    assert result["status"] == "ok", result
+    names = [s["name"] for s in result["skills"]]
+    assert names[:3] == ["game-designer", "concept-artist", "art-director"]
+    assert specialist in names
+    assert set(names).intersection(engines) == {specialist}
+
+
+def test_game_engine_never_overrides_disabled_skill_or_hides_missing_skill(tmp_path):
+    config = _write_config(
+        tmp_path,
+        {"game-build": ["game-designer", "phaser4-engineer"]},
+        {"phaser4-engineer": False},
+        description_budget=0,
+    )
+    result = router.route_skills(
+        mode="game-build", game_engine="phaser4", project_root=tmp_path
+    )
+    assert result["status"] == "error"
+    assert "disabled" in " ".join(result["errors"])
+    data = json.loads(config.read_text())
+    data["skills"] = {}
+    config.write_text(json.dumps(data))
+    (tmp_path / "skills/phaser4-engineer/LITE.md").unlink()
+    result = router.route_skills(
+        mode="game-build", game_engine="phaser4", project_root=tmp_path
+    )
+    assert result["status"] == "error"
+    assert "missing LITE" in " ".join(result["errors"])
+
+
+def test_game_engine_preserves_forced_skill_and_deferred_budget(tmp_path):
+    _write_config(
+        tmp_path,
+        {"game-build": ["game-designer", "phaser4-engineer", "threejs-engineer"]},
+        {"threejs-engineer": True},
+        cap=1,
+    )
+    result = router.route_skills(
+        mode="game-build", game_engine="phaser4", project_root=tmp_path
+    )
+    assert result["status"] == "ok"
+    assert [s["name"] for s in result["skills"]] == ["game-designer"]
+    assert set(result["context_budget"]["deferred_skills"]) == {
+        "phaser4-engineer",
+        "threejs-engineer",
+    }
+
+
+def test_engine_switch_cache_and_unselected_modes_preserve_contract(tmp_path):
+    _write_config(
+        tmp_path,
+        {
+            "game-build": ["game-designer", "phaser4-engineer", "threejs-engineer"],
+            "review": ["code-reviewer"],
+        },
+    )
+    cache = router.ExactRoutingCache()
+    for engine in ["phaser4", "threejs", "phaser4"]:
+        result = router.route_skills(
+            mode="game-build", game_engine=engine, project_root=tmp_path, cache=cache
+        )
+        assert result["status"] == "ok"
+        assert engine + "-engineer" in [s["name"] for s in result["skills"]]
+    assert router.route_skills(mode="review", project_root=tmp_path)["status"] == "ok"
+    assert (
+        router.route_skills(
+            mode="game-build", game_engine="bogus", project_root=tmp_path
+        )["status"]
+        == "error"
+    )
+    assert (
+        router.route_skills(
+            mode="review", game_engine="phaser4", project_root=tmp_path
+        )["status"]
+        == "error"
+    )
+
+
+@pytest.mark.parametrize(
+    "brief,expected",
+    [
+        ("Build a Phaser 4 browser game", "phaser4-engineer"),
+        ("Build a Three.js browser game", "threejs-engineer"),
+    ],
+)
+def test_bundled_web_game_routing_uses_requested_engine_without_extra_flags(
+    brief, expected
+):
+    result = router.route_skills(prompt=brief, project_root=REPO_ROOT)
+    assert result["status"] == "ok"
+    names = [s["name"] for s in result["skills"]]
+    assert expected in names
+    assert "unity-engineer" not in names
+    assert "ui-designer" in names
+
+
+def test_opted_in_web_default_preserves_actual_project_pin(tmp_path):
+    config = _write_config(
+        tmp_path,
+        {
+            "game-build": [
+                "game-designer",
+                "concept-artist",
+                "art-director",
+                "phaser3-engineer",
+                "phaser4-engineer",
+                "threejs-engineer",
+            ]
+        },
+    )
+    data = json.loads(config.read_text())
+    data["auto_detect_rules"]["game_engine_routing"] = True
+    config.write_text(json.dumps(data))
+    (tmp_path / "package.json").write_text(
+        json.dumps({"dependencies": {"phaser": "^3.80.0"}})
+    )
+    result = router.route_skills(
+        prompt="Build a 2D browser game", project_root=tmp_path
+    )
+    assert [s["name"] for s in result["skills"]][-1] == "phaser3-engineer"
+    (tmp_path / "package.json").unlink()
+    result = router.route_skills(
+        prompt="Build a 2D browser game", project_root=tmp_path
+    )
+    assert [s["name"] for s in result["skills"]][-1] == "phaser4-engineer"
+
+
+@pytest.mark.parametrize(
+    "package",
+    [
+        {"dependencies": {"phaser": ">=3.80.0 <5.0.0"}},
+        {"dependencies": {"phaser": "^3.80.0 || ^4.2.1"}},
+        {"dependencies": {"phaser": "https://example.invalid/3.80.0/archive"}},
+        {
+            "dependencies": {"phaser": "^3.80.0"},
+            "devDependencies": {"phaser": "^4.2.1"},
+        },
+    ],
+)
+def test_automatic_engine_choice_rejects_ambiguous_phaser_declarations(
+    tmp_path, package
+):
+    (tmp_path / "package.json").write_text(json.dumps(package))
+    with pytest.raises(ValueError, match="Phaser"):
+        router.infer_game_engine("Build a 2D browser game", tmp_path)
+
+
+@pytest.mark.parametrize(
+    "version,engine",
+    [("^3.80.0", "phaser3"), ("~4.2.1", "phaser4"), ("4.2.1", "phaser4")],
+)
+def test_automatic_engine_choice_preserves_supported_major_pins(
+    tmp_path, version, engine
+):
+    (tmp_path / "package.json").write_text(
+        json.dumps({"dependencies": {"phaser": version}})
+    )
+    assert router.infer_game_engine("Build a 2D browser game", tmp_path) == engine

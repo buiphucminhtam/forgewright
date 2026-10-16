@@ -109,7 +109,7 @@ Game deliveries are validated against Task Contracts:
 | Unreal | Automation System + Functional Testing Plugin | `RunUAT RunUnreal` or Editor |
 | Godot | GDScript tests + `godot --test` | `godot --headless --test` |
 | Roblox | Roblox Test Runner + LuaUnit | Studio or CLI |
-| **Phaser 3** | **Vitest/Jest + logic extraction** | `npm test` (unit) + `npx playwright test` (E2E) |
+| **Phaser 4 / pinned legacy 3** | **Vitest/Jest + logic extraction** | `npm test` (unit) + `npx playwright test` (E2E) |
 | **Three.js** | **Vitest + ECS system tests** | `npm test` (unit) + `npx playwright test` (E2E) |
 
 > **Phaser 3 & Three.js Testing Strategy:** Unlike Unity/Unreal/Godot, web engines don't have built-in test frameworks. The standard approach is **logic extraction + unit testing** — extract game logic (damage formulas, state machines, economy) into pure TypeScript classes without Phaser/Three.js dependencies, then test with Vitest/Jest. E2E testing via Playwright for browser-based flows.
@@ -631,13 +631,13 @@ describe('Build Verification', () => {
 > | What | Status | Reason |
 > |------|--------|--------|
 > | Unity/Unreal 3D game scene | ❌ Cannot test | No DOM access; game state lives in engine memory |
-> | Canvas/WebGL pixel rendering | ❌ Cannot test | Cannot read score, HP, positions from rendered pixels |
+> | Canvas/WebGL pixel rendering | ✅ Visual checks | Can observe visible score/HP/positions from pixels; cannot inspect hidden simulation state |
 > | Game 3D objects / physics | ❌ Cannot test | No collision/physics engine access |
 > | Godot web export HTML UI | ✅ Can test | Godot HTML5 export renders UI as DOM elements |
 > | Roblox web UI overlays | ✅ Can test | Roblox web surfaces HTML-based UI layers |
 > | Unity/Unreal web export UI (if DOM-based) | ✅ Can test | Only if the UI layer is HTML/DOM, not engine-rendered |
 >
-> **Rule of thumb:** If the UI is rendered by the browser (HTML/CSS/DOM), Midscene can test it. If the UI is rendered by the game engine (Unity/Unreal WebGL canvas), Midscene can only observe pixels, not interact with game state.
+> **Rule of thumb:** Midscene can interact with visible DOM or canvas targets through pixels and assert visual state. Hidden engine state, deterministic rules and performance need their corresponding instrumented/runtime oracles.
 
 #### When to Run
 
@@ -839,15 +839,15 @@ Common game build errors and auto-fix strategies:
 
 | Error | Auto-Fix Strategy |
 |-------|------------------|
-| Missing reference | Search scene for unassigned, set to default |
-| Null reference on SO | Create placeholder SO asset |
-| Shader not found | Fallback to built-in shader |
+| Missing reference | Diagnose and bind the intended asset; undeclared defaults do not satisfy acceptance |
+| Null reference on SO | Diagnose missing binding; temporary placeholder stays explicitly non-production |
+| Shader not found | Use an approved equivalent fallback or report degraded rendering; verify essential cues |
 | Build failure (PC) | Clear cache, rebuild |
-| Performance regression | Auto-reduce shadow quality, particle count |
-| **Phaser 3 — Additional** | |
+| Performance regression | Measure on target; propose scoped quality changes preserving approved intent and essential cues |
+| **Phaser 3/4 — Additional** | |
 | `this.add.existing` on destroyed object | Wrap in `if (!obj.destroyed)` before add |
-| Texture not found | Generate procedural fallback via `generateTexture()` |
-| Audio file 404 | Silent skip, log warning — game continues |
+| Texture not found | Approved procedural fallback may keep runtime available; required missing texture still blocks its acceptance |
+| Audio file 404 | Record missing cue; optional approved fallback may continue, required audio remains a failure |
 | Canvas resize mismatch | Re-scale game canvas via `this.scale.resize()` |
 | **Three.js — Additional** | |
 | `webglcontextlost` event | Save state, wait for `webglcontextrestored`, re-upload textures |
@@ -885,26 +885,20 @@ For Three.js web games:
 
 ---
 
-## Game Test Quality Thresholds
+## Game Test Quality Requirements
 
-| Test Category | Minimum Coverage | Critical Tests | Blocking |
-|---------------|-----------------|----------------|----------|
-| Core Mechanics | 90% | Combat, Movement, Progression | Yes |
-| Balance | 80% | XP curve, economy sinks/sources | Yes |
-| State Machines | 95% | All transitions | Yes |
-| Performance | 100% | FPS, memory, load time | Yes |
-| Build | 100% | All target platforms | Yes |
-| Integration | 70% | Cross-system scenarios | No |
-| Platform | 80% | All declared platforms | Yes |
-| **Phaser 3** | **Minimum Coverage** | **Critical Tests** | **Blocking** |
-| Shared Lib Integration | 100% | vfx-helpers, ui-helpers, audio-manager all called correctly | Yes |
-| Object Pool | 100% | Pre-warm, no new in update(), release cleanup | Yes |
-| Scene Structure | 100% | Boot → Menu → Gameplay → GameOver flow | Yes |
-| **Three.js** | **Minimum Coverage** | **Critical Tests** | **Blocking** |
-| ECS Architecture | 100% | All systems implement, components registered | Yes |
-| Draw Calls | 100% | Measured draw calls meet the approved budget on named target hardware | Yes |
-| Memory Disposal | 100% | Owned geometry/material/texture disposed once after final use, borrowed resources preserved until owner cleanup | Yes |
-| WebGPU Fallback | 100% | Falls back to WebGL2 gracefully | Yes |
+Select checks from changed behavior, credible failure and declared architecture. No blanket coverage percentage proves game quality; do not add tautological tests to meet a quota. Reuse existing oracles before adding a focused regression. Never skip/comment a failure, weaken assertions or change acceptance merely to obtain green output.
+
+| Applicable boundary | Required evidence |
+|---|---|
+| Core rules and state transitions | Inputs, expected player-visible outcome, failure/recovery and unchanged protected reference rules |
+| UI/input/feedback | Reachable component states, keyboard/touch/focus and current rendered screenshots; missing required cues remain findings |
+| Phaser 4 (legacy Phaser 3 when pinned) | Actual package/version build, scene/physics/input behavior, required sprite import/animation and restart cleanup |
+| Three.js | Actual chosen renderer/camera/input, GLB asset/animation integration, ownership-aware disposal and target-derived budgets |
+| Architecture/capability | ECS, pooling, WebGPU fallback and cross-system checks only when the project uses/requires them; no forced architecture |
+| Performance/release | Named hardware/browser and declared targets, reproducible build identity and representative current public-input playtest |
+
+Missing required runtime or physical-device evidence stays UNVERIFIED. Desktop touch emulation and DOM tests do not certify mobile performance or human game feel.
 
 ---
 
@@ -916,7 +910,7 @@ For Three.js web games:
 | Unreal | Unreal Automation System | Unreal Build Graph / UAT |
 | Godot | GDScript tests | GitHub Actions custom runner |
 | Roblox | Roblox Test Runner | Roblox Studio CLI |
-| **Phaser 3** | **Vitest/Jest (unit) + Playwright (E2E)** | **GitHub Actions: `npm test && npx playwright test`** |
+| **Phaser 4 / pinned legacy 3** | **Vitest/Jest (unit) + Playwright (E2E)** | **GitHub Actions: `npm test && npx playwright test`** |
 | **Three.js** | **Vitest (unit/ECS systems) + Playwright (E2E)** | **GitHub Actions: `npm test && npx playwright test`** |
 
 ---

@@ -682,6 +682,14 @@
       "authority": "routed_skill"
     },
     {
+      "path": "skills/phaser4-engineer/LITE.md",
+      "authority": "routed_lite"
+    },
+    {
+      "path": "skills/phaser4-engineer/SKILL.md",
+      "authority": "routed_skill"
+    },
+    {
       "path": "skills/physics-engineer/LITE.md",
       "authority": "routed_lite"
     },

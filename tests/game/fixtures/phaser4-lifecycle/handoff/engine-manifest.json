@@ -1,0 +1,51 @@
+{
+  "schema_version": "game-art-engine-import/v1",
+  "project_name": "Signal Garden",
+  "engine": "phaser",
+  "contract_sha256": "3f81d9ba3d14e16cc4ad0e69f797466126aaa963d19539c40b3b9802f6c90a7c",
+  "inventory_sha256": "d019e17fb677695d977c6af5c91f3603dbd8d545af4c3cc5863160284d8fdd50",
+  "assets": [
+    {
+      "asset_id": "character/hero",
+      "version": 1,
+      "source_path": "tests/game/fixtures/phaser4-lifecycle/assets/hero.png",
+      "sha256": "62dc7e8ede4f346b5981d1d48c4895f4d43bdf905f5ccfe9f6e79092a663ab78",
+      "relative_path": "assets/hero.png",
+      "engine_uri": "assets/hero.png",
+      "import_settings": {
+        "pixels_per_unit": 16,
+        "texture_compression": "lossless",
+        "atlas_group": "fixture",
+        "filter_mode": "nearest"
+      }
+    },
+    {
+      "asset_id": "environment/garden",
+      "version": 1,
+      "source_path": "tests/game/fixtures/phaser4-lifecycle/assets/garden.svg",
+      "sha256": "836b9385285fa84a30fb0c44f680c115e81549195abb816ec7c0ff772b04f807",
+      "relative_path": "assets/garden.svg",
+      "engine_uri": "assets/garden.svg",
+      "import_settings": {
+        "pixels_per_unit": 16,
+        "texture_compression": "lossless",
+        "atlas_group": "fixture",
+        "filter_mode": "nearest"
+      }
+    },
+    {
+      "asset_id": "panel/frame",
+      "version": 1,
+      "source_path": "tests/game/fixtures/phaser4-lifecycle/assets/panel.svg",
+      "sha256": "f0ef1bee58cb6d0a66bd8efd712a5c8558bfd040c53bf7700a947e3d956a4f43",
+      "relative_path": "assets/panel.svg",
+      "engine_uri": "assets/panel.svg",
+      "import_settings": {
+        "pixels_per_unit": 16,
+        "texture_compression": "lossless",
+        "atlas_group": "fixture",
+        "filter_mode": "nearest"
+      }
+    }
+  ]
+}

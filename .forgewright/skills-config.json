@@ -6,6 +6,7 @@
   "auto_detect": true,
   "auto_detect_rules": {
     "description": "When auto_detect is true, skills are loaded based on the classified mode. Manual overrides below take precedence.",
+    "game_engine_routing": true,
     "mode_skill_map": {
       "full-build": ["product-manager", "solution-architect", "software-engineer", "frontend-engineer", "qa-engineer", "security-engineer", "code-reviewer", "devops", "sre", "technical-writer"],
       "feature": ["product-manager", "solution-architect", "software-engineer", "frontend-engineer", "qa-engineer"],
@@ -23,7 +24,7 @@
       "mobile-test": ["mobile-tester"],
       "marketing": ["growth-marketer", "conversion-optimizer"],
       "grow": ["conversion-optimizer", "growth-marketer"],
-      "game-build": ["game-designer", "concept-artist", "art-director", "unity-engineer", "unreal-engineer", "godot-engineer", "roblox-engineer", "level-designer", "narrative-designer", "technical-artist", "game-asset-vfx", "game-audio-engineer"],
+      "game-build": ["game-designer", "concept-artist", "art-director", "unity-engineer", "unreal-engineer", "godot-engineer", "roblox-engineer", "level-designer", "narrative-designer", "technical-artist", "game-asset-vfx", "game-audio-engineer", "phaser4-engineer", "threejs-engineer", "game-engineer", "ui-designer"],
       "xr-build": ["xr-engineer", "game-designer"],
       "ai-build": ["ai-engineer", "prompt-engineer", "data-scientist", "web-scraper", "llm-tester"],
       "analyze": ["business-analyst"],
@@ -67,6 +68,7 @@
     "game-designer":          { "enabled": "auto" },
     "concept-artist":         { "enabled": "auto" },
     "art-director":           { "enabled": "auto" },
+    "phaser4-engineer":         { "enabled": "auto" },
     "unity-engineer":         { "enabled": "auto" },
     "unreal-engineer":        { "enabled": "auto" },
     "godot-engineer":         { "enabled": "auto" },

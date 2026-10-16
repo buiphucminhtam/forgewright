@@ -444,7 +444,7 @@ Build a game from concept to a verified release using the control plane in
      `performance-engineer`, `build-release-engineer`, `liveops-engineer`
 5. **Select the engine from evidence** — read `.production-grade.yaml`, the
    project profile, and engine files. If genuinely unset, recommend Unity,
-   Unreal, Godot, Phaser 3, or Three.js from platform and production constraints
+   Unreal, Godot, Phaser 4, or Three.js from platform and production constraints
    and ask only when the choice materially changes architecture.
 6. **Preserve the concept and Style DNA gates** — call
    `python3 scripts/runtime/skill_routing.py --mode game-build --config .forgewright/skills-config.json`
@@ -488,3 +488,7 @@ Build AR/VR/MR applications. XR Engineer + optional game development pipeline.
 5. **QA** — comfort testing, frame rate validation, input model coverage
 
 **2 gates:** After XR architecture (step 2), and after spatial interaction playable (step 3-4).
+
+## Web-game specialization
+
+For new 2D browser games use `--game-engine phaser4`; for 3D use `--game-engine threejs` with the existing `skill_routing.py --mode game-build` command. A grounded existing v3 project uses `--game-engine phaser3`. Read the studio protocol’s early-prototype and complete web-game handoff section: it defines the scoped prototype branch, stage-specific game-experience checks, usable UI kit and separate fidelity/differentiation evidence without adding a parallel control plane.

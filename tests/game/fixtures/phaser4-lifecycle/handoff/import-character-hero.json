@@ -1,0 +1,22 @@
+{
+  "source_sha256": "62dc7e8ede4f346b5981d1d48c4895f4d43bdf905f5ccfe9f6e79092a663ab78",
+  "engine": {
+    "name": "phaser",
+    "version": "4.2.1"
+  },
+  "import": {
+    "kind": "sprite",
+    "frame_width": 16,
+    "frame_height": 16,
+    "frame_count": 2,
+    "anchor": [
+      0.5,
+      1
+    ],
+    "scale": 5,
+    "animations": [
+      "idle"
+    ]
+  },
+  "scope": "Source structure and authored import configuration; actual renderer/animation remains separate browser evidence."
+}

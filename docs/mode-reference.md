@@ -309,13 +309,16 @@ spawn arguments.
 
 ### Game Engine Routing
 
+The bundled config enables grounded automatic web-engine selection. Existing user configs are not overwritten; they can opt into `auto_detect_rules.game_engine_routing` or supply `--game-engine phaser4|threejs|phaser3`. Existing Phaser package pins are preserved for dimension-only requests. Hybrid/unknown major versions need an explicit grounded choice.
+
 | Request | Skill Invoked |
 |---------|---------------|
 | "Unity game" | unity-engineer |
 | "Unreal game" | unreal-engineer |
 | "Godot game" | godot-engineer |
 | "Roblox experience" | roblox-engineer |
-| "HTML5 game" | phaser3-engineer |
+| "New 2D HTML5 / Phaser 4 game" | phaser4-engineer |
+| "Existing pinned Phaser 3 game" | phaser3-engineer |
 | "3D web experience" | threejs-engineer |
 | "VR app" | xr-engineer |
 

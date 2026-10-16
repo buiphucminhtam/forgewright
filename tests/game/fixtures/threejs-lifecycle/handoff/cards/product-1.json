@@ -1,0 +1,52 @@
+{
+  "schema_version": "visual-evidence-card/v1",
+  "id": "product-1",
+  "subject": {
+    "name": "Signal Dash experience authored fixture study 1",
+    "kind": "project_product",
+    "category": "developer productivity",
+    "platform": "web desktop"
+  },
+  "source": {
+    "publisher": "Evidence owner",
+    "source_type": "project_local",
+    "location": "handoff/wireframes.svg",
+    "observed_at": "2026-09-01",
+    "authority_tier": "A"
+  },
+  "context": {
+    "audience": "professional developers",
+    "primary_job": "inspect and manage dense technical work",
+    "interaction_model": "desktop keyboard and pointer",
+    "similarity_to_target": "Comparable high-frequency professional workspace.",
+    "applicability_boundary": "Do not transfer product identity or patterns tied to unrelated workflows."
+  },
+  "success_evidence": {
+    "status": "project_observed",
+    "signals": []
+  },
+  "evidence_roles": [
+    "STYLE",
+    "COLOR",
+    "LAYOUT_TARGET"
+  ],
+  "observations": [
+    {
+      "dimension": "color",
+      "evidence_location": "artifacts/product-1.png",
+      "observed_pattern": "Neutral surfaces dominate while semantic accent is sparse.",
+      "transferable_mechanism": "Use semantic surface and action roles rather than copying exact colors.",
+      "applicability_boundary": "Applies to dense professional workspaces with comparable task frequency.",
+      "prohibited_copying": "Do not copy exact hex values, logos, proprietary icons, or unique composition."
+    }
+  ],
+  "causality": {
+    "claim_level": "observation",
+    "causal_claim_allowed": false,
+    "note": "The product's success does not prove this color treatment caused the success."
+  },
+  "model_prior": {
+    "used_as_evidence": false,
+    "hypothesis_only": true
+  }
+}

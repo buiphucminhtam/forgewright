@@ -99,6 +99,7 @@ FULL_SKILLS=(
     "unreal-technical-artist"
     "unreal-multiplayer"
     "godot-multiplayer"
+    "phaser4-engineer"
     "phaser3-engineer"
     "threejs-engineer"
     "skill-maker"

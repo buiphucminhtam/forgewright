@@ -1,0 +1,13 @@
+{
+  "source_sha256": "836b9385285fa84a30fb0c44f680c115e81549195abb816ec7c0ff772b04f807",
+  "engine": {
+    "name": "phaser",
+    "version": "4.2.1"
+  },
+  "import": {
+    "kind": "image",
+    "width": 640,
+    "height": 480
+  },
+  "scope": "Source structure and authored import configuration; actual renderer/animation remains separate browser evidence."
+}

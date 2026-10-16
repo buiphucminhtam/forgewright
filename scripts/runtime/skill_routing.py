@@ -28,6 +28,19 @@ from scripts.runtime.local_routing import (
 )
 
 
+GAME_ENGINES = {
+    "phaser4": "phaser4-engineer",
+    "threejs": "threejs-engineer",
+    "phaser3": "phaser3-engineer",
+}
+ENGINE_SKILLS = set(GAME_ENGINES.values()) | {
+    "unity-engineer",
+    "unreal-engineer",
+    "godot-engineer",
+    "roblox-engineer",
+}
+
+
 def excludes_game_vfx(prompt: str) -> bool:
     """Conservative EN/VI boundary for the VFX overlay, not a mode classifier.
 
@@ -323,6 +336,8 @@ def classify_mode(prompt: str, configured_modes: set[str] | None = None) -> str 
         "roblox",
         "godot",
         "phaser",
+        "three.js",
+        "threejs",
         "game",
         "gameplay",
         "video game",
@@ -330,7 +345,7 @@ def classify_mode(prompt: str, configured_modes: set[str] | None = None) -> str 
     )
     if game_signal and (
         has("build", "create", "make", "develop", "prototype")
-        or has("unity", "unreal", "roblox", "godot", "phaser")
+        or has("unity", "unreal", "roblox", "godot", "phaser", "three.js", "threejs")
     ):
         return candidate("game-build")
 
@@ -465,6 +480,72 @@ def _allowed_modes(document: dict, mode_map: dict, allowed_modes) -> list[str]:
     return modes if enabled else []
 
 
+def infer_game_engine(prompt: str, project_root: Path) -> str | None:
+    """Conservative web-game choice for explicitly opted-in configurations."""
+    text = prompt[:8192].casefold()
+    if re.search(r"\b(unity|unreal|godot|roblox)\b", text):
+        return None
+    hints = set()
+    if re.search(r"\bphaser\s*4\b", text):
+        hints.add("phaser4")
+    if re.search(r"\bphaser\s*3\b", text):
+        hints.add("phaser3")
+    if re.search(r"\bthree(?:\.js|js| js)\b", text):
+        hints.add("threejs")
+    if len(hints) > 1:
+        raise ValueError(
+            "multiple web engines requested; select one scoped game engine"
+        )
+    if hints:
+        return hints.pop()
+    if not re.search(r"\b(phaser|2d|3d)\b", text):
+        return None
+    if (project_root / "project.godot").is_file() or (
+        project_root / "ProjectSettings"
+    ).is_dir():
+        return None
+    package = project_root / "package.json"
+    dependencies = set()
+    phaser_versions = []
+    if package.is_file():
+        with package.open(encoding="utf-8") as handle:
+            data = handle.read(1024 * 1024 + 1)
+        if len(data) > 1024 * 1024:
+            raise ValueError("game project package exceeds 1 MiB")
+        package_data = json.loads(data)
+        if not isinstance(package_data, dict):
+            raise ValueError("game project package must be an object")
+        for key in ("dependencies", "devDependencies"):
+            entries = package_data.get(key, {})
+            if not isinstance(entries, dict):
+                raise ValueError("game project dependencies must be an object")
+            dependencies.update(entries)
+            if "phaser" in entries:
+                # Do not let devDependencies overwrite a different production pin.
+                version = entries["phaser"]
+                match = re.fullmatch(
+                    r"[~^]?v?([34])\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?",
+                    version.strip() if isinstance(version, str) else "",
+                )
+                if not match:
+                    raise ValueError(
+                        "existing Phaser version needs an exact, caret or tilde semver pin; "
+                        "ground other ranges/tags/URLs before engine selection"
+                    )
+                phaser_versions.append(match.group(1))
+    if "phaser" in dependencies and "three" in dependencies:
+        raise ValueError("hybrid game project needs an explicit engine selector")
+    if "phaser" in dependencies:
+        if len(set(phaser_versions)) != 1:
+            raise ValueError(
+                "conflicting Phaser majors need an explicit engine selector"
+            )
+        return "phaser" + phaser_versions[0]
+    if "three" in dependencies:
+        return "threejs"
+    return "threejs" if re.search(r"\b3d\b", text) else "phaser4"
+
+
 def route_skills(
     *,
     prompt: str = "",
@@ -474,6 +555,7 @@ def route_skills(
     skills_root: str | Path | None = None,
     allowed_modes: list[str] | None = None,
     cache: ExactRoutingCache | None = None,
+    game_engine: str | None = None,
 ) -> dict[str, Any]:
     """Return verified, ordered skill overlays from the local project config."""
     root = Path(project_root or Path.cwd()).expanduser().resolve()
@@ -510,11 +592,15 @@ def route_skills(
                     raise ValueError("invalid skill name or path escapes skills root")
                 _enabled_value(value, name)
         skills_root = _resolve_skills_root(root, skills_root)
+        if game_engine is not None and game_engine not in GAME_ENGINES:
+            raise ValueError("unknown game engine selector")
         candidates = _allowed_modes(document, mode_map, allowed_modes)
         fingerprint = (
             _routing_fingerprint(
                 root, config, document, skills_root, mode_map, settings
             )
+            + ":"
+            + str(game_engine)
             if cache is not None
             else "uncached"
         )
@@ -585,6 +671,72 @@ def route_skills(
             source=selected_source,
             errors=[str(error)],
         )
+
+    engine_auto = document.get("auto_detect_rules", {}).get(
+        "game_engine_routing", False
+    )
+    if not isinstance(engine_auto, bool):
+        return _result(
+            status="error",
+            mode=selected_mode,
+            source=selected_source,
+            errors=["game_engine_routing must be a boolean"],
+        )
+    if (
+        game_engine is None
+        and selected_mode == "game-build"
+        and auto_detect
+        and engine_auto
+    ):
+        try:
+            game_engine = infer_game_engine(prompt, root)
+        except (OSError, ValueError, UnicodeError) as error:
+            return _result(
+                status="error",
+                mode=selected_mode,
+                source=selected_source,
+                errors=[str(error)],
+            )
+    if game_engine is not None:
+        if selected_mode != "game-build":
+            return _result(
+                status="error",
+                mode=selected_mode,
+                source=selected_source,
+                errors=["game engine selector requires game-build mode"],
+            )
+        specialist = GAME_ENGINES[game_engine]
+        if _enabled_value(settings.get(specialist, {}), specialist) == "false":
+            return _result(
+                status="error",
+                mode=selected_mode,
+                source=selected_source,
+                errors=[f"selected game specialist is disabled: {specialist}"],
+            )
+        selected_names = [
+            name
+            for name in selected_names
+            if name not in ENGINE_SKILLS
+            or name == specialist
+            or _enabled_value(settings.get(name, {}), name) == "true"
+        ]
+        if specialist not in selected_names:
+            selected_names.append(specialist)
+        # After the creative prefix, make the actual engine available before
+        # unrelated optional roles. A small budget may still defer it honestly.
+        selected_names.remove(specialist)
+        art_index = next(
+            (i for i, name in enumerate(selected_names) if name == "art-director"), -1
+        )
+        selected_names.insert(
+            art_index + 1 if art_index >= 0 else len(selected_names), specialist
+        )
+        insertion = selected_names.index(specialist) + 1
+        for common in ("game-engineer", "ui-designer"):
+            if common in selected_names:
+                selected_names.remove(common)
+                selected_names.insert(insertion, common)
+                insertion += 1
 
     # Validate before applying the cap so a bad configured path can never be
     # hidden by ordering or truncation.
@@ -687,6 +839,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--prompt")
     parser.add_argument("--mode")
     parser.add_argument("--config")
+    parser.add_argument("--game-engine", choices=sorted(GAME_ENGINES))
     parser.add_argument(
         "--skills-root", help="Explicit host-owned skill catalog override"
     )
@@ -706,6 +859,7 @@ def main(argv: list[str] | None = None) -> int:
             config_path=args.config,
             project_root=args.project_root,
             skills_root=args.skills_root,
+            game_engine=args.game_engine,
         )
     except Exception as error:  # Keep CLI output structured even for bad input.
         output = _result(status="error", mode=None, source="cli", errors=[str(error)])

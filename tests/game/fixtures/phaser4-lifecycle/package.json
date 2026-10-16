@@ -1,0 +1,13 @@
+{
+  "name":"forgewright-phaser4-lifecycle-fixture",
+  "private":true,
+  "type":"module",
+  "scripts":{
+    "build":"node ../../../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "test":"node --test unit.test.mjs ui.test.mjs",
+    "test:browser":"node browser.test.mjs",
+    "serve":"node server.mjs"
+  },
+  "dependencies":{"phaser":"4.2.1"},
+  "devDependencies":{"playwright":"1.59.1","jsdom":"26.1.0"}
+}

@@ -19,11 +19,15 @@ Format: `n. ACTION | TARGET | CHECK`
 2. POOL | Set up reusable object pools for high-frequency game entities (e.g., projectiles) | Verify that entities are recycled dynamically to minimize garbage collection stutter and CPU spikes.
 3. HARNESS | Implement custom collision systems and bounding-box overlap validation rules | Verify that collision sweeps are optimized to avoid nested O(n²) calculation bottlenecks.
 
+## Engine Selection
+
+New 2D web games use `phaser4-engineer`; 3D uses `threejs-engineer`. Preserve existing project package pins and `phaser3-engineer` for v3. The controller supplies grounded `--game-engine phaser4|threejs|phaser3` to the existing game-build router; a missing/disabled specialist is an error, not engine substitution.
+
 ## Game Studio Control Plane
 
 For milestone or cross-discipline work, follow
 `../_shared/protocols/game-studio-pipeline.md`. The Game Engineer requires an
-implementation-ready handoff before editing: approved design, governing ADRs,
+implementation-ready handoff before production editing: approved design, governing ADRs,
 dependency status, target/path ownership, performance and build budgets,
 automated checks, playtest evidence requirements, and rollback strategy.
 

@@ -1,0 +1,54 @@
+{
+  "schema_version": "visual-basis/v1",
+  "id": "basis-dev-workspace-v1",
+  "status": "GROUNDED",
+  "basis_origin": "project",
+  "target_context": {
+    "greenfield": false,
+    "category": "browser game fixture",
+    "platform": "web desktop and touch-emulated viewport",
+    "audience": "Fixture reviewers",
+    "primary_job": "Verify complete authored game handoff"
+  },
+  "research_gate": {
+    "status": "NOT_REQUIRED",
+    "question": "Which production-proven visual mechanisms fit this target context?",
+    "researched_at": "2026-09-01",
+    "source_strategy": "Use first-party product/design-system evidence and verify adoption separately from visual observations."
+  },
+  "card_ids": [
+    "product-1",
+    "product-2",
+    "product-3"
+  ],
+  "decisions": [
+    {
+      "id": "decision-semantic-color",
+      "claim": "Reuse the existing Signal Dash navy, yellow and coral roles in functional fixture studies.",
+      "dimensions": [
+        "color",
+        "layout"
+      ],
+      "card_ids": [
+        "product-1",
+        "product-2"
+      ],
+      "synthesis": "Existing project source and authored studies are the declared basis; no external adoption or causal visual improvement is claimed.",
+      "applicability_boundary": "Forgewright functional fixtures only, not a universal style or user-approved commercial concept.",
+      "must_match": [
+        "Semantic roles remain consistent across states."
+      ],
+      "may_vary": [
+        "Exact palette values are derived for this product."
+      ],
+      "prohibited_drift": [
+        "Do not clone source branding or exact proprietary composition."
+      ],
+      "causality_limit": "This is a transferable observed pattern, not a claim that the pattern caused product success."
+    }
+  ],
+  "model_prior": {
+    "used_as_evidence": false,
+    "hypothesis_only": true
+  }
+}

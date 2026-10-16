@@ -2,7 +2,7 @@
 name: game-engineer
 description: >
   Meta-skill for game development that orchestrates specialized engine skills.
-  Routes to the appropriate game engine skill (Unity, Unreal, Godot, Roblox, Phaser 3, Three.js)
+  Routes to the appropriate game engine skill (Unity, Unreal, Godot, Roblox, Phaser 4, Three.js)
   based on project requirements. Provides unified game development workflow.
 version: 1.0.0
 author: forgewright
@@ -13,7 +13,7 @@ sub_skills:
   - unreal-engineer
   - godot-engineer
   - roblox-engineer
-  - phaser3-engineer
+  - phaser4-engineer
   - threejs-engineer
 ---
 
@@ -31,7 +31,7 @@ This meta-skill coordinates the following specialized game engine skills:
 | **Unreal** | `unreal-engineer` | AAA games, cinematic experiences, high-fidelity 3D |
 | **Godot** | `godot-engineer` | Open-source games, 2D games, indie projects |
 | **Roblox** | `roblox-engineer` | Roblox experiences, UGC games |
-| **Phaser 3** | `phaser3-engineer` | HTML5 2D games, web games |
+| **Phaser 4** | `phaser4-engineer` | HTML5 2D games, web games |
 | **Three.js** | `threejs-engineer` | WebGL, 3D web experiences |
 
 ## Engine Selection Matrix
@@ -45,9 +45,9 @@ Use this matrix to determine which sub-skill to invoke:
 │                                                                     │
 │  Target Platform:                                                   │
 │  ├── Web/HTML5 ──────────────────────────────────────────────────► │
-│  │   ├── 2D only ────────────────► Phaser 3                     │
+│  │   ├── 2D only ────────────────► Phaser 4                     │
 │  │   ├── 3D/WebGL ──────────────► Three.js                      │
-│  │   └── Multiplayer ────────────► Phaser 3 + Backend           │
+│  │   └── Multiplayer ────────────► Phaser 4 + Backend           │
 │  │                                                               │
 │  ├── Mobile (iOS/Android) ──────────────────────────────────────► │
 │  │   ├── 2D casual ──────────────► Unity                        │
@@ -96,11 +96,11 @@ Use this matrix to determine which sub-skill to invoke:
 - **Key Features:** Roblox Studio, built-in multiplayer, avatar system
 - **Supported by:** `roblox-engineer`
 
-### Phaser 3
+### Phaser 4
 - **Best for:** HTML5 web games, casual games
 - **Languages:** JavaScript/TypeScript
 - **Key Features:** WebGL/Canvas rendering, physics (Arcade/Impact/Matter)
-- **Supported by:** `phaser3-engineer`
+- **Supported by:** `phaser4-engineer`
 
 ### Three.js
 - **Best for:** WebGL 3D, 3D web experiences
@@ -128,7 +128,7 @@ Use this matrix to determine which sub-skill to invoke:
    → Godot (no licensing fees, lightweight)
 
 5. **Web-first** — "HTML5/web game"
-   → Phaser 3 (2D) or Three.js (3D)
+   → Phaser 4 (2D) or Three.js (3D)
 
 6. **UGC platform** — "Roblox experience"
    → Roblox Engineer
@@ -182,7 +182,7 @@ For projects requiring multiple engines:
 Example: "Build a game with Unity for mobile and a web companion app"
 
 1. **Primary engine:** Unity for mobile
-2. **Secondary:** Phaser 3 or Three.js for web companion
+2. **Secondary:** Phaser 4 or Three.js for web companion
 3. **Coordination:** Game Engineer routes to both, ensuring:
    - Consistent design language
    - Shared API contracts
@@ -284,7 +284,11 @@ This meta-skill consolidates game engine routing:
 | Unreal | `unreal-engineer` | Routed via `game-engineer` |
 | Godot | `godot-engineer` | Routed via `game-engineer` |
 | Roblox | `roblox-engineer` | Routed via `game-engineer` |
-| Phaser 3 | `phaser3-engineer` | Routed via `game-engineer` |
+| Phaser 4 | `phaser4-engineer` | Routed via `game-engineer` |
 | Three.js | `threejs-engineer` | Routed via `game-engineer` |
 
 Direct invocations of sub-skills still work for backward compatibility.
+
+## Existing Phaser 3 projects
+
+Preserve a verified v3 package pin and route to `phaser3-engineer`; no automatic major migration. New 2D web work defaults to Phaser 4, explicit 3D work to `threejs-engineer`. Pass the grounded engine via `skill_routing.py --mode game-build --game-engine phaser4|threejs|phaser3`; do not load unrelated engine overlays.

@@ -153,3 +153,7 @@ explicit, runtime leases are reconciled, and the next milestone or support owner
 is named. Non-code phases close with a phase gate record; implemented stories
 also require a done handoff. A Release & Sustain outcome additionally requires
 publish/deployment evidence and the post-release measurement checkpoint.
+
+## Web-game specialization
+
+For new 2D browser games use `--game-engine phaser4`; for 3D use `--game-engine threejs` with the existing `skill_routing.py --mode game-build` command. A grounded existing v3 project uses `--game-engine phaser3`. Read the studio protocol’s early-prototype and complete web-game handoff section: it defines the scoped prototype branch, stage-specific game-experience checks, usable UI kit and separate fidelity/differentiation evidence without adding a parallel control plane.

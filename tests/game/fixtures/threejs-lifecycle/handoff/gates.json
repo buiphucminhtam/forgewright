@@ -1,0 +1,73 @@
+{
+  "version": "art-direction-gates/v1",
+  "project": {
+    "id": "fixture-threejs",
+    "name": "Signal Dash experience"
+  },
+  "visual_basis": {
+    "id": "basis-dev-workspace-v1",
+    "status": "GROUNDED",
+    "evidence_card_ids": [
+      "product-1",
+      "product-2",
+      "product-3"
+    ],
+    "model_prior_used_as_evidence": false
+  },
+  "concept_packet": {
+    "packet_id": "fixture-threejs-packet",
+    "version": "concept-packet/v1",
+    "project_id": "fixture-threejs",
+    "selected_direction_id": "aurora-a"
+  },
+  "style_dna": {
+    "artifact_id": "fixture-threejs-style",
+    "version": "style-dna/v1",
+    "status": "APPROVED",
+    "evidence": [
+      "handoff/style.json"
+    ]
+  },
+  "gates": {
+    "concept-packet": {
+      "applicable": true,
+      "required": true,
+      "status": "PASS",
+      "evidence": [
+        "handoff/concepts.svg"
+      ],
+      "owner": "fixture-author",
+      "next_action": "Synthetic fixture approval only; actual runtime/visual/player review is separate."
+    },
+    "style-frame": {
+      "applicable": true,
+      "required": true,
+      "status": "PASS",
+      "evidence": [
+        "handoff/concepts.svg"
+      ],
+      "owner": "fixture-author",
+      "next_action": "Synthetic fixture approval only; actual runtime/visual/player review is separate."
+    },
+    "representative-family": {
+      "applicable": true,
+      "required": true,
+      "status": "PASS",
+      "evidence": [
+        "handoff/concepts.svg"
+      ],
+      "owner": "fixture-author",
+      "next_action": "Synthetic fixture approval only; actual runtime/visual/player review is separate."
+    },
+    "production": {
+      "applicable": true,
+      "required": true,
+      "status": "PASS",
+      "evidence": [
+        "handoff/concepts.svg"
+      ],
+      "owner": "fixture-author",
+      "next_action": "Synthetic fixture approval only; actual runtime/visual/player review is separate."
+    }
+  }
+}

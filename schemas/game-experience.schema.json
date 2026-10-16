@@ -1,0 +1,402 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forgewright.dev/schemas/game-experience.schema.json",
+  "title": "Game experience completeness contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "project_id",
+    "engine",
+    "intent",
+    "targets",
+    "required",
+    "journeys",
+    "screens",
+    "concepts",
+    "components",
+    "assets",
+    "tokens",
+    "creative"
+  ],
+  "properties": {
+    "schema": {
+      "const": "game-experience/v1",
+      "type": "string",
+      "enum": [
+        "game-experience/v1"
+      ]
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": [
+            "phaser",
+            "threejs"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[A-Za-z0-9.-]+)?$"
+        }
+      }
+    },
+    "intent": {
+      "$ref": "#/$defs/artifact"
+    },
+    "targets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "viewports",
+        "inputs",
+        "camera"
+      ],
+      "properties": {
+        "viewports": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minItems": 2,
+            "maxItems": 4096
+          },
+          "minItems": 1,
+          "maxItems": 4096
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "keyboard",
+              "touch",
+              "pointer",
+              "gamepad"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4096
+        },
+        "camera": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "required": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "states",
+        "components",
+        "assets",
+        "concepts"
+      ],
+      "properties": {
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "maxItems": 4096
+        },
+        "components": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 4096
+          }
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "maxItems": 4096
+        },
+        "concepts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "character",
+              "environment",
+              "ui"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4096
+        }
+      }
+    },
+    "journeys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "states",
+          "transitions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "states": {
+            "description": "First state is the journey entry. Every declared state must be reachable through transitions within this journey.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 4096
+          },
+          "transitions": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 2,
+              "maxItems": 4096
+            },
+            "minItems": 0,
+            "maxItems": 4096
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 4096
+    },
+    "screens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "states",
+          "wireframe",
+          "components"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 4096
+          },
+          "wireframe": {
+            "$ref": "#/$defs/artifact"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0,
+            "maxItems": 4096
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 4096
+    },
+    "concepts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "applicable"
+        ],
+        "properties": {
+          "applicable": {
+            "type": "boolean"
+          },
+          "artifact": {
+            "$ref": "#/$defs/artifact"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "states",
+          "spec"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 4096
+          },
+          "spec": {
+            "$ref": "#/$defs/artifact"
+          },
+          "runtime": {
+            "$ref": "#/$defs/artifact"
+          },
+          "preview": {
+            "$ref": "#/$defs/artifact"
+          }
+        }
+      },
+      "minItems": 0,
+      "maxItems": 4096
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "license",
+          "import"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "license": {
+            "type": "string",
+            "minLength": 1
+          },
+          "artifact": {
+            "$ref": "#/$defs/artifact"
+          },
+          "import": {
+            "type": "object"
+          },
+          "observation": {
+            "$ref": "#/$defs/artifact"
+          }
+        }
+      },
+      "minItems": 0,
+      "maxItems": 4096
+    },
+    "tokens": {
+      "$ref": "#/$defs/artifact"
+    },
+    "creative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "concept",
+        "gates",
+        "visual_basis",
+        "cards",
+        "style_contract"
+      ],
+      "properties": {
+        "concept": {
+          "$ref": "#/$defs/artifact"
+        },
+        "gates": {
+          "$ref": "#/$defs/artifact"
+        },
+        "visual_basis": {
+          "$ref": "#/$defs/artifact"
+        },
+        "cards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact"
+          },
+          "minItems": 1,
+          "maxItems": 4096
+        },
+        "style_contract": {
+          "$ref": "#/$defs/artifact"
+        }
+      }
+    },
+    "inventory": {
+      "$ref": "#/$defs/artifact"
+    },
+    "engine_manifest": {
+      "$ref": "#/$defs/artifact"
+    },
+    "runtime": {
+      "$ref": "#/$defs/artifact"
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

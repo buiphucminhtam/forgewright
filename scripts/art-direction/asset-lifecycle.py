@@ -260,7 +260,9 @@ def validate_inventory_document(inventory: dict[str, Any]) -> None:
             raise LifecycleError(f"{label} latest_version must match the last version")
 
 
-def validate_manifest_document(manifest: dict[str, Any]) -> None:
+def validate_manifest_document(
+    manifest: dict[str, Any], *, allow_empty_assets: bool = False
+) -> None:
     schema = read_json(MANIFEST_SCHEMA, "engine import manifest schema")
     if manifest.get("schema_version") != schema.get("$id"):
         raise LifecycleError(
@@ -279,7 +281,7 @@ def validate_manifest_document(manifest: dict[str, Any]) -> None:
     require_sha256(manifest["contract_sha256"], "manifest contract_sha256")
     require_sha256(manifest["inventory_sha256"], "manifest inventory_sha256")
     assets = manifest["assets"]
-    if not isinstance(assets, list) or not assets:
+    if not isinstance(assets, list) or (not assets and not allow_empty_assets):
         raise LifecycleError("engine import manifest assets must be a non-empty list")
     asset_ids: set[str] = set()
     relative_paths: set[str] = set()

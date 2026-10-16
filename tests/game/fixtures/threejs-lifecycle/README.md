@@ -103,3 +103,31 @@ emphasizes real input and rendered screenshots. The fixture uses the
 [Playwright clock](https://playwright.dev/docs/clock) before loading game timers
 and [`hasTouch` emulation](https://playwright.dev/docs/api/class-touchscreen).
 These are design references, not installed plugins or proof of local execution.
+
+## Additional experience handoff and GLB pilot
+
+The optional experience entry keeps the original `index.html`, `src/`, server,
+reference contract and served-byte baseline unchanged. It adds a local original
+GLB courier with a named `hover` clip and owned geometry/material/mixer teardown,
+plus the common DOM settings kit. The existing gameplay model still owns rules.
+
+```sh
+npm --prefix tests/game/fixtures/threejs-lifecycle run build:experience
+npm --prefix tests/game/fixtures/threejs-lifecycle run test:asset
+python3 scripts/art-direction/game-experience.py validate tests/game/fixtures/threejs-lifecycle/experience.json --project-root . --stage implementation
+npm --prefix tests/game/fixtures/threejs-lifecycle run test:experience
+```
+
+Use the repository root for the hash-bound experience refs. The handoff study,
+wireframe and approval documents are explicitly **synthetic conformance fixtures**,
+not live specialist outputs, actual user art approval or evidence of visual/player
+improvement. Source/contract checks compile locally. The new managed browser run
+returned `pi_host_capacity_timeout` before browser launch, so actual GLB render,
+animation and menu/input acceptance remain UNVERIFIED on this cloud. Existing
+historical browser records do not certify this new entry. No governor or frozen
+reference expectation was changed to accommodate it.
+
+The CPU-only asset test uses the pinned Three GLTFLoader and AnimationMixer to
+import the real local GLB and evaluate its `hover` position at half a second.
+It verifies loader/clip integration without a browser; GPU rendering/readability
+and actual page interaction remain unverified.

@@ -79,3 +79,9 @@ DEVIATIONS: <specific rule mismatches>
 RISKS: <impact and likelihood>
 ACTION: <owner, corrective mechanism, next test>
 ```
+
+## Web-game production handoff
+
+Bind applicable character, environment and UI concepts to the game-experience required set and existing creative authority. Characters need identity/silhouette/proportion and required views/poses at actual camera scale; environments need blockout/traversal or depth layers, landmarks/material/readability and applicable modular pieces; UI needs representative screens, family/state anatomy and tokens. Legitimate absent categories are N/A with a reason, never automatically generated.
+
+Concept art is not a production sprite animation or GLB. Phaser sprites require common frame dimensions/count, anchor/scale, named animation keys and engine preview; textured stretch UI declares nine-slice margins when applicable. Three models use GLB/glTF 2.0, consistent meters/Y-up, pivot/scale, material/texture expectations, required clip names and applicable collision/LOD strategy. Source/license/hash and import observations bind the same asset. `game_asset_import.py` checks source structure and observed metadata; actual rendered loading, animation, readability and device budgets need current engine evidence. Static props do not require a rig or animation.

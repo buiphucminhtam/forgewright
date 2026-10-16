@@ -6,7 +6,7 @@
 
 ## What Is Forgewright?
 
-Forgewright is an open-source AI orchestrator that turns raw language models (Claude, GPT, Gemini) into evidence-oriented software engineering agents. Supported runtime paths can use a structured pipeline of skills, guardrails, memory, and verification to attach evidence to completion claims and record lessons from failures. Those controls reduce risk; they do not guarantee correct output or eliminate repeated mistakes. The currently declared canonical runtime and its enforcement boundary are documented in the [canonical-runtime ADR](adr/0001-canonical-production-runtime.md). One install gives you 84 specialized AI skills covering the software lifecycle, as counted by `product-manifest.json` and checked by `npm run verify:product-truth`.
+Forgewright is an open-source AI orchestrator that turns raw language models (Claude, GPT, Gemini) into evidence-oriented software engineering agents. Supported runtime paths can use a structured pipeline of skills, guardrails, memory, and verification to attach evidence to completion claims and record lessons from failures. Those controls reduce risk; they do not guarantee correct output or eliminate repeated mistakes. The currently declared canonical runtime and its enforcement boundary are documented in the [canonical-runtime ADR](adr/0001-canonical-production-runtime.md). One install gives you 85 specialized AI skills covering the software lifecycle, as counted by `product-manifest.json` and checked by `npm run verify:product-truth`.
 
 ---
 
@@ -217,7 +217,7 @@ bash scripts/forgewright-mcp-setup.sh
 | [Architecture](architecture.md) | 5-layer system architecture with visualizations |
 | [Roadmap](improvement-roadmap-v2.md) | Release history and planned features |
 | [Setup Guide](SETUP.md) | Detailed installation instructions |
-| [Skill Catalog](skill-catalog.md) | Full listing of 84 AI skills |
+| [Skill Catalog](skill-catalog.md) | Full listing of 85 AI skills |
 | [CHANGELOG](../CHANGELOG.md) | Detailed version history |
 | [VISION](../VISION.md) | The 10 design principles |
 

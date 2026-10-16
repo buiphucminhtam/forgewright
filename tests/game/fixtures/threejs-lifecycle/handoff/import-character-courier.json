@@ -1,0 +1,22 @@
+{
+  "source_sha256": "6223d4737136764eb63ab4dd559640d796b811a32d4d27cc20d976db1ee65971",
+  "engine": {
+    "name": "threejs",
+    "version": "0.183.2"
+  },
+  "import": {
+    "kind": "model",
+    "units": "meters",
+    "up_axis": "Y",
+    "pivot": [
+      0,
+      0,
+      0
+    ],
+    "scale": 1,
+    "animations": [
+      "hover"
+    ]
+  },
+  "scope": "Source structure and authored import configuration; actual renderer/animation remains separate browser evidence."
+}

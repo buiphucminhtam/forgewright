@@ -1,0 +1,120 @@
+{
+  "version": "concept-packet/v1",
+  "project": {
+    "id": "fixture-phaser",
+    "name": "Signal Garden"
+  },
+  "visual_basis": {
+    "id": "basis-dev-workspace-v1",
+    "status": "GROUNDED",
+    "evidence_card_ids": [
+      "product-1",
+      "product-2",
+      "product-3"
+    ],
+    "model_prior_used_as_evidence": false
+  },
+  "visual_thesis": "A yellow courier stays distinct against navy routes and coral obstacles; compact edge UI preserves the playfield.",
+  "reference_role_map": {
+    "ref-style-01": {
+      "role": "STYLE",
+      "transfer_mechanism": "Transfer the restrained value grouping.",
+      "prohibited_influence": "Do not copy its subject silhouette or exact palette."
+    }
+  },
+  "directions": [
+    {
+      "id": "aurora-a",
+      "name": "Clear garden lanes",
+      "premise": "Large separated lanes and compact edge controls",
+      "structure": {
+        "silhouette_or_massing": "Large stepped masses establish a clear first read.",
+        "composition_and_value": "A bright focal band separates foreground and depth.",
+        "shape_grammar": "Tapered wedges repeat at primary structural joints.",
+        "material_and_edge_language": "Matte surfaces use deliberate hard and soft edges.",
+        "lighting_and_camera": "Top-left key light supports an orthographic camera.",
+        "signature_motif": "A split-chevron motif repeats only at hierarchy anchors."
+      },
+      "benefit": "Keeps the functional focal point readable at target scale.",
+      "production_feasibility": "Can be built from reusable layered modules.",
+      "risks": [
+        "The motif may become too repetitive without a controlled range."
+      ],
+      "distinctive_difference": "Open playfield with three repeated navigable lanes."
+    },
+    {
+      "id": "aurora-b",
+      "name": "Orbital radar",
+      "premise": "Circular navigation and peripheral instruments",
+      "structure": {
+        "silhouette_or_massing": "Large stepped masses establish a clear first read.",
+        "composition_and_value": "A bright focal band separates foreground and depth.",
+        "shape_grammar": "Tapered wedges repeat at primary structural joints.",
+        "material_and_edge_language": "Matte surfaces use deliberate hard and soft edges.",
+        "lighting_and_camera": "Top-left key light supports an orthographic camera.",
+        "signature_motif": "A split-chevron motif repeats only at hierarchy anchors."
+      },
+      "benefit": "Keeps the functional focal point readable at target scale.",
+      "production_feasibility": "Can be built from reusable layered modules.",
+      "risks": [
+        "The motif may become too repetitive without a controlled range."
+      ],
+      "distinctive_difference": "Concentric navigation instead of parallel lanes."
+    },
+    {
+      "id": "aurora-c",
+      "name": "Paper route map",
+      "premise": "Layered card paths and a stamped courier",
+      "structure": {
+        "silhouette_or_massing": "Large stepped masses establish a clear first read.",
+        "composition_and_value": "A bright focal band separates foreground and depth.",
+        "shape_grammar": "Tapered wedges repeat at primary structural joints.",
+        "material_and_edge_language": "Matte surfaces use deliberate hard and soft edges.",
+        "lighting_and_camera": "Top-left key light supports an orthographic camera.",
+        "signature_motif": "A split-chevron motif repeats only at hierarchy anchors."
+      },
+      "benefit": "Keeps the functional focal point readable at target scale.",
+      "production_feasibility": "Can be built from reusable layered modules.",
+      "risks": [
+        "The motif may become too repetitive without a controlled range."
+      ],
+      "distinctive_difference": "Chunky card planes with paper-like value grouping."
+    }
+  ],
+  "selected_direction_id": "aurora-a",
+  "locked": [
+    "Readable focal hierarchy at gameplay scale."
+  ],
+  "controlled": [
+    "Accent color may vary within the approved range."
+  ],
+  "open": [
+    "Confirm the damaged-state edge treatment in the style frame."
+  ],
+  "prohibited": [
+    "Photorealistic texture and reference imitation."
+  ],
+  "production_risks": [
+    {
+      "id": "risk-01",
+      "risk": "Small details may collapse on mobile displays.",
+      "impact": "The first read could become ambiguous.",
+      "mitigation": "Test silhouette and value keys at target scale.",
+      "owner": "art-director"
+    }
+  ],
+  "target_context": {
+    "audience": "Fixture reviewers",
+    "platform": "browser",
+    "camera": "top-down 2D",
+    "scale": "640x480 world / 960x800 and 390x844 browser",
+    "use_case": "Functional authored fixture, not player-outcome proof"
+  },
+  "handoff_metadata": {
+    "packet_id": "fixture-phaser-packet",
+    "sender": "concept-artist",
+    "recipient": "art-director",
+    "revision": "r1",
+    "created_at": "2026-10-16T08:00:00Z"
+  }
+}

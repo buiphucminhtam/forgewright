@@ -60,6 +60,7 @@ export type SkillId =
   | 'unreal-engineer'
   | 'godot-engineer'
   | 'roblox-engineer'
+  | 'phaser4-engineer'
   | 'phaser3-engineer'
   | 'threejs-engineer'
   | 'level-designer'

@@ -1,0 +1,112 @@
+{
+  "schema_version": "game-art-contract/v2",
+  "project": {
+    "name": "Signal Garden",
+    "genre": [
+      "puzzle"
+    ],
+    "platform": "web",
+    "asset_scope": "2d"
+  },
+  "approval": {
+    "status": "approved",
+    "approved_by": "synthetic-fixture-author",
+    "approved_at": "2026-10-16T08:00:00Z"
+  },
+  "evidence_basis": {
+    "basis_id": "basis-dev-workspace-v1",
+    "card_ids": [
+      "product-1",
+      "product-2",
+      "product-3"
+    ],
+    "model_prior_used_as_evidence": false
+  },
+  "references": {
+    "style": [
+      "references/style.png"
+    ],
+    "target": [],
+    "character": []
+  },
+  "style": {
+    "rendering": "pixel_art",
+    "pixel_register": "16bit",
+    "mood": [
+      "playful"
+    ],
+    "shape": {
+      "language": "geometric",
+      "corner_radius": "small",
+      "ui_panel_geometry": "square_chunky"
+    },
+    "palette": {
+      "primary": [
+        "#081524"
+      ],
+      "secondary": [
+        "#173C50"
+      ],
+      "accent": [
+        "#FFD44D"
+      ],
+      "neutral": [
+        "#F3F6EC",
+        "#E5F2FA"
+      ]
+    },
+    "color_map": {
+      "background": [
+        "#081524"
+      ],
+      "button_primary": [
+        "#FFD44D",
+        "#173C50"
+      ],
+      "text_label": [
+        "#F3F6EC",
+        "#E5F2FA"
+      ]
+    },
+    "materials": {
+      "button": "matte_plastic",
+      "container": "painted_card",
+      "icon": "flat",
+      "character": "cel_flat",
+      "environment": "flat_vector_scene"
+    },
+    "lighting": {
+      "direction": "top_left",
+      "contrast": "medium",
+      "highlight": "soft",
+      "shadow": "soft_bottom"
+    },
+    "outline": {
+      "enabled": true,
+      "thickness": "thin",
+      "color": "darker_variant"
+    },
+    "camera": "orthographic",
+    "canvas": {
+      "orientation": "landscape",
+      "aspect_ratio": "16:9"
+    },
+    "negative": [
+      "photorealism",
+      "anti_aliasing"
+    ],
+    "confidence": {
+      "shape": 0.95,
+      "palette": 1.0,
+      "rendering": 0.98,
+      "material": 0.9,
+      "lighting": 0.86
+    }
+  },
+  "engine": {
+    "name": "phaser",
+    "pixels_per_unit": 16,
+    "texture_compression": "lossless",
+    "atlas_group": "core-gameplay"
+  }
+}
