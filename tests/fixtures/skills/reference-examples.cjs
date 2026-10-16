@@ -155,7 +155,8 @@ async function mcpArguments() {
       .readFileSync(cwdLog, "utf8")
       .trim()
       .split("\n")
-      .every((line) => JSON.parse(line) === temporary);
+      // Node resolves cwd through filesystem aliases, including macOS /var.
+      .every((line) => JSON.parse(line) === fs.realpathSync(temporary));
     return {
       sideEffects,
       argv,

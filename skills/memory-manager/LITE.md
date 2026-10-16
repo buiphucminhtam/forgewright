@@ -1,45 +1,27 @@
 ---
 name: memory-manager
-description: "Orchestrates persistent project-specific memory, episodic checkpointing, hybrid GraphRAG/vector indexing (FluxMem), context offloading, and memory consolidation. Use when the user requests memory retrieval, session state recovery, database memory consolidation, context optimization, or session checkpoint audits."
-version: 1.0.0
+description: "Audit or operate optional local conversation memory: scoped SQLite retrieval, semantic checkpoints, session recovery, privacy and verified handoffs."
+version: 3.0.0
 ---
 
 # Memory Manager (LITE)
 
-## SOLVE Step 2: GROUND (Memory Manager Domain Slots)
-| Assumption | Check command / file read | Result | Script-produced evidence |
-|---|---|---|---|
-| Relational SQLite cognitive graph database exists and contains active tables | `sqlite3 .forgewright/memory.db ".tables"` | ... | run the check command and paste output |
-| Core project-specific memory files and directories are present | `find .forgewright/ -maxdepth 2 -name "lessons.md" -o -name "architecture.md" -o -name "memory-bank"` | ... | run the check command and paste output |
-| Twin-middleware execution properties and context thresholds are configured | `cat .production-grade.yaml` | ... | run the check command and paste output |
+Memory is optional, untrusted context. Current files/runtime and current user authorization remain authoritative. Never force-enable memory, retrieve every turn, or infer permission from a remembered approval.
 
-## SOLVE Step 3: DECOMPOSE (Memory Manager Domain Slots)
-Format: `n. ACTION | TARGET | CHECK`
+## SOLVE Step 2: GROUND (Memory Domain)
 
-1. RETRIEVE | Execute the Step 0.5 retrieval loop to load recent session summaries and active memories | Verify recent conversational context is injected before processing user requests.
-2. OFFLOAD | Divert heavy tool execution outputs exceeding 1200 tokens to isolated disk files | Ensure a compact trace handle (e.g., `refs/n-X-tool-hash.md`) is written to model context.
-3. CONSOLIDATE | Run consolidator scripts to compile SQLite database observations into permanent memory layers | Verify insights are migrated under `.forgewright/memory-bank/persona.md` and `.forgewright/memory-bank/scenarios/`.
+| Question | Check | Acceptance boundary |
+|---|---|---|
+| Is the store configured and compatible? | `python3 scripts/memory/mem0-v2.py doctor --json` | Read-only status distinguishes absence, migration, acknowledged explicit capture and unverified host injection. |
+| Which project/chat owns the data? | Check workspace, `MEM0_DB_PATH`, explicit project and session IDs | Root/subdirectory share a path; worktrees and chats remain separate by default. |
+| Is this fact still valid? | Inspect cited source and current files | Source hashes must match; stale, archived or expired facts cannot prove present state. |
 
-## Common Mistakes Checklist
-- **Bypassing Step 0.5 Memory Loading**: Starting an agent session without running the Step 0.5 memory retrieval loop, causing the orchestrator to repeat past mistakes.
-- **Suppressing Middleware ④d Context Offload**: Permitting raw tool outputs over 1200 tokens to flood the active model context window, accelerating token exhaustions.
-- **Skipping ASIP Edge Decay on Failures**: Failing to decay graph relation weights by a factor of 0.5 when a plan score falls below 9.0 or an execution blocker occurs, breaking self-healing logic.
-- **Non-Compliant Memory File Naming**: Creating scenario memory records or persona logs under `.forgewright/memory-bank/` using spaces or CamelCase instead of lowercase kebab-case.
+## SOLVE Step 3: DECOMPOSE (Memory Domain)
 
-### Step 1: Ground the active memory SQLite database and configurations
-```bash
-sqlite3 .forgewright/memory.db "SELECT count(*) FROM flux_nodes;"
-find .forgewright/ -maxdepth 2 -name "lessons.md"
-```
+1. Select meaningful decisions/blockers/handoffs; skip trivial chat and duplicate events.
+2. Capture a bounded structured summary through `capture --session ID --event ID`; session scope is default, project scope requires an explicit choice.
+3. Query through `context` or `scripts/memory/memory-retrieve.sh`; keep the entire returned packet within its character cap and preserve citations. Token counts are estimates unless the model tokenizer is available.
+4. Verify durable acknowledgment, restart retrieval, namespace isolation and the actual consuming host. Printing a packet does not prove automatic model injection.
+5. Before maintenance, inventory scopes and take a consistent SQLite backup. Unknown legacy ownership stays unadopted; never restore over newer writes blindly.
 
-### Step 2: Retrieve and trace offloaded tool execution context
-```bash
-# Query large outputs archived under local session directories
-python3 scripts/memory-trace.py --query "auth validation"
-```
-
-### Step 3: Execute memory consolidation to update the local project memory bank
-```bash
-# Consolidate SQLite observations and session logs into structured Markdown files
-python3 scripts/memory-consolidate.py
-```
+Use [SKILL.md](SKILL.md) for commands, migration and limitations. SQLite/FTS5 is the implemented retrieval backend; vector services, raw transcript collection and automatic skill promotion are outside this flow.

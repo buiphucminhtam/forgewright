@@ -20,7 +20,14 @@ def test_native_codex_hook_from_root_and_subdirectory(
     tmp_path: Path, event: str, subdirectory: str
 ) -> None:
     config = tomllib.loads((ROOT / ".codex/config.toml").read_text(encoding="utf-8"))
-    hooks = [hook for group in config["hooks"][event] for hook in group["hooks"]]
+    # The independent optional-memory handler has its own wire-contract tests;
+    # this fixture continues to exercise exactly the canonical policy handler.
+    hooks = [
+        hook
+        for group in config["hooks"][event]
+        for hook in group["hooks"]
+        if "native_hook.py" not in hook["command"]
+    ]
     assert len(hooks) == 1
     hook = hooks[0]
     command = hook["command_windows"] if os.name == "nt" else hook["command"]
@@ -67,7 +74,12 @@ def test_native_codex_hook_from_root_and_subdirectory(
         assert output["hookSpecificOutput"]["hookEventName"] == event
     else:
         assert set(output) <= {
-            "continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason"
+            "continue",
+            "stopReason",
+            "suppressOutput",
+            "systemMessage",
+            "decision",
+            "reason",
         }
         records = [
             json.loads(line.removeprefix("[FORGEWRIGHT-STOP] "))

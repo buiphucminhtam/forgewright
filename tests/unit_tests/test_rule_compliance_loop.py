@@ -427,7 +427,10 @@ def test_context_manager_uses_project_root_tail_keywords_and_global_cap(
         "--keywords",
         "rule routing",
         cwd=tmp_path,
-        env={"FORGEWRIGHT_SKIP_MEM0": "1", "FORGEWRIGHT_CONTEXT_CHAR_CAP": "2000"},
+        env={
+            "FORGEWRIGHT_CONTEXT_SKIP_DB": "1",
+            "FORGEWRIGHT_CONTEXT_CHAR_CAP": "2000",
+        },
     )
     assert result.returncode == 0, result.stderr
     assert "LATEST-MARKER" in result.stdout
@@ -449,7 +452,7 @@ def test_canonical_scripts_target_validated_workspace(tmp_path: Path) -> None:
     )
     env = {
         "FORGEWRIGHT_WORKSPACE": str(workspace),
-        "FORGEWRIGHT_SKIP_MEM0": "1",
+        "FORGEWRIGHT_CONTEXT_SKIP_DB": "1",
     }
 
     checked = run(

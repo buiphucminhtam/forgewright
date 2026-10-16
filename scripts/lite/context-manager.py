@@ -26,6 +26,12 @@ if workspace_value:
         WORKSPACE_ERROR = f"FORGEWRIGHT_WORKSPACE is invalid: {error}"
 else:
     PROJECT_ROOT = EXECUTABLE_ROOT
+    common_file = EXECUTABLE_ROOT / "scripts/memory/memory_common.py"
+    if common_file.is_file():
+        sys.path.insert(0, str(common_file.parent))
+        from memory_common import workspace_root
+
+        PROJECT_ROOT = workspace_root()
 DEFAULT_CHAR_CAP = 2_000  # Approximation of the kernel's global 500-token cap.
 
 
@@ -55,10 +61,57 @@ def load_context(
 ) -> tuple[str, int]:
     if char_cap <= 0:
         raise ValueError("context char cap must be positive")
+    if any(
+        os.environ.get(key, "").lower() in {"true", "1", "yes"}
+        for key in ("MEM0_DISABLED", "FORGEWRIGHT_SKIP_MEM0")
+    ):
+        return "", 0
+    # Native memory is optional; a query uses the shared bounded adapter. Do
+    # not turn a no-match/error into unrelated legacy context.
+    flow = EXECUTABLE_ROOT / "scripts/memory/memory_flow.py"
+    if (
+        keywords.strip()
+        and flow.is_file()
+        and os.environ.get("FORGEWRIGHT_CONTEXT_SKIP_DB") != "1"
+    ):
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(flow),
+                    "context",
+                    keywords.strip(),
+                    "--char-cap",
+                    str(char_cap),
+                ],
+                cwd=PROJECT_ROOT,
+                env={**os.environ, "FORGEWRIGHT_WORKSPACE": str(PROJECT_ROOT)},
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            print("Optional memory unavailable or timed out", file=sys.stderr)
+            return "", 0
+        if result.returncode != 0:
+            print("Optional memory retrieval degraded", file=sys.stderr)
+            return "", 0
+        return result.stdout[:char_cap], result.stdout.count("[mem0:")
     output: list[str] = []
     used = 0
     loaded_sources = 0
     files = (
+        (
+            PROJECT_ROOT / ".forgewright/runtime/memory/memory-bank/activeContext.md",
+            150 * 4,
+            None,
+        ),
+        (
+            PROJECT_ROOT / ".forgewright/runtime/memory/memory-bank/HANDOVER.md",
+            150 * 4,
+            None,
+        ),
         (PROJECT_ROOT / ".forgewright/memory-bank/activeContext.md", 150 * 4, None),
         (PROJECT_ROOT / ".forgewright/memory-bank/HANDOVER.md", 150 * 4, None),
         (
@@ -78,29 +131,6 @@ def load_context(
             output.append(chunk)
             used += len(chunk)
             loaded_sources += 1
-
-    mem0_path = EXECUTABLE_ROOT / "scripts/mem0-v2.py"
-    if (
-        keywords.strip()
-        and os.environ.get("FORGEWRIGHT_SKIP_MEM0") != "1"
-        and mem0_path.is_file()
-        and used < char_cap
-    ):
-        result = subprocess.run(
-            ["python3", str(mem0_path), "search", keywords.strip(), "--limit", "3"],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            chunk = _bounded_chunk(
-                "mem0", result.stdout.strip(), 100 * 4, char_cap - used
-            )
-            if chunk:
-                output.append(chunk)
-                used += len(chunk)
-                loaded_sources += 1
 
     return "".join(output)[:char_cap], loaded_sources
 
@@ -128,7 +158,10 @@ def main() -> int:
         print(f"Context load failed: {error}", file=sys.stderr)
         return 1
     sys.stdout.write(context)
-    print(f"✓ Memory loaded: {loaded} sources injected", file=sys.stderr)
+    print(
+        f"✓ Memory loaded: {loaded} sources returned; host injection unverified",
+        file=sys.stderr,
+    )
     return 0
 
 

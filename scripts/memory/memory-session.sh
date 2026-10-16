@@ -19,12 +19,29 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MEMORY_DB_DIR="${HOME}/.forgewright/sessions"
+if [[ "${MEM0_DISABLED:-}" =~ ^(true|1|yes)$ ]] || [[ "${FORGEWRIGHT_SKIP_MEM0:-}" =~ ^(true|1|yes)$ ]]; then
+    if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then return 0; else exit 0; fi
+fi
+MEMORY_WORKSPACE="${FORGEWRIGHT_WORKSPACE:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+MEMORY_WORKSPACE="$(cd "${MEMORY_WORKSPACE}" && pwd -P)"
+MEMORY_DB_DIR="${MEMORY_DB_DIR:-${MEMORY_WORKSPACE}/.forgewright/runtime/memory}"
+MEMORY_SESSION_ID="${FORGEWRIGHT_SESSION:-${FORGEWRIGHT_SESSION_ID:-}}"
+if [[ -n "${MEMORY_SESSION_ID}" ]]; then
+    if [[ ! "$MEMORY_SESSION_ID" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$ ]]; then
+        echo "Invalid memory session identity" >&2
+        if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then return 1; else exit 1; fi
+    fi
+    if [[ "$(printf '%s' "$MEMORY_SESSION_ID" | python3 "${SCRIPT_DIR}/memory_redaction.py")" != "$MEMORY_SESSION_ID" ]]; then
+        echo "Unsafe memory session identity" >&2
+        if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then return 1; else exit 1; fi
+    fi
+    MEMORY_DB_DIR="${MEMORY_DB_DIR}/sessions/${MEMORY_SESSION_ID}"
+fi
 SESSION_FILE="${MEMORY_DB_DIR}/current-session.json"
-SUMMARY_FILE=".forgewright/subagent-context/CONVERSATION_SUMMARY.md"
+SUMMARY_FILE="${MEMORY_DB_DIR}/CONVERSATION_SUMMARY.md"
 
 # Defaults
-CHECKPOINT_INTERVAL="${MEMORY_CHECKPOINT_INTERVAL:-3}"
+CHECKPOINT_INTERVAL="${MEMORY_CHECKPOINT_INTERVAL:-0}"
 TOKEN_THRESHOLD="${MEMORY_TOKEN_THRESHOLD:-70}"
 
 # Colors
@@ -33,9 +50,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-log() { echo -e "${GREEN}[memory-session]${NC} $1"; }
-warn() { echo -e "${YELLOW}[memory-session]${NC} WARNING: $1" >&2; }
-error() { echo -e "${RED}[memory-session]${NC} ERROR: $1" >&2; }
+redact_text() { python3 "${SCRIPT_DIR}/memory_redaction.py"; }
+log() { printf '%b%s\n' "${GREEN}[memory-session]${NC} " "$1" | redact_text; }
+warn() { printf '%b%s\n' "${YELLOW}[memory-session]${NC} WARNING: " "$1" | redact_text >&2; }
+error() { printf '%b%s\n' "${RED}[memory-session]${NC} ERROR: " "$1" | redact_text >&2; }
 
 #────────────────────────────────────────────────────────────────────────────
 # Session State
@@ -45,9 +63,9 @@ init_session() {
     mkdir -p "${MEMORY_DB_DIR}"
     mkdir -p "$(dirname "${SUMMARY_FILE}")" 2>/dev/null || true
 
-    local session_id="session-$(date +%Y%m%d-%H%M%S)"
+    local session_id="${MEMORY_SESSION_ID:-session-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')}"
     local project_name
-    project_name=$(git remote get-url origin 2>/dev/null) || project_name="local"
+    project_name=$(git -C "${MEMORY_WORKSPACE}" remote get-url origin 2>/dev/null) || project_name="local"
     project_name=$(basename "${project_name}" .git)
 
     local initial_json
@@ -83,6 +101,8 @@ state_transaction() {
     python3 -c '
 import json, os, sys, tempfile, time
 from pathlib import Path
+sys.path.insert(0, sys.argv.pop(1))
+from memory_redaction import redact
 target, operation, *args = sys.argv[1:]
 target = Path(target)
 with open(target.with_suffix(".lock"), "a+b") as lock:
@@ -136,7 +156,7 @@ with open(target.with_suffix(".lock"), "a+b") as lock:
         fd, temporary = tempfile.mkstemp(prefix=".current-session-", dir=target.parent)
         try:
             with os.fdopen(fd, "w") as stream:
-                json.dump(data, stream, indent=2)
+                json.dump(redact(data), stream, indent=2)
                 stream.write("\n")
                 stream.flush()
                 os.fsync(stream.fileno())
@@ -145,10 +165,10 @@ with open(target.with_suffix(".lock"), "a+b") as lock:
             if os.path.exists(temporary):
                 os.unlink(temporary)
     if operation == "read":
-        print(json.dumps(data))
+        print(json.dumps(redact(data)))
     else:
-        print(json.dumps({"checkpoint": checkpoint, "checkpoint_message_count": count}))
-' "${SESSION_FILE}" "$@"
+        print(json.dumps(redact({"checkpoint": checkpoint, "checkpoint_message_count": count})))
+' "${SCRIPT_DIR}" "${SESSION_FILE}" "$@"
 }
 
 #────────────────────────────────────────────────────────────────────────────
@@ -160,7 +180,7 @@ do_checkpoint() {
 
     ensure_session
 
-    local checkpoint_id="cp-$(date +%Y%m%d-%H%M%S)"
+    local checkpoint_id="cp-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
 
     # Generate checkpoint summary
     local summary
@@ -175,27 +195,15 @@ do_checkpoint() {
 record_checkpoint() {
     local checkpoint_id="$1" message_count="$2" reason="$3" summary="$4"
 
-    # Save to memory (Legacy Token-Savior / mem0)
-    if command -v python3 &>/dev/null; then
-        python3 "${SCRIPT_DIR}/mem0-v2.py" add \
-            "CHECKPOINT: [${checkpoint_id}] msg:${message_count} | ${summary}" \
-            --category session 2>/dev/null || true
-            
-        # [GraphRAG V3] Save to Conversational Graph
-        local graph_src="${SCRIPT_DIR}/../../antigravity/src/memory"
-        if [[ -f "${graph_src}/graph_ingest.py" ]]; then
-            # We assume virtual environment or global has networkx installed
-            PYTHONPATH="${SCRIPT_DIR}/../../antigravity" python3 "${graph_src}/graph_ingest.py" \
-                --node-id "${checkpoint_id}" \
-                --type "Decision" \
-                --content "${summary}" \
-                --weight 5.0 2>/dev/null || true
-                
-            # [GraphRAG V3] Run cognitive decay and prune graph
-            PYTHONPATH="${SCRIPT_DIR}/../../antigravity" python3 "${graph_src}/graph_gc.py" \
-                --decay-rate 0.8 \
-                --threshold 1.0 2>/dev/null || true
-        fi
+    # The shell and redaction helper can keep local state without a full
+    # framework install. Only the shared adapter can acknowledge SQLite capture.
+    if [[ -f "${SCRIPT_DIR}/memory_flow.py" ]]; then
+        local capture_session
+        capture_session=$(load_session | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_id"])')
+        python3 -c 'import json,sys; print(json.dumps({"kind":"handoff","summary":sys.stdin.read()}))' <<< "$summary" |
+            python3 "${SCRIPT_DIR}/memory_flow.py" capture --session "$capture_session" --event "$checkpoint_id" || return 1
+    else
+        warn "Local checkpoint only; full memory adapter unavailable."
     fi
 
     # Update conversation summary file
@@ -209,12 +217,12 @@ generate_checkpoint_summary() {
     # Generate a summary from recent git changes, file modifications
     local summary="checkpoint"
     local git_status
-    git_status=$(git status --short 2>/dev/null | head -5 | tr '\n' ' ' || echo "")
+    git_status=$(git -C "${MEMORY_WORKSPACE}" status --short 2>/dev/null | head -5 | tr '\n' ' ' || echo "")
 
     if [[ -n "${git_status}" ]]; then
-        echo "files_changed:${git_status}"
+        printf '%s\n' "files_changed:${git_status}" | redact_text
     else
-        echo "${reason}"
+        printf '%s\n' "${reason}" | redact_text
     fi
 }
 
@@ -234,7 +242,7 @@ append_to_summary() {
 EOF
     fi
 
-    echo "| $(date -u +%Y-%m-%dT%H:%M:%SZ) | ${checkpoint_id} | ${reason} | ${summary} |" >> "${SUMMARY_FILE}"
+    printf '| %s | %s | %s | %s |\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${checkpoint_id}" "${reason}" "${summary}" | redact_text >> "${SUMMARY_FILE}"
 }
 
 #────────────────────────────────────────────────────────────────────────────
@@ -242,9 +250,13 @@ EOF
 #────────────────────────────────────────────────────────────────────────────
 
 increment_message() {
+    if [[ "$CHECKPOINT_INTERVAL" == "0" ]]; then
+        log "Tick observed; checkpoints require a material boundary."
+        return 0
+    fi
     ensure_session
     local reason="interval:${CHECKPOINT_INTERVAL}"
-    local checkpoint_id="cp-$(date +%Y%m%d-%H%M%S)"
+    local checkpoint_id="cp-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
     local summary result message_count
     summary=$(generate_checkpoint_summary "${reason}")
     result=$(state_transaction tick "${CHECKPOINT_INTERVAL}" "${checkpoint_id}" "${reason}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${summary}")
@@ -275,7 +287,7 @@ cmd_status() {
     fi
 
     echo "=== Memory Session Status ==="
-    python3 -c "import json; d=json.load(open('${SESSION_FILE}')); print(f'Session: {d[\"session_id\"]}'); print(f'Messages since checkpoint: {d[\"message_count\"]}'); print(f'Last checkpoint: {d[\"last_checkpoint_at\"]}'); print(f'Total checkpoints: {len(d[\"checkpoints\"])}')"
+    python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("Session:", d["session_id"]); print("Messages since checkpoint:", d["message_count"]); print("Last checkpoint:", d["last_checkpoint_at"]); print("Total checkpoints:", len(d["checkpoints"]))' "${SESSION_FILE}" | redact_text
 }
 
 cmd_resume() {
@@ -284,7 +296,7 @@ cmd_resume() {
 
     if [[ -f "${SUMMARY_FILE}" ]]; then
         log "Loaded conversation summary:"
-        tail -10 "${SUMMARY_FILE}"
+        tail -10 "${SUMMARY_FILE}" | redact_text
     fi
 
     # Search recent memories

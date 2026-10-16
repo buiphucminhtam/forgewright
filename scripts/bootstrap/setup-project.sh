@@ -259,19 +259,22 @@ print_cursor_config() {
 
 run_mem0_ensure() {
     if [ "${FORGEWRIGHT_SKIP_MEM0:-}" = "1" ] || [ "${FORGEWRIGHT_SKIP_MEM0:-}" = "true" ]; then
-        log_warn "Compliance Policy: Overriding FORGEWRIGHT_SKIP_MEM0. Force-enabling memory."
-        export FORGEWRIGHT_SKIP_MEM0=0
+        log_info "Optional memory disabled; skipping initialization."
+        return 0
+    fi
+    if [[ "${MEM0_DISABLED:-}" =~ ^(true|1|yes)$ ]]; then
+        log_info "Optional memory disabled; skipping initialization."
+        return 0
     fi
     if ! command -v python3 &> /dev/null; then
-        log_error "Python 3 is required but was not found. Memory initialization aborted."
-        exit 1
+        log_warn "Python 3 unavailable; optional memory remains unconfigured."
+        return 0
     fi
     log_info "Ensuring Forgewright memory (mem0)..."
     if bash "${FORGEWRIGHT_PATH}/scripts/ensure-mem0.sh" "$TARGET_PROJECT"; then
         log_ok "mem0 ready (.forgewright/memory.db)"
     else
-        log_error "Memory initialization failed. Setup aborted."
-        exit 1
+        log_warn "Optional memory initialization failed; project setup can continue."
     fi
 }
 

@@ -1,0 +1,371 @@
+{
+  "schema_version": 1,
+  "scope": "Synthetic game-development memory retrieval; no live/user corpus or player quality claim.",
+  "targets_proposed_before_optimization": {
+    "recall_at_3": 0.85,
+    "mrr": 0.75,
+    "unrelated_injection_rate": 0
+  },
+  "records": [
+    {
+      "id": "character",
+      "text": "Concept nhân vật cần bóng dáng silhouette rõ ràng trước khi polish.",
+      "category": "decisions"
+    },
+    {
+      "id": "environment",
+      "text": "Concept môi trường thống nhất bảng màu và ánh sáng khu rừng.",
+      "category": "decisions"
+    },
+    {
+      "id": "ui",
+      "text": "Giao diện cần nút tạm dừng, chơi lại và trạng thái tải.",
+      "category": "decisions"
+    },
+    {
+      "id": "wireframe",
+      "text": "Wireframe màn hình kết quả thể hiện điểm số và phần thưởng.",
+      "category": "decisions"
+    },
+    {
+      "id": "touch",
+      "text": "Điều khiển cảm ứng dùng vùng chạm đủ lớn trên điện thoại.",
+      "category": "decisions"
+    },
+    {
+      "id": "sprite",
+      "text": "Tài nguyên sprite phải khai báo kích thước, điểm neo và nguồn ảnh.",
+      "category": "decisions"
+    },
+    {
+      "id": "memory",
+      "text": "Bộ nhớ hội thoại chỉ lưu quyết định đã xác minh, không ghi mật khẩu.",
+      "category": "decisions"
+    },
+    {
+      "id": "clone",
+      "text": "Bản clone giữ độ trung thực của bản gốc rồi thêm khác biệt có chủ đích.",
+      "category": "decisions"
+    },
+    {
+      "id": "phaser",
+      "text": "Use Phaser 4 for the new 2D Signal Garden game.",
+      "category": "decisions"
+    },
+    {
+      "id": "three",
+      "text": "Use Three.js and GLB models for the new 3D courier scene.",
+      "category": "decisions"
+    },
+    {
+      "id": "physics",
+      "text": "Fixed timestep physics prevents collision tunneling at low framerates.",
+      "category": "decisions"
+    },
+    {
+      "id": "textures",
+      "text": "Compress environment textures with KTX2 to reduce GPU upload size.",
+      "category": "decisions"
+    },
+    {
+      "id": "audio",
+      "text": "Unlock game audio on the first user gesture after loading.",
+      "category": "decisions"
+    },
+    {
+      "id": "cleanup",
+      "text": "Dispose owned renderer resources and animation mixers on final departure.",
+      "category": "decisions"
+    },
+    {
+      "id": "tabs",
+      "text": "Reuse the owned browser tab and close temporary test sessions.",
+      "category": "decisions"
+    },
+    {
+      "id": "victory",
+      "text": "Only show victory when the player reaches the exit.",
+      "category": "decisions"
+    }
+  ],
+  "queries": [
+    {
+      "query": "nhân vật",
+      "expected": [
+        "character"
+      ]
+    },
+    {
+      "query": "nhan vat",
+      "expected": [
+        "character"
+      ]
+    },
+    {
+      "query": "silhouette nhân vật",
+      "expected": [
+        "character"
+      ]
+    },
+    {
+      "query": "môi trường",
+      "expected": [
+        "environment"
+      ]
+    },
+    {
+      "query": "moi truong",
+      "expected": [
+        "environment"
+      ]
+    },
+    {
+      "query": "ánh sáng rừng",
+      "expected": [
+        "environment"
+      ]
+    },
+    {
+      "query": "tạm dừng",
+      "expected": [
+        "ui"
+      ]
+    },
+    {
+      "query": "tam dung",
+      "expected": [
+        "ui"
+      ]
+    },
+    {
+      "query": "trạng thái tải",
+      "expected": [
+        "ui"
+      ]
+    },
+    {
+      "query": "màn hình kết quả",
+      "expected": [
+        "wireframe"
+      ]
+    },
+    {
+      "query": "man hinh ket qua",
+      "expected": [
+        "wireframe"
+      ]
+    },
+    {
+      "query": "điểm số phần thưởng",
+      "expected": [
+        "wireframe"
+      ]
+    },
+    {
+      "query": "điều khiển cảm ứng",
+      "expected": [
+        "touch"
+      ]
+    },
+    {
+      "query": "dieu khien cam ung",
+      "expected": [
+        "touch"
+      ]
+    },
+    {
+      "query": "điện thoại vùng chạm",
+      "expected": [
+        "touch"
+      ]
+    },
+    {
+      "query": "điểm neo",
+      "expected": [
+        "sprite"
+      ]
+    },
+    {
+      "query": "diem neo",
+      "expected": [
+        "sprite"
+      ]
+    },
+    {
+      "query": "kích thước sprite",
+      "expected": [
+        "sprite"
+      ]
+    },
+    {
+      "query": "bộ nhớ hội thoại",
+      "expected": [
+        "memory"
+      ]
+    },
+    {
+      "query": "bo nho hoi thoai",
+      "expected": [
+        "memory"
+      ]
+    },
+    {
+      "query": "mật khẩu",
+      "expected": [
+        "memory"
+      ]
+    },
+    {
+      "query": "độ trung thực",
+      "expected": [
+        "clone"
+      ]
+    },
+    {
+      "query": "do trung thuc",
+      "expected": [
+        "clone"
+      ]
+    },
+    {
+      "query": "khác biệt clone",
+      "expected": [
+        "clone"
+      ]
+    },
+    {
+      "query": "Phaser 4",
+      "expected": [
+        "phaser"
+      ]
+    },
+    {
+      "query": "Signal Garden",
+      "expected": [
+        "phaser"
+      ]
+    },
+    {
+      "query": "Three.js GLB",
+      "expected": [
+        "three"
+      ]
+    },
+    {
+      "query": "courier scene",
+      "expected": [
+        "three"
+      ]
+    },
+    {
+      "query": "collision tunneling",
+      "expected": [
+        "physics"
+      ]
+    },
+    {
+      "query": "fixed timestep physics",
+      "expected": [
+        "physics"
+      ]
+    },
+    {
+      "query": "KTX2 textures",
+      "expected": [
+        "textures"
+      ]
+    },
+    {
+      "query": "GPU upload",
+      "expected": [
+        "textures"
+      ]
+    },
+    {
+      "query": "audio user gesture",
+      "expected": [
+        "audio"
+      ]
+    },
+    {
+      "query": "unlock audio",
+      "expected": [
+        "audio"
+      ]
+    },
+    {
+      "query": "renderer dispose",
+      "expected": [
+        "cleanup"
+      ]
+    },
+    {
+      "query": "animation mixers",
+      "expected": [
+        "cleanup"
+      ]
+    },
+    {
+      "query": "browser tab reuse",
+      "expected": [
+        "tabs"
+      ]
+    },
+    {
+      "query": "temporary sessions",
+      "expected": [
+        "tabs"
+      ]
+    },
+    {
+      "query": "victory exit",
+      "expected": [
+        "victory"
+      ]
+    },
+    {
+      "query": "player reaches",
+      "expected": [
+        "victory"
+      ]
+    },
+    {
+      "query": "avatar outline",
+      "expected": [
+        "character"
+      ],
+      "limitation": "semantic synonym; lexical baseline may abstain"
+    },
+    {
+      "query": "win condition",
+      "expected": [
+        "victory"
+      ],
+      "limitation": "semantic synonym; lexical baseline may abstain"
+    },
+    {
+      "query": "orbital nebula",
+      "expected": []
+    },
+    {
+      "query": "warehouse freight",
+      "expected": []
+    },
+    {
+      "query": "currency options pricing",
+      "expected": []
+    },
+    {
+      "query": "medical diagnosis",
+      "expected": []
+    },
+    {
+      "query": "ocean salinity",
+      "expected": []
+    },
+    {
+      "query": "agricultural irrigation",
+      "expected": []
+    }
+  ]
+}

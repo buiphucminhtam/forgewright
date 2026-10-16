@@ -16,7 +16,7 @@ echo ""
 echo "━━━ test-convention-indexer.sh ━━━"
 
 # T1: Executable
-((TESTS++))
+TESTS=$((TESTS+1))
 if [[ -x "$INDEXER_SCRIPT" ]]; then
     pass "Script is executable"
 else
@@ -26,7 +26,7 @@ fi
 # T2: Dry run produces output
 echo ""
 echo "T2: Dry run produces output"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$INDEXER_SCRIPT" --dry-run 2>&1)
 if [[ -n "$output" ]] && echo "$output" | grep -q "Found\|DRY"; then
     pass "Dry run produces output"
@@ -37,7 +37,7 @@ fi
 # T3: Counts conventions
 echo ""
 echo "T3: Counts conventions"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$INDEXER_SCRIPT" --dry-run 2>&1)
 if echo "$output" | grep -q "Found [0-9]* conventions"; then
     count=$(echo "$output" | grep "Found" | grep -oE "[0-9]+" | head -1)
@@ -49,7 +49,7 @@ fi
 # T4: Dry run shows would-store items
 echo ""
 echo "T4: Dry run shows would-store items"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$INDEXER_SCRIPT" --dry-run 2>&1)
 if echo "$output" | grep -q "Would store\|DRY\]"; then
     pass "Would-store items shown"
@@ -60,7 +60,7 @@ fi
 # T5: Full run stores conventions
 echo ""
 echo "T5: Full run stores conventions"
-((TESTS++))
+TESTS=$((TESTS+1))
 # Check stats before
 before=$(python3 "$FORGEWRIGHT_DIR/scripts/mem0-v2.py" stats 2>/dev/null | grep "decisions:" | grep -oE "[0-9]+" || echo "0")
 output=$(bash "$INDEXER_SCRIPT" 2>&1)
@@ -79,7 +79,7 @@ fi
 # T6: No error on second run (idempotent via mem0 dedup)
 echo ""
 echo "T6: Second run is idempotent (mem0 dedup)"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$INDEXER_SCRIPT" 2>&1)
 if echo "$output" | grep -q "Stored:"; then
     pass "Second run completes"
@@ -89,3 +89,4 @@ fi
 
 echo ""
 echo "━━━ Results: $PASS/$TESTS passed ━━━"
+exit "$((FAIL != 0))"

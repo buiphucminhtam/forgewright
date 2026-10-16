@@ -233,6 +233,7 @@ def test_checked_in_codex_stop_hook_uses_native_schema() -> None:
         for group in config["hooks"]["Stop"]
         for hook in group.get("hooks", [])
         if hook.get("type") == "command"
+        and "stop-gate.sh --platform CODEX" in hook.get("command", "")
     ]
     assert any(
         "stop-gate.sh --platform CODEX" in hook.get("command", "")
@@ -250,7 +251,15 @@ def test_checked_in_codex_lifecycle_context_hooks_are_bounded_and_observe_only()
 ):
     config = tomllib.loads((ROOT / ".codex/config.toml").read_text(encoding="utf-8"))
 
-    session_start = config["hooks"]["SessionStart"]
+    session_start = [
+        group
+        for group in config["hooks"]["SessionStart"]
+        if any(
+            "rule-context-hook.py" in hook.get("command", "")
+            for hook in group.get("hooks", [])
+        )
+    ]
+    assert len(session_start) == 1
     assert session_start[0]["matcher"] == "startup|resume|clear|compact"
     assert_observe_context_hook(
         context_hook_from_groups(session_start, "SessionStart"), "CODEX", "SessionStart"
@@ -291,6 +300,10 @@ def test_checked_in_codex_windows_hooks_run_from_subdirectory(tmp_path: Path) ->
             for group in config["hooks"][event]
             for hook in group.get("hooks", [])
             if hook.get("type") == "command"
+            and any(
+                name in hook.get("command", "")
+                for name in ("rule-context-hook.py", "stop-gate.sh --platform CODEX")
+            )
         ]
         assert len(hooks) == 1
         command = hooks[0]["command_windows"]
