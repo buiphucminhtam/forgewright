@@ -80,14 +80,41 @@ import tomllib
 
 legacy = "bash scripts/lite/stop-gate.sh --platform CODEX"
 canonical = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 1; cd \"$root\" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CODEX'"
+memory = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/memory/native_hook.py\"; [ -f \"$script\" ] || exit 0; exec python3 \"$script\" --workspace \"$root\"'"
 try:
     with open(sys.argv[1], "rb") as handle:
         config = tomllib.load(handle)
     if config.get("features", {}).get("hooks") is not True:
         raise SystemExit(1)
     groups = config.get("hooks", {}).get("Stop", [])
-    if not isinstance(groups, list) or len(groups) != 1:
+    if not isinstance(groups, list) or len(groups) not in (1, 2):
         raise SystemExit(1)
+    if len(groups) == 2:
+        # Only the exact optional memory adjunct is supported. Unknown siblings,
+        # extra controls and modified commands still require global validation.
+        optional = []
+        for candidate in groups:
+            if not isinstance(candidate, dict) or set(candidate) != {"hooks"}:
+                continue
+            handlers = candidate["hooks"]
+            if not isinstance(handlers, list) or len(handlers) != 1:
+                continue
+            handler = handlers[0]
+            if not isinstance(handler, dict):
+                continue
+            command = handler.get("command")
+            if not isinstance(command, str) or command.strip(" \t\n") != memory:
+                continue
+            if type(handler.get("timeout")) is not int:
+                continue
+            if {key: value for key, value in handler.items() if key != "command"} == {
+                "type": "command", "timeout": 3,
+                "statusMessage": "Saving optional structured memory",
+            }:
+                optional.append(candidate)
+        if len(optional) != 1:
+            raise SystemExit(1)
+        groups = [candidate for candidate in groups if candidate is not optional[0]]
     group = groups[0]
     if not isinstance(group, dict) or set(group) - {"matcher", "hooks", "enabled"}:
         raise SystemExit(1)

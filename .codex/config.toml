@@ -5,6 +5,21 @@ hooks = true
 
 [hooks]
 
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear|compact|fork"
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = '''bash -c 'root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script="$root/scripts/memory/native_hook.py"; [ -f "$script" ] || exit 0; exec python3 "$script" --workspace "$root"' '''
+timeout = 3
+statusMessage = "Loading optional scoped memory"
+
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = '''bash -c 'root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script="$root/scripts/memory/native_hook.py"; [ -f "$script" ] || exit 0; exec python3 "$script" --workspace "$root"' '''
+timeout = 3
+statusMessage = "Saving optional structured memory"
+
 [[hooks.UserPromptSubmit]]
 matcher = "*"
 [[hooks.UserPromptSubmit.hooks]]

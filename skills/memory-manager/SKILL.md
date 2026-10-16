@@ -4,7 +4,7 @@ title: Scoped Conversation Memory
 status: active
 owner: core
 scope: local-memory
-last_reviewed: 2026-10-16
+last_reviewed: 2026-10-17
 canonical: true
 description: >
   Optional local conversation memory using SQLite FTS5 and the existing
@@ -72,6 +72,47 @@ Stdout contains only the bounded context packet, including its untrusted-context
 Search is shared FTS5/BM25 with bounded Unicode-safe query construction and Vietnamese diacritic/stroke-d support. No-match returns no context. It does not retrieve arbitrary unrelated scenarios or entire old session summaries. Pure lexical search can miss synonyms; use the frozen bilingual eval before adding semantic infrastructure. No vector provider is required or silently called.
 
 `context-manager.py` also supports an explicit legacy file-only load without keywords for compatibility. `FORGEWRIGHT_CONTEXT_SKIP_DB=1` skips DB lookup while allowing that file-only mode; it is distinct from disabling memory. Scope legacy files to the intended workspace and validate them as untrusted context. Native automatic adapters remain capability-dependent; the explicit CLI is available where shell execution is supported.
+
+## Optional native Codex adapter
+
+The project `.codex/config.toml` registers separate `SessionStart` and `Stop`
+handlers for `scripts/memory/native_hook.py`. On supported Mac/POSIX Codex
+hosts, review and trust these exact definitions through `/hooks` before use.
+Do not bypass hook trust. Existing rule-context and verification handlers remain
+independent. Plugin installation alone does not install this project adapter;
+Windows native dispatch has not been verified.
+
+Both operations are opt-in, configured in the host process environment:
+
+- `FORGEWRIGHT_MEMORY_QUERY` selects a bounded query at startup/resume/compact;
+  no query means no retrieval. It does not query or store on every user prompt.
+- `FORGEWRIGHT_MEMORY_CAPTURE=1` permits `Stop` to save one explicitly selected
+  structured summary from a final fenced `forgewright-memory` JSON block in
+  `last_assistant_message`. Use the capture payload documented above. No block
+  means no capture; a full assistant message or transcript is never ingested.
+
+The native `session_id` and `turn_id` bind private scope and idempotency. Launch
+from the project root: native `cwd` must resolve to that exact root. The adapter
+pins storage and continuity to that workspace and ignores inherited
+`MEM0_DB_PATH`, `MEM0_PROJECT_ID`, `FORGEWRIGHT_CONTINUITY_ROOT` and session aliases;
+logical sharing through those overrides remains an explicit CLI feature.
+`scope: project` in the selected summary deliberately makes it visible to another
+session. Source bindings, redaction, TTL and both disable flags use the existing
+core contract. Repeated Stop continuation events are ignored.
+
+The consumer packet includes its untrusted-context wrapper and citations within
+2,000 characters; the entire native JSON response is capped at 8,192 UTF-8 bytes.
+The child operation has a 1.5-second deadline inside a 3-second host hook. Errors,
+missing configuration, legacy storage and timeout return `continue: true`
+without a capture acknowledgment. A timeout may race a committed write; retry
+the same session/turn to reconcile, rather than assuming rollback. Never migrate
+the existing store automatically or while an older writer remains active.
+
+`tests/unit_tests/test_memory_native_hook.py` tests the wire adapter in isolated
+processes. These checks establish source behavior, not native dispatch or model
+context delivery. Native acceptance still requires a fresh canary observed in
+the real host context after trusted dispatch; cloud recreation is a separate
+acceptance lane. See the [official hook contract](https://developers.openai.com/codex/hooks).
 
 ## Explicit maintenance and migration
 
