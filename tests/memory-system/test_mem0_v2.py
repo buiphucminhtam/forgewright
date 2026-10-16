@@ -15,7 +15,7 @@ import importlib.util
 from pathlib import Path
 
 # Load mem0-v2.py by path (filename has hyphen, can't be imported directly)
-SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
+SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts" / "memory"
 _spec = importlib.util.spec_from_file_location("mem0_v2", SCRIPTS_DIR / "mem0-v2.py")
 _mem0_module = importlib.util.module_from_spec(_spec)
 sys.modules["mem0_v2"] = _mem0_module
@@ -336,7 +336,10 @@ class TestProceduralCircuits(unittest.TestCase):
 
         # Test fetching/neighbors or queries
         conn = self.db.get_connection()
-        row = conn.execute("SELECT * FROM flux_nodes WHERE id = 'node-1'").fetchone()
+        # A3: physical graph IDs include scope; external API IDs stay node-1.
+        row = conn.execute(
+            "SELECT * FROM flux_nodes WHERE id = ?", (self.db.graph_prefix + "node-1",)
+        ).fetchone()
         self.assertIsNotNone(row)
         self.assertEqual(row["layer"], "semantic")
         self.assertEqual(row["title"], "Test Node")

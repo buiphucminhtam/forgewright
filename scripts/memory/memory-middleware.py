@@ -1,44 +1,39 @@
 #!/usr/bin/env python3
 """
-Forgewright Memory Middleware
-============================
-Automatic memory checkpoint system for cross-IDE compatibility.
-Works with Claude Code, Cursor, VS Code, JetBrains, etc.
+Legacy session APIs bridged to optional semantic capture and continuity.
 
-Triggers:
-  - Material scope or decision change
-  - Material verifier result
-  - Supported pre-compaction event or handoff
-  - Stuck/block or terminal boundary
-  - Manual trigger
-
-Usage:
-  python3 memory-middleware.py tick          # Increment message count
-  python3 memory-middleware.py checkpoint   # Force save
-  python3 memory-middleware.py resume       # Load context + handover
-  python3 memory-middleware.py status       # Show status
-  python3 memory-middleware.py handover     # Generate handover document
-  python3 memory-middleware.py start        # Initialize session
-  python3 memory-middleware.py daemon       # Run as background daemon
-
-Environment Variables:
-  MEMORY_CHECKPOINT_INTERVAL: Messages between checkpoints (default: 3)
-  MEMORY_TOKEN_THRESHOLD_WARN: Warning threshold % (default: 80)
-  MEMORY_TOKEN_THRESHOLD_CRITICAL: Critical threshold % (default: 95)
-  MEMORY_DB_DIR: Session storage directory
-  FORGEWRIGHT_WORKSPACE: Override workspace root detection
+Start, checkpoint, status, resume, handover and session-log commands remain
+available. Tick observes events without periodic capture; no daemon is started.
+Use the canonical capture/context/doctor CLI for scoped receipts and bounded
+retrieval. Native host integration must be verified separately.
 """
 
 import argparse
+from contextvars import ContextVar
+from functools import wraps
 import hashlib
 import json
 import os
 import re
 import subprocess
+import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from uuid import uuid4
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from memory_common import (
+    active_session,
+    atomic_json,
+    disabled,
+    json_transaction,
+    project_id,
+    redact,
+    runtime_root,
+    workspace_root,
+)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Configuration
@@ -66,27 +61,23 @@ def _resolve_workspace_root() -> Path:
     return cwd
 
 
-WORKSPACE_ROOT = Path(
-    os.environ.get("FORGEWRIGHT_WORKSPACE", str(_resolve_workspace_root()))
-)
+WORKSPACE_ROOT = workspace_root()
 _MEMORY_DB_OVERRIDE = os.environ.get("MEMORY_DB_DIR", "").strip()
 _WORKSPACE_MEMORY_ROOT = WORKSPACE_ROOT / ".forgewright" / "runtime" / "memory"
-MEMORY_DB_DIR = (
-    Path(_MEMORY_DB_OVERRIDE).expanduser()
-    if _MEMORY_DB_OVERRIDE
-    else _WORKSPACE_MEMORY_ROOT
-)
+MEMORY_DB_DIR = runtime_root()
+_native_session = active_session()
+if _native_session:
+    if (
+        not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", _native_session)
+        or redact(_native_session) != _native_session
+    ):
+        raise ValueError("invalid_memory_session_id")
+    MEMORY_DB_DIR = MEMORY_DB_DIR / "sessions" / _native_session
 SESSION_FILE = MEMORY_DB_DIR / "current-session.json"
 
 # Canonical absolute paths for workspace-relative files
-SUMMARY_FILE = (
-    WORKSPACE_ROOT / ".forgewright" / "subagent-context" / "CONVERSATION_SUMMARY.md"
-)
-HANDOVER_DIR = (
-    MEMORY_DB_DIR.parent / "memory-bank"
-    if _MEMORY_DB_OVERRIDE
-    else MEMORY_DB_DIR / "memory-bank"
-)
+SUMMARY_FILE = MEMORY_DB_DIR / "CONVERSATION_SUMMARY.md"
+HANDOVER_DIR = MEMORY_DB_DIR / "memory-bank"
 HANDOVER_FILE = HANDOVER_DIR / "HANDOVER.md"
 
 # session-log.json path resolution
@@ -149,17 +140,21 @@ class Colors:
 
 
 def log(msg: str, color: str = Colors.GREEN):
-    print(f"{color}[memory-middleware]{Colors.NC} {msg}")
+    print(f"{color}[memory-middleware]{Colors.NC} {redact(msg)}")
 
 
 def warn(msg: str):
     print(
-        f"{Colors.YELLOW}[memory-middleware]{Colors.NC} WARNING: {msg}", file=sys.stderr
+        f"{Colors.YELLOW}[memory-middleware]{Colors.NC} WARNING: {redact(msg)}",
+        file=sys.stderr,
     )
 
 
 def error(msg: str):
-    print(f"{Colors.RED}[memory-middleware]{Colors.NC} ERROR: {msg}", file=sys.stderr)
+    print(
+        f"{Colors.RED}[memory-middleware]{Colors.NC} ERROR: {redact(msg)}",
+        file=sys.stderr,
+    )
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -173,6 +168,7 @@ def get_project_name() -> str:
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
             capture_output=True,
+            cwd=WORKSPACE_ROOT,
             text=True,
             timeout=5,
         )
@@ -190,18 +186,7 @@ _CHECKPOINT_COOLDOWN_SECONDS = 5
 
 
 def _atomic_write_json(filepath: Path, data: dict) -> None:
-    """Write JSON atomically using temp file + rename."""
-    tmp = filepath.with_suffix(".tmp")
-    try:
-        tmp.write_text(json.dumps(data, indent=2))
-        tmp.rename(filepath)
-    except OSError as e:
-        if tmp.exists():
-            try:
-                tmp.unlink()
-            except OSError:
-                pass
-        raise IOError(f"Failed to write {filepath}: {e}") from e
+    atomic_json(filepath, data)
 
 
 def init_session() -> dict:
@@ -213,7 +198,8 @@ def init_session() -> dict:
         raise RuntimeError(f"Cannot create session directories: {e}") from e
 
     session = {
-        "session_id": f"session-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}",
+        "session_id": active_session() or f"session-{uuid4().hex}",
+        "project_id": project_id(),
         "project": get_project_name(),
         "started_at": datetime.now(timezone.utc).isoformat() + "Z",
         "message_count": 0,
@@ -350,8 +336,8 @@ Messages since checkpoint: {session.get("message_count", 0)}
 
     try:
         handover_path = HANDOVER_DIR / f"handover-{date_str}.md"
-        handover_path.write_text(content)
-        HANDOVER_FILE.write_text(content)
+        handover_path.write_text(redact(content))
+        HANDOVER_FILE.write_text(redact(content))
         log(f"Handover generated: {handover_path}")
         return str(handover_path)
     except OSError as e:
@@ -427,52 +413,101 @@ def _parse_handover_content(content: str) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+_log_context = ContextVar("memory_log", default=None)
+_active_session_id = None
+
+
+def _validate_log(data):
+    if not isinstance(data, dict) or not isinstance(data.get("sessions"), list):
+        raise ValueError("invalid_memory_session_log")
+    if any(not isinstance(row, dict) for row in data["sessions"]):
+        raise ValueError("invalid_memory_session_entry")
+    return data
+
+
 def ensure_session_log() -> dict:
-    """Ensure session-log.json exists with valid structure. Returns the log dict."""
-    SESSION_LOG.parent.mkdir(parents=True, exist_ok=True)
-
+    current = _log_context.get()
+    if current is not None:
+        return _validate_log(current)
     if not SESSION_LOG.exists():
-        log_data = {"sessions": []}
-        with open(SESSION_LOG, "w") as f:
-            json.dump(log_data, f, indent=2)
+        return {"sessions": []}
+    return _validate_log(json.loads(SESSION_LOG.read_text()))
 
-    try:
-        with open(SESSION_LOG) as f:
-            data = json.load(f)
-        if "sessions" not in data:
-            data = {"sessions": []}
-            with open(SESSION_LOG, "w") as f:
-                json.dump(data, f, indent=2)
-        return data
-    except (json.JSONDecodeError, IOError) as e:
-        warn(f"Session log corrupted ({e}), resetting")
-        log_data = {"sessions": []}
-        with open(SESSION_LOG, "w") as f:
-            json.dump(log_data, f, indent=2)
-        return log_data
+
+def _session_transaction(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with json_transaction(SESSION_LOG, {"sessions": []}) as data:
+            _validate_log(data)
+            token = _log_context.set(data)
+            try:
+                result = function(*args, **kwargs)
+            finally:
+                _log_context.reset(token)
+        return redact(result)
+
+    return wrapped
+
+
+def _select_session(data, *, completed=False):
+    candidates = [
+        row
+        for row in _scoped_sessions(data)
+        if completed or row.get("status") == "in_progress"
+    ]
+    if not (active_session() or _active_session_id) and len(candidates) > 1:
+        raise ValueError("memory_session_identity_required")
+    return candidates[-1] if candidates else None
+
+
+def _scoped_sessions(data):
+    """Select ownership once for every legacy view and mutation."""
+    selected = active_session() or _active_session_id
+    if not selected and SESSION_FILE.is_file():
+        state = json.loads(SESSION_FILE.read_text())
+        if state.get("project_id") == project_id():
+            selected = state.get("session_id")
+    if not selected:
+        return []
+    return [
+        row
+        for row in data["sessions"]
+        if row.get("project_id") == project_id() and row.get("session_id") == selected
+    ]
 
 
 def _mark_sessions_interrupted(log_data: dict):
     """Mark any in_progress sessions as interrupted."""
     now = datetime.now(timezone.utc).isoformat() + "Z"
-    for session in log_data.get("sessions", []):
+    for session in _scoped_sessions(log_data):
         if session.get("status") == "in_progress":
             session["status"] = "interrupted"
             session["interrupted_at"] = now
 
 
+@_session_transaction
 def start_session(
     mode: str = "unknown", request: str = "", current_phase: str = None
 ) -> dict:
     """Start a new session in session-log.json. Returns the new session entry."""
     log_data = ensure_session_log()
-    _mark_sessions_interrupted(log_data)
 
     ts = datetime.now(timezone.utc).isoformat() + "Z"
-    session_id = f"session-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}"
+    global _active_session_id
+    session_id = active_session() or f"session-{uuid4().hex}"
+    if (
+        not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", session_id)
+        or redact(session_id) != session_id
+    ):
+        raise ValueError("invalid_memory_session_id")
+    _active_session_id = session_id
+    existing = _select_session(log_data)
+    if existing:
+        return existing
 
     new_session = {
         "session_id": session_id,
+        "project_id": project_id(),
         "project": get_project_name(),
         "started_at": ts,
         "last_update": ts,
@@ -493,38 +528,28 @@ def start_session(
     }
 
     log_data["sessions"].append(new_session)
-
-    with open(SESSION_LOG, "w") as f:
-        json.dump(log_data, f, indent=2)
+    if not active_session():
+        state = load_session()
+        state.update(session_id=session_id, project_id=project_id())
+        save_session(state)
 
     log(f"Session started: {session_id} ({mode})")
     return new_session
 
 
 def get_current_session() -> dict | None:
-    """Get the most recent in_progress session, or None if none exists."""
-    log_data = ensure_session_log()
-    for session in reversed(log_data.get("sessions", [])):
-        if session.get("status") == "in_progress":
-            return session
-    return None
+    return _select_session(ensure_session_log())
 
 
 def get_last_session() -> dict | None:
-    """Get the most recent session regardless of status."""
-    log_data = ensure_session_log()
-    sessions = log_data.get("sessions", [])
-    return sessions[-1] if sessions else None
+    return _select_session(ensure_session_log(), completed=True)
 
 
+@_session_transaction
 def update_session(**kwargs) -> dict | None:
     """Update the current session with given fields. Returns updated session or None."""
     log_data = ensure_session_log()
-    session = None
-    for s in reversed(log_data.get("sessions", [])):
-        if s.get("status") == "in_progress":
-            session = s
-            break
+    session = _select_session(log_data)
     if not session:
         return None
 
@@ -534,25 +559,14 @@ def update_session(**kwargs) -> dict | None:
 
     session["last_update"] = datetime.now(timezone.utc).isoformat() + "Z"
 
-    log_data["sessions"] = [
-        s for s in log_data["sessions"] if s["session_id"] != session["session_id"]
-    ]
-    log_data["sessions"].append(session)
-
-    with open(SESSION_LOG, "w") as f:
-        json.dump(log_data, f, indent=2)
-
     return session
 
 
+@_session_transaction
 def add_task(task_id: str, status: str, summary: str = "") -> dict | None:
     """Add or update a task in the current session. Returns the task entry."""
     log_data = ensure_session_log()
-    session = None
-    for s in reversed(log_data.get("sessions", [])):
-        if s.get("status") == "in_progress":
-            session = s
-            break
+    session = _select_session(log_data)
     if not session:
         return None
 
@@ -561,21 +575,15 @@ def add_task(task_id: str, status: str, summary: str = "") -> dict | None:
     session["tasks"][task_id] = task
     session["last_update"] = ts
 
-    with open(SESSION_LOG, "w") as f:
-        json.dump(log_data, f, indent=2)
-
     log(f"Task {task_id}: {status} — {summary}")
     return task
 
 
+@_session_transaction
 def add_event(event_type: str, **kwargs) -> dict | None:
     """Add an event to the current session. Returns the event entry."""
     log_data = ensure_session_log()
-    session = None
-    for s in reversed(log_data.get("sessions", [])):
-        if s.get("status") == "in_progress":
-            session = s
-            break
+    session = _select_session(log_data)
     if not session:
         return None
 
@@ -587,20 +595,14 @@ def add_event(event_type: str, **kwargs) -> dict | None:
     session.setdefault("events", []).append(event)
     session["last_update"] = datetime.now(timezone.utc).isoformat() + "Z"
 
-    with open(SESSION_LOG, "w") as f:
-        json.dump(log_data, f, indent=2)
-
     return event
 
 
+@_session_transaction
 def end_session(summary: str = "", next_steps: list = None) -> dict | None:
     """Mark current session as completed. Returns the finished session."""
     log_data = ensure_session_log()
-    session = None
-    for s in reversed(log_data.get("sessions", [])):
-        if s.get("status") == "in_progress":
-            session = s
-            break
+    session = _select_session(log_data)
     if not session:
         warn("No active session to end")
         return None
@@ -617,9 +619,6 @@ def end_session(summary: str = "", next_steps: list = None) -> dict | None:
     end = datetime.now(timezone.utc)
     duration_min = int((end - start).total_seconds() / 60)
     session["duration_minutes"] = duration_min
-
-    with open(SESSION_LOG, "w") as f:
-        json.dump(log_data, f, indent=2)
 
     log(f"Session {session['session_id']} completed ({duration_min} min)")
 
@@ -645,80 +644,20 @@ def _detect_ide() -> str:
 
 
 def auto_ingest_session_decisions(session: dict) -> int:
-    """
-    Auto-ingest key decisions from completed session into mem0.
-    Returns number of decisions ingested.
-    """
-    ingested = 0
+    """Compatibility name: capture a private handoff, never infer decisions."""
+    if disabled() or not session.get("summary"):
+        return 0
+    from memory_flow import capture
+
+    text = redact(session["summary"])
+    event = "task-close-" + hashlib.sha256(text.encode()).hexdigest()[:32]
     try:
-        script_dir = Path(__file__).parent
-        mem0_script = script_dir / "mem0-v2.py"
-        if not mem0_script.exists():
-            return 0
-
-        session_id = session.get("session_id", "")
-        mode = session.get("mode", "unknown")
-        summary = session.get("summary", "")
-        tasks = session.get("tasks", {})
-        next_steps = session.get("next_steps", [])
-
-        # Ingest session summary as a session memory
-        if summary:
-            cmd = [
-                "python3",
-                str(mem0_script),
-                "add",
-                f"SESSION: [{session_id}] | Mode: {mode} | Summary: {summary}",
-                "--category",
-                "session",
-                "--importance",
-                "6",
-            ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if r.returncode == 0:
-                ingested += 1
-
-        # Ingest completed tasks
-        completed = [
-            (tid, t) for tid, t in tasks.items() if t.get("status") == "completed"
-        ]
-        for tid, task in completed:
-            cmd = [
-                "python3",
-                str(mem0_script),
-                "add",
-                f"SESSION_TASK: [{session_id}] T{tid} completed: {task.get('summary', '')}",
-                "--category",
-                "tasks",
-                "--importance",
-                "5",
-            ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if r.returncode == 0:
-                ingested += 1
-
-        # Ingest next steps
-        if next_steps:
-            for step in next_steps[:5]:  # Max 5 steps
-                cmd = [
-                    "python3",
-                    str(mem0_script),
-                    "add",
-                    f"SESSION_NEXT: [{session_id}] {step}",
-                    "--category",
-                    "tasks",
-                    "--importance",
-                    "4",
-                ]
-                r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                if r.returncode == 0:
-                    ingested += 1
-
-        if ingested > 0:
-            log(f"Auto-ingested {ingested} decisions from session {session_id}")
-        return ingested
-    except Exception as e:
-        warn(f"Could not auto-ingest session decisions: {e}")
+        receipt = capture(
+            {"kind": "task-close", "summary": text}, session["session_id"], event
+        )
+        return int(receipt["status"] in {"captured", "duplicate"})
+    except (ValueError, OSError, RuntimeError, sqlite3.Error):
+        warn("Optional session handoff capture failed")
         return 0
 
 
@@ -1022,7 +961,7 @@ def append_to_summary(checkpoint_id: str, reason: str, summary: str):
     timestamp = datetime.now(timezone.utc).isoformat() + "Z"
 
     # Build the line
-    new_line = f"| {timestamp} | {checkpoint_id} | {reason} | {summary} |\n"
+    new_line = redact(f"| {timestamp} | {checkpoint_id} | {reason} | {summary} |\n")
 
     if not SUMMARY_FILE.exists():
         header = "| Timestamp | Checkpoint | Reason | Summary |\n|-----------|------------|--------|----------|\n"
@@ -1036,7 +975,7 @@ def append_to_summary(checkpoint_id: str, reason: str, summary: str):
 
     try:
         with open(SUMMARY_FILE, "a") as f:
-            f.write(new_line)
+            f.write(redact(new_line))
     except OSError as e:
         warn(f"Could not append to summary file: {e}")
 
@@ -1060,7 +999,7 @@ def update_memory_bank_progress(summary: str):
                 r"Last Updated: \d{4}-\d{2}-\d{2}", f"Last Updated: {today}", content
             )
 
-        progress_file.write_text(content)
+        progress_file.write_text(redact(content))
         log("Memory Bank progress.md updated")
     except Exception as e:
         warn(f"Could not update Memory Bank: {e}")
@@ -1076,11 +1015,7 @@ def update_active_context():
 
     session = load_session()
     session_log = ensure_session_log()
-    current_session = None
-    for s in reversed(session_log.get("sessions", [])):
-        if s.get("status") == "in_progress":
-            current_session = s
-            break
+    current_session = _select_session(session_log)
 
     now = datetime.now(timezone.utc).isoformat() + "Z"
     checkpoints = session.get("checkpoints", [])
@@ -1152,7 +1087,7 @@ def update_active_context():
 """
 
     try:
-        ACTIVE_CONTEXT_FILE.write_text(content)
+        ACTIVE_CONTEXT_FILE.write_text(redact(content))
         log(f"Active context updated: {ACTIVE_CONTEXT_FILE}")
     except OSError as e:
         warn(f"Could not update activeContext.md: {e}")
@@ -1173,6 +1108,7 @@ def generate_summary(reason: str) -> str:
             result = subprocess.run(
                 ["bash", str(extract_script), "--reason", reason],
                 capture_output=True,
+                cwd=WORKSPACE_ROOT,
                 text=True,
                 timeout=10,
             )
@@ -1202,7 +1138,11 @@ def generate_summary(reason: str) -> str:
     # Fallback: simple git status
     try:
         result = subprocess.run(
-            ["git", "status", "--short"], capture_output=True, text=True, timeout=5
+            ["git", "status", "--short"],
+            capture_output=True,
+            cwd=WORKSPACE_ROOT,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0 and result.stdout.strip():
             files = result.stdout.strip().split("\n")[:5]
@@ -1221,98 +1161,43 @@ def generate_summary(reason: str) -> str:
 
 
 def do_checkpoint(reason: str = "manual") -> Optional[str]:
-    """Create memory checkpoint with idempotency protection."""
-    global _last_checkpoint_time
-    now = datetime.now(timezone.utc)
-
-    # Idempotency: skip if checkpoint happened recently
-    if _last_checkpoint_time:
-        elapsed = (now - _last_checkpoint_time).total_seconds()
-        if elapsed < _CHECKPOINT_COOLDOWN_SECONDS:
-            log(
-                f"Checkpoint skipped: cooldown active ({elapsed:.1f}s < {_CHECKPOINT_COOLDOWN_SECONDS}s)"
-            )
-            return None
+    """Route legacy semantic checkpoints through the same durable receipt path."""
+    if disabled():
+        return None
+    from memory_flow import capture
 
     session = load_session()
-    checkpoint_id = f"cp-{now.strftime('%Y%m%d-%H%M%S')}"
-
-    summary = generate_summary(reason)
-
-    # The continuity ledger is the canonical durable handoff. Legacy mem0 and
-    # markdown artifacts below remain optional context and cannot authorize a
-    # resume, a tool call, or a completion claim.
-    continuity_script = Path(__file__).parent / "continuity.py"
-    safe_reason = re.sub(r"[^A-Za-z0-9._-]+", "-", reason).strip("-") or "manual"
-    turn_id = os.environ.get("FORGEWRIGHT_TURN", "").strip() or checkpoint_id
-    turn_id = re.sub(r"[^A-Za-z0-9._-]+", "-", turn_id).strip("-") or checkpoint_id
-    continuity_payload = {
-        "objective": summary,
-        "acceptance_ids": session.get("acceptance_ids", []),
-        "non_goals": session.get("non_goals", []),
-        "plan": session.get("plan", []),
-        "verified_facts": session.get("verified_facts", []),
-        "assumptions": session.get("assumptions", []),
-        "limitations": [
-            "Checkpoint is context-only and requires current workspace re-grounding",
-            "Malicious tampering by the same OS user is outside the integrity model",
-        ],
-        "change_refs": session.get("change_refs", []),
-        "command_refs": session.get("command_refs", []),
-        "evidence_refs": session.get("evidence_refs", []),
-        "blockers": session.get("blockers", []),
-        "next_action": session.get(
-            "next_action", "Re-ground the current workspace before continuing"
-        ),
-        "owned_process_leases": session.get("owned_process_leases", []),
-    }
-    continuity = subprocess.run(
-        [
-            sys.executable,
-            str(continuity_script),
-            "checkpoint",
-            "--session",
-            session["session_id"],
-            "--turn",
-            turn_id,
-            "--reason",
-            safe_reason,
-        ],
-        cwd=WORKSPACE_ROOT,
-        input=json.dumps(continuity_payload),
-        capture_output=True,
-        text=True,
-        timeout=15,
-        check=False,
-    )
-    if continuity.returncode != 0:
-        warn("Canonical continuity checkpoint failed; legacy memory was not advanced")
+    summary = redact(generate_summary(reason))
+    identity = os.environ.get("FORGEWRIGHT_TURN", "") + reason + summary
+    event = "checkpoint-" + hashlib.sha256(identity.encode()).hexdigest()[:32]
+    try:
+        receipt = capture(
+            {"kind": "handoff", "summary": summary}, session["session_id"], event
+        )
+    except (ValueError, OSError, RuntimeError, sqlite3.Error) as error:
+        warn(f"Memory checkpoint not acknowledged: {type(error).__name__}")
         return None
-
-    # Non-blocking mem0 save
-    save_to_mem0(summary, checkpoint_id)
-
-    update_memory_bank_progress(summary)
-
+    if receipt["status"] not in {"captured", "duplicate"}:
+        warn("Memory checkpoint not acknowledged")
+        return None
+    if receipt["status"] == "duplicate":
+        return event
     session["message_count"] = 0
-    session["last_checkpoint_at"] = now.isoformat() + "Z"
+    session["last_checkpoint_at"] = datetime.now(timezone.utc).isoformat()
     session["checkpoints"].append(
         {
-            "id": checkpoint_id,
+            "id": event,
             "reason": reason,
-            "at": now.isoformat() + "Z",
             "summary": summary,
+            "at": session["last_checkpoint_at"],
+            "receipt": receipt,
         }
     )
     save_session(session)
-
-    append_to_summary(checkpoint_id, reason, summary)
-
+    append_to_summary(event, reason, summary)
     update_active_context()
-
-    _last_checkpoint_time = now
-    log(f"Checkpoint created: {checkpoint_id} (reason: {reason})")
-    return checkpoint_id
+    log(f"Checkpoint acknowledged: {event}")
+    return event
 
 
 def increment_message():
@@ -1340,13 +1225,15 @@ def cmd_tick(args=None):
 def cmd_checkpoint(args):
     """Force checkpoint with optional reason."""
     reason = args.reason or "manual"
-    do_checkpoint(reason)
+    if do_checkpoint(reason) is None:
+        raise SystemExit(1)
 
 
 def cmd_status(args=None):
     """Show session status including session-log.json."""
     if not SESSION_FILE.exists():
         print("No memory session. Run 'start' to initialize.")
+        return
 
     session = load_session()
     print("=== Memory Session Status ===")
@@ -1502,6 +1389,8 @@ def cmd_handover(args=None):
 
 
 def main():
+    if disabled():
+        return
     # Support both flat commands and 'session-log' subcommand
     parser = argparse.ArgumentParser(description="Forgewright Memory Middleware")
 
@@ -1574,7 +1463,8 @@ Usage:
     cmd = sub_args[0]
 
     if cmd == "create":
-        ensure_session_log()
+        with json_transaction(SESSION_LOG, {"sessions": []}) as data:
+            _validate_log(data)
         print(f"✓ session-log.json ready at: {SESSION_LOG}")
 
     elif cmd == "start":
@@ -1627,7 +1517,7 @@ Usage:
 
     elif cmd == "list":
         log_data = ensure_session_log()
-        sessions = log_data.get("sessions", [])
+        sessions = _scoped_sessions(log_data)
         if not sessions:
             print("No sessions recorded.")
             return
@@ -1644,7 +1534,7 @@ Usage:
         log_data = ensure_session_log()
         interrupted = [
             s
-            for s in log_data.get("sessions", [])
+            for s in _scoped_sessions(log_data)
             if s.get("status") in ("interrupted", "in_progress")
         ]
         if not interrupted:

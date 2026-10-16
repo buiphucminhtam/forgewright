@@ -16,7 +16,7 @@ echo ""
 echo "━━━ test-memory-suggest.sh ━━━"
 
 # T1: Executable
-((TESTS++))
+TESTS=$((TESTS+1))
 if [[ -x "$SUGGEST_SCRIPT" ]]; then
     pass "Script is executable"
 else
@@ -26,7 +26,7 @@ fi
 # T2: Has header
 echo ""
 echo "T2: Has MEMORY SUGGESTIONS header"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" "add JWT auth feature" 2>&1)
 if echo "$output" | grep -q "MEMORY SUGGESTIONS\|Convention"; then
     pass "Header present"
@@ -37,7 +37,7 @@ fi
 # T3: Classifies request type
 echo ""
 echo "T3: Classifies request type"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" "add JWT auth feature" 2>&1)
 if echo "$output" | grep -qi "feature\|feature request\|Request type"; then
     pass "Request type classified"
@@ -48,7 +48,7 @@ fi
 # T4: Keywords extracted
 echo ""
 echo "T4: Keywords extracted"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" "implement user authentication" 2>&1)
 if echo "$output" | grep -qi "Keywords:\|authentication\|implement"; then
     pass "Keywords extracted"
@@ -59,7 +59,7 @@ fi
 # T5: Feature suggestions
 echo ""
 echo "T5: Feature suggestions generated"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" "add new feature" 2>&1)
 if echo "$output" | grep -qi "Feature\|architecture\|decisions"; then
     pass "Feature suggestions generated"
@@ -70,7 +70,7 @@ fi
 # T6: Review suggestions
 echo ""
 echo "T6: Review suggestions for review requests"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" "review my code quality" 2>&1)
 if echo "$output" | grep -qi "review\|Code Review\|quality"; then
     pass "Review suggestions generated"
@@ -81,7 +81,7 @@ fi
 # T7: Debug suggestions
 echo ""
 echo "T7: Debug suggestions for bug reports"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" "fix authentication bug error" 2>&1)
 if echo "$output" | grep -qi "debug\|blocker\|error"; then
     pass "Debug suggestions generated"
@@ -92,7 +92,7 @@ fi
 # T8: Test suggestions
 echo ""
 echo "T8: Test suggestions for test requests"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" "write tests for auth module" 2>&1)
 if echo "$output" | grep -qi "test\|coverage\|qa"; then
     pass "Test suggestions generated"
@@ -103,7 +103,7 @@ fi
 # T9: Deploy suggestions
 echo ""
 echo "T9: Deploy suggestions for deployment requests"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" "deploy to production" 2>&1)
 if echo "$output" | grep -qi "deploy\|pipeline\|ship"; then
     pass "Deploy suggestions generated"
@@ -114,7 +114,7 @@ fi
 # T10: Handles no request
 echo ""
 echo "T10: Handles empty request gracefully"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$SUGGEST_SCRIPT" 2>&1 || true)
 if [[ -n "$output" ]] && echo "$output" | grep -qi "no request\|warning\|usage"; then
     pass "Empty request handled"
@@ -124,3 +124,4 @@ fi
 
 echo ""
 echo "━━━ Results: $PASS/$TESTS passed ━━━"
+exit "$((FAIL != 0))"

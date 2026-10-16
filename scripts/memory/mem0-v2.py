@@ -1,41 +1,12 @@
 #!/usr/bin/env python3
 """
-Forgewright Memory Manager v2 — SQLite + FTS5 + RRF Fusion
+Optional local memory: scoped SQLite/FTS5 and the existing continuity ledger.
 
-Storage:
-  .forgewright/memory.db  — SQLite with WAL mode (crash-safe, concurrent reads)
-  .forgewright/memory.db-wal, memory.db-shm — WAL journal files
-
-Token savings vs JSONL+TF-IDF:
-  - Search: 800 → 200 tokens (75% reduction)
-  - Index: ~15 tokens/result (new)
-  - Timeline: ~60 tokens/result (new)
-
-Architecture:
-  - Layer 1 (memory_index): Compact index, ~15 tokens/result
-  - Layer 2 (memory_search): FTS5 + BM25, ~60 tokens/result
-  - Layer 3 (memory_get): Full detail, ~200 tokens/result
-  - RRF Fusion: Merge FTS5 + vector rankings
-
-Usage (backward compatible with mem0-cli.py):
-    python3 mem0-v2.py search <query> [--limit N] [--format compact|full]
-    python3 mem0-v2.py index <query> [--limit N]        # Layer 1 only
-    python3 mem0-v2.py add <text> [--category <cat>]
-    python3 mem0-v2.py get <id>                         # Layer 3
-    python3 mem0-v2.py list [--category <cat>] [--limit N]
-    python3 mem0-v2.py delete <id>
-    python3 mem0-v2.py stats
-    python3 mem0-v2.py gc [--max-obs N]
-    python3 mem0-v2.py migrate                          # JSONL → SQLite
-    python3 mem0-v2.py setup
-
-Env vars:
-    MEM0_PROJECT_ID      project namespace (default: auto from git)
-    MEM0_MAX_TOKENS      max tokens per retrieval (default: 500)
-    MEM0_MAX_OBS         max observations before GC (default: 200)
-    MEM0_REDACT_SECRETS  true|false (default: true)
-    MEM0_DISABLED         true to skip all ops
-    MEM0_VECTOR_URL      URL for vector search (optional, enables RRF)
+Commands include capture, context, read-only doctor, search/index/get/list,
+explicit backup/schema migration and retention preview. Stable session/event
+IDs and citations preserve context without granting execution authority.
+Native automatic host injection and cloud recreation persistence require
+separate verification. See skills/memory-manager/SKILL.md.
 """
 
 import os
@@ -44,10 +15,24 @@ import sys
 import json
 import hashlib
 import sqlite3
-import subprocess
+import unicodedata
+from contextlib import closing
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from memory_common import (
+    continuity,
+    database_path,
+    disabled,
+    project_id,
+    redact,
+    session_namespace,
+    workspace_root,
+)
+
+SCHEMA_VERSION = 2
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 FORGEWRIGHT_DIR = ".forgewright"
@@ -148,34 +133,15 @@ AUTO_TAG_PATTERNS = [
 
 
 def is_disabled():
-    if os.environ.get("MEM0_DISABLED", "").lower() == "true":
-        print(
-            "[Forgewright] Compliance Policy: Overriding MEM0_DISABLED=true to false. Memory is strictly required.",
-            file=sys.stderr,
-        )
-        os.environ["MEM0_DISABLED"] = "false"
-    return False
+    return disabled()
 
 
 def get_project_id():
-    pid = os.environ.get("MEM0_PROJECT_ID")
-    if pid:
-        return pid
-    try:
-        remote = subprocess.check_output(
-            ["git", "remote", "get-url", "origin"], stderr=subprocess.DEVNULL, text=True
-        ).strip()
-        return remote.rstrip("/").split("/")[-1].replace(".git", "")
-    except Exception:
-        return Path.cwd().name
+    return project_id()
 
 
 def redact_secrets(text):
-    if os.environ.get("MEM0_REDACT_SECRETS", "true").lower() != "true":
-        return text
-    for pattern in REDACT_PATTERNS:
-        text = re.sub(pattern, "[REDACTED]", text)
-    return text
+    return redact(text)
 
 
 def auto_extract_tags(text: str) -> list:
@@ -251,6 +217,7 @@ CREATE TABLE IF NOT EXISTS observations (
     last_accessed_epoch INTEGER,
     archived INTEGER DEFAULT 0,
     archived_at TEXT,
+    expires_at_epoch INTEGER,
     narrative TEXT,
     facts TEXT,
     concepts TEXT,
@@ -290,7 +257,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
     concepts,
     content='observations',
     content_rowid='id',
-    tokenize='porter unicode61'
+    tokenize='porter unicode61 remove_diacritics 2'
 );
 
 -- Indexes
@@ -302,6 +269,17 @@ CREATE INDEX IF NOT EXISTS idx_obs_epoch ON observations(created_at_epoch DESC);
 CREATE INDEX IF NOT EXISTS idx_obs_archived ON observations(archived);
 CREATE INDEX IF NOT EXISTS idx_links_source ON observation_links(source_id);
 CREATE INDEX IF NOT EXISTS idx_links_target ON observation_links(target_id);
+
+CREATE TABLE IF NOT EXISTS capture_events (
+    project_root TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    payload_hash TEXT NOT NULL,
+    observation_id INTEGER NOT NULL REFERENCES observations(id),
+    checkpoint_ref TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (project_root, session_id, event_id)
+);
 
 -- Flux Nodes (Layer 2 dynamic graph memory)
 CREATE TABLE IF NOT EXISTS flux_nodes (
@@ -343,35 +321,100 @@ CREATE TABLE IF NOT EXISTS procedural_circuits (
 # ── Database Connection ────────────────────────────────────────────────────────
 
 
+FTS_TRIGGERS = """
+CREATE TRIGGER IF NOT EXISTS memory_fts_insert AFTER INSERT ON observations BEGIN
+  INSERT INTO observations_fts(rowid,id,title,content,tags,narrative,facts,concepts)
+  VALUES(new.id,new.id,new.title,new.content,new.tags,new.narrative,new.facts,new.concepts);
+END;
+CREATE TRIGGER IF NOT EXISTS memory_fts_delete AFTER DELETE ON observations BEGIN
+  INSERT INTO observations_fts(observations_fts,rowid,id,title,content,tags,narrative,facts,concepts)
+  VALUES('delete',old.id,old.id,old.title,old.content,old.tags,old.narrative,old.facts,old.concepts);
+END;
+CREATE TRIGGER IF NOT EXISTS memory_fts_update AFTER UPDATE OF title,content,tags,narrative,facts,concepts ON observations BEGIN
+  INSERT INTO observations_fts(observations_fts,rowid,id,title,content,tags,narrative,facts,concepts)
+  VALUES('delete',old.id,old.id,old.title,old.content,old.tags,old.narrative,old.facts,old.concepts);
+  INSERT INTO observations_fts(rowid,id,title,content,tags,narrative,facts,concepts)
+  VALUES(new.id,new.id,new.title,new.content,new.tags,new.narrative,new.facts,new.concepts);
+END;
+"""
+
+
+def install_schema(conn, *, migrate=False, from_project=None, namespace=None):
+    schema = "\n".join(
+        line for line in SCHEMA.splitlines() if not line.startswith("PRAGMA ")
+    )
+    cleanup = (
+        ""
+        if not migrate
+        else "DROP TRIGGER IF EXISTS memory_fts_insert; DROP TRIGGER IF EXISTS memory_fts_delete; DROP TRIGGER IF EXISTS memory_fts_update; DROP TABLE IF EXISTS observations_fts;"
+    )
+    try:
+        conn.executescript("BEGIN IMMEDIATE;" + cleanup + schema + FTS_TRIGGERS)
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(observations)")}
+        if "expires_at_epoch" not in columns:
+            conn.execute("ALTER TABLE observations ADD COLUMN expires_at_epoch INTEGER")
+        if migrate:
+            conn.execute(
+                "INSERT INTO observations_fts(rowid,id,title,content,tags,narrative,facts,concepts) SELECT id,id,title,content,tags,narrative,facts,concepts FROM observations"
+            )
+        if from_project:
+            conn.execute(
+                "UPDATE observations SET project_root=? WHERE project_root=?",
+                (namespace, from_project),
+            )
+        conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+
+
 class MemoryDB:
     """SQLite-based memory store with FTS5 and WAL mode."""
 
-    def __init__(self, db_path: str = MEMORY_DB):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None, *, namespace: str = None):
+        if disabled():
+            raise RuntimeError("memory_disabled")
+        self.db_path = str(Path(db_path).absolute() if db_path else database_path())
+        if continuity._has_symlink_component(Path(self.db_path)):
+            raise ValueError("unsafe_memory_database_path")
+        session = os.environ.get("FORGEWRIGHT_SESSION") or os.environ.get(
+            "FORGEWRIGHT_SESSION_ID"
+        )
+        self.project_id = namespace or (
+            session_namespace(session) if session else get_project_id()
+        )
+        self.graph_prefix = make_hash(self.project_id) + ":"
         self._ensure_db()
 
     def _ensure_db(self):
-        """Initialize database with schema."""
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA journal_mode=WAL")
-        for stmt in SCHEMA.split(";"):
-            stmt = stmt.strip()
-            if stmt:
-                try:
-                    conn.execute(stmt)
-                except sqlite3.Error as e:
-                    if "already exists" not in str(e).lower():
-                        print(f"Schema warning: {e}", file=sys.stderr)
-        conn.commit()
-        conn.close()
+        """New stores initialize once; existing stores require explicit migration."""
+        path = Path(self.db_path)
+        if path.exists():
+            with closing(
+                sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=0.5)
+            ) as conn:
+                if conn.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
+                    raise RuntimeError(
+                        "memory_schema_migration_required: use migrate-db with backup"
+                    )
+            return
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        conn = sqlite3.connect(self.db_path, timeout=0.5)
+        try:
+            os.chmod(self.db_path, 0o600)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=FULL")
+            install_schema(conn)
+        finally:
+            conn.close()
 
     def get_connection(self) -> sqlite3.Connection:
         """Get a connection with proper settings."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=0.5)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA synchronous=FULL")
         return conn
 
     # ── Layer 1: Compact Index ─────────────────────────────────────────────
@@ -389,18 +432,18 @@ class MemoryDB:
                     """
                     SELECT id, type, title, importance, access_count, created_at
                     FROM observations
-                    WHERE archived = 0
+                    WHERE archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND project_root = ?
                     ORDER BY created_at_epoch DESC
                     LIMIT ?
                 """,
-                    (limit,),
+                    (self.project_id, limit),
                 )
             else:
                 cursor = conn.execute(
                     """
                     SELECT id, type, title, importance, access_count, created_at
                     FROM observations
-                    WHERE archived = 0
+                    WHERE archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND project_root = ?
                       AND (title LIKE ? OR content LIKE ?)
                     ORDER BY
                         (importance * 0.3) +
@@ -409,7 +452,7 @@ class MemoryDB:
                     DESC
                     LIMIT ?
                 """,
-                    (f"%{query}%", f"%{query}%", limit),
+                    (self.project_id, f"%{query}%", f"%{query}%", limit),
                 )
 
             results = []
@@ -449,13 +492,26 @@ class MemoryDB:
         """
         Layer 2: FTS5 with BM25 ranking. Returns ~60 tokens/result.
         """
+        # Strip combining marks without splitting Vietnamese words. Expand only
+        # the stroke-d variant that unicode61 does not normalize itself.
+        normalized = "".join(
+            c
+            for c in unicodedata.normalize("NFKD", query).casefold()
+            if not unicodedata.combining(c)
+        )
+        terms = re.findall(r"\w+", normalized)[:16]
+        if not terms:
+            return {"layer": 2, "results": [], "total": 0, "tokens_estimate": 0}
+        variants = list(
+            dict.fromkeys(
+                t
+                for term in terms
+                for t in (term, term.replace("d", "đ"), term.replace("đ", "d"))
+            )
+        )
+        expression = " OR ".join('"' + term + '"' for term in variants)
         conn = self.get_connection()
         try:
-            # First verify FTS table is synced
-            conn.execute(
-                "INSERT INTO observations_fts(observations_fts) VALUES('rebuild')"
-            )
-
             cursor = conn.execute(
                 """
                 SELECT
@@ -464,11 +520,11 @@ class MemoryDB:
                 FROM observations o
                 JOIN observations_fts fts ON o.id = fts.id
                 WHERE observations_fts MATCH ?
-                  AND o.archived = 0
-                ORDER BY rank
+                  AND o.archived = 0 AND (o.expires_at_epoch IS NULL OR o.expires_at_epoch > unixepoch()) AND o.project_root = ?
+                ORDER BY rank * (1.0 + o.importance / 10.0), o.id
                 LIMIT ?
             """,
-                (query, limit),
+                (expression, self.project_id, limit),
             )
 
             results = []
@@ -486,14 +542,6 @@ class MemoryDB:
                         "rank": row["rank"],
                     }
                 )
-
-            # Update access counts
-            for r in results:
-                conn.execute(
-                    "UPDATE observations SET access_count = access_count + 1, last_accessed_epoch = unixepoch() WHERE id = ?",
-                    (r["id"],),
-                )
-            conn.commit()
 
             return {
                 "layer": 2,
@@ -515,9 +563,9 @@ class MemoryDB:
         try:
             cursor = conn.execute(
                 """
-                SELECT * FROM observations WHERE id = ? AND archived = 0
+                SELECT * FROM observations WHERE id = ? AND archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND project_root = ?
             """,
-                (obs_id,),
+                (obs_id, self.project_id),
             )
             row = cursor.fetchone()
             if not row:
@@ -529,9 +577,9 @@ class MemoryDB:
                 SELECT o.id, o.type, o.title, ol.link_type
                 FROM observation_links ol
                 JOIN observations o ON o.id = ol.target_id
-                WHERE ol.source_id = ?
+                WHERE ol.source_id = ? AND o.project_root = ? AND o.archived = 0 AND (o.expires_at_epoch IS NULL OR o.expires_at_epoch > unixepoch())
             """,
-                (obs_id,),
+                (obs_id, self.project_id),
             )
 
             links = []
@@ -564,28 +612,59 @@ class MemoryDB:
         title: Optional[str] = None,
         tags: Optional[list] = None,
         importance: int = 5,
+        *,
+        _connection=None,
     ) -> Optional[dict]:
         """Add a new observation."""
         text = redact_secrets(text)
         content_hash = make_hash(text)
-        project_root = get_project_id()
+        project_root = self.project_id
 
-        conn = self.get_connection()
+        owned = _connection is None
+        conn = _connection if _connection is not None else self.get_connection()
         try:
+            if owned:
+                conn.execute("BEGIN IMMEDIATE")
             # Check for duplicate
             existing = conn.execute(
                 """
-                SELECT id FROM observations WHERE content_hash = ? AND project_root = ?
+                SELECT id,archived,expires_at_epoch FROM observations WHERE content_hash = ? AND project_root = ?
             """,
                 (content_hash, project_root),
             ).fetchone()
             if existing:
+                expired = (
+                    existing["expires_at_epoch"] is not None
+                    and existing["expires_at_epoch"] <= datetime.now().timestamp()
+                )
+                try:
+                    bound_source = (
+                        json.loads(source).get("schema")
+                        == "forgewright-memory-source/v1"
+                    )
+                except (ValueError, AttributeError, TypeError):
+                    bound_source = False
+                if existing["archived"] or expired or bound_source:
+                    conn.execute(
+                        "UPDATE observations SET archived=0,archived_at=NULL,expires_at_epoch=CASE WHEN ? THEN NULL ELSE expires_at_epoch END,source=? WHERE id=? AND project_root=?",
+                        (
+                            bool(existing["archived"] or expired),
+                            redact(source),
+                            existing["id"],
+                            self.project_id,
+                        ),
+                    )
+                    if owned:
+                        conn.commit()
                 return {"id": existing["id"], "duplicate": True}
 
             if title is None:
                 title = text[:100].replace("\n", " ")
+            title = redact_secrets(title)
+            source = redact_secrets(source)
+            category = redact_secrets(category)
 
-            tags_json = json.dumps(tags or [], ensure_ascii=False)
+            tags_json = redact_secrets(json.dumps(tags or [], ensure_ascii=False))
 
             cursor = conn.execute(
                 """
@@ -606,77 +685,26 @@ class MemoryDB:
                 ),
             )
             obs_id = cursor.lastrowid
-            conn.commit()
-
-            # Sync to FTS
-            conn.execute(
-                "INSERT INTO observations_fts(id, title, content, tags) VALUES (?, ?, ?, ?)",
-                (obs_id, title, text, tags_json),
-            )
-
-            # Rebuild FTS index (background job in production)
-            conn.execute(
-                "INSERT INTO observations_fts(observations_fts) VALUES('rebuild')"
-            )
-            conn.commit()
+            if owned:
+                conn.commit()
 
             return {"id": obs_id, "duplicate": False}
         finally:
-            conn.close()
+            if owned:
+                conn.close()
 
     def search(self, query: str, limit: int = 5) -> list:
-        """
-        Backward-compatible search (Layer 1 + Layer 2).
-        Splits multi-word queries into individual terms for better matching.
-        """
-        # Split query into terms for better matching
-        terms = re.sub(r"[^\w\s]", " ", query).split()
-        terms = [t.strip() for t in terms if len(t.strip()) >= 2]
-        if not terms:
-            return []
-
-        # Build LIKE conditions for each term
-        conditions = " OR ".join(["(title LIKE ? OR content LIKE ?)" for _ in terms])
-        params = []
-        for term in terms:
-            like = f"%{term}%"
-            params.extend([like, like])  # Each term appears twice (title + content)
-
-        conn = self.get_connection()
-        try:
-            cursor = conn.execute(
-                f"""
-                SELECT id, type, title, content, symbol, file_path,
-                       importance, access_count, created_at
-                FROM observations
-                WHERE archived = 0
-                  AND ({conditions})
-                ORDER BY
-                    (importance * 0.3) +
-                    (MIN(access_count, 5) * 0.3) +
-                    (CASE WHEN created_at > datetime('now', '-7 days') THEN 0.4 ELSE 0 END)
-                DESC
-                LIMIT ?
-            """,
-                (*params, limit),
-            )
-
-            results = []
-            for row in cursor:
-                content = row["content"] if row["content"] else ""
-                summary = content[:200] + ("..." if len(content) > 200 else "")
-                results.append(
-                    {
-                        "id": row["id"],
-                        "type": row["type"],
-                        "title": row["title"],
-                        "memory": summary,
-                        "category": row["type"],
-                    }
-                )
-            return results
-        finally:
-            conn.close()
+        """Compatibility result shape backed by the same scoped FTS ranking."""
+        return [
+            {
+                "id": row["id"],
+                "type": row["type"],
+                "category": row["type"],
+                "title": row["title"],
+                "memory": row["summary"],
+            }
+            for row in self.memory_search(query, limit)["results"]
+        ]
 
     def list_all(self, category: Optional[str] = None, limit: int = 20) -> list:
         """List observations."""
@@ -687,22 +715,22 @@ class MemoryDB:
                     """
                     SELECT id, type, title, content, source, created_at
                     FROM observations
-                    WHERE archived = 0 AND type = ?
+                    WHERE archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND project_root = ? AND type = ?
                     ORDER BY created_at_epoch DESC
                     LIMIT ?
                 """,
-                    (category, limit),
+                    (self.project_id, category, limit),
                 )
             else:
                 cursor = conn.execute(
                     """
                     SELECT id, type, title, content, source, created_at
                     FROM observations
-                    WHERE archived = 0
+                    WHERE archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND project_root = ?
                     ORDER BY created_at_epoch DESC
                     LIMIT ?
                 """,
-                    (limit,),
+                    (self.project_id, limit),
                 )
 
             results = []
@@ -730,9 +758,9 @@ class MemoryDB:
                 """
                 UPDATE observations
                 SET archived = 1, archived_at = datetime('now')
-                WHERE id = ?
+                WHERE id = ? AND project_root = ?
             """,
-                (obs_id,),
+                (obs_id, self.project_id),
             )
             conn.commit()
             return cursor.rowcount > 0
@@ -744,7 +772,8 @@ class MemoryDB:
         conn = self.get_connection()
         try:
             cursor = conn.execute(
-                "SELECT COUNT(*) as cnt FROM observations WHERE archived = 0"
+                "SELECT COUNT(*) as cnt FROM observations WHERE archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND project_root = ?",
+                (self.project_id,),
             )
             return cursor.fetchone()["cnt"]
         finally:
@@ -752,36 +781,46 @@ class MemoryDB:
 
     def size_bytes(self) -> int:
         """Get database file size."""
-        p = Path(self.db_path)
-        return p.stat().st_size if p.exists() else 0
+        return sum(
+            path.stat().st_size
+            for suffix in ("", "-wal", "-shm")
+            if (path := Path(self.db_path + suffix)).exists()
+        )
 
     def stats(self) -> dict:
         """Get memory statistics."""
         conn = self.get_connection()
         try:
             total = conn.execute(
-                "SELECT COUNT(*) as cnt FROM observations WHERE archived = 0"
+                "SELECT COUNT(*) as cnt FROM observations WHERE archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND project_root = ?",
+                (self.project_id,),
             ).fetchone()["cnt"]
 
             by_type = {}
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT type, COUNT(*) as cnt
-                FROM observations WHERE archived = 0
+                FROM observations WHERE archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND project_root = ?
                 GROUP BY type
-            """)
+            """,
+                (self.project_id,),
+            )
             for row in cursor:
                 by_type[row["type"]] = row["cnt"]
 
             # Graph Layer Stats (TSK-09)
             node_count = conn.execute(
-                "SELECT COUNT(*) as cnt FROM flux_nodes"
+                "SELECT COUNT(*) as cnt FROM flux_nodes WHERE id LIKE ?",
+                (self.graph_prefix + "%",),
             ).fetchone()["cnt"]
             edge_count = conn.execute(
-                "SELECT COUNT(*) as cnt FROM flux_edges"
+                "SELECT COUNT(*) as cnt FROM flux_edges WHERE source_id LIKE ?",
+                (self.graph_prefix + "%",),
             ).fetchone()["cnt"]
             by_layer = {}
             layer_cursor = conn.execute(
-                "SELECT layer, COUNT(*) as cnt FROM flux_nodes GROUP BY layer"
+                "SELECT layer, COUNT(*) as cnt FROM flux_nodes WHERE id LIKE ? GROUP BY layer",
+                (self.graph_prefix + "%",),
             )
             for row in layer_cursor:
                 by_layer[row["layer"]] = row["cnt"]
@@ -793,51 +832,70 @@ class MemoryDB:
                 "graph_edges": edge_count,
                 "graph_by_layer": by_layer,
                 "size_bytes": self.size_bytes(),
-                "tokens_estimate": self.size_bytes() // 4,
+                "tokens_estimate": conn.execute(
+                    "SELECT coalesce(sum(length(content)),0) FROM observations WHERE archived=0 AND project_root=?",
+                    (self.project_id,),
+                ).fetchone()[0]
+                // 4,
             }
         finally:
             conn.close()
 
     # ── Garbage Collection ───────────────────────────────────────────────────
 
-    def gc(self, max_obs: Optional[int] = None) -> int:
-        """
-        Value-weighted garbage collection.
-        Score = category_weight × recency_factor × pinned_bonus
-        """
-        max_o = max_obs or int(os.environ.get("MEM0_MAX_OBS", MAX_OBS_DEFAULT))
-        conn = self.get_connection()
+    def archive_candidates(
+        self, max_obs: Optional[int] = None, *, connection=None
+    ) -> list[int]:
+        """One scoped, active-row selection shared by preview and archive."""
+        max_o = (
+            int(os.environ.get("MEM0_MAX_OBS", MAX_OBS_DEFAULT))
+            if max_obs is None
+            else max_obs
+        )
+        if type(max_o) is not int or max_o < 0:
+            raise ValueError("invalid_retention_limit")
+        conn = connection or self.get_connection()
         try:
-            total = self.count()
+            total = conn.execute(
+                "SELECT count(*) FROM observations WHERE archived=0 AND project_root=? AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch())",
+                (self.project_id,),
+            ).fetchone()[0]
             if total <= max_o:
-                return 0
-
-            # Get weights as JSON for SQL
-            weights = json.dumps(CATEGORY_WEIGHTS)
-
+                return []
             cursor = conn.execute(
                 """
                 SELECT id, type, pinned, created_at_epoch
                 FROM observations
-                WHERE archived = 0 AND pinned = 0
+                WHERE archived = 0 AND (expires_at_epoch IS NULL OR expires_at_epoch > unixepoch()) AND pinned = 0 AND project_root = ?
                 ORDER BY (
-                    CAST(json_extract(?, '$.' || type) AS REAL) * 0.5 +
+                    COALESCE(CAST(json_extract(?, '$.' || type) AS REAL), 1.0) * 0.5 +
                     (1.0 - MIN((unixepoch() - created_at_epoch) / 2592000.0, 1.0)) * 0.5
-                ) ASC
+                ) ASC, id ASC
                 LIMIT ?
             """,
-                (weights, total - max_o),
+                (self.project_id, json.dumps(CATEGORY_WEIGHTS), total - max_o),
             )
+            return [row["id"] for row in cursor]
+        finally:
+            if connection is None:
+                conn.close()
+
+    def gc(self, max_obs: Optional[int] = None) -> int:
+        """Archive the exact candidates exposed by retention-preview."""
+        conn = self.get_connection()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            candidates = self.archive_candidates(max_obs, connection=conn)
 
             removed = 0
-            for row in cursor:
+            for obs_id in candidates:
                 conn.execute(
                     """
                     UPDATE observations
                     SET archived = 1, archived_at = datetime('now')
-                    WHERE id = ?
+                    WHERE id = ? AND project_root = ?
                 """,
-                    (row["id"],),
+                    (obs_id, self.project_id),
                 )
                 removed += 1
 
@@ -872,66 +930,51 @@ class MemoryDB:
     # ── Migration from JSONL ────────────────────────────────────────────────
 
     def migrate_from_jsonl(self, jsonl_path: str = MEMORY_JSONL) -> dict:
-        """Migrate from legacy JSONL format to SQLite."""
-        if not Path(jsonl_path).exists():
+        """Explicit import into this scope; never infer foreign ownership."""
+        path = Path(jsonl_path)
+        if not path.is_absolute():
+            path = workspace_root() / path
+        if not path.is_file():
             return {"migrated": 0, "skipped": 0}
-
+        migrated = skipped = 0
         conn = self.get_connection()
-        migrated = 0
-        skipped = 0
-
         try:
-            for line in Path(jsonl_path).read_text().splitlines():
-                line = line.strip()
-                if not line:
-                    continue
+            conn.execute("BEGIN IMMEDIATE")
+            for line in path.read_text().splitlines():
                 try:
                     entry = json.loads(line)
-                except json.JSONDecodeError:
-                    skipped += 1
-                    continue
-
-                text = entry.get("memory", entry.get("content", ""))
-                if not text:
-                    skipped += 1
-                    continue
-
-                category = entry.get("category", entry.get("type", "general"))
-                source = entry.get("source", "migrated")
-                created = entry.get("created", datetime.now().isoformat())
-                content_hash = make_hash(text)
-
-                try:
-                    conn.execute(
-                        """
-                        INSERT OR IGNORE INTO observations (
-                            project_root, type, title, content, content_hash,
-                            source, created_at, created_at_epoch
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                        (
-                            get_project_id(),
-                            category,
-                            text[:100].replace("\n", " "),
-                            text,
-                            content_hash,
-                            source,
-                            created,
-                            int(datetime.fromisoformat(created).timestamp()),
-                        ),
+                    if not isinstance(entry, dict):
+                        raise ValueError("invalid_legacy_record")
+                    owner = entry.get("project_root", entry.get("project"))
+                    if owner and owner != self.project_id:
+                        raise ValueError("foreign_legacy_scope")
+                    text = entry.get("memory", entry.get("content", ""))
+                    if not isinstance(text, str) or not text:
+                        raise ValueError("missing_legacy_content")
+                    created = entry.get("created")
+                    moment = (
+                        datetime.fromisoformat(created.replace("Z", "+00:00"))
+                        if created
+                        else None
                     )
-                    migrated += 1
-                except sqlite3.Error:
+                    result = self.add(
+                        text,
+                        category=entry.get("category", entry.get("type", "general")),
+                        source=entry.get("source", "migrated"),
+                        _connection=conn,
+                    )
+                    if result["duplicate"]:
+                        skipped += 1
+                    else:
+                        if moment:
+                            conn.execute(
+                                "UPDATE observations SET created_at=?,created_at_epoch=? WHERE id=?",
+                                (created, int(moment.timestamp()), result["id"]),
+                            )
+                        migrated += 1
+                except (ValueError, TypeError):
                     skipped += 1
-
             conn.commit()
-
-            # Rebuild FTS index
-            conn.execute(
-                "INSERT INTO observations_fts(observations_fts) VALUES('rebuild')"
-            )
-            conn.commit()
-
             return {"migrated": migrated, "skipped": skipped}
         finally:
             conn.close()
@@ -942,6 +985,8 @@ class MemoryDB:
         self, node_id: str, layer: str, title: str, content: str, pes_score: float = 0.0
     ) -> bool:
         """Add or update a node in the L2 cognitive graph."""
+        if redact(node_id) != node_id:
+            raise ValueError("unsafe_memory_identifier")
         conn = self.get_connection()
         try:
             conn.execute(
@@ -954,7 +999,13 @@ class MemoryDB:
                     content = excluded.content,
                     pes_score = excluded.pes_score
             """,
-                (node_id, layer, title, content, pes_score),
+                (
+                    self.graph_prefix + node_id,
+                    layer,
+                    redact_secrets(title),
+                    redact_secrets(content),
+                    pes_score,
+                ),
             )
             conn.commit()
             return True
@@ -982,7 +1033,12 @@ class MemoryDB:
                     weight = excluded.weight,
                     updated_at = datetime('now')
             """,
-                (source_id, target_id, weight, edge_type),
+                (
+                    self.graph_prefix + source_id,
+                    self.graph_prefix + target_id,
+                    weight,
+                    redact_secrets(edge_type),
+                ),
             )
             conn.commit()
             return True
@@ -1007,7 +1063,11 @@ class MemoryDB:
                 SELECT weight FROM flux_edges
                 WHERE source_id = ? AND target_id = ? AND edge_type = ?
             """,
-                (source_id, target_id, edge_type),
+                (
+                    self.graph_prefix + source_id,
+                    self.graph_prefix + target_id,
+                    edge_type,
+                ),
             )
             row = cursor.fetchone()
             if not row:
@@ -1019,7 +1079,12 @@ class MemoryDB:
                 SET weight = ?, updated_at = datetime('now')
                 WHERE source_id = ? AND target_id = ? AND edge_type = ?
             """,
-                (new_weight, source_id, target_id, edge_type),
+                (
+                    new_weight,
+                    self.graph_prefix + source_id,
+                    self.graph_prefix + target_id,
+                    edge_type,
+                ),
             )
             conn.commit()
             return True
@@ -1044,7 +1109,11 @@ class MemoryDB:
                 SELECT weight FROM flux_edges
                 WHERE source_id = ? AND target_id = ? AND edge_type = ?
             """,
-                (source_id, target_id, edge_type),
+                (
+                    self.graph_prefix + source_id,
+                    self.graph_prefix + target_id,
+                    edge_type,
+                ),
             )
             row = cursor.fetchone()
             if not row:
@@ -1056,7 +1125,12 @@ class MemoryDB:
                 SET weight = ?, updated_at = datetime('now')
                 WHERE source_id = ? AND target_id = ? AND edge_type = ?
             """,
-                (new_weight, source_id, target_id, edge_type),
+                (
+                    new_weight,
+                    self.graph_prefix + source_id,
+                    self.graph_prefix + target_id,
+                    edge_type,
+                ),
             )
             conn.commit()
             return True
@@ -1079,14 +1153,14 @@ class MemoryDB:
                 ORDER BY e.weight DESC
                 LIMIT ?
             """,
-                (node_id, limit),
+                (self.graph_prefix + node_id, limit),
             )
 
             results = []
             for row in cursor:
                 results.append(
                     {
-                        "id": row["id"],
+                        "id": row["id"].removeprefix(self.graph_prefix),
                         "layer": row["layer"],
                         "title": row["title"],
                         "content": row["content"],
@@ -1106,6 +1180,8 @@ class MemoryDB:
         self, circuit_id: str, name: str, steps_json: str, pems_score: float
     ) -> bool:
         """Consolidate high-performance procedural workflows."""
+        if redact(circuit_id) != circuit_id:
+            raise ValueError("unsafe_memory_identifier")
         conn = self.get_connection()
         try:
             conn.execute(
@@ -1117,7 +1193,12 @@ class MemoryDB:
                     pems_score = excluded.pems_score,
                     runs_count = runs_count + 1
             """,
-                (circuit_id, name, steps_json, pems_score),
+                (
+                    self.graph_prefix + circuit_id,
+                    redact_secrets(name),
+                    redact_secrets(steps_json),
+                    pems_score,
+                ),
             )
             conn.commit()
             return True
@@ -1137,12 +1218,12 @@ class MemoryDB:
                 FROM procedural_circuits
                 WHERE id = ?
             """,
-                (circuit_id,),
+                (self.graph_prefix + circuit_id,),
             )
             row = cursor.fetchone()
             if row:
                 return {
-                    "id": row["id"],
+                    "id": row["id"].removeprefix(self.graph_prefix),
                     "name": row["name"],
                     "steps_json": row["steps_json"],
                     "pems_score": row["pems_score"],
@@ -1167,7 +1248,7 @@ class MemoryDB:
                 SET success_count = success_count + 1
                 WHERE id = ?
             """,
-                (circuit_id,),
+                (self.graph_prefix + circuit_id,),
             )
             conn.commit()
             return True
@@ -1181,8 +1262,78 @@ class MemoryDB:
 # ── Commands ─────────────────────────────────────────────────────────────────
 
 
+def cmd_doctor(args):
+    """Observe storage without initializing it or claiming host activation."""
+    path = database_path()
+    storage = {"status": "not-configured", "path": str(path)}
+    capture = {"status": "disabled" if is_disabled() else "not-configured"}
+    if is_disabled():
+        storage["status"] = "disabled"
+    elif path.is_file():
+        try:
+            if continuity._has_symlink_component(path):
+                raise sqlite3.DatabaseError("unsafe memory path")
+            with closing(
+                sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=0.2)
+            ) as conn:
+                conn.execute("PRAGMA query_only=ON")
+                version = conn.execute("PRAGMA user_version").fetchone()[0]
+                storage["schema_version"] = version
+                storage["status"] = (
+                    "ready"
+                    if conn.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+                    and version == SCHEMA_VERSION
+                    else "migration-required"
+                    if version in (0, 1)
+                    else "degraded"
+                )
+                if storage["status"] == "ready":
+                    scopes = conn.execute(
+                        "SELECT project_root,count(*) FROM capture_events GROUP BY project_root"
+                    ).fetchall()
+                    base = project_id()
+                    acknowledged = sum(
+                        row[1]
+                        for row in scopes
+                        if row[0] == base or row[0].startswith(base + ":session:")
+                    )
+                    if acknowledged:
+                        capture = {
+                            "status": "acknowledged",
+                            "adapter": "explicit-cli",
+                            "events": acknowledged,
+                            "native_auto_capture": "unverified",
+                        }
+        except sqlite3.Error:
+            storage["status"] = "degraded"
+    status = {
+        "schema_version": 1,
+        "storage": storage,
+        "capture": capture,
+        "retrieval": {"status": storage["status"]},
+        "injection": {"status": "disabled" if is_disabled() else "unverified"},
+        "limitations": [
+            "Storage health does not prove host capture or context injection",
+            "Cloud recreation persistence is unverified",
+        ],
+    }
+    print(json.dumps(status, ensure_ascii=False))
+
+
 def get_db() -> MemoryDB:
     return MemoryDB()
+
+
+def cmd_flow(args):
+    from memory_flow import main as flow_main
+
+    raise SystemExit(flow_main([sys.argv[1], *args]))
+
+
+def cmd_maintenance(args):
+    from memory_maintenance import main as maintenance_main
+
+    raise SystemExit(maintenance_main([sys.argv[1], *args]))
 
 
 def cmd_search(args):
@@ -1264,9 +1415,9 @@ def cmd_add(args):
         if entry.get("duplicate"):
             print(f"ℹ️  Memory already exists [id={entry['id']}]")
         else:
-            tag_info = f" tags:{','.join(tags)}" if tags else ""
+            tag_info = f" tags:{','.join(redact(tags))}" if tags else ""
             print(
-                f"✅ Memory added [id={entry['id']}] ({category}, importance={importance}{tag_info})"
+                f"✅ Memory added [id={entry['id']}] ({redact(category)}, importance={importance}{tag_info})"
             )
     else:
         print("❌ Failed to add memory")
@@ -1371,14 +1522,14 @@ def cmd_migrate(args):
 
 def cmd_setup(args):
     print("🔧 Forgewright Memory Manager v2 Setup\n")
-    os.makedirs(FORGEWRIGHT_DIR, exist_ok=True)
-    print(f"  ✅ {FORGEWRIGHT_DIR}/ ready")
+    root = workspace_root()
 
     db = get_db()
-    print(f"  ✅ {MEMORY_DB} initialized ({db.size_bytes()} bytes)")
+    print(f"  ✅ {db.db_path} initialized ({db.size_bytes()} bytes)")
 
-    if not Path(MEMIGNORE_FILE).exists():
-        Path(MEMIGNORE_FILE).write_text(
+    ignore_path = root / MEMIGNORE_FILE
+    if not ignore_path.exists():
+        ignore_path.write_text(
             "# Exclude from memory ingestion\n.env\n.env.*\nsecrets/\ncredentials/\n"
             "**/node_modules/**\n**/.git/**\n*.log\n"
         )
@@ -1570,6 +1721,13 @@ def cmd_graph_inc_circuit(args):
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 COMMANDS = {
+    "backup": cmd_maintenance,
+    "migrate-db": cmd_maintenance,
+    "retention-preview": cmd_maintenance,
+    "capture": cmd_flow,
+    "context": cmd_flow,
+    "doctor": cmd_doctor,
+    "status": cmd_doctor,
     "search": cmd_search,
     "index": cmd_index,
     "add": cmd_add,
@@ -1592,6 +1750,19 @@ COMMANDS = {
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] in {
+        "backup",
+        "migrate-db",
+        "retention-preview",
+    }:
+        cmd_maintenance(sys.argv[2:])
+        return
+    if len(sys.argv) > 1 and sys.argv[1] in {"capture", "context"}:
+        cmd_flow(sys.argv[2:])
+        return
+    if len(sys.argv) > 1 and sys.argv[1] in {"doctor", "status"}:
+        cmd_doctor(sys.argv[2:])
+        return
     if is_disabled():
         return
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
@@ -1602,6 +1773,12 @@ def main():
     if cmd not in COMMANDS:
         print(f"Unknown: {cmd}\nAvailable: {', '.join(COMMANDS.keys())}")
         sys.exit(1)
+    if (
+        cmd in {"search", "index", "get", "list", "stats"}
+        and not database_path().is_file()
+    ):
+        print("No memories found.")
+        return
     COMMANDS[cmd](sys.argv[2:])
 
 

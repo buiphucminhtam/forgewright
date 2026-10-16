@@ -128,6 +128,14 @@
     {
       "path": "tests/game/fixtures/phaser4-lifecycle/README.md",
       "type": "operations"
+    },
+    {
+      "path": "skills/memory-manager/SKILL.md",
+      "type": "operations"
+    },
+    {
+      "path": "evals/memory/retrieval.json",
+      "type": "metadata"
     }
   ],
   "project_docs": {
@@ -148,7 +156,8 @@
     "workflows/game-skill-evolution.md",
     "skills/_shared/protocols/guardrail.md",
     "skills/_shared/protocols/qa-test-protocol.md",
-    "skills/_shared/protocols/game-test-protocol.md"
+    "skills/_shared/protocols/game-test-protocol.md",
+    "skills/memory-manager/SKILL.md"
   ],
   "adapters": {
     "git": true,
@@ -188,7 +197,10 @@
       "docs/skill-catalog.md",
       "skills/ui-designer/references/game-ui-kit.md",
       "templates/game/ui-kit/README.md",
-      "tests/game/fixtures/phaser4-lifecycle/README.md"
+      "tests/game/fixtures/phaser4-lifecycle/README.md",
+      "skills/memory-manager/SKILL.md",
+      "evals/memory/retrieval.json",
+      "evals/memory/smoke.py"
     ],
     "exclude": [
       "docs/archive/**",

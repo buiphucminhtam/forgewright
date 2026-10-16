@@ -16,7 +16,7 @@ echo ""
 echo "━━━ test-memory-hygiene.sh ━━━"
 
 # T1: Executable
-((TESTS++))
+TESTS=$((TESTS+1))
 if [[ -x "$HYGIENE_SCRIPT" ]]; then
     pass "Script is executable"
 else
@@ -26,7 +26,7 @@ fi
 # T2: Shows before/after stats
 echo ""
 echo "T2: Shows Before Hygiene stats"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$HYGIENE_SCRIPT" --dry-run 2>&1)
 if echo "$output" | grep -q "Before Hygiene"; then
     pass "Before Hygiene section present"
@@ -37,7 +37,7 @@ fi
 # T3: Shows GC step
 echo ""
 echo "T3: Shows GC step"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$HYGIENE_SCRIPT" --dry-run 2>&1)
 if echo "$output" | grep -qi "Garbage\|gc\|GC"; then
     pass "GC step shown"
@@ -48,7 +48,7 @@ fi
 # T4: Shows dedup analysis
 echo ""
 echo "T4: Shows duplicate analysis"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$HYGIENE_SCRIPT" --dry-run 2>&1)
 if echo "$output" | grep -qi "duplicate\|similar"; then
     pass "Duplicate analysis shown"
@@ -59,7 +59,7 @@ fi
 # T5: Shows old session cleanup
 echo ""
 echo "T5: Shows old session cleanup"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$HYGIENE_SCRIPT" --dry-run 2>&1)
 if echo "$output" | grep -qi "session\|cleanup\|old"; then
     pass "Old session cleanup shown"
@@ -70,7 +70,7 @@ fi
 # T6: Dry run does not modify
 echo ""
 echo "T6: Dry run does not modify mem0"
-((TESTS++))
+TESTS=$((TESTS+1))
 count_before=$(python3 "$FORGEWRIGHT_DIR/scripts/mem0-v2.py" stats 2>/dev/null | grep "Observations:" | grep -oE "[0-9]+" || echo "0")
 sleep 1
 output=$(bash "$HYGIENE_SCRIPT" --dry-run 2>&1)
@@ -84,7 +84,7 @@ fi
 # T7: Cron hint shown
 echo ""
 echo "T7: Cron hint shown"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$HYGIENE_SCRIPT" --dry-run 2>&1)
 if echo "$output" | grep -q "cron\|weekly"; then
     pass "Cron hint present"
@@ -95,7 +95,7 @@ fi
 # T8: Full run completes without error
 echo ""
 echo "T8: Full run completes"
-((TESTS++))
+TESTS=$((TESTS+1))
 output=$(bash "$HYGIENE_SCRIPT" 2>&1)
 if echo "$output" | grep -q "complete"; then
     pass "Full run completes"
@@ -105,3 +105,4 @@ fi
 
 echo ""
 echo "━━━ Results: $PASS/$TESTS passed ━━━"
+exit "$((FAIL != 0))"

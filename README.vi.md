@@ -231,7 +231,7 @@ Nhãn độ trưởng thành tuân theo [capability inventory](docs/capability-m
 | --- | --- | --- |
 | Code Intelligence / GitNexus | Docs-only | Đồ thị quan hệ mã nguồn và phân tích ảnh hưởng trước khi sửa ([hướng dẫn](docs/guides/gitnexus.md)) |
 | Autonomous Testing Stack | Beta | Kiểm thử gắn AC, property-based testing và bảo vệ test oracle ([hướng dẫn](docs/guides/testing-stack.md)) |
-| Persistent Cognitive Memory / FluxMem | Experimental | Truy xuất ngữ cảnh theo dự án; bằng chứng hiện tại luôn ưu tiên hơn memory |
+| Persistent Cognitive Memory / FluxMem | Experimental | SQLite/FTS5 local, tách project/chat, capture có receipt và context có citation/giới hạn; bằng chứng hiện tại luôn ưu tiên hơn memory |
 | Parallel Skill Dispatch | Experimental | Chia làn worker độc lập có kiểm soát phạm vi file; giữ tuần tự khi phụ thuộc |
 | Multi-Project Hub | Docs-only | Định hướng quản trị đa dự án tách biệt với Docs Hub tĩnh hiện có |
 | Token Tracking & Cost Analytics | Beta | Theo dõi chi phí, hạn mức và benchmark ([ForgeBench](src/cli/src/bench/)) |
@@ -276,3 +276,5 @@ Thực thi nằm trong hệ sinh thái model/provider bạn cấu hình; nếu d
 Báo lỗi hoặc đề xuất tính năng tại [GitHub issues](https://github.com/buiphucminhtam/forgewright/issues); báo cáo bảo mật theo [SECURITY.md](SECURITY.md). Kiểm tra license của từng gói (như [khai báo MIT của CLI](src/cli/package.json)) trước khi phân phối lại.
 
 **Tăng sức làm việc. Bàn giao bằng bằng chứng.**
+
+Memory hỗ trợ lưu quyết định/blocker/handoff chọn lọc, tắt được, đọc lại qua process mới và backup SQLite nhất quán. Đây không phải kho transcript đầy đủ; hook tự động của host và việc giữ dữ liệu qua lần tái tạo cloud vẫn cần kiểm chứng riêng. Xem [lệnh, phạm vi và migration](skills/memory-manager/SKILL.md) cùng [bộ eval Việt/Anh cố định](evals/memory/retrieval.json).

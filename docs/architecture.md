@@ -307,6 +307,10 @@ Key middleware behaviors:
 
 ### Continuity and Optional Memory
 
+Optional memory uses one workspace resolver, scoped SQLite schema v2 and the existing continuity ledger. `mem0-v2.py capture` acknowledges a structured semantic event only after a checkpoint and SQLite receipt; stable event IDs make retries idempotent. Project facts are shared only by explicit scope; conversation records remain private to their session. `context` and `context-manager.py` share bounded cited retrieval, validate file bindings, and omit expired/superseded data. FTS updates in the content transaction; queries do not rebuild indexes or write access counters.
+
+`doctor --json` observes readiness without initialization/migration. Old schemas require an explicit backed-up migration; ambiguous legacy scopes and graph IDs remain unadopted. Native automatic hooks/model injection and cloud recreation persistence are separate unverified capabilities. Memory tools are explicit local CLI commands, not MCP tools advertised by the current registry. [Operation and privacy contract](../skills/memory-manager/SKILL.md).
+
 <section class="architecture-diagram architecture-fluxmem" aria-labelledby="diagram-fluxmem-title">
   <details class="diagram-description">
     <summary id="diagram-fluxmem-title">Continuity and Optional Retrieval Memory</summary>
@@ -378,7 +382,7 @@ Forgewright exposes two MCP servers for IDE integration:
 
 | Server | Transport | Tools | Purpose |
 |--------|-----------|-------|---------|
-| `forgewright` | stdio (npx tsx) | Pipeline mgmt, metadata-only skill discovery, bounded on-demand `LITE.md` loading, memory ops | Orchestration |
+| `forgewright` | stdio (npx tsx) | Pipeline mgmt, metadata-only skill discovery, bounded on-demand `LITE.md` loading | Orchestration |
 | `gitnexus` | stdio | 16 tools: query, context, impact, detect_changes, rename, cypher, etc. | Code Intelligence |
 
 The canonical Forgewright MCP process acquires an external

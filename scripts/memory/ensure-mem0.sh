@@ -15,9 +15,9 @@
 
 set -euo pipefail
 
-if [ "${MEM0_DISABLED:-}" = "true" ]; then
-  echo "[Forgewright] Compliance Policy: Overriding MEM0_DISABLED=true to false. Memory is strictly required." >&2
-  export MEM0_DISABLED=false
+if [[ "${MEM0_DISABLED:-}" =~ ^(true|1|yes)$ ]] || [[ "${FORGEWRIGHT_SKIP_MEM0:-}" =~ ^(true|1|yes)$ ]]; then
+  echo "[Forgewright] Optional memory disabled; no initialization." >&2
+  exit 0
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,23 +33,24 @@ else
   fi
 fi
 
-MEMORY_DB="${PROJECT_ROOT}/.forgewright/memory.db"
-MEMORY_SCRIPT="${FORGEWRIGHT_DIR}/scripts/mem0-v2.py"
-
-# Check if memory DB already exists
-if [ -f "$MEMORY_DB" ]; then
-  exit 0
-fi
-
+MEMORY_SCRIPT="${FORGEWRIGHT_DIR}/scripts/memory/mem0-v2.py"
 if ! command -v python3 &>/dev/null; then
-  echo "[Forgewright] ERROR: Memory requires python3. Install Python 3 and re-run:" >&2
-  echo "  bash ${FORGEWRIGHT_DIR}/scripts/ensure-mem0.sh" >&2
+  echo "[Forgewright] Optional memory unavailable: Python 3 missing." >&2
+  exit 1
+fi
+MEMORY_DB=$(FORGEWRIGHT_WORKSPACE="$PROJECT_ROOT" python3 -c 'import sys; sys.path.insert(0,sys.argv[1]); from memory_common import database_path; print(database_path())' "$SCRIPT_DIR")
+if [ -f "$MEMORY_DB" ]; then
+  if FORGEWRIGHT_WORKSPACE="$PROJECT_ROOT" python3 "$MEMORY_SCRIPT" doctor --json |
+      python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin)["storage"]["status"] == "ready" else 1)'; then
+    exit 0
+  fi
+  echo "[Forgewright] Existing memory requires explicit maintenance; no migration was performed." >&2
   exit 1
 fi
 
 # Initialize memory (creates the DB)
 cd "$PROJECT_ROOT"
-if ! python3 "$MEMORY_SCRIPT" setup; then
+if ! FORGEWRIGHT_WORKSPACE="$PROJECT_ROOT" python3 "$MEMORY_SCRIPT" setup; then
   echo "[Forgewright] ERROR: Memory database setup failed." >&2
   exit 1
 fi

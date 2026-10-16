@@ -24,9 +24,15 @@ def memory_hook(tmp_path):
     project.mkdir()
     script.parent.mkdir(parents=True)
     shutil.copy2(ROOT / "scripts/memory/memory-session.sh", script)
+    shutil.copy2(ROOT / "scripts/memory/memory_redaction.py", script.parent)
     subprocess.run(["git", "init", "-q", str(project)], check=True)
-    env = {**os.environ, "HOME": str(sandbox_home), "MEMORY_CHECKPOINT_INTERVAL": "3"}
-    state = sandbox_home / ".forgewright/sessions/current-session.json"
+    env = {
+        **os.environ,
+        "HOME": str(sandbox_home),
+        "MEMORY_CHECKPOINT_INTERVAL": "3",
+        "FORGEWRIGHT_WORKSPACE": str(project),
+    }
+    state = project / ".forgewright/runtime/memory/current-session.json"
     return script, project, env, state
 
 
@@ -51,6 +57,30 @@ def test_first_tick_initializes_clean_json(memory_hook):
     assert not (
         memory_hook[1] / ".forgewright/subagent-context/CONVERSATION_SUMMARY.md"
     ).exists()
+
+
+def test_separate_workspaces_do_not_replace_each_others_session(memory_hook, tmp_path):
+    assert invoke(memory_hook, "start").returncode == 0
+    script, _, env, first_state = memory_hook
+    first = json.loads(first_state.read_text())
+    other = tmp_path / "other-project"
+    other.mkdir()
+    subprocess.run(["git", "init", "-q", str(other)], check=True)
+    subprocess.run(
+        ["git", "remote", "add", "origin", "https://example.invalid/other.git"],
+        cwd=other,
+        check=True,
+    )
+    result = subprocess.run(
+        ["bash", str(script), "start"],
+        cwd=other,
+        env={**env, "FORGEWRIGHT_WORKSPACE": str(other)},
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(first_state.read_text()) == first
 
 
 def test_first_checkpoint_initializes_clean_json(memory_hook):

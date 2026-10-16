@@ -242,7 +242,7 @@ Maturity labels follow the [capability inventory](docs/capability-maturity.json)
 
 ### 3. Persistent Cognitive Memory (FluxMem)
 
-**Experimental.** Optional project retrieval. Current evidence outranks memory, which grants no authority. [Architecture](docs/architecture.md).
+**Experimental.** Optional local SQLite/FTS5 memory with explicit semantic capture, separate project/chat scopes, bounded cited retrieval, read-only health status and consistent backups. Current evidence outranks memory; stored approvals grant no authority. Native automatic hooks and persistence after cloud recreation require host verification. [Commands and limits](skills/memory-manager/SKILL.md) · [reproducible retrieval eval](evals/memory/retrieval.json).
 
 ### 4. Parallel Skill Dispatch
 
