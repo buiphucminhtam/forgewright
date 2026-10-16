@@ -27,7 +27,10 @@ npm --prefix tests/game/fixtures/phaser4-lifecycle run test:browser
 ```
 
 The build uses the root's installed TypeScript compiler. Dependencies and lockfile
-are pinned; lifecycle scripts remain disabled. The browser runner acquires the
+are pinned; lifecycle scripts remain disabled. The browser runner recompiles
+current sources with that local compiler before admission
+(30-second timeout, 1 MiB output bound); compile failure records `FAIL` before
+any test server/browser starts. It then acquires the
 existing shared host slots **before** creating its server or browser. It owns one
 context/page, uses public keyboard/touch input, checks menu input capture and
 restart, captures desktop/touch-emulated/reduced-motion/gallery views, and records

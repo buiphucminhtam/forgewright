@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';import {chromium} from 'playwright';import {serve} from './server.mjs';import {checkExperience} from '../web-experience-browser.mjs';
-await checkExperience({engine:'phaser',version:'4.2.1',serve,chromium,manifest:new URL('experience.json',import.meta.url),async drive({page,url,shot}){
+import {buildExperience} from '../web-experience-build.mjs';
+await checkExperience({engine:'phaser',version:'4.2.1',prepare:()=>buildExperience(new URL('tsconfig.json',import.meta.url)),serve,chromium,manifest:new URL('experience.json',import.meta.url),async drive({page,url,shot}){
  await page.goto(url);await page.waitForFunction(()=>document.querySelector('canvas')?.dataset.assetLoaded==='true');
  assert.equal(await page.locator('#engine-version').textContent(),'4.2.1');await shot('boot');
  const start=async()=>{const before=Number(await page.locator('canvas').getAttribute('data-scene-starts'));await page.locator('#start').click();await page.waitForFunction(n=>Number(document.querySelector('canvas').dataset.sceneStarts)>n,before);};

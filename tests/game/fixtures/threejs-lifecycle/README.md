@@ -118,6 +118,12 @@ python3 scripts/art-direction/game-experience.py validate tests/game/fixtures/th
 npm --prefix tests/game/fixtures/threejs-lifecycle run test:experience
 ```
 
+The new experience runner recompiles its current TypeScript with the root's
+local compiler before admission (30-second timeout, 1 MiB output bound).
+Compile failure records `FAIL` before serving or opening a browser; stale
+compiled output cannot stand in for the current source. The original protected
+runner and reference entry remain unchanged.
+
 Use the repository root for the hash-bound experience refs. The handoff study,
 wireframe and approval documents are explicitly **synthetic conformance fixtures**,
 not live specialist outputs, actual user art approval or evidence of visual/player

@@ -4,4 +4,5 @@ test('an observed gameplay assertion is FAIL while admission refusal stays UNVER
  let mismatch;try{assert.equal('lost','won','protected win outcome');}catch(error){mismatch=error;}
  const failed=experienceFailure(mismatch,true);assert.equal(failed.status,'FAIL');assert.equal(failed.exitCode,1);assert.match(failed.reason,/protected win outcome/);
  const blocked=experienceFailure(new Error('pi_host_capacity_timeout'),false);assert.equal(blocked.status,'UNVERIFIED');assert.equal(blocked.exitCode,2);
+ const build=experienceFailure(new Error('compiler rejected current source'),false,'build');assert.equal(build.status,'FAIL');assert.equal(build.exitCode,1);
 });

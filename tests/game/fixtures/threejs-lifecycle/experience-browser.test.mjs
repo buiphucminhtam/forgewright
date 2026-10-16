@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';import {chromium} from 'playwright';import {serve} from './experience-server.mjs';import {checkExperience} from '../web-experience-browser.mjs';
-await checkExperience({engine:'threejs',version:'0.183.2',serve,chromium,manifest:new URL('experience.json',import.meta.url),async drive({page,url,shot}){
+import {buildExperience} from '../web-experience-build.mjs';
+await checkExperience({engine:'threejs',version:'0.183.2',prepare:()=>buildExperience(new URL('tsconfig.experience.json',import.meta.url)),serve,chromium,manifest:new URL('experience.json',import.meta.url),async drive({page,url,shot}){
  await page.clock.install({time:new Date('2026-01-01T00:00:00Z')});await page.goto(url);await page.waitForFunction(()=>document.querySelector('canvas')?.dataset.assetLoaded==='true');await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
  assert.match(await page.locator('canvas').getAttribute('data-asset-clips'),/hover/);await shot('boot-glb');
  await page.locator('#start').click();await page.locator('#settings').click();const lane=await page.locator('canvas').getAttribute('data-lane');await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('canvas').getAttribute('data-lane'),lane);await page.keyboard.press('Escape');assert.equal(await page.locator('#settings').evaluate(el=>el===document.activeElement),true);
