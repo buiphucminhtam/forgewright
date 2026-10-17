@@ -9,6 +9,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./mobile": {
+      "types": "./dist/mobile-entry.d.ts",
+      "import": "./dist/mobile-entry.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
@@ -19,7 +23,7 @@
     "src"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/copy-mobile-template.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build",

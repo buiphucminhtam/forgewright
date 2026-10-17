@@ -1,0 +1,70 @@
+{
+  "schema": "mobile-strategy/v1",
+  "game_id": "assumed-puzzle",
+  "evidence": [
+    {
+      "id": "player-value",
+      "kind": "hypothesis",
+      "claim": "Players may value competence, a clear free retry and control over optional ads. No player evidence collected.",
+      "validation": "Observe rule/reward comprehension, independent retries, declines and return to play in consented pilot sessions."
+    },
+    {
+      "id": "test-baseline",
+      "kind": "synthetic",
+      "claim": "All pilot account IDs, markets and observations are synthetic; there are no market/revenue estimates.",
+      "validation": "Replace with dated, scoped evidence from the actual target game; retain source, method and limits."
+    }
+  ],
+  "player": {
+    "audience": "Assumed adult casual players; actual audience/age eligibility must be researched.",
+    "motives": [
+      "Hypothesis: learn a mechanic and feel progress."
+    ],
+    "session_context": "Unknown; measure actual session context rather than assigning a genre duration.",
+    "fairness_risks": [
+      "Do not manufacture failure to sell a rescue; clarify purchase/no-ads promises."
+    ]
+  },
+  "market": {
+    "countries": [
+      "UNVERIFIED"
+    ],
+    "competition": []
+  },
+  "monetization": {
+    "model": "hybrid",
+    "value_hypothesis": "Optional assistance and clear no-ads value may suit this hypothetical loop.",
+    "free_path": "Retry without payment or accepting an ad.",
+    "no_ads_scope": "Remove involuntary ads; explicitly disclose any retained optional rewarded offers.",
+    "evidence_ids": [
+      "player-value"
+    ]
+  },
+  "levels": [
+    {
+      "id": "learn-first",
+      "learning_intent": "Introduce one mechanic, provide safe practice, then observe independent use.",
+      "fail_recovery": "Explain the reason, allow free retry and observe comprehension.",
+      "sources": [
+        "Earned progress, value unmeasured."
+      ],
+      "sinks": [
+        "No numeric sink model selected."
+      ],
+      "evidence_ids": [
+        "player-value"
+      ]
+    }
+  ],
+  "measurement": {
+    "baseline": "synthetic",
+    "primary_metric": "Observed comprehension of the learning/offer task; no population uplift claim.",
+    "experience_guardrails": [
+      "Confusion, fail-to-leave, ad-to-return, regret, complaints and technical defects."
+    ],
+    "revenue_guardrails": [
+      "Verified revenue only; currency/unit/fees/refunds and test traffic kept explicit."
+    ],
+    "decision_rule": "Use deterministic contract tests for this fixture; game experiments require actual baseline, sample/power and preregistered guardrail margins. No revenue result is inferred."
+  }
+}

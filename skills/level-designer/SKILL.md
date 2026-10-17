@@ -12,6 +12,11 @@ tags: [level-design, encounters, pacing, blockout, environmental-storytelling, w
 
 # Level Designer — Spatial Experience Architect v1.1
 
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Own introduce/practice/demonstrate, failure/retry/leave and reward-source/sink interactions; use actual genre mechanics rather than geometry/timing defaults. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
+
 ## Protocols
 
 !`cat skills/_shared/protocols/3d-spatial-foundations.md 2>/dev/null || true`

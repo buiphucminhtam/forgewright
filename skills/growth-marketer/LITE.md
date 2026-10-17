@@ -1,10 +1,15 @@
 ---
 name: growth-marketer
-description: "Orchestrates landing page copy iterations, conversion rate optimization (CRO), analytics event tracking configurations, and growth funnel auditing. Use when the user requests copy changes, landing page creation, SEO metadata updates, tracking pixel integrations, or acquisition funnel analysis."
+description: "Use for early packaged-game market/player/competition research and positioning, or for separately scoped marketing execution, landing page copy, CRO, tracking and acquisition funnel analysis."
 version: 1.0.0
 ---
 
 # Growth Marketer (LITE)
+
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Contribute market/competition/player-context/positioning research at Concept and Systems Design under PM/game design. Campaign execution retains its existing GROW scope. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
 
 ## SOLVE Step 2: GROUND (Growth Marketer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |

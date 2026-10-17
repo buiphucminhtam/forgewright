@@ -264,6 +264,14 @@ Required before architecture or story creation:
 - measurable acceptance criteria and out-of-scope boundary;
 - unresolved questions and decision owner.
 
+For Phaser 4/Three.js packaged on Android/iOS, include the
+[mobile domain handoff](mobile-monetization.md): player/market evidence or
+labelled hypotheses, product value/free path/no-ads scope, level learning and
+economy/offer recovery, per-game catalog/placement mappings, and balanced
+measurement. Hypotheses can drive a bounded prototype; synthetic tests cannot
+be promoted to player or revenue evidence. Growth marketing contributes early
+research while campaign execution retains its own scope.
+
 ### Implementation-ready handoff
 
 Required before code changes:
@@ -274,6 +282,13 @@ Required before code changes:
 - path ownership and protected paths;
 - automated checks plus manual playtest evidence where feel is involved;
 - performance/build budgets and rollback strategy for risky changes.
+
+For that mobile route, also bind studio profile revision, effective config
+digest, actual wrapper/native capability evidence and internal target scope.
+Use `forge mobile doctor` for static blockers. Existing native integration,
+account policy and runtime evidence remain separate requirements. In Release &
+Sustain report provider availability and actual device install/launch separately;
+reuse the existing Xcode Cloud workflow and managed browser/emulator ownership.
 
 ### Done handoff
 

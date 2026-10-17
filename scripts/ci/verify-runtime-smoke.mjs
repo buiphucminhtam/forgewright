@@ -103,6 +103,7 @@ async function runMcpSmoke() {
     cwd: workspace,
     env: {
       ...process.env,
+      FORGEWRIGHT_DIR: root,
       FORGEWRIGHT_MCP_LEASE_ROOT: join(workspace, 'leases'),
       FORGEWRIGHT_WORKSPACE: workspace,
       FORGEWRIGHT_TRAJECTORY_ROOT: trajectoryRoot,

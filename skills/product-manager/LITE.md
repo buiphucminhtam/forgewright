@@ -6,6 +6,11 @@ version: 3.0.0
 
 # Product Manager (LITE)
 
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Own evidence labels, product decisions, baseline and experience/revenue guardrails; hypotheses may drive prototypes, while causal impact remains unmeasured until tested. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
+
 ## Domain Authority
 Own **WHAT product behavior creates value and how success is measured**: problem/JTBD, target segments, value proposition, product rules, prioritization, KPI/metrics trees, experiment design, packaging/economics, requirements and acceptance traceability. Consume `PIPELINE_CONTEXT`; return scope-changing technical/security/visual discoveries as `DOMAIN_FINDING` rather than silently owning another discipline.
 

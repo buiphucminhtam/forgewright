@@ -22,6 +22,7 @@ def test_same_mcp_process_waits_for_policy_and_rejects_replacement(tmp_path, sce
     trajectories.mkdir(mode=0o700)
     env = {
         **os.environ,
+        "FORGEWRIGHT_DIR": str(ROOT),
         "FORGEWRIGHT_WORKSPACE": str(workspace),
         "FORGEWRIGHT_MCP_LEASE_ROOT": str(leases),
         "FORGEWRIGHT_TRAJECTORY_ROOT": str(trajectories),

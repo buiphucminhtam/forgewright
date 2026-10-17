@@ -4,15 +4,15 @@ description: Set up automated mobile app publishing to Apple App Store and Googl
 
 # /setup-auto-publish — Auto-Publish Setup Workflow
 
-One-command setup to enable automated building and publishing of Expo/React Native apps to the Apple App Store and Google Play Store using EAS CLI. 
+The EAS instructions below apply only to existing Expo/React Native projects. For packaged Phaser 4/Three.js games, follow [Mobile Monetization](../skills/_shared/protocols/mobile-monetization.md) and run `bash scripts/release/auto-publish-setup.sh /path/to/game --runtime web-game --engine phaser4`. This initializes hypothetical inputs without copying EAS production defaults. Native SDK and actual store adapters still require target-project integration; reuse the existing Xcode Cloud workflow.
 
-All credentials, keystores, and configuration details are stored directly in your target mobile project folder—keeping Forgewright environment-independent and secure.
+Shared studio configuration stores nonsecret identities and secure binding references. Reuse the existing secret provider. Legacy EAS project-local files, when required, must remain gitignored and access-controlled; do not copy them to Forgewright or a global plaintext cache.
 
 ---
 
 ## 🍏 1. Apple App Store (iOS)
 
-App Store Connect supports fully automated app provisioning and app record creation.
+Verify app-record/provisioning permissions and the existing build workflow for the actual project. The following legacy local EAS recipe is not an Xcode Cloud requirement.
 
 ### Prerequisites:
 1. **Apple Developer Account ($99/year):** Mandatory for App Store distribution.
@@ -44,7 +44,7 @@ App Store Connect supports fully automated app provisioning and app record creat
    * Navigate to the **Keys** tab of the created account, click **Add Key** $\rightarrow$ **Create new key** $\rightarrow$ select **JSON** format.
    * Save the downloaded JSON file as `google-service-account-key.json` and place it inside your app folder (e.g., `apps/mobile/google-service-account-key.json`).
 5. Return to the **Google Play Console** $\rightarrow$ click **Grant access** next to the newly created service account.
-6. Grant permissions (the **Release Manager** or **Admin** role is recommended to allow automated uploads) and invite the user.
+6. Grant only the app-specific permissions required by the selected internal distribution operation; verify access without defaulting to an administrator role.
 
 ### Step 2: Configure Android Keystore
 Create a `credentials.json` file inside your app folder (`apps/mobile/credentials.json`) referencing your keystore:

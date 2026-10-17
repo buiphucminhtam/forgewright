@@ -6,6 +6,11 @@ version: 1.0.0
 
 # Level Designer (LITE)
 
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Own introduce/practice/demonstrate, failure/retry/leave and reward-source/sink interactions; use actual genre mechanics rather than geometry/timing defaults. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
+
 ## SOLVE Step 2: GROUND (Level Designer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|

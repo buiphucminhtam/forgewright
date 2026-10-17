@@ -1,0 +1,53 @@
+{
+  "schema": "mobile-game-delta/v1",
+  "game_id": "assumed-three-game",
+  "studio_profile_ref": {
+    "id": "assumed-studio",
+    "revision": "1"
+  },
+  "engine": "threejs",
+  "wrapper": {
+    "kind": "unverified",
+    "evidence": "hypothesis"
+  },
+  "android": {
+    "package": "example.assumed.three",
+    "app_id": "assumed-three-play-app",
+    "track_id": null
+  },
+  "ios": {
+    "bundle": "example.assumed.three",
+    "app_id": "assumed-three-apple-app",
+    "workflow_id": null,
+    "group_id": null
+  },
+  "catalog": {
+    "products": [
+      {
+        "id": "remove_ads",
+        "kind": "non_consumable",
+        "benefit": "Hypothesis: remove involuntary ads, retaining optional rewarded offers only with clear disclosure.",
+        "removes_ads": true,
+        "store_ids": {
+          "google_play": null,
+          "apple": null
+        }
+      }
+    ],
+    "placements": [
+      {
+        "id": "optional_revive",
+        "format": "rewarded",
+        "trigger": "Player explicitly requests retry assistance after understanding the failure.",
+        "value": "Hypothesis: a clearly described optional retry. No difficulty manipulation.",
+        "decline": "Return to the free retry path."
+      }
+    ]
+  },
+  "purchase_environment": "sandbox",
+  "ads": {
+    "android_app_id": null,
+    "ios_app_id": null,
+    "ad_units": []
+  }
+}

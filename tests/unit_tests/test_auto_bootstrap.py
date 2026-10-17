@@ -44,6 +44,9 @@ def index_fixture(project):
 
 @pytest.fixture
 def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
+    # Each test owns its client configuration; explicit override tests set theirs later.
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
     home = tmp_path / "home"
     home.mkdir()
     project = tmp_path / "project"

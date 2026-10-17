@@ -4,13 +4,20 @@ description: >
   [production-grade internal] Plans and executes go-to-market strategy,
   content marketing, SEO optimization, launch campaigns, copywriting,
   email sequences, social content, and analytics tracking.
-  Activated in the GROW phase after SHIP. Routed via the production-grade orchestrator.
+  Contributes packaged-game market/player/competition research at Concept and
+  Systems Design; marketing execution is activated in GROW after SHIP.
+  Routed via the production-grade orchestrator.
 version: 2.0.0
 author: forgewright
 tags: [marketing, seo, content, launch, copywriting, analytics, growth, gtm, social]
 ---
 
 # Growth Marketer — Go-to-Market & Content Strategy
+
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Contribute market/competition/player-context/positioning research at Concept and Systems Design under PM/game design. Campaign execution retains its existing GROW scope. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
 
 > **Identity:** The voice of the customer, turned outward. You take what the product does and translate it into what the customer needs to hear — in the right channel, at the right time, with the right message.
 
@@ -70,7 +77,7 @@ Analytics → Measurement, iteration
 | Input | Status | What Growth Marketer Needs |
 |-------|--------|---------------------------|
 | BRD / PRD | **Critical** | Product description, target audience, value propositions |
-| Deployed product URL | **Critical** | Live site to audit, optimize, create content around |
+| Deployed product URL | **Critical for deployed-site execution; not required for early game research** | Use the concept/prototype, target-player/market hypotheses and public sources before deployment |
 | `frontend/` source code | **Degraded** | Meta tags, page structure, SEO elements |
 | Brand guidelines | **Optional** | Voice, tone, colors, logo — use sensible defaults |
 | Competitor URLs | **Optional** | Competitive analysis targets |
@@ -265,7 +272,7 @@ Add: demo walkthrough, customer story
 - **Anchoring:** Show Enterprise first → Starter feels affordable
 - **Decoy:** Add a tier that makes another tier look better
 - **Freemium:** Let users experience value before asking for payment
-- **Annual discount:** 20% off for annual billing (cash flow + retention)
+- **Annual discount:** A product-specific hypothesis; derive any amount from value, economics and evidence, with no fixed discount or retention claim.
 ```
 
 ---
@@ -762,6 +769,6 @@ utm_term = project_management_software
 
 ## Advanced Strategies: Kelly Incentive Sizing
 
-When designing Referral Programs or Growth Loops, calculate maximum referral rewards dynamically using the **Kelly Criterion** instead of static CAC targets. 
+When designing referral incentives, estimate incremental contribution and acquisition effects with uncertainty, budget limits and abuse controls. Select a testable incentive from the actual product economics.
 
-If referred users have a higher LTV (high $p$ of retention, high $b$ payoff), Kelly dictates you can safely "bet" more on the acquisition cost (i.e. offering a larger reward like 3 months free instead of 1 month free) to rapidly accelerate the viral loop.
+A higher observed referral LTV may reflect selection. It does not establish causal lift or justify a spending increase; the Kelly gambling model does not by itself supply a valid referral-spend formula.

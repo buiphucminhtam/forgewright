@@ -4,7 +4,7 @@
 # Forgewright — Auto-Publish Setup Script
 # ==============================================================================
 # Scaffolds local publishing scripts and templates into the target project directory.
-# All configurations and credentials remain inside the target project.
+# Expo keeps its existing project recipe; web games use shared nonsecret refs.
 # ==============================================================================
 
 set -e
@@ -15,6 +15,40 @@ FORGEWRIGHT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Define target app path from arguments or default
 TARGET_PATH="${1}"
+
+# Existing one-argument Expo usage remains valid. A packaged Phaser/Three game
+# must explicitly choose the mobile studio route; never copy EAS production
+# submit defaults into it or replace an existing Xcode Cloud workflow.
+if [ "${2:-}" = "--runtime" ]; then
+  case "${3:-}" in
+    web-game)
+      if [ "${4:-}" != "--engine" ] || [ -z "${5:-}" ] || [ "$#" -ne 5 ]; then
+        echo "Usage: $0 <target> --runtime web-game --engine phaser4|threejs" >&2
+        exit 1
+      fi
+      exec node "$FORGEWRIGHT_ROOT/src/cli/dist/index.js" mobile init "$TARGET_PATH" --engine "$5"
+      ;;
+    expo)
+      if [ "$#" -ne 3 ]; then echo "Unexpected arguments" >&2; exit 1; fi
+      ;;
+    *) echo "Unsupported publishing runtime" >&2; exit 1 ;;
+  esac
+elif [ "$#" -ne 1 ]; then
+  echo "Unexpected arguments; specify --runtime web-game --engine phaser4|threejs" >&2
+  exit 1
+fi
+
+if [ "${3:-}" != "expo" ] && [ -f "$TARGET_PATH/package.json" ]; then
+  if node -e '
+    const fs = require("node:fs");
+    const p = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const d = {...p.dependencies, ...p.devDependencies};
+    process.exit((d.phaser || d.three) && !d.expo ? 0 : 1);
+  ' "$TARGET_PATH/package.json"; then
+    echo "Detected web game: use --runtime web-game --engine phaser4|threejs; Expo templates were not copied." >&2
+    exit 1
+  fi
+fi
 
 if [ -z "$TARGET_PATH" ]; then
   echo "❌ Error: Please specify the path to your mobile project."
@@ -41,10 +75,15 @@ mkdir -p "$ABS_TARGET_PATH/keystore"
 
 # 1. Copy Publish Scripts
 echo "📝 Copying publish scripts..."
-cp "$FORGEWRIGHT_ROOT/scripts/auto-publish/publish-ios.sh" "$ABS_TARGET_PATH/scripts/publish-ios.sh"
-cp "$FORGEWRIGHT_ROOT/scripts/auto-publish/publish-android.sh" "$ABS_TARGET_PATH/scripts/publish-android.sh"
-chmod +x "$ABS_TARGET_PATH/scripts/publish-ios.sh"
-chmod +x "$ABS_TARGET_PATH/scripts/publish-android.sh"
+for platform in ios android; do
+  destination="$ABS_TARGET_PATH/scripts/publish-$platform.sh"
+  if [ -e "$destination" ] || [ -L "$destination" ]; then
+    echo "  Existing publish-$platform.sh preserved; review adoption manually."
+  else
+    cp -n "$FORGEWRIGHT_ROOT/scripts/auto-publish/publish-$platform.sh" "$destination"
+    chmod +x "$destination"
+  fi
+done
 echo "  ✅ Copied scripts/publish-ios.sh"
 echo "  ✅ Copied scripts/publish-android.sh"
 

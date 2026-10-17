@@ -126,6 +126,10 @@
       "authority": "shared_protocol"
     },
     {
+      "path": "skills/_shared/protocols/mobile-monetization.md",
+      "authority": "shared_protocol"
+    },
+    {
       "path": "skills/_shared/protocols/model-tier.md",
       "authority": "shared_protocol"
     },
