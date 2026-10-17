@@ -346,7 +346,14 @@ describe('MovementSystem', () => {
 
 **What it tests:** Game meets performance targets (frame rate, memory, load times).
 
-**Performance targets per platform:**
+**Historical illustrative targets, not acceptance criteria:**
+
+The numbers below are unvalidated examples. Replace them with the approved
+named hardware/browser/renderer, build and representative workload contract,
+including measured baseline and regression tolerance, before authoring a test.
+Preserve a real project's approved limits and protected reference tolerances.
+Neither a platform label nor a user-agent string establishes a performance
+budget; missing target evidence is UNVERIFIED.
 
 | Platform | Target FPS | Min FPS | Memory | Load Time |
 |----------|-----------|---------|--------|-----------|
@@ -361,6 +368,12 @@ describe('MovementSystem', () => {
 
 **Automated performance tests:**
 
+The legacy sketches below require project-owned fixtures and imports; they are
+not executed evidence. Example thresholds must be replaced by the target
+contract. `approvedWorkload` denotes that project's fixture-supplied budget,
+not a helper shipped by Forgewright. Use the existing lifecycle fixtures for
+executed ownership/state checks; counts alone cannot certify memory or feel.
+
 ```csharp
 // Unity: Performance Tests
 
@@ -369,10 +382,8 @@ describe('MovementSystem', () => {
 ```typescript
 // tests/performance/ParticleBudget.test.ts
 describe('Particle Budget', () => {
-    it('should stay under 200 active particles on desktop', () => {
-        const maxDesktop = 200;
-        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-        const budget = isMobile ? 80 : maxDesktop;
+    it('respects the approved workload active-particle limit', () => {
+        const budget = approvedWorkload.activeParticleLimit;
 
         // Simulate particle spawning
         const activeParticles = simulateGameLoop();
@@ -865,14 +876,14 @@ When modifying existing games:
 1. BASELINE — Capture current gameplay test results before changes
 2. REGRESSION CHECK — All previously-passing gameplay tests must still pass
 3. SCOPE BOUNDARY — New mechanics in new folders, don't modify existing
-4. PERFORMANCE BASELINE — FPS and memory must not regress > 10%
+4. PERFORMANCE BASELINE — Apply approved target budgets and preregistered regression tolerances; preserve existing protected reference tolerances
 5. SAVE COMPATIBILITY — If save format changes, migration must be tested
 
 For Phaser 3 web games:
   1. BASELINE — Capture FPS, memory, particle count, pool sizes
   2. REGRESSION CHECK — Run Playwright smoke test on every commit
   3. SCOPE BOUNDARY — New scenes/classes in new files, existing scenes untouched
-  4. PERFORMANCE BASELINE — 60fps on desktop, 30fps on mobile
+  4. PERFORMANCE BASELINE — Measure the approved frame-time/memory budgets on the named target and workload
   5. SAVE COMPATIBILITY — LocalStorage format versioning, migration on load
 
 For Three.js web games:
@@ -899,6 +910,26 @@ Select checks from changed behavior, credible failure and declared architecture.
 | Performance/release | Named hardware/browser and declared targets, reproducible build identity and representative current public-input playtest |
 
 Missing required runtime or physical-device evidence stays UNVERIFIED. Desktop touch emulation and DOM tests do not certify mobile performance or human game feel.
+
+### Game-feel hypotheses and verdicts
+
+For changed feel behavior, consume the existing GDD's
+[action card and conditional checklist](../../game-designer/references/game-feel.md).
+Select only relevant rows. Freeze reference/oracle, build/input/device and
+acceptance before comparing baseline, one causal variant and applicable
+ablations. Exercise invalid/repeated input, recovery, retry/pause and combined
+mute/motion modes where relevant. A busy variant hiding a telegraph must fail;
+a restrained variant can satisfy the brief.
+
+Technical tests establish input/state/timing/event/cleanup contracts. Current
+rendered public-input runs establish observed presentation; named physical
+targets establish measured workload behavior. Human task observation is needed
+for comfort, failure understanding, mastery and repeated-use fatigue. Record
+order/learning/novelty confounds and sample limits; small formative tests do not
+establish population-wide enjoyment, retention or revenue. Keep/change/kill
+must cite the corresponding evidence; missing evidence remains UNVERIFIED and
+the existing studio gate determines readiness. No universal timing, effect
+count, new joy score or replay-based model uplift claim.
 
 ---
 

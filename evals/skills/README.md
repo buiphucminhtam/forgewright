@@ -38,11 +38,22 @@ not authenticate a host or exclude arbitrary external writers.
 
 ## Game role coverage and contract experiments
 
-The game-designer, game-engineer, art-director and qa-engineer corpora contain
-12 scenarios covering clone preservation, timing, creative authority, resource
-ownership, real test execution and stale playtest evidence, with negative
-triggers and pressure cases. They specify desired behavior, not measured agent
-compliance. Real-model baseline/current/candidate gains remain unmeasured.
+The game-designer, game-engineer, art-director and qa-engineer corpora cover
+clone preservation, timing, creative authority, resource ownership, real test
+execution and stale playtest evidence, with negative triggers and pressure
+cases. Designer feel cases additionally challenge input mapping, commitment,
+camera clocks, over-decoration, audio fatigue, combined accessibility modes,
+unsupported claims and quiet signatures. `game-designer/holdout.jsonl` is a
+separate set for an evaluation owner; do not inject it into authoring prompts
+or repeatedly tune against it. Once exposed for tuning, replace the holdout.
+
+These are desired-behavior scenarios, not measured compliance. Required/forbidden
+event labels are adapter contracts, not semantic proof from keyword matching or
+model self-report. Retain raw decisions and judge diagnosis, discriminating
+tests, ownership, trade-offs and rejection criteria independently. One small
+exploratory current/candidate observation cannot establish stable uplift;
+representative baseline/current/candidate gains remain unmeasured. Contract
+tests and source corrections do not supply automatic promotion eligibility.
 
 After producing raw captures with the managed Signal Dash experiment, run:
 

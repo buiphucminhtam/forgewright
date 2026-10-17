@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node ../../../../node_modules/typescript/bin/tsc -p tsconfig.json",
-    "test": "node --test unit.test.mjs",
+    "test": "node --test unit.test.mjs skill-follow-camera.test.mjs",
     "serve": "node server.mjs",
     "test:browser": "node browser.test.mjs",
     "check:skills": "node check-skills.mjs",

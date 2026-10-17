@@ -14,3 +14,8 @@ version: 1.0.0
 Use the managed browser/session governor before server/browser effects. Reuse pages; missing telemetry or uncertain cleanup remains UNVERIFIED. Reference mechanics and approved creative deltas have separate evidence; a passing test does not prove fun or device performance.
 
 Read SKILL.md and the fixture README for the complete handoff. Existing Phaser 3 projects do not auto-upgrade.
+
+For feel changes consume the designer's [action card](../game-designer/references/game-feel.md):
+verify pointer mapping after resize, preview/commit/cancel, input acceptance and
+return-to-control. Convert time units once; frame pacing uses raw elapsed
+observations, not smoothed delta as a latency claim. No universal buffer or shake.

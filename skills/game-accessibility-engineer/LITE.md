@@ -19,6 +19,7 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Inspect canvas scaling, color contrast ratios, and visual readability | Verify that all game HUD components render in high-contrast modes without text clipping or overlaps.
 2. REMAP | Map abstract action models over hardcoded physical input controls | Confirm that all control bindings are completely re-mappable by the player via an input-mapping configuration layer.
 3. CC | Build closed-captions and adjustable subtitle rendering handlers | Ensure captions display speaking character names, sound effect alerts, and customizable background opacity settings.
+4. CUES | Consume essential meaning from the designer's [action card](../game-designer/references/game-feel.md) | Check mute/unavailable audio, reduced motion/no-flash and absent haptics, including combined modes. Keep essential state perceivable; camera comfort and flash patterns need applicable human/render review. Quality tiers and motion preferences are separate.
 
 ## Common Mistakes Checklist
 - **Hardcoded Input Triggers**: Reading keyboard event codes directly (e.g., `event.code === 'KeyW'`) inside update loops, blocking alternative controller or single-switch device mappings.

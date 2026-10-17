@@ -23,6 +23,15 @@ Menus own input focus; pause gameplay when required and restore focus/control de
 
 ## Verify outcomes
 
+For affected feel actions consume the designer's [action card](../game-designer/references/game-feel.md).
+Trace public pointer coordinates through canvas/camera/board mapping after
+resize, preview versus commit/cancel, input queue/expiry and control recovery.
+Keep state authority outside tween completion. Phaser 4.2.1's game-step delta
+may be smoothed; distinguish it from rawDelta when inspecting frame pacing,
+convert milliseconds to seconds only at a boundary that needs seconds, and
+do not multiply physics velocity twice. Follow the existing pause/large-gap
+policy; raw frame timing alone cannot measure physical input-to-photon latency.
+
 Compile the fixture and extracted examples against the locked package. Test rules at their lowest reliable layer, then use public keyboard/touch input plus rendered screenshots for a full boot/play/win-or-loss/retry/pause journey. Compare protected reference mechanics separately from an approved ProductDelta; images and green unit tests do not prove improved fun.
 
 Use `runGameTest`/`createGameBrowser` and the existing admission governor before server/browser effects. Reuse a page, close owned resources, and retain UNVERIFIED when pressure telemetry or cleanup proof is missing. No emulator is required for browser-game testing.

@@ -97,6 +97,14 @@ Xem chi tiết tại [pipeline reference](docs/pipeline-reference.md) và [canon
 
 ## Những nâng cấp gần đây
 
+### Game feel: điều khiển, sự phù hợp và bản sắc
+
+[Hướng dẫn Designer](skills/game-designer/references/game-feel.md) có action card
+và checklist 19 trường hợp trong handoff hiện có; audio/VFX theo chức năng và
+target thực tế. Regression chạy chính ví dụ FollowCamera ở 30/60/120Hz và bắt
+mutation theo frame. [Cải thiện model/người chơi/thiết bị chưa được đo](evals/skills/README.md).
+Router giữ UI Designer trong budget context hiện có.
+
 ### 1. Tối ưu hóa đường nóng (Hot-path) & Hỗ trợ toàn diện Windows
 
 - **Kiểm tra chính sách tức thời, không phụ thuộc `jq`:** [policy-check.sh](scripts/lite/policy-check.sh), [telemetry.sh](scripts/lite/telemetry.sh) và [rule-ledger.sh](scripts/lite/rule-ledger.sh) phân tích cấu hình trực tiếp bằng Bash, tự động dò `python3`/`python`/`py.exe -3` trên Windows lẫn POSIX, chuẩn hóa `FORGEWRIGHT_WORKSPACE` qua `cygpath` và tự fallback sang Python khi máy không có `jq`.
@@ -126,7 +134,12 @@ python3 scripts/runtime/resumable_handoff.py --help
 - **Game Designer & tiến hóa kỹ năng dựa trên bằng chứng:** [Game Designer](skills/game-designer/SKILL.md) và [workflow nâng cấp skill game](workflows/game-skill-evolution.md) tôn trọng art direction đã duyệt theo từng pha thay vì áp đặt một công thức hiệu ứng cứng nhắc; đi kèm fixture chơi được [Signal Dash](tests/game/fixtures/threejs-lifecycle/README.md), [hướng dẫn test game](tests/game/README.md) và [cài đặt Unity MCP](docs/unity-mcp-setup.md).
 - **Giới hạn bộ nhớ đệm MCP & định tuyến System-1:** Cache MCP giới hạn 512 KiB/entry, 2 MiB/project, 8 MiB/process; định tuyến ngữ nghĩa tiếng Việt/Anh nội bộ ([tool-efficiency.md](skills/_shared/protocols/tool-efficiency.md)) không cần khóa API ngoài.
 
-Đợt cải thiện flow bổ sung receipt xác nhận test pytest thực sự chạy, kể cả khi completion replay; chặn formatter trước khi chạm file có phần chưa stage; giữ báo cáo CI riêng và đọc timestamp preflight theo cách portable. Áp dụng skill phải đối chiếu đúng current target/variant dưới khóa phối hợp và có xác minh observed-run từ trusted host; chỉ số 0 → 0 không được tính là cải thiện. [Hướng dẫn eval game](evals/skills/README.md) có 12 tình huống cho designer/engineer/art/QA và phép kiểm chứng contract lặp lại. [Thử nghiệm reference Signal Dash](tests/game/fixtures/threejs-lifecycle/README.md#frozen-reference-and-approved-polish) dùng input cố định, giữ timing và gắn playtest với build. So sánh browser mới vẫn chưa được kiểm chứng trên host thiếu telemetry áp lực bộ nhớ; thiếu bằng chứng thì không được advance.
+Flow kiểm tra receipt pytest, bảo vệ phần chưa stage và giữ riêng báo cáo CI.
+Áp dụng skill cần đúng current target/variant và trusted observed-run; 0 → 0
+không chứng minh cải thiện. [Eval game](evals/skills/README.md) tách contract
+replay khỏi model uplift. [Signal Dash](tests/game/fixtures/threejs-lifecycle/README.md#frozen-reference-and-approved-polish)
+giữ input/timing và playtest gắn build; browser mới còn thiếu bằng chứng trên
+host không có telemetry áp lực bộ nhớ.
 
 ### 5. Pi Worker tùy chọn (experimental, tắt mặc định)
 
@@ -149,29 +162,22 @@ node forgewright/src/cli/dist/index.js delegate resources
 
 ### 6. Research chuyên môn trên toàn bộ skill
 
-[Catalog skill](docs/skill-catalog.md) bao phủ **85 skill chính và 3 alias**, với
-**168 câu hỏi theo chuyên môn** và cách kiểm chứng riêng. Bảy skill có bản sửa
-reference/ví dụ giới hạn: Game Engineer, API Designer, Solution Architect,
-MCP Generator, Eval Engineer, SRE và XLSX Engineer. So sánh thực thi ghi nhận đạn
-đi khoảng 20/10/5 → 600 pixel trong một giây ở 30/60/120 FPS trong mô hình API
-Arcade, `$ref` OpenAPI được giải đúng, bộ chấm không lấy confidence làm bằng chứng,
-và ví dụ workbook đã lưu rồi mở lại được.
-
-Template MCP mới pin GitNexus 1.6.12, yêu cầu Node `^22.18.0 || >=24.11.0`.
-Kiểm tra qua SDK/CLI thật trên Linux/Node 24.19 xác minh tham số giữ nguyên và cwd
-đúng project khi chạy source lẫn bản compile. Server đã generate cần được tạo lại
-theo quy trình của project; Node 22/Windows và chất lượng tìm kiếm chưa được xác minh.
-Đây là sửa reference, kèm phiên agent độc lập tìm và áp dụng tài liệu, chưa phải
-benchmark model lặp lại hay bằng chứng game feel/trải nghiệm người chơi tốt hơn.
-Candidate buffer Godot được giữ lại vì chính sách xử lý tràn đề xuất xung đột với
-consumer reconciliation hiện có. Catalog ghi rõ các candidate và bằng chứng còn
-thiếu; audit không đồng nghĩa phải sửa mọi skill.
+[Catalog](docs/skill-catalog.md) ghi **85 skill chính, 3 alias, 168 câu hỏi**,
+bảy bản sửa reference và giới hạn bằng chứng. MCP pin GitNexus 1.6.12 và Node
+`^22.18.0 || >=24.11.0`; mới kiểm SDK/CLI trên Linux/Node 24.19. Candidate Godot
+còn giữ lại vì xung đột reconciliation. Chưa chứng minh model/game feel tốt hơn.
 
 ### 5. Hoàn thiện handoff game Phaser 4 / Three.js
 
-Game web 2D mới hướng tới **Phaser 4**, game 3D dùng **Three.js**; giữ nguyên project Phaser 3 cũ và cấu hình người dùng. [Router](scripts/runtime/skill_routing.py) chọn specialist theo engine đã xác minh. [Checker handoff](scripts/art-direction/game-experience.py) nối flow màn hình/state → wireframe → concept nhân vật/môi trường/UI → component/asset và manifest import. [UI kit](templates/game/ui-kit/README.md) có component DOM, trạng thái tương tác và gallery. [Studio flow](skills/_shared/protocols/game-studio-pipeline.md) cho phép thử prototype nhỏ sớm, giữ duyệt production và tách clone đúng mechanics khỏi cải tiến có chủ đích.
-
-[Pilot Phaser 4.2.1](tests/game/fixtures/phaser4-lifecycle/README.md) và [entry Three.js mới](tests/game/fixtures/threejs-lifecycle/README.md#additional-experience-handoff-and-glb-pilot) có kiểm tra build, contract và model/DOM. Runner browser mới compile lại source hiện tại bằng compiler cục bộ đã pin trước admission; lỗi compile ghi FAIL trước khi chạy server hay mở browser. Browser trên cloud hiện bị chặn trước khi mở (`pi_host_capacity_timeout`); gameplay/render asset thực tế, hiệu quả specialist, thiết bị thật và lợi ích người chơi vẫn **UNVERIFIED**. Approval trong fixture là dữ liệu conformance tổng hợp, không phải duyệt production thật.
+2D mới dùng **Phaser 4**, 3D **Three.js**, giữ project/pin cũ.
+[Router](scripts/runtime/skill_routing.py), [checker](scripts/art-direction/game-experience.py)
+và [UI kit](templates/game/ui-kit/README.md) nối flow, wireframe, concept và asset
+qua [studio](skills/_shared/protocols/game-studio-pipeline.md).
+[Pilot Phaser](tests/game/fixtures/phaser4-lifecycle/README.md) và
+[Three.js](tests/game/fixtures/threejs-lifecycle/README.md#additional-experience-handoff-and-glb-pilot)
+có build/contract/model checks; runner compile trước admission. Browser cloud
+bị chặn (`pi_host_capacity_timeout`): render, thiết bị, specialist/người chơi còn
+**UNVERIFIED**. Approval tổng hợp trong fixture không duyệt production.
 
 ## Bắt đầu
 

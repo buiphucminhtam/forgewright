@@ -7,7 +7,7 @@ const markdown=readFileSync(new URL('../../../../skills/threejs-engineer/SKILL.m
 const blocks=[...markdown.matchAll(/```typescript\n([\s\S]*?)```/g)].map(m=>m[1]);
 const directory=mkdtempSync(join(root,'.skill-check-'));
 try {
- const paths=['class App {','class FirstPersonCamera {','class InteractionSystem {','class GameObject extends THREE.Object3D {','class InstancedObjects {'].map((name,index)=>{
+ const paths=['class App {','class FirstPersonCamera {','class FollowCamera {','class InteractionSystem {','class GameObject extends THREE.Object3D {','class InstancedObjects {'].map((name,index)=>{
   const block=blocks.find(code=>code.includes(name));
   if(!block)throw new Error(`Missing skill example ${name}`);
   const path=join(directory,`${index}.ts`);

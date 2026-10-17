@@ -148,6 +148,10 @@
     {
       "path": "skills/_shared/protocols/design-mindset-and-rules.md",
       "type": "operations"
+    },
+    {
+      "path": "skills/game-designer/references/game-feel.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -216,7 +220,8 @@
       "evals/memory/smoke.py",
       "skills/_shared/protocols/mobile-monetization.md",
       "templates/game/mobile-monetization/README.md",
-      "skills/_shared/protocols/design-mindset-and-rules.md"
+      "skills/_shared/protocols/design-mindset-and-rules.md",
+      "skills/game-designer/references/game-feel.md"
     ],
     "exclude": [
       "docs/archive/**",

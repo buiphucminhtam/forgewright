@@ -39,7 +39,7 @@ You are the **Three.js Engineer** — a 3D web specialist who builds interactive
 ### WebGL Constraints
 
 - **Always consider mobile** — WebGL performance varies dramatically
-- **Budget your draw calls** — Target < 100 draw calls for mobile, < 500 for desktop
+- **Budget your draw calls** — Derive limits from the actual target/scene and measured bottleneck
 - **Use object pooling** — Never create/destroy objects in the render loop
 - **LOD everything** — Level of detail for distant objects
 
@@ -51,6 +51,10 @@ You are the **Three.js Engineer** — a 3D web specialist who builds interactive
 - **Use shared materials** — One material, many meshes when possible
 
 ### Performance Budgets
+
+The table is an unbenchmarked starting example, not platform-wide limits.
+Replace it with the project's approved target/workload budgets and record
+missing measurements as UNVERIFIED. Counts do not establish mobile GPU cost.
 
 | Metric | Mobile Target | Desktop Target |
 |--------|--------------|---------------|
@@ -301,6 +305,14 @@ export class CameraController {
 
 ### Step 2.2: Follow Camera
 
+Consume the designer's [action card](../game-designer/references/game-feel.md)
+for camera-relative control, scale, occlusion and the intended follow behavior.
+Pass finite non-negative elapsed **seconds** accepted by the existing loop;
+convert units once. The loop owns pause/background/large-gap policy: no second
+Timer, RAF or hidden clamp here. `followLambda` is a configurable rate, not a
+universal feel value. Equal elapsed stationary-target tests check consistency;
+moving-target samples have discretization error and comfort needs playtest.
+
 ```typescript
 export class FollowCamera {
     private offset: THREE.Vector3;
@@ -310,19 +322,28 @@ export class FollowCamera {
         private camera: THREE.PerspectiveCamera,
         private target: THREE.Object3D,
         offset = new THREE.Vector3(0, 5, 10),
-        lookAtOffset = new THREE.Vector3(0, 0, 0)
+        lookAtOffset = new THREE.Vector3(0, 0, 0),
+        private followLambda = 5 // Example rate in s^-1; tune for the actual game.
     ) {
+        if (!Number.isFinite(followLambda) || followLambda < 0) {
+            throw new RangeError('followLambda must be finite and non-negative');
+        }
         this.offset = offset;
         this.lookAtOffset = lookAtOffset;
     }
 
-    public update(): void {
+    public update(deltaSeconds: number): void {
         // Calculate desired camera position
         const targetPosition = this.target.position.clone();
         const desiredPosition = targetPosition.clone().add(this.offset);
 
-        // Smooth camera movement
-        this.camera.position.lerp(desiredPosition, 0.1);
+        // Frame-rate-independent approach; the caller owns the accepted elapsed time.
+        for (const axis of ['x', 'y', 'z'] as const) {
+            this.camera.position[axis] = THREE.MathUtils.damp(
+                this.camera.position[axis], desiredPosition[axis],
+                this.followLambda, deltaSeconds
+            );
+        }
 
         // Look at target
         const lookAt = targetPosition.clone().add(this.lookAtOffset);
@@ -866,7 +887,7 @@ gsap.to(mesh.rotation, {
 - [ ] Compressed textures (basis/ktx2)
 - [ ] Baked lighting where possible
 - [ ] Frustum culling verified
-- [ ] Draw call budget met (<100 mobile, <500 desktop)
+- [ ] Draw-call and frame-time budgets meet the approved named target/workload contract, with current measured evidence
 
 ## Execution Checklist
 

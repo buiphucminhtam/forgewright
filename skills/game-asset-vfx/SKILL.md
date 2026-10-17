@@ -36,6 +36,12 @@ there is no mandatory particle count, layer count, palette or audio pairing.
 
 ## Specialist Inputs
 
+For a material feel change, consume the designer's
+[action card](../game-designer/references/game-feel.md): intended action,
+commit/contact, recovery, cue hierarchy and proposed ablation. Preserve this
+skill's effect/event/lifecycle authority; return input, camera or rule findings
+to their owners instead of covering them with more effects.
+
 Before selecting an effect implementation, inspect the actual project:
 
 - Engine/version, renderer, render pipeline, camera, canvas/webview and target
