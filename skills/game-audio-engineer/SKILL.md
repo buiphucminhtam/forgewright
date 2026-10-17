@@ -18,11 +18,21 @@ tags: [audio, sound-design, music, wwise, fmod, spatial-audio, adaptive-music, m
 
 | Rule | Why It Matters |
 |------|---------------|
-| **Minimum 3 variations per SFX** | Single variations are repetitive and obvious. Round-robin + pitch randomization makes sound organic. |
-| **Music transitions on beat boundaries** | Off-beat cuts break immersion. Quantized transitions feel musical and intentional. |
-| **Never mute for any SFX** | "I'll just remove it for now" becomes permanent. Every sound earns its place. |
+| **Variation follows function and repetition** | Inspect cadence, fatigue and semantic identity. A stable UI tone, one authored cue or intentional silence can fit; use variants/layers/pitch changes only where they help without confusing meaning. |
+| **Music transitions follow musical and gameplay intent** | Quantize when appropriate to the score. Critical input acknowledgment, contact and warning cues must not wait for a beat. Intentional hard cuts and silence are valid treatments. |
+| **Respect mute and intentional silence** | Do not hide missing required assets by muting them. Honor player settings and preserve essential meaning through another suitable channel, including audio unavailable before unlock. |
 | **Audio-visual sync is non-negotiable** | Sound without visual sync = jarring. Hit frames, muzzle flashes, footsteps must align. |
 | **Mix is about hierarchy, not volume** | Louder ≠ better. Priority determines relative levels. |
+
+Consume the designer's [game-feel action card](../game-designer/references/game-feel.md)
+for event meaning, authoritative contact, recovery and essential/decorative
+priority. Own attack/transient/decay, timbre, spatial grounding, voice admission
+and contrast within that intent. Check normal and repeated/overlapping events:
+more layers or variations may worsen fatigue or bury a warning. Coalesce only
+eligible decoration and keep gameplay/rewards independent of audio completion.
+Review mute plus reduced motion with accessibility/engine owners. Proposed mix
+or cadence changes need a baseline/variant and rejection criterion; file counts
+and desktop playback do not prove satisfying play or phone-speaker performance.
 
 ---
 
@@ -672,10 +682,10 @@ Master (0dB)
 
 | # | Mistake | Why It Fails | What to Do Instead |
 |---|---------|-------------|-------------------|
-| 1 | Single SFX variation | Repetitive, obvious looping | 3+ variations + pitch randomization |
-| 2 | Music hard-cuts | Jarring, breaks immersion | Beat-quantized crossfades |
+| 1 | Unexamined repetition | Fatigue or lost semantic identity | Check cadence/mix; choose stable cues, variants, coalescing or silence according to function |
+| 2 | Unintended music discontinuity | Breaks the intended rhythm | Choose quantization, crossfade, hard cut or silence to fit the event; do not delay critical cues |
 | 3 | No audio ducking | Dialogue buried under combat | Priority-based ducking system |
-| 4 | Silent ambience | Environments feel dead | Layered ambient + random detail sounds |
+| 4 | Ambience contradicts the scene | Missing expected grounding or constant noise | Match the approved scene promise; quiet and silence can be intentional |
 | 5 | Same volume for everything | No depth, no spatial awareness | Distance falloff, 3D positioning, reverb |
 | 6 | Audio-visual desync | Hit doesn't match frame | Sync audio triggers to animation frames |
 | 7 | Ignoring mobile | Sounds terrible on phone speakers | Platform-specific mix, test on devices |
@@ -702,10 +712,11 @@ Master (0dB)
 - [ ] Audio pillars aligned with game design pillars
 - [ ] Spatial audio setup (falloff, occlusion, HRTF, reverb zones)
 - [ ] SFX catalog with all gameplay triggers
-- [ ] SFX variation rules (minimum 3 per action, pitch randomization)
+- [ ] SFX variation/voice-admission rules justified by function, repetition and fatigue; stable cues and silence considered
 - [ ] SFX layer design for impactful sounds
 - [ ] Adaptive music state machine with transitions
-- [ ] Music transition rules (beat-quantized, layer-based)
+- [ ] Music transition intent defined; beat/layer rules apply where useful and never delay essential feedback
+- [ ] Essential event meaning survives mute/unavailable audio plus reduced motion or absent haptics
 - [ ] Track list with loop lengths and layer counts
 - [ ] Ambient zones designed per level/area
 - [ ] Mix group hierarchy with priority levels

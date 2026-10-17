@@ -264,6 +264,13 @@ Required before architecture or story creation:
 - measurable acceptance criteria and out-of-scope boundary;
 - unresolved questions and decision owner.
 
+For affected control/feedback/camera or differentiation work, include the
+designer's [game-feel action card](../../game-designer/references/game-feel.md)
+in the existing GDD: intent/state, applicable control/space, commit/contact,
+recovery, cue hierarchy and combined mute/motion alternatives. Name the frozen
+reference versus approved delta, competing cause, baseline/variant and rejection
+criterion. No new phase, schema or mandatory effect is introduced.
+
 For Phaser 4/Three.js packaged on Android/iOS, include the
 [mobile domain handoff](mobile-monetization.md): player/market evidence or
 labelled hypotheses, product value/free path/no-ads scope, level learning and
@@ -299,6 +306,12 @@ Required before a story closes:
 - manual playtest evidence covers non-automatable feel or visuals;
 - GDD/ADR deviations are recorded and propagated;
 - known defects and follow-up work are owned.
+
+For applicable feel changes, attach the selected conditional-checklist verdicts
+and keep/change/kill decision. Distinguish technical correctness, rendered/device
+observations and real-player feel evidence. Missing required playtest evidence
+cannot become PASS from a build, contract replay or an attractive capture;
+apply the existing phase gate's missing-evidence rule.
 
 ## Topology Decision
 

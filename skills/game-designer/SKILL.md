@@ -47,8 +47,8 @@ You do NOT write engine code. You produce design artifacts — GDDs, economy spr
 ### Rule 5: Fair AI, Fun AI
 > **AI should feel challenging but beatable.** Perfect accuracy feels unfair. Add intentional imperfection.
 
-### Rule 6: Juice Everything
-> **Make player actions and outcomes readable.** Specify feedback that suits the approved direction, platform and accessibility needs; visual, audio and haptic channels are choices, not a mandatory pairing for every input. Keep cues timely, proportionate and distinct.
+### Rule 6: Reliable Intent, Fitting Feel, Memorable Action
+> **Diagnose before treating.** Establish correct input/control and readable causality; fit timing, weight and forgiveness to the player promise. Develop signature through agency, mastery and coherent expression. Visual, audio and haptic channels are choices. Preserve commitment, reference rules, accessibility and event authority; see the on-demand [game-feel judgment reference](references/game-feel.md).
 
 ### Rule 7: Platform Ergonomics & Layout Safety
 > **Never design a "one-size-fits-all" interface.** Mobile HUDs must respect "Safe Areas" and finger occlusion ("Thumb Zones"). Console HUDs must accommodate the "10-Foot Experience" (large icons, radial menus, D-pad snapping). PC must support info density and custom scaling.
@@ -204,7 +204,7 @@ Use Bartle categories only as an optional lens where applicable. Select motives 
 │  │  ┌───────────── Encounter Loop (2-5 min) ────────────────────────┐    │     │
 │  │  │  Combat/puzzle/interaction → Reward → Feedback → Next choice  │    │     │
 │  │  │  ┌───── Core Mechanic (seconds) ─────────────────────┐       │    │     │
-│  │  │  │  Input → Action → Outcome → Feel (juice)         │       │    │     │
+│  │  │  │  Intent → Control → Outcome → Next decision      │       │    │     │
 │  │  │  └───────────────────────────────────────────────────┘       │    │     │
 │  │  └────────────────────────────────────────────────────────────────┘    │     │
 │  └──────────────────────────────────────────────────────────────────────────┘     │
@@ -714,12 +714,17 @@ When designing game interfaces, apply Fagerholt & Lorentzon's 4-part taxonomy:
 
 ### Visual Accessibility
 
-| Feature | Implementation | WCAG Level |
-|---------|----------------|------------|
-| Colorblind modes | Protanopia, deuteranopia, tritanopia filters | AA |
-| High contrast | Toggle high contrast mode | AAA |
-| UI scaling | 1.5x-2x support | AA |
-| Screen shake control | Intensity slider, reduce motion option | AA |
+| Feature | Design and validation basis |
+|---------|-----------------------------|
+| Color-independent meaning | Preserve essential information with shape/text or other suitable channels; a color filter alone is insufficient. Review applicable criteria with accessibility owner. |
+| Contrast | Measure relevant text and non-text elements against the selected applicable criteria; a high-contrast toggle alone does not establish conformance. |
+| UI scaling | Test the selected text-size/layout requirements on actual reachable states; replace example scaling factors with the target contract. |
+| Secondary motion/camera | Review XAG 117; avoid or allow control of applicable shake/bob/blur while preserving essential meaning. WCAG 2.3.3 is Level AAA where applicable, with an exception for animation essential to functionality or information; it is not a universal AA/native-game mandate. |
+
+See the [game-feel reference sources and combined-mode checks](references/game-feel.md).
+Feature presence or a slider does not certify accessibility. Distinguish
+secondary effects from essential gameplay motion and assess the applicable
+criteria, combined mute/motion settings and relevant player needs.
 
 ### Hearing Accessibility
 
@@ -751,6 +756,23 @@ When designing game interfaces, apply Fagerholt & Lorentzon's 4-part taxonomy:
 ---
 
 ## Visual Polish & Game Juice
+
+For material game-feel work, first use [Game feel judgment and action handoff](references/game-feel.md):
+foundation (intent/control/causality), fit (promise/context/trade-offs), then
+signature (agency/mastery/expression). Analyze input → anticipation →
+commit/contact → response → recovery → reward → return-to-control, with beats
+overlapping or N/A as the mechanic requires. Immediate acknowledgment does not
+authorize instant recovery; a missing input and a deliberately rejected input
+need different fixes. Camera/space, collision and repeated-use rhythm belong
+in this diagnosis alongside animation, audio and VFX.
+
+Use its action card in the existing GDD and applicable rows of its 19-case
+checklist, including failure/retry, overlap, mute plus reduced motion and target
+timing. Declare a baseline, alternative cause, small variant and rejection
+criterion. Source/technical checks, rendered/device behavior and human feel
+are distinct evidence; a green build cannot establish satisfying play. During
+clone/polish preserve frozen behavior and evaluate approved differentiation
+separately. The cases below illustrate expression only after that decision.
 
 Specify feedback for the affected player actions in the existing GDD/mechanic
 handoff. Game Designer owns player intent and gameplay events; the Art Director

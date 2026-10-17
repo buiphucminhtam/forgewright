@@ -43,14 +43,12 @@ Technical art bridges artistic vision and engineering. Reference **Forgewright G
 
 ## Critical Rules
 
-### Rule 1: Performance Budgets Are Hard Limits
-Never exceed per-platform budgets:
-| Metric | PC High | PC Low | Console | Mobile |
-|--------|---------|--------|---------|--------|
-| Draw calls | <3000 | <1500 | <2500 | <500 |
-| Triangles/frame | <5M | <2M | <4M | <500K |
-| Texture memory | <4GB | <2GB | <3GB | <512MB |
-| Particles/screen | <5000 | <2000 | <3000 | <500 |
+### Rule 1: Agreed Target Budgets Are Binding
+Establish named hardware/browser/renderer, build, representative workload and
+measured CPU/GPU/frame-pacing/memory baseline before assigning budgets.
+Project-approved limits are binding; generic platform labels do not supply
+validated draw-call, triangle, texture or particle limits. Record missing
+measurements as UNVERIFIED and proposed limits as hypotheses.
 
 ### Rule 2: Standard Materials for 90% of Assets
 Complex custom shaders are for hero assets only:
@@ -67,16 +65,14 @@ LOD2 (25-50m): 25%  — Simplified silhouette
 LOD3 (50m+):   10%  — Billboard or impostor (optional)
 ```
 
-### Rule 4: VFX Particle Caps
-| VFX Type | Max Particles | Duration |
-|----------|---------------|----------|
-| Impact/Hit | 20-30 | 0.2-0.5s |
-| Slash/Trail | 30-50 | 0.3-0.5s |
-| Aura/Buff | 30-50 | Continuous |
-| Environmental | 50-100 | Loop |
-| Ultimate ability | 100-200 | 2-4s |
-
-Global cap: 5000 (PC), 2000 (Console), 500 (Mobile)
+### Rule 4: VFX Admission Preserves Meaning
+Use the canonical [VFX contract](../game-asset-vfx/SKILL.md) for event/lifecycle,
+essential/decorative variants and measured budgets. Specify independent active
+admission and overload behavior from actual overlap/coverage and target cost;
+pool retention is not an active cap. Duration follows the action's meaning and
+rhythm, not a universal effect recipe. Consume the designer's
+[action card](../game-designer/references/game-feel.md); cut decoration before
+essential information, with low quality separate from reduced motion.
 
 ---
 
@@ -87,37 +83,25 @@ Global cap: 5000 (PC), 2000 (Console), 500 (Mobile)
 **Goal:** Define hard performance budgets and asset pipeline standards.
 
 **Actions:**
-1. **Create Performance Budget Document:**
+1. **Update the existing Performance Budget with actual targets:**
 ```markdown
 # Performance Budget — [Game Name]
 
-## Per-Platform Targets
-| Metric | PC High | PC Medium | Console | Mobile |
-|--------|---------|-----------|---------|--------|
-| Target FPS | 60 | 60 | 30/60 | 30 |
-| Draw calls | <3000 | <2000 | <2500 | <500 |
-| Triangles/frame | <5M | <3M | <4M | <500K |
-| Texture memory | <4GB | <2GB | <3GB | <512MB |
-| Shader instructions | <256 | <200 | <200 | <64 |
-| Particles/screen | <5000 | <3000 | <3000 | <500 |
-| Post-process | All | Some | Some | None |
+## Target and workload
+Named device/browser/renderer/build; scene/camera, peak event overlap, settings,
+test duration and profiler. Missing facts: UNVERIFIED.
 
-## Per-Scene Budget
-| Scene Type | Max Draws | Max Triangles | Max Lights |
-|------------|-----------|--------------|------------|
-| Hub/Menu | 500 | 500K | 8 |
-| Open World | 2000 | 3M | Dynamic |
-| Combat Arena | 1500 | 2M | 16 |
-| Boss Fight | 2000 | 2.5M | 20 |
+## Measured baseline and proposed/approved budgets
+| Metric | Baseline/evidence | Limit and unit | Status/owner |
+|--------|-------------------|----------------|--------------|
+| CPU/GPU/frame-time distribution and hitches | ... | ... | ... |
+| Memory categories, peak and stability | ... | ... | ... |
+| Draws/geometry/shader/transparent coverage | ... | ... | ... |
+| Active VFX/voices and admission under peak overlap | ... | ... | ... |
 
-## Memory Budget Breakdown
-| Category | PC | Console | Mobile |
-|----------|-----|--------|--------|
-| Textures | 2GB | 1.5GB | 256MB |
-| Meshes | 500MB | 400MB | 100MB |
-| Animation | 300MB | 200MB | 50MB |
-| Audio | 200MB | 200MB | 100MB |
-| **Total** | **3GB** | **2.3GB** | **506MB** |
+## Scene allocation and degradation
+Allocate the agreed total by actual scenes/assets; name what degrades first,
+essential cues that survive, thermal workload and repeatable acceptance.
 ```
 
 2. **Define Asset Import Standards:**
@@ -356,6 +340,11 @@ clip(alpha - 0.5); // Discard solid parts
 
 **Goal:** Design all gameplay VFX with performance budgets.
 
+The catalogs and fire-impact example below are illustrative hypotheses, not
+required effects, priorities, counts, durations or measured GPU costs. Select
+only applicable events and replace proposals with observed target evidence.
+Use the canonical VFX effect spec for real implementation and lifecycle.
+
 **Actions:**
 1. **VFX Catalog:**
 ```markdown
@@ -490,26 +479,26 @@ Small secondary embers float upward. Brief flash of light at impact.
 ## Performance Rules
 
 ### Particle Budget
-- Maximum 5000 concurrent particles (PC High)
-- Maximum 2000 concurrent particles (PC Low)
-- Maximum 500 concurrent particles (Mobile)
+- Per-effect and global active admission derived from measured peak overlap,
+  coverage and target budgets; explicitly distinguish proposed from approved.
+- Preserve essential cues and committed gameplay under saturation.
 
 ### Overdraw Limits
-- Maximum 3 overlapping transparent quads
-- Maximum 2 screen-space distortion effects
-- Avoid: Large transparent planes layered
+- Measure transparent coverage, shader/blend cost and overlap on target.
+- Bound/cull expensive decoration; counts alone do not establish fill cost.
 
 ### Optimization Guidelines
-1. **GPU Particles** preferred for large counts (Niagara GPU sim, VFX Graph)
-2. **Texture Atlases** required for sprite particles
+1. **Representation** follows actual renderer support and measured bottleneck; GPU simulation is not automatically cheaper
+2. **Texture Atlases** where compatible and batching/residency evidence justifies them
 3. **Culling** enabled for all particle systems
 4. **Auto-kill** on all non-looping systems
 5. **LOD** for particle systems at distance
 
 ### Profiling Targets
-- PC: <2ms for all VFX combined
-- Console: <3ms for all VFX combined
-- Mobile: <1ms for all VFX combined
+- Record named target/build/workload, actual CPU/GPU/frame distributions,
+  hitches, peak memory, overdraw and sustained thermal behavior.
+- Compare against agreed project limits. Desktop counters or source inspection
+  do not certify phone GPU cost or human game feel.
 ```
 
 **Output:** `vfx/`, `vfx/vfx-catalog.md`, `vfx/vfx-specs/`
@@ -626,10 +615,10 @@ def find_batching_breaks(mesh_batch):
 ## Cross-Engine Profiler
 | Metric | Tool | Threshold |
 |--------|------|----------|
-| Draw calls | Frame debugger | <3000 (PC), <500 (Mobile) |
-| Triangles | Mesh stats | <5M (PC), <500K (Mobile) |
-| Particles | Visual profiler | <5000 (PC), <500 (Mobile) |
-| Shader ALU | GPU profiler | <256 (PC), <64 (Mobile) |
+| Draw calls | Frame debugger | Agreed target/workload budget |
+| Triangles | Mesh stats | Agreed camera/LOD/workload budget |
+| Particles/coverage | Visual and GPU profiler | Measured admission/overlap budget |
+| Shader cost | GPU profiler | Agreed target budget; instruction count alone is insufficient |
 ```
 
 **Output:** `lod/`, `lod/lod-policy.md`, `tools/`
@@ -645,7 +634,7 @@ def find_batching_breaks(mesh_batch):
 | No particle limits | Frame drops in combat | Hard particle cap per VFX + global cap |
 | Missing LOD chains | Far objects render full detail | Every mesh >1K tris needs LODs |
 | Max resolution textures | VRAM overflow | Right-size per asset importance |
-| Overdraw-heavy VFX | GPU pipeline stalls | Max 3 overlapping transparent quads |
+| Overdraw-heavy VFX | Transparent coverage and shader/blend cost consume budget | Profile target overlap, cull/reduce decoration while preserving essential cues |
 | No profiling in development | Performance surprises at ship | Profile continuously |
 
 ---

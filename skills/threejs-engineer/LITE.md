@@ -29,3 +29,7 @@ Follow the existing game-studio and game-test protocols. Prototype evidence does
 Start long-running processes through `bash scripts/runtime/dev-run.sh --role <role> -- <command>`. Browser tests use `runGameTest`/`createGameBrowser`, existing admission, page reuse and confirmed owned cleanup. Never bypass unknown host pressure. Close with the runtime ledger.
 
 Read SKILL.md for full examples compiled by the existing fixture; see [UI handoff](../ui-designer/references/game-ui-kit.md) and [runtime ownership](../../docs/adr/ADR-010-runtime-lifecycle-guard.md).
+
+For feel changes use the [action card](../game-designer/references/game-feel.md):
+mapping/occlusion, input and recovery. Damp by elapsed time under the existing
+pause/background owner; numerical consistency does not prove camera comfort.

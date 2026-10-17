@@ -18,6 +18,8 @@ Format: `n. ACTION | TARGET | CHECK`
 1. AUDIT | Verify asset compression rates, stereo/mono profiles, and memory footprint | Confirm that background tracks use optimized `.mp3`/`.ogg` compressions, and 3D spatial sounds use mono sources for accurate panning.
 2. ORCHESTRATE | Build centralized, pooled volume mixers and dynamic audio managers | Verify sound allocation uses recycled audio instances or channels to prevent high Web Audio API overhead.
 3. ATTENUATE | Configure spatial audio listeners and 3D positional panners in-engine | Ensure rolloff curves, max/ref distances, and listener positions are updated dynamically relative to the camera vector.
+4. EXPRESS | Consume intent, contact/recovery and cue priority from the designer's [action card](../game-designer/references/game-feel.md) | Align sound to committed meaning, fit transient/tail and contrast to weight/rhythm, and compare repeated-use fatigue. Variation depends on event frequency and semantics; silence and user mute are valid. Critical acknowledgment/warnings must not wait for a musical beat.
+5. FALLBACK | Essential cues with mute, locked/suspended audio, reduced motion and absent haptics | Review combined settings with accessibility/engine owners. Voice admission may coalesce decoration; it cannot drop essential meaning or change reward truth. Mix/range/performance require real target evidence.
 
 ## Common Mistakes Checklist
 - **Leaked Spatial Nodes**: Failing to disconnect and dispose of custom `PannerNode`, `GainNode`, or Web Audio buffers when unloading sound objects, causing GPU/CPU execution stutter and Web Audio memory leaks.

@@ -99,6 +99,15 @@ See the [pipeline reference](docs/pipeline-reference.md) and [canonical runtime 
 
 ## Recent upgrades
 
+### Game feel: control, fit and signature
+
+[Designer guidance](skills/game-designer/references/game-feel.md) adds an action
+card and 19 conditional checks within existing studio handoffs. Audio and VFX
+budgets follow intent and target evidence. The extracted Three.js FollowCamera
+now passes equal-elapsed 30/60/120Hz checks and rejects a fixed-frame mutation.
+[Model/player/device uplift remains unmeasured](evals/skills/README.md).
+Default web-game routes retain UI Designer within the existing context budget.
+
 ### 1. Windows & cross-platform hot-path optimization
 
 - **Fast, zero-subshell policy validation:** [policy-check.sh](scripts/lite/policy-check.sh), [telemetry.sh](scripts/lite/telemetry.sh), and [rule-ledger.sh](scripts/lite/rule-ledger.sh) now parse policy files in pure Bash, resolve `python3`/`python`/`py.exe -3` across POSIX and Windows, normalize `FORGEWRIGHT_WORKSPACE` via `cygpath`, and fall back to Python when `jq` is not installed.
@@ -171,11 +180,25 @@ listed explicitly in the catalog; an audit does not require changing every skill
 
 ### 5. Phaser 4 / Three.js production handoff
 
-New 2D web work targets **Phaser 4**; 3D targets **Three.js**. The [engine router](scripts/runtime/skill_routing.py) accepts an explicit grounded selector while retaining legacy Phaser 3 projects, manual skill controls and context budgets. The [experience checker](scripts/art-direction/game-experience.py) connects required screen/state flows, wireframes, character/environment/UI concepts, component states and source/import manifests. The optional [UI kit](templates/game/ui-kit/README.md) provides working DOM controls and a state gallery. The existing [studio](skills/_shared/protocols/game-studio-pipeline.md) supports an isolated early prototype and separate clone-fidelity/differentiation evidence.
+New 2D work uses **Phaser 4**, 3D **Three.js**, preserving legacy pins and manual
+controls. The [router](scripts/runtime/skill_routing.py),
+[experience checker](scripts/art-direction/game-experience.py) and optional
+[UI kit](templates/game/ui-kit/README.md) connect flows, wireframes, concepts,
+components and imports through existing [studio gates](skills/_shared/protocols/game-studio-pipeline.md).
 
-The [Phaser 4.2.1 pilot](tests/game/fixtures/phaser4-lifecycle/README.md) and [Three.js experience entry](tests/game/fixtures/threejs-lifecycle/README.md#additional-experience-handoff-and-glb-pilot) have local build, contract and model/DOM checks. Their new browser runners compile current sources with the pinned local compiler before admission; a compile failure records FAIL before serving or opening a browser. Their current cloud browser attempts were blocked before launch (`pi_host_capacity_timeout`); rendered gameplay/asset quality, live specialist uplift, real-device performance and player benefit remain **UNVERIFIED**. Synthetic fixture approval records are conformance data, not production approvals.
+[Phaser](tests/game/fixtures/phaser4-lifecycle/README.md) and
+[Three.js](tests/game/fixtures/threejs-lifecycle/README.md#additional-experience-handoff-and-glb-pilot)
+pilots have local build/contract/model checks. Browser runners compile before
+admission; current cloud attempts were blocked (`pi_host_capacity_timeout`).
+Rendered quality, specialist/player benefit and real-device performance remain
+**UNVERIFIED**; synthetic approvals are conformance data.
 
-Packaged Android/iOS projects use the [mobile monetization contract](skills/_shared/protocols/mobile-monetization.md) and [integration kit](templates/game/mobile-monetization/README.md): research player psychology/market/value before configuring ads or purchases, reuse a nonsecret studio profile, and keep each game's catalog and strategy explicit. `forge mobile init`, `profile`, `doctor` and dry-run `plan` support setup. A side-effect-free beta library journals interrupted submissions and separates simulated availability, provider availability and device verification. Local synthetic replays exercise both engine-labelled inputs; native SDK plugins, actual Play/TestFlight adapters, account permissions and revenue/player improvements still require target-project validation.
+Packaged Android/iOS uses the [monetization contract](skills/_shared/protocols/mobile-monetization.md)
+and [integration kit](templates/game/mobile-monetization/README.md) for player/market
+hypotheses, reusable nonsecret profiles and per-game strategy. `forge mobile`
+setup and beta simulation separate provider availability from device evidence.
+Native SDK/store adapters, account access and player/revenue gains still need
+actual target-project validation.
 
 ## Quick start
 

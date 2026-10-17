@@ -18,6 +18,9 @@ version: 2.0.0
   returns `NEEDS_PIPELINE_GROUNDING`. Recipes are exploratory starting points.
 - Trace committed events, board/entity revision, scene generation, restart and
   reward authority. Gameplay/reward must not depend on effect completion.
+- Consume the designer's [action card](../game-designer/references/game-feel.md)
+  for intent, beats and cue priority. Diagnose control/camera faults with their
+  owner; compare removing decoration without removing essential meaning.
 - Inspect palette/silhouette, protected board/UI areas, overlapping effects,
   motion preferences and measured CPU/GPU baseline before selecting technology.
 

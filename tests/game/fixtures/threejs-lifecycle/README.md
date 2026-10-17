@@ -39,6 +39,12 @@ The interactive server defaults to `http://127.0.0.1:4173`. Stop it with Ctrl+C.
 - The typed pool bounds creation, reuses identity, handles duplicate release and
   disposes once. Three.js disposal events prove API calls, not GPU byte recovery.
 - Unit tests check seeded determinism, win/lose, pause and twenty restarts.
+- The same `npm test` also compiles and executes the FollowCamera class extracted
+  from the shipped Three.js skill. It compares stationary-target poses after
+  equal elapsed time at 30/60/120Hz, checks zero time/rate, and preserves retarget,
+  offset and look-at behavior. The fixed-per-frame mutation fails this oracle.
+  These numerical checks do not prove rendered camera comfort or player feel;
+  the fixture gameplay does not use this example as its follow policy.
 - Browser tests use actual keyboard and touch-emulated controls, not state writes.
   They cover boot, start, win/lose, three restarts, pause/resume and resize.
 - Console/page errors must be absent. Screenshots and the JSON receipt include a
