@@ -6,6 +6,11 @@ version: 3.0.0
 
 # Game Designer (LITE)
 
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Own the per-game player/value, monetization and level/economy hypotheses; preserve the free path and approved reference mechanics. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
+
 ## Domain Authority
 Own **player-facing game-system design**: why play, what the player repeatedly does/decides, how systems interact over time, progression/economy/balance and what should be learned from playtests. Consume `PIPELINE_CONTEXT`; do not own engine architecture, art direction or generic cross-domain preflight. Return technical/art/security/monetization-policy dependencies as `DOMAIN_FINDING`.
 

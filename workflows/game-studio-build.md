@@ -13,6 +13,14 @@ Read `skills/_shared/protocols/game-studio-pipeline.md` first. It is the source
 of truth for phases, role lenses, handoffs, topology, gate verdicts, and session
 state.
 
+For Phaser 4/Three.js packaged on Android/iOS, also apply
+`skills/_shared/protocols/mobile-monetization.md` at the existing Concept,
+Systems Design, Technical Setup and Release & Sustain gates. Player/market
+assumptions may drive a prototype with validation plans. Reuse the studio
+profile, keep game-specific IDs/strategy separate, and run `forge mobile doctor`
+before native integration. Static/synthetic success does not establish native,
+store or player outcomes; keep the existing state path and resource ownership.
+
 Do not assume slash commands, named agents, or an external swarm runtime exist.
 Apply the required role lenses locally unless the user explicitly requests
 delegation or parallel work.

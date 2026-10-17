@@ -136,6 +136,18 @@
     {
       "path": "evals/memory/retrieval.json",
       "type": "metadata"
+    },
+    {
+      "path": "skills/_shared/protocols/mobile-monetization.md",
+      "type": "operations"
+    },
+    {
+      "path": "templates/game/mobile-monetization/README.md",
+      "type": "operations"
+    },
+    {
+      "path": "skills/_shared/protocols/design-mindset-and-rules.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -157,7 +169,8 @@
     "skills/_shared/protocols/guardrail.md",
     "skills/_shared/protocols/qa-test-protocol.md",
     "skills/_shared/protocols/game-test-protocol.md",
-    "skills/memory-manager/SKILL.md"
+    "skills/memory-manager/SKILL.md",
+    "skills/_shared/protocols/mobile-monetization.md"
   ],
   "adapters": {
     "git": true,
@@ -200,7 +213,10 @@
       "tests/game/fixtures/phaser4-lifecycle/README.md",
       "skills/memory-manager/SKILL.md",
       "evals/memory/retrieval.json",
-      "evals/memory/smoke.py"
+      "evals/memory/smoke.py",
+      "skills/_shared/protocols/mobile-monetization.md",
+      "templates/game/mobile-monetization/README.md",
+      "skills/_shared/protocols/design-mindset-and-rules.md"
     ],
     "exclude": [
       "docs/archive/**",

@@ -175,6 +175,8 @@ New 2D web work targets **Phaser 4**; 3D targets **Three.js**. The [engine route
 
 The [Phaser 4.2.1 pilot](tests/game/fixtures/phaser4-lifecycle/README.md) and [Three.js experience entry](tests/game/fixtures/threejs-lifecycle/README.md#additional-experience-handoff-and-glb-pilot) have local build, contract and model/DOM checks. Their new browser runners compile current sources with the pinned local compiler before admission; a compile failure records FAIL before serving or opening a browser. Their current cloud browser attempts were blocked before launch (`pi_host_capacity_timeout`); rendered gameplay/asset quality, live specialist uplift, real-device performance and player benefit remain **UNVERIFIED**. Synthetic fixture approval records are conformance data, not production approvals.
 
+Packaged Android/iOS projects use the [mobile monetization contract](skills/_shared/protocols/mobile-monetization.md) and [integration kit](templates/game/mobile-monetization/README.md): research player psychology/market/value before configuring ads or purchases, reuse a nonsecret studio profile, and keep each game's catalog and strategy explicit. `forge mobile init`, `profile`, `doctor` and dry-run `plan` support setup. A side-effect-free beta library journals interrupted submissions and separates simulated availability, provider availability and device verification. Local synthetic replays exercise both engine-labelled inputs; native SDK plugins, actual Play/TestFlight adapters, account permissions and revenue/player improvements still require target-project validation.
+
 ## Quick start
 
 ### 1. Install as a Codex or Claude Code plugin (recommended)

@@ -43,6 +43,22 @@ The product promise is:
 | Memory | Boot injection is capped at 500 tokens | Retrieval quality, staleness, and non-ASCII query behavior lack release KPIs |
 | Visual direction | Local contracts now separate model prior from visual evidence: current project/user authority is preferred, greenfield external direction uses validated Evidence Cards + a GROUNDED Visual Basis, successful-product adoption is separated from causal claims, and material greenfield UI additionally uses a validated evidence-bound Style Profile so component-stack defaults cannot silently become product identity | Live image-generation aesthetics, cross-project UI style-diversity outcomes, harder gameplay-frame conformance, and non-Codex multimodal production evidence remain unverified |
 
+## Packaged web-game mobile integration
+
+The accepted mobile domain contract adds player/market/psychology research and
+labelled hypotheses to existing studio gates, reusable nonsecret profiles,
+per-game catalog/placement bindings, a portable native boundary, durable grant
+outbox reference and internal-beta coordinator. Local contract/synthetic checks
+are separate from native/store/player outcomes. See the
+[domain contract](../skills/_shared/protocols/mobile-monetization.md).
+
+Remaining integration gates are actual target wrapper/SDK compatibility, secure
+provider verification and inventory/revocation adapters, real Play/Xcode Cloud
+store adapters, physical-device/sandbox pilots and measured second-game setup
+effort. Revenue/experience improvements require actual evidence after the
+predeclared observation horizon. These remain open; no production readiness or
+revenue uplift is claimed by the framework implementation.
+
 ## Provider-Native Routing Policy
 
 Forgewright exposes one provider-neutral Scout/Builder/Expert contract. Each run selects exactly one provider adapter; that adapter discovers the provider's available models, maps capabilities to tiers, resolves snapshots, performs calls and verification, and records provider-native usage/cost receipts. Model IDs are never assumed portable between providers.

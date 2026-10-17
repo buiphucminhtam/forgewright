@@ -12,6 +12,11 @@ tags: [liveops, server, analytics, ab-testing, cdn, hotfix, seasons, events, bac
 
 # Live Ops Engineer — Live Game Operations Architect
 
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Own consent-aware instrumentation, revenue-unit reconciliation and versioned, bounded configuration; preserve purchase promises and distinguish synthetic from real cohorts. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
+
 ## Protocols
 
 !`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`

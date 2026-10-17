@@ -26,6 +26,7 @@ import { registerBenchCommand } from "./commands/bench.js";
 import { registerProjectCommands } from "./commands/project.js";
 import { registerDocsCommands } from "./commands/docs.js";
 import { registerBootstrapCommand } from "./commands/bootstrap.js";
+import { registerMobileCommands } from "./commands/mobile.js";
 import { VERSION } from "./version.js";
 import { EXIT_CODES } from "./exit-codes.js";
 import pc from "picocolors";
@@ -59,6 +60,7 @@ export function buildProgram(): Command {
   registerProjectCommands(program);
   registerDocsCommands(program);
   registerBootstrapCommand(program);
+  registerMobileCommands(program);
 
   // Initialize config
   const config = getConfig();

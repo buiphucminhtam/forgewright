@@ -393,3 +393,20 @@ Generated evidence files are local runtime artifacts. Project source, tests, and
 New 2D browser work uses Phaser 4, explicit 3D uses Three.js, and existing projects retain grounded package pins. `skill_routing.py --mode game-build --game-engine phaser4|threejs|phaser3` keeps creative order, config enablement and budgets. The [studio protocol](../skills/_shared/protocols/game-studio-pipeline.md) owns early-prototype applicability, seven production gates and protected reference vs approved ProductDelta authority.
 
 The [UI handoff guide](../skills/ui-designer/references/game-ui-kit.md) and `game-experience/v1` connect declared required states/screens, wireframes, applicable concepts, UI components and assets. Design and implementation checks validate only their own completeness stage and local hashes. Import checks parse source structure and compare declared/source-bound observations; current public-input render evidence is still required for actual engine integration. Source fixtures and synthetic creative approval records cannot promote learning or certify professional visual/player outcomes. Managed browser admission/ownership remains unchanged.
+
+
+## Packaged web-game monetization and beta distribution
+
+[Mobile Monetization](../skills/_shared/protocols/mobile-monetization.md) owns the
+Phaser 4/Three.js Android/iOS domain contract inside the existing studio phases.
+Player psychology, market/competition, value and learning/economy hypotheses
+precede SDK parameters. Assumptions are valid prototype inputs with validation
+plans; synthetic checks cannot establish player or revenue improvement.
+
+The CLI resolves strict versioned studio/game/strategy contracts and produces
+static doctor/dry-run beta intents. The portable runtime and server grant outbox
+reference expose explicit native/verifier ports. The beta library uses owned
+journals, scope binding, version reservation and remote reconciliation, with
+separate simulated/provider/device status. Actual SDK plugins, account access
+and target-store adapters remain project prerequisites. Reuse Xcode Cloud and
+managed test resources; do not apply Expo production defaults to a web-game beta.

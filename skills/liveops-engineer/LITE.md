@@ -6,6 +6,11 @@ version: 1.0.0
 
 # Liveops Engineer (LITE)
 
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Own consent-aware instrumentation, revenue-unit reconciliation and versioned, bounded configuration; preserve purchase promises and distinguish synthetic from real cohorts. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
+
 ## SOLVE Step 2: GROUND (Liveops Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|

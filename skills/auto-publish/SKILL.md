@@ -1,111 +1,85 @@
 ---
 name: auto-publish
 description: >
-  [production-grade internal] Specialist for automating build and publish processes
-  for mobile platforms (iOS and Android). Scaffolds EAS local build configs,
-  manages keystore templates, configures store metadata, and runs local-to-store
-  publishing pipelines.
-version: 1.0.0
+  Use when configuring, adopting or executing Android/iOS build and store
+  distribution for Expo/RN or packaged Phaser 4/Three.js projects.
+version: 2.0.0
 author: forgewright
-tags: [auto-publish, eas, play-store, app-store, ios, android, release-engineering, credentials-security]
+tags: [auto-publish, mobile, play-store, testflight, xcode-cloud, credentials-security]
 ---
 
-# Auto-Publish — Mobile App Store Release Specialist
+# Auto-Publish — Mobile Build and Distribution
 
-## Identity
+## Select the actual project route first
 
-You are the **Auto-Publish Specialist**. You automate the building, signing, metadata preparation, and submission of cross-platform mobile applications (Expo React Native) to the Apple App Store and Google Play Console. 
+Read manifests/native projects and existing automation. Expo/React Native keeps
+its EAS recipe; Phaser 4/Three.js web games follow
+[Mobile Monetization](../_shared/protocols/mobile-monetization.md). Preserve custom
+publish scripts and existing Xcode Cloud workflows. A CLI template is not an
+installed SDK or a working store adapter.
 
-**Your superpower:** Streamlining store publishing from a complex, error-prone manual console clickfest into a secure, single-command pipeline.
+For a packaged web game:
 
-**Critical Constraint:** All client credentials, signing certificates, keystore passwords, and Google Service Account private keys MUST be saved locally within the target mobile project's folder (never checked into Forgewright or global stores).
-
----
-
-## Critical Rules
-
-### Rule 1: First-Time Publishing Constraints
-Always enforce and verify:
-- **Apple App Store (iOS):** Fully automated provisioning and App record creation is supported. However, the first build MUST be executed in interactive mode once:
-  `npx eas build --platform ios --profile production --local`
-  to associate your local machine/credentials with your Apple Developer Portal.
-- **Google Play Store (Android):** The Play Store Developer API does **not** support first-time application creation. The user **MUST** manually create the app record in Google Play Console and upload the first `.aab` file manually. Subsequent version increments and submissions can be automated.
-
-### Rule 2: Credentials & Secrets Safety
-- **NEVER** save or ask users to save credentials (`google-service-account-key.json`, `.keystore` files, passwords) in the Forgewright directory.
-- Verify `credentials.json` and any private key JSON files are in the target project's `.gitignore` before performing code analysis or edits.
-- Ensure the template formats are clean and contain only dummy placeholders.
-
----
-
-## Phases
-
-### Phase 1 — Prerequisite & Environment Verification
-
-**Goal:** Ensure all tools (EAS CLI, Fastlane, Java JDK, Xcode tools) are installed and the app is ready for publishing.
-
-**Actions:**
-1. Check dependencies on the host machine:
-   - Check Node.js and EAS CLI (`eas --version`).
-   - Check Fastlane for iOS certificate and local building (`fastlane --version`).
-   - Check Xcode CLI tools for iOS (`xcode-select -p`).
-   - Check Java JDK for Android (`java -version`).
-2. Verify target project structure:
-   - Confirm target mobile project folder contains `package.json` and `app.json`.
-   - Check if Firebase configuration files are present (`google-services.json` for Android, `GoogleService-Info.plist` for iOS).
-
----
-
-### Phase 2 — Project Scaffolding (Setup)
-
-**Goal:** Copy automation scripts and templates to the target project folder.
-
-**Actions:**
-1. Run the auto-publish setup script:
-   ```bash
-   bash forgewright/scripts/auto-publish-setup.sh [path_to_mobile_project]
-   ```
-2. Explain to the user where the files were created:
-   - `/scripts/publish-ios.sh` and `/scripts/publish-android.sh`
-   - `/eas.json` and `/store.config.json` templates
-
----
-
-### Phase 3 — Configuration & Secret Integration
-
-**Goal:** Assist the user in filling out credentials securely within their project.
-
-**Actions:**
-1. Guide the user through creating a Google Play Service Account and exporting a JSON key to `google-service-account-key.json`.
-2. Guide the user through configuring their keystore and reference credentials in `credentials.json`.
-3. Assist in editing `eas.json` submit profile to reference local files.
-
----
-
-### Phase 4 — Execution & Verification
-
-**Goal:** Execute the local build and submission, verifying success.
-
-**Actions:**
-1. Instruct the user to run the appropriate script:
-   - iOS: `./scripts/publish-ios.sh`
-   - Android: `./scripts/publish-android.sh`
-2. Monitor build progress outputs and check for standard issues (such as missing certificates or EAS account access).
-
----
-
-## Output Structure
-
-In the client mobile project:
+```sh
+bash scripts/release/auto-publish-setup.sh /path/to/game --runtime web-game --engine phaser4
 ```
-[project-root]/
-├── scripts/
-│   ├── publish-ios.sh
-│   └── publish-android.sh
-├── keystore/
-│   └── (user's release keystores - gitignored)
-├── eas.json
-├── store.config.json
-├── credentials.json (gitignored)
-└── google-service-account-key.json (gitignored)
+
+This calls `forge mobile init` and creates labelled hypothetical setup inputs
+without EAS files or live actions. Run `mobile doctor` with the reviewed shared
+studio profile and per-game strategy, then resolve its native/store blockers.
+Do not apply the legacy EAS production submit default to an internal-beta task.
+
+## Credentials and authority
+
+Keep only account identities and secure binding references in shared profiles.
+Reuse existing runtime/vault/OS credentials and scoped standing authorization;
+inspect names/readiness, never values in chat or logs. Do not persist raw keys,
+passwords, keystores or receipts in Forgewright, generic CLI config or memory.
+If a tool needs a credential file, use its supported secure injection with
+restricted lifetime/permissions and owned cleanup. Existing Expo project-local
+credential layouts may remain where required, gitignored and access-controlled.
+No global plaintext key cache is introduced.
+
+Actual app records, legal agreements, signing, product catalogs, network
+onboarding, API permissions, compliance and testing cohorts are prerequisites to
+verify, not assumed inherited approvals. Ask only for genuine unresolved deltas.
+
+## Expo/RN compatibility
+
+The existing one-argument setup invocation remains available for Expo projects:
+
+```sh
+bash scripts/release/auto-publish-setup.sh /path/to/expo-app
 ```
+
+It preserves existing publish scripts/configs. Inspect the selected EAS version,
+submit profile, artifact and destination before execution; legacy production
+settings do not authorize a production release. Determine signing/bootstrap
+needs from the current project/provider rather than forcing an interactive
+build for every app or replacing an existing CI workflow. EAS-specific local
+build requirements apply only to that branch, not Xcode Cloud web-game builds.
+
+## Packaged web-game release contract
+
+The current `forge mobile plan` emits a dry-run identity only. The exported beta
+coordinator consumes trusted **project-owned** build/store adapters; this repo
+has not supplied an authenticated Play/Xcode Cloud implementation for an actual
+game. Resolve the real wrapper and SDK compatibility, implement those adapters,
+and prove sandbox correctness before enabling live submissions.
+
+- Bind studio/account/app/source/config/artifact/version and allowed internal
+  destination; deny production, unknown or ambiguous target mapping.
+- Reuse Xcode Cloud source/workflow/actions; correlate exact run/build/group.
+  Avoid triggering both branch events and API submission for one intent.
+- Journal before effects. On timeout/lost response, reconcile the original
+  provider operation; do not build/upload again blindly. Retain uncertain locks.
+- Verify Google license testers separately from track membership and use each
+  ad network's supported test mode. Ordinary test-track users may be charged.
+- Report processing, provider availability and actual device installation
+  separately. Simulator/mock success cannot certify store/native readiness.
+- Real browser/emulator/simulator checks use the existing managed game-test
+  session, bounded admission and owned cleanup.
+
+External TestFlight/production distribution, paid campaigns and new account
+permissions require their own requested scope. Repeat in-scope beta actions
+under the existing standing policy without adding per-command confirmation.

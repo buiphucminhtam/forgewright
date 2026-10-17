@@ -12,6 +12,11 @@ tags: [game-design, gdd, gameplay-loop, economy, mechanics, balancing, progressi
 
 # Game Designer — Gameplay Systems Architect
 
+## Packaged web-game domain route
+
+For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/protocols/mobile-monetization.md) before generic examples. Own the per-game player/value, monetization and level/economy hypotheses; preserve the free path and approved reference mechanics. Use the existing studio gates and shared profile/game delta; `forge mobile doctor` reports assumptions and unresolved native/store prerequisites.
+
+
 ## Protocols
 
 !`cat skills/_shared/protocols/design-mindset-and-rules.md 2>/dev/null || true`
@@ -156,6 +161,8 @@ Create 3-5 principles that every design decision must support:
 
 ### Step 1.4: Define Target Player Profile
 
+The following categories and numeric values are illustrative hypotheses, not observed player traits, spending tolerance or session targets. Replace them with per-game evidence and validation questions.
+
 ```markdown
 ## Target Player Profile
 
@@ -179,7 +186,7 @@ Create 3-5 principles that every design decision must support:
 | **Socializers** | Multiplayer, trading, guilds | Online features, community systems |
 | **Killers** | Competition, PvP, rankings | Matchmaking, balance, anti-griefing |
 
-**Design for at least 2 types.** Pure Achiever games miss Explorers and Socializers.
+Use Bartle categories only as an optional lens where applicable. Select motives from current player research; there is no required number of types or automatic feature expansion.
 
 ---
 
@@ -309,7 +316,7 @@ Design the typical session flow:
 - **Regen rate:** 1 per 5 minutes
 - **Activity cost:** 20-30 per activity
 - **Cap:** 100-150 (soft cap that regenerates)
-- **Design goal:** Force session breaks without frustrating players
+- **Design intent:** Optional session structure only if the player promise supports it; validate frustration, agency and free progression
 ```
 
 ### Step 3.2: Economy Balance Rules
@@ -321,17 +328,17 @@ Design the typical session flow:
 ```
 Total Sources per Session ≤ Total Sinks per Session × 1.2
 ```
-If sources exceed sinks by 20%+, implement additional sinks.
+Illustrative hypothesis only. Measure stocks, affordability, progression and player goals before selecting a source/sink relationship; do not apply this ratio as a default.
 
 ### Rule 2: Exponential Sinks
 As players progress, costs scale exponentially:
 ```
 cost_at_level = base_cost × (1.5 ^ level)
 ```
-Players should always be 1-2 levels away from affording the next upgrade.
+Illustrative curve only. Choose and validate affordability from the actual economy and learning goals; neither multiplier nor distance is a universal rule.
 
 ### Rule 3: Time-Gated Value
-High-value items must be time-gated:
+Optional mechanics requiring explicit product intent, player value and policy review:
 - Rare currency: Daily cap
 - Equipment: Weekly raid lockout
 - Cosmetics: Seasonal availability
@@ -666,7 +673,7 @@ When designing game interfaces, apply Fagerholt & Lorentzon's 4-part taxonomy:
 ### Engagement Hooks
 - Weekly challenges (3 easy + 1 hard)
 - Daily login bonus
-- Season-exclusive cosmetics (FOMO)
+- Optional season cosmetics only with explicit player-value and availability policy; do not use FOMO as a default engagement mechanism
 ```
 
 ### Step 6.2: Conversion Funnel

@@ -1,0 +1,46 @@
+{
+  "schema": "mobile-studio-profile/v1",
+  "profile_id": "assumed-studio",
+  "revision": "1",
+  "accounts": {
+    "google_play": "assumed-play-account",
+    "apple_team": "ASSUMEDTEAM",
+    "admob": "assumed-admob-publisher"
+  },
+  "secret_refs": {},
+  "release_policy": {
+    "allowed_destinations": [
+      "google_play_internal_testing",
+      "testflight_internal"
+    ],
+    "allowed_game_ids": [
+      "assumed-puzzle",
+      "assumed-three-game"
+    ],
+    "production_enabled": false
+  },
+  "ads_policy": {
+    "mediation_owner": "admob",
+    "network_candidates": [
+      "meta",
+      "unity_ads"
+    ],
+    "test_ads_required": true
+  },
+  "app_bindings": [
+    {
+      "game_id": "assumed-puzzle",
+      "android_package": "example.assumed.puzzle",
+      "android_app_id": "assumed-play-app",
+      "ios_bundle": "example.assumed.puzzle",
+      "ios_app_id": "assumed-apple-app"
+    },
+    {
+      "game_id": "assumed-three-game",
+      "android_package": "example.assumed.three",
+      "android_app_id": "assumed-three-play-app",
+      "ios_bundle": "example.assumed.three",
+      "ios_app_id": "assumed-three-apple-app"
+    }
+  ]
+}

@@ -63,6 +63,7 @@ def test_compiled_mcp_starts_with_contended_private_leases_and_closes_own_lease(
         before[path.name] = (path.stat().st_ino, path.read_bytes())
     environment = {
         **os.environ,
+        "FORGEWRIGHT_DIR": str(ROOT),
         "FORGEWRIGHT_WORKSPACE": str(workspace),
         "FORGEWRIGHT_MCP_LEASE_ROOT": str(leases),
         "FORGEWRIGHT_TRAJECTORY_ROOT": str(tmp_path / "trajectories"),

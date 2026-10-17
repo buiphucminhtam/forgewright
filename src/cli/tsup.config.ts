@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/bootstrap-entry.ts"],
+  entry: ["src/index.ts", "src/bootstrap-entry.ts", "src/mobile-entry.ts"],
   format: ["esm"],
   dts: true,
   splitting: false,
