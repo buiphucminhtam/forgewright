@@ -4,7 +4,7 @@ description: Research and improve Forgewright game skills and engineering judgme
 status: active
 owner: Game skill maintainers
 scope: Forgewright framework development, game skill research, evaluation and delivery
-last_reviewed: 2026-10-07
+last_reviewed: 2026-10-18
 canonical: true
 ---
 
@@ -131,11 +131,26 @@ python3 scripts/runtime/skill_quality.py run \
   --runner python3 "$EVALUATOR_ADAPTER"
 ```
 
-The adapter executes the approved model/runtime and scores retained outputs
-against the frozen rubric. Record model/version, configuration, tools,
-repetitions and budget. **This workflow supplies no production evaluator.**
-Synthetic observations test plumbing only. Missing adapter/access/budget means
-`BLOCKED`, not invented passing observations.
+The legacy adapter path executes the approved runtime, but its returned JSON
+is declared observation data; it cannot establish trusted promotion. For
+observed evaluation, keep one trusted Python process alive through
+`skill_eval_host.capture_run`, `skill_eval_verify.judge_run`, a
+`TrustedRunRegistry` and promotion. Freeze the independent oracle, source facts,
+evaluator/dependency bytes and exact case/arm manifests; the oracle owner differs
+from the candidate author. Use `freeze_comparison` before `freeze_oracle` to
+bind any common instructions and deliberate current/candidate reference
+revisions into the oracle digest. Each arm must load exactly its frozen source
+roles/order/hashes; baseline cannot receive candidate bytes through an alias.
+Without this contract the default admits only the target instruction delta.
+Keep runtime/model/effort, executable bytes and tools/request/time/output limits
+equal across arms; freeze each repetition and public task/source packet. The
+verifier checks genuine host/judgment identities, raw spans and individual
+outcomes, then projects them into the existing v1
+report. Persisted `run.json` or subprocess evaluation JSON cannot reconstruct
+issuance. Record model/version, configuration, tools, repetitions and budget.
+**This workflow supplies no production semantic oracle.** Missing observable
+context/model metadata, independent oracle, access or budget means `BLOCKED`.
+Fixtures test plumbing and never establish live promotion.
 
 For mindset, score observable decisions: finding contrary evidence, measuring
 before optimizing, preserving reward authority, recognizing engine mismatch
@@ -152,22 +167,46 @@ conflict. Require applicable game checks and review of scope, contradictions,
 diff and raw evidence under the repository's review policy.
 
 A skill candidate also requires `promotion_allowed: true` bound to its exact
-bytes. Immediately recheck the live target and dependencies against the
-recorded baseline; concurrent changes require fresh evaluation. The promotion
-command does not check current-target freshness for you:
+bytes. Promotion locks the existing target, checks candidate/current bytes and
+target/variant bindings, invokes the trusted callback, rechecks the current
+bytes, then atomically replaces the target. The callback checks the complete
+frozen dependency bundle and recomputes the report from issued judgments;
+concurrent source, sibling or evaluator changes require fresh evaluation.
 
-```bash
-python3 scripts/runtime/skill_quality.py promote --root . \
-  --report "$CYCLE_DIR/quality-report.json" \
-  --candidate "$CANDIDATE_FILE" --target "$TARGET_SKILL"
+In the same trusted process that captured and judged every frozen case/arm,
+use the registry/manifest objects already constructed out of band:
+
+```python
+from skill_eval_verify import verify_observed_report
+from skill_quality import promote_candidate
+
+report = registry.build_report()
+promote_candidate(
+    root=root,
+    report=report,
+    candidate=manifest.candidate_skill,
+    target=manifest.current_skill,
+    verify_observed=lambda submitted: verify_observed_report(
+        submitted, registry=registry, manifest=manifest
+    ),
+)
 ```
+
+This is a host integration excerpt, not a standalone evaluator. The standalone
+`skill_quality.py promote` CLI has no trusted observed-run callback and remains
+fail-closed. Unknown full provider context or billing cannot establish an
+efficiency-only win; this verifier requires measured semantic quality gain and
+rejects per-case regressions even when the aggregate improves. Disagreements,
+failed runs and unobserved counters stay visible. No human, business, device or
+rendered product evidence follows from the host's `agent-decision` capability.
 
 Promotion supports existing `skills/<name>/SKILL.md` or `LITE.md` targets.
 References, workflows and kernel files use ordinary reviewed changes with
-their own verifiers, not the skill-only promotion command. Digest validation
-does not authenticate evaluator honesty or replace source, impact, freshness
-or review checks: these remain agent/reviewer gates. Rerun affected checks on
-the final integrated tree; later candidate edits invalidate prior evidence.
+their own verifiers and enter affected evaluation bundles. Hashes/process
+identities detect changed bindings; they do not authenticate evaluator honesty
+against same-user code/memory forgery or replace source, impact and independent
+review. Rerun affected checks on the final integrated tree; later candidate or
+dependency edits invalidate prior evidence.
 
 ## 6. Document and deliver
 

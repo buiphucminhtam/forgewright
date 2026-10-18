@@ -2,132 +2,72 @@
 
 <!-- source: skills/production-grade/references/mode-classification.md -->
 
-## Enhanced Mode Classification with Fuzzy Matching (v8.7+)
+## Runtime selection and controller judgment
 
-### Confidence Scoring System
+The local runtime uses `scripts/runtime/local_routing.py` (`local-en-vi-2`), a
+bounded EN/VI lexical selector. Its `rule_score` counts matching rules and is
+explicitly `rule-score-not-calibrated`: it is not a probability or a confidence
+score between 0 and 1. There are no implemented fuzzy thresholds, stemming,
+synonym expansion or automatic Explore → Feature → Full Build fallback chain.
+Do not configure invented `skillRouting.fuzzyMatching` knobs.
 
-Every mode classification returns a confidence score (0.0 - 1.0):
+Selection follows a trusted explicit mode, then a valid host-owned exact cache
+entry when supplied, then lexical rules, otherwise `abstain`. Whole-word/phrase
+matching and a single recognized task family can suggest a configured mode;
+negation, uncertainty/policy language and independent competing families abstain.
+Removing a competing mode from the shortlist does not resolve ambiguity. Prompt
+text never supplies configuration, forced skills or permission. The route layer
+still validates paths, disabled roles, engine compatibility and context limits.
 
-```
-┌─ Mode Classification ─────────────────────────────────────┐
-│                                                            │
-│  Detected: Feature                                         │
-│  Confidence: 0.87                                          │
-│                                                            │
-│  Evidence:                                                 │
-│  • "add login" → feature keyword match                    │
-│  • "implement" → strong signal                            │
-│  • No full-stack indicators → no Full Build               │
-│                                                            │
-│  Secondary candidates:                                      │
-│  • Full Build (0.23) — mentions "system"                  │
-│  • AI Build (0.15) — mentions "smart"                    │
-│                                                            │
-│  Status: ✅ Proceeding with Feature mode                   │
-└────────────────────────────────────────────────────────────┘
-```
+An abstention requests controller interpretation, not a catch-all build. A
+file-capable native parent inspects the actual request and current repository,
+resolves only material unknowns, and may use the existing trusted explicit route
+when intent is clear. It preserves genuine negation, policy boundaries and
+unresolved conflicting goals. “Help me” in a precise request, two dependent steps
+such as fix-and-test, or an omitted file path that repository inspection resolves
+do not by themselves require a questionnaire. Ask when uncertainty changes
+outcome, scope, risk, cost or a public contract; proceed on a reversible grounded
+default when authorized.
 
-### Trigger Matching
+### Game and novice interpretation
 
-| Match Type | Confidence | Example |
-|-----------|------------|---------|
-| **Exact match** | 0.95-1.0 | "build a SaaS" → Full Build |
-| **Fuzzy match** | 0.7-0.94 | "make a web app" → Full Build (0.85) |
-| **Weak signal** | 0.4-0.69 | "help me" → Explore (0.45) |
-| **No match** | < 0.4 | Fallback chain invoked |
+“Tôi không biết làm game. Hãy giúp tôi làm một game xếp hình 2D cho Android để
+kinh doanh” expresses inexperience and affirmative intent. “Không tạo game. Chỉ
+giải thích cách làm game” requests explanation only. The raw lexical selector
+may abstain on both; never remove negation or treat a game keyword as execution
+authority. Game plus market research can require both decision lenses without
+permission to launch campaigns, install SDKs, export analytics or publish.
 
-### Fuzzy Trigger Patterns
+Read the **Phase Activation Contract** in
+`skills/_shared/protocols/game-studio-pipeline.md` and follow
+`workflows/game-studio-build.md`. Ground the engine/shell/pins first: Android
+alone does not choose Unity; preserve existing Phaser 3, explicit native-engine
+intent and native/React Native projects. New web 2D uses Phaser 4 and web 3D uses
+Three.js. For a grounded web route, the existing command is:
 
-```yaml
-classification:
-  primary:
-    trigger: "build a SaaS"
-    mode: "Full Build"
-    confidence: 0.95
-    keywords: ["build", "saas", "full stack", "from scratch", "greenfield"]
-
-  fuzzy:
-    - trigger: "build"
-      mode: "Full Build"
-      threshold: 0.7
-      synonyms: ["create", "make", "develop", "construct"]
-
-    - trigger: "game"
-      mode: "Game Build"
-      threshold: 0.75
-      engine_keywords: ["unity", "unreal", "godot", "roblox", "phaser", "threejs"]
-
-    - trigger: "mobile"
-      mode: "Mobile"
-      threshold: 0.7
-      keywords: ["ios", "android", "react native", "flutter"]
-
-  fallback:
-    - mode: "Explore"
-      confidence: 0.3
-      reason: "Ambiguous request"
-    - mode: "Feature"
-      confidence: 0.4
-      reason: "Default for additions"
-    - mode: "Full Build"
-      confidence: 0.35
-      reason: "Catch-all for builds"
+```bash
+python3 scripts/runtime/skill_routing.py --mode game-build --game-engine phaser4 --project-root . --config .forgewright/skills-config.json
 ```
 
-### Fuzzy Matching Rules
+Use `threejs` or `phaser3` only when applicable; these flags are web selectors,
+not a replacement for explicit Unity/Godot/native routing. Run from the installed
+framework with the actual project/config paths. Keep the current startup budget
+of at most 12 overlays and 8,000 estimated tokens, exact deferred inventory and
+one-time admitted loader semantics. A native host may use its existing trusted
+file/route capability subject to that contract; never read around a denied or
+unavailable controlled loader. Outside-inventory roles require a supported
+trusted host route/load mechanism, otherwise the capability is BLOCKED. The
+standalone Python LITE orchestrator routes once at startup and does not provide
+automatic semantic re-entry or arbitrary role loading after abstention.
 
-1. **Keyword extraction** — Extract key terms from request
-2. **Stemming** — Match "building" to "build"
-3. **Synonym expansion** — Match "create" to "build"
-4. **Partial matching** — "unity" matches "Unity3D"
-5. **Context weighting** — "game" near "mobile" → Game Build (higher)
+## Human-readable mode suggestions
 
-### Fallback Chain
-
-When no match exceeds the threshold:
-
-```
-Fallback sequence:
-1. Polymath (Explore) — Help clarify intent
-2. Feature — Default for additions
-3. Full Build — Catch-all for builds
-4. Custom — Let user pick mode
-```
-
-### Configuration
-
-```yaml
-# In .production-grade.yaml
-skillRouting:
-  fuzzyMatching:
-    enabled: true
-    minConfidence: 0.7
-    synonymExpansion: true
-    stemmingEnabled: true
-  fallbackChain:
-    - Explore
-    - Feature
-    - Full Build
-```
-
-If `confidence: HIGH` → use the detected mode directly, skip the classification table.
-If `confidence: MEDIUM` → present 2 most likely modes to the user.
-If `confidence: LOW` → present 3 most likely modes to the user.
-
-**⚠️ ENFORCEMENT: If request is unclear, STOP and ask. DO NOT start executing.**
-
-The following requests MUST trigger clarification:
-- Contains vague verbs: "help me", "make it", "do something", "fix it"
-- No specific scope: "build an app", "add a feature", "update the system"
-- Two or more tasks in one: "explain AND build", "fix AND test"
-- No success criteria: "make it better", "improve it"
-- No file/location specified: "update login", "add auth"
-
-Override the detected mode only if the user's intent clearly differs from what was interpreted. Otherwise, trust the chat-interpreter's analysis.
+The table is a guide for controller judgment, not the runtime rule catalog,
+permission to load all listed roles, or a guaranteed execution capability.
 
 | Mode | Trigger Signals | Skills Involved |
 |------|----------------|-----------------|
-| **Full Build** | "build a SaaS", "production grade", "from scratch", "full stack", greenfield intent | All skills, full DEFINE→BUILD→HARDEN→SHIP→SUSTAIN→GROW pipeline |
+| **Full Build** | "build a SaaS", "production grade", "from scratch", "full stack", greenfield intent | Applicable skills across DEFINE→BUILD→HARDEN→SHIP→SUSTAIN→GROW |
 | **Feature** | "add [feature]", "implement [feature]", "new endpoint", "new page", "integrate [service]" | BA (if gaps detected) → PM (scoped) → Architect (scoped) → BE/FE → QA |
 | **Harden** | "review", "audit", "secure", "harden", "before launch", "production ready" (on EXISTING code) | Security + QA + Code Review (sequential) → Remediation |
 | **Ship** | "deploy", "CI/CD", "containerize", "infrastructure", "terraform", "docker" | DevOps → SRE |

@@ -62,6 +62,68 @@ Before reading or writing studio state:
 Record the resolved path in the turn plan. Do not invent a new configuration key
 or create a second state file when the project already has a source of truth.
 
+## Phase Activation Contract
+
+This is the sole phase/decision activation table. Entrypoints consume it with
+the lifecycle and handoff requirements below; it adds no gate or state schema.
+Paths are relative to the installed framework root, not an assumed consumer
+checkout. Verify the file and host permission before loading an applicable lens;
+a path in this table is not a capability grant or a demand to load every role.
+For grounded web selectors, verified engine paths are
+`skills/phaser4-engineer/LITE.md`, `skills/threejs-engineer/LITE.md`, and legacy
+`skills/phaser3-engineer/LITE.md`. Native intent instead uses the applicable
+installed `skills/unity-engineer/LITE.md`, `skills/unreal-engineer/LITE.md`,
+`skills/godot-engineer/LITE.md` or `skills/roblox-engineer/LITE.md` through its
+supported trusted host route; the web-only `--game-engine` flag does not select
+these native roles.
+
+| Phase | Current decision or trigger | Owner lens / available skill path | Required inputs | Compact output | Next consumer | Capability or evidence boundary |
+|---|---|---|---|---|---|---|
+| Concept | New game promise, audience, platform or material direction | Parent coordinates with `skills/game-designer/LITE.md`; commercial intent: `skills/product-manager/LITE.md` and `skills/growth-marketer/LITE.md`; player/context uncertainty: `skills/ux-researcher/LITE.md`; then `skills/concept-artist/LITE.md` → `skills/art-director/LITE.md` | Brief, existing project/engine evidence, constraints, applicable grounded UX/visual basis | Scoped promise/core loop, engine/pins, target budgets, selected Concept Packet and approved Style DNA; source-backed commercial decisions or labelled hypotheses in existing brief/GDD | Systems Design and downstream creative owners | UX/research → Concept Artist → Art Director → downstream order remains binding. No monetization decision is required merely to explore a prototype; undecided/unmonetized work stays narrative, never a fabricated `mobile-strategy/v1` enum/catalog. Research does not authorize SDKs, spend, analytics export or store changes. |
+| Systems Design | Decide mechanics, learning, economy, screen flow or affected content | `skills/game-designer/LITE.md`; as applicable `skills/level-designer/LITE.md`, `skills/ui-designer/LITE.md`, `skills/interaction-designer/LITE.md`, `skills/ux-researcher/LITE.md`; commercial/statistical decisions use `skills/product-manager/LITE.md`, `skills/growth-marketer/LITE.md`, `skills/data-scientist/LITE.md` | Passed Concept, selected Concept Packet, approved Style DNA, relevant research and protected rules | Design-ready systems/states, wireframes and component-kit requirements, tunables with units/bounds, acceptance criteria and unresolved decision owners | Technical Setup and story owners | Activate only affected decisions; bind UI/art to approved creative inputs. Hypotheses are not player or revenue observations. Existing strict strategy models remain `ads`, `iap`, `hybrid`, `premium`. |
+| Technical Setup | Make the chosen stack buildable/testable and establish ownership | `skills/game-engineer/LITE.md`, selected engine path from routing; architecture: `skills/solution-architect/LITE.md`; relevant art/audio/mobile: `skills/technical-artist/LITE.md`, `skills/game-audio-engineer/LITE.md`, `skills/mobile-engineer/LITE.md` | Design-ready, actual engine/shell/pins, target platform/budgets | Implementation-ready ADR/control manifest, build/test commands, save/content/lifecycle boundaries, native prerequisites where applicable | Pre-Production and implementers | Preserve existing engines and native shells. A web build/static doctor does not establish native adapter, account or device capability. Reuse mobile authority/config and existing resource admission. |
+| Pre-Production | Test the riskiest hypothesis before committing production scale | Parent/`skills/project-manager/LITE.md` owns keep/change/kill; `skills/game-designer/LITE.md` and selected engine implement the slice; `skills/ux-researcher/LITE.md` owns actual player research method; `skills/qa-engineer/LITE.md` protects rules | Implementation-ready for code, selected hypothesis, whole-loop scope and approved creative inputs | Slice observations, real playtest evidence where available, second content-unit cost, keep/change/kill and ready stories | Production owner and user at the existing commitment decision | Missing participants/devices leave those claims UNVERIFIED and an applicable required gate item FAIL. Technical evidence can close its own scoped experiment; it cannot certify players. |
+| Production | Implement one accepted story or propagate a design change | Smallest story-owned set from `skills/game-engineer/LITE.md`, selected engine, `skills/level-designer/LITE.md`, `skills/technical-artist/LITE.md`, `skills/game-audio-engineer/LITE.md`, `skills/ui-designer/LITE.md`; `skills/qa-engineer/LITE.md` verifies | Design-ready + implementation-ready per story, protected paths/rules and dependencies | Done handoff, exact checks, owned defects and propagated accepted changes | Dependent story owners, then Polish | Presentation observes authoritative committed gameplay/payment events; animation/audio completion never grants damage, rewards or entitlements. Preserve frozen mechanics and purchase/server authority. |
+| Polish | Diagnose affected feel, accessibility, balance, performance or recovery | Applicable `skills/game-designer/LITE.md`, `skills/game-accessibility-engineer/LITE.md`, `skills/performance-engineer/LITE.md`, `skills/qa-engineer/LITE.md` and affected art/audio/engine owner | Complete story evidence, approved visual basis, project target budgets and measured problem | Existing game-feel action card/checklist, regression/performance/recovery evidence, keep/change/kill | Release owner | Diagnose before adding effects; preserve combined mute/motion alternatives. Rendered/player/device claims need their own observations. Admit browser/device work through existing leases and release only owned resources. |
+| Release & Sustain | Package, approve, distribute and support the identified artifact | `skills/build-release-engineer/LITE.md`; packaged web: `skills/mobile-engineer/LITE.md` and `skills/mobile-tester/LITE.md`; applicable measurement/support: `skills/liveops-engineer/LITE.md` | Passed Polish, exact artifact identity, rights/identity/listing evidence and scoped authorization | Release/publish evidence, internal-beta journal where applicable, telemetry/support/triage and rollback record | User and operations/hotfix owner | Provider availability, installed build, internal beta, soft launch and production are distinct. Listing promises must match reachable gameplay. No implicit paid campaign, analytics export, store operation or production release. |
+
+At phase entry and transition, read the resolved current studio state, identify
+the current decision and applicable owner, and transfer only the relevant input
+paths/revisions, accepted decisions, checks, blockers and next consumer. Keep
+deferred needs in that existing state, revisit them when applicable, and record
+`N/A` only with a genuine applicability rationale. Missing applicable evidence
+follows the existing FAIL rule, not a new approval checkpoint.
+
+### Controller interpretation and host boundary
+
+The bounded lexical selector may abstain on both “không biết làm game” and
+“không tạo game”. The parent interprets the actual authorized request and
+workspace: inexperience can accompany affirmative game intent; negation,
+conflicting goals and policy bypass language do not authorize execution. Ground
+engine/platform before using a trusted explicit game route. Android alone does
+not select Unity or replace an existing React Native/native shell. New web work
+uses Phaser 4 for 2D or Three.js for 3D; preserve existing Phaser 3 and explicit
+native-engine intent. Ask only about unknowns that materially change direction,
+scope, risk or cost.
+
+File-capable native controllers can apply verified installed lenses sequentially
+through their existing authorized file/route capability. Preserve configured
+disabled roles and context limits: the current startup route admits at most 12
+overlays and 8,000 estimated tokens; this table does not enlarge that shortlist.
+Retain the exact `deferred_skills` inventory from the route result. When the
+host exposes its bounded deferred loader, load only an exact admitted member,
+once; an unavailable or denied controlled loader must never be bypassed by
+reading its files directly. A role outside that inventory needs an existing
+trusted host route/load mechanism or a separately supported bounded phase run.
+If none exists, report that applicable capability as BLOCKED rather than
+pretending it was loaded or silently omitting it.
+
+The standalone Python LITE orchestrator routes once at startup. It does not
+automatically interpret an abstention, reroute or load arbitrary phase roles.
+This activation contract targets file-capable native controllers; it introduces
+no phase argument, routing API, loader or automatic Python re-entry. A proposed
+controller trajectory is not observed semantic behavior or novice success.
+
 ## Entry Routing
 
 Classify the request before creating work:
@@ -89,7 +151,7 @@ proved. Missing applicable required evidence is never a skip.
 
 | # | Phase | Required outcome | Minimum evidence | Gate owner |
 |---|---|---|---|---|
-| 1 | Concept | A scoped game promise, audience, platform, engine, pillars, core loop, and art direction | Concept/GDD, engine decision, target budgets, approved Style DNA contract | Creative + technical + user |
+| 1 | Concept | A scoped game promise, audience, platform, engine, pillars, core loop, and art direction | Concept/GDD, engine decision, target budgets, selected Concept Packet, approved Style DNA contract | Creative + technical + user |
 | 2 | Systems Design | MVP systems are decomposed with dependencies, states, balance inputs, UX flows, and acceptance criteria | Systems index, per-system specs, cross-system review, accessibility targets | Game design |
 | 3 | Technical Setup | The game can be built and tested on the chosen stack with explicit architectural boundaries | Architecture, ADRs, control manifest, test scaffold, build command, performance budgets | Technical |
 | 4 | Pre-Production | The riskiest assumptions are playable before full production commitment | Throwaway prototype where needed, vertical slice, playtest report, asset/UX inventory, ready epics/stories | Producer + user |
@@ -146,7 +208,8 @@ gates, native engines or mobile performance. Its ordered snapshots do not prove
 intra-step gameplay event order; contracts requiring that trace stay UNVERIFIED. The opt-in Signal Dash experiment
 and its source-pinned expectations are documented in the fixture README.
 
-Append this record to `production/session-state/game-studio.md`:
+Append this record to the resolved studio state path (default:
+`production/session-state/game-studio.md`):
 
 ```markdown
 ## Gate: <current phase> -> <next phase>
@@ -212,8 +275,11 @@ UX/research -> Concept Artist -> Art Director -> UI/technical/engine handoff
 The named skill files are `skills/concept-artist/LITE.md` and
 `skills/art-director/LITE.md`; downstream handoff paths include
 `skills/ui-designer/LITE.md`, `skills/technical-artist/LITE.md`, and the
-selected engine skill. Before dispatching a creative or downstream scope, run
-the repository-owned executables in this order:
+selected engine skill. Resolve paths before initial creative work, then let
+Concept Artist and Art Director produce their owned artifacts in order. Before
+dispatching the downstream scope, run the repository-owned executables in this
+order against those artifacts; validation is not a prerequisite for creating
+the artifacts themselves:
 
 1. Resolve ordered, verified skill paths with
    `python3 scripts/runtime/skill_routing.py --mode "$MODE" --config .forgewright/skills-config.json`.
@@ -455,7 +521,8 @@ Both forms of evidence are required when the acceptance criteria span both.
 
 Before ending game-studio work:
 
-1. Update `production/session-state/game-studio.md`.
+1. Update the resolved studio state path (default:
+   `production/session-state/game-studio.md`).
 2. Record changed artifacts, active phase/milestone, next dependency, and
    blockers.
 3. Persist design or architecture decisions in their owning documents.

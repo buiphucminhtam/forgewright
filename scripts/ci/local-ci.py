@@ -620,6 +620,37 @@ class LocalCI:
                         hasher.update(chunk)
         return hasher.hexdigest()
 
+    def _linux_skill_eval_tests(self) -> None:
+        if sys.platform != "linux":
+            note = "Linux /proc/prctl capture capabilities required; portable tests run normally"
+            print(f"[local-ci] linux-skill-eval-tests: not-applicable ({note})")
+            self.results.append(
+                StepResult(
+                    "linux-skill-eval-tests",
+                    [],
+                    str(ROOT),
+                    None,
+                    0,
+                    "not-applicable",
+                    note,
+                )
+            )
+            return
+        self.run(
+            "linux-skill-eval-tests",
+            [
+                self.python,
+                "-m",
+                "pytest",
+                "--durations=15",
+                "-p",
+                "no:cacheprovider",
+                "tests/linux_skill_eval/",
+            ],
+            timeout=PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS,
+            env=TEST_GIT_ENV,
+        )
+
     def full(self) -> None:
         self._require_node_dependencies()
         self._require_python_dependencies("pytest", "mcp", "yaml")
@@ -629,6 +660,7 @@ class LocalCI:
             [self.bash, "scripts/ci/run-required-checks.sh"],
             timeout=max(1800, self.timeout),
         )
+        self._linux_skill_eval_tests()
         self.run(
             "skill-contracts",
             [
@@ -1123,6 +1155,7 @@ class LocalCI:
             timeout=PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS,
             env=TEST_GIT_ENV,
         )
+        self._linux_skill_eval_tests()
 
     def commit_message(self, message_file: str) -> None:
         commitlint = self._node_bin("mcp", "commitlint")

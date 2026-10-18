@@ -59,6 +59,33 @@ effort. Revenue/experience improvements require actual evidence after the
 predeclared observation horizon. These remain open; no production readiness or
 revenue uplift is claimed by the framework implementation.
 
+## Game professional judgment and output evidence
+
+The studio now has one canonical phase activation contract, novice entry guidance
+and aligned legacy documentation. Experimental Linux capture/cleanup, independent
+comparison verification and the product sidecar are documented in the
+[eval guide](../evals/skills/README.md). Their local contract evidence does not
+establish live skill or product improvement.
+
+The all-skill upgrade remains open across design/learning/player research,
+market/product economics, measurement, game craft and packaged-web/native delivery.
+Apply a skill only after its current behavioral gap and exact candidate improvement
+are observed with frozen independent evidence. Development diagnostics return
+real output/usage, but the current exec transport does not prove instruction/tool
+isolation or complete native action accounting. The opt-in native adapter also
+remains blocked: its live validation refused a Code Mode unavailable warning.
+Eight constrained diagnostics found no actionable failure on their supplied facts;
+six ordinary novice cases are frozen but unexecuted. No new SKILL/LITE candidate
+has been applied by this update.
+
+Paired Three.js consumer pilots retain their original input baselines and narrow
+comprehension/first-session tasks. Unknown host pressure blocks rendering; the
+consumer evaluators are frozen, with missing-data checks for Poly; Prism execution
+still lacks its pinned dependency closure. All four outputs remain pending. Separate
+fresh-player, novice-operator, Phaser 4, physical/native and mature business studies
+are required for those outcome claims. Research notes and synthetic financial
+inputs do not substitute for their measurements.
+
 ## Provider-Native Routing Policy
 
 Forgewright exposes one provider-neutral Scout/Builder/Expert contract. Each run selects exactly one provider adapter; that adapter discovers the provider's available models, maps capabilities to tiers, resolves snapshots, performs calls and verification, and records provider-native usage/cost receipts. Model IDs are never assumed portable between providers.

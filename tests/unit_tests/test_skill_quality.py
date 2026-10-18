@@ -378,3 +378,66 @@ def test_cli_hold_returns_nonzero_for_no_measured_improvement(tmp_path: Path):
     assert proc.returncode == 2
     report = json.loads(proc.stdout)
     assert report["promotion"]["blockers"] == ["no_measured_improvement"]
+
+
+@pytest.mark.parametrize("platform_name", ["darwin", "win32"])
+@pytest.mark.parametrize("mode", ["valid", "invalid", "nonzero", "timeout"])
+def test_nonlinux_runner_preserves_legacy_json_contract(
+    tmp_path, monkeypatch, platform_name, mode
+):
+    from types import SimpleNamespace
+
+    m = module()
+    received = tmp_path / "request.json"
+    runner = tmp_path / "portable_runner.py"
+    runner.write_text(
+        "import json,sys,time\nrequest=json.load(sys.stdin)\n"
+        f'open({str(received)!r},"w").write(json.dumps(request))\n'
+        + {
+            "valid": "print(json.dumps({'triggered':True,'events':['portable-decision'],'rationalizations':[],'unnecessary_actions':[],'tool_calls':0,'context_bytes':len(request['scenario']['prompt'].encode()),'wall_ms':1,'abstained':False}))\n",
+            "invalid": 'print("invalid JSON")\n',
+            "nonzero": "raise SystemExit(7)\n",
+            "timeout": "time.sleep(30)\n",
+        }[mode]
+    )
+
+    def reject_linux_supervision(*args, **kwargs):
+        raise AssertionError("Linux /proc supervisor used for portable legacy runner")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "forgewright_skill_eval_host",
+        SimpleNamespace(run_owned_process=reject_linux_supervision),
+    )
+    monkeypatch.setattr(m.sys, "platform", platform_name)
+
+    def call():
+        return m.invoke_runner(
+            [sys.executable, str(runner)],
+            scenario("portable"),
+            variant="current",
+            skill_path=None,
+            timeout_seconds=0.3,
+        )
+
+    if mode == "valid":
+        observed = call()
+        assert observed["events"] == ["portable-decision"]
+        assert observed["context_bytes"] == len(scenario("portable")["prompt"].encode())
+        assert set(observed) == set(result("portable", "current"))
+    else:
+        with pytest.raises(
+            subprocess.TimeoutExpired if mode == "timeout" else m.SkillQualityError
+        ) as raised:
+            call()
+        if mode != "timeout":
+            assert raised.value.process_evidence["cleanup"]["complete"] is None
+            assert (
+                raised.value.process_evidence["cleanup"]["descendant_cleanup"]
+                == "unsupported"
+            )
+    request = json.loads(received.read_text())
+    assert request["schema"] == m.REQUEST_SCHEMA
+    assert request["variant"] == "current"
+    assert request["skill_path"] is None
+    assert request["scenario"] == scenario("portable")

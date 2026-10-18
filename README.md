@@ -137,7 +137,14 @@ python3 scripts/runtime/resumable_handoff.py --help
 - **Phase-scoped Game Studio & Game Designer:** [Game Designer](skills/game-designer/SKILL.md) and [game skill evolution](workflows/game-skill-evolution.md) honor studio phase gates and approved art direction without forcing universal visual recipes.
 - **Bounded MCP cache & System-1 routing:** MCP result caching enforces 512 KiB/entry, 2 MiB/project, and 8 MiB/process limits; local EN/VI routing ([tool-efficiency.md](skills/_shared/protocols/tool-efficiency.md)) operates without external API keys.
 
-The flow audit adds actual pytest call receipts during capture and completion replay, rejects mixed staged/unstaged formatting before edits, preserves uniquely named CI reports, and reads preflight timestamps portably. Skill application checks the evaluated current target/variant under a cooperative lock and requires trusted observed-run verification; equal zero costs are not improvements. The [game eval guide](evals/skills/README.md) includes 12 designer/engineer/art/QA scenarios and contract-only repeated verification. The [Signal Dash reference experiment](tests/game/fixtures/threejs-lifecycle/README.md#frozen-reference-and-approved-polish) uses fixed inputs, protected timing and build-bound playtest evidence. New real-browser comparison is unverified on hosts without supported pressure telemetry; missing evidence blocks advancement.
+The [studio workflow](workflows/game-studio-build.md) now has one phase activation
+contract and a novice walkthrough; legacy gates defer to that flow. The
+[eval guide](evals/skills/README.md) adds bounded Linux process cleanup, independent
+judgments and exact comparison inputs. Product evidence stays separate from
+skill decisions; missing metrics cannot become a pass. Live semantic promotion,
+novice/player improvement and business uplift remain unverified. Existing
+[Signal Dash](tests/game/fixtures/threejs-lifecycle/README.md#frozen-reference-and-approved-polish)
+contract evidence is not a real-player comparison.
 
 ### 5. Optional Pi worker pilot (default-off, experimental)
 

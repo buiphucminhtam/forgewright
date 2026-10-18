@@ -70,7 +70,10 @@ Tests are derived from acceptance and risk, not a fixed lifecycle. Test-first is
 
 ## Antigravity Planning System
 
-For large features (3+ components), use the Antigravity Planning System to structure your work.
+Use the Antigravity Planning System when durable multi-lane coordination or
+architecture planning benefits from it. Component count alone does not require
+new scaffolding. Game work keeps the resolved studio state as its coordination
+authority; an optional planning folder must not become a second phase/gate record.
 
 ### When to Use Antigravity
 
@@ -78,8 +81,8 @@ For large features (3+ components), use the Antigravity Planning System to struc
 |--------------|--------------|
 | Single file change | ❌ No |
 | Small (1-2 components) | ❌ No |
-| Medium (3+ components) | ✅ Yes |
-| Full Build / Game Build | ✅ Required |
+| Medium (3+ components) | When durable coordination benefits from it |
+| Full Build / Game Build | Use existing phase/state artifacts; additional planning only when useful |
 | Multi-team coordination | ✅ Required |
 | New integration (auth, payment) | ✅ Yes |
 
@@ -422,6 +425,18 @@ Build a game from concept to a verified release using the control plane in
 `skills/_shared/protocols/game-studio-pipeline.md` and the entrypoint in
 `workflows/game-studio-build.md`.
 
+Use the protocol's **Phase Activation Contract** as the sole activation table:
+current decision → applicable verified skill paths → compact output → next
+consumer. The workflow includes a novice walkthrough; the agent owns artifacts
+and asks only for material direction/constraints. A lexical abstention on
+“không biết làm game” requires parent interpretation of affirmative intent,
+whereas “không tạo game” does not authorize a build. Preserve the selector and
+disabled roles. File-capable native hosts use existing authorized mechanisms;
+retain exact deferred inventory and load admitted roles once through the exposed
+loader. Missing/denied loaders must not be bypassed by direct reads; unsupported
+outside-inventory roles remain BLOCKED. The standalone Python LITE orchestrator
+does not automatically reroute or re-enter after abstention.
+
 1. **Detect entry and review mode** — classify greenfield, existing-project
    adoption, isolated feature, or hotfix; select `solo`, `lean`, or `full`.
 2. **Open studio state** — resolve `.production-grade.yaml` path overrides and
@@ -443,9 +458,11 @@ Build a game from concept to a verified release using the control plane in
    - Quality/release: `qa-engineer`, `game-accessibility-engineer`,
      `performance-engineer`, `build-release-engineer`, `liveops-engineer`
 5. **Select the engine from evidence** — read `.production-grade.yaml`, the
-   project profile, and engine files. If genuinely unset, recommend Unity,
-   Unreal, Godot, Phaser 4, or Three.js from platform and production constraints
-   and ask only when the choice materially changes architecture.
+   project profile, and engine files. Preserve existing shell/pins and explicit
+   native-engine intent; Android alone does not imply Unity or replace a native/
+   React Native project. For new web work use Phaser 4 for 2D or Three.js for 3D;
+   existing Phaser 3 remains supported. Ask only when an unresolved choice
+   materially changes architecture, direction, risk or cost.
 6. **Preserve the concept and Style DNA gates** — call
    `python3 scripts/runtime/skill_routing.py --mode game-build --config .forgewright/skills-config.json`
    for ordered verified paths, use `concept-artist` to produce
