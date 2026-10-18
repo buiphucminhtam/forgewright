@@ -11,7 +11,9 @@ engineering, content, QA, and release responsibilities.
 
 Read `skills/_shared/protocols/game-studio-pipeline.md` first. It is the source
 of truth for phases, role lenses, handoffs, topology, gate verdicts, and session
-state.
+state. Use its **Phase Activation Contract** for the current decision, exact
+skill paths, compact output, next consumer and host capability boundary; do not
+create a second activation roster here.
 
 For Phaser 4/Three.js packaged on Android/iOS, also apply
 `skills/_shared/protocols/mobile-monetization.md` at the existing Concept,
@@ -25,6 +27,45 @@ Do not assume slash commands, named agents, or an external swarm runtime exist.
 Apply the required role lenses locally unless the user explicitly requests
 delegation or parallel work.
 
+## Starting with a novice brief
+
+For example: “Tôi không biết làm game. Hãy giúp tôi làm một game xếp hình 2D
+cho Android để kinh doanh.” This is an affirmative request with inexperience.
+The local selector still abstains on “không”; a file-capable native parent must
+interpret intent and inspect the repository before explicit routing. “Không tạo
+game. Chỉ giải thích cách làm game” authorizes explanation only. These are
+controller examples, not keyword tests or measured novice outcomes. Follow the
+canonical host boundary when a loader or role is unavailable; do not claim the
+standalone Python orchestrator automatically re-enters after abstention.
+
+The agent owns the brief/GDD, state, research, routing and evidence. First
+explain the proposed player promise and smallest useful milestone in ordinary
+language. Ask the user only for material audience/direction, time/budget,
+platform or rights constraints that the workspace cannot answer. Preserve an
+existing engine/shell/pin; Android does not imply Unity. For new web 2D use
+Phaser 4, for web 3D Three.js, then check wrapper/native prerequisites separately.
+Commercial intent brings product/market decisions into Concept; it does not
+authorize SDK installation, paid campaigns, analytics export or store activity.
+An undecided/unmonetized prototype stays in the narrative brief/GDD.
+
+Develop a bounded hypothesis and applicable player/screen flow; use the ordered
+creative handoff to explore divergent visual concepts and obtain a selected
+concept packet and approved Style DNA
+before passing Concept. The agent turns those decisions into systems and
+build/test readiness, then a whole-loop slice and an observed second unit/level
+cost before scale-up. A throwaway exploratory prototype answers its recorded
+question; it does not pass Concept or waive production readiness. Report what
+was actually built/observed, missing player/device evidence and keep/change/kill
+plainly. Missing applicable required evidence blocks its gate.
+
+Continue with the smallest story-owned set of lenses from the activation table,
+revisit admitted deferred needs at their phase, and summarize each material
+decision with its evidence, remaining risk/cost and next step. Existing-project
+repairs enter the relevant phase using valid artifacts; a save hotfix needs
+diagnosis and scoped verification, not a new concept cycle. The user chooses
+material direction and accepted non-blocking concerns under the existing gates;
+the number of technical artifacts is never a questionnaire for the novice.
+
 ## Ordered Creative Handoff and Dispatch
 
 Design and Game Build work share this handoff order:
@@ -36,7 +77,10 @@ UX/research -> Concept Artist -> Art Director -> UI/technical/engine handoff
 Use the explicit skill files `skills/concept-artist/LITE.md` and
 `skills/art-director/LITE.md`, followed by the applicable
 `skills/ui-designer/LITE.md`, `skills/technical-artist/LITE.md`, or engine skill.
-For each creative/downstream dispatch, execute this repository-owned chain:
+Resolve verified paths before initial creative work. Concept Artist and Art
+Director produce their owned artifacts in order; do not require their downstream
+validation before the artifacts can exist. Before downstream dispatch, execute
+this repository-owned chain against those artifacts:
 
 1. `python3 scripts/runtime/skill_routing.py --mode "$MODE" --config .forgewright/skills-config.json`
    returns ordered, verified skill paths.
@@ -85,6 +129,10 @@ executor completes that fallback.
      decisions, owners, blockers, and evidence links.
 
 3. **Plan the milestone**
+   - Consult the canonical Phase Activation Contract for the current decision.
+     Load only applicable verified paths through the available authorized host
+     mechanism. Retain exact deferred inventory; absent or denied controlled
+     loaders and unsupported outside-inventory roles stay BLOCKED.
    - Produce only the handoff required by the active phase, using the Handoff
      Applicability table in the control-plane protocol.
    - Concept has no handoff prerequisite; Systems Design produces design-ready;
@@ -123,23 +171,18 @@ executor completes that fallback.
      requirements, diff, and raw evidence when the policy reserves one.
 
 4. **Execute the active phase**
-   - Concept: game promise, engine/platform, pillars, core loop, budgets,
-     divergent visual concepts, selected concept packet, and approved Style DNA.
-     When explicitly requested, run the single parent-mediated Art Director
-     feedback loop only after Concept Packet validation; otherwise use the
-     serial Concept → Art Director handoff.
-   - Systems Design: systems map, per-system specifications, dependencies,
-     balance, UX, accessibility, acceptance criteria.
-   - Technical Setup: architecture, ADRs, control manifest, test/build scaffold.
-   - Pre-Production: prototype risky assumptions, build and playtest a vertical
-     slice, prepare epics/stories.
-   - Production: run each story through readiness, implementation, review, QA,
-     playtest where needed, and done evidence.
-   - Polish: regression, performance, balance, accessibility, content, art/audio
-     integration, representative playtests.
-   - Release & Sustain: identify the release artifact and checksum. Publish or
-     deploy the approved artifact; smoke telemetry and crash reporting; rehearse
-     rollback/hotfix; run a post-release measurement and triage checkpoint.
+   - Apply the activation table's inputs/output/next-consumer contract and the
+     existing phase-specific handoff requirements. Transfer relevant artifact
+     paths/revisions, accepted decisions, checks, blockers and deferred needs
+     through the resolved state; do not load every discipline at startup.
+   - Preserve the ordered creative handoff and existing optional bounded-advice
+     rules. Presentation observes committed gameplay/payment events; it never
+     grants damage, rewards or entitlements.
+   - At Release & Sustain, identify the exact artifact and checksum. Publish or
+     deploy the approved artifact only within the authorized release scope;
+     smoke telemetry and crash reporting, rehearse rollback/hotfix, and run a
+     post-release measurement and triage checkpoint. Provider availability,
+     internal beta, device install and production release are separate evidence.
 
 5. **Verify**
    - Run `skills/_shared/protocols/game-test-protocol.md`.

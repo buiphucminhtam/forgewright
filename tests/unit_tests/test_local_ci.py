@@ -144,9 +144,12 @@ def test_full_aggregate_honors_larger_explicit_timeout(
         expected,
         [runner.bash, "scripts/ci/run-required-checks.sh"],
     )
-    assert calls[1][1] == 900
+    assert (
+        next(timeout for name, timeout, _ in calls if name == "skill-contracts") == 900
+    )
     assert [name for name, _, _ in calls] == [
         "required-repository-checks",
+        *(["linux-skill-eval-tests"] if sys.platform == "linux" else []),
         "skill-contracts",
         "lite-overlays",
         "kernel-token-budget",
@@ -360,3 +363,49 @@ def test_precommit_compiler_failure_blocks_dependents_with_keep_going(
     assert "mcp-tests" not in calls
     if failed_phase == "mcp-typecheck":
         assert "mcp-emit" not in calls
+
+
+@pytest.mark.parametrize("platform_name", ["linux", "darwin", "win32"])
+@pytest.mark.parametrize("mode", ["precommit", "full"])
+def test_ci_selects_explicit_linux_capture_lane(platform_name, mode, monkeypatch):
+    module = _module()
+    monkeypatch.setattr(
+        module,
+        "sys",
+        SimpleNamespace(platform=platform_name, executable=sys.executable),
+    )
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    runner._require_node_dependencies = lambda: None
+    runner._require_python_dependencies = lambda *packages: None
+    runner.review = lambda: None
+    runner._format_staged = lambda: None
+    runner._staged_test_paths = lambda: []
+    runner.primary_node = "/tmp/fake-node/bin/node"
+    runner._node_bin = lambda component, name: f"/{component}/{name}"
+    runner._node_module_file = lambda component, relative: Path(
+        f"/{component}/{relative}"
+    )
+    getattr(runner, mode)()
+    names = [step.name for step in runner.results]
+    previous = (
+        "python-unit-tests" if mode == "precommit" else "required-repository-checks"
+    )
+    assert names.index(previous) < names.index("linux-skill-eval-tests")
+    lane = next(
+        step for step in runner.results if step.name == "linux-skill-eval-tests"
+    )
+    if platform_name == "linux":
+        assert lane.status == "dry-run"
+        assert lane.argv == [
+            runner.python,
+            "-m",
+            "pytest",
+            "--durations=15",
+            "-p",
+            "no:cacheprovider",
+            "tests/linux_skill_eval/",
+        ]
+    else:
+        assert lane.status == "not-applicable"
+        assert lane.argv == []
+        assert "Linux" in lane.note

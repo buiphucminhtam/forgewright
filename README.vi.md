@@ -134,12 +134,11 @@ python3 scripts/runtime/resumable_handoff.py --help
 - **Game Designer & tiến hóa kỹ năng dựa trên bằng chứng:** [Game Designer](skills/game-designer/SKILL.md) và [workflow nâng cấp skill game](workflows/game-skill-evolution.md) tôn trọng art direction đã duyệt theo từng pha thay vì áp đặt một công thức hiệu ứng cứng nhắc; đi kèm fixture chơi được [Signal Dash](tests/game/fixtures/threejs-lifecycle/README.md), [hướng dẫn test game](tests/game/README.md) và [cài đặt Unity MCP](docs/unity-mcp-setup.md).
 - **Giới hạn bộ nhớ đệm MCP & định tuyến System-1:** Cache MCP giới hạn 512 KiB/entry, 2 MiB/project, 8 MiB/process; định tuyến ngữ nghĩa tiếng Việt/Anh nội bộ ([tool-efficiency.md](skills/_shared/protocols/tool-efficiency.md)) không cần khóa API ngoài.
 
-Flow kiểm tra receipt pytest, bảo vệ phần chưa stage và giữ riêng báo cáo CI.
-Áp dụng skill cần đúng current target/variant và trusted observed-run; 0 → 0
-không chứng minh cải thiện. [Eval game](evals/skills/README.md) tách contract
-replay khỏi model uplift. [Signal Dash](tests/game/fixtures/threejs-lifecycle/README.md#frozen-reference-and-approved-polish)
-giữ input/timing và playtest gắn build; browser mới còn thiếu bằng chứng trên
-host không có telemetry áp lực bộ nhớ.
+Studio dùng một bảng kích hoạt theo phase và có hướng dẫn người mới.
+[Eval game](evals/skills/README.md) thêm dọn tiến trình Linux, đánh giá độc lập và
+đối chiếu đúng đầu vào; thiếu số liệu không được thành PASS. Skill mới chưa
+được promote bằng model thật. Cải thiện sản phẩm, người mới và doanh thu vẫn
+**UNVERIFIED**; contract replay không thay thế bằng chứng này.
 
 ### 5. Pi Worker tùy chọn (experimental, tắt mặc định)
 

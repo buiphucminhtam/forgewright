@@ -128,17 +128,28 @@ planQuality:
   fastPath:
     enabled: true
 
-# Customize skill routing
-skillRouting:
-  fuzzyMatching:
-    enabled: true
-    minConfidence: 0.7
-
 # Memory settings
 memory:
   checkpoint:
     messageThreshold: 5
 ```
+
+Routing settings live in `.forgewright/skills-config.json`. The local selector
+uses bounded EN/VI lexical rules and may abstain; its rule score is not a
+probability. Preserve disabled roles and the configured startup context budget.
+See [mode classification](../skills/production-grade/references/mode-classification.md)
+for controller interpretation and supported explicit routing.
+
+### Starting a game without technical experience
+
+Describe the player experience, target platform and material time/budget
+constraints, for example: “Tôi không biết làm game. Giúp tôi làm game xếp hình
+2D cho Android.” In the [Game Studio workflow](../workflows/game-studio-build.md),
+a file-capable native assistant manages the artifacts and asks you to choose
+material direction. Existing engines/pins stay grounded in your project; new
+web 2D uses Phaser 4 and web 3D Three.js. Builds, player evidence, native readiness
+and commercial results are separate claims. The standalone Python orchestrator
+does not automatically recover a game route after lexical abstention.
 
 ## Next Steps
 
@@ -147,7 +158,7 @@ memory:
 | All modes explained | [Mode Reference](mode-reference.md) |
 | All skills catalog | [Skill Catalog](skill-catalog.md) |
 | Architecture deep-dive | [Architecture Overview](architecture.md) |
-| Game development | [Game Build Guide](game-build-gates.md) |
+| Game development | [Game Studio Workflow](../workflows/game-studio-build.md) · [Legacy checklist migration](game-build-gates.md) |
 | Mobile development | [Mobile Engineer Skill](../skills/mobile-engineer/SKILL.md) |
 
 ## Troubleshooting
@@ -160,7 +171,9 @@ memory:
 
 ### "Wrong mode selected"
 
-The orchestrator uses fuzzy matching. Add more context:
+The local selector conservatively suggests a mode or abstains. A native
+controller interprets the full request and current project; adding concrete
+context can resolve a material unknown:
 
 ```
 Bad: "help me"
@@ -179,4 +192,4 @@ Check skill paths in `skills/production-grade/SKILL.md` and verify skills direct
 
 ---
 
-*Quickstart version: 1.0 | Last updated: 2026-05-29*
+*Supporting guide · Owner: core/documentation · Scope: first project requests · Last reviewed: 2026-10-18. Game workflow authority: linked studio protocol.*

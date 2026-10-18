@@ -548,25 +548,81 @@ def invoke_runner(
         "scenario": dict(scenario),
         "skill_path": None if skill_path is None else str(skill_path.resolve()),
     }
-    proc = subprocess.run(
-        list(runner),
-        input=json.dumps(request, ensure_ascii=False),
-        text=True,
-        capture_output=True,
-        timeout=timeout_seconds,
-        check=False,
-    )
-    if proc.returncode != 0:
-        raise SkillQualityError(
-            f"runner failed for {scenario['id']}/{variant}: exit={proc.returncode}: "
-            f"{proc.stderr[-1000:]}"
+    supervised = sys.platform == "linux"
+    if not supervised:
+        # Preserve the pre-existing provider-neutral runner on other platforms.
+        # Its subprocess.run timeout owns only the direct adapter; no new
+        # descendant termination/reaping capability is asserted here.
+        completed = subprocess.run(
+            list(runner),
+            input=json.dumps(request, ensure_ascii=False).encode("utf-8"),
+            capture_output=True,
+            timeout=timeout_seconds,
+            check=False,
         )
+        process = {
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+            "returncode": completed.returncode,
+            "failure": None,
+            "cleanup": {
+                "complete": None,
+                "scope": "legacy-direct-child-only",
+                "descendant_cleanup": "unsupported",
+            },
+        }
+    else:
+        # Keep adapter/model/judge descendants inside one supervised owned session.
+        # Direct script execution and package imports both remain supported.
+        try:
+            from .skill_eval_host import run_owned_process
+        except ImportError:
+            import importlib.util
+
+            spec = importlib.util.spec_from_file_location(
+                "forgewright_skill_eval_host",
+                Path(__file__).with_name("skill_eval_host.py"),
+            )
+            assert spec is not None and spec.loader is not None
+            host = sys.modules.get(spec.name)
+            if host is None:
+                host = importlib.util.module_from_spec(spec)
+                sys.modules[spec.name] = host
+                spec.loader.exec_module(host)
+            run_owned_process = host.run_owned_process
+        process = run_owned_process(
+            runner,
+            json.dumps(request, ensure_ascii=False).encode("utf-8"),
+            wall_seconds=timeout_seconds,
+        )
+    if process["failure"] == "timeout":
+        error = subprocess.TimeoutExpired(
+            list(runner),
+            timeout_seconds,
+            output=process["stdout"],
+            stderr=process["stderr"],
+        )
+        error.process_evidence = process
+        raise error
+    if (
+        process["failure"]
+        or process["returncode"] != 0
+        or (supervised and not process["cleanup"]["complete"])
+    ):
+        error = SkillQualityError(
+            f"runner failed for {scenario['id']}/{variant}: "
+            f"exit={process['returncode']} failure={process['failure']}"
+        )
+        error.process_evidence = process
+        raise error
     try:
-        observation = validate_observation(json.loads(proc.stdout))
-    except (json.JSONDecodeError, SkillQualityError) as error:
-        raise SkillQualityError(
+        observation = validate_observation(json.loads(process["stdout"]))
+    except (UnicodeError, json.JSONDecodeError, SkillQualityError) as cause:
+        error = SkillQualityError(
             f"runner emitted invalid observation for {scenario['id']}/{variant}"
-        ) from error
+        )
+        error.process_evidence = process
+        raise error from cause
     return {
         "schema": RESULT_SCHEMA,
         "scenario_id": scenario["id"],
