@@ -3,7 +3,7 @@ title: Consent-Gated Project Auto-Bootstrap
 status: active
 owner: Runtime maintainers
 scope: Opt-in project bootstrap and shared runtime setup
-last_reviewed: 2026-10-15
+last_reviewed: 2026-10-18
 canonical: false
 ---
 
@@ -80,6 +80,8 @@ the correlated project Stop decision must say `allow_stop`, `verified`,
 Native acceptance must separately observe trusted `PreToolUse` on a fresh project, a current full receipt and readable index, a successful MCP tool invocation after bootstrap, a positively verified Stop decision, and owned process/lease cleanup. Deterministic stdio tests do not substitute for that host sequence. Claude native execution remains deferred by user, and native Windows, physical power-loss, and remote-host acceptance remain unverified.
 
 The installed launcher uses a small entrypoint for the hook's JSON preflight and loads the full CLI for other commands. Preflight does not invoke a model, contact a provider, install packages, or scan the project. Re-run policy setup after rebuilding an older shared runtime to refresh its launcher.
+
+Bootstrap preserves complete structured CLI responses up to 4 MiB before JSON validation. Unsuccessful envelopes, malformed JSON, nonzero exits and oversized structured output remain rejected. Ordinary diagnostic commands keep their existing last-4,000-character log tail. This transport boundary is covered by `tests/unit_tests/test_bootstrap_structured_output.py`; it does not establish native setup readiness.
 
 ## Lifecycle
 

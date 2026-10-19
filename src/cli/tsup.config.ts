@@ -1,6 +1,8 @@
 import { defineConfig } from "tsup";
+import { buildOutputDir } from "./scripts/build-output.mjs";
 
 export default defineConfig({
+  outDir: buildOutputDir(),
   entry: ["src/index.ts", "src/bootstrap-entry.ts", "src/mobile-entry.ts"],
   format: ["esm"],
   dts: true,

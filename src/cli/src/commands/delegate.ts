@@ -18,6 +18,7 @@ import {
   writeProductionConfig,
 } from "../utils/project-config.js";
 import { VERSION } from "../version.js";
+import { runHostAction } from "../delegation/host-jobs.js";
 import {
   hasPiConfig,
   readCanonicalDelegationMode,
@@ -109,9 +110,87 @@ export function registerDelegateCommand(program: Command): void {
 
   delegate
     .command("resources")
-    .description("Show machine-wide Pi admission, pressure and queued work")
-    .action(async () => {
-      await piAction(findProjectRoot(), "resources");
+    .description("Show shared admission, pressure and queued work")
+    .option(
+      "--inventory",
+      "Include bounded process coverage and live disk telemetry",
+    )
+    .option(
+      "--disk",
+      "Measure complete project footprint and nested build/cache candidates",
+    )
+    .option(
+      "--disable",
+      "Disable new native jobs; remove owned config when quiescent",
+    )
+    .option(
+      "--prune-history",
+      "Retire proven terminal metadata; preserve artifact data and leases",
+    )
+    .option(
+      "--inspect <json>",
+      "Bounded project read/list/search; no shell execution",
+    )
+    .option(
+      "--register-profile <file>",
+      "Install an exact owner-reviewed project recipe without running it",
+    )
+    .option("--sha256 <digest>", "SHA256 of the reviewed recipe file")
+    .action(
+      async (options: {
+        inventory?: boolean;
+        disk?: boolean;
+        disable?: boolean;
+        pruneHistory?: boolean;
+        inspect?: string;
+        registerProfile?: string;
+        sha256?: string;
+      }) => {
+        const selected = [
+          options.inventory,
+          options.disk,
+          options.disable,
+          options.pruneHistory,
+          options.inspect,
+          options.registerProfile,
+        ].filter(Boolean);
+        if (
+          selected.length > 1 ||
+          Boolean(options.sha256) !== Boolean(options.registerProfile)
+        ) {
+          throw new Error("select_one_resource_action_with_required_hash");
+        }
+        if (options.inspect)
+          process.exitCode = await runHostAction(findProjectRoot(), "inspect", {
+            request: options.inspect,
+          });
+        else if (options.registerProfile)
+          process.exitCode = await runHostAction(
+            findProjectRoot(),
+            "register-profile",
+            { file: options.registerProfile, sha256: options.sha256 },
+          );
+        else if (options.disable)
+          process.exitCode = await runHostAction(findProjectRoot(), "disable");
+        else if (options.pruneHistory)
+          process.exitCode = await runHostAction(findProjectRoot(), "history");
+        else if (options.disk)
+          process.exitCode = await runHostAction(findProjectRoot(), "disk");
+        else if (options.inventory)
+          process.exitCode = await runHostAction(findProjectRoot(), "status");
+        else await piAction(findProjectRoot(), "resources");
+      },
+    );
+
+  delegate
+    .command("exec")
+    .description(
+      "Run an explicitly installed finite profile through host admission",
+    )
+    .requiredOption("--profile <id>", "Reviewed finite profile ID")
+    .requiredOption("--digest <sha256>", "Exact installed profile digest")
+    .action(async (options: { profile: string; digest: string }) => {
+      process.exitCode = await runHostAction(findProjectRoot(), "run", options);
     });
 
   delegate

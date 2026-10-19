@@ -376,6 +376,11 @@ Optional memory uses one workspace resolver, scoped SQLite schema v2 and the exi
 
 The runtime layer provides the infrastructure that skills, protocols, and the kernel operate on.
 
+Cooperating finite builds reuse the host admission authority and add owned
+scratch/output lifecycles with project and retained-artifact budgets. Enrollment,
+cleanup boundaries and current rollout limits are defined in
+[ADR 010](adr/ADR-010-runtime-lifecycle-guard.md).
+
 ### MCP Servers
 
 Forgewright exposes two MCP servers for IDE integration:

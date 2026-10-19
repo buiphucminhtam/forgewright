@@ -34,7 +34,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 #                    convention, alongside stop-gate.sh / verify-gate.sh)
 # Both are symlinked into the same install dir so the manifest covers every
 # file that can execute with the guard's authority.
-RLG_FILES="runtime-common.sh runtime_registry.py runtime-lease.sh runtime-inventory.sh runtime-install.sh runtime-hooks-install.sh runtime-reap.sh runtime-sweep.sh disk-budget.sh runtime-gc.sh port-broker.sh dev-run.sh rlg_spawn.py"
+RLG_FILES="runtime-common.sh runtime_registry.py runtime-lease.sh runtime-inventory.sh runtime-install.sh runtime-hooks-install.sh runtime-reap.sh runtime-sweep.sh disk-budget.sh project_disk.py project_storage.py artifact_pins.py runtime-gc.sh port-broker.sh dev-run.sh rlg_spawn.py"
 RLG_LITE_FILES="runtime-pretool-gate.sh"
 
 DEFAULT_TARGET="$HOME/.forgewright/scripts/runtime"

@@ -635,6 +635,7 @@ def run(
     required: bool = True,
     stage: str,
     inherit_env: bool = True,
+    structured_output: bool = False,
 ) -> dict[str, Any]:
     deadline = _DEADLINE.get()
     if deadline is not None:
@@ -724,7 +725,15 @@ def run(
                 "exit_code": process.returncode,
                 "detail": f"{stage}: adapter exited {process.returncode}",
             }
-        return {"status": "ready", "stdout": stdout[-4000:]}
+        if structured_output and len(stdout.encode("utf-8")) > MAX_STATE_BYTES:
+            if required:
+                raise BootstrapError(
+                    "adapter_output_too_large",
+                    f"{stage}: structured output exceeds {MAX_STATE_BYTES} bytes",
+                    stage=stage,
+                )
+            return {"status": "degraded", "detail": f"{stage}: structured output exceeds size bound"}
+        return {"status": "ready", "stdout": stdout if structured_output else stdout[-4000:]}
     except BaseException as error:
         for sig in handlers:
             signal.signal(sig, signal.SIG_IGN)
@@ -787,6 +796,7 @@ def call_forge(
         timeout=180,
         required=required,
         stage=stage,
+        structured_output=True,
     )
     if result["status"] == "ready":
         envelope = parse_json_envelope(result.get("stdout", ""))

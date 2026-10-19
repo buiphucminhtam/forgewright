@@ -18,6 +18,10 @@
       "type": "product"
     },
     {
+      "path": "docs/adr/ADR-010-runtime-lifecycle-guard.md",
+      "type": "architecture"
+    },
+    {
       "path": "docs/adr/ADR-011-central-docs-hub.md",
       "type": "architecture"
     },
@@ -174,7 +178,8 @@
     "skills/_shared/protocols/qa-test-protocol.md",
     "skills/_shared/protocols/game-test-protocol.md",
     "skills/memory-manager/SKILL.md",
-    "skills/_shared/protocols/mobile-monetization.md"
+    "skills/_shared/protocols/mobile-monetization.md",
+    "docs/adr/ADR-010-runtime-lifecycle-guard.md"
   ],
   "adapters": {
     "git": true,
@@ -221,7 +226,8 @@
       "skills/_shared/protocols/mobile-monetization.md",
       "templates/game/mobile-monetization/README.md",
       "skills/_shared/protocols/design-mindset-and-rules.md",
-      "skills/game-designer/references/game-feel.md"
+      "skills/game-designer/references/game-feel.md",
+      "docs/adr/ADR-010-runtime-lifecycle-guard.md"
     ],
     "exclude": [
       "docs/archive/**",

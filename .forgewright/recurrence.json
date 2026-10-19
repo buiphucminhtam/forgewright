@@ -1,0 +1,15 @@
+{
+  "schema": "forgewright-recurrence-optin/v1",
+  "diagnostics": true,
+  "profiles": {
+    "cli-build-20261018-v1": {
+      "digest": "d0467c306de9b213f3b776ffc3b9e6a62c49e332d9bf13961bae1a664fc6017e",
+      "operation": "cli-build",
+      "platform": "darwin",
+      "toolchain": {
+        "recipe_digest": "d0467c306de9b213f3b776ffc3b9e6a62c49e332d9bf13961bae1a664fc6017e"
+      }
+    }
+  },
+  "captures": []
+}

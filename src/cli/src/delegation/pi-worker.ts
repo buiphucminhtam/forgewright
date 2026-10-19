@@ -51,10 +51,18 @@ export function hasPiConfig(projectRoot: string): boolean {
 
 /** Resolve the installed/submodule package from this module, never from consumer cwd. */
 export async function loadPiRuntime(): Promise<any> {
+  return import(
+    pathToFileURL(
+      join(resolvePiPackageRoot(), "integrations/pi/worker-runtime.mjs"),
+    ).href
+  );
+}
+
+function resolvePiPackageRoot(): string {
   let root = dirname(fileURLToPath(import.meta.url));
   for (let depth = 0; depth < 8; depth++) {
     const entry = join(root, "integrations/pi/worker-runtime.mjs");
-    if (existsSync(entry)) return import(pathToFileURL(entry).href);
+    if (existsSync(entry)) return root;
     const parent = dirname(root);
     if (parent === root) break;
     root = parent;
@@ -68,6 +76,17 @@ export async function piAction(
   options: PiOptions & { contract?: string; runId?: string } = {},
 ): Promise<void> {
   try {
+    if (action === "resources") {
+      const governor = await import(
+        pathToFileURL(
+          join(resolvePiPackageRoot(), "integrations/pi/host-governor.mjs"),
+        ).href
+      );
+      console.log(
+        JSON.stringify(await governor.getHostAdmissionStatus(), null, 2),
+      );
+      return;
+    }
     const runtime = await loadPiRuntime();
     let result;
     if (action === "on" || action === "model")
@@ -87,14 +106,7 @@ export async function piAction(
       throw new Error("pi_explicit_enable_required");
     else if (action === "status")
       result = await runtime.workerStatus(projectRoot);
-    else if (action === "resources") {
-      const governor = await import(
-        pathToFileURL(
-          join(runtime.packageRoot, "integrations/pi/host-governor.mjs"),
-        ).href
-      );
-      result = await governor.getHostAdmissionStatus();
-    } else if (action === "cancel")
+    else if (action === "cancel")
       result = runtime.cancelRun(projectRoot, options.runId);
     else if (action === "run") {
       const abort = new AbortController();

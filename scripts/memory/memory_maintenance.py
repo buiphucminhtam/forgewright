@@ -53,6 +53,8 @@ def main(argv=None):
     preview = commands.add_parser("retention-preview")
     preview.add_argument("--max-obs", type=int, default=200)
     args = parser.parse_args(argv)
+    mutation_attempted = False
+    destination = None
     try:
         if disabled():
             result = {"status": "disabled", "mutated": False}
@@ -99,6 +101,9 @@ def main(argv=None):
                 module = memory_module()
                 conn = sqlite3.connect(path, timeout=0.5)
                 try:
+                    # install_schema owns its transaction and may commit before
+                    # a later check fails. A failed receipt cannot promise rollback.
+                    mutation_attempted = True
                     module.install_schema(
                         conn,
                         migrate=True,
@@ -122,8 +127,14 @@ def main(argv=None):
         result = {
             "status": "degraded",
             "reason": type(error).__name__,
-            "mutated": False,
+            "mutated": mutation_attempted,
         }
+        if mutation_attempted:
+            result.update(
+                mutation_state="attempted-unconfirmed",
+                destination=str(destination),
+                writer_fence_required=True,
+            )
     print(json.dumps(result, ensure_ascii=False))
     return 1 if result["status"] == "degraded" else 0
 

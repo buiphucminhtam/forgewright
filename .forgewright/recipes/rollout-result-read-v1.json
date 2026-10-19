@@ -1,0 +1,38 @@
+{
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "-I",
+    "-B",
+    "/Users/buiphucminhtam/GitHub/forgewright/.forgewright/recipes/rollout-inspection.py"
+  ],
+  "artifact_policy": {
+    "output_limit_bytes": 65536,
+    "project_limit_bytes": 5368709120,
+    "retain_generations": 2,
+    "retained_limit_bytes": 131072,
+    "schema": "forgewright-artifact-policy/v1",
+    "scratch_limit_bytes": 65536,
+    "ttl_seconds": 86400
+  },
+  "command": "forge recipe rollout-inspection-v2",
+  "cwd": ".",
+  "disk_floor_bytes": 2147483648,
+  "disk_paths": [
+    {
+      "device": 16777232,
+      "path": "/Users/buiphucminhtam/GitHub/forgewright"
+    }
+  ],
+  "env": {
+    "CI": "1"
+  },
+  "id": "rollout-inspection-v2",
+  "memory_mib": 64,
+  "project": "/Users/buiphucminhtam/GitHub/forgewright",
+  "schema": "forgewright-finite-profile/v2",
+  "scratch_bytes": 65536,
+  "sources": {
+    ".forgewright/recipes/rollout-inspection.py": "121199909ecb1601ba0d8010991c9d0e6dabd9455b974c49eb0940812d45c8b8"
+  },
+  "timeout": 30
+}

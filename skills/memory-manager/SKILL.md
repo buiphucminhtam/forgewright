@@ -4,7 +4,7 @@ title: Scoped Conversation Memory
 status: active
 owner: core
 scope: local-memory
-last_reviewed: 2026-10-17
+last_reviewed: 2026-10-18
 canonical: true
 description: >
   Optional local conversation memory using SQLite FTS5 and the existing
@@ -125,6 +125,27 @@ python3 scripts/memory/mem0-v2.py migrate-db --backup /owned/path/pre-migration.
 A physical backup uses SQLite's backup API, verifies integrity and refuses to overwrite a destination. Shared stores require `backup --all-scopes` because physical backups contain all namespaces; keep them private. Do not copy only the main DB while live data remains in WAL.
 
 Old schema versions require explicit migration with a verified pre-migration backup. IDs, content and timestamps are preserved; ownership changes only for the supplied `--from-project`. Unknown scopes and legacy graph IDs remain unadopted. No automatic global-session import or project-name guessing. New graph/circuit IDs are physically namespaced while their API IDs remain unchanged.
+
+An installed legacy writer must be fenced before migration. The optional
+`scripts/memory/legacy_writer_fence.py` compatibility boundary selects exact
+physical cwd-relative databases from a private policy. Preserve and hash the
+original implementation, pin the reviewed fence source outside disposable
+worktrees, and verify publication and drain. A selected workspace skips the old
+session/checkpoint body; unrelated projects keep their original arguments,
+environment, helpers, sourcing behavior and exit/failure semantics. Executed
+legacy Bash retains the shared writer lock through exec. Sourced legacy
+definitions are preserved for unselected callers; they do not establish managed
+runtime coverage. The fence is context/maintenance control, not a same-user
+security boundary or authority to adopt unknown scopes.
+
+Keep a lightweight fence-only step distinct from admission-gated backup/migration.
+Persist private intent, publication and backup paths before effects; incomplete
+drain remains unconfirmed. During maintenance pin the selected policy while
+allowing unrelated shared-lock writers. Reject unavailable consumer inspection;
+compare the exact pre-migration column set, content digest, scope counts, schema
+and integrity afterward. A migration error after installation begins reports
+`attempted-unconfirmed` mutation and retains the backup/fence. It cannot claim
+that a committed schema change was rolled back.
 
 Retention preview changes nothing. Explicit legacy `gc`/`delete` archive records; archive and TTL are not physical erasure, and do not remove derived files or backups. No new retention job/purge is scheduled. For rollback, stop the adapter and preserve post-migration writes; prefer compatible binaries or a forward fix. Restoring an older snapshot over new writes requires reconciliation.
 

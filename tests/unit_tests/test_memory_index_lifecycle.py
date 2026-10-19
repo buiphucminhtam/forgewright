@@ -162,3 +162,41 @@ def test_memory_database_symlink_is_rejected_before_outside_write(tmp_path):
     with pytest.raises(ValueError, match="unsafe"):
         core().MemoryDB(str(link / "memory.db"))
     assert not (outside / "memory.db").exists()
+
+
+def test_migration_integrity_failure_reports_possible_committed_change(
+    tmp_path, monkeypatch, capsys
+):
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts/memory"))
+    import memory_maintenance as maintenance
+
+    path = tmp_path / "memory.db"
+    with sqlite3.connect(path) as conn:
+        conn.execute("CREATE TABLE observations(project_root TEXT)")
+        conn.execute("INSERT INTO observations VALUES('unknown-legacy')")
+    monkeypatch.setenv("MEM0_DB_PATH", str(path))
+    monkeypatch.setenv("FORGEWRIGHT_WORKSPACE", str(tmp_path))
+    monkeypatch.delenv("MEM0_DISABLED", raising=False)
+    monkeypatch.delenv("FORGEWRIGHT_SKIP_MEM0", raising=False)
+
+    class FailedModule:
+        SCHEMA_VERSION = 2
+
+        def install_schema(self, conn, **kwargs):
+            conn.execute("PRAGMA user_version=2")
+            conn.commit()
+            raise RuntimeError("fixture failed after commit")
+
+    monkeypatch.setattr(maintenance, "memory_module", FailedModule)
+    backup = tmp_path / "pre-migration.db"
+    assert maintenance.main(["migrate-db", "--backup", str(backup)]) == 1
+    result = json.loads(capsys.readouterr().out)
+    with sqlite3.connect(path) as conn:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert result["status"] == "degraded"
+    assert result["mutated"] is True
+    assert result["mutation_state"] == "attempted-unconfirmed"
+    assert result["destination"] == str(backup)
+    assert result["writer_fence_required"] is True

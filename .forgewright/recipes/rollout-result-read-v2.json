@@ -1,0 +1,46 @@
+{
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "-I",
+    "-B",
+    "/Users/buiphucminhtam/GitHub/forgewright/.forgewright/recipes/rollout-preflight-v1.py"
+  ],
+  "artifact_policy": {
+    "output_limit_bytes": 8388608,
+    "project_limit_bytes": 5368709120,
+    "retain_generations": 2,
+    "retained_limit_bytes": 16777216,
+    "schema": "forgewright-artifact-policy/v1",
+    "scratch_limit_bytes": 67108864,
+    "ttl_seconds": 86400
+  },
+  "command": "forge recipe rollout-preflight-v1",
+  "cwd": ".",
+  "disk_floor_bytes": 2147483648,
+  "disk_paths": [
+    {
+      "device": 16777232,
+      "path": "/Users/buiphucminhtam/GitHub/forgewright"
+    }
+  ],
+  "env": {
+    "CI": "1"
+  },
+  "id": "rollout-preflight-v1",
+  "memory_mib": 256,
+  "project": "/Users/buiphucminhtam/GitHub/forgewright",
+  "schema": "forgewright-finite-profile/v2",
+  "scratch_bytes": 67108864,
+  "sources": {
+    ".forgewright/verify/resource-rollout-completion/validation-controller.py": "f2de12ffecbaa5d6cc861a68a7b4bd26a24f1f1c18b669dfa1a5cd12b1ac1430",
+    ".forgewright/recipes/rollout-docs-final-v2.py": "d02b1f89ed635bc9db1b03878e2c4f3c9b049624f140c40126929faa321caa7e",
+    ".forgewright/recipes/rollout-final-review-v2.py": "a36f963e5322daeb3ca8a7a20ff194c37b2caa25abb91041ef000ddf112568fe",
+    ".forgewright/recipes/test_rollout_final_review.py": "fa473ad72abdd0a8539f14b7011f827aa8d5986238179b52e693c2c2c252f25e",
+    "tests/runtime/resource_rollout.py": "0492134a0759ae87e7685735399955673a74f74fb2805e6cdf38848312ac10f7",
+    "scripts/lite/evidence_common.py": "d7513ca28923f9d6b1901a50c984c2a52b426a32afba1db6394377ce2f31b6a0",
+    "scripts/lite/verify_gate.py": "f477ed8ce7ead02789cb50e8eafaeb16bcbf6e8c01d15ddbb20f691eb57528c0",
+    ".forgewright/recipes/rollout-preflight-v1.py": "86ba166120bc2945479c737372ed3a86d22087f494155bb2287d7e50db33d4f8",
+    ".forgewright/recipes/rollout-inspection.py": "121199909ecb1601ba0d8010991c9d0e6dabd9455b974c49eb0940812d45c8b8"
+  },
+  "timeout": 360
+}

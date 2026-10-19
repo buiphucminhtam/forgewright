@@ -1,0 +1,454 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forgewright.dev/schemas/harness-adaptation.v1.schema.json",
+  "title": "Forgewright Harness2 Adaptation Contracts v1",
+  "type": "object",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/contract"
+    },
+    {
+      "$ref": "#/$defs/candidate"
+    },
+    {
+      "$ref": "#/$defs/probe"
+    },
+    {
+      "$ref": "#/$defs/transfer"
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^job-[0-9a-f]{32}$"
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_initial_candidates",
+        "max_composed_candidates",
+        "max_total_rollouts",
+        "max_memory_mib",
+        "max_scratch_bytes",
+        "timeout_seconds"
+      ],
+      "properties": {
+        "max_initial_candidates": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "max_composed_candidates": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_total_rollouts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "max_memory_mib": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 8192
+        },
+        "max_scratch_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 536870912
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1800
+        }
+      }
+    },
+    "surfaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skill_overlay": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "recipe_parameters": {
+          "type": "object",
+          "maxProperties": 16,
+          "additionalProperties": {
+            "type": [
+              "string",
+              "integer",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "tool_routing_hint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "bounded_context": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "script_proposal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "contract_id",
+        "workspace",
+        "operation",
+        "platform",
+        "model_family",
+        "toolchain_digest",
+        "baseline_profile",
+        "baseline_digest",
+        "acceptance_ids",
+        "negative_path_ids",
+        "oracle_digest",
+        "budget"
+      ],
+      "properties": {
+        "schema": {
+          "const": "forgewright-harness-contract/v1"
+        },
+        "contract_id": {
+          "$ref": "#/$defs/id"
+        },
+        "workspace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "operation": {
+          "$ref": "#/$defs/id"
+        },
+        "platform": {
+          "$ref": "#/$defs/id"
+        },
+        "model_family": {
+          "$ref": "#/$defs/id"
+        },
+        "toolchain_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "baseline_profile": {
+          "$ref": "#/$defs/id"
+        },
+        "baseline_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "acceptance_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "negative_path_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "oracle_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "budget": {
+          "$ref": "#/$defs/budget"
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "candidate_id",
+        "contract_id",
+        "origin",
+        "parent_candidate_ids",
+        "proposer_id",
+        "surfaces",
+        "touched_paths",
+        "oracle_digest",
+        "candidate_digest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "forgewright-harness-candidate/v1"
+        },
+        "candidate_id": {
+          "$ref": "#/$defs/id"
+        },
+        "contract_id": {
+          "$ref": "#/$defs/id"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "baseline",
+            "proposed",
+            "composed",
+            "transferred"
+          ]
+        },
+        "parent_candidate_ids": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "proposer_id": {
+          "$ref": "#/$defs/id"
+        },
+        "surfaces": {
+          "$ref": "#/$defs/surfaces"
+        },
+        "touched_paths": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "oracle_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "candidate_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "probe_id",
+        "contract_id",
+        "candidate_id",
+        "candidate_digest",
+        "job_id",
+        "state",
+        "exit_code",
+        "leases_released",
+        "storage_quiescent",
+        "passed_acceptance_ids",
+        "passed_negative_path_ids",
+        "failed_checks",
+        "duration_ms",
+        "tokens_used",
+        "mutation_verified",
+        "oracle_digest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "forgewright-harness-probe/v1"
+        },
+        "probe_id": {
+          "$ref": "#/$defs/id"
+        },
+        "contract_id": {
+          "$ref": "#/$defs/id"
+        },
+        "candidate_id": {
+          "$ref": "#/$defs/id"
+        },
+        "candidate_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "job_id": {
+          "$ref": "#/$defs/job_id"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "quiescent",
+            "cancelled",
+            "quarantined",
+            "rejected"
+          ]
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "leases_released": {
+          "type": "boolean"
+        },
+        "storage_quiescent": {
+          "type": "boolean"
+        },
+        "passed_acceptance_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "passed_negative_path_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "failed_checks": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokens_used": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mutation_verified": {
+          "type": "boolean"
+        },
+        "oracle_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "transfer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "transfer_id",
+        "index_key",
+        "source_contract_id",
+        "winning_candidate",
+        "winning_probe_id",
+        "evidence_ref",
+        "review_ref",
+        "reviewer_id",
+        "implementer_id",
+        "stage",
+        "offline_replay_passed",
+        "canary_trials",
+        "canary_failures"
+      ],
+      "properties": {
+        "schema": {
+          "const": "forgewright-harness-transfer/v1"
+        },
+        "transfer_id": {
+          "$ref": "#/$defs/id"
+        },
+        "index_key": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation",
+            "failure_class",
+            "toolchain_digest",
+            "platform",
+            "model_family"
+          ],
+          "properties": {
+            "operation": {
+              "$ref": "#/$defs/id"
+            },
+            "failure_class": {
+              "$ref": "#/$defs/id"
+            },
+            "toolchain_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "platform": {
+              "$ref": "#/$defs/id"
+            },
+            "model_family": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        },
+        "source_contract_id": {
+          "$ref": "#/$defs/id"
+        },
+        "winning_candidate": {
+          "$ref": "#/$defs/candidate"
+        },
+        "winning_probe_id": {
+          "$ref": "#/$defs/id"
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "review_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "reviewer_id": {
+          "$ref": "#/$defs/id"
+        },
+        "implementer_id": {
+          "$ref": "#/$defs/id"
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "context-only",
+            "promoted",
+            "demoted"
+          ]
+        },
+        "offline_replay_passed": {
+          "type": "boolean"
+        },
+        "canary_trials": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "canary_failures": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

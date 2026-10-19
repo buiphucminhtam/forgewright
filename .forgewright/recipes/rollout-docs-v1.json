@@ -1,0 +1,44 @@
+{
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "-I",
+    "-B",
+    "/Users/buiphucminhtam/GitHub/forgewright/.forgewright/recipes/rollout-final-review-v2.py",
+    "--reviewer-id",
+    "astra-curie-independent",
+    "--approve"
+  ],
+  "artifact_policy": {
+    "output_limit_bytes": 1048576,
+    "project_limit_bytes": 5368709120,
+    "retain_generations": 2,
+    "retained_limit_bytes": 2097152,
+    "schema": "forgewright-artifact-policy/v1",
+    "scratch_limit_bytes": 1048576,
+    "ttl_seconds": 86400
+  },
+  "command": "forge recipe rollout-final-review-v2",
+  "cwd": ".",
+  "disk_floor_bytes": 2147483648,
+  "disk_paths": [
+    {
+      "device": 16777232,
+      "path": "/Users/buiphucminhtam/GitHub/forgewright"
+    }
+  ],
+  "env": {
+    "CI": "1"
+  },
+  "id": "rollout-final-review-v2",
+  "memory_mib": 128,
+  "project": "/Users/buiphucminhtam/GitHub/forgewright",
+  "schema": "forgewright-finite-profile/v2",
+  "scratch_bytes": 1048576,
+  "sources": {
+    ".forgewright/recipes/rollout-final-review-v2.py": "a36f963e5322daeb3ca8a7a20ff194c37b2caa25abb91041ef000ddf112568fe",
+    ".forgewright/verify/resource-rollout-completion/validation-controller.py": "f2de12ffecbaa5d6cc861a68a7b4bd26a24f1f1c18b669dfa1a5cd12b1ac1430",
+    "scripts/lite/evidence_common.py": "d7513ca28923f9d6b1901a50c984c2a52b426a32afba1db6394377ce2f31b6a0",
+    "scripts/lite/verify_gate.py": "f477ed8ce7ead02789cb50e8eafaeb16bcbf6e8c01d15ddbb20f691eb57528c0"
+  },
+  "timeout": 120
+}

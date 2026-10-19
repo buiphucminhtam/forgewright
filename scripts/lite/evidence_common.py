@@ -1438,7 +1438,7 @@ def read_evidence_bytes(
             opened.append(current)
         file_fd = os.open(
             relative.parts[-1],
-            os.O_RDONLY | nofollow | cloexec,
+            os.O_RDONLY | nofollow | cloexec | getattr(os, "O_NONBLOCK", 0),
             dir_fd=current,
         )
         opened.append(file_fd)

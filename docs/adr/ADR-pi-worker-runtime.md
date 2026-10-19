@@ -110,6 +110,12 @@ quarantines its reserved capacity; TTL alone never authorizes replay. The broker
 is demand-started and exits after 15 idle seconds. It owns no product jobs,
 cloud connections or model weights.
 
+The standalone finite build supervisor reuses this admission authority with
+its own worker and heavy leases. Its reviewed profiles and owned disk artifacts
+are specified in [ADR 010](ADR-010-runtime-lifecycle-guard.md). This separate
+cooperative execution lane does not broaden Pi worker tool permissions or its
+verifier sandbox contract.
+
 Admission also pauses new work when one-minute OS load divided by logical CPU
 count reaches 1.0, with a 15-second recovery hold. Load is a contention signal,
 not a temperature reading or CPU percentage. Existing workers keep their leases
