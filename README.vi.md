@@ -107,9 +107,8 @@ Router giữ UI Designer trong budget context hiện có.
 
 ### 1. Tối ưu hóa đường nóng (Hot-path) & Hỗ trợ toàn diện Windows
 
-- **Kiểm tra chính sách tức thời, không phụ thuộc `jq`:** [policy-check.sh](scripts/lite/policy-check.sh), [telemetry.sh](scripts/lite/telemetry.sh) và [rule-ledger.sh](scripts/lite/rule-ledger.sh) phân tích cấu hình trực tiếp bằng Bash, tự động dò `python3`/`python`/`py.exe -3` trên Windows lẫn POSIX, chuẩn hóa `FORGEWRIGHT_WORKSPACE` qua `cygpath` và tự fallback sang Python khi máy không có `jq`.
-- **Chặn lệnh phá hủy định dạng Windows:** Bộ phân tích cấu trúc lệnh chuẩn hóa dấu `\\` và hậu tố `.exe`/`.cmd`/`.bat`, chặn chính xác các lệnh như `C:\\Program Files\\Git\\cmd\\git.exe reset --hard` hoặc `git.cmd push --force`.
-- **Tăng tốc `worktree_fingerprint` & làm sạch `.forgewright/`:** [evidence_common.py](scripts/lite/evidence_common.py) dùng `git ls-files --directory` để cắt nhánh thư mục `node_modules` và runtime ngay từ tầng C của Git, lưu đệm chữ ký stat cho file lớn/ổn định, loại trừ `__pycache__` và tránh cảnh báo giả `HARD` khi cập nhật các file hướng dẫn gốc (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`).
+- **Kiểm tra chính sách tức thời:** [policy-check.sh](scripts/lite/policy-check.sh), [telemetry.sh](scripts/lite/telemetry.sh) và [rule-ledger.sh](scripts/lite/rule-ledger.sh) chạy trực tiếp bằng Bash, tự dò Python trên Windows/POSIX, chuẩn hóa `cygpath` và chặn lệnh phá hủy định dạng `.exe`/`.cmd`/`.bat`.
+- **Tăng tốc `worktree_fingerprint`:** [evidence_common.py](scripts/lite/evidence_common.py) dùng `git ls-files --directory`, đệm stat cho file lớn và loại trừ `__pycache__`.
 
 ### 2. Đóng gói Plugin cho Codex & Claude + Behavioral Skill Quality Engine
 
@@ -177,6 +176,15 @@ qua [studio](skills/_shared/protocols/game-studio-pipeline.md).
 có build/contract/model checks; runner compile trước admission. Browser cloud
 bị chặn (`pi_host_capacity_timeout`): render, thiết bị, specialist/người chơi còn
 **UNVERIFIED**. Approval tổng hợp trong fixture không duyệt production.
+
+### 7. Reverse-engineering intelligence & bằng chứng theo facet
+
+[Runtime RE intelligence](scripts/runtime/reverse_engineering_intelligence.py) và
+[catalog cố định](.forgewright/re-discovery-catalog.json) bổ sung tra cứu offline
+khớp SHA-256, định tuyến theo tác vụ kèm giới hạn, phong bì bằng chứng theo facet
+(`facet_availability`, `coverage.scope`, `coverage.status`), token tiến trình gắn lease
+và xếp hạng benchmark chính xác tuyệt đối ([bộ test](tests/unit_tests/test_reverse_engineering_intelligence.py)).
+Giấy phép trong catalog cần kiểm chứng ở repo gốc; fixture không thay thế thực thi ngoài.
 
 ## Bắt đầu
 

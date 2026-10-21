@@ -168,22 +168,12 @@ node forgewright/src/cli/dist/index.js delegate resources
 ### 6. Specialist research across all skills
 
 The [skill catalog](docs/skill-catalog.md) covers **85 canonical skills and 3 aliases**,
-with **168 profession-specific research questions** and proposed domain verifiers.
-Seven skills receive bounded reference/example repairs: Game Engineer, API Designer,
-Solution Architect, MCP Generator, Eval Engineer, SRE and XLSX Engineer.
-Observed comparisons include projectile displacement of about 20/10/5 → 600 pixels
-over one second at 30/60/120 FPS in an Arcade API model, resolved OpenAPI references,
-rejection of confidence-only grading, and a workbook that now saves and reopens.
-
-The generated MCP template pins GitNexus 1.6.12 and requires Node
-`^22.18.0 || >=24.11.0`. Real SDK/CLI checks on Linux/Node 24.19 verify literal
-arguments and the project cwd for source and compiled execution. Existing generated
-servers need project-owned regeneration; Node 22/Windows and search quality remain
-unverified. These are reference corrections, with fresh isolated reference-application
-checks, not repeated model benchmarks or proof of better game feel or player outcomes.
-A Godot buffer candidate is held because its proposed overflow policy conflicts with
-the existing reconciliation consumer. Remaining candidates and evidence gaps are
-listed explicitly in the catalog; an audit does not require changing every skill.
+with **168 profession-specific research questions**, domain verifiers and seven bounded
+reference repairs (Game Engineer, API Designer, Solution Architect, MCP Generator,
+Eval Engineer, SRE, XLSX Engineer). The MCP template pins GitNexus 1.6.12 and Node
+`^22.18.0 || >=24.11.0` (verified on Linux/Node 24.19; Node 22/Windows and search
+quality remain unverified). A Godot buffer candidate stays held on reconciliation
+conflict; these are reference corrections, not model benchmarks or player-outcome proof.
 
 ### 5. Phaser 4 / Three.js production handoff
 
@@ -206,6 +196,16 @@ hypotheses, reusable nonsecret profiles and per-game strategy. `forge mobile`
 setup and beta simulation separate provider availability from device evidence.
 Native SDK/store adapters, account access and player/revenue gains still need
 actual target-project validation.
+
+### 7. Reverse-engineering intelligence & facet evidence
+
+The [RE intelligence runtime](scripts/runtime/reverse_engineering_intelligence.py) and
+[pinned catalog](.forgewright/re-discovery-catalog.json) add offline SHA-256-pinned
+discovery, task-to-tool routing with explicit limitations, per-facet evidence envelopes
+(`facet_availability`, `coverage.scope`, `coverage.status`), lease-bound process tokens
+and full-precision benchmark ranking ([unit suite](tests/unit_tests/test_reverse_engineering_intelligence.py)).
+Catalog metadata requires upstream license verification; fixture checks do not certify
+external adapter execution or live model benchmarks.
 
 ## Quick start
 

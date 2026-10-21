@@ -1913,6 +1913,12 @@
         "title": "Resolve the observed Code Mode compatibility blocker under a separately bounded host-validation plan before executing the frozen ordinary novice tasks or promoting any skill. Preserve failed attempts; resume paired consumer pilots only after real resource admission and independent evaluator validation.",
         "owner": "Game skill maintainers / host operator",
         "due_date": null
+      },
+      {
+        "id": "re-intelligence-live-adapter-benchmark",
+        "title": "Validate external RE tool adapters (JADX, Ghidra, hexvero) and paired model/tool benchmark fixtures against owned artifacts before claiming live reverse-engineering uplift beyond the deterministic offline catalog and facet-evidence suite.",
+        "owner": "Runtime and security maintainers",
+        "due_date": null
       }
     ],
     "next_update_at": null

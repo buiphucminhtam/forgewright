@@ -1,0 +1,195 @@
+[
+  {
+    "name": "morluto/rea",
+    "url": "https://github.com/morluto/rea",
+    "desc": "Agent-oriented reverse engineering CLI & MCP across binaries, Android APKs (JADX), Hopper/Ghidra/Cutter, LLDB, mitmproxy, and JS/web bundles with facet evidence envelopes.",
+    "category": "re-tooling",
+    "subcategory": "agent-mcp-workbenches",
+    "topics": [
+      "reverse-engineering",
+      "mcp-server",
+      "jadx",
+      "ghidra",
+      "hopper",
+      "javascript-analysis",
+      "android"
+    ],
+    "stars": 349626,
+    "lang": "TypeScript",
+    "license": "MIT",
+    "pushed": "2026-10-21",
+    "archived": false
+  },
+  {
+    "name": "skylot/jadx",
+    "url": "https://github.com/skylot/jadx",
+    "desc": "Dex to Java decompiler for Android APK and AAB dex inspection.",
+    "category": "re-tooling",
+    "subcategory": "android-decompiler",
+    "topics": [
+      "android",
+      "apk",
+      "dex",
+      "decompiler",
+      "jadx",
+      "java"
+    ],
+    "stars": 51130,
+    "lang": "Java",
+    "license": "Apache-2.0",
+    "pushed": "2026-10-18",
+    "archived": false
+  },
+  {
+    "name": "NationalSecurityAgency/ghidra",
+    "url": "https://github.com/NationalSecurityAgency/ghidra",
+    "desc": "Software reverse engineering (SRE) framework with native decompiler and headless analyzer.",
+    "category": "re-tooling",
+    "subcategory": "native-decompiler",
+    "topics": [
+      "ghidra",
+      "decompiler",
+      "disassembler",
+      "native",
+      "elf",
+      "mach-o",
+      "pe"
+    ],
+    "stars": 92224,
+    "lang": "Java",
+    "license": "Apache-2.0",
+    "pushed": "2026-10-20",
+    "archived": false
+  },
+  {
+    "name": "LaurieWired/GhidraMCP",
+    "url": "https://github.com/LaurieWired/GhidraMCP",
+    "desc": "Model Context Protocol (MCP) server for Ghidra native binary analysis.",
+    "category": "re-tooling",
+    "subcategory": "agent-mcp-workbenches",
+    "topics": [
+      "ghidra",
+      "mcp",
+      "reverse-engineering",
+      "binary-analysis"
+    ],
+    "stars": 11441,
+    "lang": "Python",
+    "license": "Apache-2.0",
+    "pushed": "2026-10-10",
+    "archived": false
+  },
+  {
+    "name": "bethington/ghidra-mcp",
+    "url": "https://github.com/bethington/ghidra-mcp",
+    "desc": "Ghidra MCP Server with 200+ MCP tools for GUI plugin and headless reverse engineering.",
+    "category": "re-tooling",
+    "subcategory": "agent-mcp-workbenches",
+    "topics": [
+      "ghidra",
+      "mcp",
+      "headless",
+      "decompiler"
+    ],
+    "stars": 5822,
+    "lang": "Java",
+    "license": "MIT",
+    "pushed": "2026-10-16",
+    "archived": false
+  },
+  {
+    "name": "maximilianfeix/hexvero",
+    "url": "https://github.com/maximilianfeix/hexvero",
+    "desc": "Statically triages Electron archives and JavaScript bundles for IPC channels, preload bridges, and ELF/Mach-O/PE imports.",
+    "category": "re-tooling",
+    "subcategory": "web-electron-triage",
+    "topics": [
+      "electron",
+      "javascript",
+      "bundle",
+      "triage",
+      "mcp",
+      "elf",
+      "mach-o"
+    ],
+    "stars": 1850,
+    "lang": "TypeScript",
+    "license": "MIT",
+    "pushed": "2026-10-12",
+    "archived": false
+  },
+  {
+    "name": "mitmproxy/mitmproxy",
+    "url": "https://github.com/mitmproxy/mitmproxy",
+    "desc": "Interactive TLS-capable intercepting HTTP/HTTPS proxy for protocol inspection.",
+    "category": "network-wire-protocols",
+    "subcategory": "http-proxy",
+    "topics": [
+      "proxy",
+      "http",
+      "tls",
+      "protocol",
+      "network"
+    ],
+    "stars": 45768,
+    "lang": "Python",
+    "license": "MIT",
+    "pushed": "2026-10-19",
+    "archived": false
+  },
+  {
+    "name": "WerWolv/ImHex",
+    "url": "https://github.com/WerWolv/ImHex",
+    "desc": "Hex editor for reverse engineers with pattern language for binary file formats.",
+    "category": "file-formats",
+    "subcategory": "binary-formats",
+    "topics": [
+      "hex-editor",
+      "binary-format",
+      "parser",
+      "imhex"
+    ],
+    "stars": 55488,
+    "lang": "C++",
+    "license": "GPL-2.0",
+    "pushed": "2026-10-09",
+    "archived": false
+  },
+  {
+    "name": "fastlane/fastlane",
+    "url": "https://github.com/fastlane/fastlane",
+    "desc": "iOS/Android release automation; spaceship wraps Apple Developer Portal and App Store Connect APIs.",
+    "category": "apple-ecosystem",
+    "subcategory": "release-automation",
+    "topics": [
+      "ios",
+      "android",
+      "app-store-connect",
+      "google-play",
+      "fastlane"
+    ],
+    "stars": 42265,
+    "lang": "Ruby",
+    "license": "MIT",
+    "pushed": "2026-10-15",
+    "archived": false
+  },
+  {
+    "name": "CharlotteCross1998/awesome-game-decompilations",
+    "url": "https://github.com/CharlotteCross1998/awesome-game-decompilations",
+    "desc": "Curated list of game decompilations, recompilations, and disassemblies across consoles and engines.",
+    "category": "game-decompilations-reimplementations",
+    "subcategory": "collections",
+    "topics": [
+      "game-decompilation",
+      "reimplementation",
+      "retro",
+      "engine"
+    ],
+    "stars": 759,
+    "lang": "Markdown",
+    "license": "MIT",
+    "pushed": "2026-10-20",
+    "archived": false
+  }
+]
