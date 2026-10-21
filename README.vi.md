@@ -183,7 +183,7 @@ bị chặn (`pi_host_capacity_timeout`): render, thiết bị, specialist/ngư�
 [catalog cố định](.forgewright/re-discovery-catalog.json) bổ sung tra cứu offline
 khớp SHA-256, định tuyến theo tác vụ kèm giới hạn, phong bì bằng chứng theo facet
 (`facet_availability`, `coverage.scope`, `coverage.status`), token tiến trình gắn lease
-và xếp hạng benchmark chính xác tuyệt đối ([bộ test](tests/unit_tests/test_reverse_engineering_intelligence.py)).
+và xếp hạng theo thứ tự từ điển bằng giá trị chưa làm tròn ([bộ test](tests/unit_tests/test_reverse_engineering_intelligence.py)).
 Giấy phép trong catalog cần kiểm chứng ở repo gốc; fixture không thay thế thực thi ngoài.
 
 ## Bắt đầu

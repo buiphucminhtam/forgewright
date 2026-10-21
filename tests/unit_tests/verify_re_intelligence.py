@@ -2,6 +2,7 @@
 """Deterministic verification runner for Reverse-Engineering Intelligence."""
 from __future__ import annotations
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -28,7 +29,26 @@ def main() -> int:
     test_process_run_token_binds_pid_start_identity_and_lease()
     test_benchmark_matrix_disqualifies_fabricated_evidence_and_ranks_winners()
     test_astra_p1_p2_strict_validation_and_full_precision_ranking()
-    print(json.dumps({"status": "PASS", "suite": "test_reverse_engineering_intelligence", "DeterministicChecks": 7}, sort_keys=True))
+    assert "reverse_engineering_intelligence.py" in (ROOT / "README.md").read_text(encoding="utf-8")
+    assert (
+        "xếp hạng theo thứ tự từ điển bằng giá trị chưa làm tròn"
+        in (ROOT / "README.vi.md").read_text(encoding="utf-8")
+    )
+    head = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
+    origin_main = subprocess.check_output(
+        ["git", "-C", str(ROOT), "rev-parse", "origin/main"], text=True
+    ).strip()
+    assert head == origin_main, f"HEAD {head} != origin/main {origin_main}"
+    print(
+        json.dumps(
+            {
+                "status": "PASS",
+                "suite": "test_reverse_engineering_intelligence",
+                "DeterministicChecks": 8,
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 if __name__ == "__main__":
