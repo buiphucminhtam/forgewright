@@ -63,15 +63,19 @@ def process_table():
     """
     rows = {}
     raw = command(["/bin/ps", "-ax", "-o", "pid=,ppid=,pgid=,stat=,lstart="])
-    for line in raw.splitlines():
+    lines = [line for line in raw.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError("empty-ps-output")
+    for line in lines:
         parts = line.split()
-        if len(parts) == 9:
-            pid, parent, group = map(int, parts[:3])
-            if not parts[3].startswith("Z"):
-                birth = hashlib.sha256(
-                    (str(pid) + ":" + " ".join(parts[4:])).encode()
-                ).hexdigest()
-                rows[pid] = (parent, group, birth)
+        if len(parts) != 9:
+            raise ValueError("malformed-ps-row")
+        pid, parent, group = map(int, parts[:3])
+        if not parts[3].startswith("Z"):
+            birth = hashlib.sha256(
+                (str(pid) + ":" + " ".join(parts[4:])).encode()
+            ).hexdigest()
+            rows[pid] = (parent, group, birth)
     return rows
 
 
@@ -426,15 +430,40 @@ def supervise(process, cancel, deadline, heartbeat):
     known, uncertain, stopped = {}, False, False
     last_heartbeat = 0.0
     cleanup_deadline, kill_sent = None, False
+    escaped_records = {}
+    escaped_overflow = False
+    census_complete = True
+
+    def finish(quiescent_flag, stopped_flag):
+        try:
+            setattr(
+                process,
+                "_forgewright_supervision_diagnostics",
+                {
+                    "escaped_children": list(escaped_records.values()),
+                    "escaped_overflow": escaped_overflow,
+                    "census_complete": census_complete,
+                },
+            )
+        except Exception:
+            pass
+        return quiescent_flag, stopped_flag
 
     def observe():
-        nonlocal uncertain
+        nonlocal uncertain, escaped_overflow, census_complete
         table = process_table()
-        descendants = {process.pid} | {
-            pid
-            for pid, birth in known.items()
-            if pid in table and table[pid][2] == birth
-        }
+        if not table:
+            census_complete = False
+            uncertain = True
+        descendants = (
+            {process.pid}
+            | {pid for pid, row in table.items() if row[1] == process.pid}
+            | {
+                pid
+                for pid, birth in known.items()
+                if pid in table and table[pid][2] == birth
+            }
+        )
         for _ in range(64):
             found = {pid for pid, row in table.items() if row[0] in descendants}
             if found <= descendants:
@@ -448,11 +477,19 @@ def supervise(process, cancel, deadline, heartbeat):
                     uncertain = True
                 else:
                     known[pid] = table[pid][2]
-        if any(
-            pid in table and table[pid][2] == birth and table[pid][1] != process.pid
-            for pid, birth in known.items()
-        ):
-            uncertain = True  # Observed child escaped its owned group.
+        for pid, birth in known.items():
+            if pid in table and table[pid][2] == birth and table[pid][1] != process.pid:
+                uncertain = True  # Observed child escaped its owned group.
+                if pid not in escaped_records:
+                    if len(escaped_records) < 8:
+                        escaped_records[pid] = {
+                            "pid": pid,
+                            "ppid": table[pid][0],
+                            "pgid": table[pid][1],
+                            "birth": birth,
+                        }
+                    else:
+                        escaped_overflow = True
         group = {pid: row for pid, row in table.items() if row[1] == process.pid}
         safe = all(known.get(pid) == row[2] for pid, row in group.items())
         if not safe:
@@ -478,7 +515,7 @@ def supervise(process, cancel, deadline, heartbeat):
             group, _ = observe()
             code = process.poll()
             if code is not None and not group:
-                return not uncertain, stopped
+                return finish(not uncertain, stopped)
             if now - last_heartbeat >= 1:
                 try:
                     if heartbeat() is False:
@@ -498,9 +535,10 @@ def supervise(process, cancel, deadline, heartbeat):
                         kill_sent = True
                         cleanup_deadline = now + 2
                     else:
-                        return False, stopped
+                        return finish(False, stopped)
         except (OSError, ValueError, subprocess.SubprocessError):
-            return False, stopped
+            census_complete = False
+            return finish(False, stopped)
         time.sleep(0.1)
 
 
@@ -746,8 +784,15 @@ def run_job(admission, request, *, cancel=None):
         quiescent, stopped = supervise(
             process, cancel, time.monotonic() + request.timeout, heartbeat
         )
+        supervision_diagnostics = getattr(
+            process, "_forgewright_supervision_diagnostics", None
+        ) or {}
         monitor_finished = True
         uncertain = not quiescent
+        if supervision_diagnostics.get("escaped_children") or not supervision_diagnostics.get(
+            "census_complete", True
+        ):
+            receipt["supervision_diagnostics"] = supervision_diagnostics
         receipt.update(
             state="quarantined"
             if uncertain

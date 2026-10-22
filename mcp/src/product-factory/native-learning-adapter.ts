@@ -360,6 +360,15 @@ const evidenceSchema = z
         runner: z.string().min(1),
         entrypoints: z.array(z.string()).min(1).max(64),
         test_refs: z.array(z.string()).min(1).max(64),
+        bundle: z
+          .object({
+            schema: z.literal('forgewright-lite-bundle/v1'),
+            capabilities: z.array(z.string()).min(1),
+            observer_sha256: SHA,
+            modules: z.record(SHA),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     tier: z.enum(['unit', 'contract', 'integration', 'runtime', 'e2e', 'security', 'review']),

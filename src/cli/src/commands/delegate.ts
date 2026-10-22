@@ -135,7 +135,26 @@ export function registerDelegateCommand(program: Command): void {
       "--register-profile <file>",
       "Install an exact owner-reviewed project recipe without running it",
     )
-    .option("--sha256 <digest>", "SHA256 of the reviewed recipe file")
+    .option(
+      "--restage-shared <manifest>",
+      "Stage an exact owner-reviewed shared runtime manifest",
+    )
+    .option(
+      "--reconcile-quarantined <plan>",
+      "Inspect or apply an owner-reviewed quarantine reconciliation plan",
+    )
+    .option(
+      "--apply",
+      "Apply the reviewed quarantine reconciliation plan after fresh census",
+    )
+    .option(
+      "--activate",
+      "Activate staged host resource controls for this project",
+    )
+    .option(
+      "--sha256 <digest>",
+      "SHA256 of the reviewed recipe or shared manifest",
+    )
     .action(
       async (options: {
         inventory?: boolean;
@@ -144,6 +163,10 @@ export function registerDelegateCommand(program: Command): void {
         pruneHistory?: boolean;
         inspect?: string;
         registerProfile?: string;
+        restageShared?: string;
+        reconcileQuarantined?: string;
+        apply?: boolean;
+        activate?: boolean;
         sha256?: string;
       }) => {
         const selected = [
@@ -153,10 +176,21 @@ export function registerDelegateCommand(program: Command): void {
           options.pruneHistory,
           options.inspect,
           options.registerProfile,
-        ].filter(Boolean);
+          options.restageShared,
+          options.reconcileQuarantined,
+          options.activate,
+        ].filter((value) => value !== undefined);
+        const requiresHash =
+          options.registerProfile !== undefined ||
+          options.restageShared !== undefined ||
+          options.reconcileQuarantined !== undefined;
         if (
           selected.length > 1 ||
-          Boolean(options.sha256) !== Boolean(options.registerProfile)
+          selected.includes("") ||
+          (options.apply !== undefined &&
+            options.reconcileQuarantined === undefined) ||
+          (options.sha256 !== undefined) !== requiresHash ||
+          (requiresHash && !options.sha256)
         ) {
           throw new Error("select_one_resource_action_with_required_hash");
         }
@@ -170,6 +204,24 @@ export function registerDelegateCommand(program: Command): void {
             "register-profile",
             { file: options.registerProfile, sha256: options.sha256 },
           );
+        else if (options.restageShared)
+          process.exitCode = await runHostAction(
+            findProjectRoot(),
+            "restage-shared",
+            { manifest: options.restageShared, sha256: options.sha256 },
+          );
+        else if (options.reconcileQuarantined)
+          process.exitCode = await runHostAction(
+            findProjectRoot(),
+            "reconcile-quarantined",
+            {
+              plan: options.reconcileQuarantined,
+              sha256: options.sha256,
+              apply: Boolean(options.apply),
+            },
+          );
+        else if (options.activate)
+          process.exitCode = await runHostAction(findProjectRoot(), "activate");
         else if (options.disable)
           process.exitCode = await runHostAction(findProjectRoot(), "disable");
         else if (options.pruneHistory)

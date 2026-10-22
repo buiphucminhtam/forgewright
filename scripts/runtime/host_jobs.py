@@ -21,7 +21,12 @@ from host_job_profiles import (
 from host_job_runner import run_job, JobError
 from project_storage import StorageError
 from resource_enrollment import EnrollmentError
-from resource_controls import ControlError, inspect_workspace, register_profile
+from resource_controls import (
+    ControlError,
+    inspect_workspace,
+    reconcile_quarantined_plan,
+    register_profile,
+)
 
 
 def recurrence_projection(project, profile, expected, receipt):
@@ -29,6 +34,7 @@ def recurrence_projection(project, profile, expected, receipt):
     fallback = {"status": "unavailable", "authority": "context-only", "promoted": False}
     try:
         from recurrence_adapter import after_profile
+
         # Pass an isolated snapshot, including nested native context.
         snapshot = json.loads(json.dumps(receipt))
         value = after_profile(project, profile, expected, snapshot)
@@ -63,20 +69,55 @@ def main(argv=None):
     register.add_argument("--project", required=True, type=Path)
     register.add_argument("--file", required=True, type=Path)
     register.add_argument("--sha256", required=True)
+    restage = commands.add_parser("restage-shared")
+    restage.add_argument("--project", required=True, type=Path)
+    restage.add_argument("--manifest", required=True, type=Path)
+    restage.add_argument("--sha256", required=True)
+    reconcile = commands.add_parser("reconcile-quarantined")
+    reconcile.add_argument("--project", required=True, type=Path)
+    reconcile.add_argument("--plan", required=True, type=Path)
+    reconcile.add_argument("--sha256", required=True)
+    reconcile.add_argument("--apply", action="store_true")
+    activate = commands.add_parser("activate")
+    activate.add_argument("--project", required=True, type=Path)
     args = parser.parse_args(argv)
     home = args.home or Path(
         os.environ.get("FORGEWRIGHT_ADMISSION_HOME")
         or Path.home() / ".forgewright/runtime/admission"
     )
     try:
+        if args.action in {"restage-shared", "activate"}:
+            from resource_enrollment import registry, restage_shared, activate
+
+            project = args.project.resolve(strict=True)
+            config = Path(registry(home)[str(project)]["config"])
+            result = (
+                restage_shared(home, project, config, args.manifest, args.sha256)
+                if args.action == "restage-shared"
+                else activate(home, project, config)
+            )
+            print(json.dumps(result))
+            return 0
         if args.action == "inspect":
             if len(args.request) > 8192:
                 raise ControlError("invalid-inspection")
             print(json.dumps(inspect_workspace(args.project, json.loads(args.request))))
             return 0
         if args.action == "register-profile":
-            print(json.dumps(register_profile(home, args.project, args.file, args.sha256)))
+            print(
+                json.dumps(register_profile(home, args.project, args.file, args.sha256))
+            )
             return 0
+        if args.action == "reconcile-quarantined":
+            result = reconcile_quarantined_plan(
+                home,
+                args.project,
+                args.plan,
+                args.sha256,
+                apply=bool(args.apply),
+            )
+            print(json.dumps(result))
+            return 0 if result.get("status") in {"eligible", "reconciled"} else 2
         if args.action == "install-profile":
             value = json.loads(args.file.read_bytes())
             print(
@@ -123,7 +164,11 @@ def main(argv=None):
             safe = {
                 k: saved[k]
                 for k in (
-                    "HOME", "PATH", "LANG", "LC_ALL", "TMPDIR",
+                    "HOME",
+                    "PATH",
+                    "LANG",
+                    "LC_ALL",
+                    "TMPDIR",
                     "FORGEWRIGHT_RLG_HOME",
                 )
                 if k in saved
@@ -139,7 +184,9 @@ def main(argv=None):
             finally:
                 os.environ.clear()
                 os.environ.update(saved)
-            receipt["recurrence"] = recurrence_projection(args.project, profile, args.digest, receipt)
+            receipt["recurrence"] = recurrence_projection(
+                args.project, profile, args.digest, receipt
+            )
             print(json.dumps(receipt), file=sys.stderr)
             if receipt["state"] != "quiescent":
                 return 130 if receipt["state"] == "cancelled" else 125

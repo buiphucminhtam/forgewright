@@ -40,8 +40,12 @@ def runner_prefix(home):
 
 
 def literal_argv(command):
-    if (not isinstance(command, str) or len(command) > 16384
-            or "\n" in command or "\r" in command):
+    if (
+        not isinstance(command, str)
+        or len(command) > 16384
+        or "\n" in command
+        or "\r" in command
+    ):
         return []
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>`()\n")
@@ -54,9 +58,12 @@ def literal_argv(command):
 
 def explicit_profile(command, enrollment):
     argv = literal_argv(command)
-    if (len(argv) == 7 and argv[:4] == ["forge", "delegate", "exec", "--profile"]
-            and argv[5] == "--digest"
-            and enrollment.get("profiles", {}).get(argv[4]) == argv[6]):
+    if (
+        len(argv) == 7
+        and argv[:4] == ["forge", "delegate", "exec", "--profile"]
+        and argv[5] == "--digest"
+        and enrollment.get("profiles", {}).get(argv[4]) == argv[6]
+    ):
         return argv[4]
     return None
 
@@ -95,21 +102,63 @@ def control_decision(payload, home):
             "permissionDecision": "allow",
             "updatedInput": {"command": shlex.join(runner_prefix(home) + ["history"])},
         }
+    if command == "forge delegate resources --activate":
+        project = str(Path(payload.get("cwd") or ".").resolve(strict=True))
+        return {
+            "permissionDecision": "allow",
+            "updatedInput": {
+                "command": shlex.join(
+                    runner_prefix(home) + ["activate", "--project", project]
+                )
+            },
+        }
     if isinstance(command, str) and len(command) <= 16384:
         argv = literal_argv(command)
         if argv[:3] == ["forge", "delegate", "resources"]:
             action = None
             if len(argv) == 5 and argv[3] == "--inspect":
                 action = ["inspect", "--request", argv[4]]
-            elif (len(argv) == 7 and argv[3] == "--register-profile"
-                  and argv[5] == "--sha256" and re.fullmatch(r"[0-9a-f]{64}", argv[6])):
+            elif (
+                len(argv) == 7
+                and argv[3] == "--register-profile"
+                and argv[5] == "--sha256"
+                and re.fullmatch(r"[0-9a-f]{64}", argv[6])
+            ):
                 action = ["register-profile", "--file", argv[4], "--sha256", argv[6]]
+            elif (
+                len(argv) == 7
+                and argv[3] == "--restage-shared"
+                and argv[5] == "--sha256"
+                and re.fullmatch(r"[0-9a-f]{64}", argv[6])
+            ):
+                action = ["restage-shared", "--manifest", argv[4], "--sha256", argv[6]]
+            elif (
+                len(argv) in {7, 8}
+                and argv[3] == "--reconcile-quarantined"
+                and argv[5] == "--sha256"
+                and re.fullmatch(r"[0-9a-f]{64}", argv[6])
+                and (len(argv) == 7 or argv[7] == "--apply")
+            ):
+                action = [
+                    "reconcile-quarantined",
+                    "--plan",
+                    argv[4],
+                    "--sha256",
+                    argv[6],
+                    *(["--apply"] if len(argv) == 8 else []),
+                ]
             if action:
                 project = str(Path(payload.get("cwd") or ".").resolve(strict=True))
                 return {
                     "permissionDecision": "allow",
-                    "updatedInput": {"command": shlex.join(
-                        runner_prefix(home) + action[:1] + ["--project", project] + action[1:])},
+                    "updatedInput": {
+                        "command": shlex.join(
+                            runner_prefix(home)
+                            + action[:1]
+                            + ["--project", project]
+                            + action[1:]
+                        )
+                    },
                 }
     return None
 
@@ -149,7 +198,10 @@ def decide(payload, home, enrollments):
             context = ""
             try:
                 from recurrence_adapter import before_profile
-                candidate = before_profile(project, profile, expected, payload.get("session_id"))
+
+                candidate = before_profile(
+                    project, profile, expected, payload.get("session_id")
+                )
                 if isinstance(candidate, str) and len(candidate) <= 2000:
                     context = candidate
             except Exception:
@@ -172,7 +224,11 @@ def decide(payload, home, enrollments):
             if context:
                 decision["additionalContext"] = context
             return decision
-    if mode == "canary":
+    if (
+        mode == "canary"
+        and "restage" not in enrollment
+        and not enrollment.get("recovery_canary")
+    ):
         return {
             "additionalContext": "Resource coverage: canary only; other shell paths remain advisory"
         }
@@ -224,6 +280,12 @@ def main(argv=None):
             json.loads(private_read(enrollment, 65536)) if enrollment.exists() else {}
         )
         current = registry.get(project)
+        if (
+            current
+            and "restage" in current
+            and current.get("phase") not in {"canary", "enforce"}
+        ):
+            raise EnrollmentError("restage-proof-context-drift")
         if current and current.get("phase") not in {"canary", "enforce"}:
             output = {
                 "additionalContext": "Resource enrollment incomplete/inactive; native enforcement unverified"
@@ -240,13 +302,25 @@ def main(argv=None):
             from native_job_requests import issue
 
             for name, expected in current["profiles"].items():
-                selected = explicit_profile(payload.get("tool_input", {}).get("command"), current)
+                selected = explicit_profile(
+                    payload.get("tool_input", {}).get("command"), current
+                )
                 if selected is not None and selected != name:
                     continue
                 profile = load_profile(home, project, name, expected)
-                if payload.get("tool_input", {}).get("command") == profile["command"] or selected == name:
-                    context = issue(home, project, payload, profile, expected, current,
-                                    lesson_context=output.get("additionalContext", ""))
+                if (
+                    payload.get("tool_input", {}).get("command") == profile["command"]
+                    or selected == name
+                ):
+                    context = issue(
+                        home,
+                        project,
+                        payload,
+                        profile,
+                        expected,
+                        current,
+                        lesson_context=output.get("additionalContext", ""),
+                    )
                     argv = shlex.split(output["updatedInput"]["command"]) + [
                         "--native-request",
                         context["request_id"],
@@ -264,7 +338,12 @@ def main(argv=None):
         ):
             record_canary(home, project, payload, "deny")
     except (OSError, ValueError, KeyError, TypeError, ProfileError, EnrollmentError):
-        if current and current.get("mode") == "canary":
+        if (
+            current
+            and current.get("mode") == "canary"
+            and "restage" not in current
+            and not current.get("recovery_canary")
+        ):
             output = {
                 "additionalContext": "Resource canary unavailable; no rewrite occurred and native enforcement remains unverified."
             }

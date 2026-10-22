@@ -336,13 +336,28 @@ def _replay_final_commands(
         commands.setdefault(tuple(command), []).append((label, record))
 
     mutated_worktree = False
+    expected_tree = evidence.get("tree_sha")
     for command_tuple, command_records in commands.items():
         command = list(command_tuple)
+        before_tree = _current_tree_sha(project_root)
+        if before_tree != expected_tree:
+            errors.append(
+                "MISMATCH: exact worktree fingerprint changed since evidence was written. "
+                f"Evidence: {expected_tree!r}, Current: {before_tree!r}"
+            )
+            return errors
         try:
             result, observed = run_observed(
                 command, cwd=project_root, env=_replay_env(), timeout=_replay_timeout()
             )
         except subprocess.TimeoutExpired as error:
+            after_tree = _current_tree_sha(project_root)
+            if after_tree != before_tree and not mutated_worktree:
+                errors.append(
+                    "REPLAY: worktree changed during replay window outside excluded evidence directory. "
+                    f"Before: {before_tree!r}, After: {after_tree!r}"
+                )
+                mutated_worktree = True
             detail = _bounded_replay_detail(
                 getattr(error, "stderr", None) or getattr(error, "output", None)
             )
@@ -353,6 +368,13 @@ def _replay_final_commands(
             )
             continue
         except (OSError, UnicodeError) as error:
+            after_tree = _current_tree_sha(project_root)
+            if after_tree != before_tree and not mutated_worktree:
+                errors.append(
+                    "REPLAY: worktree changed during replay window outside excluded evidence directory. "
+                    f"Before: {before_tree!r}, After: {after_tree!r}"
+                )
+                mutated_worktree = True
             detail = _bounded_replay_detail(error)
             errors.append(
                 "REPLAY: final-tree command could not be started safely"
@@ -396,21 +418,18 @@ def _replay_final_commands(
                 )
 
         replay_tree = _current_tree_sha(project_root)
-        if replay_tree != evidence.get("tree_sha") and not mutated_worktree:
+        if replay_tree != before_tree and not mutated_worktree:
             errors.append(
-                "REPLAY: mutated final worktree outside excluded evidence directory; "
-                "replay changed tracked, untracked, ignored, or submodule content. "
-                f"Evidence: {evidence.get('tree_sha')!r}, Current: {replay_tree!r}"
+                "REPLAY: worktree changed during replay window outside excluded evidence directory. "
+                f"Before: {before_tree!r}, After: {replay_tree!r}"
             )
             mutated_worktree = True
 
-    # Recompute after all final commands, including when commands are deduplicated.
     final_tree = _current_tree_sha(project_root)
-    if final_tree != evidence.get("tree_sha") and not mutated_worktree:
+    if final_tree != expected_tree and not mutated_worktree:
         errors.append(
-            "REPLAY: mutated final worktree outside excluded evidence directory; "
-            "replay changed tracked, untracked, ignored, or submodule content. "
-            f"Evidence: {evidence.get('tree_sha')!r}, Current: {final_tree!r}"
+            "MISMATCH: exact worktree fingerprint changed since evidence was written. "
+            f"Evidence: {expected_tree!r}, Current: {final_tree!r}"
         )
     return errors
 
@@ -887,7 +906,7 @@ def completion_checks(
     current_tree = _current_tree_sha(project_root)
     files_for_signal = files_to_check or changed_files(project_root)
     hard = evidence.get("risk") == "hard" or hard_signal(project_root, files_for_signal)
-    checks = (
+    prereq_checks = (
         ("schema", _validate_schema(evidence)),
         ("output", _validate_output(evidence)),
         ("staleness", _validate_staleness(evidence)),
@@ -905,16 +924,19 @@ def completion_checks(
                 hard=hard,
             ),
         ),
-        (
-            "replay",
-            _replay_final_commands(
-                evidence,
-                project_root,
-                evidence_path,
-                hard,
-            ),
-        ),
     )
+    has_prereq_errors = any(errs for _, errs in prereq_checks)
+    replay_errors = (
+        []
+        if has_prereq_errors
+        else _replay_final_commands(
+            evidence,
+            project_root,
+            evidence_path,
+            hard,
+        )
+    )
+    checks = (*prereq_checks, ("replay", replay_errors))
     return hard, checks
 
 

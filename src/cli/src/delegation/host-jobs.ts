@@ -27,12 +27,18 @@ export function runHostAction(
     | "disable"
     | "history"
     | "inspect"
-    | "register-profile",
+    | "register-profile"
+    | "restage-shared"
+    | "reconcile-quarantined"
+    | "activate",
   options: {
     profile?: string;
     digest?: string;
     request?: string;
     file?: string;
+    manifest?: string;
+    plan?: string;
+    apply?: boolean;
     sha256?: string;
   } = {},
 ): Promise<number> {
@@ -58,7 +64,8 @@ export function runHostAction(
       options.digest,
     );
   }
-  if (action === "disable") argv.push("--project", project);
+  if (action === "disable" || action === "activate")
+    argv.push("--project", project);
   if (action === "inspect") {
     if (!options.request) throw new Error("inspection_request_required");
     argv.push("--project", project, "--request", options.request);
@@ -74,6 +81,31 @@ export function runHostAction(
       "--sha256",
       options.sha256,
     );
+  }
+  if (action === "restage-shared") {
+    if (!options.manifest || !options.sha256)
+      throw new Error("reviewed_manifest_hash_required");
+    argv.push(
+      "--project",
+      project,
+      "--manifest",
+      options.manifest,
+      "--sha256",
+      options.sha256,
+    );
+  }
+  if (action === "reconcile-quarantined") {
+    if (!options.plan || !options.sha256)
+      throw new Error("reviewed_reconcile_plan_hash_required");
+    argv.push(
+      "--project",
+      project,
+      "--plan",
+      options.plan,
+      "--sha256",
+      options.sha256,
+    );
+    if (options.apply) argv.push("--apply");
   }
   return new Promise((resolve, reject) => {
     const child = spawn("python3", argv, {

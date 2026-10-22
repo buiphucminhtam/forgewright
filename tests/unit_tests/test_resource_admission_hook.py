@@ -347,3 +347,53 @@ def test_owner_disable_works_when_registry_is_unreadable(tmp_path):
         "permissionDecision" not in result
         and "disabled by operator" in result["additionalContext"]
     )
+
+
+def test_reconcile_quarantined_control_decision_rewrites_literal_argv(tmp_path):
+    import resource_admission as hook
+
+    home, project, _, _ = fixture(tmp_path)
+    plan_file = ".forgewright/runtime/recovery/plan.json"
+    sha = "a" * 64
+    payload_dry = {
+        "tool_name": "Bash",
+        "cwd": str(project),
+        "tool_input": {
+            "command": f"forge delegate resources --reconcile-quarantined {plan_file} --sha256 {sha}"
+        },
+    }
+    decision_dry = hook.control_decision(payload_dry, home)
+    assert decision_dry is not None and decision_dry["permissionDecision"] == "allow"
+    assert f"reconcile-quarantined --project {project} --plan {plan_file} --sha256 {sha}" in decision_dry["updatedInput"]["command"]
+    assert "--apply" not in decision_dry["updatedInput"]["command"]
+
+    payload_apply = {
+        "tool_name": "Bash",
+        "cwd": str(project),
+        "tool_input": {
+            "command": f"forge delegate resources --reconcile-quarantined {plan_file} --sha256 {sha} --apply"
+        },
+    }
+    decision_apply = hook.control_decision(payload_apply, home)
+    assert decision_apply is not None and decision_apply["permissionDecision"] == "allow"
+    assert decision_apply["updatedInput"]["command"].endswith("--apply")
+
+    import resource_enrollment as enrollment
+    from host_admission import HostAdmission, MemorySnapshot
+
+    normal_mem = MemorySnapshot(16 * 1024**3, 6 * 1024**3, "normal", "test-fixture")
+    adm = HostAdmission(home, sensor=lambda: normal_mem, inspector=lambda pid: "owner-100", now=lambda: 1000.0)
+    tok_w = "tok-w-" + "w" * 40
+    adm.enqueue(job_id="q-worker", token=tok_w, project_root=project, run_id="run-q", owner_pid=100, kind="worker", memory_mib=64)
+    adm.release("q-worker", tok_w, 100, quiescent=False)
+    assert adm.status()["quarantined"] == 1
+    adm.close()
+
+    full_profiles = {f"full-slot-{idx}": str(idx) * 64 for idx in range(8)}
+    assert len(full_profiles) == 8
+    values = {str(project): {"mode": "enforce", "phase": "enforce", "profiles": full_profiles}}
+    enrollment.save(home, values)
+    full_decision = hook.decide(payload_apply, home, values)
+    assert full_decision["permissionDecision"] == "allow"
+    assert full_decision["updatedInput"]["command"].endswith("--apply")
+    assert len(enrollment.registry(home)[str(project)]["profiles"]) == 8

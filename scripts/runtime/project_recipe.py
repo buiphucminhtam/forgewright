@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import sqlite3
 import stat
 import subprocess
 import sys
@@ -17,6 +18,7 @@ import time
 from project_storage import _open_directory
 from resource_controls import _open, _parts
 from host_job_profiles import private_read
+from host_job_runner import process_table
 from host_resources import inspect_process
 
 EXTENSIONS = {".ts", ".tsx", ".mts", ".cts", ".json"}
@@ -65,6 +67,168 @@ def require_managed(project):
         if time.monotonic() >= deadline:
             raise RecipeError("managed-supervisor-required")
         time.sleep(0.02)  # Popen precedes the supervisor's child journal write.
+
+
+def _verify_active_authority_leases(
+    authority: Path, project: Path, job_id: str, owner_pid: int, owner_identity: str
+) -> bool:
+    db_path = authority / "host.sqlite3"
+    if not db_path.is_file():
+        return False
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT id, project, run_id, kind, state, pid, identity, parent_id FROM jobs WHERE run_id=?",
+                (job_id,),
+            ).fetchall()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return False
+    if len(rows) != 2:
+        return False
+    by_kind = {row["kind"]: dict(row) for row in rows}
+    if set(by_kind) != {"worker", "heavy"}:
+        return False
+    worker = by_kind["worker"]
+    heavy = by_kind["heavy"]
+    return (
+        worker["id"] == f"{job_id}-worker"
+        and heavy["id"] == f"{job_id}-heavy"
+        and worker["state"] == "active"
+        and heavy["state"] == "active"
+        and worker["project"] == str(project)
+        and heavy["project"] == str(project)
+        and worker["pid"] == owner_pid
+        and heavy["pid"] == owner_pid
+        and worker["identity"] == owner_identity
+        and heavy["identity"] == owner_identity
+        and worker["parent_id"] is None
+        and heavy["parent_id"] == worker["id"]
+    )
+
+
+def verify_nested_managed_context(project, env=None):
+    """Verify whether the current process is inside a live managed job tree.
+
+    Returns None when no managed locator is present in env. Raises
+    RecipeError("invalid-managed-ci-context") when any managed locator is
+    present but journal, active SQLite leases, live birth identities, or
+    same-pgid ancestry fail to verify.
+    """
+    environment = os.environ if env is None else env
+    project = Path(project).resolve(strict=True)
+    output_raw = (environment.get("FORGEWRIGHT_OUTPUT_DIR") or "").strip()
+    authority_raw = (environment.get("FORGEWRIGHT_JOB_ADMISSION_HOME") or "").strip()
+    scratch_candidates = [
+        (environment.get(key) or "").strip() for key in ("TMPDIR", "TMP", "TEMP")
+    ]
+    build_jobs_root = project / ".forgewright/runtime/build-jobs"
+
+    matched_scratch = None
+    for candidate in scratch_candidates:
+        if not candidate:
+            continue
+        try:
+            resolved_cand = Path(candidate).resolve(strict=False)
+            rel = resolved_cand.relative_to(build_jobs_root)
+            if len(rel.parts) >= 2 and re.fullmatch(r"job-[0-9a-f]{32}", rel.parts[0]):
+                matched_scratch = resolved_cand
+                break
+        except (OSError, ValueError):
+            continue
+
+    has_managed_locator = bool(output_raw or authority_raw or matched_scratch is not None)
+    if not has_managed_locator:
+        return None
+
+    try:
+        if matched_scratch is not None:
+            base = matched_scratch.parent
+        elif output_raw:
+            base = Path(output_raw).resolve(strict=True).parent
+        else:
+            raise RecipeError("invalid-managed-ci-context")
+
+        job_id = base.name
+        expected_base = build_jobs_root / job_id
+        if (
+            not re.fullmatch(r"job-[0-9a-f]{32}", job_id)
+            or base != expected_base
+            or (output_raw and Path(output_raw).resolve(strict=True) != base / "output")
+        ):
+            raise RecipeError("invalid-managed-ci-context")
+
+        for path in (base / "output", base / "scratch"):
+            descriptor = _open_directory(path)
+            try:
+                info = os.fstat(descriptor)
+                if info.st_uid != os.getuid() or (info.st_mode & 0o077):
+                    raise RecipeError("invalid-managed-ci-context")
+            finally:
+                os.close(descriptor)
+
+        if not authority_raw:
+            raise RecipeError("invalid-managed-ci-context")
+        authority = Path(authority_raw)
+        if not authority.is_absolute() or str(authority.resolve(strict=True)) != str(authority):
+            raise RecipeError("invalid-managed-ci-context")
+
+        journal_path = authority / "jobs" / f"{job_id}.json"
+        value = json.loads(private_read(journal_path, 128 * 1024))
+        child = value.get("child") or {}
+        owner_pid = value.get("owner_pid")
+        owner_identity = value.get("owner_identity")
+        child_pid = child.get("pid")
+        child_identity = child.get("identity")
+        if (
+            value.get("physical_workspace") != str(project)
+            or value.get("state") != "running"
+            or type(owner_pid) is not int
+            or type(child_pid) is not int
+            or not isinstance(owner_identity, str)
+            or not isinstance(child_identity, str)
+            or value.get("storage", {}).get("path") != str(base)
+            or len(value.get("leases", [])) != 2
+            or {x.get("kind") for x in value["leases"]} != {"worker", "heavy"}
+            or not all(x.get("state") == "active" for x in value["leases"])
+            or inspect_process(owner_pid) != owner_identity
+            or inspect_process(child_pid) != child_identity
+            or not _verify_active_authority_leases(
+                authority, project, job_id, owner_pid, owner_identity
+            )
+        ):
+            raise RecipeError("invalid-managed-ci-context")
+
+        if os.name != "nt" and os.getpgrp() != child_pid:
+            raise RecipeError("invalid-managed-ci-context")
+
+        table = process_table()
+        cursor = os.getpid()
+        visited = set()
+        for _ in range(64):
+            if cursor in visited or cursor not in table:
+                raise RecipeError("invalid-managed-ci-context")
+            visited.add(cursor)
+            ppid, pgid, _ = table[cursor]
+            if os.name != "nt" and pgid != child_pid:
+                raise RecipeError("invalid-managed-ci-context")
+            if cursor == child_pid:
+                if ppid != owner_pid:
+                    raise RecipeError("invalid-managed-ci-context")
+                return {
+                    "job_id": job_id,
+                    "root_child_pid": child_pid,
+                    "pgid": child_pid,
+                }
+            cursor = ppid
+        raise RecipeError("invalid-managed-ci-context")
+    except RecipeError:
+        raise
+    except Exception as error:
+        raise RecipeError("invalid-managed-ci-context") from error
 
 
 def _hash(path, limit=64 * 1024**2):

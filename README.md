@@ -165,6 +165,8 @@ node forgewright/src/cli/dist/index.js delegate run --worker pi --contract task.
 node forgewright/src/cli/dist/index.js delegate resources
 ```
 
+For an enrolled host with shared config drift or quarantined dead-owner leases, the [runtime recovery contract](docs/adr/ADR-010-runtime-lifecycle-guard.md#native-coverage-and-rollback) provides an explicit hash-bound re-stage (`--restage-shared`) and a reviewed quarantine reconciliation control (`--reconcile-quarantined`) that preserve owner preferences, require fresh native canaries before activation, and never automatically adopt changed config or code.
+
 ### 6. Specialist research across all skills
 
 The [skill catalog](docs/skill-catalog.md) covers **85 canonical skills and 3 aliases**,

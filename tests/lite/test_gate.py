@@ -3122,3 +3122,145 @@ def test_verify_gate_py_imports_cleanly():
     assert "NameError" not in r.stderr
     assert "AttributeError" not in r.stderr
     assert r.returncode == 0
+
+
+def test_run_check_validates_links_before_child_starts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import run_check
+    from pytest_receipts import OBSERVER_SHA256, command_digest
+
+    calls: list[list[str]] = []
+    (tmp_path / "test_ok.py").write_text(
+        "def test_ok():\n    assert True\n", encoding="utf-8"
+    )
+    verify_dir = tmp_path / ".forgewright" / "verify"
+    verify_dir.mkdir(parents=True)
+    (verify_dir / "red-ok.json").write_text(
+        '{"schema_version": "2", "turn": "red-ok"}\n', encoding="utf-8"
+    )
+
+    def fake_run_observed(command, *, cwd, env=None, timeout=300):
+        calls.append(list(command))
+        return subprocess.CompletedProcess(command, 0, "1 passed\n", ""), {
+            "schema": "forgewright-pytest-execution/v1",
+            "observer": "forgewright-pytest-receipt/v1",
+            "observer_sha256": OBSERVER_SHA256,
+            "complete": True,
+            "duplicate_reports": False,
+            "distributed": False,
+            "command_sha256": command_digest(command),
+            "workspace": str(Path(cwd).resolve()),
+            "exit_code": 0,
+            "run_id": "a" * 32,
+            "tests": [
+                {
+                    "nodeid": "test_ok.py::test_ok",
+                    "phases": {"setup": "passed", "call": "passed", "teardown": "passed"},
+                    "wasxfail": False,
+                }
+            ],
+            "deselected": [],
+        }
+
+    monkeypatch.setattr(run_check, "run_observed", fake_run_observed)
+    monkeypatch.setattr(run_check, "_workspace", lambda: tmp_path)
+
+    base_argv = [
+        "run_check.py",
+        "--turn",
+        "turn-pos",
+        "--acceptance",
+        "acc-1=claim",
+        "--test-ref",
+        "test_ok.py::test_ok",
+        "--negative-path",
+        "rejected",
+        "--limitations",
+        "unit scope only",
+        "--tier",
+        "unit",
+        "--change-kind",
+        "fix",
+        "--phase",
+        "verification",
+        "--implementer-id",
+        "impl-1",
+        "--reviewer-status",
+        "pending",
+    ]
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            *base_argv,
+            "--link",
+            "red=red-ok.json",
+            "--red-evidence",
+            "red-ok.json",
+            "--reviewer-evidence-ref",
+            "future-review-2.json",
+            "--",
+            "pytest",
+            "test_ok.py::test_ok",
+        ],
+    )
+    with pytest.raises(SystemExit) as pos_exc:
+        run_check.main()
+    assert pos_exc.value.code == 0
+    assert len(calls) == 1
+
+    calls.clear()
+    for bad_flags in (
+        ["--link", "malformed-no-equals"],
+        ["--link", "red=red-ok.json", "--link", "red=other.json"],
+        ["--link", "red=red-ok.json", "--red-evidence", "other.json"],
+        ["--link", "red=../escape.json"],
+        ["--link", "red=missing-red.json"],
+        ["--link", "red=red-ok.json", "--reviewer-evidence-ref", "../bad-review.json"],
+    ):
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [*base_argv, *bad_flags, "--", "pytest", "test_ok.py::test_ok"],
+        )
+        with pytest.raises(SystemExit) as neg_exc:
+            run_check.main()
+        assert neg_exc.value.code == 2
+        assert calls == []
+
+
+def test_completion_checks_skips_replay_when_prerequisites_fail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    replay_calls: list[list[str]] = []
+    monkeypatch.setattr(
+        verify_gate_module,
+        "run_observed",
+        lambda command, **kwargs: replay_calls.append(list(command)),
+    )
+    (tmp_path / "tests").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "tests" / "evidence_contract_check.py").write_text(
+        "print('ok')\n", encoding="utf-8"
+    )
+    ev_path = _make_evidence(
+        tmp_path,
+        turn="turn_stale_tree",
+        tree_sha="TREE:" + "0" * 64,
+    )
+    ev = json.loads(ev_path.read_text(encoding="utf-8"))
+    _, checks = verify_gate_module.completion_checks(
+        ev, tmp_path, ev_path, ["tests/evidence_contract_check.py"]
+    )
+    check_dict = dict(checks)
+    assert check_dict["tree"] != []
+    assert check_dict["replay"] == []
+    assert replay_calls == []
+
+    valid_ev_path = _make_evidence(tmp_path, turn="turn_drift_before_replay")
+    valid_ev = json.loads(valid_ev_path.read_text(encoding="utf-8"))
+    (tmp_path / "tests" / "evidence_contract_check.py").write_text("print('changed')\n", encoding="utf-8")
+    drift_errs = verify_gate_module._replay_final_commands(valid_ev, tmp_path, valid_ev_path, False)
+    assert any("MISMATCH: exact worktree fingerprint changed" in e for e in drift_errs)
+    assert replay_calls == []

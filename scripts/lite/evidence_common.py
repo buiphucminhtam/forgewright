@@ -309,10 +309,15 @@ def execution_manifest(
         )
     if errors:
         return None, errors
+    if __package__:
+        from .pytest_receipts import runtime_bundle_descriptor
+    else:
+        from pytest_receipts import runtime_bundle_descriptor
     return {
         "runner": runner,
         "entrypoints": sorted(set(normalized_invoked)),
         "test_refs": normalized_refs,
+        "bundle": runtime_bundle_descriptor(),
     }, []
 
 
@@ -327,12 +332,18 @@ def execution_errors(ev: dict[str, Any]) -> list[str]:
     manifest, errors = execution_manifest(Path(workspace_value), command, refs)
     if errors:
         return errors
-    if ev.get("execution") != manifest:
+    execution = ev.get("execution")
+    if not isinstance(execution, dict):
         return ["FORGED: execution manifest does not match the exact command"]
     if __package__:
-        from .pytest_receipts import receipt_errors
+        from .pytest_receipts import bundle_errors, receipt_errors
     else:
-        from pytest_receipts import receipt_errors
+        from pytest_receipts import bundle_errors, receipt_errors
+    bundle_errs = bundle_errors(execution.get("bundle"))
+    if bundle_errs:
+        return bundle_errs
+    if execution != manifest:
+        return ["FORGED: execution manifest does not match the exact command"]
 
     return receipt_errors(
         ev.get("test_execution"),
@@ -1492,9 +1503,7 @@ def read_evidence_json(
     return record
 
 
-def resolve_evidence_link(
-    project_root: Path, raw: Any
-) -> tuple[Path | None, str | None]:
+def validate_evidence_link_syntax(raw: Any) -> tuple[str | None, str | None]:
     if not isinstance(raw, str) or not raw.strip():
         return None, "FORGED: linked evidence path must be a non-empty relative path"
     relative = raw.strip()
@@ -1503,6 +1512,17 @@ def resolve_evidence_link(
         return None, "FORGED: linked evidence path must stay inside .forgewright/verify"
     if any(part == ".." for part in candidate_path.parts):
         return None, "FORGED: linked evidence path traversal is rejected"
+    return relative, None
+
+
+def resolve_evidence_link(
+    project_root: Path, raw: Any
+) -> tuple[Path | None, str | None]:
+    relative, syntax_error = validate_evidence_link_syntax(raw)
+    if syntax_error:
+        return None, syntax_error
+    assert relative is not None
+    candidate_path = Path(relative)
     verify_dir = project_root.resolve() / ".forgewright" / "verify"
     candidate = verify_dir / candidate_path
     try:

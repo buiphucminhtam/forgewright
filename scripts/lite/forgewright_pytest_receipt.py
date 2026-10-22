@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -67,9 +68,12 @@ def pytest_sessionfinish(session, exitstatus):
     path = os.environ.get("FORGEWRIGHT_PYTEST_RECEIPT")
     if not path:
         return
+    observer_file = Path(__file__).resolve()
     data = {
         "schema": "forgewright-pytest-execution/v1",
         "observer": "forgewright-pytest-receipt/v1",
+        "observer_path": str(observer_file),
+        "observer_sha256": hashlib.sha256(observer_file.read_bytes()).hexdigest(),
         "run_id": os.environ.get("FORGEWRIGHT_PYTEST_RUN_ID"),
         "workspace": str(_workspace),
         "complete": True,

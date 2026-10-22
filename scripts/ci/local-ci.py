@@ -44,6 +44,9 @@ TEST_GIT_ENV: dict[str, str | None] = dict.fromkeys(
         "GIT_PREFIX",
         "GIT_OBJECT_DIRECTORY",
         "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "TMPDIR",
+        "TMP",
+        "TEMP",
     )
 )
 
@@ -148,14 +151,31 @@ class LocalCI:
         if self.dry_run:
             self.results.append(StepResult(name, args, str(cwd), None, 0, "dry-run"))
             return 0
+        effective_env = self._effective_env(env)
+        context_env = (
+            self._effective_env(None) if env is TEST_GIT_ENV else effective_env
+        )
+        runtime_dir = str((ROOT / "scripts" / "runtime").resolve())
+        if runtime_dir not in sys.path:
+            sys.path.insert(0, runtime_dir)
+        from project_recipe import RecipeError, verify_nested_managed_context
+
+        try:
+            managed_ctx = verify_nested_managed_context(ROOT, env=context_env)
+        except RecipeError as error:
+            raise GateFailure(str(error)) from error
+
+        is_managed = managed_ctx is not None
         started = time.monotonic()
         process = subprocess.Popen(
             args,
             cwd=cwd,
-            env=self._effective_env(env),
-            start_new_session=os.name != "nt",
+            env=effective_env,
+            start_new_session=(os.name != "nt" and not is_managed),
             creationflags=(
-                subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+                subprocess.CREATE_NEW_PROCESS_GROUP
+                if (os.name == "nt" and not is_managed)
+                else 0
             ),
         )
         try:
@@ -163,7 +183,25 @@ class LocalCI:
             note = ""
         except subprocess.TimeoutExpired:
             note = "timeout; process tree terminated"
-            if os.name == "nt":
+            if is_managed:
+                try:
+                    process.terminate()
+                    process.wait(timeout=2)
+                except ProcessLookupError:
+                    pass
+                except subprocess.TimeoutExpired:
+                    try:
+                        process.kill()
+                        process.wait(timeout=2)
+                    except (ProcessLookupError, subprocess.TimeoutExpired):
+                        pass
+                duration_ms = int((time.monotonic() - started) * 1000)
+                self.results.append(
+                    StepResult(name, args, str(cwd), 124, duration_ms, "fail", note)
+                )
+                self.failed = True
+                raise GateFailure(f"{name} timed out under managed supervision")
+            elif os.name == "nt":
                 subprocess.run(
                     ["taskkill", "/PID", str(process.pid), "/T", "/F"],
                     stdout=subprocess.DEVNULL,

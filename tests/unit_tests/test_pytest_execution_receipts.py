@@ -239,6 +239,8 @@ def test_packaged_namespace_can_validate_observed_receipt(tmp_path):
         "evidence_common.py",
         "pytest_receipts.py",
         "forgewright_pytest_receipt.py",
+        "run_check.py",
+        "verify_gate.py",
     ):
         shutil.copyfile(ROOT / "scripts/lite" / name, runtime / name)
     checked = subprocess.run(
@@ -259,3 +261,100 @@ def test_packaged_namespace_can_validate_observed_receipt(tmp_path):
         timeout=15,
     )
     assert checked.returncode == 0, checked.stderr
+
+
+def test_runtime_bundle_descriptor_and_child_observer_binding(tmp_path):
+    sys.path.insert(0, str(ROOT / "scripts/lite"))
+    from pytest_receipts import (
+        OBSERVER_SHA256,
+        bundle_errors,
+        receipt_errors,
+        run_observed,
+        runtime_bundle_descriptor,
+    )
+
+    bundle = runtime_bundle_descriptor()
+    assert bundle["schema"] == "forgewright-lite-bundle/v1"
+    assert bundle["capabilities"] == ["pytest-receipt/v1"]
+    assert bundle["observer_sha256"] == OBSERVER_SHA256
+    assert set(bundle["modules"]) == {
+        "evidence_common.py",
+        "forgewright_pytest_receipt.py",
+        "pytest_receipts.py",
+        "run_check.py",
+        "verify_gate.py",
+    }
+    assert bundle_errors(bundle) == []
+    assert bundle_errors(None) == ["UNVERIFIED: canonical verifier bundle is missing"]
+
+    tampered_bundle = {
+        **bundle,
+        "modules": {**bundle["modules"], "forgewright_pytest_receipt.py": "0" * 64},
+    }
+    assert bundle_errors(tampered_bundle) == [
+        "UNVERIFIED: canonical verifier bundle hash mismatch for 'forgewright_pytest_receipt.py'"
+    ]
+
+    test_file = tmp_path / "test_sample.py"
+    test_file.write_text("def test_ok():\n    assert True\n", encoding="utf-8")
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "--rootdir=.",
+        "--confcutdir=.",
+        "-p",
+        "no:cacheprovider",
+        "test_sample.py::test_ok",
+    ]
+    result, receipt = run_observed(cmd, cwd=tmp_path)
+    assert result.returncode == 0
+    assert receipt is not None
+    assert receipt["observer_sha256"] == OBSERVER_SHA256
+    tree = "TREE:" + "b" * 64
+    bound_receipt = {**receipt, "tree_sha": tree}
+    assert (
+        receipt_errors(
+            bound_receipt,
+            cmd,
+            tmp_path,
+            ["test_sample.py::test_ok"],
+            "verification",
+            0,
+            tree,
+        )
+        == []
+    )
+
+    bad_observer = {**bound_receipt, "observer_sha256": "0" * 64}
+    assert receipt_errors(
+        bad_observer,
+        cmd,
+        tmp_path,
+        ["test_sample.py::test_ok"],
+        "verification",
+        0,
+        tree,
+    ) == ["UNVERIFIED: pytest execution receipt observer_sha256 does not match canonical observer"]
+
+    from pytest_receipts import verify_workspace_canonical_bundle
+    assert verify_workspace_canonical_bundle(ROOT) == []
+    fake_ws = tmp_path / "fake_ws"
+    (fake_ws / "scripts" / "lite").mkdir(parents=True)
+    (fake_ws / ".codex").mkdir(parents=True)
+    for name in ("stop-gate.sh", "evidence_common.py", "forgewright_pytest_receipt.py", "pytest_receipts.py", "run_check.py", "verify_gate.py"):
+        shutil.copyfile(ROOT / "scripts/lite" / name, fake_ws / "scripts/lite" / name)
+    # Invalid Stop config with unknown sibling group must be rejected
+    (fake_ws / ".codex" / "config.toml").write_text(
+        """[features]\nhooks = true\n[[hooks.Stop]]\nmatcher = "*"\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "bash scripts/lite/stop-gate.sh --platform CODEX"\n[[hooks.Stop]]\nmatcher = "*"\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "echo unknown"\n""",
+        encoding="utf-8",
+    )
+    assert verify_workspace_canonical_bundle(fake_ws) == [
+        "UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"
+    ]
+    # Absent .codex/config.toml when local stop-gate.sh is present must also be rejected
+    (fake_ws / ".codex" / "config.toml").unlink()
+    assert verify_workspace_canonical_bundle(fake_ws) == [
+        "UNVERIFIED: workspace .codex/config.toml is required when local stop-gate.sh is present"
+    ]

@@ -609,3 +609,79 @@ def test_current_job_cleanup_intent_survives_post_delete_fsync_failure(
     assert recovered == {}
     stored = json.loads((a.home / "jobs" / f"{r['job_id']}.json").read_text())
     assert stored["storage"]["state"] == "reclaimed"
+
+
+def test_process_table_rejects_malformed_rows_and_supervise_runs_once(env, monkeypatch):
+    import host_job_runner
+
+    a, p = env
+    with monkeypatch.context() as mp:
+        mp.setattr(host_job_runner, "command", lambda argv: "100 1 100 S Mon\n")
+        with pytest.raises(ValueError, match="malformed-ps-row"):
+            host_job_runner.process_table()
+
+    calls = []
+    orig_supervise = host_job_runner.supervise
+    orig_popen = host_job_runner.subprocess.Popen
+    monkeypatch.setattr(
+        host_job_runner.subprocess,
+        "Popen",
+        lambda *args, **kwargs: orig_popen(
+            *args, **{**kwargs, "start_new_session": False}
+        ),
+    )
+
+    # Reparented grandchild in the same process group (ppid=1, pgid=process.pid)
+    # whose intermediate parent exited between polls stays quiescent once it exits.
+    reparent_step = [0]
+
+    def reparented_same_pgid_supervise(process, cancel, deadline, heartbeat):
+        with monkeypatch.context() as mp3:
+            def fake_table_reparented():
+                reparent_step[0] += 1
+                if reparent_step[0] == 1:
+                    return {
+                        process.pid: (os.getpid(), process.pid, "birth-root"),
+                        8888: (1, process.pid, "c" * 64),
+                    }
+                return {os.getpid(): (1, os.getpid(), "birth-self")}
+            mp3.setattr(host_job_runner, "process_table", fake_table_reparented)
+            mp3.setattr(host_job_runner.os, "killpg", lambda pgid, sig: None)
+            process.wait(timeout=5)
+            return orig_supervise(process, cancel, deadline, heartbeat)
+
+    monkeypatch.setattr(host_job_runner, "supervise", reparented_same_pgid_supervise)
+    r_ok = run_job(a, request(p, [sys.executable, "-c", "pass"]))
+    assert r_ok["state"] == "quiescent"
+
+    def fault_after_escape_supervise(process, cancel, deadline, heartbeat):
+        calls.append(1)
+        if len(calls) > 1:
+            return True, False
+        table_calls = [0]
+        with monkeypatch.context() as mp2:
+            def fake_table():
+                table_calls[0] += 1
+                if table_calls[0] == 1:
+                    return {
+                        process.pid: (os.getpid(), process.pid, "birth-root"),
+                        9999: (process.pid, process.pid, "b" * 64),
+                    }
+                if table_calls[0] == 2:
+                    return {
+                        process.pid: (os.getpid(), process.pid, "birth-root"),
+                        9999: (1, 9999, "b" * 64),
+                    }
+                raise ValueError("malformed-ps-row")
+            mp2.setattr(host_job_runner, "process_table", fake_table)
+            mp2.setattr(host_job_runner.os, "killpg", lambda pgid, sig: None)
+            res = orig_supervise(process, cancel, deadline, heartbeat)
+        process.wait(timeout=5)
+        return res
+
+    monkeypatch.setattr(host_job_runner, "supervise", fault_after_escape_supervise)
+    r = run_job(a, request(p, [sys.executable, "-c", "pass"]))
+    assert len(calls) == 1
+    assert r["state"] == "quarantined"
+    assert r["supervision_diagnostics"]["escaped_children"][0]["pid"] == 9999
+    assert r["supervision_diagnostics"]["census_complete"] is False

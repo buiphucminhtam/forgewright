@@ -142,12 +142,26 @@ def code_binding():
             "host_capacity",
         )
     ]
-    names += ["scripts/memory/" + name + ".py" for name in (
-        "recurrence", "memory_common", "memory_flow", "mem0-v2", "continuity", "memory_redaction",
-    )]
-    names += ["scripts/lite/" + name + ".py" for name in (
-        "evidence_common", "verify_gate", "pytest_receipts", "windows_secure_io",
-    )]
+    names += [
+        "scripts/memory/" + name + ".py"
+        for name in (
+            "recurrence",
+            "memory_common",
+            "memory_flow",
+            "mem0-v2",
+            "continuity",
+            "memory_redaction",
+        )
+    ]
+    names += [
+        "scripts/lite/" + name + ".py"
+        for name in (
+            "evidence_common",
+            "verify_gate",
+            "pytest_receipts",
+            "windows_secure_io",
+        )
+    ]
     return digest(
         json.dumps(
             {name: digest((ROOT / name).read_bytes()) for name in names}, sort_keys=True
@@ -498,7 +512,9 @@ def validate_binding(value, config=None):
         os.close(parent)
     if digest(raw) != value["config_sha256"]:
         raise EnrollmentError("config-drift")
-    if value.get("publication") and not publication_verified(
+    if value.get("restage"):
+        _verify_restage(value, path, raw)
+    elif value.get("publication") and not publication_verified(
         path, value["publication"]
     ):
         raise EnrollmentError("config-drift-preserved")
@@ -628,31 +644,32 @@ def require_quiescent_enrollment(home, project):
     from host_admission import HostAdmission
     from host_job_runner import journal_released
 
-    if not (home / "host.sqlite3").exists():
-        return
-    admission = HostAdmission(home)
+    admission = HostAdmission(home) if (home / "host.sqlite3").exists() else None
     try:
-        with admission.transaction():
-            admission.refresh()
-            if admission.connection.execute(
-                "SELECT 1 FROM jobs WHERE project=? AND state!='released' LIMIT 1",
-                (str(project),),
-            ).fetchone():
-                raise EnrollmentError("enrollment-jobs-live-or-quarantined")
+        if admission is not None:
+            with admission.transaction():
+                admission.refresh()
+                if admission.connection.execute(
+                    "SELECT 1 FROM jobs WHERE project=? AND state!='released' LIMIT 1",
+                    (str(project),),
+                ).fetchone():
+                    raise EnrollmentError("enrollment-jobs-live-or-quarantined")
         for path in (home / "native-requests").glob("*.json"):
-            request = json.loads(private_read(path))
+            raw_request = private_read(path)
+            request = json.loads(raw_request)
             context = request.get("context", {})
             if request.get("state") != "claimed" or context.get(
                 "physical_workspace"
             ) != str(project):
                 continue
+            if admission is None:
+                raise EnrollmentError("native-request-state-unconfirmed")
             job = context.get("job_id", "")
             if not re.fullmatch(r"job-[0-9a-f]{32}", job):
                 raise EnrollmentError("native-request-state-unconfirmed")
             try:
-                receipt = json.loads(
-                    private_read(home / "jobs" / (job + ".json"), 65536)
-                )
+                raw_receipt = private_read(home / "jobs" / (job + ".json"), 65536)
+                receipt = json.loads(raw_receipt)
             except OSError as error:
                 raise EnrollmentError("native-request-state-unconfirmed") from error
             never_spawned = (
@@ -662,10 +679,268 @@ def require_quiescent_enrollment(home, project):
                 and receipt.get("spawn_pending") is False
                 and receipt.get("native_context") == context
             )
-            if not never_spawned and not journal_released(admission, receipt):
+            if (
+                not never_spawned
+                and not journal_released(admission, receipt)
+                and not verify_failed_safe_closure(
+                    home,
+                    project,
+                    receipt,
+                    context,
+                    admission=admission,
+                    journal_sha256=digest(raw_receipt),
+                    request_sha256=digest(raw_request),
+                )
+            ):
                 raise EnrollmentError("native-request-state-unconfirmed")
     finally:
-        admission.close()
+        if admission is not None:
+            admission.close()
+
+
+def verify_failed_safe_closure(
+    home,
+    project,
+    receipt,
+    context,
+    *,
+    admission=None,
+    journal_sha256=None,
+    request_sha256=None,
+):
+    """Verify an explicit failed-safe-closure receipt for a quarantined job.
+
+    This clears only the claimed-request quiescence fence in
+    require_quiescent_enrollment; it never satisfies activate() or native_proof.
+    """
+    from host_admission import HostAdmission
+
+    home = Path(home)
+    project = Path(project).resolve(strict=True)
+    job_id = receipt.get("job_id", "")
+    if (
+        not re.fullmatch(r"job-[0-9a-f]{32}", job_id)
+        or receipt.get("state") != "quarantined"
+        or receipt.get("physical_workspace") != str(project)
+        or receipt.get("native_context") != context
+        or context.get("job_id") != job_id
+        or context.get("physical_workspace") != str(project)
+    ):
+        return False
+    closure_path = home / "reconciliations" / f"{job_id}.json"
+    intent_path = home / "reconciliations" / f"{job_id}.intent.json"
+    heavy_step_path = home / "reconciliations" / f"{job_id}.step-heavy.json"
+    worker_step_path = home / "reconciliations" / f"{job_id}.step-worker.json"
+    if not all(p.exists() for p in (closure_path, intent_path, heavy_step_path, worker_step_path)):
+        return False
+    try:
+        closure = json.loads(private_read(closure_path, 65536))
+        intent = json.loads(private_read(intent_path, 65536))
+        heavy_step = json.loads(private_read(heavy_step_path, 65536))
+        worker_step = json.loads(private_read(worker_step_path, 65536))
+        if journal_sha256 is None:
+            journal_sha256 = digest(
+                private_read(home / "jobs" / f"{job_id}.json", 65536)
+            )
+        req_id = context.get("request_id", "")
+        if request_sha256 is None and re.fullmatch(r"[0-9a-f]{32}", req_id):
+            request_sha256 = digest(
+                private_read(home / "native-requests" / f"{req_id}.json", 65536)
+            )
+        storage_meta = receipt.get("storage") or {}
+        storage_path_str = closure.get("preserve_storage_path")
+        if not isinstance(storage_path_str, str) or storage_path_str != storage_meta.get("path"):
+            return False
+        storage_path = Path(storage_path_str)
+        storage_info = storage_path.lstat()
+        plan_path_str = closure.get("plan_path")
+        if not isinstance(plan_path_str, str):
+            return False
+        plan_path = Path(plan_path_str)
+        if not plan_path.is_absolute() or not plan_path.resolve(strict=False).is_relative_to(project):
+            return False
+        raw_plan = private_read(plan_path, 65536)
+        if digest(raw_plan) != closure.get("plan_sha256"):
+            return False
+        plan_obj = json.loads(raw_plan)
+    except (OSError, ValueError, TypeError):
+        return False
+    if not stat.S_ISDIR(storage_info.st_mode):
+        return False
+    expected_dev = closure.get("preserve_storage_device")
+    expected_ino = closure.get("preserve_storage_inode")
+    if (
+        type(expected_dev) is not int
+        or type(expected_ino) is not int
+        or storage_info.st_dev != expected_dev
+        or storage_info.st_ino != expected_ino
+        or expected_dev != plan_obj.get("preserve_storage_device")
+        or expected_ino != plan_obj.get("preserve_storage_inode")
+        or ("device" in storage_meta and storage_meta["device"] != expected_dev)
+        or ("inode" in storage_meta and storage_meta["inode"] != expected_ino)
+    ):
+        return False
+    if (
+        not isinstance(closure, dict)
+        or closure.get("schema") != "forgewright-failed-safe-closure/v1"
+        or closure.get("project") != str(project)
+        or closure.get("job_id") != job_id
+        or closure.get("journal_sha256") != journal_sha256
+        or closure.get("native_request_id") != context.get("request_id")
+        or closure.get("native_request_sha256") != request_sha256
+        or not re.fullmatch(r"[0-9a-f]{64}", str(closure.get("plan_sha256", "")))
+        or plan_obj.get("schema") != "forgewright-quarantine-reconcile-plan/v3"
+        or plan_obj.get("project") != str(project)
+        or plan_obj.get("job_id") != job_id
+        or plan_obj.get("journal_sha256") != journal_sha256
+        or plan_obj.get("native_request_id") != context.get("request_id")
+        or plan_obj.get("native_request_sha256") != request_sha256
+        or plan_obj.get("owner_pid") != receipt.get("owner_pid")
+        or plan_obj.get("owner_identity") != receipt.get("owner_identity")
+        or plan_obj.get("child_pid") != (receipt.get("child") or {}).get("pid")
+        or plan_obj.get("child_identity") != (receipt.get("child") or {}).get("identity")
+        or plan_obj.get("preserve_storage_path") != storage_path_str
+        or closure.get("original_failure_preserved") is not True
+        or closure.get("storage_untouched") is not True
+        or not isinstance(closure.get("leases"), list)
+        or len(closure["leases"]) != 2
+        or intent.get("schema") != "forgewright-quarantine-reconcile-intent/v1"
+        or intent.get("project") != str(project)
+        or intent.get("job_id") != job_id
+        or intent.get("plan_path") != plan_path_str
+        or intent.get("plan_sha256") != closure.get("plan_sha256")
+        or intent.get("journal_sha256") != journal_sha256
+        or intent.get("native_request_sha256") != request_sha256
+        or intent.get("drain_evidence_path") != closure.get("drain_evidence_path")
+        or intent.get("drain_evidence_sha256") != closure.get("drain_evidence_sha256")
+        or intent.get("preserve_storage_path") != storage_path_str
+        or intent.get("preserve_storage_device") != expected_dev
+        or intent.get("preserve_storage_inode") != expected_ino
+        or heavy_step.get("schema") != "forgewright-quarantine-reconcile-step/v1"
+        or heavy_step.get("job_id") != job_id
+        or heavy_step.get("kind") != "heavy"
+        or heavy_step.get("plan_sha256") != closure.get("plan_sha256")
+        or heavy_step.get("lease") != closure["leases"][0]
+        or worker_step.get("schema") != "forgewright-quarantine-reconcile-step/v1"
+        or worker_step.get("job_id") != job_id
+        or worker_step.get("kind") != "worker"
+        or worker_step.get("plan_sha256") != closure.get("plan_sha256")
+        or worker_step.get("lease") != closure["leases"][1]
+    ):
+        return False
+    sup_diag = receipt.get("supervision_diagnostics")
+    esc_list = sup_diag.get("escaped_children") if isinstance(sup_diag, dict) else None
+    diag_valid = (
+        isinstance(sup_diag, dict)
+        and sup_diag.get("census_complete") is True
+        and sup_diag.get("escaped_overflow") is False
+        and isinstance(esc_list, list)
+        and 1 <= len(esc_list) <= 8
+        and all(
+            isinstance(e, dict)
+            and type(e.get("pid")) is int
+            and e["pid"] > 0
+            and isinstance(e.get("birth"), str)
+            and bool(re.fullmatch(r"[0-9a-f]{64}", e["birth"]))
+            for e in esc_list
+        )
+    )
+    if not diag_valid:
+        drain_path_str = closure.get("drain_evidence_path")
+        drain_sha = closure.get("drain_evidence_sha256")
+        if not isinstance(drain_path_str, str) or not isinstance(drain_sha, str):
+            return False
+        if "drain_evidence_sha256" in plan_obj and plan_obj["drain_evidence_sha256"] != drain_sha:
+            return False
+        try:
+            drain_path = Path(drain_path_str)
+            if not drain_path.is_absolute() or not drain_path.resolve(strict=False).is_relative_to(project):
+                return False
+            raw_drain = private_read(drain_path, 65536)
+            if digest(raw_drain) != drain_sha:
+                return False
+            drain_obj = json.loads(raw_drain)
+        except (OSError, ValueError, TypeError):
+            return False
+        if (
+            not isinstance(drain_obj, dict)
+            or drain_obj.get("schema") != "forgewright-operator-escape-drain-evidence/v1"
+            or drain_obj.get("job_id") != job_id
+            or drain_obj.get("journal_sha256") != journal_sha256
+            or drain_obj.get("decision") != "drained_verified_by_operator_and_reviewer"
+            or not re.fullmatch(r"[0-9a-f]{64}", str(drain_obj.get("reviewer_sha256", "")))
+        ):
+            return False
+    expected_ids = {lease.get("id") for lease in receipt.get("leases", [])}
+    if len(expected_ids) != 2 or {
+        item.get("id") for item in closure["leases"] if isinstance(item, dict)
+    } != expected_ids:
+        return False
+    if any(item.get("state") != "released" for item in closure["leases"]):
+        return False
+
+    own_admission = admission is None
+    if own_admission:
+        if not (home / "host.sqlite3").exists():
+            return False
+        admission = HostAdmission(home)
+    try:
+        rows = admission.connection.execute(
+            "SELECT id, project, run_id, kind, state, reason, memory_bytes, pid, identity, parent_id, created, granted FROM jobs WHERE run_id=?",
+            (job_id,),
+        ).fetchall()
+        if len(rows) != 2 or {row["id"] for row in rows} != expected_ids:
+            return False
+        by_kind = {row["kind"]: dict(row) for row in rows}
+        if set(by_kind) != {"worker", "heavy"}:
+            return False
+        worker = by_kind["worker"]
+        heavy = by_kind["heavy"]
+        plan_leases = plan_obj.get("leases")
+        if not isinstance(plan_leases, list) or len(plan_leases) != 2:
+            return False
+        plan_by_kind = {item.get("kind"): item for item in plan_leases if isinstance(item, dict)}
+        if set(plan_by_kind) != {"worker", "heavy"}:
+            return False
+        for k, row_data in (("heavy", heavy), ("worker", worker)):
+            if (
+                not isinstance(row_data.get("created"), (int, float))
+                or not isinstance(row_data.get("granted"), (int, float))
+                or row_data["memory_bytes"] != plan_by_kind[k].get("memory_bytes")
+                or row_data["id"] != plan_by_kind[k].get("id")
+                or row_data["parent_id"] != plan_by_kind[k].get("parent_id")
+            ):
+                return False
+            expected_payload = {
+                "id": row_data["id"],
+                "state": "released",
+                "kind": row_data["kind"],
+                "reason": "reconciled",
+                "memoryMiB": row_data["memory_bytes"] // (1024 * 1024),
+                "parentLeaseId": row_data["parent_id"],
+                "waitMs": max(0, round((row_data["granted"] - row_data["created"]) * 1000)),
+            }
+            step_doc = heavy_step if k == "heavy" else worker_step
+            closure_idx = 0 if k == "heavy" else 1
+            if step_doc.get("lease") != expected_payload or closure["leases"][closure_idx] != expected_payload:
+                return False
+        return (
+            worker["state"] == "released"
+            and heavy["state"] == "released"
+            and worker["reason"] == "reconciled"
+            and heavy["reason"] == "reconciled"
+            and worker["project"] == str(project)
+            and heavy["project"] == str(project)
+            and worker["pid"] == receipt.get("owner_pid")
+            and heavy["pid"] == receipt.get("owner_pid")
+            and worker["identity"] == receipt.get("owner_identity")
+            and heavy["identity"] == receipt.get("owner_identity")
+            and worker["parent_id"] is None
+            and heavy["parent_id"] == worker["id"]
+        )
+    finally:
+        if own_admission and admission is not None:
+            admission.close()
 
 
 def rollback(home, project, config):
@@ -674,6 +949,8 @@ def rollback(home, project, config):
         values = registry(home)
         key = str(Path(project).resolve())
         value = values[key]
+        if "restage" in value:
+            raise EnrollmentError("restage-requires-preserving-recovery")
         if str(config) != value["config"]:
             raise EnrollmentError("config-path-mismatch")
         if value.get("phase") == "conflict":
@@ -726,6 +1003,278 @@ def owned_block(raw):
     if end <= start:
         raise EnrollmentError("owned-hook-block-unconfirmed")
     return text[start:end].encode()
+
+
+def _preference_transition(candidate, current):
+    """The owner recovery contract permits these three exact operations only."""
+    before, after = tomllib.loads(candidate.decode()), tomllib.loads(current.decode())
+    if owned_block(candidate) != owned_block(current):
+        raise EnrollmentError("restage-owned-hook-drift")
+    for key in ("model", "model_reasoning_effort"):
+        if (
+            not isinstance(before.get(key), str)
+            or not isinstance(after.get(key), str)
+            or not 1 <= len(after[key]) <= 256
+        ):
+            raise EnrollmentError("restage-preference-transition")
+        before.pop(key)
+        after.pop(key)
+    if not isinstance(before.get("service_tier"), str) or "service_tier" in after:
+        raise EnrollmentError("restage-preference-transition")
+    before.pop("service_tier")
+    if before != after:
+        raise EnrollmentError("restage-unrelated-config-drift")
+
+
+def _verify_restage(value, config, current):
+    """Keep publication history immutable; validate the explicit owner transition."""
+    transition = value["restage"]
+    manifest_raw = private_read(Path(transition["manifest"]), 65536)
+    if digest(manifest_raw) != transition["transaction"]:
+        raise EnrollmentError("restage-manifest-drift")
+    manifest = json.loads(manifest_raw)
+    selected = manifest["members"][transition["project"]]
+    if (
+        value.get("phase") not in {"canary", "enforce"}
+        or value.get("mode") != value.get("phase")
+        or value.get("recovery_canary") is not True
+        or value.get("nonce") != selected["nonce"]
+        or value.get("canary_profile") != selected["canary_profile"]
+        or not isinstance(value.get("profiles"), dict)
+        or not 1 <= len(value["profiles"]) <= 8
+        or any(value["profiles"].get(k) != v for k, v in selected["profiles"].items())
+        or (value["phase"] == "canary" and value["profiles"] != selected["profiles"])
+    ):
+        raise EnrollmentError("restage-proof-context-drift")
+    previous_raw = private_read(Path(transition["registry"]), 65536)
+    if digest(previous_raw) != manifest["registry_sha256"]:
+        raise EnrollmentError("restage-history-drift")
+    previous = json.loads(previous_raw)[transition["project"]]
+    if (
+        value.get("publication") != previous.get("publication")
+        or value["code_sha256"] != manifest["code_sha256"]
+        or digest(current) != manifest["config_sha256"]
+    ):
+        raise EnrollmentError("restage-binding-drift")
+    candidate = private_read(Path(previous["candidate_config"]), 1024**2)
+    publication = previous["publication"]
+    if (
+        digest(candidate) != previous["candidate_sha256"]
+        or digest(candidate) != publication["desired_sha256"]
+        or digest(private_read(Path(previous["backup"]), 1024**2))
+        != previous["backup_sha256"]
+        or not publication_verified(
+            config, dict(publication, desired_sha256=digest(current))
+        )
+    ):
+        raise EnrollmentError("restage-publication-history-drift")
+    _preference_transition(candidate, current)
+
+
+def restage_shared(home, project, config, manifest_path, expected):
+    """Explicit reviewed recovery, never automatic config/code hash adoption.
+
+    Config bytes and historical publications stay unchanged. All shared members
+    move atomically to a fenced recovery canary; old native proof is invalid.
+    A replay of the same committed transaction preserves new events/activation.
+    """
+    from host_job_profiles import install_profile, validate_profile
+
+    home, project, config = (
+        Path(home),
+        Path(project).resolve(strict=True),
+        Path(config).absolute(),
+    )
+    raw_manifest = private_read(Path(manifest_path), 65536)
+    if digest(raw_manifest) != expected:
+        raise EnrollmentError("reviewed-restage-drift")
+    manifest = json.loads(raw_manifest)
+    fields = {
+        "schema",
+        "registry_sha256",
+        "config_sha256",
+        "prior_code_sha256",
+        "code_sha256",
+        "members",
+    }
+    if (
+        set(manifest) != fields
+        or manifest["schema"] != "forgewright-shared-restage/v1"
+        or not isinstance(manifest["members"], dict)
+        or not 1 <= len(manifest["members"]) <= 32
+        or any(
+            not isinstance(manifest[k], str)
+            or not re.fullmatch(r"[a-f0-9]{64}", manifest[k])
+            for k in fields - {"schema", "members"}
+        )
+    ):
+        raise EnrollmentError("invalid-restage-manifest")
+    with locked(home):
+        previous_raw = private_read(home / "enrollments.json", 65536)
+        values = json.loads(previous_raw)
+        members = {k: v for k, v in values.items() if v.get("config") == str(config)}
+        if set(members) != set(manifest["members"]) or str(project) not in members:
+            raise EnrollmentError("restage-membership-drift")
+        current = config.read_bytes()
+        if (
+            digest(current) != manifest["config_sha256"]
+            or code_binding() != manifest["code_sha256"]
+        ):
+            raise EnrollmentError("restage-config-or-code-drift")
+        if all(
+            v.get("restage", {}).get("transaction") == expected
+            for v in members.values()
+        ):
+            for v in members.values():
+                validate_binding(v)
+            return {
+                "status": "already-restaged",
+                "members": sorted(members),
+                "transaction": expected,
+            }
+        if digest(previous_raw) != manifest["registry_sha256"]:
+            raise EnrollmentError("restage-registry-drift")
+        updated = json.loads(previous_raw)
+        folder = home / "restages" / expected
+        pending_profiles = []
+        for key, old in members.items():
+            chosen = manifest["members"][key]
+            if (
+                set(chosen)
+                != {
+                    "nonce",
+                    "profiles",
+                    "canary_profile",
+                    "retired_profiles",
+                    "recipe",
+                    "recipe_sha256",
+                }
+                or old.get("phase") not in {"canary", "enforce"}
+                or old.get("source_root") != str(ROOT)
+                or old.get("code_sha256") != manifest["prior_code_sha256"]
+                or operator_disabled(home, key)
+            ):
+                raise EnrollmentError("restage-member-state-drift")
+            profiles, name = chosen["profiles"], chosen["canary_profile"]
+            if (
+                not isinstance(profiles, dict)
+                or not 1 <= len(profiles) <= 8
+                or not isinstance(name, str)
+                or name not in profiles
+                or name in old["profiles"]
+                or chosen["nonce"] == old["nonce"]
+                or any(
+                    old["profiles"].get(k) != v
+                    for k, v in profiles.items()
+                    if k != name
+                )
+                or chosen["retired_profiles"]
+                != {k: v for k, v in old["profiles"].items() if k not in profiles}
+            ):
+                raise EnrollmentError("restage-profile-selection-drift")
+            recipe_path = Path(chosen["recipe"])
+            if (
+                recipe_path.is_absolute()
+                or ".." in recipe_path.parts
+                or recipe_path.parts[:2] != (".forgewright", "recipes")
+                or recipe_path.suffix != ".json"
+            ):
+                raise EnrollmentError("restage-project-recipe-required")
+            recipe_raw = private_read(Path(key) / recipe_path, 16384)
+            if digest(recipe_raw) != chosen["recipe_sha256"]:
+                raise EnrollmentError("restage-recipe-drift")
+            recipe = json.loads(recipe_raw)
+            if (
+                recipe.get("id") != name
+                or recipe.get("project") != key
+                or validate_profile(recipe).profile_digest != profiles[name]
+            ):
+                raise EnrollmentError("restage-recipe-binding-drift")
+            pending_profiles.append((recipe, profiles[name]))
+            for profile, sha in profiles.items():
+                if profile != name:
+                    load_profile(home, Path(key), profile, sha)
+            require_quiescent_enrollment(home, Path(key))
+            denied, approved = canary_paths(home, Path(key), chosen["nonce"])
+            if any(p.exists() or p.is_symlink() for p in (denied, approved)):
+                raise EnrollmentError("restage-marker-already-exists")
+            value = updated[key]
+            value.update(
+                phase="canary",
+                mode="canary",
+                recovery_canary=True,
+                nonce=chosen["nonce"],
+                profiles=profiles,
+                canary_profile=name,
+                config_sha256=manifest["config_sha256"],
+                code_sha256=manifest["code_sha256"],
+                events=[],
+                enforcement_verified=False,
+                staged_at=time.time(),
+                denied_marker=str(denied),
+                approved_marker=str(approved),
+                restage={
+                    "transaction": expected,
+                    "project": key,
+                    "manifest": str(folder / "manifest.json"),
+                    "registry": str(folder / "registry-before.json"),
+                },
+            )
+            value.pop("native_proof", None)
+            command = shlex.join(
+                [
+                    sys.executable,
+                    "-c",
+                    "from pathlib import Path;Path("
+                    + repr(str(denied))
+                    + ').write_text("unexpected")',
+                ]
+            )
+            value.update(
+                deny_command=command, deny_command_sha256=digest(command.encode())
+            )
+            # Check history now, before any registry publication.
+            # The private transaction snapshots are written below only after all
+            # members and quiescence have passed.
+            candidate = private_read(Path(old["candidate_config"]), 1024**2)
+            publication = old["publication"]
+            if (
+                digest(candidate) != old["candidate_sha256"]
+                or digest(candidate) != publication["desired_sha256"]
+                or digest(private_read(Path(old["backup"]), 1024**2))
+                != old["backup_sha256"]
+                or not publication_verified(
+                    config, dict(publication, desired_sha256=digest(current))
+                )
+            ):
+                raise EnrollmentError("restage-publication-history-drift")
+            _preference_transition(candidate, current)
+        for filename, raw in {
+            "manifest.json": raw_manifest,
+            "registry-before.json": previous_raw,
+            "config-before.toml": current,
+        }.items():
+            path = folder / filename
+            if path.exists() and private_read(path, 1024**2) != raw:
+                raise EnrollmentError("restage-archive-drift")
+            if not path.exists():
+                atomic_private(path, raw)
+        for recipe, sha in pending_profiles:
+            if install_profile(home, recipe) != sha:
+                raise EnrollmentError("restage-installed-profile-drift")
+        if (
+            private_read(home / "enrollments.json", 65536) != previous_raw
+            or config.read_bytes() != current
+            or code_binding() != manifest["code_sha256"]
+        ):
+            raise EnrollmentError("restage-concurrent-drift")
+        save(home, updated)
+        return {
+            "status": "restaged-canary-only",
+            "members": sorted(members),
+            "transaction": expected,
+            "enforcement_verified": False,
+        }
 
 
 def reconcile_trust(home, project, config):
@@ -902,6 +1451,9 @@ def main(argv=None):
     commands.add_parser("activate")
     commands.add_parser("rollback")
     commands.add_parser("reconcile-trust")
+    restaged = commands.add_parser("restage-shared")
+    restaged.add_argument("--manifest", type=Path, required=True)
+    restaged.add_argument("--sha256", required=True)
     commands.add_parser("deactivate")
     args = parser.parse_args(argv)
     try:
@@ -913,6 +1465,10 @@ def main(argv=None):
                 json.loads(args.profiles.read_bytes()),
                 args.nonce,
                 canary_profile=args.canary_profile,
+            )
+        elif args.action == "restage-shared":
+            result = restage_shared(
+                args.home, args.project, args.config, args.manifest, args.sha256
             )
         elif args.action == "reconcile-trust":
             result = reconcile_trust(args.home, args.project, args.config)

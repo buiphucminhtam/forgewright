@@ -162,6 +162,51 @@ deactivation can remove the exact owned hook from current config while preservin
 user/trust edits; modified ownership, following hooks with positional state or
 shared-hook drift require coordinated reconciliation.
 
+Explicit shared recovery uses `forge delegate resources --restage-shared
+<private-manifest.json> --sha256 <reviewed-file-sha256>`. The versioned manifest
+pins the entire registry, exact shared membership, current config, previous and
+reviewed replacement code binding, and each fresh canary selection. This narrow
+transition supports modifying `model` and `model_reasoning_effort` and removing
+`service_tier`; all other parsed fields and the owned hook bytes must match the
+historical candidate. It does not automatically accept unrelated preferences,
+trust changes or code drift. Candidate, immediate publication predecessor and
+original backup are checked separately. Historical publications stay immutable.
+The manifest explicitly lists retired profile IDs and their old digests; their
+immutable files and receipts remain historical. Selected existing profiles retain
+their exact digests. Each new canary has a private project recipe pinned by file
+hash and canonical profile digest. Recovery validates every recipe first, then
+installs it through the existing immutable-profile loader after durable intent.
+An interruption can leave an inactive installed profile; it cannot authorize
+execution or silently refresh an old source/device binding.
+
+Recovery holds the enrollment lock and requires every shared member to be
+quiescent, including claimed native requests without a proven terminal journal.
+When a managed run ends in `quarantined` after an observed process-group escape
+and the owner/group are subsequently verified absent, `forge delegate resources
+--reconcile-quarantined <private-plan.json> --sha256 <digest> [--apply]`
+releases the heavy then worker leases through `HostAdmission.reconcile_quarantined`
+and writes a `forgewright-failed-safe-closure/v1` receipt under `reconciliations/`.
+That receipt satisfies only the claimed-request quiescence fence in
+`require_quiescent_enrollment` while keeping the original failed journal and
+quarantined storage intact; it never satisfies `activate()` or `native_proof`.
+Nested `LocalCI.run` invocations inside a verified managed job retain the outer
+supervisor's process group rather than calling `setsid`/`killpg`.
+Private exact registry/config/manifest snapshots precede one atomic replacement
+of all members. Retrying the same committed manifest preserves later canary
+events and activation. A concurrent config edit remains untouched and invalidates
+subsequent binding checks. The recovery canary rejects uncovered shell paths and
+binding errors; exact operator diagnostics remain available. Fresh nonces,
+markers, selected profiles, events and proof context replace the old activation
+context. `forge delegate resources --activate` still requires actual current
+native deny/rewrite events and the exact owned terminal job receipt.
+
+Resource evidence also depends on the interpreter that imports these modules.
+Global startup customization must not rewrite profile digests, process identity,
+pressure observations, scheduler state, admission decisions or disk totals.
+Check this boundary in a fresh ordinary interpreter as well as fixture tests;
+test-only suppression of an override cannot establish runtime coverage. Restoring
+startup paths never authorizes reactivation from historical native receipts.
+
 Config publication atomically exchanges revisions and keeps the captured
 predecessor. Durable publication intent supports interrupted stage/rollback
 recovery. A concurrent edit is preserved and reported as a conflict. Rollback

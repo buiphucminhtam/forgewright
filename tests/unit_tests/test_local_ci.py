@@ -409,3 +409,123 @@ def test_ci_selects_explicit_linux_capture_lane(platform_name, mode, monkeypatch
         assert lane.status == "not-applicable"
         assert lane.argv == []
         assert "Linux" in lane.note
+
+
+def test_local_ci_standalone_and_managed_ownership_and_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+    tmp_path = tmp_path.resolve()
+    runtime_dir = str((ROOT / "scripts" / "runtime").resolve())
+    if runtime_dir not in sys.path:
+        sys.path.insert(0, runtime_dir)
+    from host_admission import HostAdmission, MemorySnapshot
+    import project_recipe
+
+    module = _module()
+    job_id = "job-" + "a" * 32
+    job_dir = tmp_path / ".forgewright/runtime/build-jobs" / job_id
+    job_dir.mkdir(parents=True, mode=0o700)
+    job_dir.chmod(0o700)
+    scratch = job_dir / "scratch"
+    scratch.mkdir(mode=0o700)
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+
+    ci = module.LocalCI(dry_run=False, keep_going=True, timeout=5, base_ref=None)
+    with pytest.raises(module.GateFailure, match="invalid-managed-ci-context"):
+        ci.run(
+            "forged-step",
+            [sys.executable, "-c", "print('never')"],
+            cwd=tmp_path,
+            env={"TMPDIR": str(scratch)},
+        )
+
+    authority = tmp_path / "authority"
+    authority.mkdir(mode=0o700)
+    (authority / "jobs").mkdir(parents=True, mode=0o700)
+    output_dir = scratch.parent / "output"
+    output_dir.mkdir(parents=True, mode=0o700)
+    my_pid = os.getpid()
+    my_pgid = os.getpgrp() if hasattr(os, "getpgrp") else my_pid
+
+    normal_mem = MemorySnapshot(16 * 1024**3, 6 * 1024**3, "normal", "test-fixture")
+    token_w = "tok-worker-" + "w" * 40
+    token_h = "tok-heavy-" + "h" * 40
+    adm = HostAdmission(
+        authority,
+        sensor=lambda: normal_mem,
+        inspector=lambda pid: "owner-100" if pid == 100 else "child-root",
+        now=lambda: 1000.0,
+    )
+    w = adm.enqueue(
+        job_id=f"{job_id}-worker",
+        token=token_w,
+        project_root=tmp_path,
+        run_id=job_id,
+        owner_pid=100,
+        kind="worker",
+        memory_mib=64,
+    )
+    h = adm.enqueue(
+        job_id=f"{job_id}-heavy",
+        token=token_h,
+        project_root=tmp_path,
+        run_id=job_id,
+        owner_pid=100,
+        kind="heavy",
+        memory_mib=1536,
+        parent_lease_id=w["id"],
+    )
+    assert w["state"] == "active" and h["state"] == "active"
+    adm.close()
+
+    journal = {
+        "physical_workspace": str(tmp_path.resolve()),
+        "state": "running",
+        "owner_pid": 100,
+        "owner_identity": "owner-100",
+        "child": {"pid": my_pgid, "identity": "child-root"},
+        "storage": {"path": str(scratch.parent.resolve())},
+        "leases": [
+            {"id": f"{job_id}-worker", "kind": "worker", "state": "active"},
+            {"id": f"{job_id}-heavy", "kind": "heavy", "state": "active"},
+        ],
+    }
+    jpath = authority / "jobs" / f"{job_id}.json"
+    jpath.write_text(json.dumps(journal), encoding="utf-8")
+    os.chmod(jpath, 0o600)
+
+    monkeypatch.setattr(
+        project_recipe,
+        "inspect_process",
+        lambda pid: "owner-100"
+        if pid == 100
+        else ("child-root" if pid == my_pgid else f"id-{pid}"),
+    )
+    monkeypatch.setattr(
+        project_recipe,
+        "process_table",
+        lambda: {
+            my_pgid: (100, my_pgid, "birth-root"),
+            my_pid: (my_pgid, my_pgid, "birth-self"),
+        },
+    )
+    killpg_calls: list[tuple[int, int]] = []
+    if hasattr(os, "killpg"):
+        monkeypatch.setattr(
+            os, "killpg", lambda pgid, sig: killpg_calls.append((pgid, sig))
+        )
+
+    managed_env = {
+        "TMPDIR": str(scratch),
+        "FORGEWRIGHT_JOB_ADMISSION_HOME": str(authority),
+    }
+    with pytest.raises(module.GateFailure, match="timed out under managed supervision"):
+        ci.run(
+            "managed-timeout-step",
+            [sys.executable, "-c", "import time; time.sleep(10)"],
+            cwd=tmp_path,
+            timeout=1,
+            env=managed_env,
+        )
+    assert killpg_calls == []

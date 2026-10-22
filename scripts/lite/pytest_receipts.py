@@ -11,12 +11,158 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
+import tomllib
 import uuid
 from pathlib import Path
 
 PLUGIN = "forgewright_pytest_receipt"
 MAX_RECEIPT_BYTES = 8 * 1024 * 1024
+_LITE_DIR = Path(__file__).resolve().parent
+OBSERVER_SHA256 = hashlib.sha256(
+    (_LITE_DIR / "forgewright_pytest_receipt.py").read_bytes()
+).hexdigest()
+_BUNDLE_MODULES = (
+    "evidence_common.py",
+    "forgewright_pytest_receipt.py",
+    "pytest_receipts.py",
+    "run_check.py",
+    "verify_gate.py",
+)
+
+
+def runtime_bundle_descriptor() -> dict:
+    modules: dict[str, str] = {}
+    for filename in _BUNDLE_MODULES:
+        stem = filename[:-3]
+        loaded = sys.modules.get(stem) or sys.modules.get(f"scripts.lite.{stem}")
+        if loaded is not None and getattr(loaded, "__file__", None):
+            origin = Path(loaded.__file__).resolve()
+            if origin.parent != _LITE_DIR:
+                raise RuntimeError(f"mixed-lite-bundle-origin:{filename}")
+            target = origin
+        else:
+            target = (_LITE_DIR / filename).resolve()
+        modules[filename] = hashlib.sha256(target.read_bytes()).hexdigest()
+    return {
+        "schema": "forgewright-lite-bundle/v1",
+        "capabilities": ["pytest-receipt/v1"],
+        "observer_sha256": OBSERVER_SHA256,
+        "modules": modules,
+    }
+
+
+def verify_workspace_canonical_bundle(workspace: Path) -> list[str]:
+    """Verify that the active runner bundle matches the workspace canonical Stop configuration."""
+    try:
+        root = Path(workspace).resolve()
+        local_lite = (root / "scripts" / "lite").resolve()
+        stop_sh = local_lite / "stop-gate.sh"
+        codex_cfg = root / ".codex" / "config.toml"
+        if not stop_sh.exists() and not stop_sh.is_symlink() and not codex_cfg.exists():
+            return []
+        if not stop_sh.is_file() or stop_sh.is_symlink():
+            return ["UNVERIFIED: workspace canonical stop-gate.sh is missing or a symlink"]
+        if not codex_cfg.exists():
+            return ["UNVERIFIED: workspace .codex/config.toml is required when local stop-gate.sh is present"]
+        if codex_cfg.is_symlink() or not codex_cfg.is_file():
+            return ["UNVERIFIED: workspace .codex/config.toml is unsafe"]
+        cfg = tomllib.loads(codex_cfg.read_text(encoding="utf-8"))
+        if True:
+            if cfg.get("features", {}).get("hooks") is not True:
+                return ["UNVERIFIED: workspace .codex/config.toml hooks are disabled"]
+            legacy = "bash scripts/lite/stop-gate.sh --platform CODEX"
+            canonical = 'bash -c \'root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1; cd "$root" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CODEX\''
+            memory = 'bash -c \'root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script="$root/scripts/memory/native_hook.py"; [ -f "$script" ] || exit 0; exec python3 "$script" --workspace "$root"\''
+            groups = cfg.get("hooks", {}).get("Stop", [])
+            if not isinstance(groups, list) or len(groups) not in (1, 2):
+                return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+            remaining = list(groups)
+            if len(remaining) == 2:
+                optional = []
+                for cand in remaining:
+                    if not isinstance(cand, dict) or set(cand) != {"hooks"}:
+                        continue
+                    handlers = cand["hooks"]
+                    if not isinstance(handlers, list) or len(handlers) != 1:
+                        continue
+                    handler = handlers[0]
+                    if not isinstance(handler, dict):
+                        continue
+                    cmd_val = handler.get("command")
+                    if not isinstance(cmd_val, str) or cmd_val.strip(" \t\n") != memory:
+                        continue
+                    if type(handler.get("timeout")) is not int:
+                        continue
+                    if {k: v for k, v in handler.items() if k != "command"} == {
+                        "type": "command",
+                        "timeout": 3,
+                        "statusMessage": "Saving optional structured memory",
+                    }:
+                        optional.append(cand)
+                if len(optional) != 1:
+                    return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+                remaining = [c for c in remaining if c is not optional[0]]
+            grp = remaining[0]
+            if (
+                not isinstance(grp, dict)
+                or bool(set(grp) - {"matcher", "hooks", "enabled"})
+                or grp.get("enabled", True) is not True
+                or grp.get("matcher") != "*"
+            ):
+                return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+            hooks = grp.get("hooks")
+            if not isinstance(hooks, list) or len(hooks) != 1 or not isinstance(hooks[0], dict):
+                return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+            hk = hooks[0]
+            if (
+                bool(set(hk) - {"type", "command", "command_windows", "enabled"})
+                or hk.get("enabled", True) is not True
+                or hk.get("type") != "command"
+                or ("command_windows" in hk and not isinstance(hk["command_windows"], str))
+                or not isinstance(hk.get("command"), str)
+                or hk["command"].strip(" \t\n") not in {legacy, canonical}
+            ):
+                return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+        active = runtime_bundle_descriptor()
+        for filename in _BUNDLE_MODULES:
+            candidate = local_lite / filename
+            if not candidate.is_file() or candidate.is_symlink():
+                return [
+                    f"UNVERIFIED: workspace canonical verifier module {filename!r} is missing"
+                ]
+            expected_sha = hashlib.sha256(candidate.read_bytes()).hexdigest()
+            if active["modules"].get(filename) != expected_sha:
+                return [
+                    f"UNVERIFIED: active runner bundle does not match workspace canonical {filename!r}"
+                ]
+        return []
+    except (OSError, RuntimeError) as error:
+        return [f"UNVERIFIED: canonical verifier bundle check failed: {error}"]
+
+
+def bundle_errors(bundle) -> list[str]:
+    prefix = "UNVERIFIED: canonical verifier bundle "
+    if not isinstance(bundle, dict):
+        return [prefix + "is missing"]
+    try:
+        expected = runtime_bundle_descriptor()
+    except (OSError, RuntimeError) as error:
+        return [prefix + f"is unreadable: {error}"]
+    if (
+        bundle.get("schema") != expected["schema"]
+        or bundle.get("capabilities") != expected["capabilities"]
+        or bundle.get("observer_sha256") != expected["observer_sha256"]
+    ):
+        return [prefix + "schema or observer capability mismatch"]
+    modules = bundle.get("modules")
+    if not isinstance(modules, dict) or set(modules) != set(expected["modules"]):
+        return [prefix + "module inventory mismatch"]
+    for name, expected_sha in expected["modules"].items():
+        if modules.get(name) != expected_sha:
+            return [prefix + f"hash mismatch for {name!r}"]
+    return []
 
 
 def is_pytest(command):
@@ -77,6 +223,7 @@ def run_observed(command, *, cwd, env=None, timeout=300):
                     and candidate.get("run_id") == nonce
                     and candidate.get("workspace") == str(Path(cwd).resolve())
                     and candidate.get("exit_code") == result.returncode
+                    and candidate.get("observer_sha256") == OBSERVER_SHA256
                 ):
                     receipt = {**candidate, "command_sha256": command_digest(command)}
             except (OSError, UnicodeError, ValueError):
@@ -114,6 +261,8 @@ def receipt_errors(receipt, command, workspace, refs, phase, exit_code, tree_sha
         or (tree_sha is not None and receipt.get("tree_sha") != tree_sha)
     ):
         return [prefix + "is partial or does not match command/workspace/tree/run"]
+    if receipt.get("observer_sha256") != OBSERVER_SHA256:
+        return [prefix + "observer_sha256 does not match canonical observer"]
     rows = receipt.get("tests")
     deselected = receipt.get("deselected")
     if (

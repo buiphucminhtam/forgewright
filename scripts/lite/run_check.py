@@ -15,7 +15,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from pytest_receipts import is_pytest, run_observed
+from pytest_receipts import is_pytest, run_observed, verify_workspace_canonical_bundle
 
 from evidence_common import (
     CHANGE_KINDS,
@@ -29,8 +29,10 @@ from evidence_common import (
     execution_manifest,
     negative_path_binding_errors,
     redact,
+    resolve_evidence_link,
     schema_errors,
     sha256_text,
+    validate_evidence_link_syntax,
     worktree_fingerprint,
 )
 
@@ -86,19 +88,52 @@ def _parse_acceptances(
 
 
 def _parse_links(
-    values: list[str], red: str | None, mutation: str | None
-) -> dict[str, str]:
+    values: list[str],
+    red: list[str] | str | None,
+    mutation: list[str] | str | None,
+) -> tuple[dict[str, str], list[str]]:
     links: dict[str, str] = {}
+    errors: list[str] = []
+
+    def add_link(raw_key: str, raw_path: str, source_flag: str) -> None:
+        key = raw_key.strip()
+        path = raw_path.strip()
+        if not key or not path:
+            errors.append(
+                f"FORGED: {source_flag} requires non-empty relation and relative path"
+            )
+            return
+        normalized, syntax_error = validate_evidence_link_syntax(path)
+        if syntax_error:
+            errors.append(syntax_error)
+            return
+        assert normalized is not None
+        existing = links.get(key)
+        if existing is not None and existing != normalized:
+            errors.append(
+                f"FORGED: conflicting duplicate link for {key!r}: {existing!r} vs {normalized!r}"
+            )
+            return
+        links[key] = normalized
+
     for value in values:
         if "=" not in value:
+            errors.append(f"FORGED: --link must use PHASE=PATH, got {value!r}")
             continue
         key, path = value.split("=", 1)
-        links[key.strip()] = path.strip()
-    if red:
-        links["red"] = red
-    if mutation:
-        links["mutation"] = mutation
-    return links
+        add_link(key, path, "--link")
+
+    red_items = [red] if isinstance(red, str) else (list(red) if red else [])
+    for item in red_items:
+        add_link("red", item, "--red-evidence")
+
+    mutation_items = (
+        [mutation] if isinstance(mutation, str) else (list(mutation) if mutation else [])
+    )
+    for item in mutation_items:
+        add_link("mutation", item, "--mutation-evidence")
+
+    return links, errors
 
 
 def _parse_acceptance_tests(
@@ -201,8 +236,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--reviewer-status", default=None)
     parser.add_argument("--reviewer-evidence-ref", default=None)
     parser.add_argument("--link", action="append", default=[])
-    parser.add_argument("--red-evidence", default=None)
-    parser.add_argument("--mutation-evidence", default=None)
+    parser.add_argument("--red-evidence", action="append", default=[])
+    parser.add_argument("--mutation-evidence", action="append", default=[])
     parser.add_argument("--mutation-target", action="append", default=[])
     parser.add_argument("--pre-mutation-tree-sha", default=None)
     parser.add_argument("cmd", nargs=argparse.REMAINDER)
@@ -254,6 +289,9 @@ def _metadata_errors(
     if args.reviewer_evidence_ref is not None:
         reviewer["evidence_ref"] = args.reviewer_evidence_ref
 
+    links, link_errors = _parse_links(
+        args.link, args.red_evidence, args.mutation_evidence
+    )
     ev = {
         "schema_version": SCHEMA_VERSION,
         "acceptance_criteria": acceptance,
@@ -268,6 +306,8 @@ def _metadata_errors(
         "implementer_id": args.implementer_id,
         "reviewer": reviewer,
     }
+    if links:
+        ev["links"] = links
     if args.phase == "mutation" or args.mutation_target or args.pre_mutation_tree_sha:
         ev["mutation"] = {
             "target_paths": args.mutation_target,
@@ -276,6 +316,16 @@ def _metadata_errors(
     errors: list[str] = []
     errors.extend(acceptance_test_errors)
     errors.extend(negative_binding_errors)
+    errors.extend(link_errors)
+    if "evidence_ref" in reviewer:
+        _, rev_syntax_err = validate_evidence_link_syntax(reviewer.get("evidence_ref"))
+        if rev_syntax_err:
+            errors.append(rev_syntax_err)
+    for hist_key in ("red", "pre_mutation", "mutation"):
+        if hist_key in links:
+            _, resolve_err = resolve_evidence_link(workspace, links[hist_key])
+            if resolve_err:
+                errors.append(resolve_err)
     unknown_acceptance_tests = sorted(set(acceptance_tests) - acceptance_ids)
     if unknown_acceptance_tests:
         errors.append(
@@ -318,6 +368,7 @@ def _metadata_errors(
         if not args.pre_mutation_tree_sha:
             errors.append("MISSING: mutation phase requires --pre-mutation-tree-sha")
     errors.extend(correlation_errors(ev))
+    errors.extend(verify_workspace_canonical_bundle(workspace))
     execution, execution_errors = execution_manifest(workspace, command, args.test_ref)
     errors.extend(execution_errors)
     if execution is not None:
@@ -412,7 +463,6 @@ def main() -> None:
         .isoformat(timespec="microseconds")
         .replace("+00:00", "Z")
     )
-    links = _parse_links(args.link, args.red_evidence, args.mutation_evidence)
     reviewer = metadata["reviewer"]
     ev = {
         **metadata,
@@ -436,8 +486,6 @@ def main() -> None:
             if test_execution is not None
             else None
         )
-    if links:
-        ev["links"] = links
 
     final_schema_errors = schema_errors(ev)
     if final_schema_errors:
