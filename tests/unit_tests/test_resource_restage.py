@@ -492,8 +492,10 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     }
     prof_digest = install_profile(home, prof_val)
     cfg_path = tmp_path / "config.toml"
-    cfg_path.write_text('[features]\nhooks = true\n', encoding="utf-8")
-    staged = enrollment.stage(home, project, cfg_path, {"p1": prof_digest}, "n1", canary_profile="p1")
+    cfg_path.write_text("[features]\nhooks = true\n", encoding="utf-8")
+    staged = enrollment.stage(
+        home, project, cfg_path, {"p1": prof_digest}, "n1", canary_profile="p1"
+    )
     cfg_raw = cfg_path.read_bytes()
 
     owner_alive = True
@@ -503,7 +505,9 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     adm = HostAdmission(
         home,
         sensor=lambda: normal_mem,
-        inspector=lambda pid: "owner-id-4444" if (pid == 4444 and owner_alive) else None,
+        inspector=lambda pid: "owner-id-4444"
+        if (pid == 4444 and owner_alive)
+        else None,
         now=lambda: 1000.0,
     )
     adm.enqueue(
@@ -547,7 +551,9 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
         "owner_identity": "owner-id-4444",
     }
     req_path = home / "native-requests" / f"{req_id}.json"
-    req_raw = (json.dumps({"state": "claimed", "context": context}, sort_keys=True) + "\n").encode()
+    req_raw = (
+        json.dumps({"state": "claimed", "context": context}, sort_keys=True) + "\n"
+    ).encode()
     req_path.write_bytes(req_raw)
     req_path.chmod(0o600)
 
@@ -564,10 +570,24 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
         "owner_identity": "owner-id-4444",
         "child": {"pid": 5555, "identity": "child-id-5555"},
         "native_context": context,
-        "storage": {"path": str(storage_dir), "state": "quarantined", "quiescent": False},
+        "storage": {
+            "path": str(storage_dir),
+            "state": "quarantined",
+            "quiescent": False,
+        },
         "leases": [
-            {"id": f"{job_id}-worker", "kind": "worker", "state": "quarantined", "token": tok_w},
-            {"id": f"{job_id}-heavy", "kind": "heavy", "state": "quarantined", "token": tok_h},
+            {
+                "id": f"{job_id}-worker",
+                "kind": "worker",
+                "state": "quarantined",
+                "token": tok_w,
+            },
+            {
+                "id": f"{job_id}-heavy",
+                "kind": "heavy",
+                "state": "quarantined",
+                "token": tok_h,
+            },
         ],
     }
     journal_path = home / "jobs" / f"{job_id}.json"
@@ -606,8 +626,18 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
         "child_pid": 5555,
         "child_identity": "child-id-5555",
         "leases": [
-            {"id": f"{job_id}-worker", "kind": "worker", "memory_bytes": 64 * 1024 * 1024, "parent_id": None},
-            {"id": f"{job_id}-heavy", "kind": "heavy", "memory_bytes": 1536 * 1024 * 1024, "parent_id": f"{job_id}-worker"},
+            {
+                "id": f"{job_id}-worker",
+                "kind": "worker",
+                "memory_bytes": 64 * 1024 * 1024,
+                "parent_id": None,
+            },
+            {
+                "id": f"{job_id}-heavy",
+                "kind": "heavy",
+                "memory_bytes": 1536 * 1024 * 1024,
+                "parent_id": f"{job_id}-worker",
+            },
         ],
         "keep_pids": [32600],
         "preserve_storage_path": str(storage_dir),
@@ -622,15 +652,25 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     plan_path.chmod(0o600)
     plan_sha = enrollment.digest(plan_raw)
 
-    with pytest.raises(enrollment.EnrollmentError, match="enrollment-jobs-live-or-quarantined"):
+    with pytest.raises(
+        enrollment.EnrollmentError, match="enrollment-jobs-live-or-quarantined"
+    ):
         enrollment.require_quiescent_enrollment(home, project)
 
     monkeypatch.setattr(
         resource_controls,
         "_strict_process_census",
-        lambda: {"complete": True, "rows": {32600: {"ppid": 1, "pgid": 32600, "stat": "S", "birth": "b1"}, 4444: {"ppid": 1, "pgid": 4444, "stat": "S", "birth": "b2"}}},
+        lambda: {
+            "complete": True,
+            "rows": {
+                32600: {"ppid": 1, "pgid": 32600, "stat": "S", "birth": "b1"},
+                4444: {"ppid": 1, "pgid": 4444, "stat": "S", "birth": "b2"},
+            },
+        },
     )
-    blocked = resource_controls.reconcile_quarantined_plan(home, project, plan_path, plan_sha, apply=True)
+    blocked = resource_controls.reconcile_quarantined_plan(
+        home, project, plan_path, plan_sha, apply=True
+    )
     assert blocked["status"] == "blocked"
     assert blocked["reason"] == "owner-pid-present-in-census"
 
@@ -638,10 +678,17 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     monkeypatch.setattr(
         resource_controls,
         "_strict_process_census",
-        lambda: {"complete": True, "rows": {32600: {"ppid": 1, "pgid": 32600, "stat": "S", "birth": "b1"}}},
+        lambda: {
+            "complete": True,
+            "rows": {32600: {"ppid": 1, "pgid": 32600, "stat": "S", "birth": "b1"}},
+        },
     )
-    monkeypatch.setattr("host_resources.inspect_process", lambda pid: None if pid == 4444 else "other")
-    no_drain_plan = {k: v for k, v in plan_obj.items() if not k.startswith("drain_evidence")}
+    monkeypatch.setattr(
+        "host_resources.inspect_process", lambda pid: None if pid == 4444 else "other"
+    )
+    no_drain_plan = {
+        k: v for k, v in plan_obj.items() if not k.startswith("drain_evidence")
+    }
     no_drain_path = project / ".forgewright/runtime/recovery/plan-nodrain.json"
     no_drain_raw = (json.dumps(no_drain_plan, sort_keys=True) + "\n").encode()
     no_drain_path.write_bytes(no_drain_raw)
@@ -651,7 +698,9 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     )
     assert unknown_res["status"] == "unknown"
 
-    dry = resource_controls.reconcile_quarantined_plan(home, project, plan_path, plan_sha, apply=False)
+    dry = resource_controls.reconcile_quarantined_plan(
+        home, project, plan_path, plan_sha, apply=False
+    )
     assert dry["status"] == "eligible"
     assert dry["mutated"] is False
 
@@ -661,26 +710,39 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     bad_step = reconcile_dir / f"{job_id}.step-heavy.json"
     bad_step.write_text('{"schema": "bad"}\n', encoding="utf-8")
     bad_step.chmod(0o600)
-    conflict_res = resource_controls.reconcile_quarantined_plan(home, project, plan_path, plan_sha, apply=True)
+    conflict_res = resource_controls.reconcile_quarantined_plan(
+        home, project, plan_path, plan_sha, apply=True
+    )
     assert conflict_res["status"] == "blocked"
     assert "unexpected-step-artifact" in conflict_res["reason"]
     bad_step.unlink()
 
     # Actual fault injection at each atomic_private boundary (intent, heavy-step, worker-step, closure):
     orig_atomic = enrollment.atomic_private
-    for target_suffix in (".intent.json", ".step-heavy.json", ".step-worker.json", f"{job_id}.json"):
+    for target_suffix in (
+        ".intent.json",
+        ".step-heavy.json",
+        ".step-worker.json",
+        f"{job_id}.json",
+    ):
         with monkeypatch.context() as mp_fault:
+
             def fail_on_target(path, raw, *, private_parent=True, _sfx=target_suffix):
                 if str(path).endswith(_sfx):
                     raise OSError(f"injected-fault:{_sfx}")
                 return orig_atomic(path, raw, private_parent=private_parent)
+
             mp_fault.setattr(enrollment, "atomic_private", fail_on_target)
             with pytest.raises(OSError, match="injected-fault"):
-                resource_controls.reconcile_quarantined_plan(home, project, plan_path, plan_sha, apply=True)
+                resource_controls.reconcile_quarantined_plan(
+                    home, project, plan_path, plan_sha, apply=True
+                )
         assert journal_path.read_bytes() == journal_raw
         assert req_path.read_bytes() == req_raw
 
-    applied = resource_controls.reconcile_quarantined_plan(home, project, plan_path, plan_sha, apply=True)
+    applied = resource_controls.reconcile_quarantined_plan(
+        home, project, plan_path, plan_sha, apply=True
+    )
     assert applied["status"] == "reconciled"
     assert applied["mutated"] is True
     assert Path(applied["closure_receipt"]).is_file()
@@ -705,12 +767,19 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     # must be rejected before constructing HostAdmission.
     adm_calls = []
     orig_adm = HostAdmission
-    monkeypatch.setattr("host_admission.HostAdmission", lambda *a, **kw: (adm_calls.append(1), orig_adm(*a, **kw))[1])
-    tampered_apply = resource_controls.reconcile_quarantined_plan(home, project, plan_path, plan_sha, apply=True)
+    monkeypatch.setattr(
+        "host_admission.HostAdmission",
+        lambda *a, **kw: (adm_calls.append(1), orig_adm(*a, **kw))[1],
+    )
+    tampered_apply = resource_controls.reconcile_quarantined_plan(
+        home, project, plan_path, plan_sha, apply=True
+    )
     assert tampered_apply["status"] == "blocked"
     assert adm_calls == []
     monkeypatch.setattr("host_admission.HostAdmission", orig_adm)
-    with pytest.raises(enrollment.EnrollmentError, match="native-request-state-unconfirmed"):
+    with pytest.raises(
+        enrollment.EnrollmentError, match="native-request-state-unconfirmed"
+    ):
         enrollment.require_quiescent_enrollment(home, project)
     step_h_path.write_bytes(orig_step_h)
     step_h_path.chmod(0o600)
@@ -720,11 +789,18 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
 
     # Representation-only formatting difference in closure or step must be rejected
     # in preflight before constructing HostAdmission.
-    pretty_closure = (json.dumps(json.loads(orig_closure), indent=2, sort_keys=True) + "\n").encode("utf-8")
+    pretty_closure = (
+        json.dumps(json.loads(orig_closure), indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
     closure_path.write_bytes(pretty_closure)
     closure_path.chmod(0o600)
-    monkeypatch.setattr("host_admission.HostAdmission", lambda *a, **kw: (adm_calls.append(1), orig_adm(*a, **kw))[1])
-    repr_conflict = resource_controls.reconcile_quarantined_plan(home, project, plan_path, plan_sha, apply=True)
+    monkeypatch.setattr(
+        "host_admission.HostAdmission",
+        lambda *a, **kw: (adm_calls.append(1), orig_adm(*a, **kw))[1],
+    )
+    repr_conflict = resource_controls.reconcile_quarantined_plan(
+        home, project, plan_path, plan_sha, apply=True
+    )
     assert repr_conflict["status"] == "blocked"
     assert repr_conflict["reason"] == "conflicting-existing-closure-receipt"
     assert adm_calls == []
@@ -736,11 +812,18 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     # apply resumes cleanly with existing intent and heavy step.
     closure_path.unlink()
     (reconcile_dir / f"{job_id}.step-worker.json").unlink()
-    adm2 = HostAdmission(home, sensor=lambda: normal_mem, inspector=lambda pid: None, now=lambda: 1000.0)
+    adm2 = HostAdmission(
+        home, sensor=lambda: normal_mem, inspector=lambda pid: None, now=lambda: 1000.0
+    )
     with adm2.transaction():
-        adm2.connection.execute("UPDATE jobs SET state='quarantined', reason='quiescence-unconfirmed' WHERE id=?", (f"{job_id}-worker",))
+        adm2.connection.execute(
+            "UPDATE jobs SET state='quarantined', reason='quiescence-unconfirmed' WHERE id=?",
+            (f"{job_id}-worker",),
+        )
     adm2.close()
-    resumed = resource_controls.reconcile_quarantined_plan(home, project, plan_path, plan_sha, apply=True)
+    resumed = resource_controls.reconcile_quarantined_plan(
+        home, project, plan_path, plan_sha, apply=True
+    )
     assert resumed["status"] == "reconciled"
     enrollment.require_quiescent_enrollment(home, project)
 
@@ -748,62 +831,74 @@ def test_reconcile_quarantined_plan_and_failed_safe_closure_fence(
     # profile/code/config/command/timestamp bindings NEVER satisfies activate()
     Path(staged["approved_marker"]).write_text("n1", encoding="utf-8")
     Path(staged["approved_marker"]).chmod(0o600)
-    enrollment.record_canary(home, project, {"session_id": "s1", "turn_id": "t1", "tool_use_id": "u-deny"}, "deny")
-    enrollment.record_canary(home, project, {"session_id": "s1", "turn_id": "t1", "tool_use_id": "u1"}, "profile-run", context=context)
-    with pytest.raises(enrollment.EnrollmentError, match="native-proof-terminal-job-missing"):
+    enrollment.record_canary(
+        home,
+        project,
+        {"session_id": "s1", "turn_id": "t1", "tool_use_id": "u-deny"},
+        "deny",
+    )
+    enrollment.record_canary(
+        home,
+        project,
+        {"session_id": "s1", "turn_id": "t1", "tool_use_id": "u1"},
+        "profile-run",
+        context=context,
+    )
+    with pytest.raises(
+        enrollment.EnrollmentError, match="native-proof-terminal-job-missing"
+    ):
         enrollment.activate(home, project, cfg_path)
 
     # Wrong-owner and wrong-parent SQLite mutations must be rejected by verify_failed_safe_closure
-    adm_mut = HostAdmission(home, sensor=lambda: normal_mem, inspector=lambda pid: None, now=lambda: 1000.0)
+    adm_mut = HostAdmission(
+        home, sensor=lambda: normal_mem, inspector=lambda pid: None, now=lambda: 1000.0
+    )
     with adm_mut.transaction():
-        adm_mut.connection.execute("UPDATE jobs SET pid=9999 WHERE id=?", (f"{job_id}-worker",))
+        adm_mut.connection.execute(
+            "UPDATE jobs SET pid=9999 WHERE id=?", (f"{job_id}-worker",)
+        )
     adm_mut.close()
-    with pytest.raises(enrollment.EnrollmentError, match="native-request-state-unconfirmed"):
+    with pytest.raises(
+        enrollment.EnrollmentError, match="native-request-state-unconfirmed"
+    ):
         enrollment.require_quiescent_enrollment(home, project)
-    adm_mut2 = HostAdmission(home, sensor=lambda: normal_mem, inspector=lambda pid: None, now=lambda: 1000.0)
+    adm_mut2 = HostAdmission(
+        home, sensor=lambda: normal_mem, inspector=lambda pid: None, now=lambda: 1000.0
+    )
     with adm_mut2.transaction():
-        adm_mut2.connection.execute("UPDATE jobs SET pid=4444, parent_id='wrong-parent' WHERE id=?", (f"{job_id}-worker",))
+        adm_mut2.connection.execute(
+            "UPDATE jobs SET pid=4444, parent_id='wrong-parent' WHERE id=?",
+            (f"{job_id}-worker",),
+        )
     adm_mut2.close()
-    with pytest.raises(enrollment.EnrollmentError, match="native-request-state-unconfirmed"):
+    with pytest.raises(
+        enrollment.EnrollmentError, match="native-request-state-unconfirmed"
+    ):
         enrollment.require_quiescent_enrollment(home, project)
 
     # Missing-row rejection
-    adm3 = HostAdmission(home, sensor=lambda: normal_mem, inspector=lambda pid: None, now=lambda: 1000.0)
+    adm3 = HostAdmission(
+        home, sensor=lambda: normal_mem, inspector=lambda pid: None, now=lambda: 1000.0
+    )
     with adm3.transaction():
         adm3.connection.execute("DELETE FROM jobs WHERE id=?", (f"{job_id}-worker",))
     adm3.close()
-    with pytest.raises(enrollment.EnrollmentError, match="native-request-state-unconfirmed"):
+    with pytest.raises(
+        enrollment.EnrollmentError, match="native-request-state-unconfirmed"
+    ):
         enrollment.require_quiescent_enrollment(home, project)
 
 
-def test_private_maintenance_caller_output_satisfies_failed_safe_closure_consumer(
-    tmp_path, monkeypatch
+def test_shipped_host_jobs_reconcile_output_satisfies_failed_safe_closure_consumer(
+    tmp_path, monkeypatch, capsys
 ):
-    """Artifact-contract-only coverage of the maintenance caller -> closure consumer;
-    does not claim -I -S -B subprocess bootstrap execution.
-    """
-    import importlib.util
-    from host_admission import HostAdmission, MemorySnapshot
+    """Exercise the shipped CLI parser/status and closure consumer on synthetic state.
 
-    caller_file = (
-        Path(__file__).resolve().parents[2]
-        / ".forgewright/runtime/host-binding-repair-20261021/verification-resilience-upgrade-20261022/reconcile-job-c46210045dc1448aa641053572936a07.py"
-    )
-    assert caller_file.is_file(), "private maintenance caller fixture is required"
-    source_text = caller_file.read_text(encoding="utf-8")
-    # Load module in an isolated namespace with sys.flags check bypassed for unit test import
-    patched_source = source_text.replace(
-        "if not (sys.flags.isolated and sys.flags.no_site and sys.flags.dont_write_bytecode):",
-        "if False:",
-    ).replace(
-        "if \"site\" in sys.modules or \"sitecustomize\" in sys.modules or \"usercustomize\" in sys.modules:",
-        "if False:",
-    )
-    mod_path = tmp_path / "caller_under_test.py"
-    mod_path.write_text(patched_source, encoding="utf-8")
-    spec = importlib.util.spec_from_file_location("caller_under_test", mod_path)
-    caller_mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(caller_mod)
+    This does not verify an unshipped private caller or isolated bootstrap execution.
+    """
+    from host_admission import HostAdmission, MemorySnapshot
+    import resource_controls
+    import host_jobs
 
     tmp_path = tmp_path.resolve()
     home = tmp_path / "admission"
@@ -825,11 +920,30 @@ def test_private_maintenance_caller_output_satisfies_failed_safe_closure_consume
     adm = HostAdmission(
         home,
         sensor=lambda: normal_mem,
-        inspector=lambda pid: "owner-id-98132" if (pid == 98132 and owner_alive) else None,
+        inspector=lambda pid: "owner-id-98132"
+        if (pid == 98132 and owner_alive)
+        else None,
         now=lambda: 2000.0,
     )
-    adm.enqueue(job_id=f"{job_id}-worker", token=tok_w, project_root=project, run_id=job_id, owner_pid=98132, kind="worker", memory_mib=64)
-    adm.enqueue(job_id=f"{job_id}-heavy", token=tok_h, project_root=project, run_id=job_id, owner_pid=98132, kind="heavy", memory_mib=1536, parent_lease_id=f"{job_id}-worker")
+    adm.enqueue(
+        job_id=f"{job_id}-worker",
+        token=tok_w,
+        project_root=project,
+        run_id=job_id,
+        owner_pid=98132,
+        kind="worker",
+        memory_mib=64,
+    )
+    adm.enqueue(
+        job_id=f"{job_id}-heavy",
+        token=tok_h,
+        project_root=project,
+        run_id=job_id,
+        owner_pid=98132,
+        kind="heavy",
+        memory_mib=1536,
+        parent_lease_id=f"{job_id}-worker",
+    )
     adm.release(f"{job_id}-heavy", tok_h, 98132, quiescent=False)
     adm.release(f"{job_id}-worker", tok_w, 98132, quiescent=False)
     adm.close()
@@ -853,7 +967,9 @@ def test_private_maintenance_caller_output_satisfies_failed_safe_closure_consume
         "owner_identity": "owner-id-98132",
     }
     req_path = home / "native-requests" / f"{req_id}.json"
-    req_raw = (json.dumps({"state": "claimed", "context": context}, sort_keys=True) + "\n").encode()
+    req_raw = (
+        json.dumps({"state": "claimed", "context": context}, sort_keys=True) + "\n"
+    ).encode()
     req_path.write_bytes(req_raw)
     req_path.chmod(0o600)
 
@@ -870,10 +986,26 @@ def test_private_maintenance_caller_output_satisfies_failed_safe_closure_consume
         "owner_identity": "owner-id-98132",
         "child": {"pid": 98748, "identity": "child-id-98748"},
         "native_context": context,
-        "storage": {"path": str(storage_dir), "state": "quarantined", "quiescent": False, "device": storage_st.st_dev, "inode": storage_st.st_ino},
+        "storage": {
+            "path": str(storage_dir),
+            "state": "quarantined",
+            "quiescent": False,
+            "device": storage_st.st_dev,
+            "inode": storage_st.st_ino,
+        },
         "leases": [
-            {"id": f"{job_id}-worker", "kind": "worker", "state": "quarantined", "token": tok_w},
-            {"id": f"{job_id}-heavy", "kind": "heavy", "state": "quarantined", "token": tok_h},
+            {
+                "id": f"{job_id}-worker",
+                "kind": "worker",
+                "state": "quarantined",
+                "token": tok_w,
+            },
+            {
+                "id": f"{job_id}-heavy",
+                "kind": "heavy",
+                "state": "quarantined",
+                "token": tok_h,
+            },
         ],
     }
     journal_path = home / "jobs" / f"{job_id}.json"
@@ -881,7 +1013,7 @@ def test_private_maintenance_caller_output_satisfies_failed_safe_closure_consume
     journal_path.write_bytes(journal_raw)
     journal_path.chmod(0o600)
     fake_cfg = tmp_path / "synthetic-codex-config.toml"
-    fake_cfg_raw = b'[features]\nhooks = true\n'
+    fake_cfg_raw = b"[features]\nhooks = true\n"
     fake_cfg.write_bytes(fake_cfg_raw)
 
     plan_path = vr_local / "plan.json"
@@ -905,8 +1037,20 @@ def test_private_maintenance_caller_output_satisfies_failed_safe_closure_consume
         "python_sha256": enrollment.digest(Path(sys.executable).read_bytes()),
         "runtime_module_pins": {},
         "leases": [
-            {"id": f"{job_id}-worker", "kind": "worker", "state": "quarantined", "memory_bytes": 64 * 1024 * 1024, "parent_id": None},
-            {"id": f"{job_id}-heavy", "kind": "heavy", "state": "quarantined", "memory_bytes": 1536 * 1024 * 1024, "parent_id": f"{job_id}-worker"},
+            {
+                "id": f"{job_id}-worker",
+                "kind": "worker",
+                "state": "quarantined",
+                "memory_bytes": 64 * 1024 * 1024,
+                "parent_id": None,
+            },
+            {
+                "id": f"{job_id}-heavy",
+                "kind": "heavy",
+                "state": "quarantined",
+                "memory_bytes": 1536 * 1024 * 1024,
+                "parent_id": f"{job_id}-worker",
+            },
         ],
         "keep_pids": [32600],
         "preserve_storage_path": str(storage_dir),
@@ -932,26 +1076,39 @@ def test_private_maintenance_caller_output_satisfies_failed_safe_closure_consume
     drain_path.chmod(0o600)
     drain_sha = enrollment.digest(drain_raw)
 
-    monkeypatch.setattr(caller_mod, "ROOT", project)
-    monkeypatch.setattr(caller_mod, "ADMISSION_HOME", home)
-    monkeypatch.setattr(caller_mod, "VRDIR", vr_local)
-    monkeypatch.setattr(caller_mod, "PLAN_PATH", plan_path)
-    monkeypatch.setattr(caller_mod, "EXPECTED_PLAN_SHA256", plan_sha)
+    plan_obj["drain_evidence_path"] = str(drain_path)
+    plan_obj["drain_evidence_sha256"] = drain_sha
+    plan_raw = (json.dumps(plan_obj, sort_keys=True) + "\n").encode()
+    plan_path.write_bytes(plan_raw)
+    plan_sha = enrollment.digest(plan_raw)
     monkeypatch.setattr(
-        caller_mod,
-        "verify_bootstrap_pins_and_import_runtime",
-        lambda _p: (HostAdmission, lambda _pid: None, enrollment.atomic_private, enrollment.code_binding, enrollment.locked),
+        resource_controls,
+        "_strict_process_census",
+        lambda: {
+            "complete": True,
+            "rows": {32600: {"ppid": 1, "pgid": 32600, "stat": "S", "birth": "b1"}},
+        },
     )
     monkeypatch.setattr(
-        caller_mod,
-        "strict_process_census",
-        lambda: {"complete": True, "rows": {32600: {"ppid": 1, "pgid": 32600, "stat": "S", "birth": "b1"}}},
+        "host_resources.inspect_process", lambda pid: None if pid == 98132 else "other"
     )
-    monkeypatch.setattr("host_resources.inspect_process", lambda pid: None if pid == 98132 else "other")
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["caller.py", "--apply", plan_sha, "--drain-evidence", str(drain_path), "--drain-evidence-sha256", drain_sha],
+    capsys.readouterr()
+    assert (
+        host_jobs.main(
+            [
+                "--home",
+                str(home),
+                "reconcile-quarantined",
+                "--project",
+                str(project),
+                "--plan",
+                str(plan_path),
+                "--sha256",
+                plan_sha,
+                "--apply",
+            ]
+        )
+        == 0
     )
-    assert caller_mod.main() == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "reconciled"
     enrollment.require_quiescent_enrollment(home, project)

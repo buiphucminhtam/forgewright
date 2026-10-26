@@ -3,7 +3,7 @@ id: pipeline-operating-contract
 title: Elite Pipeline Operating Contract
 summary: Pipeline-owned consulting, hidden-risk anticipation, adversarial research, self-audit/learning, and visual grounding applied around specialist skills.
 status: active
-version: 1.2.0
+version: 1.3.0
 owners: [core]
 triggers: []
 used_by: [pipeline, production-grade, middleware-chain, quality-gate]
@@ -212,7 +212,7 @@ Domain overlap is valid only when it is genuinely part of the specialty: prompt 
 
 1. **CONSULT** — resolve desired outcome and scope via `consulting-risk-radar.md`.
 2. **ANTICIPATE** — record credible cross-domain risk signals and assign owners.
-3. **GROUND** — resolve decision-changing unknowns through `research-gate.md`; preserve instruction boundaries.
+3. **GROUND** — resolve decision-changing unknowns through `research-gate.md`; before implementing unfamiliar functionality from scratch, apply its [GitHub reference pass](research-gate.md#github-reference-pass-for-unfamiliar-functionality). Pass the resulting evidence and decision through the existing research context; preserve instruction boundaries.
 4. **RUNTIME / TOKEN ECONOMICS** — identify the active runtime and structured
    capabilities. For every candidate dispatch, fetch or reuse same-date official
    per-model input/cached-input/output token rates, estimate role token ranges and

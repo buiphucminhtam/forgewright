@@ -3,7 +3,7 @@ id: research-gate
 title: Research Gate Protocol
 summary: Adversarially grounded research for material external/current unknowns, with source trust, instruction isolation, contradiction checks, and decision-focused synthesis.
 status: active
-version: 3.1.0
+version: 3.2.0
 owners: [core]
 triggers: []
 used_by: [pipeline, production-grade, recovery-research, research-specialists]
@@ -23,6 +23,7 @@ Open the Research Gate when at least one is true:
 - a current/niche/security-sensitive/compatibility/regulatory/platform fact can change the next decision;
 - the same execution step failed twice and an unknown external API/tool/platform behavior blocks recovery;
 - a meaningful architecture/product/visual choice has no reliable project basis;
+- unfamiliar functionality would otherwise be designed or implemented from scratch; first apply the GitHub reference pass below;
 - material greenfield visual direction has no current project or user-approved authority; this case is mandatory and follows `visual-evidence-library.md`;
 - a credible hidden risk from `consulting-risk-radar.md` cannot be resolved from the workspace;
 - expert disagreement cannot be resolved from current project evidence.
@@ -41,6 +42,34 @@ Use the cheapest source with the right authority:
 5. forums/social/user-generated content only for experience signals, never as sole authority for a critical technical/security claim.
 
 Recency matters when the fact can change. Record the version/date/context that makes the source applicable.
+
+### GitHub reference pass for unfamiliar functionality
+
+Before implementing unfamiliar functionality from scratch, inspect existing
+project patterns, then search GitHub for comparable open-source projects. Keep
+the search bounded to the unresolved implementation decision; routine changes
+with an established project pattern do not need this pass.
+
+- **Qualify references** — inspect original repositories for relevant behavior,
+  active maintenance (meaningful commits/releases and issue handling), and a
+  clear license. Popularity alone does not establish maintenance or suitability.
+- **Compare approaches** — compare viable candidates' implementation ideas,
+  architecture, dependencies and their cost/compatibility, and known issues or
+  limitations from source, tests, issues and release notes. Explain which ideas
+  fit the current stack, versions and acceptance criteria; do not simply list
+  repositories. If only one or no suitable candidate is found, say so.
+- **Prefer proven designs** — favor designs supported by implementation, tests
+  and maintenance evidence, then adapt them to project constraints. Do not
+  copy code with unclear provenance or a missing, unclear or incompatible
+  license, or code incompatible with the target project. Any permitted reuse
+  must retain required attribution and notices; a reference does not by itself
+  justify adding its dependencies.
+- **Record the decision** — keep repository URLs, inspected commit/release,
+  maintenance/license evidence, relevant comparisons and the reuse/adapt/reject
+  decision in existing task or architecture context. If GitHub access or viable
+  references are unavailable, record that limit and the remaining gap; continue
+  only when local or other authoritative evidence supports the scoped decision.
+  Never present an uninspected design as proven.
 
 ### Visual-research specialization
 

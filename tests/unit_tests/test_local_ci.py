@@ -415,6 +415,7 @@ def test_local_ci_standalone_and_managed_ownership_and_timeout(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import json
+
     tmp_path = tmp_path.resolve()
     runtime_dir = str((ROOT / "scripts" / "runtime").resolve())
     if runtime_dir not in sys.path:
@@ -506,8 +507,9 @@ def test_local_ci_standalone_and_managed_ownership_and_timeout(
         project_recipe,
         "process_table",
         lambda: {
-            my_pgid: (100, my_pgid, "birth-root"),
             my_pid: (my_pgid, my_pgid, "birth-self"),
+            # A group leader is also the root; preserve its owner ancestry.
+            my_pgid: (100, my_pgid, "birth-root"),
         },
     )
     killpg_calls: list[tuple[int, int]] = []
