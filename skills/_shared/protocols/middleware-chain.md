@@ -25,7 +25,7 @@ User Request
 │ MIDDLEWARE CHAIN — Pre-Skill (top to bottom)         │
 │                                                      │
 │  ① SessionData     Load profile, session state       │
-│  ② ContextLoader   Load memory, conventions, KIs     │
+│  ② ContextLoader   Optional bounded context lookup     │
 │  ②b OperatingPreflight  Build PIPELINE_CONTEXT       │
 │  ③b DryRunContext  System Prompt injection (if mock) │
 │  ③ SkillRegistry   Progressive skill discovery       │
@@ -62,8 +62,8 @@ Result / Next Skill
 
 | # | Middleware | Source Protocol | Hook | Purpose |
 |---|-----------|----------------|------|---------|
-| ① | **SessionData** | session-lifecycle.md §Steps 1-3 | `before_skill()` | Load project-profile.json, session-log.json, detect manual changes |
-| ② | **ContextLoader** | session-lifecycle.md §Step 4 + memory-manager | `before_skill()` | Search local_memory with task keywords, load code-conventions.md |
+| ① | **SessionData** | session-lifecycle.md §Steps 1-3 | `before_skill()` | Reconcile matching task/ownership and relevant profile facts when needed |
+| ② | **ContextLoader** | session-lifecycle.md §Step 3 + memory-manager | `before_skill()` | Optional bounded context lookup when useful; reuse parent context and respect disable flags |
 | ②b| **OperatingPreflight** | pipeline-operating-contract.md | `before_skill()` | Build/refresh `PIPELINE_CONTEXT`: outcome/safe scope, cross-domain risk owners, research evidence, visual basis when applicable |
 | ③b| **DryRunContext** | dryrun-interceptor.md | `before_skill()` | Inject global system prompt instructing AI it is in test mode (Option B) |
 | ③ | **SkillRegistry** | skills-config.json | `before_skill()` | Filter available skills by classified mode (progressive loading) |
@@ -77,8 +77,8 @@ Result / Next Skill
 | ⑥ | **QualityGate** | quality-gate.md | `after_skill()` | Run specialist/domain verification and acceptance checks proportional to risk |
 | ⑥b| **OperatingAudit** | pipeline-operating-contract.md + critical-audit.md | `after_skill()` | Close cross-domain risk signals, visual conformance, requirement/cross-entry audit and project-local learning before completion |
 | ⑦ | **BrownfieldSafety** | brownfield-safety.md | `after_skill()` | Regression check, protected path enforcement, change manifest |
-| ⑧ | **TaskTracking** | session-lifecycle.md §Hooks | `after_skill()` | Emit SKILL_COMPLETED event, update task.md |
-| ⑨ | **Memory** | memory-manager.md + middleware/09-memory.md | `after_skill()` / `turn_close()` when useful | Persist verified durable decisions/progress/blockers for substantial work; memory is optional support, not project truth |
+| ⑧ | **TaskTracking** | session-lifecycle.md §Hooks | `after_skill()` | Emit observed result; update canonical task-plan state and matching derived views |
+| ⑨ | **Memory** | memory-manager.md + middleware/09-memory.md | `after_skill()` / `turn_close()` when useful | Optional authorized durable capture; no per-turn write, project seeding or completion gate |
 | ⑩ | **GracefulFailure** | graceful-failure.md | `on_error()` | Detect stuck states and enforce the kernel two-failure stop/escalation rule. |
 | ⑪ | **RecoveryResearch** | research-gate.md | `on_error()` | No-op unless a material knowledge/evidence gap exists; research the minimum evidence needed, never self-modify shared skills. |
 | ⑫ | **CircuitBreaker** | circuit-breaker.md | `after_skill()` when remote/tool failure isolation applies | Fault isolation for repeated remote/tool failures; provider-specific call requirements belong in verified runtime adapters, not this generic protocol |
@@ -242,12 +242,12 @@ CHAIN_COMPLETED   { session_id, total_duration_ms, skills_run, timestamp }
 
 ## Monitoring
 
-After each middleware chain execution, log summary:
+When a chain summary is useful, report only measured execution; skipped optional slots are normal. This illustration is not observed telemetry:
 
 ```
 ━━━ Middleware Chain Summary ━━━━━━━━━━━━━━━━━━━━
-  ① SessionData:      ✓ 12ms   (profile loaded)
-  ② ContextLoader:    ✓ 45ms   (3 memories retrieved)
+  ① SessionData:      ⊘ skip   (parent context current)
+  ② ContextLoader:    ⊘ skip   (no history needed)
   ③ SkillRegistry:    ✓ 8ms    (loaded 5/52 skills)
   ④ Guardrail:        ✓ 2ms    (0 blocked, 0 warned)
   ⑤ Summarization:    ⊘ skip   (context within budget)
@@ -255,7 +255,7 @@ After each middleware chain execution, log summary:
   ⑥ QualityGate:      ✓ 180ms  (score: 87/100)
   ⑦ BrownfieldSafety: ✓ 320ms  (0 regressions)
   ⑧ TaskTracking:     ✓ 5ms    (SKILL_COMPLETED emitted)
-  ⑨ Memory:           ✓ 15ms   (2 facts extracted)
+  ⑨ Memory:           ⊘ skip   (no authorized durable capture)
   ⑩ GracefulFailure:  ✓ 1ms    (no errors)
   ⑪ ASIP:             ✓ 2ms    (no errors)
   ⑫ CircuitBreaker:   ✓ 1ms    (state: CLOSED)

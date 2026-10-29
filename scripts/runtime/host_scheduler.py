@@ -14,6 +14,10 @@ import time
 class HostScheduler(AdmissionStore):
     def pressure(self):
         sample = self.sensor()
+        # Diagnostics describe this observation only; they never grant capacity.
+        self._observation_ready = True
+        self._observation_wait_ms = 0
+        self._pause_reason = ""
         self.set_meta("swap_credit_bytes", 0)
         if sample.source != "darwin-vm-stat+memorystatus":
             self.set_meta("estimate_previous_valid", 0)
@@ -88,6 +92,7 @@ class HostScheduler(AdmissionStore):
                 self.set_meta("swap_sample_at", now)
                 self.set_meta("swap_sample_bytes", sample.swap_total_bytes or 0)
             ready = valid and now - self.meta("estimate_quiet_since") >= 15
+            self._observation_ready = ready
             window_elapsed = now - self.meta("swap_window_at")
             average_rate = 0
             if valid and 0 < window_elapsed <= 30:
@@ -106,6 +111,22 @@ class HostScheduler(AdmissionStore):
             # a permanent veto. Require fresh non-critical/low-load observations.
             # Monotonic swap activity spends cache credit instead of vetoing it.
             if not ready:
+                self._observation_wait_ms = (
+                    math.ceil(
+                        max(0, 15 - (now - self.meta("estimate_quiet_since"))) * 1000
+                    )
+                    if valid
+                    else 0
+                )
+                self._pause_reason = (
+                    "host-load"
+                    if now < self.meta("load_blocked_until")
+                    else "memory-pressure"
+                    if sample.pressure in {"critical", "unknown"}
+                    else "telemetry-unavailable"
+                    if not valid
+                    else "observation-warmup"
+                )
                 self.set_meta("blocked_until", now)
                 return sample, 1, True
             # Normal OS pressure permits bounded use of already provisioned
@@ -141,6 +162,16 @@ class HostScheduler(AdmissionStore):
             or now < self.meta("load_blocked_until")
             or sample.total_bytes <= 0
         )
+        if paused:
+            self._pause_reason = (
+                "host-load"
+                if now < self.meta("load_blocked_until")
+                else "memory-pressure"
+                if sample.pressure in {"critical", "unknown"} or sample.total_bytes <= 0
+                else "insufficient-memory"
+                if sample.available_bytes < sample.headroom
+                else "recovery-hold"
+            )
         cap = min(
             sample.worker_limit,
             1 if estimated or now < self.meta("restricted_until") else 2,
@@ -150,16 +181,8 @@ class HostScheduler(AdmissionStore):
     def schedule(self):
         sample, capacity, paused = self.pressure()
         if paused:
-            reason = (
-                "host-load"
-                if self.now() < self.meta("load_blocked_until")
-                else "insufficient-memory"
-                if sample.pressure in {"normal", "warning"}
-                and sample.available_bytes < sample.headroom
-                else "memory-pressure"
-            )
             self.connection.execute(
-                "UPDATE jobs SET reason=? WHERE state='queued'", (reason,)
+                "UPDATE jobs SET reason=? WHERE state='queued'", (self._pause_reason,)
             )
             return
         now = self.now()
@@ -216,6 +239,9 @@ class HostScheduler(AdmissionStore):
                 "worker_limit": cap,
                 "heavy_limit": 1,
                 "paused": paused,
+                "pauseReason": self._pause_reason,
+                "observationReady": self._observation_ready,
+                "observationWaitMs": self._observation_wait_ms,
                 "pressure": sample.pressure,
                 "memory_source": sample.source,
                 "load_ratio": sample.load_ratio,

@@ -1,6 +1,7 @@
 /** Managed game test admission and owned teardown; no native provider provisioning. */
 import {randomUUID} from 'node:crypto';
 import * as sharedGovernor from '../../integrations/pi/host-governor.mjs';
+import {createMemoryGuard,OBSERVED_BROWSER_MEMORY} from './game-test-memory.mjs';
 
 export const GAME_RESERVATION_MIB = Object.freeze({browser:1024, emulator:2048, combined:3072});
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -11,8 +12,9 @@ function bounded(promise, ms, code) {
 }
 
 export async function runGameTest({projectRoot, runId=`game-${randomUUID()}`, resourceKind='browser',
- timeoutMs=120000, cleanupMs=5000, waitMs=30000, signal, governor=sharedGovernor}, work) {
+ timeoutMs=120000, cleanupMs=5000, waitMs=30000, signal, governor=sharedGovernor,memoryPolicy='fixed'}, work) {
  if(!Object.hasOwn(GAME_RESERVATION_MIB,resourceKind) || typeof work!=='function' ||
+    !['fixed','observed'].includes(memoryPolicy) || (memoryPolicy==='observed'&&resourceKind!=='browser') ||
     !Number.isSafeInteger(timeoutMs) || timeoutMs<1 || timeoutMs>1800000 ||
     !Number.isSafeInteger(cleanupMs) || cleanupMs<1 || cleanupMs>30000) throw failure('game_invalid_limits');
  const controller=new AbortController();
@@ -24,7 +26,11 @@ export async function runGameTest({projectRoot, runId=`game-${randomUUID()}`, re
  const timer=setTimeout(()=>abort(failure('game_timeout')),timeoutMs);
  const resources=[];const roles=new Set();let closing=false,worker,heavy,heartbeat,heartbeatBusy=false,settled=true;
  let result,primary,quiescent=true;
- const session=Object.freeze({signal:controller.signal,
+ const memory=memoryPolicy==='observed'?createMemoryGuard({getStatus:()=>governor.getHostAdmissionStatus(),abort}):undefined;
+ const session=Object.freeze({signal:controller.signal,memoryPolicy,
+  async observeBrowser(child){if(!memory)throw failure('game_memory_policy');return memory.attach(child);},
+  async browserClosed(){return memory?memory.isClosed():false;},
+  async checkMemory(){controller.signal.throwIfAborted();if(memory)await memory.check();},
   abort,
   claim(role) {
    if(closing || !heavy)throw failure('game_session_closed');
@@ -47,7 +53,8 @@ export async function runGameTest({projectRoot, runId=`game-${randomUUID()}`, re
  try {
   worker=await governor.acquireHostSlot({projectRoot,runId,kind:'worker',signal:controller.signal,waitMs});
   heavy=await governor.acquireHostSlot({projectRoot,runId,kind:'heavy',parentLeaseId:worker.id,
-   memoryMiB:GAME_RESERVATION_MIB[resourceKind],signal:controller.signal,waitMs});
+   memoryMiB:memory?OBSERVED_BROWSER_MEMORY.startupMiB:GAME_RESERVATION_MIB[resourceKind],signal:controller.signal,waitMs});
+  if(memory)await memory.start();
   controller.signal.throwIfAborted();
   heartbeat=setInterval(()=>{
    if(heartbeatBusy)return;
@@ -71,6 +78,7 @@ export async function runGameTest({projectRoot, runId=`game-${randomUUID()}`, re
  } catch(error) {primary=error;}
  finally {
   closing=true;abort(failure('game_session_closed'));clearTimeout(timer);clearInterval(heartbeat);
+  if(memory){await memory.stop();const reason=memory.receipt().failureReason;if(reason&&!primary)primary=failure(reason);}
   // Always attempt every closer, even when another closer fails or times out.
   const closed=[];
   for(const resource of resources.toReversed()) {
@@ -89,6 +97,6 @@ export async function runGameTest({projectRoot, runId=`game-${randomUUID()}`, re
   }
   signal?.removeEventListener('abort',relay);process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop);
  }
- if(primary)throw primary;
- return {result,quiescence:'confirmed',resourceKind};
+ if(primary){if(memory&&typeof primary==='object')primary.memory=memory.receipt(quiescent?'confirmed':'uncertain');throw primary;}
+ return {result,quiescence:'confirmed',resourceKind,...(memory?{memory:memory.receipt('confirmed')}:{})};
 }

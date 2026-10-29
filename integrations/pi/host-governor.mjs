@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { fail } from './contracts.mjs';
+import { fail, PiHostError } from './contracts.mjs';
 
 const SCHEMA = 'forgewright-host-admission/v1';
 const BROKER = fileURLToPath(new URL('../../scripts/runtime/host_admission_broker.py', import.meta.url));
@@ -113,7 +113,17 @@ export async function acquireHostSlot({ projectRoot, runId, kind = 'worker', par
     const deadline = performance.now() + waitMs;
     while (row.state === 'queued') {
       signal?.throwIfAborted();
-      if (performance.now() >= deadline) fail('pi_host_capacity_timeout');
+      if (performance.now() >= deadline) {
+        const error = new PiHostError('pi_host_capacity_timeout');
+        // Preserve the stable error code and the last queued decision. A new
+        // status RPC could change the observation or delay bounded cancellation.
+        error.admission = Object.freeze({ state: 'queued',
+          reason: typeof row.reason === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(row.reason) ? row.reason : 'unknown',
+          kind: ['worker', 'heavy'].includes(row.kind) ? row.kind : 'unknown',
+          requestedMiB: Number.isSafeInteger(row.memoryMiB) && row.memoryMiB >= 64 && row.memoryMiB <= 8192 ? row.memoryMiB : null,
+          waitMs: Number.isSafeInteger(row.waitMs) && row.waitMs >= 0 ? row.waitMs : 0 });
+        throw error;
+      }
       await delay(Math.min(250, Math.max(1, deadline - performance.now())));
       signal?.throwIfAborted();
       row = await request(home, 'poll', owned);

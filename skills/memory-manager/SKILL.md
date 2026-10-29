@@ -55,6 +55,14 @@ python3 scripts/memory/mem0-v2.py capture --session CHAT_ID --event EVENT_ID < s
 
 Kinds: `decision`, `blocker`, `remember`, `handoff`, `pre-compaction`, `task-close`. Default scope is `session`; use `project` only for deliberately shared project context. `tick`, `status` and `trivial` are skipped. No periodic summarizer is started.
 
+Capture peers queue on the database directory's safe
+`runtime/memory-capture/.writer.lock` before
+initialization and the SQLite transaction, preserving event deduplication while
+checkpoint work runs. SQLite remains authoritative for unrelated manual writers,
+which can still cause a bounded busy failure. Native capture keeps its existing
+1.5-second child deadline and allows ordinary work when capture is unavailable.
+The peer lock does not make checkpoint files and SQLite a single atomic store.
+
 Optional `source_refs` entries bind an existing workspace-relative file to its SHA-256: `{"path":"game/package.json","sha256":"<64 hex characters>"}`. Bindings outside the workspace or changed content are rejected/omitted. A binding does not prove the summary's semantic truth; re-check it when using memory. Optional `ttl_seconds` (1–86400) expires context without deleting data. `supersedes_id` explicitly replaces an active observation in the same scope.
 
 A successful receipt includes `status=captured`, an observation ID, checkpoint reference and `authority=context-only`. Replaying the same project/session/event and payload returns the original receipt; changing the payload, including its visibility scope, fails. SQLite observation/index/receipt commit together. A crash between checkpoint publication and SQLite commit can leave an unprojected checkpoint, but must not produce a durable capture acknowledgment. Retry explicitly; do not treat an attempted write as a saved memory.
@@ -82,19 +90,31 @@ Do not bypass hook trust. Existing rule-context and verification handlers remain
 independent. Plugin installation alone does not install this project adapter;
 Windows native dispatch has not been verified.
 
-Both operations are opt-in, configured in the host process environment:
+Both operations are opt-in. Configure the host environment or, after explicit
+owner enablement, set defaults in the two exact project hook commands and trust
+those changed definitions through `/hooks`. Shell `${NAME-default}` preserves an
+explicitly empty override; query empty and capture `0` remain off. The repository's
+own project config is owner-enabled; this does not activate other projects.
+Back up and explicitly migrate legacy storage before enabling capture. Keep the
+rule/verification handlers and global hook configuration unchanged.
+
+The adapter reads:
 
 - `FORGEWRIGHT_MEMORY_QUERY` selects a bounded query at startup/resume/compact;
   no query means no retrieval. It does not query or store on every user prompt.
 - `FORGEWRIGHT_MEMORY_CAPTURE=1` permits `Stop` to save one explicitly selected
-  structured summary from a final fenced `forgewright-memory` JSON block in
+  structured summary from one fenced `forgewright-memory` JSON block in
   `last_assistant_message`. Use the capture payload documented above. No block
   means no capture; a full assistant message or transcript is never ingested.
+  Place the selected block before strict VERIFY and any terminal citation
+  appendix. Surrounding prose/evidence is excluded from memory, and duplicate
+  summary blocks are rejected. Capture remains subject to host/user permission.
 
 The native `session_id` and `turn_id` bind private scope and idempotency. Launch
 from the project root: native `cwd` must resolve to that exact root. The adapter
 pins storage and continuity to that workspace and ignores inherited
-`MEM0_DB_PATH`, `MEM0_PROJECT_ID`, `FORGEWRIGHT_CONTINUITY_ROOT` and session aliases;
+`MEM0_DB_PATH`, `MEM0_PROJECT_ID`, `MEMORY_DB_DIR`,
+`FORGEWRIGHT_CONTINUITY_ROOT` and session aliases;
 logical sharing through those overrides remains an explicit CLI feature.
 `scope: project` in the selected summary deliberately makes it visible to another
 session. Source bindings, redaction, TTL and both disable flags use the existing

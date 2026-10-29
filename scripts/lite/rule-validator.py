@@ -386,9 +386,67 @@ def _block_ranges(response: str) -> tuple[list[tuple[int, int]], list[str]]:
     return ranges, errors
 
 
+def _split_memory_footer(response: str) -> tuple[str, list[str]]:
+    """Separate one strictly shaped terminal citation appendix, never evidence.
+
+    This is a line protocol, not general XML: no attributes, nesting, entities,
+    arbitrary suffix text or external file reads are interpreted here.
+    """
+    lines = response.splitlines()
+    error = ["memory citation appendix must be one well-formed terminal block"]
+    marker = re.compile(
+        r"</?(?:oai-mem-citation|citation_entries|rollout_ids)(?=[\s/>])",
+        re.IGNORECASE,
+    )
+    starts = [i for i, line in enumerate(lines) if line == "<oai-mem-citation>"]
+    if not starts:
+        return response, error if marker.search(response) else []
+    if len(starts) != 1 or marker.search("\n".join(lines[: starts[0]])):
+        return response, error
+    footer = lines[starts[0] :]
+    while footer and not footer[-1].strip():
+        footer.pop()
+    if (
+        len(footer) < 7
+        or footer[1] != "<citation_entries>"
+        or footer[-2:] != ["</rollout_ids>", "</oai-mem-citation>"]
+    ):
+        return response, error
+    try:
+        boundary = footer.index("</citation_entries>")
+    except ValueError:
+        return response, error
+    if boundary < 3 or footer[boundary + 1 : boundary + 2] != ["<rollout_ids>"]:
+        return response, error
+    for row in footer[2:boundary]:
+        match = re.fullmatch(
+            r"(?P<path>[\w .-]+(?:/[\w .-]+)*\.md):"
+            r"(?P<start>[1-9][0-9]*)-(?P<end>[1-9][0-9]*)"
+            r"\|note=\[(?P<note>[^\[\]<>\x00-\x1f\x7f]+)\]",
+            row,
+        )
+        if not match:
+            return response, error
+        start, end = match["start"], match["end"]
+        if (
+            any(part in {".", ".."} for part in match["path"].split("/"))
+            or not match["note"].strip()
+            or (len(start), start) > (len(end), end)
+        ):
+            return response, error
+    for row in footer[boundary + 2 : -2]:
+        if not re.fullmatch(
+            r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", row
+        ):
+            return response, error
+    return "\n".join(lines[: starts[0]]), []
+
+
 def _parse_blocks(response: str) -> tuple[list[dict[str, str]], list[str]]:
+    response, footer_errors = _split_memory_footer(response)
     lines = response.splitlines()
     ranges, errors = _block_ranges(response)
+    errors.extend(footer_errors)
     blocks: list[dict[str, str]] = []
     expected = list(REQUIRED_VERIFY_FIELDS)
     for number, (start, end) in enumerate(ranges, 1):

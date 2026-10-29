@@ -120,7 +120,7 @@ After all HARDEN tasks complete:
 6. Medium/Low → documented according to project risk policy; unresolved blocking pipeline risk signals still block regardless of aggregate score
 7. **Run aggregate quality scoring** — compute HARDEN phase quality score
 8. **Call session lifecycle hook** — `PHASE_COMPLETE("HARDEN", summary)`
-   - **Memory save:** `python3 scripts/mem0-cli.py add "HARDEN complete: [N] tests, [M] security findings ([X] auto-fixed). Quality: [score]/100" --category tasks`
+   - Record observed findings/evidence in canonical task state; optional authorized durable memory follows Middleware 09.
 9. **Update quality metrics** — write to `.forgewright/quality-metrics.json`
 10. Print HARDEN summary:
 ```
@@ -133,13 +133,13 @@ Quality Score: [XX]/100 (Grade [A-F])
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-11. **Brownfield merge readiness check** (if brownfield project):
+11. **Brownfield merge readiness check** (only when a merge/release is in scope):
     - Read `skills/_shared/protocols/brownfield-safety.md` → merge readiness assessment
-    - Verify full regression suite passes
+    - Verify applicable regression checks; full suite when required by the project contract
     - Verify all protected paths intact
-    - Verify quality score ≥ threshold
+    - Verify acceptance evidence and required reviews; scores are telemetry
     - If not ready → flag issues before proceeding to SHIP
 
 ## Handoff to SHIP
 
-Read `phases/ship.md` and begin SHIP phase.
+Read `phases/ship.md` and begin only if release/operations are part of the requested scope. Otherwise finalize the verified local task without manufacturing SHIP work.

@@ -46,8 +46,8 @@ Post-Skill: ⑥ QualityGate → ⑥b OperatingAudit → ⑦ BrownfieldSafety →
 
 | # | Middleware | File | Hook | Purpose |
 |---|-----------|------|------|---------|
-| ① | SessionData | `middleware/01-session-data.md` | before_skill | Load profile, session state |
-| ② | ContextLoader | `middleware/02-context-loader.md` | before_skill | Load memory, conventions |
+| ① | SessionData | `middleware/01-session-data.md` | before_skill | Matching context when needed |
+| ② | ContextLoader | `middleware/02-context-loader.md` | before_skill | Optional bounded lookup |
 | ②b| OperatingPreflight | `skills/_shared/protocols/pipeline-operating-contract.md` | before_skill | Build/refresh PIPELINE_CONTEXT: outcome, safe scope, risk ownership, research plus evidence-bound visual basis |
 | ③b| DryRunContext | `skills/_shared/protocols/dryrun-interceptor.md` | before_skill | Dry-run mode system prompt injection |
 | ③ | SkillRegistry | `middleware/03-skill-registry.md` | before_skill | Progressive skill loading |
@@ -57,7 +57,7 @@ Post-Skill: ⑥ QualityGate → ⑥b OperatingAudit → ⑦ BrownfieldSafety →
 | ⑥b| OperatingAudit | `skills/_shared/protocols/pipeline-operating-contract.md` | after_skill | Close cross-domain risks, visual conformance, critical audit, project-local learning |
 | ⑦ | BrownfieldSafety | `middleware/07-brownfield-safety.md` | after_skill | Regression + protected paths |
 | ⑧ | TaskTracking | `middleware/08-task-tracking.md` | after_skill | Update todos, emit events |
-| ⑨ | Memory | `middleware/09-memory.md` | after_skill + turn_close | Persistent fact extraction |
+| ⑨ | Memory | `middleware/09-memory.md` | after_skill + turn_close | Authorized durable capture |
 | ⑩ | GracefulFailure | `middleware/10-graceful-failure.md` | on_error | Retry logic, stuck detection |
 | ⑪ | RecoveryResearch | `skills/_shared/protocols/research-gate.md` | on_error | Research only for a material evidence/knowledge gap; no framework self-mutation |
 | ⑫ | CircuitBreaker | `skills/_shared/protocols/circuit-breaker.md` | after_skill | Fault isolation + state machine |
@@ -218,7 +218,7 @@ Detailed execution instructions, QA sequences, and task flows for non-Full-Build
 
 ## Chat Interpretation (Request Boundary)
 
-Treat every new user message as a fresh instruction boundary: reconcile it with current workspace evidence and existing constraints before acting. Do **not** emit magic reset tokens or other user-visible ceremony.
+Reconcile each new user message with current workspace evidence and existing constraints. Treat it as steering for active work unless the user explicitly cancels or replaces that objective; preserve verified progress through compaction. Do **not** emit magic reset tokens or other user-visible ceremony.
 
 Use `chat-interpreter` when the request is materially ambiguous, multi-domain, or expensive to misread. A clear `QUICK` request may be interpreted inline under the kernel boot sequence.
 
@@ -528,9 +528,7 @@ Write `.forgewright/scope-analysis.md` only for substantial multi-lane work wher
 
 When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-dispatch skill (`skills/parallel-dispatch/SKILL.md`) to spawn git worktrees, distribute Task Contracts, and merge results. When **Sequential** is selected, the pipeline behaves as before.
 
-6. **Detect existing workspace & load memory** — if `.forgewright/` has prior state, use session-lifecycle resume protocol. If `.forgewright/session-log.json` has interrupted state, offer resume. Otherwise offer clean start via notify_user.
-   - **Memory load:** Run `python3 scripts/mem0-v2.py search "<project-name> <user-request-keywords>" --limit 5` to retrieve relevant project context. Inject results into your context for this session.
-   - If no results or memory is empty, verify setup with `python3 scripts/mem0-v2.py stats`.
+6. **Reconcile matching workspace context** — use the canonical session lifecycle and current task/relay state. Resume authorized unfinished work directly; ask only for a material unresolved ambiguity. Retrieve scoped memory only when useful and enabled. Empty results or missing optional memory do not trigger setup, seeding, retry or a new approval round.
 
 6.5. **Build the pipeline operating envelope before specialist routing:**
    - Read `skills/_shared/protocols/pipeline-operating-contract.md`.
@@ -576,11 +574,11 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
 Track only applicable work and dependencies. Canonical task IDs may remain for compatibility, but mark irrelevant lanes `SKIPPED` instead of inventing tasks so a fixed count is filled.
 
 10. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
-   - **Memory save (session start):** Run `python3 scripts/mem0-v2.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
+   - No session-start memory write is required. Use optional authorized durable capture only when continuity benefits.
 
 **Key principle:** Ground, right-size, plan, execute, verify. Pause only at material approval gates defined by the user/project/safety contract. In Thorough/Meticulous mode, show additional phase summaries as requested; do not turn informational handoffs into mandatory approvals.
 
-After a **substantial** user request, persist only durable decisions/progress/blockers that will matter to a later session. Do not write memory for trivial chat/status turns, and never treat remembered state as proof of the current workspace.
+After a **substantial** user request, consider authorized optional capture only for durable decisions/progress/blockers that will matter to a later session. Do not write memory for trivial chat/status turns, and never treat remembered state as proof of the current workspace.
 
 ## Quality Gate Integration
 
@@ -658,39 +656,12 @@ When context reaches 80% capacity or session needs to transfer:
 
 ### Memory Integration Best Practices
 
-**Persistent Memory (ChromaDB + sentence-transformers):**
-- Store architectural decisions: `mem0-v2.py add "ARCH: [details]"`
-- Store project context: `mem0-v2.py add "PROJECT: [name]"`
-- Store technical learnings: `mem0-v2.py add "LESSON: [insight]"`
+Use the current SQLite/structured-capture contract in `skills/memory-manager/SKILL.md`.
+Memory is optional context and respects host/user permissions and disable flags.
+Do not write at session start, every phase, or every turn as a ritual. Prefer
+canonical task state and ADRs for project truth; capture only a selected durable
+fact or handoff when authorized and useful. No ChromaDB/vector setup is required.
 
-**Session Memory (localStorage):**
-- Current task progress
-- Recently modified files
-- User preferences
-
-**Cross-Session Continuity:**
-- Project profile loaded at session start
-- Previous session learnings available
-- Long-term context preserved
-
-### Error Recovery Patterns
-
-| Error Type | Detection | Recovery |
-|-----------|-----------|----------|
-| Compilation failure | Build step fails | Read error, fix syntax, retry |
-| Test failure | QA step fails | Identify test, fix code, re-run |
-| Missing dependency | npm install fails | Install dependency, retry |
-| File conflict | Merge fails | Manual resolution, re-merge |
-| API contract violation | Integration fails | Update contract, sync teams |
-| Security vulnerability | Scan finds CVE | Apply patch or workaround |
-
-**Retry / stuck rule:** Follow `kernel/SOLVE.md`: after the same step fails twice, STOP repeated attempts and use evidence-driven escalation/research. Do not maintain a second retry-count policy here.
-
-### Logging Standards
-
-Substantial execution should log only what another role/session needs. `QUICK` work may use a one-line change/check record. Any timestamp/duration must come from actual tooling; never estimate it:
-
-```markdown
 ## Skill Execution Log
 
 **Skill:** [name]
@@ -794,23 +765,22 @@ Call these hooks at the appropriate lifecycle points:
 
 | Event | Hook | Action |
 |-------|------|--------|
-| Phase completes | `PHASE_COMPLETE(name, summary)` | Update session-log, save to memory, update quality metrics |
+| Phase completes | `PHASE_COMPLETE(name, summary)` | Record observed phase result in canonical task/session state |
 | Task completes | `TASK_COMPLETE(id, name, status, summary)` | Update session-log |
-| Gate decided | `GATE_DECISION(gate#, decision, feedback)` | Update session-log, save decision to memory |
-| Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Save architecture to memory — see Gate 2.5 |
-| Error occurs | `ERROR(task_id, type, details)` | Update session-log, save blocker to memory |
-| Pipeline ends | Session End | Summarize, save to memory, update project profile |
-| Substantial request/decision closed | `TURN_CLOSE` | Persist only durable project decisions/progress/blockers; skip trivial turns |
+| Gate decided | `GATE_DECISION(gate#, decision, feedback)` | Record decision and evidence in canonical task/session state |
+| Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Update canonical ADRs — optional memory follows Gate 2.5 |
+| Error occurs | `ERROR(task_id, type, details)` | Record observed failure and next action in task state |
+| Pipeline ends | Session End | Reconcile final task state, verify exact tree, link receipts |
+| Substantial request/decision closed | `TURN_CLOSE` | Optional explicitly authorized durable capture; never a completion gate |
 
 ## User Experience Protocol
 
-Follow the shared UX Protocol at `skills/_shared/protocols/ux-protocol.md`. Key rules:
-1. **Don't** ask open-ended questions — always use notify_user with predefined numbered options (open-ended questions stall the pipeline because the model can't proceed without parsing free-text responses)
-2. **"Chat about this"** always last option
-3. **Recommended option first** with `(Recommended)` suffix
-4. **Continuous execution** — work until next gate or completion
-5. **Real-time progress** — constant ⧖/✓ progress updates via task_boundary
-6. **Autonomy** — sensible defaults, self-resolve, report decisions
+Follow `kernel/CLARIFY.md` and the shared UX Protocol proportionately. Ask only
+for material missing information that inspection cannot resolve. Use concise
+options when helpful; a direct free-text answer is valid. No fixed question
+format or generic resume/proceed prompt may block already-authorized work.
+Continue through routine phase boundaries, provide meaningful progress, and
+escalate only the actual approval/safety boundary that applies.
 
 ### Gate Companion — Polymath Integration
 
@@ -833,13 +803,13 @@ At each gate, adapt behavior based on `production/review-mode.txt`:
 |------|--------------|
 | **Full** | Run director reviews, show detailed findings, longer approval flow |
 | **Lean** | Quick validation, abbreviated findings, streamlined approval |
-| **Solo** | Skip gate pause, auto-proceed with quality gate score only |
+| **Solo** | Skip informational pauses; retain observed verification, applicable independent review and real approval boundaries |
 
 ```
 REVIEW_MODE=$(cat production/review-mode.txt 2>/dev/null || echo "lean")
 if [ "$REVIEW_MODE" = "solo" ]; then
-  # Skip gate pause, log quality score
-  Log: "Quality Gate Score: [X]/100 — Auto-proceeding (Solo mode)"
+  # Continue only after applicable observed evidence and required reviews pass
+  Log: "Applicable evidence checked — continuing authorized work (Solo mode)"
 else
   # Show gate options as normal
 fi
@@ -871,32 +841,12 @@ Architecture complete: [tech stack summary]. Approve to start building?
 4. **Chat about this** — Free-form input about the architecture
 ```
 
-**Gate 2.5 — Architecture Memory Persistence** (auto, no user interaction):
+**Gate 2.5 — Optional Architecture Continuity**:
 
-After Gate 2 is approved, automatically persist architecture decisions to memory:
-
-```
-1. Extract key architecture decisions:
-   - Tech stack (language, framework, key libraries)
-   - Service decomposition (services, modules)
-   - API style (REST, GraphQL, etc.)
-   - Database choices
-   - Key architectural patterns
-
-2. Run memory persistence commands:
-   # Main architecture
-   python3 scripts/mem0-v2.py add "ARCH: [tech stack] | SERVICES: [service list] | REASON: [key rationale]" --category architecture
-   
-   # Individual ADRs
-   python3 scripts/mem0-v2.py add "DECISION: [ADR title] | ALTERNATIVE: [rejected options] | REASON: [why chosen]" --category decisions
-   
-   # Project scope
-   python3 scripts/mem0-v2.py add "PROJECT: [project name] | SCOPE: [feature list] | STATUS: active" --category project
-
-3. Log: "✓ Architecture decisions persisted to memory — [N] decisions saved"
-```
-
-**Why this matters:** Future sessions can search `mem0-v2.py search "architecture"` to retrieve the approved stack without re-reading all architecture files.
+Record approved architecture in canonical ADRs and task state. Memory capture
+is optional, requires applicable authorization, and adds only durable context
+that is not already adequately represented. Skip disabled/unavailable memory;
+no duplicate project seeds, compulsory add commands or separate approval pause.
 
 **Gate 3 — Production Readiness** (after T9):
 
@@ -905,18 +855,10 @@ After Gate 2 is approved, automatically persist architecture decisions to memory
 REVIEW_MODE=$(cat production/review-mode.txt 2>/dev/null || echo "lean")
 ```
 
-**Solo mode: Auto-proceed with quality gate score:**
-```
-if [ "$REVIEW_MODE" = "solo" ]; then
-  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  Log: "Phase 5 — SUSTAIN Complete [Review: Solo]"
-  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  Log: "Quality Gate Score: [X]/100"
-  Log: "All phases complete — auto-proceeding (Solo mode)"
-  Log: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  # Skip to final summary
-fi
-```
+**Solo mode:** Continue authorized work after the applicable observed checks and
+required reviews pass. A numeric score cannot prove readiness or waive HARD
+review, safety or release authorization. Do not run SHIP/SUSTAIN merely to fill
+a phase list when the user's acceptance ends earlier.
 
 **Step G3.1 — Run VERIFIER subagent (before showing Gate 3 to user):**
 
@@ -1177,14 +1119,13 @@ Security runs during ALL phases:
 
 ## Autonomous Behavior
 
-Every skill execution follows:
-1. **Build and verify** — after writing code, run it. After writing tests, execute them.
-2. **Quality gate** — run `skills/_shared/protocols/quality-gate.md` after each skill output. Score must meet threshold.
-3. **Validation loop** — `while not valid: fix(errors); validate()`
-4. **Self-debug** — read errors, identify root cause. After 3 failures: stop and report.
-5. **Quality bar** — no TODOs, no stubs. All code compiles. All tests pass. Quality score ≥ 90.
-6. **TDD enforced** — write test first, watch fail, implement, watch pass, refactor.
-7. **Convention compliance** — read `.forgewright/code-conventions.md` (if brownfield) and match existing patterns.
+Every skill execution follows the kernel effort and evidence contract:
+1. Run the checks needed to prove applicable acceptance and adjacent regressions.
+2. Use focused checks for QUICK work; expand for material risk and explicit project requirements. Quality scores and test counts are telemetry, not completion proof.
+3. Classify failures before changing the approach. After the same step fails twice, stop that approach and follow `kernel/SOLVE.md`; no unbounded validation loop.
+4. Preserve test oracles and report failures. Use RED/GREEN for fixes and the stronger mutation/review chain when required by HARD risk.
+5. Do not ship unfinished stubs or substitute tests/builds for native product evidence. Keep required validation proportional to the requested scope.
+6. Preserve existing conventions and user work; do not invent unrelated work to fill a checklist.
 
 ## Partial Execution
 
@@ -1237,17 +1178,12 @@ Also display the legacy summary for backward compatibility:
 
 ## Brownfield Safety Net
 
-For ALL brownfield projects (any mode, not just Full Build), activate the safety net from `skills/_shared/protocols/brownfield-safety.md`:
-
-| Safety Layer | When | Action |
-|-------------|------|--------|
-| Git branch | Pre-pipeline | Create `forgewright/session-{timestamp}` branch |
-| Baseline snapshot | Pre-pipeline | Run existing tests, record pass count |
-| Protected paths | Pre-pipeline | Register paths that must not be modified |
-| Regression checks | After T3a, T3b, T5 | Verify existing tests still pass |
-| Change manifest | During pipeline | Track every file create/modify/delete |
-| Merge readiness | Pre-Gate 3 | Full regression + quality check |
-| Rollback | On failure | Revert via session branch |
+Preserve existing work in every mode. Apply `skills/_shared/protocols/brownfield-safety.md`
+proportionately: read-only review creates no branch or baseline; a local reversible
+fix uses focused impact and checks. Isolate material/concurrent edits when useful.
+Do not auto-stash, switch branches, roll back user files or clean old branches.
+Release/merge checks run only when that action is in scope, and follow the actual
+project contract rather than a fixed score or test-count threshold.
 
 ## Common Mistakes
 

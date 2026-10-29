@@ -217,10 +217,22 @@ else
         npx gitnexus analyze
         echo -e "  ${GREEN}✓ Tạo mới đồ thị GitNexus thành công!${NC}"
     else
-        echo -e "  ${RED}❌ Lỗi: Thư mục chỉ mục .gitnexus không tồn tại!${NC}"
-        echo "     Vui lòng chạy 'npx gitnexus analyze' trước để tạo đồ thị tri thức."
-        UNCONFIRMED_CLAIMS=$((UNCONFIRMED_CLAIMS + 2))
-        CLAIMS_COUNT=$((CLAIMS_COUNT + 2))
+        # An explicitly disabled adapter is optional (including linked worktrees).
+        # Missing capability is not evidence that two documentation claims drifted.
+        optional_index=$(node -e '
+            const fs = require("fs");
+            try {
+                const manifest = JSON.parse(fs.readFileSync(".forgewright/docs-manifest.json", "utf8"));
+                console.log(manifest.adapters?.gitnexus === false ? "yes" : "no");
+            } catch { console.log("no"); }
+        ')
+        if [ "$optional_index" = "yes" ]; then
+            echo -e "  ${YELLOW}⚠ GitNexus optional/unavailable: adapter disabled in docs-manifest.json; index freshness unverified.${NC}"
+        else
+            echo -e "  ${RED}❌ GitNexus capability unavailable: missing .gitnexus and no explicit optional adapter setting.${NC}"
+            echo "     Configure the adapter explicitly or create its index; no documentation drift was inferred."
+            exit 1
+        fi
     fi
 fi
 
@@ -256,7 +268,7 @@ else
     if [ $TOTAL_ISSUES -gt 0 ]; then
         echo -e "${YELLOW}⚠️ WARNING: Phát hiện sự lệch tài liệu nhẹ (${DRIFT_PERCENT}%). AI vẫn tiếp tục nhưng sẽ ghi chú cảnh báo.${NC}"
     else
-        echo -e "${GREEN}✅ SAFE: Tài liệu của bạn nhất quán 100% với mã nguồn và không có mâu thuẫn chéo.${NC}"
+        echo -e "${GREEN}✅ SAFE: Không phát hiện vấn đề trong các kiểm tra tài liệu đã chạy; đây không phải xác nhận toàn bộ mã nguồn.${NC}"
     fi
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     exit 0

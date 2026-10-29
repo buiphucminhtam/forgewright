@@ -2,6 +2,12 @@
 
 This phase manages tasks T11 (Technical Writer), T12 (Skill Maker), and T13 (Compound Learning + Final Assembly).
 
+Run only SUSTAIN tasks required by the user's declared outcome and applicable
+project capabilities. Skip inapplicable lanes with a reason; do not manufacture
+skills, documentation systems or deployments. Change status to completed only
+after observed acceptance checks. Remaining/failed tasks stay explicit, and
+this phase cannot require a new permission round for already-authorized work.
+
 ## T11: Technical Writer
 
 ```
@@ -9,8 +15,8 @@ Update task.md: T11 status → in_progress
 
 Read skills/technical-writer/SKILL.md and follow its instructions.
 Context:
-- Read ALL workspace folders at .forgewright/ for full project context.
-- Read all project deliverables: api/, services/, frontend/, infrastructure/, tests/, docs/.
+- Read the matching task state and only relevant workspace artifacts.
+- Read the affected deliverables and current canonical documentation.
 - Read protocols from: skills/_shared/protocols/
 - Read .production-grade.yaml for paths and preferences.
 - Generate: API reference (from OpenAPI specs), developer guides, operational guide, architecture guide, contributing guide.
@@ -30,7 +36,7 @@ Read skills/skill-maker/SKILL.md and follow its instructions.
 Context:
 - Analyze the completed project for recurring patterns: API routes, DB queries, auth checks, deployment procedures, testing patterns, domain-specific workflows.
 - Read protocols from: skills/_shared/protocols/
-- Generate 3-5 project-specific skills as SKILL.md files.
+- Create a project-specific skill only when authorized reusable capability is in scope; no fixed skill count.
 - Install skills to: skills/
 - Write workspace artifacts to: .forgewright/skill-maker/
 
@@ -75,27 +81,22 @@ Optionally append key patterns to project `CLAUDE.md` for cross-session persiste
 
 ### Final Assembly
 
-1. **Integration decision** — ask user via notify_user:
+Integrate the deliverables into the location and scope already authorized by the
+user. Ask only if a material integration/publication decision remains unresolved;
+do not impose an automatic copy/integrate interview.
 
-```
-Code is ready. How would you like to integrate?
+Run final validation from the actual project capability and acceptance contract.
+Use Docker, make, Terraform or health checks only where the project uses them
+and the requested outcome requires them. Inspect real output; a command name or
+phase label is not evidence of readiness.
 
-1. **Integrate all code (Recommended)** — Copy services, frontend, infra to project root
-2. **Keep in workspace only** — Leave everything in .forgewright/
-3. **Let me choose what to copy** — Select which components to integrate
-4. **Chat about this** — Discuss integration strategy
-```
-
-2. **Run final validation:** `docker-compose up`, `make test`, `terraform validate`, health checks.
-
-3. **Present final summary** using the orchestrator's template.
-
-4. **Clean up:**
-```
-Update task.md: T13 status → completed
-Mark all tasks as complete.
-```
+Finalize canonical task state after checks/review pass, then run the unchanged
+final verifier to bind that state. Mark only applicable verified tasks complete;
+retain SKIPPED, unfinished and blocked items honestly. Reclaim task-owned resources
+and provide exact receipt links plus material remaining runtime boundaries.
 
 ## Pipeline Complete
 
-Print the final summary template from the orchestrator. All tasks should show as completed in task.md.
+Complete only when the requested acceptance has been observed. A local task may
+finish before SHIP/SUSTAIN; deployed/native success requires the corresponding
+runtime evidence. Do not infer success from a phase list or a completed host turn.

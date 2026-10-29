@@ -982,8 +982,19 @@ def _keyless_hard_review(tmp: Path, turn: str = "keyless-review") -> tuple[Path,
 def native_stop_result(result):
     """Assert the native wire schema and retain all typed decision assertions."""
     wire = json.loads(result.stdout)
-    assert not set(wire) - {"continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason"}
-    decisions = [json.loads(line.removeprefix("[FORGEWRIGHT-STOP] ")) for line in result.stderr.splitlines() if line.startswith("[FORGEWRIGHT-STOP] ")]
+    assert not set(wire) - {
+        "continue",
+        "stopReason",
+        "suppressOutput",
+        "systemMessage",
+        "decision",
+        "reason",
+    }
+    decisions = [
+        json.loads(line.removeprefix("[FORGEWRIGHT-STOP] "))
+        for line in result.stderr.splitlines()
+        if line.startswith("[FORGEWRIGHT-STOP] ")
+    ]
     assert len(decisions) == 1, result.stderr
     return {**wire, "forgewright": decisions[0]}
 
@@ -2559,7 +2570,7 @@ class TestVerifyGateSh:
         assert "Strict VERIFY response correlation passed" in r.stderr
 
     def test_codex_unmapped_platform_turn_id_discovers_correlated_final_evidence(self):
-        """A Codex routing ID must not shadow valid current Forgewright evidence."""
+        """Native turn IDs cannot borrow otherwise valid evidence from another turn."""
         source = self.tmp / "fixture.py"
         source.write_text("print('changed')\n")
         evidence = _make_evidence(self.tmp, turn="internal-evidence-turn")
@@ -2578,9 +2589,8 @@ class TestVerifyGateSh:
         accepted = self._stop_gate(payload)
         assert accepted.returncode == 0, accepted.stderr
         accepted_payload = native_stop_result(accepted)
-        assert accepted_payload["continue"] is True
-        assert accepted_payload["forgewright"]["completion_state"] == "verified"
-        assert accepted_payload["forgewright"]["host_action"] == "allow_stop"
+        assert accepted_payload["decision"] == "block"
+        assert accepted_payload["forgewright"]["completion_state"] == "unverified"
 
         payload["last_assistant_message"] = response.replace(
             "COMMAND:", "COMMAND: unrelated ", 1
@@ -2592,7 +2602,7 @@ class TestVerifyGateSh:
     def test_codex_unmapped_platform_turn_field_discovers_correlated_final_evidence(
         self,
     ):
-        """Codex may put its routing UUID in `turn`, not only in `turn_id`."""
+        """The native `turn` alias is exact too; unmapped evidence stays unverified."""
         source = self.tmp / "fixture.py"
         source.write_text("print('changed')\n")
         evidence = _make_evidence(self.tmp, turn="internal-evidence-for-opaque-turn")
@@ -2609,9 +2619,8 @@ class TestVerifyGateSh:
 
         assert accepted.returncode == 0, accepted.stderr
         parsed = native_stop_result(accepted)
-        assert parsed["continue"] is True
-        assert parsed["forgewright"]["completion_state"] == "verified"
-        assert parsed["forgewright"]["host_action"] == "allow_stop"
+        assert parsed["decision"] == "block"
+        assert parsed["forgewright"]["completion_state"] == "unverified"
 
     def test_codex_identical_invalid_stop_reentry_is_bounded(self):
         """The first invalid Stop retries; its identical re-entry must terminate."""
@@ -2943,7 +2952,7 @@ class TestVerifyGateSh:
         payload = {
             "hook_event_name": "Stop",
             "last_assistant_message": _strict_response(evidence),
-            "turn": "codex-routing-single-replay",
+            "turn": "single-replay-evidence",
             "session_id": "single-replay-session",
         }
         env = {
@@ -3156,7 +3165,11 @@ def test_run_check_validates_links_before_child_starts(
             "tests": [
                 {
                     "nodeid": "test_ok.py::test_ok",
-                    "phases": {"setup": "passed", "call": "passed", "teardown": "passed"},
+                    "phases": {
+                        "setup": "passed",
+                        "call": "passed",
+                        "teardown": "passed",
+                    },
                     "wasxfail": False,
                 }
             ],
@@ -3260,7 +3273,11 @@ def test_completion_checks_skips_replay_when_prerequisites_fail(
 
     valid_ev_path = _make_evidence(tmp_path, turn="turn_drift_before_replay")
     valid_ev = json.loads(valid_ev_path.read_text(encoding="utf-8"))
-    (tmp_path / "tests" / "evidence_contract_check.py").write_text("print('changed')\n", encoding="utf-8")
-    drift_errs = verify_gate_module._replay_final_commands(valid_ev, tmp_path, valid_ev_path, False)
+    (tmp_path / "tests" / "evidence_contract_check.py").write_text(
+        "print('changed')\n", encoding="utf-8"
+    )
+    drift_errs = verify_gate_module._replay_final_commands(
+        valid_ev, tmp_path, valid_ev_path, False
+    )
     assert any("MISMATCH: exact worktree fingerprint changed" in e for e in drift_errs)
     assert replay_calls == []

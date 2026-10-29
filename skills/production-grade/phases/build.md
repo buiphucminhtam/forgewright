@@ -151,22 +151,22 @@ Display mini-scorecard after each task:
 ## Completion
 
 When all BUILD tasks complete:
-1. Verify all services compile and start
-2. Verify docker-compose brings up the full stack
-3. If T3c ran, verify mobile project builds for both platforms
+1. Verify the affected services required by acceptance compile and start
+2. Verify full-stack composition only when the project uses it and acceptance requires it
+3. If T3c ran, verify the mobile platforms actually in scope
 4. **Run aggregate quality check** — display BUILD phase quality summary
 5. **Call session lifecycle hook** — `PHASE_COMPLETE("BUILD", summary)`
-   - **Memory save:** `python3 scripts/mem0-cli.py add "BUILD complete: [tasks done]. Services: [list]. Tests: [count] pass" --category tasks`
-6. **Brownfield: full regression suite** — verify ALL existing tests still pass
+   - Record observed results in canonical task state; optional authorized durable memory follows Middleware 09.
+6. **Brownfield regression** — verify affected behavior and adjacent regressions; run the full suite when material risk or the project contract requires it
 7. Log BUILD completion to workspace
 8. Read `phases/harden.md` and begin HARDEN phase
 
 ## Failure Handling
 
-- Build failure after 3 retries → escalate to user via notify_user
-- **Self-healing loop** (up to 5 attempts): read error → web search (site filter) → analyze root cause → formulate fix → retry. After 5 failures: git rollback + escrow report. See `skills/_shared/protocols/self-healing-execution.md`
-- Frontend fails but backend succeeds → continue backend-only pipeline
-- Mobile fails but web succeeds → continue web-only pipeline, flag mobile issues
-- Self-debug: read errors, fix, retry before escalating
-- **Regression detected** → revert task changes, retry with constraints (brownfield-safety.md)
-- **Quality score below threshold** → pause, show scorecard, ask user to continue or fix
+Classify the observed failure, isolate its assumption and use the smallest
+useful check. After the same approach fails twice, follow `kernel/SOLVE.md`;
+there is no separate three/five-attempt loop or automatic Git rollback.
+Research only an actual knowledge gap. Preserve user changes and original
+acceptance: a failed frontend cannot silently become a backend-only success.
+Continue useful independent work, and report an actual unresolved boundary
+without repeating an unchanged blocker or asking again for existing approval.

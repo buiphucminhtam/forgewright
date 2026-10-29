@@ -17,83 +17,48 @@ superseded_by: null
 
 ## Session Start
 
-Every pipeline invocation begins here, BEFORE mode classification.
+Classify the request and effort under `kernel/ENTRY.md` and `kernel/SOLVE.md`
+first. This protocol supplies continuity only where it helps that request; it
+does not add compulsory onboarding, memory, indexing, or approval phases.
+Read-only review and routine QUICK work use the affected context only.
 
-### Step 1 — Load Project Profile
+### Step 1 — Load Relevant Project Context
 
-```
-IF .forgewright/project-profile.json exists:
-  Read it → set project context
-  Check file age:
-    IF < 24 hours AND no new git commits since onboarded_at:
-      Log: "✓ Project profile loaded (fresh)"
-      Skip re-onboarding
-    ELSE:
-      Log: "⧖ Project profile stale — refreshing health check"
-      Re-run project-onboarding.md Phase 2 (Health Check) only
-      Update health section + checked_at timestamp
-ELSE:
-  Log: "⧖ New project detected — running onboarding"
-  Run full project-onboarding.md protocol
-```
+Read the current workspace and existing profile when relevant. Reuse current
+facts; refresh only a stale fact that materially affects the task. A profile's
+age alone is not evidence of breakage. A new project needs only the onboarding
+necessary for its requested outcome; do not turn a prompt into a full setup.
 
-### Step 2 — Load Last Session State
+### Step 2 — Reconcile the Current Task
 
-```
-IF .forgewright/session-log.json exists:
-  Read last_session entry
-  Determine session state:
-    IF last_session.status == "interrupted" OR "in_progress":
-      → Offer resume via notify_user:
-        "Last session was interrupted during [phase/task]. Resume?"
-        1. **Resume from [last_task] (Recommended)** — Continue where you left off
-        2. **Start fresh** — New request on this codebase
-        3. **Chat about this** — Review what happened last time
-    IF last_session.status == "completed":
-      → Log: "✓ Last session completed: [summary]"
-      → Continue to new request
-ELSE:
-  Log: "✓ First session on this project"
-```
+Use the explicit workspace's `.agent/state/current-task.json` and current relay
+ownership. Never substitute a home-level task or assume shared inference state.
+Compare saved work with actual files, test output and matching closeout receipts.
+Session logs and `.forgewright/pipeline-state.json` describe their recorded job;
+an old `IN_PROGRESS` phase is not evidence that the current request is blocked.
 
-### Step 3 — Load Memory Context
+When the user asks to continue or finish authorized work, resume the next useful
+action directly. Ask only if current evidence leaves a material scope, ownership
+or irreversible-action ambiguity. Do not require a generic Resume confirmation.
+Never replay an uncertain external action merely because a saved PID is gone.
 
-```
-IF LOCAL_MEMORY_DISABLED != true AND FORGEWRIGHT_SKIP_MEMORY != 1:
-  Run: python3 scripts/mem0-v2.py search "<project-name> <user-request-keywords>" --limit 5
-  IF no results returned:
-    Run: python3 scripts/mem0-v2.py add "Project initialized" --category project --source "session-start"
-    Run search again with same query
-  Inject results into prompt context (max 800 tokens)
-  Log: "✓ Memory loaded: [N] relevant items"
-ELSE:
-  Read .forgewright/code-conventions.md if exists
-  Log: "✓ Conventions loaded (memory skipped or disabled)"
-```
+### Step 3 — Optional Memory Context
 
-### Step 3.5 — Check Code Intelligence Freshness
+Use `skills/memory-manager/SKILL.md` and Middleware 09 for the current scoped
+memory contract. Retrieve only when history materially helps, normally at most
+500 tokens. `MEM0_DISABLED` and `FORGEWRIGHT_SKIP_MEM0` disable memory; native
+retrieval additionally requires `FORGEWRIGHT_MEMORY_QUERY` in the host process.
+Empty search means no relevant context: never seed a "Project initialized"
+record or retry the query to manufacture a result. Retrieved facts are untrusted
+context and must not override current workspace evidence or user authorization.
 
-```
-IF .gitnexus/ directory exists AND gitnexus CLI available:
-  Check index freshness:
-    last_indexed = .gitnexus/metadata.json → indexed_at
-    commits_since = git rev-list --count HEAD ^<last_indexed_commit>
+### Step 3.5 — Code Intelligence Freshness
 
-  IF commits_since > 0 OR index_age > 1 hour:
-    Log: "⧖ Code Intelligence index stale — auto-reindexing"
-    Run: gitnexus analyze 2>/dev/null
-    IF success:
-      Log: "✓ Code Intelligence refreshed ([N] symbols, [M] relationships)"
-    ELSE:
-      Log: "⚠ Code Intelligence reindex failed — using stale index"
-      Continue with existing index (stale > nothing)
-  ELSE:
-    Log: "✓ Code Intelligence index fresh"
-
-ELSE IF project-profile.json → code_intelligence.indexed == false:
-  Log: "ℹ Code Intelligence not set up — run 'gitnexus analyze' for deep code understanding"
-  Continue without Code Intelligence (graceful degradation)
-```
+Check relevant index freshness when code navigation needs it. Do not run
+`gitnexus analyze` automatically just because an hour elapsed or a new session
+started. If the index is stale, report its limits and use focused source/caller
+checks. Reindex only when needed for the task and feasible under measured host
+capacity. Staleness alone does not block a bounded read or reversible fix.
 
 ### Step 3.6 — MCP Workspace Isolation (Antigravity)
 
@@ -126,139 +91,44 @@ ELSE:
   Log: "✓ Per-project MCP config (.cursor/mcp.json)"
 ```
 
-### Step 0.6 — Session Health Check (SAVE/Resume v8.2)
+### Step 0.6 — Session Health Check
 
-```
-1. Check session-log.json:
-   IF exists AND last_session.status == "in_progress":
-     # Session was not properly ended - context was lost
-     → Log: "⚠ Previous session was not properly ended"
-     → Mark as "interrupted" in session-log.json
+Treat an old `in_progress` record as a reconciliation candidate, not proof that
+another active executor stopped. Check relay ownership and matching artifacts
+before changing status. Read only relevant handover context, and verify any
+material stale claim against current files/runtime. Do not overwrite another
+session or manufacture a memory update from age alone.
 
-   IF last_session.last_update exists:
-     age_hours = now - last_session.last_update
-     IF age_hours > 24:
-       Log: "⚠ Session is stale (>24h old) — marking as interrupted"
-       → Update status to "interrupted"
-       → Add interrupted_reason: "Session health check - stale data"
+### Step 3.7 — Context Monitoring
 
-2. Check Memory Bank freshness:
-   IF .forgewright/memory-bank/progress.md exists:
-     Read last_updated from header
-     IF last_updated > 7 days:
-       Log: "⚠ Memory Bank may be stale — update at session end"
+Host-reported context usage and local token estimates are different signals.
+Label estimates as estimates. A threshold may justify a compact checkpoint at
+a useful boundary; it must not mark the task interrupted, exit autonomous mode,
+or demand another prompt while useful authorized work can continue. Let the host
+manage compaction and resume from the checkpoint. Stop only for an actual host
+limit, explicit user stop, or evidence-backed condition that prevents progress.
+Missing or failed optional memory tooling never creates such a condition.
 
-3. Check activeContext.md:
-   IF .forgewright/memory-bank/activeContext.md exists:
-     → Load and inject into context
-     → Log: "✓ Active context loaded — resuming from [checkpoint]"
-```
+### Step 3.8 — Relevant Handover Loading
 
-### Step 3.7 — Token Monitoring (SAVE/Resume v8.2)
+Load a handover only when continuity requires it and its workspace/task identity
+matches current work. Read the relevant sections, verify material claims and
+ignore obsolete next actions already resolved by matching receipts. Existence
+of HANDOVER.md or a newer timestamp alone does not make it current authority.
 
-```
-1. Check token usage (simulated or estimated):
-   python3 scripts/memory-middleware.py tick
+### Step 4 — Detect Material Drift
 
-2. Token threshold checks:
-   MEMORY_TOKEN_THRESHOLD_WARN=80     # Warning threshold
-   MEMORY_TOKEN_THRESHOLD_CRITICAL=95 # Handover threshold
+Inspect source/runtime changes relevant to saved assumptions. A new commit or
+renamed directory may require a focused refresh, not an automatic onboarding
+rerun. Reuse facts and verification that remain valid; preserve unrelated dirty
+work and another executor's ownership.
 
-   IF token_pct >= 95:
-     Log: "⧖ Context critical — triggering handover"
-     → Run: python3 scripts/memory-middleware.py handover
-     → Mark session as interrupted
-     → User hands off to next session
-     → Exit autonomous mode
+### Step 5 — Relevant Gap Detection
 
-   ELIF token_pct >= 80:
-     Log: "⧖ Token usage at X% — consider checkpoint"
-     → Suggest: python3 scripts/memory-middleware.py checkpoint
-
-3. At session end:
-   → Update activeContext.md with current state
-   → Save final checkpoint
-   → Generate HANDOVER.md if needed
-```
-
-### Step 3.8 — Handover Loading (SAVE/Resume v8.2)
-
-```
-IF .forgewright/memory-bank/HANDOVER.md exists:
-  Read it → inject into context
-  Log: "✓ Handover loaded — session can resume from [checkpoint]"
-
-  Inject handover sections:
-  - Session Goals: What was being worked on
-  - Completed Work: Recent checkpoints/summaries
-  - Open Tasks: Incomplete tasks from session-log.json
-  - Blockers: Open blockers or questions
-  - Next Steps: What to continue with
-
-IF .forgewright/memory-bank/handover-*.md exists (but not HANDOVER.md):
-  Find most recent timestamped handover
-  Read it → inject into context
-  Log: "✓ Handover loaded (timestamped version)"
-```
-
-### Step 4 — Detect Manual Changes
-
-```
-IF git is available AND last session timestamp known:
-  git log --since="[last_session.completed_at]" --oneline
-  IF commits found:
-    Log: "⚠ [N] commits since last session — context may have changed"
-    IF commits touch project structure (new services, renamed dirs):
-      Re-run project-onboarding.md Phase 1 (Fingerprint) + Phase 3 (Patterns)
-    ELSE:
-      Continue with existing profile
-ELSE:
-  Continue without drift detection
-```
-
-### Step 5 — Project Gap Detection (CCGS Pattern)
-
-After loading project state, automatically detect missing pieces and warn the user. Inspired by CCGS `detect-gaps.sh`.
-
-```
-1. FRESH PROJECT CHECK:
-   - If no source files + no design docs + no production artifacts:
-     → Log: "🚀 NEW PROJECT: No code, no design docs, no planning."
-     → Log: "  Run /onboard to get started, or tell me what you want to build."
-
-2. CODE-TO-DESIGN RATIO:
-   - If src/ has 50+ files AND design/ has < 5 files:
-     → Warn: "⚠️ GAP: [N] source files but only [M] design docs"
-     → Suggest: "Consider /reverse-document to capture design decisions"
-
-3. PROTOTYPE DOCUMENTATION:
-   - If prototypes/ has directories without README.md:
-     → Warn: "⚠️ GAP: [N] undocumented prototype(s)"
-     → Suggest: "Add README.md to each prototype"
-
-4. ARCHITECTURE GAPS:
-   - If src/core/ or src/engine/ exists but no docs/architecture/:
-     → Warn: "⚠️ GAP: Core systems without architecture docs"
-     → Suggest: "Run /architecture-decision or /reverse-document"
-
-5. GAMEPLAY DESIGN GAPS:
-   - If src/gameplay/ has subsystem dirs with 5+ files but no design/gdd/ doc:
-     → Warn: "⚠️ GAP: Gameplay system '[name]' has no design doc"
-     → Suggest: "Create design/gdd/[name]-system.md"
-
-6. PRODUCTION PLANNING:
-   - If codebase has 100+ files but no production/ directory:
-     → Warn: "⚠️ GAP: Large codebase without production planning"
-     → Suggest: "Create production/ or run /sprint-plan"
-```
-
-**Gap Detection Summary:**
-```
-Log: "=== Documentation Check ==="
-Log: "[N] source files | [M] design docs | [K] architecture docs"
-Log: "💡 Run /project-stage-detect for full analysis"
-Log: "================================"
-```
+Inspect gaps only within the requested acceptance boundary. Source-file counts,
+directory names, document ratios and missing optional tools are hints, not
+requirements or blockers. Fix demonstrated task-relevant gaps; record unrelated
+improvements as later work without expanding the current task.
 
 ## Status Line Block (Production+)
 
@@ -287,7 +157,7 @@ Example: 67% [lean] | BUILD > Auth > Login > OAuth
 
 **Integration:**
 - Run `scripts/statusline.sh` to display current status
-- Read from `production/session-state/active.md` on every turn
+- Read `production/session-state/active.md` only for its matching active production task
 - Display status line in CLI output
 
 ## Subagent Handover Protocol (NEW v8.1)
@@ -299,7 +169,7 @@ When a subagent completes or context approaches limits, generate a handover docu
 | Trigger | Condition | Action |
 |---------|-----------|--------|
 | Token warning | Token % >= 80% | Log warning, suggest checkpoint |
-| Token critical | Token % >= 95% | Auto-generate handover |
+| Context pressure | Host signal or labelled estimate | Save a useful checkpoint; continue through host compaction |
 | Manual | User/subagent requests | `python3 memory-middleware.py handover` |
 | Subagent complete | Worker finishes task | Generate handover with task summary |
 
@@ -352,92 +222,25 @@ When a subagent completes or context approaches limits, generate a handover docu
 5. Log: "✓ Handover loaded — [N] decisions, [M] blockers"
 ```
 
-## Turn-Start Memory Retrieval (Within-Session Continuity)
+## Turn-Start Continuity
 
-**When:** Before answering each user request within a session. Runs **before** orchestrator processes the new request.
+Use the latest request as steering for the active task unless the user cancels
+or replaces it. Preserve the objective, accepted corrections, ownership and
+verified progress across compaction. Do not restart planning or repeat unchanged
+blockers merely because another message arrived.
 
-**Why:** Without this, conversation facts written in Turn N are not retrieved in Turn N+1. The assistant loses context of what was just discussed.
+Read matching task state and relevant handover context only when needed. Do not
+load full conversation summaries, all recent memory entries, BA packages or
+legacy session logs on every prompt. Follow the optional scoped retrieval rules
+above and never write to memory as a side effect of an empty search.
 
-**Trigger point:** After session-lifecycle Step 0.5 (session start), and **before each subsequent user request**.
-
-### Step T1 — Load Conversation Summary
-
-```
-IF .forgewright/subagent-context/CONVERSATION_SUMMARY.md exists:
-  Read it → inject into context
-  Log: "✓ Conversation summary loaded — [N] exchanges summarized"
-```
-
-### Step T1.5 — Load Handover Document (NEW)
-
-```
-IF .forgewright/memory-bank/HANDOVER.md exists:
-  Read it → inject into context
-  Log: "✓ Handover loaded — session can resume from [checkpoint]"
-
-  Inject handover sections:
-  - Session Goals: What was being worked on
-  - Completed Work: Recent checkpoints/summaries
-  - Key Decisions: Architectural choices made
-  - Blockers: Open blockers or questions
-  - Next Steps: What to continue with
-
-IF .forgewright/memory-bank/handover-*.md exists (but not HANDOVER.md):
-  Find most recent timestamped handover
-  Read it → inject into context
-  Log: "✓ Handover loaded (timestamped version)"
-```
-
-### Step T2 — Retrieve Recent Turns
-
-```
-IF LOCAL_MEMORY_DISABLED != true AND FORGEWRIGHT_SKIP_MEMORY != 1:
-  # Search for recent conversation facts (within current session)
-  python3 scripts/mem0-v2.py search "conversation recent" --limit 3
-  
-  # Search for task context relevant to current request
-  python3 scripts/mem0-v2.py list --category session --limit 3
-  
-  # Inject: "Recent context: [top memories]"
-  Log: "✓ Recent turns loaded — [N] relevant items"
-```
-
-### Step T3 — Detect Scope Context
-
-```
-IF .forgewright/business-analyst/handoff/ba-package.md exists:
-  # BA scope persists across turns
-  Read key sections → inject scope summary
-  Log: "✓ BA scope context loaded"
-
-IF .forgewright/subagent-context/PIPELINE_SUMMARY.md exists:
-  # Pipeline summary from orchestrator
-  Log: "✓ Pipeline summary loaded"
-```
-
-### Turn-Start Checkpoint
-
-```
-Log: "✓ Turn-Start context loaded:
-  - activeContext.md: [loaded/skipped/none]
-  - Handover document: [loaded/skipped/none]
-  - Conversation summary: [loaded/skipped]
-  - session-log.json: [N] sessions, status: [in_progress/interrupted/completed]
-  - Recent turns: [N] items
-  - BA scope: [loaded/skipped]
-  - Pipeline context: [loaded/skipped]"
-```
-
-**SAVE/Resume Integration (v8.2):**
-
-| Source | When Loaded | Purpose |
-|--------|-------------|---------|
-| `activeContext.md` | Every turn-start | Current work summary, open tasks, blockers |
-| `HANDOVER.md` | Every turn-start (if exists) | Session goals, decisions, next steps |
-| `session-log.json` | Every turn-start | Phase, tasks, events for resume |
-| `CONVERSATION_SUMMARY.md` | Every turn-start | Recent exchange summaries |
-
-**Integration:** The orchestrator (production-grade/SKILL.md) calls these steps before processing each user request. This is distinct from Session Start (Step 0.5) which runs only once per session.
+On native Codex `UserPromptSubmit`, the rule hook records a bounded turn baseline
+and exposes the native evidence selector. Use that `--turn` in `run_check.py`;
+`CODEX_THREAD_ID` is a session ID and cannot replace it. Native Stop requires the
+same exact `turn_id`/`turn`, and rejects missing/conflicting identity or another
+turn's evidence. Standalone CLI discovery remains a separate legacy path.
+Hook registration, direct fixture execution and actual native delivery are
+separate evidence levels; do not infer one from another.
 
 ## Session Save (Automatic Hooks)
 
@@ -462,8 +265,7 @@ Called after each pipeline phase completes (DEFINE, BUILD, HARDEN, SHIP, SUSTAIN
      }
    }
 
-2. Save phase summary to memory:
-   Run: python3 scripts/mem0-v2.py add "Phase [phase_name] completed: [summary]" --category tasks
+2. If an authorized durable decision or handoff needs persistence, use the optional memory contract; otherwise skip memory.
 
 3. Update quality metrics (see quality-dashboard.md)
 ```
@@ -483,8 +285,7 @@ Called after each strategic gate.
 
 ```
 1. Update session-log.json → gates.[gate_number] = { decision, feedback, decided_at }
-2. Save to memory:
-   Run: python3 scripts/mem0-v2.py add "Gate [N] [decision]: [feedback summary]" --category decisions
+2. Consider optional memory only for an authorized durable decision not already represented in canonical state.
 ```
 
 ### Hook: HEARTBEAT(task_id, status_message)
@@ -502,7 +303,7 @@ Called when a task fails or escalates.
 
 ```
 1. Update session-log.json → errors.append({ task_id, error_type, details, occurred_at })
-2. If error_type == "escalation": save to memory as blocker
+2. Record an unresolved blocker in task state; optional memory follows the authorization and durability rules.
 ```
 
 ## Event-Driven Task Tracking (DeerFlow Pattern)
@@ -595,115 +396,44 @@ The middleware chain references these protocols:
     → Emits SKILL_FAILED with retry context
 ```
 
-## Per-request memory (Turn-Close) — mandatory
+## Optional Memory at Turn Close
 
-**When:** After the assistant has **fully addressed** the current user message (single-turn chat, end of pipeline step, or before waiting on the next user input). **Not optional** for normal sessions (`MEM0_DISABLED` / `FORGEWRIGHT_SKIP_MEM0` exempt).
+Memory is optional context, never completion evidence. Persist only an authorized
+selected durable decision, blocker or handoff that future work needs. Respect
+host/user memory permissions; an opt-in flag does not override them. No mandatory
+per-turn write, conversation summary, automatic project seed or retry is needed.
+Use the structured capture contract and source/session bindings in
+`skills/memory-manager/SKILL.md`; do not ingest raw conversations.
 
-**Why:** Without this, project memory only grows at gates/phases — **conversation facts and incremental decisions are lost** between requests.
-
-### Step TC1 — Generate Conversation Summary (Auto-Generated)
-
-```
-BEFORE running the mem0 add command, auto-generate a summary:
-1. Extract key facts from the current exchange:
-   - What was the user asking about?
-   - What did we decide or discover?
-   - What remains open?
-2. Compose auto-summary (~100-200 chars):
-   "Exchange: [2-3 sentences summarizing the exchange]"
-3. Write to .forgewright/subagent-context/CONVERSATION_SUMMARY.md:
-   # Conversation Summary — [session_id]
-   - [timestamp]: [summary of exchange 1]
-   - [timestamp]: [summary of exchange 2]
-   ...
-4. Log: "✓ Conversation summary updated"
-```
-
-### Step TC2 — Write Turn-Close Memory (Mandatory)
-
-**MUST run at least one** `mem0-v2.py add` per turn, using a **single compact line** (redact secrets; stay under ~400 chars):
-
-```bash
-python3 scripts/mem0-v2.py add "REQ: [1-line user goal] | DONE: [what changed or decided] | OPEN: [blockers/questions or none] | SCOPE_UPDATE: [scope change or 'stable'] | CONVERSATION: [auto-summary from TC1]" --category session
-```
-
-### SCOPE_UPDATE Field
-
-Append `SCOPE_UPDATE:` to every Turn-Close memory entry:
-
-| Situation | SCOPE_UPDATE value |
-|----------|-------------------|
-| New project / first BA session | `SCOPE_UPDATE: Project scoped: [1-line description]` |
-| New feature added | `SCOPE_UPDATE: Scope extended: [feature name]` |
-| Scope refined / clarified | `SCOPE_UPDATE: Scope refined: [what changed]` |
-| No change | `SCOPE_UPDATE: Scope stable` |
-
-### Additional Memory Categories
-
-**ALSO add a second line** when any of these occurred this turn (pick category):
-
-| Situation | Category | Example prefix |
-|-----------|----------|----------------|
-| User or assistant locked a choice | `decisions` | `DECISION:` |
-| Architecture / stack / pattern | `architecture` | `ARCH:` |
-| Blocked on external factor | `blockers` | `BLOCKER:` |
-| Scope / BA / requirements shift | `project` | `SCOPE:` |
-
-### Turn-Close Self-Check
-
-**Self-check (orchestrator):** Before ending the turn, confirm:
-```
-IF Turn-Close memory written:
-  Log: "✓ Turn-Close memory saved"
-ELSE:
-  Retry once
-  IF still failing:
-    Log: "⚠ local_memory add failed" in session-log.json under events
-    Tell user: "Memory sync failed — some context may not persist"
-```
-
-**De-duplication:** If the same summary was already added in the last 60 seconds (identical text), skip duplicate.
+The native memory handler is an observer. It always returns `continue: true`;
+only the canonical Stop gate owns completion validation. Capture needs
+`FORGEWRIGHT_MEMORY_CAPTURE=1` and one selected `forgewright-memory` JSON block.
+Put that block before strict VERIFY and any terminal citation appendix. With no
+opt-in, no selected summary, disabled memory, legacy storage or timeout, work
+continues without a capture claim. Never silently migrate the live database.
+For an uncertain write, reconcile the same event before retrying; no blind retry
+or duplicate event is permitted.
 
 ## Session End
 
-Called when pipeline completes OR when session is explicitly ended.
-
-```
-1. Compute session summary:
-   - Tasks completed: [list]
-   - Phases completed: [list]
-   - Quality score: [from quality-dashboard]
-   - Time elapsed: [duration]
-
-2. Write final session-log.json:
-   {
-     "status": "completed",  // or "interrupted" if not all phases done
-     "completed_at": "ISO-8601",
-     "summary": "Built auth service + frontend dashboard. 142 tests pass. Quality: 91/100.",
-     "files_changed": [from change manifest],
-     "quality_score": 91,
-     "next_steps": ["Deploy to staging", "Add payment integration"]
-   }
-
-3. Save to memory:
-   Run: python3 scripts/mem0-v2.py add "Session completed: [summary]. Next: [next_steps]" --category session
-
-4. Add project identity (if no memories exist):
-   Run: python3 scripts/mem0-v2.py add "Project: [name] v[version]" --category project --source "session-end" 2>/dev/null || true
-
-5. Auto-reindex Code Intelligence:
-   IF .gitnexus/ exists AND gitnexus CLI available:
-     Run: gitnexus analyze 2>/dev/null
-     IF success:
-       Log: "✓ Code Intelligence reindexed for next session"
-     ELSE:
-       Log: "⚠ Code Intelligence reindex failed — will retry at next session start"
-   This ensures the NEXT session starts with a fresh index reflecting
-   all code changes made during this session.
-
-6. Update project profile:
-   .forgewright/project-profile.json → forge17.last_session = session_id, total_sessions++
-```
+1. Finish authorized implementation and run the material acceptance checks.
+2. Reconcile current-task and matching session status with observed results;
+   clear stale next actions and retain the exact receipt/remaining scope.
+3. Update canonical task/docs state before the final exact-tree verification.
+   After checks and review have passed, write the final status and rerun the
+   unchanged verifier to bind that state. If it fails, correct the status before
+   proceeding; do not leave a false completed record. Never freeze a pending
+   checkpoint indefinitely or exclude task state from the fingerprint.
+4. Write the final verification/review receipt under the verifier-owned runtime
+   paths. A historical closeout is prior-result evidence, not permission to
+   reuse an old tree proof after edits. The current task remains the task-plan
+   truth, with explicit receipt links and honest remaining runtime boundaries.
+5. Reclaim task-owned resources or record deliberate retention. Report success
+   only for acceptance actually verified. `allow_stop` with completion state
+   `unverified` terminates a bounded retry loop; it does not complete the task.
+6. Skip memory and reindexing unless their explicit conditions above apply.
+   A provider overload is a provider event, not evidence of insufficient RAM or
+   a memory-hook failure; classify it before choosing a bounded recovery path.
 
 ## Session Log Format
 
@@ -743,19 +473,8 @@ Called when pipeline completes OR when session is explicitly ended.
 
 ## Resume Protocol
 
-When resuming an interrupted session:
-
-```
-1. Read session-log.json → find last in_progress session
-2. Determine last completed task
-3. Verify project state:
-   a. Check if expected files from completed tasks exist
-   b. Run quick health check (build + tests)
-   c. If state matches expectations → resume from next task
-   d. If state differs → warn user, offer re-run from last gate
-4. Restore context:
-   a. Load workspace artifacts from completed tasks
-   b. Load BRD, architecture docs
-   c. Set engagement mode from saved settings
-5. Continue pipeline from resume point
-```
+Reconcile matching task/relay/receipt identity, inspect changed assumptions and
+continue from the next unfinished acceptance item. Reuse still-valid evidence;
+rerun only affected checks when source or input drift warrants it. Do not require
+a full build or a new approval round just to resume authorized work. If scope
+has materially changed, update the plan once and keep useful verified progress.

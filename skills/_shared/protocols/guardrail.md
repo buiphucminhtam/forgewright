@@ -7,7 +7,7 @@ version: 1.1.0
 owners: [core]
 owner: Core maintainers
 scope: Tool admission and resource cleanup across all agent skills
-last_reviewed: 2026-10-09
+last_reviewed: 2026-10-29
 canonical: true
 triggers: []
 used_by: [all]
@@ -349,8 +349,20 @@ The Three.js fixture and local Android/iOS launchers use
 `scripts/runtime/game-test-session.mjs` over the existing shared host admission
 broker. They acquire worker and heavy slots before effects; the host permits
 one active heavy job, with per-project worker exclusion. Unknown OS pressure or
-failed admission blocks creation. Browser/emulator/combined reservations are
+failed admission blocks creation. Fixed browser/emulator/combined reservations are
 1024/2048/3072 MiB estimates, not RSS limits.
+
+For a bounded lightweight browser test, explicitly select
+`memoryPolicy: 'observed'` with the managed browser adapter. It admits a 256 MiB
+bootstrap reservation through the same broker, then checks fresh normal host
+pressure and owned browser process RSS every second. The 512 MiB RSS threshold
+and 64 MiB live-host margin above headroom abort the owned test; neither is an
+OS hard cap or a post-reservation free-memory promise. Missing/stale telemetry,
+identity loss or unsafe pressure aborts without resizing, replay or smaller
+automatic retries. Fixed/emulator/combined policy and ownership/quarantine stay
+unchanged. Preserve the bounded measurement/cleanup receipt on success and
+failure; an aborted run cannot promote a measured profile. See the detailed
+[observed browser contract](../../../docs/adr/ADR-pi-worker-runtime.md#observed-browser-bootstrap).
 
 An admitted session permits one browser and one emulator only when their roles
 are included in its reservation. Managed page requests reuse one page and

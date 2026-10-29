@@ -161,7 +161,9 @@ def _mapped_evidence(root: Path, selector: str) -> tuple[bool, bool]:
     return True, exact_final
 
 
-def _normalize_payload(root: Path, payload: dict[str, Any]) -> dict[str, Any]:
+def _normalize_payload(
+    root: Path, payload: dict[str, Any], *, native: bool = False
+) -> dict[str, Any]:
     normalized = dict(payload)
     response = normalized.get("response_content")
     if not isinstance(response, str):
@@ -171,6 +173,12 @@ def _normalize_payload(root: Path, payload: dict[str, Any]) -> dict[str, Any]:
 
     explicit = _safe_selector(normalized.get("turn"))
     alternate = _safe_selector(normalized.get("turn_id"))
+    if native:
+        # Native identity is the evidence identity, not an opaque hint. Never
+        # discover another turn merely because this turn has no evidence yet.
+        normalized["turn"] = alternate or explicit
+        normalized.pop("turn_id", None)
+        return normalized
     selector = explicit or alternate
     mapped, exact_final = _mapped_evidence(root, selector)
     if selector and mapped:
@@ -800,12 +808,12 @@ def main() -> int:
         )
     root = _project_root()
     raw_payload = _parse_payload(raw)
+    native = platform == "CODEX" and raw_payload.get("hook_event_name") == "Stop"
     files = _files_to_check(root, raw_payload)
-    payload = _normalize_payload(root, raw_payload)
+    payload = _normalize_payload(root, raw_payload, native=native)
     payload["platform"] = platform
     # The native host rejects custom top-level fields. Keep the typed decision
     # on stderr while preserving the existing verifier/CLI output contract.
-    native = platform == "CODEX" and payload.get("hook_event_name") == "Stop"
     emit_allow = partial(_emit_allow, native=native)
     emit_block = partial(_emit_block, native=native)
     continuity: ContinuityResult = check_continuity(root, payload, files=files)
@@ -855,8 +863,26 @@ def main() -> int:
             True,
         )
 
+    selectors = [
+        raw_payload.get(field)
+        for field in ("turn_id", "turn")
+        if raw_payload.get(field) not in (None, "")
+    ]
+    native_identity_invalid = native and (
+        not selectors
+        or any(not _safe_selector(value) for value in selectors)
+        or len({_safe_selector(value) for value in selectors}) != 1
+    )
     stub_errors = _check_stubs(files)
-    if stub_errors:
+    if native_identity_invalid:
+        valid, reason = (
+            False,
+            (
+                "Native Stop requires one consistent turn_id/turn for exact-turn evidence; "
+                "CODEX_THREAD_ID and evidence from another turn cannot substitute."
+            ),
+        )
+    elif stub_errors:
         valid, reason = False, "STUBS: changed code contains forbidden stubs."
     else:
         try:

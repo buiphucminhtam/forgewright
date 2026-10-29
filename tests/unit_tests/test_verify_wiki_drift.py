@@ -1,6 +1,9 @@
 import os
+import json
 import subprocess
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -77,3 +80,49 @@ def test_wiki_verifier_ignores_untracked_local_markdown(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Unreadable Markdown" not in result.stdout
     assert "SAFE" in result.stdout
+
+
+@pytest.mark.parametrize("adapter", [False, True, "invalid"])
+def test_missing_index_respects_explicit_adapter_state(tmp_path, adapter):
+    (tmp_path / "README.md").write_text("Port: 3000\n", encoding="utf-8")
+    config = tmp_path / ".forgewright"
+    config.mkdir()
+    (config / "docs-manifest.json").write_text(
+        json.dumps({"adapters": {"gitnexus": adapter}}), encoding="utf-8"
+    )
+    result = subprocess.run(
+        ["bash", str(SCRIPT), "--threshold", "0.3"],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if adapter is False:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "GitNexus optional/unavailable" in result.stdout
+        assert "Số lỗi lệch pha code (Doc-to-Code): 0" in result.stdout
+        assert not (tmp_path / ".gitnexus").exists()
+    else:
+        assert result.returncode == 1, result.stdout + result.stderr
+        assert "GitNexus capability unavailable" in result.stdout
+        assert "Drift Ratio" not in result.stdout
+
+
+def test_optional_index_does_not_hide_unreadable_markdown(tmp_path):
+    config = tmp_path / ".forgewright"
+    config.mkdir()
+    (config / "docs-manifest.json").write_text(
+        '{"adapters":{"gitnexus":false}}', encoding="utf-8"
+    )
+    broken = tmp_path / "broken.md"
+    broken.symlink_to(broken)
+    result = subprocess.run(
+        ["bash", str(SCRIPT), "--threshold", "0.3"],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "Unreadable Markdown" in result.stdout
+    assert "CRITICAL ALERT" in result.stdout

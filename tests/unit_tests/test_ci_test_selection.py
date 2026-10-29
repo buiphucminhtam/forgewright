@@ -11,6 +11,59 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.mark.parametrize("local_index", [False, True])
+def test_review_resolves_index_and_keeps_linked_worktree_diff(
+    tmp_path, monkeypatch, local_index
+):
+    loaded = module()
+    canonical = tmp_path / "canonical"
+    worktree = tmp_path / "linked worktree"
+    canonical.mkdir()
+    for key in loaded.TEST_GIT_ENV:
+        monkeypatch.delenv(key, raising=False)
+    subprocess.run(["git", "init", "-q", str(canonical)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "fixture",
+        ],
+        cwd=canonical,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "worktree", "add", "-qb", "fixture", str(worktree)],
+        cwd=canonical,
+        check=True,
+    )
+    (worktree / "change.txt").write_text("only linked worktree\n")
+    subprocess.run(["git", "add", "change.txt"], cwd=worktree, check=True)
+    if local_index:
+        (worktree / ".gitnexus").mkdir()
+    monkeypatch.setattr(loaded, "ROOT", worktree)
+    runner = loaded.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    capture = runner.capture
+    runner.capture = lambda argv, **kwargs: capture(argv, cwd=worktree)
+    runner.review()
+    step = next(
+        item for item in runner.results if item.name == "gitnexus-change-impact"
+    )
+    expected = worktree if local_index else canonical
+    assert (
+        Path(step.argv[step.argv.index("--repo") + 1]).resolve() == expected.resolve()
+    )
+    assert Path(step.cwd).resolve() == worktree.resolve()
+    assert step.argv[step.argv.index("--scope") + 1] == "staged"
+
+
 def module():
     spec = importlib.util.spec_from_file_location(
         "ci_test_selection", ROOT / "scripts/ci/local-ci.py"

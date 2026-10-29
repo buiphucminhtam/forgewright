@@ -31,6 +31,7 @@ def test_native_diagnostic_preserves_validation_retry_and_controls(
     payload = {
         "hook_event_name": "Stop",
         "last_assistant_message": "private response",
+        "turn_id": "diagnostic-native-turn",
         "files": ["src/code.py"],
     }
     monkeypatch.setattr(
@@ -40,7 +41,9 @@ def test_native_diagnostic_preserves_validation_retry_and_controls(
         gate, "_read_payload", lambda _path: (json.dumps(payload).encode(), False)
     )
     monkeypatch.setattr(gate, "_project_root", lambda: tmp_path)
-    monkeypatch.setattr(gate, "_normalize_payload", lambda _root, value: value)
+    monkeypatch.setattr(
+        gate, "_normalize_payload", lambda _root, value, **_kwargs: value
+    )
     monkeypatch.setattr(gate, "_files_to_check", lambda *_args: ["src/code.py"])
     monkeypatch.setattr(gate, "_identity", lambda *_args: ({}, "scope"))
     monkeypatch.setattr(gate, "_check_stubs", lambda _files: [])
@@ -172,6 +175,7 @@ def test_real_native_hook_opt_in_matches_existing_typed_decision(tmp_path, respo
         timeout=30,
         env={
             **os.environ,
+            "FORGEWRIGHT_WORKSPACE": str(tmp_path),
             "PYTHONDONTWRITEBYTECODE": "1",
             "FORGEWRIGHT_STOP_DIAGNOSTICS": "1",
             "FORGEWRIGHT_STOP_STATE_DIR": str(tmp_path / "stop-state"),

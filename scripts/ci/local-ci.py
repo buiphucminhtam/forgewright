@@ -817,6 +817,16 @@ class LocalCI:
             scope = "compare"
             base = self.base_ref or "HEAD~1"
             extra = ["--base-ref", base]
+        index_root = ROOT
+        if (ROOT / ".git").is_file() and not (ROOT / ".gitnexus").is_dir():
+            # GitNexus resolves --repo against its index registry, then derives
+            # the diff cwd from the linked worktree in process.cwd(). Keep that
+            # cwd below; never analyze the canonical checkout's staged changes.
+            worktrees = self.capture(["git", "worktree", "list", "--porcelain", "-z"])
+            first = worktrees.split("\0", 1)[0]
+            if not first.startswith("worktree "):
+                raise GateFailure("GitNexus canonical worktree could not be resolved")
+            index_root = Path(first.removeprefix("worktree "))
         self.run(
             "gitnexus-change-impact",
             [
@@ -826,10 +836,11 @@ class LocalCI:
                 scope,
                 *extra,
                 "--repo",
-                str(ROOT),
+                str(index_root),
                 "--limit",
                 "200",
             ],
+            cwd=ROOT,
         )
         openapi_base = self.base_ref or (
             "HEAD" if scope in {"staged", "all"} else "HEAD~1"

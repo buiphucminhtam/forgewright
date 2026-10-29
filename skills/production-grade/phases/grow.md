@@ -49,8 +49,8 @@ Outputs: ab-test-plan.md, conversion-analysis.md, optimization-roadmap.md
 Update task.md: T5 status → completed
 Update task.md: T5b status → completed
 
-Memory save:
-python3 scripts/mem0-cli.py add "GROW phase completed for [project]. Growth strategy: [summary], Conversion optimizations: [list]" --category decisions
+Record observed results in canonical task state.
+Optional memory follows Middleware 09 only when capture is authorized and durable.
 ```
 
 ## Growth Pipeline Modes

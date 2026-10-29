@@ -34,6 +34,10 @@ Track these metrics per pipeline execution:
 
 ### Performance Benchmarks
 
+Illustrative telemetry only: these are not measured host limits or completion
+gates. Use a task-specific measured KPI when relevant; estimates and scores
+cannot stop authorized useful work or replace acceptance evidence.
+
 | Metric | Target | Warning | Critical |
 |--------|--------|---------|----------|
 | Context utilization | < 70% | 70-80% | > 80% |
@@ -316,7 +320,7 @@ Attach this command to local git hooks and/or an OS-native scheduler as appropri
 
 Before any deployment:
 
-- [ ] All tests passing
+- [ ] Applicable release acceptance and regression checks pass; full suite when the project release contract requires it
 - [ ] Security scan clean
 - [ ] Code review approved
 - [ ] Documentation updated

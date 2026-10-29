@@ -18,6 +18,24 @@ The pipeline is not a checklist that manufactures work. Classify effort before e
 
 A status check or review may need only INTERPRET/DEFINE/HARDEN. A local fix may compress INTERPRET/DEFINE/BUILD/HARDEN. SHIP and SUSTAIN run only when the user objective requires them.
 
+## Prompt and session continuity
+
+Classify scope before onboarding. Resume authorized unfinished work from current
+workspace task state and matching receipts; stale pipeline logs do not create a
+new approval gate. Optional memory, estimated context usage and index age cannot
+stop useful work. Checkpoint at useful boundaries and continue through host
+compaction. See `skills/_shared/protocols/session-lifecycle.md`.
+
+The Codex prompt hook exposes the native `--turn` for evidence. Stop binds that
+exact identity, never `CODEX_THREAD_ID` or a newer unrelated evidence file.
+Finalize task state after observed checks/review and before the final unchanged
+verification run, so the exact tree includes honest final status. An unverified
+Stop retry exit is not task completion. Native hook delivery still requires
+native host evidence; direct tests alone do not establish installed adoption.
+Docs continuity reads the source-content catalog with its own bounded 8 MiB
+budget; manifest/state metadata stays at 512 KiB and build receipts at 256 KiB.
+An ordinary larger catalog must not be confused with an invalid docs build.
+
 ## Phase reference
 
 | Phase | Responsibility |
@@ -324,6 +342,19 @@ Code-change completion is fail-closed and exact-turn correlated:
    covered.
    The response must match this exact
    machine record; marker-only output and schema v1 cannot complete code.
+
+   After all strict VERIFY fields, one optional terminal `oai-mem-citation`
+   appendix may contain `citation_entries` followed by `rollout_ids`. Citation
+   rows use safe relative Markdown paths, positive ordered line ranges and
+   nonempty single-line notes; rollout rows are UUIDs and may be absent. Only
+   the exact tag/line structure is accepted: no attributes, nesting, duplicate
+   or misplaced appendix, injected fields, or trailing non-whitespace. The
+   validator separates this metadata before parsing VERIFY; it never opens
+   cited files or treats citations as evidence. Exact acceptance, command,
+   digest, turn, replay and HARD review requirements remain unchanged.
+   Reserved field words inside a validated single-line note are inert text;
+   they cannot supply or override VERIFY fields. Citation-tag markers outside
+   the terminal appendix are rejected, including malformed preamble markers.
 4. Before completion, the gate replays every final-tree verifier from its exact
    stored argv with a bounded timeout and reduced environment. The observed
    exit code must be zero and the full-worktree fingerprint must remain

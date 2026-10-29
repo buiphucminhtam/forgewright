@@ -81,6 +81,10 @@ import tomllib
 legacy = "bash scripts/lite/stop-gate.sh --platform CODEX"
 canonical = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 1; cd \"$root\" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CODEX'"
 memory = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/memory/native_hook.py\"; [ -f \"$script\" ] || exit 0; exec python3 \"$script\" --workspace \"$root\"'"
+memory_opt_in = memory.replace(
+    'exec python3',
+    'FORGEWRIGHT_MEMORY_CAPTURE="${FORGEWRIGHT_MEMORY_CAPTURE-1}" exec python3',
+)
 try:
     with open(sys.argv[1], "rb") as handle:
         config = tomllib.load(handle)
@@ -103,7 +107,7 @@ try:
             if not isinstance(handler, dict):
                 continue
             command = handler.get("command")
-            if not isinstance(command, str) or command.strip(" \t\n") != memory:
+            if not isinstance(command, str) or command.strip(" \t\n") not in {memory, memory_opt_in}:
                 continue
             if type(handler.get("timeout")) is not int:
                 continue

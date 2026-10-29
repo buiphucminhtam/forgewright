@@ -133,6 +133,22 @@ window, including when immediate memory is ample. Warning no longer resets this
 window on every poll: it restricts admission to one worker with unchanged
 1,024 MiB headroom. Critical and unknown pressure still prevent new admission.
 Ordinary swap activity alone is not memory pressure.
+Status separates this observation window from a capacity rejection:
+`observationReady=false`, `pauseReason=observation-warmup` and
+`observationWaitMs` describe the remaining window when telemetry is usable.
+Missing telemetry, unsafe pressure and load have their own reasons; a zero wait
+does not promise recovery. `availableMiB` during warm-up contains only immediate
+memory, without unearned cache or swap credit. Do not treat that early snapshot
+as a measured total-memory limit or abandon an otherwise authorized bounded
+acquisition before its normal observation window. A later `paused=false` still
+does not guarantee a particular job fits: active/quarantined reservations, the
+requested budget and headroom are checked separately. The JS capacity timeout
+keeps its stable code and exposes bounded `admission` metadata with the last
+queued reason, kind, requested MiB and elapsed wait, without re-enqueuing work.
+These are diagnostic fields; they change neither grant thresholds nor workload
+estimates. Fixed browser reservation calibration still needs matching process
+runtime measurements. The explicit observed browser policy below provides a
+bounded measurement path instead of requiring the full peak estimate first.
 The larger of the latest sampled rate and the elapsed-time-weighted rate in the
 current window (at most 30 seconds) is multiplied by the existing 15-second recovery
 interval. This byte-valued heuristic reserve is subtracted from the combined
@@ -142,6 +158,48 @@ and known reservations remain separate. Large sustained swap or a recent spike
 can exhaust estimated credit without vetoing ample immediate memory under normal
 pressure. No swap-rate cutoff or reduced headroom is introduced.
 Only one worker may use this estimated budget even on larger Macs.
+
+### Observed browser bootstrap
+
+For bounded lightweight browser checks, `runGameTest({memoryPolicy:'observed',
+...}, work)` admits worker 192 MiB plus a **256 MiB bootstrap reservation** through
+the existing broker. This is an explicit execution policy, not a prediction of
+the browser's peak. The default fixed browser 1024 MiB, emulator 2048 MiB and
+combined 3072 MiB budgets remain unchanged. Observed mode rejects emulator or
+combined roles; it never retries, resizes or re-admits the invocation.
+
+Before effects and every second, the guard requires ready, unpaused, normal
+host telemetry and at least headroom plus a 64 MiB **live-host margin**. OS
+availability already reflects running allocations; this margin is not free
+capacity after subtracting lease estimates again. The existing broker still
+enforces reservations, headroom, worker/one-heavy limits and exact parent/owner
+binding at admission. A sample over two seconds old, lost telemetry/identity,
+unsafe host state or browser group/descendant RSS over 512 MiB aborts the owned
+test. These sampled limits are soft abort thresholds, not OS memory containment.
+
+The managed adapter uses pinned Playwright's public
+[BrowserServer process and close APIs](https://playwright.dev/docs/api/class-browserserver),
+with `launchServer` bound to loopback and a private generated endpoint. Clients
+use Playwright's connection API for the same local browser; video consumers
+close the owned page and use `video.saveAs(path)`, since `video.path()` is not
+available over that connection. It binds
+the direct ChildProcess, process group, birth time and executable, counts group
+members including reparented helpers and observed descendants, and remembers
+their identities for cleanup. Both a late client connection and its owned server
+are closed. Unknown launch, unsettled work, incomplete census or surviving owned
+processes retain quarantine. No external applications are stopped.
+
+Success and failure carry an immutable bounded `memory` receipt: policy, sample
+count, measured browser peak, minimum live availability, last 32 host samples,
+launch generation/root PID/process identity digest, guard failure and confirmed
+or uncertain cleanup. No websocket endpoint is recorded. Encoder/worker memory
+affects host checks but is not part of the browser RSS total. Second-resolution
+`ps` birth time, sampled observations, detached escapes and host/supervisor crashes
+remain limitations; do not claim an OS hard cap, complete task footprint or a
+general calibrated profile from one workload. This reuses the installed
+Playwright dependency and existing broker/teardown, adding no service or package.
+
+### Host swap accounting and verification
 
 The 2026-10-15 owner requirement relaxes false RAM starvation by allowing a
 small, explicit swap budget under **normal** macOS memory pressure. The optional
@@ -222,6 +280,16 @@ acceptance is separate from comparative savings, broad canary rollout and the
 full earlier P0-P6 outcome program.
 
 ### Reproducible consumer acceptance
+
+The finite-job supervisor handles Darwin's exited-group signal race only after
+reaping its owned leader and observing a fresh, safe, empty process group.
+Darwin can return `EPERM` for an unreaped group containing only zombies; Apple's
+[XNU signal implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c)
+excludes zombie group members before deciding that no eligible target exists.
+This behavior is adapted without copying kernel code or adding dependencies.
+Live descendants, escaped children, changed process identities, incomplete
+censuses, earlier uncertainty, other errno values and other platforms retain
+quarantine. Successful cleanup never follows merely from a later missing PID.
 
 After dependency installation and building the current source, contract and
 runtime checks run without a model account:

@@ -38,6 +38,9 @@ from windows_secure_io import (  # noqa: E402
 
 
 MAX_METADATA_BYTES = 512 * 1024
+# The catalog includes rendered source content/relations, unlike small metadata.
+# Keep its read bounded without rejecting ordinary multi-document projects.
+MAX_CATALOG_BYTES = 8 * 1024 * 1024
 MAX_RECEIPT_BYTES = 256 * 1024
 MAX_RETRY_STATE_BYTES = 64 * 1024
 MAX_MATERIAL_FILE_BYTES = 2 * 1024 * 1024
@@ -811,7 +814,7 @@ def _cache_state(
     path = _regular_contained(root, ".forgewright/cache/docs-index.json")
     if path is None:
         return "invalid", ""
-    catalog = _read_json(path, MAX_METADATA_BYTES)
+    catalog = _read_json(path, MAX_CATALOG_BYTES)
     if catalog is None or catalog.get("schema_version") != 1:
         return "invalid", ""
     project = catalog.get("project")

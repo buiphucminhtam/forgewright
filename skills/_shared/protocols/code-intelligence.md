@@ -117,64 +117,24 @@ IF index is stale (>24h old):
 - `cypher()` — variable, use sparingly
 - `rename()` — slow (writes files), always use `dry_run: true` first
 
-## Auto-Reindex (Session Lifecycle Integration)
+## Task-Driven Index Refresh
 
-ForgeNexus auto-reindexes at three lifecycle points — **no user action required:**
+The canonical session lifecycle governs indexing. Do not launch analysis at
+session start/end, after every commit/push, or merely because the index crossed
+an age threshold. An old index is a limited navigation aid, not a blocker.
 
-### At Session Start (Step 3.5)
+Refresh only when stale/missing symbols materially impede the requested task
+and measured host capacity permits the bounded job. Otherwise use focused
+source/caller checks and disclose the index limitation. Preserve required
+impact analysis; a missing graph result is UNKNOWN, never proof of no callers.
+An explicitly configured IDE indexing service is separate owned runtime; do
+not add duplicate background jobs or disable it without checking ownership.
 
-```
-IF .gitnexus/ exists:
-  commits_since_last_index = git rev-list --count HEAD ^<last_indexed_commit>
-  
-  IF commits_since > 0 OR index_age > 1 hour:
-    Run: gitnexus analyze 2>/dev/null
-    Log result (success or fallback to stale)
-  ELSE:
-    Use existing fresh index
-```
-
-### At Session End (Step 5)
-
-```
-IF .gitnexus/ exists:
-  Run: gitnexus analyze 2>/dev/null
-  This ensures NEXT session starts with fresh index
-```
-
-### Immediately Post-Commit / Post-Push (Background Hook)
-
-```
-IF git commit or git push has successfully run:
-  Run: npx gitnexus analyze (as a background task)
-  This ensures real-time symbol updates without blocking the agent or waiting for session end
-```
-
-### Why these hooks?
-
-| Hook | Purpose |
-|------|----------|
-| Session Start | Catches manual changes user made between sessions (hotfixes, other tools) |
-| Session End | Catches all changes made BY this session (new files, refactors) |
-| Post-Commit/Push | Immediate updates after code mutations, keeping the graph hot and fresh in real-time |
-
-### Fail-Safe
-
-If `gitnexus analyze` fails at any point:
-1. Log warning — do NOT block pipeline
-2. Use stale index (stale > nothing)
-3. Add `⚠ stale` badge to any Code Intelligence output
-4. Retry at next lifecycle hook
-
-> **Key principle:** Auto-reindex is best-effort. Pipeline NEVER blocks on Code Intelligence failures.
-
-## Manual Re-indexing
-
-In addition to auto-reindex, manual re-indexing may be needed:
-- **After major refactoring** — run `gitnexus analyze --force`
-- **After adding new files/services** — run `gitnexus analyze` (incremental)
-- **Stale index warning** — run `gitnexus analyze`
-- **Auto-reindex (IDE)** — PostToolUse hooks reindex after commits
+For a justified refresh, use the available installed GitNexus CLI and current
+project configuration, observe completion, and reclaim task-owned processes.
+If it fails, classify the failure and use the fallback; do not retry on the next
+lifecycle tick automatically. Index or provider maintenance is not an acceptance
+requirement for an otherwise verifiable bounded task.
 
 ## LLM Configuration (Optional)
 
@@ -211,7 +171,7 @@ export GITNEXUS_LLM_MODEL=gpt-4o-mini
 
 ## Integration with Existing Protocols
 
-- **session-lifecycle.md:** Step 3.5 (Session Start) checks freshness + auto-reindex; Step 5 (Session End) re-indexes after changes
+- **session-lifecycle.md:** Task-relevant freshness check; refresh only when needed and measured capacity permits
 - **project-onboarding.md:** Phase 1.5 creates the initial index
 - **quality-gate.md:** Quality gate can use `detect_changes()` as additional validation signal
 - **graceful-failure.md:** All CI tool failures follow graceful failure protocol

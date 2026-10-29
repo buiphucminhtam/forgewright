@@ -19,7 +19,9 @@ MAX_OUTPUT_BYTES = 8192
 CONTEXT_CHARS = 2000
 CHILD_TIMEOUT = 1.5
 ALLOW = {"continue": True}
-SUMMARY = re.compile(r"(?m)^```forgewright-memory\r?\n(.*?)\r?\n```\s*\Z", re.S)
+# The selected summary may precede strict VERIFY and a terminal citation
+# appendix. Only this unique fenced JSON value is captured, never its suffix.
+SUMMARY = re.compile(r"(?m)^```forgewright-memory\r?\n(.*?)\r?\n```[ \t]*\r?$", re.S)
 
 
 def handle(payload, workspace):
@@ -55,6 +57,7 @@ def handle(payload, workspace):
                 not in {
                     "MEM0_DB_PATH",
                     "MEM0_PROJECT_ID",
+                    "MEMORY_DB_DIR",
                     "FORGEWRIGHT_CONTINUITY_ROOT",
                 }
             },

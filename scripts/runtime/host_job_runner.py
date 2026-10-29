@@ -9,6 +9,7 @@ stay in private recovery journals. Stdout/stderr stream directly, never buffer.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import errno
 import hashlib
 import json
 import os
@@ -18,6 +19,7 @@ import shutil
 import signal
 import stat
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -506,8 +508,20 @@ def supervise(process, cancel, deadline, heartbeat):
                 os.killpg(process.pid, sig)
             except ProcessLookupError:
                 pass
-            except OSError:
-                uncertain = True
+            except OSError as error:
+                # Darwin may return EPERM for an exited, unreaped group.
+                # Reap our leader and re-census; never clear prior uncertainty
+                # or treat a live/escaped descendant as a successful signal.
+                if (
+                    sys.platform == "darwin"
+                    and error.errno == errno.EPERM
+                    and process.poll() is not None
+                ):
+                    remaining, safe = observe()
+                    if remaining or not safe:
+                        uncertain = True
+                else:
+                    uncertain = True
 
     while True:
         now = time.monotonic()
@@ -784,14 +798,14 @@ def run_job(admission, request, *, cancel=None):
         quiescent, stopped = supervise(
             process, cancel, time.monotonic() + request.timeout, heartbeat
         )
-        supervision_diagnostics = getattr(
-            process, "_forgewright_supervision_diagnostics", None
-        ) or {}
+        supervision_diagnostics = (
+            getattr(process, "_forgewright_supervision_diagnostics", None) or {}
+        )
         monitor_finished = True
         uncertain = not quiescent
-        if supervision_diagnostics.get("escaped_children") or not supervision_diagnostics.get(
-            "census_complete", True
-        ):
+        if supervision_diagnostics.get(
+            "escaped_children"
+        ) or not supervision_diagnostics.get("census_complete", True):
             receipt["supervision_diagnostics"] = supervision_diagnostics
         receipt.update(
             state="quarantined"

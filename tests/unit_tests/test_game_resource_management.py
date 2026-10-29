@@ -40,6 +40,7 @@ def test_managed_game_resources():
             "--test",
             "tests/runtime/game-test-session.test.mjs",
             "tests/runtime/game-test-browser.test.mjs",
+            "tests/runtime/game-test-memory.test.mjs",
             "tests/runtime/game-test-process.test.mjs",
             "tests/runtime/game-test-simulator.test.mjs",
             "tests/runtime/game-test-admission.test.mjs",

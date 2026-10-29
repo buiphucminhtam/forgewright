@@ -63,9 +63,13 @@ def verify_workspace_canonical_bundle(workspace: Path) -> list[str]:
         if not stop_sh.exists() and not stop_sh.is_symlink() and not codex_cfg.exists():
             return []
         if not stop_sh.is_file() or stop_sh.is_symlink():
-            return ["UNVERIFIED: workspace canonical stop-gate.sh is missing or a symlink"]
+            return [
+                "UNVERIFIED: workspace canonical stop-gate.sh is missing or a symlink"
+            ]
         if not codex_cfg.exists():
-            return ["UNVERIFIED: workspace .codex/config.toml is required when local stop-gate.sh is present"]
+            return [
+                "UNVERIFIED: workspace .codex/config.toml is required when local stop-gate.sh is present"
+            ]
         if codex_cfg.is_symlink() or not codex_cfg.is_file():
             return ["UNVERIFIED: workspace .codex/config.toml is unsafe"]
         cfg = tomllib.loads(codex_cfg.read_text(encoding="utf-8"))
@@ -75,9 +79,15 @@ def verify_workspace_canonical_bundle(workspace: Path) -> list[str]:
             legacy = "bash scripts/lite/stop-gate.sh --platform CODEX"
             canonical = 'bash -c \'root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1; cd "$root" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CODEX\''
             memory = 'bash -c \'root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script="$root/scripts/memory/native_hook.py"; [ -f "$script" ] || exit 0; exec python3 "$script" --workspace "$root"\''
+            memory_opt_in = memory.replace(
+                "exec python3",
+                'FORGEWRIGHT_MEMORY_CAPTURE="${FORGEWRIGHT_MEMORY_CAPTURE-1}" exec python3',
+            )
             groups = cfg.get("hooks", {}).get("Stop", [])
             if not isinstance(groups, list) or len(groups) not in (1, 2):
-                return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+                return [
+                    "UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"
+                ]
             remaining = list(groups)
             if len(remaining) == 2:
                 optional = []
@@ -91,7 +101,10 @@ def verify_workspace_canonical_bundle(workspace: Path) -> list[str]:
                     if not isinstance(handler, dict):
                         continue
                     cmd_val = handler.get("command")
-                    if not isinstance(cmd_val, str) or cmd_val.strip(" \t\n") != memory:
+                    if not isinstance(cmd_val, str) or cmd_val.strip(" \t\n") not in {
+                        memory,
+                        memory_opt_in,
+                    }:
                         continue
                     if type(handler.get("timeout")) is not int:
                         continue
@@ -102,7 +115,9 @@ def verify_workspace_canonical_bundle(workspace: Path) -> list[str]:
                     }:
                         optional.append(cand)
                 if len(optional) != 1:
-                    return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+                    return [
+                        "UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"
+                    ]
                 remaining = [c for c in remaining if c is not optional[0]]
             grp = remaining[0]
             if (
@@ -111,20 +126,33 @@ def verify_workspace_canonical_bundle(workspace: Path) -> list[str]:
                 or grp.get("enabled", True) is not True
                 or grp.get("matcher") != "*"
             ):
-                return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+                return [
+                    "UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"
+                ]
             hooks = grp.get("hooks")
-            if not isinstance(hooks, list) or len(hooks) != 1 or not isinstance(hooks[0], dict):
-                return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+            if (
+                not isinstance(hooks, list)
+                or len(hooks) != 1
+                or not isinstance(hooks[0], dict)
+            ):
+                return [
+                    "UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"
+                ]
             hk = hooks[0]
             if (
                 bool(set(hk) - {"type", "command", "command_windows", "enabled"})
                 or hk.get("enabled", True) is not True
                 or hk.get("type") != "command"
-                or ("command_windows" in hk and not isinstance(hk["command_windows"], str))
+                or (
+                    "command_windows" in hk
+                    and not isinstance(hk["command_windows"], str)
+                )
                 or not isinstance(hk.get("command"), str)
                 or hk["command"].strip(" \t\n") not in {legacy, canonical}
             ):
-                return ["UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"]
+                return [
+                    "UNVERIFIED: workspace .codex/config.toml Stop registration does not match canonical stop-gate.sh"
+                ]
         active = runtime_bundle_descriptor()
         for filename in _BUNDLE_MODULES:
             candidate = local_lite / filename

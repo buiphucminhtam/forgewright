@@ -1,35 +1,28 @@
 # Middleware 01 — SessionData
 
 > **Source:** `skills/_shared/protocols/session-lifecycle.md` §Steps 1-3
-> **Hook:** `before_skill()`
-> **Purpose:** Load project profile, session state, detect manual changes
+> **Hook:** `before_skill()` when matching project context is needed
+> **Purpose:** Reconcile current task, ownership and relevant saved context
 
 ## Execution
 
-```
-1. Load .forgewright/project-profile.json
-   → If exists and fresh (<24h): use cached fingerprint
-   → If stale: re-run health check only
-   → If missing: run full project onboarding
-
-2. Load .forgewright/session-log.json
-   → If interrupted session: offer resume via notify_user
-   → If completed: log summary, continue to new request
-   → If first session: continue normally
-
-3. Detect manual changes
-   → If git available: check commits since last session
-   → If structural changes detected: re-run onboarding fingerprint + patterns
-
-4. Display quality trend (if history exists)
-   → Read .forgewright/quality-history.json → show trend of last 5 sessions
-```
+1. Classify the request and effort before expanding onboarding or context work.
+2. Read the explicit workspace's task state and relay ownership. Reconcile saved
+   progress with current files and matching receipts before choosing the next
+   action. An old `in_progress` log does not prove another executor is stopped.
+3. Reuse relevant profile facts; refresh material stale assumptions only. A
+   missing profile or its age alone does not require full project onboarding.
+4. Resume authorized unfinished work directly. Ask only when a material scope,
+   ownership or irreversible-action ambiguity remains after inspection.
+5. Load trends and old logs only when needed for the user's task. Missing
+   optional session data does not block execution.
 
 ## Outputs
 
 - Project fingerprint loaded into context
 - Session state available for all subsequent middleware
-- Quality trend displayed to user
+- Task-plan truth remains `<workspace>/.agent/state/current-task.json` where
+  that contract is active. Derived task.md/session logs cannot supersede it.
 
 ## Failure Handling
 

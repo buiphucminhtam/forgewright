@@ -1,11 +1,27 @@
 /** One owned browser/context; managed page requests are serialized and capped. */
 export async function createGameBrowser(session, browserType, contextOptions={}) {
  session.claim('browser');
- let browser,attempted=false,closing;
- const close=async()=>{if(browser){closing??=browser.close();await closing;}else if(attempted)throw new Error('game_browser_launch_uncertain');};
- await session.own({close,isClosed:()=>browser?!browser.isConnected():!attempted});
+ const observed=session.memoryPolicy==='observed';
+ if(observed&&(typeof browserType.launchServer!=='function'||typeof browserType.connect!=='function'))throw new Error('game_memory_browser_unsupported');
+ let browser,server,attempted=false,closing,clientClosing;
+ const close=async()=>{
+  let error;
+  if(browser){try{clientClosing??=browser.close();await clientClosing;}catch(value){error=value;}}
+  // A late connect result must still close its client even if the server was
+  // already closed during cancellation. Always attempt the owned server too.
+  if(server){closing??=server.close();await closing;}
+  else if(!browser&&attempted)throw new Error('game_browser_launch_uncertain');
+  if(error)throw error;
+ };
+ await session.own({close,isClosed:()=>server?session.browserClosed():browser?!browser.isConnected():!attempted});
  session.signal.throwIfAborted();attempted=true;
- browser=await browserType.launch({headless:true});
+ if(observed){
+  server=await browserType.launchServer({headless:true,host:'127.0.0.1',timeout:10000});
+  if(session.signal.aborted)await close();
+  session.signal.throwIfAborted();
+  await session.observeBrowser(server.process());
+  browser=await browserType.connect(server.wsEndpoint(),{timeout:5000});
+ } else browser=await browserType.launch({headless:true});
  if(session.signal.aborted)await close();
  session.signal.throwIfAborted();
  const context=await browser.newContext(contextOptions);
@@ -21,6 +37,7 @@ export async function createGameBrowser(session, browserType, contextOptions={})
  });
  async function allocate(reuse) {
   session.signal.throwIfAborted();
+  if(observed)await session.checkMemory();
   if(blocked || !browser.isConnected())throw new Error('game_browser_uncertain');
   for(const page of pages)if(page.isClosed())pages.delete(page);
   if(reuse && pages.size)return pages.values().next().value;

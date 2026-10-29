@@ -5,6 +5,7 @@ cloud storage persistence are not inferred from this CLI being available.
 """
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import importlib.util
 import json
@@ -85,6 +86,32 @@ def source_is_current(raw_source, workspace):
     return True
 
 
+@contextmanager
+def _capture_connection(namespace):
+    """Queue capture peers before SQLite and checkpoint work, including setup.
+
+    This cooperative parent-directory lock does not replace SQLite authority
+    for manual writers. Native callers retain their existing child deadline.
+    """
+    path = database_path()
+    if continuity._has_symlink_component(path):
+        raise ValueError("unsafe_memory_database_path")
+    # Keep mutable synchronization state in the existing runtime boundary so
+    # capturing optional memory cannot invalidate a verified source tree.
+    lock_dir = path.parent / "runtime" / "memory-capture"
+    if continuity._has_symlink_component(lock_dir):
+        raise ValueError("unsafe_memory_capture_lock")
+    lock_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with continuity._open_writer_lock(lock_dir) as writer:
+        continuity._lock_exclusive(writer)
+        db = memory_module().MemoryDB(str(path), namespace=namespace)
+        conn = db.get_connection()
+        try:
+            yield db, conn
+        finally:
+            conn.close()
+
+
 def capture(payload, session, event):
     if disabled():
         return {"status": "disabled", "authority": "context-only"}
@@ -132,9 +159,7 @@ def capture(payload, session, event):
         if payload.get("scope") == "project"
         else session_namespace(session)
     )
-    db = memory_module().MemoryDB(namespace=namespace)
-    conn = db.get_connection()
-    try:
+    with _capture_connection(namespace) as (db, conn):
         conn.execute("BEGIN IMMEDIATE")
         previous = conn.execute(
             "SELECT * FROM capture_events WHERE project_root=? AND session_id=? AND event_id=?",
@@ -229,8 +254,6 @@ def capture(payload, session, event):
             "authority": "context-only",
             "adapter": "explicit-cli",
         }
-    finally:
-        conn.close()
 
 
 def context(query, session="", char_cap=2000):

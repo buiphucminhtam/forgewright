@@ -17,6 +17,10 @@ superseded_by: null
 
 ## When to Apply
 
+Distinguish host-reported usage from estimates. Thresholds below are advisory
+context-management hints, not reasons to stop the task or demand a new prompt.
+Continue the same objective through host compaction using its bounded handoff.
+
 - **Automatically** when the middleware chain detects context approaching token limits
 - **After each skill completion** in multi-skill modes (Feature, Full Build, Game Build, AI Build)
 - **Before parallel dispatch** to minimize per-worker context injection
@@ -91,10 +95,10 @@ Best for Full Build pipelines where future skills may need older context.
 Trigger: context_tokens > threshold × max_context_tokens
 
 Procedure:
-  1. Write full conversation to: .forgewright/context-cache/{session-id}-{timestamp}.md
+  1. Only when an authorized durable handoff is needed, save selected task facts (never the raw conversation) to the scoped context cache
   2. Apply Strategy 1 (structured summary) to active context
   3. Add filesystem reference:
-     "[Full context saved to .forgewright/context-cache/{filename}]"
+     "[Selected task handoff saved to .forgewright/context-cache/{filename}]"
   4. Any future skill can read the offloaded file if needed
 ```
 
@@ -116,14 +120,12 @@ Summarization runs as **Middleware ⑤** in the chain:
 
 ### With Memory Manager
 
-```
-When summarization compresses context:
-  1. Extract decisions + blockers from compressed content
-  2. Pass to Memory Manager:
-     mem0-cli.py add "Decision: [extracted]" --category decisions
-     mem0-cli.py add "Blocker: [extracted]" --category blockers
-  3. This ensures no information is permanently lost — it moves to memory
-```
+Summarization prepares bounded working context; it does not authorize persistent
+memory or transcript storage. Keep verified decisions, acceptance, progress and
+open issues in the handoff. Use optional structured memory only when a durable
+selected fact is useful and applicable host/user authorization exists. Respect
+disable flags. Missing memory never blocks compaction or continued execution,
+and summarization must not claim lossless recovery of discarded context.
 
 ### With Parallel Dispatch
 

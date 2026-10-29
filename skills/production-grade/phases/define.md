@@ -71,12 +71,9 @@ Update task.md: T1 status → completed
 
 ### Gate 1 — BRD Approval
 
-Present Gate 1 using the orchestrator's gate pattern. On approval, unblock T1.5 (or T2 if UI design is skipped).
+Use Gate 1 only for a material requirement decision not already authorized. Reuse an approved brief and continue directly; do not ask for the same approval again. On approval, unblock applicable downstream tasks.
 
-**Memory save (Gate 1):**
-```bash
-python3 scripts/mem0-cli.py add "Gate 1 approved: BRD for [project]. Key decisions: [list top 3]" --category decisions
-```
+Record the decision in canonical task/requirement state. Memory capture is optional under Middleware 09, only when authorized and durable; approval does not create a compulsory memory write.
 
 If user selects "I have changes" → iterate on BRD, re-present Gate 1.
 If user selects "Show BRD details" → display BRD, re-present Gate 1.
