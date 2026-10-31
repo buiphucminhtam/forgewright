@@ -396,5 +396,76 @@ def test_ui_style_diversity_is_evidence_bound_and_not_a_new_style_database() -> 
     )
     assert all(
         entries[name]["candidate_evidence_kind"] == "inspiration_only"
-        for name in ("daisyui", "tweakcn", "ui-ux-pro-max")
+        for name in ("daisyui", "tweakcn", "ui-ux-pro-max", "evondevkit")
     )
+
+
+def test_evondevkit_ui_ux_mindset_and_dom_probe_contract() -> None:
+    import subprocess
+
+    mindset_ref = (
+        ROOT / "skills" / "ui-designer" / "references" / "app-ui-ux-mindset.md"
+    )
+    dom_probe = ROOT / "scripts" / "art-direction" / "ui-dom-probe.mjs"
+    assert mindset_ref.is_file()
+    assert dom_probe.is_file()
+
+    mindset_text = _read(mindset_ref)
+    protocol_mindset = _read(DESIGN_MINDSET)
+    grounding_text = _read(VISUAL_GROUNDING)
+    ui_lite = _read(ROOT / "skills" / "ui-designer" / "LITE.md")
+    ui_skill = _read(UI_SKILL)
+    int_skill = _read(ROOT / "skills" / "interaction-designer" / "SKILL.md")
+    fe_skill = _read(ROOT / "skills" / "frontend-engineer" / "SKILL.md")
+    vr_skill = _read(VISION_REVIEW_SKILL)
+
+    for required in (
+        "4d021537edc853fd91d2bb3aade1f5076ab7556e",
+        "MIT License",
+        "Mode `U`",
+        "Mode `V`",
+        "Mode `L`",
+        "Mode `D`",
+        "Color Role Table",
+        "Audit:",
+        "`N1`",
+        "`N12`",
+        "Hỏng",
+        "Lệch hệ",
+        "file:line",
+        "ui-dom-probe.mjs",
+    ):
+        assert required in mindset_text, f"{required} missing from {mindset_ref}"
+
+    assert "Operational App UI/UX Mindset & Self-Tests" in protocol_mindset
+    assert "Three-Tier Pre-Design Audit & Workflow Routing" in grounding_text
+    assert "references/app-ui-ux-mindset.md" in ui_lite
+    assert "references/app-ui-ux-mindset.md" in ui_skill
+    assert "Rule 7: Zero-Shift State Mechanics" in int_skill
+    assert "Operational UI/UX Implementation Rules" in fe_skill
+    assert "System Drift / `Lệch hệ`" in vr_skill
+
+    probe_source = _read(dom_probe)
+    assert "MIT License" in probe_source
+    assert "4d021537edc853fd91d2bb3aade1f5076ab7556e" in probe_source
+    assert "disallowFocusRings: false" in probe_source
+
+    help_proc = subprocess.run(
+        ["node", str(dom_probe), "--help"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert help_proc.returncode == 0
+    assert "--disallow-focus-rings" in help_proc.stdout
+
+    missing_url_proc = subprocess.run(
+        ["node", str(dom_probe)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert missing_url_proc.returncode == 2
+    assert "Thiếu URL" in missing_url_proc.stderr

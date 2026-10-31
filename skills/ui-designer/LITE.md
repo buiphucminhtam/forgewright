@@ -23,12 +23,12 @@ Own the **UI contract** for screens/components. Consume validated `PIPELINE_CONT
 
 For every material screen or gameplay HUD, verify these before handoff:
 
-- **Task and viewport:** name the primary task/content. Measure HUD/chrome coverage, occlusion, safe areas and target-scale readability; decoration must not become the focal point unless the product/gameplay contract requires it.
-- **Hierarchy and grouping:** rank primary/secondary/tertiary information, then verify reading order, alignment and proximity match that priority. Visual weight is evidence of importance, not a substitute for it.
-- **Semantic system:** use a bounded set of container/border/elevation roles. Do not apply one rounded-card/glow treatment to every component. Keep each semantic color family consistent and add text/icon/shape cues so meaning never depends on color alone.
-- **Typography:** verify actual resolution, viewing distance, localization and up-to-200% scaling. Prefer sentence case and locale-aware alignment for text lines; reserve all-caps for short labels or an approved identity.
+- **Task and viewport:** name primary task/content. Measure HUD/chrome coverage, occlusion, safe areas and target-scale readability; decoration must not overpower task priority.
+- **Hierarchy and grouping:** rank primary/secondary/tertiary information; verify reading order, alignment and proximity match priority.
+- **Semantic system:** bound container/border/elevation roles; avoid uniform rounded-card/glow defaults. Keep semantic color families consistent and pair meaning with text/icon/shape cues.
+- **Typography:** verify actual resolution, viewing distance, localization and up-to-200% scaling. Prefer sentence case and locale-aware alignment; reserve all-caps for short labels or approved identity.
 - **Measured accessibility:** calculate contrast instead of judging by eye and apply the target platform's thresholds. Use the source-backed UI/HUD checks in `skills/_shared/protocols/visual-grounding.md`.
-- **States and evidence:** review relevant interaction states and responsive/camera conditions. A static frame cannot prove motion, gameplay readability, focus behavior or state quality.
+- **States, audit and DOM probe:** review interaction states, responsive/camera conditions, and apply [references/app-ui-ux-mindset.md](references/app-ui-ux-mindset.md) (pre-code `Audit:` line, `U/V/L/D` routing, Color Role Table, `N1–N12`, and `scripts/art-direction/ui-dom-probe.mjs --sweep`). A static frame cannot prove motion or state quality.
 
 ## SOLVE Step 3: DECOMPOSE (UI Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

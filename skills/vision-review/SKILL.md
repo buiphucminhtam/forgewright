@@ -61,6 +61,7 @@ Use project tools where applicable for:
 - DOM/layout overflow, safe areas and responsive viewports;
 - contrast, focus order and accessibility semantics;
 - component states and token conformance;
+- live web/HTML multi-viewport and continuous sweep probing via `node scripts/art-direction/ui-dom-probe.mjs <url> --sweep` (measuring 375–1920px layout overflow, clipped text, button wrapping, real backdrop/gradient contrast, hover-induced layout shift, overflowing/hollow popovers, unstyled native controls in closed layers, and dark-mode sunken selection or hue drift);
 - engine import settings, texture/frame/atlas/LOD constraints;
 - stable screenshot/VRT comparison.
 
@@ -96,10 +97,10 @@ hero close-up.
 
 Every material finding must be one of:
 
-- `REFERENCE_DEVIATION` — violates an explicit approved mechanism/reference;
-- `USABILITY_ACCESSIBILITY` — harms task/readability/accessibility;
-- `TECHNICAL_ARTIFACT` — rendering/generation/import defect;
-- `SUBJECTIVE_PREFERENCE` — taste difference not supported by the contract.
+- `REFERENCE_DEVIATION` (**System Drift / `Lệch hệ`**) — violates an explicit approved mechanism/reference or the project's own token/component system. When auditing code, cite the exact `file:line` where the project defines the canonical token/component vs. where the same role drifts; never classify different component roles or intentional brand colors as drift;
+- `USABILITY_ACCESSIBILITY` (**Broken / `Hỏng`**) — harms task completion, readability, or accessibility under any brand (e.g., contrast failure, 375px horizontal scroll, truncated decision-critical text, tap target too small, missing keyboard focus indicator, or hover-induced layout shift);
+- `TECHNICAL_ARTIFACT` (**Broken / `Hỏng`**) — rendering/generation/import defect, overflowing floating layer, or dark-mode sunken selection/hue inversion;
+- `SUBJECTIVE_PREFERENCE` (**Taste / `Gu`**) — optional layout/signal tightening not required by the contract, presented with user-facing rationale and never auto-enforced over brand identity.
 
 `SUBJECTIVE_PREFERENCE` cannot block production by itself unless the user/brand
 owner makes it an explicit requirement.

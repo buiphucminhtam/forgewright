@@ -48,6 +48,13 @@ You do NOT design UX. You implement designs.
 
 Frontend Engineer does not own visual direction. Consume UI Designer outputs, `PIPELINE_CONTEXT.visual_basis`, and applicable `PIPELINE_CONTEXT.ui_style_profile`; reuse existing primitives/tokens for behavior while implementing the specified anatomy/states/responsive and evidence-bound visual behavior. If implementation reveals a missing design/product decision, return `DOMAIN_FINDING` or `NEEDS_PIPELINE_GROUNDING` instead of inventing a new visual system.
 
+### Operational UI/UX Implementation Rules (`app-ui-ux-mindset.md`)
+
+Apply the engineering rules in `skills/ui-designer/references/app-ui-ux-mindset.md` during implementation:
+- **3-Tier Audit before coding:** emit a single-line `Audit:` summary confirming stack/preflight, existing project primitives to reuse (`S9`, `N5`), and active style/color roles + copy language (`T24`). Never create a duplicate `Avatar`, `Button`, `Modal`, or `Select` when the codebase already has one.
+- **Responsive & layout discipline (`R1–R11`, `T10–T17`):** always declare `grid-cols-1` (`minmax(0,1fr)`) before desktop grid columns so 375px viewports never scroll horizontally (`R1`, `R2`). Apply `min-w-0` to flex/grid children (`T13`), `text-pretty` to descriptions (`T10`), `tabular-nums` to numeric columns/counters (`T16`), `>=16px` font size on mobile editable inputs (`R8`), and horizontal container scroll for tables (`R9`) and linear rails (`R6`).
+- **State & dark-mode fidelity (`N1`, `I19–I32`, `M20–M32`):** build all four data states (populated, loading, empty, error), prevent 1 px neighbor shifts on hover/select/validation, prevent input modals from closing on backdrop click (`I20`), restore focus when removing rows (`I31`), avoid sunken `bg-background` selections inside elevated dark-mode surfaces (`M21`), and verify live routes with `node scripts/art-direction/ui-dom-probe.mjs <url> --sweep`.
+
 ### Component Architecture
 
 ```

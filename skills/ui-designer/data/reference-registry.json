@@ -142,6 +142,26 @@
         "Never copy its generated design-system output into production without independent project evidence."
       ],
       "can_ground_without_card": false
+    },
+    {
+      "id": "evondevkit",
+      "name": "evondevKit UI/UX Skill & DOM Probe",
+      "source_url": "https://github.com/evondev/evondevKit",
+      "source_class": "exploration_library",
+      "candidate_evidence_kind": "inspiration_only",
+      "observed_mechanisms": [
+        "Observed 2026-10-31 at commit 4d021537edc853fd91d2bb3aade1f5076ab7556e (v0.3.27, MIT license): enforces a 3-tier pre-design codebase audit, routes tasks across U (task-first wireframes), V (broken/system-drift/taste review and keep-brand color-role table), L (visual-preserving refactor), and D (primitive contract first), and validates live DOM layouts across 375-1920px plus 1440->375 sweeps.",
+        "Separates operational usability/layout mechanics (N1-N12, S1-S16, R1-R11, I1-I32, M20-M32) from optional flat-dashboard author taste defaults."
+      ],
+      "recommended_uses": [
+        "Use its operational workflows, 3-tier audit gate, color-role preservation table, edge-case mock data discipline, and Playwright DOM probe mechanics as structural/usability checks.",
+        "Treat its flat-hairline visual presets as optional exploration hypotheses unless backed by the active project Visual Basis."
+      ],
+      "prohibited_uses": [
+        "Do not enforce author-locked aesthetic preferences (such as suppressing keyboard focus rings or mandating a single universal border-radius/font count) over WCAG accessibility or an approved project Visual Basis.",
+        "Do not treat this registry row as grounding evidence without a validated Visual Evidence Card."
+      ],
+      "can_ground_without_card": false
     }
   ]
 }

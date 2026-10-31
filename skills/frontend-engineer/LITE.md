@@ -20,6 +20,7 @@ Own **frontend implementation architecture and runtime behavior**. Consume appro
 | Async/resilience behavior | Inspect loading/error/empty/retry/cancel/optimistic patterns | ... | reachable UI states + failure handling |
 | Accessibility semantics | Inspect DOM roles, labels, focus/nav/input behavior | ... | semantic/focus requirements for affected components |
 | Performance/hydration boundary | Inspect bundle/render waterfalls, client boundaries, list/media behavior | ... | measured/structural risk: hydration, rerender, bundle, network, virtualization |
+| Three-tier UI/UX audit & DOM probe readiness | Run 3-tier audit (stack/preflight, existing primitives `S9`, style/color roles & copy locale `T24`) per `skills/ui-designer/references/app-ui-ux-mindset.md` | ... | single-line `Audit:` output + plan to verify rendered routes with `scripts/art-direction/ui-dom-probe.mjs` |
 
 ## SOLVE Step 3: DECOMPOSE (Frontend Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
@@ -28,10 +29,10 @@ Format: `n. ACTION | TARGET | CHECK`
 2. DATA FLOW | Typed API/query layer | Map server/cache/state/error contracts; verify stale/invalidation/auth failures produce deterministic UI states.
 3. STATE | URL/server/cache/global/local/form ownership | Place state at the narrowest durable owner; verify back/forward, refresh and concurrent update behavior where relevant.
 4. COMPONENT | Existing primitives + UI contract | Implement anatomy/variants/states using approved tokens; verify no visual-system invention or duplicated primitive.
-5. ASYNC UX | Loading/empty/error/optimistic/cancel/retry | Ensure each reachable state preserves user intent and avoids double-submit/stale-response races.
+5. ASYNC UX | Loading/empty/error/optimistic/cancel/retry | Ensure all 4 data states (`I19`) preserve user intent, keep existing rows visible during filter/page reloads, and cause zero layout shift (`N1`).
 6. ACCESSIBILITY | Semantic DOM/focus/keyboard/touch | Verify labels, focus order/restoration, keyboard interaction, live status and color-independent meaning.
 7. PERFORMANCE | Render/network/bundle hot path | Measure or structurally verify the affected bottleneck before memoization/lazy-loading/virtualization changes.
-8. TEST | Component/integration/e2e/VRT as applicable | Prove user-visible behavior, state transitions and contract integration rather than implementation details alone.
+8. TEST | Component/integration/e2e/VRT + DOM probe | Prove user-visible behavior, state transitions, 375px–1920px responsive layout (`R1–R11`), dark-mode surface/hue coherence (`M20–M32`), and run `node scripts/art-direction/ui-dom-probe.mjs <url> --sweep` when a live route is available.
 
 ## Domain Failure Modes
 - **State duplication:** the same fact exists in server cache + global store + local state and drifts.

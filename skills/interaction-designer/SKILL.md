@@ -57,6 +57,14 @@ For material motion/interaction styling, consume the validated Visual Basis. The
 
 ---
 
+### Rule 7: Zero-Shift State Mechanics & Form/Modal Ergonomics (`N1–N12`, `I1–I32`)
+> Apply the operational interaction rules in `skills/ui-designer/references/app-ui-ux-mindset.md`:
+> - **Zero neighbor displacement (`N1`):** Hovering, selecting, validating, or loading must never shift adjacent elements by even 1 px. Swap button icons for spinners in place, use `tabular-nums` on live counters, reserve validation space between inputs and submit buttons, and animate height disclosures (`grid-rows: 0fr -> 1fr`, never abrupt `<details>` per `I30`).
+> - **Hit-target & pointer coherence (`N9`, `I29`, `I32`):** Keep hover background, `cursor-pointer`, and click handler on the exact same DOM node. Expand compact inline controls to >=32–44px tap areas via `relative before:absolute before:-inset-*` without inflating visual chrome. Never allow a parent hover background to match a child badge/control background (`I32`), or a hover rule to strip a checked radio/checkbox accent.
+> - **Modal & focus lifecycle (`I20–I23`, `I26–I28`, `I31`):** Modals containing inputs must not close on outside backdrop click (`I20`). When an action deletes or hides the currently focused row/element, deterministically move focus to the next item or trigger (`I31`). Preserve browser autofill (`I28`) and provide escape hatches (such as *"Change email"* on OTP steps, `N6`).
+
+---
+
 ## When to Use
 
 Invoke this skill when:

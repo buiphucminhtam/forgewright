@@ -13,11 +13,13 @@ version: 1.0.0
 | Existing visual guidelines, mockups, or wireframe specs are indexed | `find docs/ -name "*design*" -o -name "*ux*" -o -name "*wireframe*"` | ... | run the check command and paste output |
 | Visual regression test (VRT) suites or screenshots are configured | `cat playwright.config.ts \|\| ls -la tests/` | ... | run the check command and paste output |
 
+| Existing interactive primitives, state conventions, and DOM probe availability | Inspect existing buttons/modals/inputs/accordions and `skills/ui-designer/references/app-ui-ux-mindset.md` | ... | `Audit:` line of reusable interactive primitives + state/focus/motion rules (`N1–N12`, `I1–I32`) |
+
 ## SOLVE Step 3: DECOMPOSE (Interaction Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
 1. AUDIT | Scan target component layouts, responsive breakpoints, and WCAG accessibility tags | Verify contrast ratios pass AAA/AA standards and screen elements utilize appropriate role and aria-label attributes.
-2. CONSTRUCT | Implement interactive components utilizing responsive styling, state machines, and animations | Ensure proper loading indicators, disabled actions during API calls, and error boundaries are configured.
+2. SPECIFY | Define reachable states, triggers, acknowledgement, zero-layout-shift transitions (`N1`), modal backdrop/focus-restoration rules (`I20–I31`), and tri-modal hit targets (`N9`) for handoff to Frontend Engineer; route runtime motion to Animation Engineer when needed | Verify loading, cancellation, error/retry, smooth disclosure (`grid-rows`), and static feedback preserve the interaction contract without shifting adjacent elements.
 3. MAP | Build comprehensive visual sequence maps, user journeys, or Mermaid sequence charts | Confirm execution paths show intuitive user interactions and are saved using kebab-case under docs/.
 
 ## Common Mistakes Checklist
