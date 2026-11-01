@@ -21,7 +21,6 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 !`cat skills/_shared/protocols/quality-gate.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/task-validator.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/design-mindset-and-rules.md 2>/dev/null || true`
-!`cat skills/ui-designer/references/app-ui-ux-mindset.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback:** Follow kernel proportional execution and report only material progress.
@@ -46,15 +45,15 @@ Fixed values and component snippets below are illustrative implementation exampl
 
 ## Operational App UI/UX Workflow & Mindset
 
-For web, mobile, dashboard, and application UI tasks, follow `skills/ui-designer/references/app-ui-ux-mindset.md`:
+For web, mobile, dashboard, and application UI tasks, load `skills/ui-designer/references/app-ui-ux-mindset.md` (and its on-demand workflow/engineering modules under `skills/ui-designer/references/evondevkit/`) as needed:
 
-1. **Route by intent (`U` / `V` / `L` / `D`):**
-   - **Mode `U` (Design from task):** frame a grounded **Brief (`U1`)** and **Screen Job Table (`U2`)** (why the user visits, comparison criteria that must lead card/table hierarchy, final action, category convention), then compare 2–3 structurally distinct wireframes (`U3`) or build directly with explicit layout rationale before full implementation (`U4`).
-   - **Mode `V` (Review / Keep-Brand):** categorize issues strictly into **Broken (`Hỏng`)**, **System Drift (`Lệch hệ` with `file:line` project token proof)**, and **Taste (`Gu`)**. In Keep-Brand mode, record the project's **Color Role Table** first and consolidate near-duplicate hardcoded colors into existing tokens without neutralizing brand identity.
-   - **Mode `L` (Visual-preserving refactor):** measure DOM geometry/styles before and after refactoring CSS/components so visual appearance stays identical.
-   - **Mode `D` (System-first primitives):** lock tokens and core primitives on a single preview surface before multi-screen builds.
-2. **Three-tier blocking audit (`Audit:` line):** inspect stack/preflight, existing project primitives to reuse (`S9`, `N5`), and style signals/copy locale (`T24`) before proposing layouts or writing code.
-3. **Operational principles (`N1–N12`) & scope discipline (`S1–S16`):** enforce zero layout shift on hover/select/error/loading (`N1`), complete glance-distinct states (`N2`), single strongest signal per view with deduplicated group headers (`N3`), semantic status colors paired with text/icons (`N4`), actionable error/empty copy with recovery paths (`N6`), suffix-preserving truncation + `min-w-0` + `text-pretty` (`N8`), cross-consistent edge-case mock data (`S6–S8`), explicit term disambiguation at handoff (`S10`, `S15`), and live DOM verification via `node scripts/art-direction/ui-dom-probe.mjs <url> --sweep` (`N12`).
+1. **Route by intent (`U` / `V` / `L` / `D` / `Quick`):**
+   - **Mode `U` (Design from task):** frame a grounded **Brief (`U1`)** and **Screen Job Table (`U2`)** (why the user visits, comparison criteria that must lead card/table hierarchy, final action, category convention), then compare 2–3 structurally distinct wireframes (`U3` with shareable `?v=a&mau=xam&kho=desktop&tt=du-lieu` params, `data-wf-block` numbering, and overdue/time-derived edge cases) or build directly with explicit layout rationale before full implementation (`U4`).
+   - **Mode `V` (Review / Keep-Brand / `V6` Compare):** categorize findings into **Broken (`Hỏng` / `P`)**, **System/Reference Drift (`Lệch hệ` / `R` with `file:line` project token proof)**, **Needs Review (`W`)**, and **Taste (`Gu` / `G`)**. In Keep-Brand mode, record the project's **Color Role Table** first and run structural (`V1b`) + per-block (`V1c`) passes without neutralizing brand identity.
+   - **Mode `L` (Visual-preserving refactor):** inventory CSS/tokens/components against delivered CSS and measure DOM geometry/styles before and after refactoring so visual appearance stays identical.
+   - **Mode `D` (System-first primitives):** lock tokens and the 7 core primitives (`D1–D9`) with adjacent static demo states (`inert data-demo-state`) before multi-screen builds.
+2. **Proportional pre-design audit (`Audit:` line):** for material screen work, inspect stack/preflight, existing project primitives to reuse (`S9`, `N5`), and style signals/copy locale (`T24`); for localized `Quick` fixes, inspect only the affected component, tokens, and copy.
+3. **Operational principles (`N1–N12`), scope discipline (`S1–S16`), and Gate 3 (`Cổng 3`):** enforce zero layout shift on state change (`N1`), complete glance-distinct states (`N2`), single strongest signal per view (`N3`), semantic status colors paired with text/icons (`N4`), repeated-block hierarchy/rhythm/title integrity (`N12`), cross-consistent edge-case mock data (`S6–S8`), explicit term disambiguation at handoff (`S10`, `S15`), and **Gate 3 (`Cổng 3`)** rendered DOM verification via `ui-dom-probe.mjs`.
 
 ## Identity
 

@@ -156,6 +156,18 @@
     {
       "path": "skills/game-designer/references/game-feel.md",
       "type": "operations"
+    },
+    {
+      "path": "skills/ui-designer/references/app-ui-ux-mindset.md",
+      "type": "operations"
+    },
+    {
+      "path": "skills/ui-designer/references/evondevkit/workflows-u-v-l-d.md",
+      "type": "operations"
+    },
+    {
+      "path": "skills/ui-designer/references/evondevkit/engineering-rules-t-i-r-m-w.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -227,7 +239,10 @@
       "templates/game/mobile-monetization/README.md",
       "skills/_shared/protocols/design-mindset-and-rules.md",
       "skills/game-designer/references/game-feel.md",
-      "docs/adr/ADR-010-runtime-lifecycle-guard.md"
+      "docs/adr/ADR-010-runtime-lifecycle-guard.md",
+      "skills/ui-designer/references/app-ui-ux-mindset.md",
+      "skills/ui-designer/references/evondevkit/workflows-u-v-l-d.md",
+      "skills/ui-designer/references/evondevkit/engineering-rules-t-i-r-m-w.md"
     ],
     "exclude": [
       "docs/archive/**",

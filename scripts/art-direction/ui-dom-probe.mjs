@@ -2,9 +2,10 @@
 // Forgewright Deterministic UI/UX DOM & Layout Probe (ui-dom-probe.mjs)
 // Adapted from evondev/evondevKit (skills/ui-ux/scripts/probe.mjs @ commit 4d021537edc853fd91d2bb3aade1f5076ab7556e, v0.3.27)
 // License: MIT License — Copyright (c) 2026 Evondev (https://github.com/evondev/evondevKit)
-// Harmonized with Forgewright Evidence-Grounded Design Reasoning & WCAG 2.4.7 keyboard focus visibility:
-// - By default, visible keyboard focus rings are allowed (WCAG 2.4.7) and unmarked keyboard focus stops are flagged.
-// - Pass --disallow-focus-rings to opt into evondevKit I13 focus-ring suppression mode.
+// Harmonized with Forgewright Evidence-Grounded Design Reasoning & WCAG 2.4.7:
+// - Default interactionMode is "observational" (safe read-only static inspection for arbitrary URLs; pass --hover-focus or --interactive for controlled environments).
+// - Focus checking preserves native insertion carets, checks fields and non-fields, inspects ::before/::after and :focus-within ancestors, and classifies suspected missing focus under needsReview.
+// - Findings are unified into broken (P), referenceDeviation (R), needsReview (W), and taste (G) across fixed widths, sweep, wireframe diff, JSON, and exit status.
 // Mở trang thật ở nhiều bề rộng, đo những lỗi máy đo được, chụp ảnh để mắt soi phần còn lại.
 // Dùng ở cổng 3 của checklist (references/checklist.md). Chỉ đọc trang, không sửa gì.
 //
@@ -34,10 +35,10 @@
 //   npm i --prefix "$TMPDIR/evon-probe" playwright && node probe.mjs <url> --pw "$TMPDIR/evon-probe"
 
 import { createRequire } from "node:module";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const defaultWidths = [375, 768, 1024, 1280, 1440, 1920];
 const defaultSweep = [1440, 375, 20];
@@ -49,8 +50,27 @@ const minTapSize = 32;
 const maxTabStops = 160;
 const maxFocusChecksPerKind = 2;
 
-function parseArgs(argv) {
-  const options = { url: "", widths: defaultWidths, out: "", isDark: false, waitMs: 800, dpr: 1, playwrightDir: "", sweep: null, wireframeUrl: "", isQuick: false, dynamicWidths: null, disallowFocusRings: false, help: false };
+export function parseArgs(argv) {
+  const options = {
+    url: "",
+    widths: defaultWidths,
+    out: "",
+    isDark: false,
+    waitMs: 800,
+    dpr: 1,
+    playwrightDir: "",
+    sweep: null,
+    wireframeUrl: "",
+    isQuick: false,
+    dynamicWidths: null,
+    interactionMode: "observational",
+    allowCreateClicks: false,
+    disallowFocusRings: false,
+    strictEvonStyle: false,
+    failOnBroken: false,
+    failOnIncomplete: false,
+    help: false,
+  };
   const rest = [...argv];
 
   while (rest.length > 0) {
@@ -67,34 +87,51 @@ function parseArgs(argv) {
     else if (arg === "--dpr") options.dpr = Number(rest.shift());
     else if (arg === "--pw") options.playwrightDir = rest.shift();
     else if (arg === "--wireframe") options.wireframeUrl = rest.shift();
-    else if (arg === "--quick") options.isQuick = true;
+    else if (arg === "--quick") {
+      options.isQuick = true;
+      options.interactionMode = "observational";
+    }
+    else if (arg === "--hover-focus") {
+      options.isQuick = false;
+      options.interactionMode = "hover-focus";
+    }
+    else if (arg === "--interactive") {
+      options.isQuick = false;
+      options.interactionMode = "interactive";
+    }
+    else if (arg === "--interaction-mode") {
+      const mode = rest.shift() ?? "observational";
+      options.interactionMode = ["observational", "hover-focus", "interactive"].includes(mode) ? mode : "observational";
+      options.isQuick = options.interactionMode === "observational";
+    }
+    else if (arg === "--allow-create-clicks") options.allowCreateClicks = true;
     else if (arg === "--disallow-focus-rings") options.disallowFocusRings = true;
+    else if (arg === "--strict-evon-style") options.strictEvonStyle = true;
+    else if (arg === "--fail-on-broken") options.failOnBroken = true;
+    else if (arg === "--fail-on-incomplete") options.failOnIncomplete = true;
     else if (arg === "--help" || arg === "-h") options.help = true;
     else if (arg === "--dynamic-widths") {
       const value = rest.shift() ?? "";
       options.dynamicWidths = new Set(value === "none" ? [] : value.split(",").map(Number));
+      if (options.dynamicWidths.size > 0 && options.interactionMode === "observational") {
+        options.interactionMode = "hover-focus";
+      }
     }
     else if (!arg.startsWith("--")) options.url = arg;
   }
 
-  // Wireframe ở Khổ Mobile chỉ là iframe 375: probe không đo được bên trong, chỉ báo "iframe lòi ra", và
-  // bản thiết kế tràn ngang trong khung lọt qua (đo 12/10/2026). Đo thẳng trang ở khổ desktop, ở 375 media
-  // query chạy y như trong khung.
   if (/[?&]kho=mobile\b/.test(options.url) && !/[?&]frame=/.test(options.url)) {
     options.url = options.url.replace(/([?&]kho=)mobile\b/, "$1desktop");
     console.log(`Link wireframe Khổ Mobile là iframe, đo thẳng trang: ${options.url}`);
   }
 
   if (!options.out) options.out = join(tmpdir(), `evon-probe-${Date.now()}`);
-  if (options.isQuick) options.dynamicWidths = new Set();
+  if (options.interactionMode === "observational") options.dynamicWidths = new Set();
   if (!options.dynamicWidths) options.dynamicWidths = pickDefaultDynamicWidths(options.widths);
 
   return options;
 }
 
-// Khổ mobile nào cũng đo động (menu, sheet chỉ mở ở màn hẹp). Trên đó hai khổ: gần 1280, và gần 768 vì bố cục
-// tablet có control riêng (đo 05/10/2026: nút "Mục lục" chỉ hiện ở 768, Tab tới không thấy gì; lớp nổi lòi khỏi
-// màn hẹp mà 1280 không lòi). 1024, 1440, 1920 đo động không ra thêm lỗi nào đáng kể.
 function pickDefaultDynamicWidths(widths) {
   const mobileWidths = widths.filter((width) => width < mobileWidthLimit);
   const desktopWidths = widths.filter((width) => width >= mobileWidthLimit);
@@ -103,14 +140,39 @@ function pickDefaultDynamicWidths(widths) {
   return new Set([...mobileWidths, closestTo(768), closestTo(1280)].filter((width) => width !== null));
 }
 
-function loadPlaywright(playwrightDir) {
-  const searchDirs = [playwrightDir, process.cwd(), fileURLToPath(new URL(".", import.meta.url))].filter(Boolean);
+export function loadPlaywright(playwrightDir) {
+  const scriptDir = fileURLToPath(new URL(".", import.meta.url));
+  const repoRoot = resolve(scriptDir, "../..");
+  let canonicalRoot = "";
+  try {
+    const dotGit = join(repoRoot, ".git");
+    if (existsSync(dotGit) && statSync(dotGit).isFile()) {
+      const match = readFileSync(dotGit, "utf8").match(/gitdir:\s*(.+)/);
+      if (match) canonicalRoot = resolve(repoRoot, match[1].trim(), "../../..");
+    }
+  } catch {
+    canonicalRoot = "";
+  }
+  const searchDirs = [
+    playwrightDir,
+    process.env.FORGEWRIGHT_PLAYWRIGHT_DIR,
+    process.cwd(),
+    scriptDir,
+    repoRoot,
+    join(repoRoot, "mcp"),
+    join(repoRoot, "tests/game/fixtures/threejs-lifecycle"),
+    canonicalRoot,
+    canonicalRoot ? join(canonicalRoot, "mcp") : "",
+    canonicalRoot ? join(canonicalRoot, "tests/game/fixtures/threejs-lifecycle") : "",
+    process.env.FORGEWRIGHT_SOURCE_DIR,
+    process.env.FORGEWRIGHT_SOURCE_DIR ? join(process.env.FORGEWRIGHT_SOURCE_DIR, "mcp") : "",
+  ].filter(Boolean);
 
   for (const searchDir of searchDirs) {
     try {
       return createRequire(join(resolve(searchDir), "noop.js"))("playwright");
     } catch {
-      // Thử thư mục kế tiếp.
+      // Try next directory.
     }
   }
 
@@ -129,7 +191,7 @@ async function launchBrowser(chromium) {
 // ---------- Các phép đo, chạy trong trang ----------
 
 // Tắt transition và animation để đo và chụp ra trạng thái cuối, không phải giữa chừng.
-const freezeMotionCss = "*,*::before,*::after{transition:none!important;animation-duration:0s!important;animation-delay:0s!important;caret-color:transparent!important}";
+const freezeMotionCss = "*,*::before,*::after{transition:none!important;animation-duration:0s!important;animation-delay:0s!important}";
 
 // Probe tắt mọi chuyển động trước khi đo (ảnh chụp ổn định), nên ghi lại `transition` của từng phần tử vào
 // `data-evon-transition` trước đó, để các mục đo chuyển động (18f, 18g) còn đọc được.
@@ -2105,29 +2167,58 @@ function readFocusRingSignature(probeId) {
 
 // Cả dáng thấy được của phần tử lúc đó: vòng, nền, viền, màu chữ, gạch chân của nó và vài con. Lúc Tab
 // tới mà chuỗi này y như lúc không focus thì Tab tới không thấy gì.
-function readFocusLookSignature(probeId) {
+export function readFocusLookSignature(probeId) {
   const element = document.querySelector(`[data-evon-probe-id="${probeId}"]`);
   if (!element) return null;
-  const nodes = [element, ...element.querySelectorAll("span, div, svg")].slice(0, 20);
+  const ancestors = [];
+  let parent = element.parentElement;
+  while (parent && parent !== document.body && ancestors.length < 3) {
+    ancestors.push(parent);
+    parent = parent.parentElement;
+  }
+  const nodes = [element, ...element.querySelectorAll("span, div, svg").values(), ...ancestors].slice(0, 24);
+  const isEditableField = element.matches(
+    "input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='button']):not([type='submit']):not([type='reset']), textarea, [contenteditable='true']",
+  ) && !element.disabled && !element.readOnly;
+  const elemStyle = getComputedStyle(element);
+  const hasVisibleCaret = element === document.activeElement
+    && isEditableField
+    && !/rgba\([^)]*,\s*0\)|\/\s*0\)|transparent/.test(elemStyle.caretColor || "");
 
-  return nodes
+  const nodeSignatures = nodes
     .map((node) => {
       const style = getComputedStyle(node);
-
+      const before = getComputedStyle(node, "::before");
       const after = getComputedStyle(node, "::after");
+      const drawnOutline = style.outlineStyle === "none" || parseFloat(style.outlineWidth) === 0
+        ? "none"
+        : `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`;
 
-      // `outline-none` vẫn để `outline-width` đổi theo `focus-visible:` (1px → 3px) mà không vẽ gì: chỉ so outline
-      // khi có vẽ (sót 30/09/2026, lịch khám: link sidebar Tab tới không thấy gì mà probe tưởng có đổi).
-      const drawnOutline = style.outlineStyle === "none" ? "none" : `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`;
-
-      return [drawnOutline, style.boxShadow, style.backgroundColor, style.borderColor, style.color, style.textDecorationLine, after.boxShadow, after.outlineStyle, after.opacity, after.borderColor].join(" ");
+      return [
+        drawnOutline,
+        style.boxShadow,
+        style.backgroundColor,
+        style.borderColor,
+        style.color,
+        style.textDecorationLine,
+        before.boxShadow,
+        before.outlineStyle,
+        before.opacity,
+        before.borderColor,
+        before.backgroundColor,
+        after.boxShadow,
+        after.outlineStyle,
+        after.opacity,
+        after.borderColor,
+        after.backgroundColor,
+      ].join(" ");
     })
     .join("|");
+
+  return `${hasVisibleCaret ? "caret:visible" : "caret:none"}|${nodeSignatures}`;
 }
 
-// Tab qua trang, ghi phần tử còn vẽ vòng focus lúc Tab tới. Skill không vẽ vòng focus (`I13`, chủ dự án chốt
-// 28/09/2026). Ô nhập, textarea, select, combobox được viền + ring mờ; mục menu tô nền, không phải vòng.
-async function findDrawnFocusRings(page, disallowFocusRings = false) {
+export async function findDrawnFocusRings(page, disallowFocusRings = false) {
   const candidates = [];
   const checksByKind = new Map();
   let firstFocusedId = null;
@@ -2137,17 +2228,14 @@ async function findDrawnFocusRings(page, disallowFocusRings = false) {
     await page.keyboard.press("Tab");
     const current = await page.evaluate(() => {
       const element = document.activeElement;
-      // Lớp báo lỗi của Next lúc dev (`nextjs-portal`) không phải của trang (báo nhầm 28/09/2026).
       if (!element || element === document.body || element.tagName.startsWith("NEXTJS")) return null;
       if (!element.dataset.evonProbeId) element.dataset.evonProbeId = String(Math.random()).slice(2);
-      const label = (element.getAttribute("aria-label") || element.textContent.trim() || element.getAttribute("title") || "").trim().replace(/\s+/g, " ").slice(0, 40);
-      const isField = element.matches("input:not([type='checkbox']):not([type='radio']):not([type='range']), textarea, select, [contenteditable='true'], [role='combobox']");
+      const label = (element.getAttribute("aria-label") || element.textContent.trim() || element.getAttribute("placeholder") || element.getAttribute("title") || "").trim().replace(/\s+/g, " ").slice(0, 40);
+      const isField = element.matches("input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='button']):not([type='submit']):not([type='reset']), textarea, select, [contenteditable='true'], [role='combobox']");
 
-      return { id: element.dataset.evonProbeId, kind: `${element.tagName}|${element.getAttribute("class") || ""}`, element: `${element.tagName.toLowerCase()} "${label}"`, isField };
+      return { id: element.dataset.evonProbeId, kind: `${element.tagName}|${element.getAttribute("type") || ""}|${element.getAttribute("class") || ""}`, element: `${element.tagName.toLowerCase()} "${label}"`, isField };
     });
 
-    // Focus rơi về body: đi hết cuối trang, Tab tiếp sẽ vòng lại đầu. Trang tự focus ô chat lúc tải thì vòng
-    // Tab bắt đầu giữa trang; dừng ở body là không bao giờ tới header, sidebar (sót 27/09/2026, dự án mồi).
     if (!current) {
       bodyStreak += 1;
       if (bodyStreak >= 3) break;
@@ -2156,7 +2244,6 @@ async function findDrawnFocusRings(page, disallowFocusRings = false) {
     bodyStreak = 0;
     if (current.id === firstFocusedId) break;
     if (!firstFocusedId) firstFocusedId = current.id;
-    if (current.isField) continue;
 
     const checkCount = checksByKind.get(current.kind) ?? 0;
     checksByKind.set(current.kind, checkCount + 1);
@@ -2166,21 +2253,24 @@ async function findDrawnFocusRings(page, disallowFocusRings = false) {
     candidates.push({ ...current, focusedSignature, focusedLook });
   }
 
-  // So với lúc không focus: viền "đang chọn" vẽ bằng ring (card chọn, chip) có sẵn cả lúc thường, không tính.
-  const drawnRings = [];
+  const observedRings = [];
+  const disallowedRings = [];
   const unmarkedStops = [];
   for (const candidate of candidates) {
     await page.evaluate(() => document.activeElement?.blur());
     const blurredSignature = await page.evaluate(readFocusRingSignature, candidate.id);
     const blurredLook = await page.evaluate(readFocusLookSignature, candidate.id);
-    if (candidate.focusedSignature?.replace(/\|/g, "") && blurredSignature !== candidate.focusedSignature) drawnRings.push(candidate.element);
-    else if (blurredLook === candidate.focusedLook) unmarkedStops.push(candidate);
+    const hasRing = Boolean(candidate.focusedSignature?.replace(/\|/g, "")) && blurredSignature !== candidate.focusedSignature;
+    if (hasRing) {
+      observedRings.push(candidate.element);
+      if (!candidate.isField) disallowedRings.push(candidate.element);
+    } else if (blurredLook === candidate.focusedLook) {
+      unmarkedStops.push(candidate);
+    }
   }
 
-  // Vòng có chuyển động thì lúc vừa Tab tới có thể chưa kịp hiện: focus lại (vẫn đang ở chế độ bàn phím nên
-  // khớp `:focus-visible`), chờ hết chuyển động rồi so lần nữa.
   const confirmedUnmarked = [];
-  for (const candidate of (!disallowFocusRings || drawnRings.length >= 2) ? unmarkedStops : []) {
+  for (const candidate of unmarkedStops) {
     await page.evaluate((probeId) => document.querySelector(`[data-evon-probe-id="${probeId}"]`)?.focus({ focusVisible: true }), candidate.id);
     await page.waitForTimeout(350);
     const settledLook = await page.evaluate(readFocusLookSignature, candidate.id);
@@ -2189,10 +2279,12 @@ async function findDrawnFocusRings(page, disallowFocusRings = false) {
     if (settledLook === blurredLook) confirmedUnmarked.push(candidate.element);
   }
 
-  // Ngoại lệ của `I13` (chủ dự án chốt 30/09/2026): dự án tự vẽ vòng ở từ hai chỗ thì chỗ Tab tới không thấy
-  // gì là bị đè mất trong hệ của họ (tab đang chọn đặt `box-shadow` viền trong, đè vòng của Button). Dự án
-  // không vẽ vòng ở đâu thì theo `I13`, không báo.
-  return { drawnRings: disallowFocusRings ? drawnRings : [], unmarkedFocusStops: confirmedUnmarked };
+  return {
+    drawnRings: disallowFocusRings ? disallowedRings : [],
+    observedRingCount: observedRings.length,
+    disallowedRingCount: disallowedRings.length,
+    unmarkedFocusStops: confirmedUnmarked,
+  };
 }
 
 // ---------- Trạng thái động: rê chuột, lớp nổi, khối đang đóng ----------
@@ -2938,7 +3030,7 @@ function describePaint(paint) {
   return `${paint.width}×${paint.height} ${paint.isRound ? "tròn" : "vuông"} ở ${paint.path === "0" ? "cả phần tử" : "con bên trong"}`;
 }
 
-async function probeStateShapes(page) {
+async function probeStateShapes(page, disallowFocusRings = false) {
   const shapeMismatches = [];
   const stuckStates = [];
   const hoverLikeSelected = [];
@@ -3037,7 +3129,7 @@ async function probeStateShapes(page) {
         }
       }
       const clickRing = pickLargestPaint(findNewPaints(clickedPaints, selectedPaints, "ring").filter((paint) => !restPaints.some((rest) => rest.kind === "ring" && rest.path === paint.path && rest.paint === paint.paint)));
-      if (clickRing) stuckStates.push(`${group.label}: bấm chuột mà hiện vòng ${describePaint(clickRing)} (skill không vẽ vòng focus, I13)`);
+      if (disallowFocusRings && clickRing) stuckStates.push(`${group.label}: bấm chuột mà hiện vòng ${describePaint(clickRing)} (skill không vẽ vòng focus, I13)`);
     }
     await page.keyboard.press("Escape");
   }
@@ -3139,7 +3231,7 @@ async function takeFullScreenshot(page, path) {
   }
 }
 
-async function probeWidth(browser, options, width) {
+export async function probeWidth(browser, options, width) {
   const isMobile = width < mobileWidthLimit;
   const context = await browser.newContext({
     viewport: { width, height: isMobile ? 812 : 900 },
@@ -3175,21 +3267,22 @@ async function probeWidth(browser, options, width) {
   // có thể đổi trang (đã dính 01/10/2026: tới lượt đo thì biểu đồ tổng quan còn 2/10 khối màu nhấn).
   const darkModeProblemSet = new Set(options.isDark ? [...(await page.evaluate(findDarkModeProblems)), ...(await page.evaluate(findSunkenSelections)), ...(await page.evaluate(findHueDrifts))] : []);
 
-  // Khổ không nằm trong --dynamic-widths (hay --quick) bỏ mọi bước Tab, rê, bấm, mở lớp nổi bên dưới.
   const isDynamic = options.dynamicWidths.has(width);
-  const isStaticOnly = isMobile || !isDynamic;
-  const { drawnRings: drawnFocusRings, unmarkedFocusStops } = isStaticOnly ? { drawnRings: [], unmarkedFocusStops: [] } : await findDrawnFocusRings(page, options.disallowFocusRings);
+  const canFocusAndHover = isDynamic && (options.interactionMode === "hover-focus" || options.interactionMode === "interactive");
+  const canClick = isDynamic && options.interactionMode === "interactive";
+  const focusResult = canFocusAndHover
+    ? await findDrawnFocusRings(page, options.disallowFocusRings)
+    : { drawnRings: [], observedRingCount: 0, disallowedRingCount: 0, unmarkedFocusStops: [] };
+  const { drawnRings: drawnFocusRings, observedRingCount, disallowedRingCount, unmarkedFocusStops } = focusResult;
 
-  // Mở khối đang đóng trước khi rê và chạm: cây thư mục nằm trong accordion đóng ở /components thì
-  // tooltip tên tệp tràn màn chỉ lộ khi khối đã mở (27/09/2026).
-  const expandedCount = isDynamic ? await expandCollapsedBlocks(page) : 0;
+  const expandedCount = canClick ? await expandCollapsedBlocks(page) : 0;
   const allMeasurements = expandedCount > 0 ? mergeMeasurements(measurements, await page.evaluate(measureInPage, { minTapSize, isMobile })) : measurements;
-  // Khối vừa mở có thể chứa bản mẫu lớp nổi (hộp xác nhận bày tĩnh có lớp phủ): đo dark mode thêm một lần.
   if (options.isDark && expandedCount > 0) for (const line of [...(await page.evaluate(findDarkModeProblems)), ...(await page.evaluate(findSunkenSelections))]) darkModeProblemSet.add(line);
 
-  // Màn chạm không có rê chuột: chỉ đo nền rê ở khổ desktop.
-  const hoverStates = isStaticOnly ? { layoutShifts: [], vanishedChildren: [], weakHovers: [], blendedHovers: [], borderHovers: [], overflowingLayers: [] } : await probeHoverStates(page);
-  const popupLayers = !isDynamic
+  const hoverStates = (!canFocusAndHover || isMobile)
+    ? { layoutShifts: [], vanishedChildren: [], weakHovers: [], blendedHovers: [], borderHovers: [], overflowingLayers: [] }
+    : await probeHoverStates(page);
+  const popupLayers = !canClick
     ? { overflowing: [], hollow: [], checkedHoverChanges: [], heavyLayerLines: [], motionless: [], nativeChoices: [], scrollyLayers: [], lostTriggerIcons: [], sunkenSelections: [] }
     : await probePopupLayers(page, isMobile, options.isDark);
   for (const line of popupLayers.sunkenSelections) darkModeProblemSet.add(line);
@@ -3201,13 +3294,14 @@ async function probeWidth(browser, options, width) {
   const brokenImages = await page.evaluate(findBrokenImages);
   const misformattedNumbers = await page.evaluate(findMisformattedNumbers);
   const overflowingLayers = [...new Set([...hoverStates.overflowingLayers, ...popupLayers.overflowing])];
-  // Chạy sau cùng: bấm thử đổi lựa chọn trên trang (ngày, tab), các phép đo khác phải xong trước.
-  const pageCheckedHoverChanges = isStaticOnly ? [] : await findCheckedHoverChanges(page);
-  const stateShapes = isStaticOnly ? { shapeMismatches: [], stuckStates: [], hoverLikeSelected: [], groupCount: 0 } : await probeStateShapes(page);
-  // Sau cùng thật sự: mỗi lần bấm là một lần tải lại trang.
+  const pageCheckedHoverChanges = (!canFocusAndHover || isMobile) ? [] : await findCheckedHoverChanges(page);
+  const stateShapes = (!canClick || isMobile)
+    ? { shapeMismatches: [], stuckStates: [], hoverLikeSelected: [], groupCount: 0 }
+    : await probeStateShapes(page, options.disallowFocusRings);
   const hiddenNativeControls = isMobile ? [] : await page.evaluate(findNativeControls, "hidden");
-  const openerLayers = isMobile && isDynamic ? await probeOpenerLayers(page, options, width) : { problems: [], flatLayers: [], openedShots: [], nativeControls: [] };
-
+  const openerLayers = (isMobile && canClick)
+    ? await probeOpenerLayers(page, options, width)
+    : { problems: [], flatLayers: [], openedShots: [], nativeControls: [] };
   await context.close();
 
   return {
@@ -3216,8 +3310,13 @@ async function probeWidth(browser, options, width) {
     screenshotPath,
     consoleErrors: [...new Set(consoleErrors)],
     ...allMeasurements,
+    focusChecked: canFocusAndHover,
+    hoverChecked: canFocusAndHover && !isMobile,
+    clickProbed: canClick,
     expandedCount,
     drawnFocusRings,
+    observedRingCount,
+    disallowedRingCount,
     unmarkedFocusStops,
     hollowLayers: popupLayers.hollow,
     crampedOptions: popupLayers.cramped || [],
@@ -3644,7 +3743,7 @@ const openerIconSource = "lucide-(bell|menu|ellipsis|more-|filter|list-filter|sl
 const actionIconSource = "lucide-(trash|heart|star|bookmark|send|save|check|plus|x\\b|log-out|share|copy|download|upload|thumbs)";
 const maxOpenerButtons = 10;
 
-function markOpenerButtons({ limit, openerSource, actionSource, openerIconPattern, actionIconPattern, createSource, createIconPattern, skipCreateSource }) {
+export function markOpenerButtons({ limit, openerSource, actionSource, openerIconPattern, actionIconPattern, createSource, createIconPattern, skipCreateSource, allowCreateClicks = false }) {
   const openerPattern = new RegExp(openerSource, "i");
   const actionPattern = new RegExp(actionSource, "i");
   const openerIcon = new RegExp(openerIconPattern);
@@ -3665,7 +3764,7 @@ function markOpenerButtons({ limit, openerSource, actionSource, openerIconPatter
 
     const label = `${candidate.getAttribute("aria-label") || ""} ${candidate.getAttribute("title") || ""} ${candidate.textContent || ""}`.replace(/\s+/g, " ").trim();
     const iconNames = [...candidate.querySelectorAll("svg")].map((icon) => icon.getAttribute("class") || "").join(" ");
-    const isCreateButton = (createPattern.test(label) || (createIcon.test(iconNames) && label.length > 0)) && !actionPattern.test(label) && !skipCreatePattern.test(label);
+    const isCreateButton = allowCreateClicks && (createPattern.test(label) || (createIcon.test(iconNames) && label.length > 0)) && !actionPattern.test(label) && !skipCreatePattern.test(label);
     if (!isCreateButton && (actionPattern.test(label) || actionIcon.test(iconNames))) continue;
 
     const hasOpenerIcon = openerIcon.test(iconNames) || /[▾▼⌄›>]\s*$/.test(label);
@@ -3838,6 +3937,7 @@ async function probeOpenerLayers(page, options, width) {
     createSource: createLabelSource,
     createIconPattern: createIconSource,
     skipCreateSource: skipCreateLabelSource,
+    allowCreateClicks: Boolean(options.allowCreateClicks),
   };
   const openerLabels = await page.evaluate(markOpenerButtons, markArgs);
   const problems = [];
@@ -3921,70 +4021,144 @@ function formatWidthRanges(widths, step) {
 // Mọi thứ probe đo ra mà V1 (references/review.md) xếp Hỏng, gộp theo phần tử qua các khổ và lượt quét,
 // đánh mã P1, P2… để bảng giao đối chiếu. Vòng 1 và 2 của dự án mồi phase 2: nhiều mục probe đã đo ra mà
 // bảng giao không có, vì các mục nằm rải trong báo cáo dài.
-function listMustReportItems(results, sweepSteps) {
-  const itemsByKey = new Map();
-  function addItem(width, text) {
-    if (!itemsByKey.has(text)) itemsByKey.set(text, []);
-    itemsByKey.get(text).push(width);
+export function computeCoverage(results = [], options = {}) {
+  const testedWidths = results.map((r) => r.width);
+  const focusCheckedWidths = results.filter((r) => r.focusChecked).map((r) => r.width);
+  const hoverCheckedWidths = results.filter((r) => r.hoverChecked).map((r) => r.width);
+  const clickProbedWidths = results.filter((r) => r.clickProbed).map((r) => r.width);
+  const skippedChecks = [];
+  if (focusCheckedWidths.length === 0) skippedChecks.push("keyboard-focus");
+  if (hoverCheckedWidths.length === 0) skippedChecks.push("pointer-hover");
+  if (clickProbedWidths.length === 0) skippedChecks.push("interactive-click-layers");
+  return {
+    interactionMode: options.interactionMode ?? "observational",
+    testedWidths,
+    focusCheckedWidths,
+    hoverCheckedWidths,
+    clickProbedWidths,
+    sweepChecked: Boolean(options.sweep),
+    darkChecked: Boolean(options.isDark),
+    skippedChecks,
+    complete: skippedChecks.length === 0,
+  };
+}
+
+export function classifyFindings(results = [], sweepSteps = [], wireframeComparisons = [], options = {}) {
+  const buckets = {
+    broken: new Map(),
+    referenceDeviation: new Map(),
+    needsReview: new Map(),
+    taste: new Map(),
+  };
+  function add(bucketName, width, text) {
+    const target = buckets[bucketName];
+    if (!target.has(text)) target.set(text, []);
+    target.get(text).push(width);
   }
+  const styleBucket = options.strictEvonStyle ? "referenceDeviation" : "taste";
 
   for (const result of results) {
     const width = result.width;
-    for (const area of result.autoScrolledAreas) addItem(width, `trang tự cuộn khi vừa tải: ${area.replace(/ đã cuộn \d+px$/, "")}`);
-    if (result.hasHorizontalScroll) addItem(width, `cuộn ngang, lòi ra: ${result.overflowingElements[0]?.element ?? "(không rõ phần tử)"}`);
-    for (const layer of result.overflowingLayers) addItem(width, `lớp nổi lòi khỏi màn: ${layer.replace(/ lòi \d+px khỏi màn$/, "")}`);
-    for (const problem of result.openerLayerProblems) addItem(width, `lớp nổi mở bằng nút bị vỡ: ${problem}`);
-    for (const shift of result.layoutShifts) addItem(width, `rê chuột làm nhảy bố cục: ${shift.replace(/ dời \d+px$/, "")}`);
-    for (const line of result.lowContrastTexts) addItem(width, `tương phản thấp: ${line}`);
-    for (const item of result.clippedBlocks) addItem(width, `khung giấu mất chữ: ${item.element}`);
-    for (const item of result.tooShortTexts) addItem(width, `chữ cắt còn quá ngắn: ${item.element}`);
-    for (const element of result.wrappedControls) addItem(width, `chữ trong nút xuống dòng: ${element}`);
-    for (const element of result.wrappedRows) addItem(width, `hàng rớt dòng (xem ảnh để xếp hạng): ${element}`);
-    for (const item of result.overlappedChartLabels) addItem(width, `nhãn số đè lên đường biểu đồ: ${item}`);
-    for (const item of result.iconCoveringBadges || []) addItem(width, `badge đè mất icon: ${item}`);
-    for (const item of result.squeezedBlocks) addItem(width, `khối bị bóp chiều cao: ${item}`);
-    for (const item of result.squeezedTableColumns || []) addItem(width, `cột chữ của bảng bị ép: ${item.replace(/ rộng \d+px, \d+\/\d+ dòng/, "")}`);
-    for (const item of result.crampedDescriptionLists || []) addItem(width, `nhãn–giá trị hai cột trong khối hẹp: ${item.replace(/^<dl> \d+px, .*?: /, "")}`);
-    for (const item of result.mismatchedRuleColors) addItem(width, `đường ngăn thẳng hàng mà khác màu: ${item}`);
-    // Khoá theo phần tử: hẹp dần thì phần bị giấu đổi, ô vẫn là một.
-    for (const item of result.swallowedNumbers) addItem(width, `chữ cắt nuốt mất số: ${item.replace(/^giấu ".*?" của /, "")}`);
-    for (const item of result.hoverLikeSelected || []) addItem(width, `rê ra đúng màu mục đang chọn: ${item}`);
-    for (const item of result.checkedHoverChanges || []) addItem(width, `rê vào ô đã chọn làm mất màu nhấn: ${item}`);
-    for (const item of result.mouseUnreachableScrollers || []) addItem(width, `hàng cuộn ngang chuột không tới được: ${item.replace(/, nội dung .*?: /, ": ")}`);
-    for (const item of result.unfadedScrollers || []) addItem(width, `hàng cuộn ngang không mờ mép, không biết còn mục: ${item}`);
-    for (const item of result.squeezedHeadings || []) addItem(width, `tiêu đề bị ép trong cột hẹp: ${item}`);
-    for (const item of result.misalignedSnapRows || []) addItem(width, `hàng cuộn hít lệch lề, thả tay card giật sát mép: ${item}`);
-    for (const item of result.liftingHovers || []) addItem(width, `khối nhấc lên khi rê (F22, trong khung cuộn mất mép trên): ${item}`);
-    // Nền rê yếu: cổng 3 lúc dựng phải sửa, bảng soi thì xếp Gu (review.md, sau bảng V1, 30/09/2026).
-    for (const item of result.weakHovers || []) addItem(width, `nền rê gần như không thấy (soi: Gu): ${item}`);
-    // Nút viền rê thành nút đặc cùng màu viền là kiểu hay gặp, không vỡ gì: giữ ở Gu.
-    for (const item of (result.blendedHovers || []).filter((line) => !line.includes("trùng màu viền"))) addItem(width, `nền rê tan vào nền khác (soi: Gu): ${item}`);
-    // Dark mode làm dở là Hỏng (V4): mảng sáng giữa màn tối. Trang không lật thì dark mode chỉ có khai
-    // báo, V4 bảo bỏ lượt tối chứ không báo lỗi, nên không vào đây.
-    for (const item of (result.darkModeProblems || []).filter((line) => /^(mảng nền sáng|lớp phủ sáng mờ)/.test(line))) addItem(width, `dark mode làm dở: ${item.replace(/, \d+×\d+px/, "")}`);
-    for (const item of result.untransitionedMotion || []) addItem(width, `scale / translate / rotate không chạy chuyển động: ${item}`);
-    for (const item of result.smallTapTargets.filter((target) => target.isBelowFloor)) addItem(width, `chỗ bấm dưới 24px: ${item.element}`);
+    for (const area of result.autoScrolledAreas || []) add("broken", width, `trang tự cuộn khi vừa tải: ${area.replace(/ đã cuộn \d+px$/, "")}`);
+    if (result.hasHorizontalScroll) add("broken", width, `cuộn ngang, lòi ra: ${result.overflowingElements?.[0]?.element ?? "(không rõ phần tử)"}`);
+    for (const layer of result.overflowingLayers || []) add("broken", width, `lớp nổi lòi khỏi màn: ${layer.replace(/ lòi \d+px khỏi màn$/, "")}`);
+    for (const problem of result.openerLayerProblems || []) add("broken", width, `lớp nổi mở bằng nút bị vỡ: ${problem}`);
+    for (const shift of result.layoutShifts || []) add("broken", width, `rê chuột làm nhảy bố cục: ${shift.replace(/ dời \d+px$/, "")}`);
+    for (const line of result.lowContrastTexts || []) add("broken", width, `tương phản thấp: ${line}`);
+    for (const item of result.clippedBlocks || []) add("broken", width, `khung giấu mất chữ: ${item.element}`);
+    for (const item of result.overlappedChartLabels || []) add("broken", width, `nhãn số đè lên đường biểu đồ: ${item}`);
+    for (const item of result.iconCoveringBadges || []) add("broken", width, `badge đè mất icon: ${item}`);
+    for (const item of result.squeezedBlocks || []) add("broken", width, `khối bị bóp chiều cao: ${item}`);
+    for (const item of result.swallowedNumbers || []) add("broken", width, `chữ cắt nuốt mất số: ${item.replace(/^giấu ".*?" của /, "")}`);
+    for (const item of result.mouseUnreachableScrollers || []) add("broken", width, `hàng cuộn ngang chuột không tới được: ${item.replace(/, nội dung .*?: /, ": ")}`);
+    for (const item of (result.darkModeProblems || []).filter((line) => /^(mảng nền sáng|lớp phủ sáng mờ)/.test(line))) {
+      add("broken", width, `dark mode làm dở: ${item.replace(/, \d+×\d+px/, "")}`);
+    }
+
+    for (const item of result.mismatchedRadii || []) add("referenceDeviation", width, `khối cùng component bo góc khác nhau: ${item}`);
+    for (const item of result.mismatchedRuleColors || []) add("referenceDeviation", width, `đường ngăn thẳng hàng mà khác màu: ${item}`);
+    for (const item of result.flatOpenedLayers || []) add("referenceDeviation", width, `panel/modal mở ra không nổi hơn trang: ${item}`);
+    for (const item of result.browserDefaultControls || []) add("referenceDeviation", width, `control còn kiểu mặc định trình duyệt: ${item}`);
+
+    for (const element of result.unmarkedFocusStops || []) add("needsReview", width, `nghi thiếu dấu hiệu focus bàn phím (kiểm ảnh / WCAG 2.4.7): ${element}`);
+    for (const item of (result.smallTapTargets || []).filter((target) => target.isBelowFloor)) add("needsReview", width, `vùng bấm nhỏ (<24px, kiểm ngoại lệ WCAG 2.5.8): ${item.element}`);
+    for (const item of result.tooShortTexts || []) add("needsReview", width, `chữ cắt còn quá ngắn: ${item.element}`);
+    for (const element of result.wrappedControls || []) add("needsReview", width, `chữ trong nút/link/tab xuống dòng: ${element}`);
+    for (const element of result.wrappedRows || []) add("needsReview", width, `hàng rớt dòng (xem ảnh để xếp hạng): ${element}`);
+    for (const item of result.squeezedTableColumns || []) add("needsReview", width, `cột chữ của bảng bị ép: ${item.replace(/ rộng \d+px, \d+\/\d+ dòng/, "")}`);
+    for (const item of result.crampedDescriptionLists || []) add("needsReview", width, `nhãn–giá trị hai cột trong khối hẹp: ${item.replace(/^<dl> \d+px, .*?: /, "")}`);
+    for (const item of result.squeezedHeadings || []) add("needsReview", width, `tiêu đề bị ép trong cột hẹp: ${item}`);
+    for (const item of result.misalignedSnapRows || []) add("needsReview", width, `hàng cuộn hít lệch lề: ${item}`);
+    for (const item of result.checkedHoverChanges || []) add("needsReview", width, `rê vào ô đã chọn làm đổi/mất màu nhấn: ${item}`);
+    for (const item of result.hoverLikeSelected || []) add("needsReview", width, `rê ra đúng màu mục đang chọn: ${item}`);
+
+    for (const item of result.weakHovers || []) add(styleBucket, width, `nền rê gần như không thấy: ${item}`);
+    for (const item of (result.blendedHovers || []).filter((line) => !line.includes("trùng màu viền"))) add(styleBucket, width, `nền rê tan vào nền khác: ${item}`);
+    for (const item of result.liftingHovers || []) add(styleBucket, width, `khối nhấc lên khi rê (F22): ${item}`);
+    for (const item of result.unfadedScrollers || []) add(styleBucket, width, `hàng cuộn ngang không mờ mép: ${item}`);
+    for (const item of result.untransitionedMotion || []) add(styleBucket, width, `scale/translate/rotate không chạy chuyển động: ${item}`);
+    for (const item of result.heavyDecorativeBorders || []) add(styleBucket, width, `viền trang trí đậm (M14): ${item}`);
+    for (const item of result.scrollbarStyles || []) add(styleBucket, width, `thanh cuộn khác mẫu 4px (I18): ${item}`);
+    for (const item of result.heavyNavLinks || []) add(styleBucket, width, `sidebar chữ đậm hay mục sát nhau: ${item}`);
+    for (const item of result.heavySeparators || []) add(styleBucket, width, `vạch chia trong menu đậm hơn viền khung: ${item}`);
+    for (const item of result.borderHovers || []) add(styleBucket, width, `nút viền rê vào đổi màu viền: ${item}`);
+    if (options.disallowFocusRings) {
+      for (const item of result.drawnFocusRings || []) add(styleBucket, width, `vẽ vòng focus (I13): ${item}`);
+    }
   }
 
   for (const step of sweepSteps) {
-    if (step.hasHorizontalScroll) addItem(step.width, `cuộn ngang, lòi ra: ${step.overflowingElements[0]?.element ?? "(không rõ phần tử)"}`);
-    for (const item of step.clippedBlocks) addItem(step.width, `khung giấu mất chữ: ${item.element}`);
-    for (const element of step.wrappedControls) addItem(step.width, `chữ trong nút xuống dòng: ${element}`);
-    for (const element of step.wrappedRows) addItem(step.width, `hàng rớt dòng (xem ảnh để xếp hạng): ${element}`);
-    for (const item of step.tooShortTexts) addItem(step.width, `chữ cắt còn quá ngắn: ${item.element}`);
-    for (const item of step.swallowedNumbers) addItem(step.width, `chữ cắt nuốt mất số: ${item.replace(/^giấu ".*?" của /, "")}`);
+    if (step.hasHorizontalScroll) add("broken", step.width, `cuộn ngang, lòi ra: ${step.overflowingElements?.[0]?.element ?? "(không rõ phần tử)"}`);
+    for (const item of step.clippedBlocks || []) add("broken", step.width, `khung giấu mất chữ: ${item.element}`);
+    for (const item of step.swallowedNumbers || []) add("broken", step.width, `chữ cắt nuốt mất số: ${item.replace(/^giấu ".*?" của /, "")}`);
+    for (const element of step.wrappedControls || []) add("needsReview", step.width, `chữ trong nút/link/tab xuống dòng: ${element}`);
+    for (const element of step.wrappedRows || []) add("needsReview", step.width, `hàng rớt dòng (xem ảnh để xếp hạng): ${element}`);
+    for (const item of step.tooShortTexts || []) add("needsReview", step.width, `chữ cắt còn quá ngắn: ${item.element}`);
   }
 
-  return [...itemsByKey.entries()].map(([text, widths]) => ({ text, widths }));
+  for (const wfItem of listWireframeMustReportItems(wireframeComparisons)) {
+    for (const w of wfItem.widths) add("referenceDeviation", w, wfItem.text);
+  }
+
+  const toArray = (map) => [...map.entries()].map(([text, widths]) => ({ text, widths: [...new Set(widths)] }));
+  return {
+    broken: toArray(buckets.broken),
+    referenceDeviation: toArray(buckets.referenceDeviation),
+    needsReview: toArray(buckets.needsReview),
+    taste: toArray(buckets.taste),
+  };
 }
 
-function formatMustReportList(items, step) {
-  const lines = [`\n# Việc phải đối chiếu: ${items.length} mục probe xếp Hỏng`];
-  if (items.length === 0) return `${lines[0]}\nKhông có mục nào.`;
-  lines.push("Mỗi mục thành một dòng trong bảng giao (cột Nguồn ghi mã, ví dụ `đo P3`; cùng gốc thì gộp nhiều mã một dòng),");
-  lines.push("hoặc một dòng dưới bảng nói vì sao loại. Không mục nào được biến mất im lặng (V5 trong review.md).");
-  items.slice(0, 50).forEach((item, index) => lines.push(`P${index + 1} [${formatWidthRanges(item.widths, step)}] ${item.text}`));
-  if (items.length > 50) lines.push(`(Còn ${items.length - 50} mục, xem report.json.)`);
+export function listMustReportItems(results, sweepSteps, wireframeComparisons = [], options = {}) {
+  return classifyFindings(results, sweepSteps, wireframeComparisons, options).broken;
+}
+
+export function formatMustReportList(classified, step) {
+  const broken = Array.isArray(classified) ? classified : (classified?.broken ?? []);
+  const referenceDeviation = Array.isArray(classified) ? [] : (classified?.referenceDeviation ?? []);
+  const needsReview = Array.isArray(classified) ? [] : (classified?.needsReview ?? []);
+  const taste = Array.isArray(classified) ? [] : (classified?.taste ?? []);
+
+  const lines = [`\n# Việc phải đối chiếu: ${broken.length} mục probe xếp Hỏng (USABILITY_ACCESSIBILITY / TECHNICAL_ARTIFACT)`];
+  if (broken.length === 0) lines.push("Không có mục Hỏng nào.");
+  else {
+    lines.push("Mỗi mục thành một dòng trong bảng giao (cột Nguồn ghi mã, ví dụ `đo P1`), hoặc giải trình rõ vì sao loại.");
+    broken.slice(0, 50).forEach((item, index) => lines.push(`P${index + 1} [${formatWidthRanges(item.widths, step)}] ${item.text}`));
+    if (broken.length > 50) lines.push(`(Còn ${broken.length - 50} mục, xem report.json.)`);
+  }
+
+  if (referenceDeviation.length > 0) {
+    lines.push(`\n# Lệch hệ / Lệch wireframe (${referenceDeviation.length} mục REFERENCE_DEVIATION):`);
+    referenceDeviation.slice(0, 30).forEach((item, index) => lines.push(`R${index + 1} [${formatWidthRanges(item.widths, step)}] ${item.text}`));
+  }
+  if (needsReview.length > 0) {
+    lines.push(`\n# Cần kiểm tra thêm trên ảnh chụp (${needsReview.length} mục NEEDS_REVIEW):`);
+    needsReview.slice(0, 30).forEach((item, index) => lines.push(`W${index + 1} [${formatWidthRanges(item.widths, step)}] ${item.text}`));
+  }
+  if (taste.length > 0) {
+    lines.push(`\n# Gợi ý Gu / Phong cách (${taste.length} mục SUBJECTIVE_PREFERENCE, không chặn cổng):`);
+    taste.slice(0, 30).forEach((item, index) => lines.push(`G${index + 1} [${formatWidthRanges(item.widths, step)}] ${item.text}`));
+  }
 
   return lines.join("\n");
 }
@@ -4032,7 +4206,7 @@ function formatSweepReport(steps, step) {
   return lines.join("\n");
 }
 
-function formatReport(results) {
+export function formatReport(results, options = {}) {
   const lines = [];
   let problemCount = 0;
 
@@ -4041,346 +4215,349 @@ function formatReport(results) {
 
     if (result.hasHorizontalScroll) {
       problems.push(`CUỘN NGANG: trang rộng ${result.pageScrollWidth}px trên màn ${result.viewportWidth}px.`);
-      for (const item of result.overflowingElements) problems.push(`  lòi ra tới ${item.right}px: ${item.element}`);
+      for (const item of (result.overflowingElements || [])) problems.push(`  lòi ra tới ${item.right}px: ${item.element}`);
     }
-    if (result.unpinnedScrollTables.length > 0) {
-      problems.push(`BẢNG CUỘN NGANG MẤT CỘT (${result.unpinnedScrollTables.length} bảng, R9):`);
-      for (const item of result.unpinnedScrollTables.slice(0, 5)) problems.push(`  ${item}`);
+    if (result.unpinnedScrollTables?.length > 0) {
+      problems.push(`BẢNG CUỘN NGANG MẤT CỘT (${result.unpinnedScrollTables?.length} bảng, R9):`);
+      for (const item of (result.unpinnedScrollTables || []).slice(0, 5)) problems.push(`  ${item}`);
     }
-    if (result.squeezedTableColumns.length > 0) {
-      problems.push(`CỘT CHỮ CỦA BẢNG BỊ ÉP XUỐNG DÒNG (${result.squeezedTableColumns.length} cột; ẩn cột phụ theo @container của card, layouts/app.md "Bảng dữ liệu"):`);
-      for (const item of result.squeezedTableColumns.slice(0, 5)) problems.push(`  ${item}`);
+    if (result.squeezedTableColumns?.length > 0) {
+      problems.push(`CỘT CHỮ CỦA BẢNG BỊ ÉP XUỐNG DÒNG (${result.squeezedTableColumns?.length} cột; ẩn cột phụ theo @container của card, layouts/app.md "Bảng dữ liệu"):`);
+      for (const item of (result.squeezedTableColumns || []).slice(0, 5)) problems.push(`  ${item}`);
     }
-    if (result.crampedDescriptionLists.length > 0) {
-      problems.push(`NHÃN–GIÁ TRỊ HAI CỘT TRONG KHỐI HẸP (${result.crampedDescriptionLists.length} khối; dưới 384px nhãn trên giá trị dưới, @container, description-list.md):`);
-      for (const item of result.crampedDescriptionLists.slice(0, 5)) problems.push(`  ${item}`);
+    if (result.crampedDescriptionLists?.length > 0) {
+      problems.push(`NHÃN–GIÁ TRỊ HAI CỘT TRONG KHỐI HẸP (${result.crampedDescriptionLists?.length} khối; dưới 384px nhãn trên giá trị dưới, @container, description-list.md):`);
+      for (const item of (result.crampedDescriptionLists || []).slice(0, 5)) problems.push(`  ${item}`);
     }
-    if (result.brokenMoney.length > 0) {
-      problems.push(`SỐ TIỀN NGẮT DÒNG (${result.brokenMoney.length} chỗ, số + đơn vị phải nowrap, nhãn bên cạnh co lại, T16):`);
-      for (const item of result.brokenMoney.slice(0, 5)) problems.push(`  ${item}`);
+    if (result.brokenMoney?.length > 0) {
+      problems.push(`SỐ TIỀN NGẮT DÒNG (${result.brokenMoney?.length} chỗ, số + đơn vị phải nowrap, nhãn bên cạnh co lại, T16):`);
+      for (const item of (result.brokenMoney || []).slice(0, 5)) problems.push(`  ${item}`);
     }
-    if (result.unevenStatRows.length > 0) {
-      problems.push(`SỐ TRONG HÀNG Ô SỐ LIỆU KHÔNG THẲNG (${result.unevenStatRows.length} hàng, ô dùng grid-rows-subgrid):`);
-      for (const item of result.unevenStatRows.slice(0, 5)) problems.push(`  ${item}`);
+    if (result.unevenStatRows?.length > 0) {
+      problems.push(`SỐ TRONG HÀNG Ô SỐ LIỆU KHÔNG THẲNG (${result.unevenStatRows?.length} hàng, ô dùng grid-rows-subgrid):`);
+      for (const item of (result.unevenStatRows || []).slice(0, 5)) problems.push(`  ${item}`);
     }
-    if (result.gridChoiceGroups.length > 0) {
-      problems.push(`NHÓM LỰA CHỌN XẾP LƯỚI (${result.gridChoiceGroups.length} nhóm, đọc chữ Z; một hàng hoặc một cột):`);
-      for (const item of result.gridChoiceGroups.slice(0, 5)) problems.push(`  ${item}`);
+    if (result.gridChoiceGroups?.length > 0) {
+      problems.push(`NHÓM LỰA CHỌN XẾP LƯỚI (${result.gridChoiceGroups?.length} nhóm, đọc chữ Z; một hàng hoặc một cột):`);
+      for (const item of (result.gridChoiceGroups || []).slice(0, 5)) problems.push(`  ${item}`);
     }
-    if (result.consoleErrors.length > 0) {
-      problems.push(`LỖI CONSOLE (${result.consoleErrors.length}):`);
-      for (const message of result.consoleErrors.slice(0, 5)) problems.push(`  ${message}`);
+    if (result.consoleErrors?.length > 0) {
+      problems.push(`LỖI CONSOLE (${result.consoleErrors?.length}):`);
+      for (const message of (result.consoleErrors || []).slice(0, 5)) problems.push(`  ${message}`);
     }
     if (result.tooShortCount > 0) {
       problems.push(`CHỮ CẮT CÒN QUÁ NGẮN (${result.tooShortCount} chỗ, dưới 10 ký tự đọc được):`);
-      for (const item of result.tooShortTexts.slice(0, 5)) problems.push(`  rộng ${item.width}px, đọc được ~${item.visibleChars}/${item.fullText.length} ký tự "${item.fullText.slice(0, 40)}": ${item.element}`);
+      for (const item of (result.tooShortTexts || []).slice(0, 5)) problems.push(`  rộng ${item.width}px, đọc được ~${item.visibleChars}/${item.fullText.length} ký tự "${item.fullText.slice(0, 40)}": ${item.element}`);
     }
-    if (result.unevenSiblingGroups.length > 0) {
+    if (result.unevenSiblingGroups?.length > 0) {
       problems.push(`CAO GẦN BẰNG MÀ KHÔNG BẰNG (lệch 1-4px, thường là khe baseline hoặc padding lệch):`);
-      for (const item of result.unevenSiblingGroups.slice(0, 5)) problems.push(`  ${item.count} phần tử, đa số cao ${item.commonHeight}px, có cái ${item.otherHeights.join(", ")}px: ${item.element}`);
+      for (const item of (result.unevenSiblingGroups || []).slice(0, 5)) problems.push(`  ${item.count} phần tử, đa số cao ${item.commonHeight}px, có cái ${item.otherHeights.join(", ")}px: ${item.element}`);
     }
-    if (result.misalignedColumns.length > 0) {
+    if (result.misalignedColumns?.length > 0) {
       problems.push(`CHỮ CÙNG CỘT LỆCH MÉP (hai kiểu căn trộn nhau):`);
-      for (const item of result.misalignedColumns.slice(0, 5)) problems.push(`  lệch ${item.leftSpread}px, ${item.example}: ${item.element}`);
+      for (const item of (result.misalignedColumns || []).slice(0, 5)) problems.push(`  lệch ${item.leftSpread}px, ${item.example}: ${item.element}`);
     }
     if (result.smallTapCount > 0) {
       problems.push(`CHỖ BẤM DƯỚI ${minTapSize}px (${result.smallTapCount} chỗ, không có vùng bấm nới ra):`);
-      for (const item of result.smallTapTargets.slice(0, 10)) problems.push(`  ${item.size}${item.isBelowFloor ? " (dưới 24px)" : ""}: ${item.element}`);
+      for (const item of (result.smallTapTargets || []).slice(0, 10)) problems.push(`  ${item.size}${item.isBelowFloor ? " (dưới 24px)" : ""}: ${item.element}`);
     }
-    if (result.orphanPunctuation.length > 0) {
-      problems.push(`DẤU CÂU RƠI XUỐNG ĐẦU DÒNG (${result.orphanPunctuation.length} chỗ, dấu phải dính chữ đứng trước):`);
-      for (const item of result.orphanPunctuation.slice(0, 5)) problems.push(`  dòng mở đầu "${item.lineStart}": ${item.element}`);
+    if (result.orphanPunctuation?.length > 0) {
+      problems.push(`DẤU CÂU RƠI XUỐNG ĐẦU DÒNG (${result.orphanPunctuation?.length} chỗ, dấu phải dính chữ đứng trước):`);
+      for (const item of (result.orphanPunctuation || []).slice(0, 5)) problems.push(`  dòng mở đầu "${item.lineStart}": ${item.element}`);
     }
     if (result.orphanWords?.length > 0) {
-      problems.push(`CHỮ ĐƠN CÔI Ở DÒNG CUỐI (${result.orphanWords.length} chỗ, thêm text-pretty, tiêu đề ngắn text-balance, T10):`);
-      for (const item of result.orphanWords.slice(0, 5)) problems.push(`  ${item}`);
+      problems.push(`CHỮ ĐƠN CÔI Ở DÒNG CUỐI (${result.orphanWords?.length} chỗ, thêm text-pretty, tiêu đề ngắn text-balance, T10):`);
+      for (const item of (result.orphanWords || []).slice(0, 5)) problems.push(`  ${item}`);
     }
-    if (result.misalignedFields.length > 0) {
-      problems.push(`Ô NHẬP LỆCH MÉP VỚI NÚT RỘNG HẾT KHUNG (${result.misalignedFields.length} khung, ô và nút phải cùng mép trái phải):`);
-      for (const item of result.misalignedFields.slice(0, 5)) problems.push(`  ô ${item.field}, nút ${item.button}: ${item.element}`);
+    if (result.misalignedFields?.length > 0) {
+      problems.push(`Ô NHẬP LỆCH MÉP VỚI NÚT RỘNG HẾT KHUNG (${result.misalignedFields?.length} khung, ô và nút phải cùng mép trái phải):`);
+      for (const item of (result.misalignedFields || []).slice(0, 5)) problems.push(`  ô ${item.field}, nút ${item.button}: ${item.element}`);
     }
-    if (result.unevenSeparatorRows.length > 0) {
-      problems.push(`DẤU NGĂN CÁCH KHÔNG ĐỀU (${result.unevenSeparatorRows.length} hàng, nét dấu › tới nét chữ hay icon kế bên phải bằng nhau):`);
-      for (const item of result.unevenSeparatorRows.slice(0, 5)) problems.push(`  khe ${item.gaps}: ${item.element}`);
+    if (result.unevenSeparatorRows?.length > 0) {
+      problems.push(`DẤU NGĂN CÁCH KHÔNG ĐỀU (${result.unevenSeparatorRows?.length} hàng, nét dấu › tới nét chữ hay icon kế bên phải bằng nhau):`);
+      for (const item of (result.unevenSeparatorRows || []).slice(0, 5)) problems.push(`  khe ${item.gaps}: ${item.element}`);
     }
     if ((result.iconCoveringBadges || []).length > 0) {
-      problems.push(`BADGE ĐÈ MẤT ICON (${result.iconCoveringBadges.length} chỗ, dời badge ra góc, cỡ nhỏ lại, hoặc dùng icon đã khoét chỗ như BellDot):`);
-      for (const item of result.iconCoveringBadges) problems.push(`  ${item}`);
+      problems.push(`BADGE ĐÈ MẤT ICON (${result.iconCoveringBadges?.length} chỗ, dời badge ra góc, cỡ nhỏ lại, hoặc dùng icon đã khoét chỗ như BellDot):`);
+      for (const item of (result.iconCoveringBadges || [])) problems.push(`  ${item}`);
     }
-    if (result.overlappedChartLabels.length > 0) {
-      problems.push(`NHÃN SỐ ĐÈ LÊN ĐƯỜNG BIỂU ĐỒ (${result.overlappedChartLabels.length} chỗ, đặt nhãn về phía không có đường):`);
-      for (const element of result.overlappedChartLabels.slice(0, 5)) problems.push(`  ${element}`);
+    if (result.overlappedChartLabels?.length > 0) {
+      problems.push(`NHÃN SỐ ĐÈ LÊN ĐƯỜNG BIỂU ĐỒ (${result.overlappedChartLabels?.length} chỗ, đặt nhãn về phía không có đường):`);
+      for (const element of (result.overlappedChartLabels || []).slice(0, 5)) problems.push(`  ${element}`);
     }
-    if (result.outsideChartLabels.length > 0) {
-      problems.push(`NHÃN SỐ LÒI RA NGOÀI VÙNG VẼ (${result.outsideChartLabels.length} chỗ, rơi vào hàng nhãn trục hoặc trên đỉnh):`);
-      for (const element of result.outsideChartLabels.slice(0, 5)) problems.push(`  ${element}`);
+    if (result.outsideChartLabels?.length > 0) {
+      problems.push(`NHÃN SỐ LÒI RA NGOÀI VÙNG VẼ (${result.outsideChartLabels?.length} chỗ, rơi vào hàng nhãn trục hoặc trên đỉnh):`);
+      for (const element of (result.outsideChartLabels || []).slice(0, 5)) problems.push(`  ${element}`);
     }
-    if (result.weakHovers.length > 0) {
-      problems.push(`NỀN RÊ GẦN NHƯ KHÔNG THẤY (${result.weakHovers.length} loại, chênh dưới 8 mức với lúc thường):`);
-      for (const item of result.weakHovers.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.weakHovers?.length > 0) {
+      problems.push(`NỀN RÊ GẦN NHƯ KHÔNG THẤY (${result.weakHovers?.length} loại, chênh dưới 8 mức với lúc thường):`);
+      for (const item of (result.weakHovers || []).slice(0, 6)) problems.push(`  ${item}`);
     }
-    if (result.blendedHovers.length > 0) {
-      problems.push(`NỀN RÊ TAN VÀO NỀN KHÁC (${result.blendedHovers.length} chỗ):`);
-      for (const item of result.blendedHovers.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.blendedHovers?.length > 0) {
+      problems.push(`NỀN RÊ TAN VÀO NỀN KHÁC (${result.blendedHovers?.length} chỗ):`);
+      for (const item of (result.blendedHovers || []).slice(0, 6)) problems.push(`  ${item}`);
     }
-    if (result.borderHovers.length > 0) {
-      problems.push(`VIỀN ĐỔI MÀU LÚC RÊ (${result.borderHovers.length} loại, skill chỉ đổi nền, xem button.md):`);
-      for (const item of result.borderHovers.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.borderHovers?.length > 0) {
+      problems.push(`VIỀN ĐỔI MÀU LÚC RÊ (${result.borderHovers?.length} loại, skill chỉ đổi nền, xem button.md):`);
+      for (const item of (result.borderHovers || []).slice(0, 6)) problems.push(`  ${item}`);
     }
-    if (result.overflowingLayers.length > 0) {
-      problems.push(`LỚP NỔI LÒI KHỎI MÀN (${result.overflowingLayers.length} chỗ, tooltip / menu / popover mở ra phải nằm trong màn):`);
-      for (const item of result.overflowingLayers.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.overflowingLayers?.length > 0) {
+      problems.push(`LỚP NỔI LÒI KHỎI MÀN (${result.overflowingLayers?.length} chỗ, tooltip / menu / popover mở ra phải nằm trong màn):`);
+      for (const item of (result.overflowingLayers || []).slice(0, 6)) problems.push(`  ${item}`);
     }
     if (result.checkedHoverChanges?.length > 0) {
-      problems.push(`RÊ VÀO Ô ĐÃ CHỌN LÀM MẤT MÀU NHẤN (${result.checkedHoverChanges.length} ô, hover: đè checked:, dùng not-checked:hover:):`);
-      for (const item of result.checkedHoverChanges) problems.push(`  ${item}`);
+      problems.push(`RÊ VÀO Ô ĐÃ CHỌN LÀM MẤT MÀU NHẤN (${result.checkedHoverChanges?.length} ô, hover: đè checked:, dùng not-checked:hover:):`);
+      for (const item of (result.checkedHoverChanges || [])) problems.push(`  ${item}`);
     }
     if (result.hoverLikeSelected?.length > 0) {
-      problems.push(`RÊ RA ĐÚNG MÀU MỤC ĐANG CHỌN (${result.hoverLikeSelected.length} nhóm, rê qua mục nào cũng trông như đã chọn nó):`);
-      for (const item of result.hoverLikeSelected) problems.push(`  ${item}`);
+      problems.push(`RÊ RA ĐÚNG MÀU MỤC ĐANG CHỌN (${result.hoverLikeSelected?.length} nhóm, rê qua mục nào cũng trông như đã chọn nó):`);
+      for (const item of (result.hoverLikeSelected || [])) problems.push(`  ${item}`);
     }
-    if (result.shapeMismatches.length > 0) {
-      problems.push(`RÊ / FOCUS KHÁC HÌNH MỤC ĐANG CHỌN (${result.shapeMismatches.length} chỗ, mọi trạng thái vẽ trên cùng một hình):`);
-      for (const item of result.shapeMismatches.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.shapeMismatches?.length > 0) {
+      problems.push(`RÊ / FOCUS KHÁC HÌNH MỤC ĐANG CHỌN (${result.shapeMismatches?.length} chỗ, mọi trạng thái vẽ trên cùng một hình):`);
+      for (const item of (result.shapeMismatches || []).slice(0, 6)) problems.push(`  ${item}`);
     }
-    if (result.stuckStates.length > 0) {
-      problems.push(`BẤM XONG CÒN DẤU THỪA (${result.stuckStates.length} chỗ, chuột đứng yên trên mục vừa chọn):`);
-      for (const item of result.stuckStates.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.stuckStates?.length > 0) {
+      problems.push(`BẤM XONG CÒN DẤU THỪA (${result.stuckStates?.length} chỗ, chuột đứng yên trên mục vừa chọn):`);
+      for (const item of (result.stuckStates || []).slice(0, 6)) problems.push(`  ${item}`);
     }
     if (result.unmarkedFocusStops?.length > 0) {
-      problems.push(`TAB TỚI KHÔNG THẤY GÌ (${result.unmarkedFocusStops.length} chỗ, trong khi dự án vẽ vòng focus ở ${result.drawnFocusRings.length} chỗ khác; Lệch hệ, ngoại lệ của I13):`);
-      for (const element of result.unmarkedFocusStops.slice(0, 8)) problems.push(`  ${element}`);
+      const ringNote = options?.disallowFocusRings
+        ? `trong khi dự án vẽ vòng focus ở ${result.observedRingCount ?? result.drawnFocusRings?.length ?? 0} chỗ khác; Lệch hệ, ngoại lệ của I13`
+        : `nghi thiếu dấu hiệu focus bàn phím, cần đối chiếu ảnh chụp / WCAG 2.4.7 (đã quan sát ${result.observedRingCount ?? 0} phần tử có vòng focus)`;
+      problems.push(`TAB TỚI KHÔNG THẤY DẤU FOCUS (${result.unmarkedFocusStops?.length} chỗ, ${ringNote}):`);
+      for (const element of (result.unmarkedFocusStops || []).slice(0, 8)) problems.push(`  ${element}`);
     }
     if (result.drawnFocusRings?.length > 0) {
-      problems.push(`TAB TỚI CÒN VẼ VÒNG FOCUS (${result.drawnFocusRings.length} chỗ, skill không vẽ vòng focus, I13):`);
-      for (const element of result.drawnFocusRings.slice(0, 8)) problems.push(`  ${element}`);
+      problems.push(`TAB TỚI CÒN VẼ VÒNG FOCUS (${result.drawnFocusRings?.length} chỗ, skill không vẽ vòng focus, I13):`);
+      for (const element of (result.drawnFocusRings || []).slice(0, 8)) problems.push(`  ${element}`);
     }
-    if (result.mismatchedRuleColors.length > 0) {
-      problems.push(`ĐƯỜNG NGĂN HAI CỘT THẲNG HÀNG MÀ KHÁC MÀU (${result.mismatchedRuleColors.length} cặp, một đường mà nửa nhạt nửa đậm):`);
-      for (const item of result.mismatchedRuleColors) problems.push(`  ${item}`);
+    if (result.mismatchedRuleColors?.length > 0) {
+      problems.push(`ĐƯỜNG NGĂN HAI CỘT THẲNG HÀNG MÀ KHÁC MÀU (${result.mismatchedRuleColors?.length} cặp, một đường mà nửa nhạt nửa đậm):`);
+      for (const item of (result.mismatchedRuleColors || [])) problems.push(`  ${item}`);
     }
-    if (result.unevenHeaderActions.length > 0) {
+    if (result.unevenHeaderActions?.length > 0) {
       problems.push(`HÀNG NÚT TRÊN HEADER KHÔNG ĐỒNG CỠ (layouts/app.md, "Nhóm nút bên phải thanh header"):`);
-      for (const item of result.unevenHeaderActions) problems.push(`  ${item}`);
+      for (const item of (result.unevenHeaderActions || [])) problems.push(`  ${item}`);
     }
-    if (result.brokenRules.length > 0) {
-      problems.push(`ĐƯỜNG NGĂN HAI CỘT KỀ NHAU LỆCH (${result.brokenRules.length} cặp, nhìn thành một đường gãy):`);
-      for (const item of result.brokenRules) problems.push(`  ${item}`);
+    if (result.brokenRules?.length > 0) {
+      problems.push(`ĐƯỜNG NGĂN HAI CỘT KỀ NHAU LỆCH (${result.brokenRules?.length} cặp, nhìn thành một đường gãy):`);
+      for (const item of (result.brokenRules || [])) problems.push(`  ${item}`);
     }
     if (result.untransitionedMotion?.length > 0) {
-      problems.push(`SCALE / TRANSLATE / ROTATE KHÔNG CHẠY CHUYỂN ĐỘNG (${result.untransitionedMotion.length} chỗ, Tailwind v4: dùng transition-transform hoặc transition-[opacity,scale,translate], W10):`);
-      for (const item of result.untransitionedMotion) problems.push(`  ${item}`);
+      problems.push(`SCALE / TRANSLATE / ROTATE KHÔNG CHẠY CHUYỂN ĐỘNG (${result.untransitionedMotion?.length} chỗ, Tailwind v4: dùng transition-transform hoặc transition-[opacity,scale,translate], W10):`);
+      for (const item of (result.untransitionedMotion || [])) problems.push(`  ${item}`);
     }
     if (result.heavyLayerLines?.length > 0) {
-      problems.push(`KHUNG / VẠCH CỦA LỚP NỔI ĐẬM HƠN TOKEN VIỀN (${result.heavyLayerLines.length} lớp, dùng border-border như mẫu overlay.md):`);
-      for (const item of result.heavyLayerLines) problems.push(`  ${item}`);
+      problems.push(`KHUNG / VẠCH CỦA LỚP NỔI ĐẬM HƠN TOKEN VIỀN (${result.heavyLayerLines?.length} lớp, dùng border-border như mẫu overlay.md):`);
+      for (const item of (result.heavyLayerLines || [])) problems.push(`  ${item}`);
     }
     if (result.motionlessLayers?.length > 0) {
-      problems.push(`LỚP NỔI BẬT TẮT KHÔNG CHUYỂN ĐỘNG (${result.motionlessLayers.length} lớp, \`{isOpen && …}\` hay \`display\` thì hiện tức thì; nhịp theo "Chuyển động" ở layouts/overlay.md):`);
-      for (const item of result.motionlessLayers) problems.push(`  ${item}`);
+      problems.push(`LỚP NỔI BẬT TẮT KHÔNG CHUYỂN ĐỘNG (${result.motionlessLayers?.length} lớp, \`{isOpen && …}\` hay \`display\` thì hiện tức thì; nhịp theo "Chuyển động" ở layouts/overlay.md):`);
+      for (const item of (result.motionlessLayers || [])) problems.push(`  ${item}`);
     }
     if (result.scrollyLayers?.length > 0) {
-      problems.push(`LỚP NỔI CÓ THANH CUỘN THỪA (${result.scrollyLayers.length} lớp, khung nhỏ hơn nội dung; co theo nội dung, layouts/overlay.md):`);
-      for (const item of result.scrollyLayers) problems.push(`  ${item}`);
+      problems.push(`LỚP NỔI CÓ THANH CUỘN THỪA (${result.scrollyLayers?.length} lớp, khung nhỏ hơn nội dung; co theo nội dung, layouts/overlay.md):`);
+      for (const item of (result.scrollyLayers || [])) problems.push(`  ${item}`);
     }
     if (result.lostTriggerIcons?.length > 0) {
-      problems.push(`CHỌN XONG MẤT ICON (${result.lostTriggerIcons.length} ô, vẽ lại nút phải vẽ lại icon):`);
-      for (const item of result.lostTriggerIcons) problems.push(`  ${item}`);
+      problems.push(`CHỌN XONG MẤT ICON (${result.lostTriggerIcons?.length} ô, vẽ lại nút phải vẽ lại icon):`);
+      for (const item of (result.lostTriggerIcons || [])) problems.push(`  ${item}`);
     }
     if (result.popupNativeChoices?.length > 0) {
-      problems.push(`CONTROL GỐC TRONG LỚP NỔI (${result.popupNativeChoices.length} lớp: select, ô ngày, checkbox, thanh trượt…; chế độ soi: select, ô ngày gốc đã tô thì bỏ qua như trên trang; wireframe và dựng lại: dựng theo components/choice-controls.md, select gốc chỉ giữ khi lớp đó chỉ có trên mobile):`);
-      for (const item of result.popupNativeChoices) problems.push(`  ${item}`);
+      problems.push(`CONTROL GỐC TRONG LỚP NỔI (${result.popupNativeChoices?.length} lớp: select, ô ngày, checkbox, thanh trượt…; chế độ soi: select, ô ngày gốc đã tô thì bỏ qua như trên trang; wireframe và dựng lại: dựng theo components/choice-controls.md, select gốc chỉ giữ khi lớp đó chỉ có trên mobile):`);
+      for (const item of (result.popupNativeChoices || [])) problems.push(`  ${item}`);
     }
     if (result.heavyDecorativeBorders?.length > 0) {
-      problems.push(`VIỀN TRANG TRÍ ĐẬM (${result.heavyDecorativeBorders.length} màu, card và khung nhạt hơn #e4e4e7, bậc xám nhạt nhất của dự án, M14):`);
-      for (const item of result.heavyDecorativeBorders) problems.push(`  ${item}`);
+      problems.push(`VIỀN TRANG TRÍ ĐẬM (${result.heavyDecorativeBorders?.length} màu, card và khung nhạt hơn #e4e4e7, bậc xám nhạt nhất của dự án, M14):`);
+      for (const item of (result.heavyDecorativeBorders || [])) problems.push(`  ${item}`);
     }
     if (result.scrollbarStyles?.length > 0) {
-      problems.push(`THANH CUỘN KHÁC MẪU (${result.scrollbarStyles.length} luật, dùng khối scrollbar của tokens.css: 4px, ẩn tới khi rê hay cuộn):`);
-      for (const item of result.scrollbarStyles) problems.push(`  ${item}`);
+      problems.push(`THANH CUỘN KHÁC MẪU (${result.scrollbarStyles?.length} luật, dùng khối scrollbar của tokens.css: 4px, ẩn tới khi rê hay cuộn):`);
+      for (const item of (result.scrollbarStyles || [])) problems.push(`  ${item}`);
     }
     if (result.misformattedNumbers?.length > 0) {
-      problems.push(`SỐ VIẾT SAI KIỂU TIẾNG VIỆT (${result.misformattedNumbers.length} chỗ, dấu phẩy thập phân, làm tròn, T28 trong rules-type.md):`);
-      for (const item of result.misformattedNumbers) problems.push(`  ${item}`);
+      problems.push(`SỐ VIẾT SAI KIỂU TIẾNG VIỆT (${result.misformattedNumbers?.length} chỗ, dấu phẩy thập phân, làm tròn, T28 trong rules-type.md):`);
+      for (const item of (result.misformattedNumbers || [])) problems.push(`  ${item}`);
     }
     if (result.darkModeProblems?.length > 0) {
-      problems.push(`DARK MODE (${result.darkModeProblems.length} chỗ, rules-color.md M21, M31–M33):`);
-      for (const item of result.darkModeProblems) problems.push(`  ${item}`);
+      problems.push(`DARK MODE (${result.darkModeProblems?.length} chỗ, rules-color.md M21, M31–M33):`);
+      for (const item of (result.darkModeProblems || [])) problems.push(`  ${item}`);
     }
     if (result.brokenImages?.length > 0) {
-      problems.push(`ẢNH KHÔNG TẢI ĐƯỢC (${result.brokenImages.length} ảnh, thay link khác hoặc khai host trong next.config, SKILL.md S16):`);
-      for (const item of result.brokenImages) problems.push(`  ${item}`);
+      problems.push(`ẢNH KHÔNG TẢI ĐƯỢC (${result.brokenImages?.length} ảnh, thay link khác hoặc khai host trong next.config, SKILL.md S16):`);
+      for (const item of (result.brokenImages || [])) problems.push(`  ${item}`);
     }
     if (result.staticHoverBlocks?.length > 0) {
-      problems.push(`NỀN RÊ TRÊN KHỐI KHÔNG BẤM ĐƯỢC (${result.staticHoverBlocks.length} kiểu, trông như bấm được mà bấm không ra gì; bỏ hover hoặc cho cả khối là link, I9):`);
-      for (const item of result.staticHoverBlocks) problems.push(`  ${item}`);
+      problems.push(`NỀN RÊ TRÊN KHỐI KHÔNG BẤM ĐƯỢC (${result.staticHoverBlocks?.length} kiểu, trông như bấm được mà bấm không ra gì; bỏ hover hoặc cho cả khối là link, I9):`);
+      for (const item of (result.staticHoverBlocks || [])) problems.push(`  ${item}`);
     }
     if (result.heavyNavLinks?.length > 0) {
-      problems.push(`SIDEBAR CHỮ ĐẬM HAY MỤC SÁT NHAU (${result.heavyNavLinks.length} chỗ, mục thường chữ 400 text-foreground/70, chỉ mục đang chọn font-medium, các mục cách gap-1, layouts/app.md):`);
-      for (const item of result.heavyNavLinks) problems.push(`  ${item}`);
+      problems.push(`SIDEBAR CHỮ ĐẬM HAY MỤC SÁT NHAU (${result.heavyNavLinks?.length} chỗ, mục thường chữ 400 text-foreground/70, chỉ mục đang chọn font-medium, các mục cách gap-1, layouts/app.md):`);
+      for (const item of (result.heavyNavLinks || [])) problems.push(`  ${item}`);
     }
     if (result.heavySeparators?.length > 0) {
-      problems.push(`VẠCH CHIA TRONG MENU ĐẬM HƠN VIỀN KHUNG (${result.heavySeparators.length} menu):`);
-      for (const item of result.heavySeparators) problems.push(`  ${item}`);
+      problems.push(`VẠCH CHIA TRONG MENU ĐẬM HƠN VIỀN KHUNG (${result.heavySeparators?.length} menu):`);
+      for (const item of (result.heavySeparators || [])) problems.push(`  ${item}`);
     }
     if (result.overlongPlaceholders?.length > 0) {
-      problems.push(`PLACEHOLDER DÀI HƠN Ô (${result.overlongPlaceholders.length} ô, rút chữ cho vừa, ô thật cắt mất đuôi):`);
-      for (const item of result.overlongPlaceholders) problems.push(`  ${item}`);
+      problems.push(`PLACEHOLDER DÀI HƠN Ô (${result.overlongPlaceholders?.length} ô, rút chữ cho vừa, ô thật cắt mất đuôi):`);
+      for (const item of (result.overlongPlaceholders || [])) problems.push(`  ${item}`);
     }
     if (result.fakeFieldWraps?.length > 0) {
-      problems.push(`KHỐI TRÔNG NHƯ Ô NHẬP MÀ CHỮ XUỐNG DÒNG (${result.fakeFieldWraps.length} khối, dùng <input> thật theo components/input.md):`);
-      for (const item of result.fakeFieldWraps) problems.push(`  ${item}`);
+      problems.push(`KHỐI TRÔNG NHƯ Ô NHẬP MÀ CHỮ XUỐNG DÒNG (${result.fakeFieldWraps?.length} khối, dùng <input> thật theo components/input.md):`);
+      for (const item of (result.fakeFieldWraps || [])) problems.push(`  ${item}`);
     }
     if (result.transparentHeaders?.length > 0) {
-      problems.push(`THANH HEADER TRONG SUỐT TRÊN NỀN XÁM (${result.transparentHeaders.length} thanh, nền --surface theo layouts/app.md):`);
-      for (const item of result.transparentHeaders) problems.push(`  ${item}`);
+      problems.push(`THANH HEADER TRONG SUỐT TRÊN NỀN XÁM (${result.transparentHeaders?.length} thanh, nền --surface theo layouts/app.md):`);
+      for (const item of (result.transparentHeaders || [])) problems.push(`  ${item}`);
     }
     if (result.textOnlyPagers?.length > 0) {
-      problems.push(`PHÂN TRANG CHỈ CÓ NÚT CHỮ (${result.textOnlyPagers.length} chỗ, dựng ‹ 1 2 3 … › theo components/small-controls.md):`);
-      for (const item of result.textOnlyPagers) problems.push(`  ${item}`);
+      problems.push(`PHÂN TRANG CHỈ CÓ NÚT CHỮ (${result.textOnlyPagers?.length} chỗ, dựng ‹ 1 2 3 … › theo components/small-controls.md):`);
+      for (const item of (result.textOnlyPagers || [])) problems.push(`  ${item}`);
     }
     if (result.missingWireframeParts?.length > 0) {
       problems.push(`WIREFRAME THIẾU PHẦN CỦA THANH CÔNG CỤ (design-process.md, U3): ${result.missingWireframeParts.join(", ")}`);
     }
     if (result.coveredNowLines?.length > 0) {
       problems.push(`VẠCH "BÂY GIỜ" BỊ Ô ĐÈ (layouts/app.md, "Lưới giờ trong ngày": vạch vẽ trên ô):`);
-      for (const item of result.coveredNowLines) problems.push(`  ${item}`);
+      for (const item of (result.coveredNowLines || [])) problems.push(`  ${item}`);
     }
     if (result.wireframeChromeProblems?.length > 0) {
       problems.push(`KHUNG WIREFRAME LÀM HỎNG BẢN THIẾT KẾ (design-process.md, U3):`);
-      for (const item of result.wireframeChromeProblems.slice(0, 8)) problems.push(`  ${item}`);
+      for (const item of (result.wireframeChromeProblems || []).slice(0, 8)) problems.push(`  ${item}`);
     }
     if (result.misalignedControlRows?.length > 0) {
-      problems.push(`HÀNG CONTROL LỆCH TRÊN DƯỚI (${result.misalignedControlRows.length} hàng, thêm items-center; nút cạnh nhau cùng chiều cao):`);
-      for (const item of result.misalignedControlRows) problems.push(`  ${item}`);
+      problems.push(`HÀNG CONTROL LỆCH TRÊN DƯỚI (${result.misalignedControlRows?.length} hàng, thêm items-center; nút cạnh nhau cùng chiều cao):`);
+      for (const item of (result.misalignedControlRows || [])) problems.push(`  ${item}`);
     }
     if (result.repeatedCardIssues?.length > 0) {
-      problems.push(`KHỐI LẶP: THỨ BẬC, NHỊP, TÊN BỊ CẮT (${result.repeatedCardIssues.length} nhóm, N12 trong principles.md):`);
-      for (const item of result.repeatedCardIssues) problems.push(`  ${item}`);
+      problems.push(`KHỐI LẶP: THỨ BẬC, NHỊP, TÊN BỊ CẮT (${result.repeatedCardIssues?.length} nhóm, N12 trong principles.md):`);
+      for (const item of (result.repeatedCardIssues || [])) problems.push(`  ${item}`);
     }
     if (result.denseItems?.length > 0) {
       problems.push(`MỤC LẶP DÀY CHỮ (từ 5 dòng mỗi mục; danh sách + chi tiết thì mục trái tối đa 3 dòng, layouts/app.md):`);
-      for (const item of result.denseItems) problems.push(`  ${item}`);
+      for (const item of (result.denseItems || [])) problems.push(`  ${item}`);
     }
     if (result.clippedBars?.length > 0) {
-      problems.push(`VẠCH TRÁI BỊ BO GÓC KHUNG CẮT (${result.clippedBars.length} chỗ):`);
-      for (const item of result.clippedBars) problems.push(`  ${item}`);
+      problems.push(`VẠCH TRÁI BỊ BO GÓC KHUNG CẮT (${result.clippedBars?.length} chỗ):`);
+      for (const item of (result.clippedBars || [])) problems.push(`  ${item}`);
     }
     if (result.nestedFadeDialogs?.length > 0) {
-      problems.push(`KHUNG HỘP THOẠI MỜ LỒNG TRONG LỚP NỀN MỜ (${result.nestedFadeDialogs.length} chỗ, độ mờ nhân nhau, khung tan nhanh hơn nền):`);
-      for (const item of result.nestedFadeDialogs) problems.push(`  ${item}`);
+      problems.push(`KHUNG HỘP THOẠI MỜ LỒNG TRONG LỚP NỀN MỜ (${result.nestedFadeDialogs?.length} chỗ, độ mờ nhân nhau, khung tan nhanh hơn nền):`);
+      for (const item of (result.nestedFadeDialogs || [])) problems.push(`  ${item}`);
     }
     if (result.mouseUnreachableScrollers?.length > 0) {
-      problems.push(`HÀNG CUỘN NGANG CHUỘT KHÔNG TỚI ĐƯỢC (${result.mouseUnreachableScrollers.length} hàng, thanh cuộn ẩn, không nút mũi tên; responsive.md sau R10):`);
-      for (const item of result.mouseUnreachableScrollers) problems.push(`  ${item}`);
+      problems.push(`HÀNG CUỘN NGANG CHUỘT KHÔNG TỚI ĐƯỢC (${result.mouseUnreachableScrollers?.length} hàng, thanh cuộn ẩn, không nút mũi tên; responsive.md sau R10):`);
+      for (const item of (result.mouseUnreachableScrollers || [])) problems.push(`  ${item}`);
     }
     if (result.unfadedScrollers?.length > 0) {
-      problems.push(`HÀNG CUỘN NGANG KHÔNG MỜ MÉP (${result.unfadedScrollers.length} hàng, mép cắt thẳng qua chữ; mask-image 32px, responsive.md sau R10):`);
-      for (const item of result.unfadedScrollers) problems.push(`  ${item}`);
+      problems.push(`HÀNG CUỘN NGANG KHÔNG MỜ MÉP (${result.unfadedScrollers?.length} hàng, mép cắt thẳng qua chữ; mask-image 32px, responsive.md sau R10):`);
+      for (const item of (result.unfadedScrollers || [])) problems.push(`  ${item}`);
     }
     if (result.squeezedHeadings?.length > 0) {
-      problems.push(`TIÊU ĐỀ BỊ ÉP TRONG CỘT HẸP (${result.squeezedHeadings.length} chỗ; card ảnh cạnh chữ ở mobile thì xếp dọc, responsive.md R5):`);
-      for (const item of result.squeezedHeadings) problems.push(`  ${item}`);
+      problems.push(`TIÊU ĐỀ BỊ ÉP TRONG CỘT HẸP (${result.squeezedHeadings?.length} chỗ; card ảnh cạnh chữ ở mobile thì xếp dọc, responsive.md R5):`);
+      for (const item of (result.squeezedHeadings || [])) problems.push(`  ${item}`);
     }
     if (result.misalignedSnapRows?.length > 0) {
-      problems.push(`HÀNG CUỘN HÍT LỆCH LỀ (${result.misalignedSnapRows.length} hàng; khung cuộn thêm scroll-px bằng lề nội dung, responsive.md R6):`);
-      for (const item of result.misalignedSnapRows) problems.push(`  ${item}`);
+      problems.push(`HÀNG CUỘN HÍT LỆCH LỀ (${result.misalignedSnapRows?.length} hàng; khung cuộn thêm scroll-px bằng lề nội dung, responsive.md R6):`);
+      for (const item of (result.misalignedSnapRows || [])) problems.push(`  ${item}`);
     }
     if (result.liftingHovers?.length > 0) {
-      problems.push(`KHỐI NHẤC LÊN / PHÓNG TO KHI RÊ (${result.liftingHovers.length} kiểu; rê thì đổi viền hay nền, rules-form.md F22):`);
-      for (const item of result.liftingHovers) problems.push(`  ${item}`);
+      problems.push(`KHỐI NHẤC LÊN / PHÓNG TO KHI RÊ (${result.liftingHovers?.length} kiểu; rê thì đổi viền hay nền, rules-form.md F22):`);
+      for (const item of (result.liftingHovers || [])) problems.push(`  ${item}`);
     }
-    if (result.stickyScrollColumns.length > 0) {
-      problems.push(`CỘT DÍNH MÀ CUỘN RIÊNG (${result.stickyScrollColumns.length} cột, thanh cuộn riêng hiện thường trực; cột dài hơn màn thì để cuộn theo trang):`);
-      for (const item of result.stickyScrollColumns) problems.push(`  ${item}`);
+    if (result.stickyScrollColumns?.length > 0) {
+      problems.push(`CỘT DÍNH MÀ CUỘN RIÊNG (${result.stickyScrollColumns?.length} cột, thanh cuộn riêng hiện thường trực; cột dài hơn màn thì để cuộn theo trang):`);
+      for (const item of (result.stickyScrollColumns || [])) problems.push(`  ${item}`);
     }
-    if (result.swallowedNumbers.length > 0) {
-      problems.push(`CHỮ CẮT NUỐT MẤT SỐ (${result.swallowedNumbers.length} chỗ, số kèm đơn vị nằm sau dấu …):`);
-      for (const item of result.swallowedNumbers) problems.push(`  ${item}`);
+    if (result.swallowedNumbers?.length > 0) {
+      problems.push(`CHỮ CẮT NUỐT MẤT SỐ (${result.swallowedNumbers?.length} chỗ, số kèm đơn vị nằm sau dấu …):`);
+      for (const item of (result.swallowedNumbers || [])) problems.push(`  ${item}`);
     }
-    if (result.floatingContent.length > 0) {
+    if (result.floatingContent?.length > 0) {
       problems.push(`NỘI DUNG TRÔI GIỮA MÀN RỘNG (khối chính căn giữa, hở hai bên):`);
-      for (const item of result.floatingContent) problems.push(`  ${item}`);
+      for (const item of (result.floatingContent || [])) problems.push(`  ${item}`);
     }
-    if (result.styledNativeSelects.length > 0) {
-      problems.push(`SELECT, Ô NGÀY GỐC TRÊN DESKTOP (${result.styledNativeSelects.length} ô; chế độ soi bỏ qua, wireframe và dựng lại thì thay bằng mẫu choice-controls.md):`);
-      for (const item of result.styledNativeSelects) problems.push(`  ${item}`);
+    if (result.styledNativeSelects?.length > 0) {
+      problems.push(`SELECT, Ô NGÀY GỐC TRÊN DESKTOP (${result.styledNativeSelects?.length} ô; chế độ soi bỏ qua, wireframe và dựng lại thì thay bằng mẫu choice-controls.md):`);
+      for (const item of (result.styledNativeSelects || [])) problems.push(`  ${item}`);
     }
-    if (result.squeezedBlocks.length > 0) {
-      problems.push(`KHỐI BỊ BÓP CHIỀU CAO (${result.squeezedBlocks.length} khối, thường thiếu shrink-0 trong khung flex dọc):`);
-      for (const item of result.squeezedBlocks) problems.push(`  ${item}`);
+    if (result.squeezedBlocks?.length > 0) {
+      problems.push(`KHỐI BỊ BÓP CHIỀU CAO (${result.squeezedBlocks?.length} khối, thường thiếu shrink-0 trong khung flex dọc):`);
+      for (const item of (result.squeezedBlocks || [])) problems.push(`  ${item}`);
     }
     if (result.tinyTextCount > 0) {
       problems.push(`CHỮ DƯỚI 12px (${result.tinyTextCount} chỗ):`);
-      for (const item of result.tinyTexts) problems.push(`  ${item}`);
+      for (const item of (result.tinyTexts || [])) problems.push(`  ${item}`);
     }
-    if (result.browserDefaultControls.length > 0) {
-      problems.push(`CONTROL CÒN KIỂU MẶC ĐỊNH CỦA TRÌNH DUYỆT (${result.browserDefaultControls.length} chỗ, dự án thiếu reset hay control chưa tự reset):`);
-      for (const item of result.browserDefaultControls) problems.push(`  ${item}`);
+    if (result.browserDefaultControls?.length > 0) {
+      problems.push(`CONTROL CÒN KIỂU MẶC ĐỊNH CỦA TRÌNH DUYỆT (${result.browserDefaultControls?.length} chỗ, dự án thiếu reset hay control chưa tự reset):`);
+      for (const item of (result.browserDefaultControls || [])) problems.push(`  ${item}`);
     }
     if (result.mismatchedRadii?.length > 0) {
-      problems.push(`KHỐI CÙNG COMPONENT BO GÓC KHÁC NHAU (${result.mismatchedRadii.length} khối, Lệch hệ: bị đè bo góc riêng):`);
-      for (const item of result.mismatchedRadii) problems.push(`  ${item}`);
+      problems.push(`KHỐI CÙNG COMPONENT BO GÓC KHÁC NHAU (${result.mismatchedRadii?.length} khối, Lệch hệ: bị đè bo góc riêng):`);
+      for (const item of (result.mismatchedRadii || [])) problems.push(`  ${item}`);
     }
     if (result.stuckRows?.length > 0) {
-      problems.push(`DÒNG BO GÓC CÓ NỀN DÍNH NHAU (${result.stuckRows.length} chỗ, dòng đang chọn cách dòng kề dưới 4px: rê dòng kề là hai nền liền một khối; \`components/list-row.md\`, luật khoá 19):`);
-      for (const item of result.stuckRows) problems.push(`  ${item}`);
+      problems.push(`DÒNG BO GÓC CÓ NỀN DÍNH NHAU (${result.stuckRows?.length} chỗ, dòng đang chọn cách dòng kề dưới 4px: rê dòng kề là hai nền liền một khối; \`components/list-row.md\`, luật khoá 19):`);
+      for (const item of (result.stuckRows || [])) problems.push(`  ${item}`);
     }
     if (result.faintSelectedTabs?.length > 0) {
-      problems.push(`TAB ĐANG CHỌN GẦN TRÙNG NỀN (${result.faintSelectedTabs.length} chỗ; dùng \`bg-tab-selected\`, \`components/small-controls.md\`):`);
-      for (const item of result.faintSelectedTabs) problems.push(`  ${item}`);
+      problems.push(`TAB ĐANG CHỌN GẦN TRÙNG NỀN (${result.faintSelectedTabs?.length} chỗ; dùng \`bg-tab-selected\`, \`components/small-controls.md\`):`);
+      for (const item of (result.faintSelectedTabs || [])) problems.push(`  ${item}`);
     }
     if (result.faintLines?.length > 0) {
-      problems.push(`ĐƯỜNG KẺ CHÌM VÀO NỀN (${result.faintLines.length} chỗ; đường tóc cần từ 8 mức, trên nền trang xám dùng \`--border-strong\` (\`M14\`); đường kẻ hàng tab cần từ 16, dùng \`--tab-rail\`):`);
-      for (const item of result.faintLines) problems.push(`  ${item}`);
+      problems.push(`ĐƯỜNG KẺ CHÌM VÀO NỀN (${result.faintLines?.length} chỗ; đường tóc cần từ 8 mức, trên nền trang xám dùng \`--border-strong\` (\`M14\`); đường kẻ hàng tab cần từ 16, dùng \`--tab-rail\`):`);
+      for (const item of (result.faintLines || [])) problems.push(`  ${item}`);
     }
-    if (result.invisibleFrames.length > 0) {
-      problems.push(`KHUNG KHAI VIỀN MÀ VIỀN KHÔNG THẤY (${result.invisibleFrames.length} khung, nền trong, viền, nền ngoài gần như một màu):`);
-      for (const item of result.invisibleFrames) problems.push(`  ${item}`);
+    if (result.invisibleFrames?.length > 0) {
+      problems.push(`KHUNG KHAI VIỀN MÀ VIỀN KHÔNG THẤY (${result.invisibleFrames?.length} khung, nền trong, viền, nền ngoài gần như một màu):`);
+      for (const item of (result.invisibleFrames || [])) problems.push(`  ${item}`);
     }
     if (result.crampedOptions?.length > 0) {
-      problems.push(`MỤC TRONG LỚP NỔI CHẬT (${result.crampedOptions.length} chỗ: chữ tràn khỏi mục cao cố định, hoặc mục kề nhau cách dưới 4px; mục \`min-h-10\` cách nhau \`gap-1\`, \`layouts/overlay.md\`):`);
-      for (const item of result.crampedOptions) problems.push(`  ${item}`);
+      problems.push(`MỤC TRONG LỚP NỔI CHẬT (${result.crampedOptions?.length} chỗ: chữ tràn khỏi mục cao cố định, hoặc mục kề nhau cách dưới 4px; mục \`min-h-10\` cách nhau \`gap-1\`, \`layouts/overlay.md\`):`);
+      for (const item of (result.crampedOptions || [])) problems.push(`  ${item}`);
     }
-    if (result.hollowLayers.length > 0) {
-      problems.push(`LỚP NỔI CÓ DẢI TRỐNG (${result.hollowLayers.length} chỗ, khung rộng hơn nội dung bên trong, thường do \`max-w\` chặn nội dung):`);
-      for (const item of result.hollowLayers) problems.push(`  ${item}`);
+    if (result.hollowLayers?.length > 0) {
+      problems.push(`LỚP NỔI CÓ DẢI TRỐNG (${result.hollowLayers?.length} chỗ, khung rộng hơn nội dung bên trong, thường do \`max-w\` chặn nội dung):`);
+      for (const item of (result.hollowLayers || [])) problems.push(`  ${item}`);
     }
-    if (result.vanishedChildren.length > 0) {
-      problems.push(`KHỐI CON BIẾN MẤT LÚC RÊ (${result.vanishedChildren.length} chỗ):`);
-      for (const item of result.vanishedChildren.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.vanishedChildren?.length > 0) {
+      problems.push(`KHỐI CON BIẾN MẤT LÚC RÊ (${result.vanishedChildren?.length} chỗ):`);
+      for (const item of (result.vanishedChildren || []).slice(0, 6)) problems.push(`  ${item}`);
     }
-    if (result.autoScrolledAreas.length > 0) {
-      problems.push(`TRANG TỰ CUỘN KHI VỪA TẢI (${result.autoScrolledAreas.length} chỗ, người dùng chưa chạm mà đầu trang đã khuất):`);
-      for (const item of result.autoScrolledAreas) problems.push(`  ${item}`);
+    if (result.autoScrolledAreas?.length > 0) {
+      problems.push(`TRANG TỰ CUỘN KHI VỪA TẢI (${result.autoScrolledAreas?.length} chỗ, người dùng chưa chạm mà đầu trang đã khuất):`);
+      for (const item of (result.autoScrolledAreas || [])) problems.push(`  ${item}`);
     }
-    if (result.openerLayerProblems.length > 0) {
-      problems.push(`LỚP NỔI MỞ BẰNG NÚT BỊ VỠ (${result.openerLayerProblems.length} chỗ):`);
-      for (const item of result.openerLayerProblems.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.openerLayerProblems?.length > 0) {
+      problems.push(`LỚP NỔI MỞ BẰNG NÚT BỊ VỠ (${result.openerLayerProblems?.length} chỗ):`);
+      for (const item of (result.openerLayerProblems || []).slice(0, 6)) problems.push(`  ${item}`);
     }
-    if (result.flatOpenedLayers.length > 0) {
-      problems.push(`PANEL, MODAL MỞ RA KHÔNG NỔI HƠN TRANG (${result.flatOpenedLayers.length} chỗ, Lệch hệ):`);
-      for (const item of result.flatOpenedLayers.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.flatOpenedLayers?.length > 0) {
+      problems.push(`PANEL, MODAL MỞ RA KHÔNG NỔI HƠN TRANG (${result.flatOpenedLayers?.length} chỗ, Lệch hệ):`);
+      for (const item of (result.flatOpenedLayers || []).slice(0, 6)) problems.push(`  ${item}`);
     }
-    if (result.layoutShifts.length > 0) {
-      problems.push(`RÊ CHUỘT LÀM NHẢY BỐ CỤC (${result.layoutShifts.length} chỗ, hover thêm hay nở phần tử, khối bên dưới dời theo):`);
-      for (const item of result.layoutShifts.slice(0, 6)) problems.push(`  ${item}`);
+    if (result.layoutShifts?.length > 0) {
+      problems.push(`RÊ CHUỘT LÀM NHẢY BỐ CỤC (${result.layoutShifts?.length} chỗ, hover thêm hay nở phần tử, khối bên dưới dời theo):`);
+      for (const item of (result.layoutShifts || []).slice(0, 6)) problems.push(`  ${item}`);
     }
     if (result.lowContrastCount > 0) {
       problems.push(`TƯƠNG PHẢN CHỮ DƯỚI NGƯỠNG (${result.lowContrastCount} cặp màu, chữ thường 4.5:1, chữ lớn 3:1):`);
-      for (const item of result.lowContrastTexts) problems.push(`  ${item}`);
+      for (const item of (result.lowContrastTexts || [])) problems.push(`  ${item}`);
     }
-    if (result.clippedBlocks.length > 0) {
-      problems.push(`KHUNG GIẤU MẤT CHỮ (${result.clippedBlocks.length} khung overflow hidden, chữ nằm ngoài khung; xem ảnh xác nhận):`);
-      for (const item of result.clippedBlocks) problems.push(`  giấu "${item.hiddenText}": ${item.element}`);
+    if (result.clippedBlocks?.length > 0) {
+      problems.push(`KHUNG GIẤU MẤT CHỮ (${result.clippedBlocks?.length} khung overflow hidden, chữ nằm ngoài khung; xem ảnh xác nhận):`);
+      for (const item of (result.clippedBlocks || [])) problems.push(`  giấu "${item.hiddenText}": ${item.element}`);
     }
-    if (result.wrappedControls.length > 0) {
-      problems.push(`CHỮ TRONG NÚT / LINK / TAB XUỐNG DÒNG (${result.wrappedControls.length} chỗ, nút bị bóp):`);
-      for (const item of result.wrappedControls) problems.push(`  ${item}`);
+    if (result.wrappedControls?.length > 0) {
+      problems.push(`CHỮ TRONG NÚT / LINK / TAB XUỐNG DÒNG (${result.wrappedControls?.length} chỗ, nút bị bóp):`);
+      for (const item of (result.wrappedControls || [])) problems.push(`  ${item}`);
     }
-    if (result.wrappedRows.length > 0) {
-      problems.push(`HÀNG RỚT DÒNG (header, nav, thanh tab, hàng nút) (${result.wrappedRows.length} hàng):`);
-      for (const item of result.wrappedRows) problems.push(`  ${item}`);
+    if (result.wrappedRows?.length > 0) {
+      problems.push(`HÀNG RỚT DÒNG (header, nav, thanh tab, hàng nút) (${result.wrappedRows?.length} hàng):`);
+      for (const item of (result.wrappedRows || [])) problems.push(`  ${item}`);
     }
 
     problemCount += problems.filter((line) => !line.startsWith("  ")).length;
@@ -4389,9 +4566,9 @@ function formatReport(results) {
     if (result.expandedCount > 0) lines.push(`(Đã mở ${result.expandedCount} khối đang đóng rồi đo lại phần bên trong.)`);
     if (result.stateGroupCount > 0) lines.push(`(Đã thử rê, Tab, bấm ${result.stateGroupCount} nhóm có mục đang chọn.)`);
     if (result.truncatedCount > 0) lines.push(`(Có ${result.truncatedCount} chỗ chữ bị cắt có dấu …: xem ảnh xem có chỗ nào cắt mất ý không.)`);
-    if (result.openedLayerShots.length > 0) {
-      lines.push(`(Đã bấm mở ${result.openedLayerShots.length} lớp nổi, ảnh từng lớp — mở ra xem:)`);
-      for (const shot of result.openedLayerShots) lines.push(`  ${shot}`);
+    if (result.openedLayerShots?.length > 0) {
+      lines.push(`(Đã bấm mở ${result.openedLayerShots?.length} lớp nổi, ảnh từng lớp — mở ra xem:)`);
+      for (const shot of (result.openedLayerShots || [])) lines.push(`  ${shot}`);
     }
     if (result.unmeasuredContrastCount > 0) lines.push(`(Có ${result.unmeasuredContrastCount} chỗ chữ trên ảnh / gradient, máy không đo được tương phản: xem ảnh.)`);
   }
@@ -4697,76 +4874,135 @@ function listWireframeMustReportItems(comparisons) {
 // Mục chỉ phép đo động (Tab, rê, bấm, lớp nổi) mới ra.
 const dynamicProblemKeys = ["unmarkedFocusStops", "drawnFocusRings", "hollowLayers", "crampedOptions", "openerLayerProblems", "flatOpenedLayers", "layoutShifts", "vanishedChildren", "weakHovers", "blendedHovers", "borderHovers", "overflowingLayers", "shapeMismatches", "hoverLikeSelected", "checkedHoverChanges", "heavyLayerLines", "motionlessLayers", "scrollyLayers", "lostTriggerIcons", "stuckStates"];
 
-function formatDynamicCoverage(results, options) {
-  if (options.isQuick) return "Đo nhanh (--quick): chưa đo Tab, rê chuột, bấm, lớp nổi.\n";
-  const dynamicWidths = results.filter((result) => result.isDynamic).map((result) => `${result.width}px`);
-  if (dynamicWidths.length === results.length) return "";
-
-  return `Tab, rê chuột, bấm, lớp nổi: chỉ đo ở ${dynamicWidths.join(", ") || "không khổ nào"}; khổ khác đo trang đứng yên.\n`;
+export function formatDynamicCoverage(results, options) {
+  const coverage = computeCoverage(results, options);
+  const modeLabel = `Chế độ tương tác: ${coverage.interactionMode}.`;
+  const skippedLabel = coverage.skippedChecks.length > 0
+    ? ` Phép đo động bỏ qua (chưa kiểm): ${coverage.skippedChecks.join(", ")}.`
+    : " Đã chạy đủ phép đo động.";
+  return `${modeLabel}${skippedLabel}\n`;
 }
 
-// Vòng sửa sau chỉ cần đo động lại ở khổ còn lỗi động; phần đứng yên và --sweep vẫn đo đủ.
 function formatNextRoundHint(results, options) {
-  if (options.isQuick) return "";
+  if (options.interactionMode === "observational") return "";
   const widthsWithDynamicProblems = results
     .filter((result) => result.isDynamic && dynamicProblemKeys.some((key) => result[key]?.length > 0))
     .map((result) => result.width);
 
-  return `\nVòng sửa sau: thêm --dynamic-widths ${widthsWithDynamicProblems.join(",") || "none"} (khổ còn lỗi Tab, rê, bấm, lớp nổi).`;
+  return `\nVòng sửa sau: thêm --dynamic-widths ${widthsWithDynamicProblems.join(",") || "none"} (khổ còn lỗi động).`;
 }
 
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
+export async function closeBrowserSafely(browser, timeoutMs = 5000) {
+  if (!browser || typeof browser.close !== "function") return null;
+  let timer = null;
+  try {
+    await Promise.race([
+      Promise.resolve().then(() => browser.close()),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`browser.close() timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+export async function runProbeCli(argv, deps = {}) {
+  const options = parseArgs(argv);
+  const log = deps.log ?? console.log;
+  const errorLog = deps.errorLog ?? console.error;
 
   if (options.help) {
-    console.log("Usage: node scripts/art-direction/ui-dom-probe.mjs <url> [--widths 375,768,1024,1280,1440,1920] [--sweep [1440,375,20]] [--dark] [--quick] [--wireframe <url>] [--disallow-focus-rings] [--out <dir>]");
-    process.exit(0);
+    log("Usage: node scripts/art-direction/ui-dom-probe.mjs <url> [--widths 375,768,1024,1280,1440,1920] [--sweep [1440,375,20]] [--dark] [--quick|--hover-focus|--interactive] [--interaction-mode observational|hover-focus|interactive] [--allow-create-clicks] [--wireframe <url>] [--disallow-focus-rings] [--strict-evon-style] [--fail-on-broken] [--fail-on-incomplete] [--out <dir>]");
+    return { exitCode: 0, options, report: null };
   }
 
   if (!options.url) {
-    console.error("Thiếu URL. Ví dụ: node probe.mjs http://localhost:5173/dashboard");
-    process.exit(2);
+    errorLog("Thiếu URL. Ví dụ: node ui-dom-probe.mjs http://localhost:5173/dashboard");
+    return { exitCode: 2, options, report: null };
   }
 
-  const playwright = loadPlaywright(options.playwrightDir);
+  const resolvePw = deps.loadPlaywright ?? loadPlaywright;
+  const playwright = resolvePw(options.playwrightDir);
   if (!playwright) {
-    console.error('Chưa có playwright. Cài vào thư mục tạm, không vào dự án:\n  npm i --prefix "$TMPDIR/evon-probe" playwright\nrồi chạy lại với --pw "$TMPDIR/evon-probe".');
-    process.exit(2);
+    errorLog('Chưa có playwright. Cài vào thư mục tạm, không vào dự án:\n  npm i --prefix "$TMPDIR/evon-probe" playwright\nrồi chạy lại với --pw "$TMPDIR/evon-probe".');
+    return { exitCode: 2, options, report: null };
   }
 
+  const launch = deps.launchBrowser ?? launchBrowser;
   let browser;
   try {
-    browser = await launchBrowser(playwright.chromium);
+    browser = await launch(playwright.chromium);
   } catch {
-    console.error("Không mở được trình duyệt. Chạy: npx playwright install chromium (trong thư mục có playwright).");
-    process.exit(2);
+    errorLog("Không mở được trình duyệt. Chạy: npx playwright install chromium (trong thư mục có playwright).");
+    return { exitCode: 2, options, report: null };
   }
 
-  mkdirSync(options.out, { recursive: true });
+  const makeDir = deps.mkdirSync ?? mkdirSync;
+  const writeReport = deps.writeFileSync ?? writeFileSync;
+  const runWidth = deps.probeWidth ?? probeWidth;
+  const runSweep = deps.sweepWidths ?? sweepWidths;
+  const runWireframe = deps.compareWithWireframe ?? compareWithWireframe;
+
   const results = [];
   let sweepSteps = [];
   let wireframeComparisons = [];
+  let operationalError = null;
+  let cleanupError = null;
+  let report = null;
 
   try {
-    for (const width of options.widths) results.push(await probeWidth(browser, options, width));
-    if (options.sweep) sweepSteps = await sweepWidths(browser, options);
-    if (options.wireframeUrl) wireframeComparisons = await compareWithWireframe(browser, options);
+    makeDir(options.out, { recursive: true });
+    for (const width of options.widths) results.push(await runWidth(browser, options, width));
+    if (options.sweep) sweepSteps = await runSweep(browser, options);
+    if (options.wireframeUrl) wireframeComparisons = await runWireframe(browser, options);
+
+    const coverage = computeCoverage(results, options);
+    const findings = classifyFindings(results, sweepSteps, wireframeComparisons, options);
+    report = {
+      widths: results,
+      sweep: sweepSteps,
+      wireframe: wireframeComparisons,
+      coverage,
+      findings,
+    };
+    writeReport(join(options.out, "report.json"), JSON.stringify(report, null, 2));
   } catch (error) {
-    console.error(`Không mở được ${options.url}: ${error.message.split("\n")[0]}. Dev server đã chạy chưa?`);
-    process.exit(2);
+    operationalError = error instanceof Error ? error : new Error(String(error));
+    errorLog(`Không hoàn tất đo ${options.url}: ${operationalError.message.split("\n")[0]}`);
   } finally {
-    await browser.close();
+    cleanupError = await closeBrowserSafely(browser);
+    if (cleanupError) {
+      errorLog(`Lỗi đóng trình duyệt: ${cleanupError.message}`);
+    }
   }
 
-  writeFileSync(join(options.out, "report.json"), JSON.stringify({ widths: results, sweep: sweepSteps, wireframe: wireframeComparisons }, null, 2));
-  console.log(formatDynamicCoverage(results, options));
-  console.log(formatReport(results));
-  if (sweepSteps.length > 0) console.log(formatSweepReport(sweepSteps, options.sweep.step));
-  if (wireframeComparisons.length > 0) console.log(formatWireframeReport(wireframeComparisons));
-  const mustReportItems = [...listMustReportItems(results, sweepSteps), ...listWireframeMustReportItems(wireframeComparisons)];
-  console.log(formatMustReportList(mustReportItems, options.sweep?.step ?? 20));
-  console.log(formatNextRoundHint(results, options));
-  console.log(`\nChi tiết: ${join(options.out, "report.json")}`);
+  if (operationalError || cleanupError || !report) {
+    return { exitCode: 2, options, report, operationalError, cleanupError };
+  }
+
+  log(formatDynamicCoverage(results, options));
+  log(formatReport(results, options));
+  if (sweepSteps.length > 0) log(formatSweepReport(sweepSteps, options.sweep.step));
+  if (wireframeComparisons.length > 0) log(formatWireframeReport(wireframeComparisons));
+  log(formatMustReportList(report.findings, options.sweep?.step ?? 20));
+  log(formatNextRoundHint(results, options));
+  log(`\nChi tiết: ${join(options.out, "report.json")}`);
+
+  const hasBlockingBroken = options.failOnBroken && report.findings.broken.length > 0;
+  const hasBlockingIncomplete = options.failOnIncomplete && !report.coverage.complete;
+  const exitCode = (hasBlockingBroken || hasBlockingIncomplete) ? 1 : 0;
+  return { exitCode, options, report };
 }
 
-main();
+async function main() {
+  const { exitCode } = await runProbeCli(process.argv.slice(2));
+  process.exitCode = exitCode;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

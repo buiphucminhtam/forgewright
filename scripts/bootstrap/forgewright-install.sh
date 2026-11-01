@@ -1479,6 +1479,7 @@ install_scripts() {
         "memory/mem0-v2.py"
         "runtime/forgewright-session-tracker.sh"
         "skills/forgewright-lesson-migrator.sh"
+        "art-direction/ui-dom-probe.mjs"
     )
 
     for script_path in "${scripts[@]}"; do

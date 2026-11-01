@@ -12,7 +12,6 @@ version: 1.0.0
 | Target frontend libraries and styling frameworks are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("tailwind\|sass\|styled-components\|framer-motion")))'` | ... | run the check command and paste output |
 | Existing visual guidelines, mockups, or wireframe specs are indexed | `find docs/ -name "*design*" -o -name "*ux*" -o -name "*wireframe*"` | ... | run the check command and paste output |
 | Visual regression test (VRT) suites or screenshots are configured | `cat playwright.config.ts \|\| ls -la tests/` | ... | run the check command and paste output |
-
 | Existing interactive primitives, state conventions, and DOM probe availability | Inspect existing buttons/modals/inputs/accordions and `skills/ui-designer/references/app-ui-ux-mindset.md` | ... | `Audit:` line of reusable interactive primitives + state/focus/motion rules (`N1–N12`, `I1–I32`) |
 
 ## SOLVE Step 3: DECOMPOSE (Interaction Designer Domain Slots)

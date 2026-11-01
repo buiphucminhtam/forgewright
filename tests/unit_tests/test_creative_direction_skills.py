@@ -400,24 +400,60 @@ def test_ui_style_diversity_is_evidence_bound_and_not_a_new_style_database() -> 
     )
 
 
-def test_evondevkit_ui_ux_mindset_and_dom_probe_contract() -> None:
+def test_evondevkit_ui_ux_mindset_and_dom_probe_contract(tmp_path: Path) -> None:
     import subprocess
 
     mindset_ref = (
         ROOT / "skills" / "ui-designer" / "references" / "app-ui-ux-mindset.md"
     )
+    workflows_ref = (
+        ROOT
+        / "skills"
+        / "ui-designer"
+        / "references"
+        / "evondevkit"
+        / "workflows-u-v-l-d.md"
+    )
+    eng_ref = (
+        ROOT
+        / "skills"
+        / "ui-designer"
+        / "references"
+        / "evondevkit"
+        / "engineering-rules-t-i-r-m-w.md"
+    )
     dom_probe = ROOT / "scripts" / "art-direction" / "ui-dom-probe.mjs"
+    manifest_path = ROOT / ".forgewright" / "docs-manifest.json"
+    install_sh = ROOT / "scripts" / "bootstrap" / "forgewright-install.sh"
+
     assert mindset_ref.is_file()
+    assert workflows_ref.is_file()
+    assert eng_ref.is_file()
     assert dom_probe.is_file()
 
     mindset_text = _read(mindset_ref)
+    workflows_text = _read(workflows_ref)
+    eng_text = _read(eng_ref)
     protocol_mindset = _read(DESIGN_MINDSET)
     grounding_text = _read(VISUAL_GROUNDING)
     ui_lite = _read(ROOT / "skills" / "ui-designer" / "LITE.md")
     ui_skill = _read(UI_SKILL)
+    int_lite = _read(ROOT / "skills" / "interaction-designer" / "LITE.md")
     int_skill = _read(ROOT / "skills" / "interaction-designer" / "SKILL.md")
     fe_skill = _read(ROOT / "skills" / "frontend-engineer" / "SKILL.md")
     vr_skill = _read(VISION_REVIEW_SKILL)
+    manifest = json.loads(_read(manifest_path))
+    install_text = _read(install_sh)
+
+    # Compact router stays under 1500 estimated tokens (6000 UTF-8 bytes) and is not eagerly !cat'd
+    assert len(mindset_ref.read_bytes()) < 6000
+    assert "!cat skills/ui-designer/references/app-ui-ux-mindset.md" not in ui_skill
+    assert "\n\n| Existing interactive primitives" not in int_lite
+
+    # N12 provenance (repeated-block coherence) and Gate 3 consistency across all files
+    for doc in (mindset_text, protocol_mindset, ui_skill):
+        assert "Repeated-block" in doc or "repeated-block" in doc
+        assert "Gate 3" in doc and "Cổng 3" in doc
 
     for required in (
         "4d021537edc853fd91d2bb3aade1f5076ab7556e",
@@ -426,16 +462,52 @@ def test_evondevkit_ui_ux_mindset_and_dom_probe_contract() -> None:
         "Mode `V`",
         "Mode `L`",
         "Mode `D`",
+        "Mode `Quick`",
         "Color Role Table",
         "Audit:",
         "`N1`",
         "`N12`",
-        "Hỏng",
-        "Lệch hệ",
-        "file:line",
         "ui-dom-probe.mjs",
     ):
         assert required in mindset_text, f"{required} missing from {mindset_ref}"
+
+    for wf_req in (
+        "?v=a&mau=xam&kho=desktop&tt=du-lieu",
+        "data-wf-block",
+        "data-wf-reason",
+        "V1b",
+        "V1c",
+        "V6",
+        "L1",
+        "L3",
+        "D1",
+        "D9",
+        "inert data-demo-state",
+    ):
+        assert wf_req in workflows_text, f"{wf_req} missing from {workflows_ref}"
+
+    for eng_req in (
+        "T1–T30",
+        "I1–I32",
+        "R1–R11",
+        "M1–M32",
+        "W1–W9",
+        "Preflight",
+        "--dark",
+    ):
+        assert eng_req in eng_text, f"{eng_req} missing from {eng_ref}"
+
+    # Docs Hub manifest and bootstrap installer registration
+    manifest_sources = {s["path"] for s in manifest["sources"]}
+    manifest_allow = set(manifest["privacy"]["allow"])
+    for rel_doc in (
+        "skills/ui-designer/references/app-ui-ux-mindset.md",
+        "skills/ui-designer/references/evondevkit/workflows-u-v-l-d.md",
+        "skills/ui-designer/references/evondevkit/engineering-rules-t-i-r-m-w.md",
+    ):
+        assert rel_doc in manifest_sources
+        assert rel_doc in manifest_allow
+    assert '"art-direction/ui-dom-probe.mjs"' in install_text
 
     assert "Operational App UI/UX Mindset & Self-Tests" in protocol_mindset
     assert "Three-Tier Pre-Design Audit & Workflow Routing" in grounding_text
@@ -445,13 +517,10 @@ def test_evondevkit_ui_ux_mindset_and_dom_probe_contract() -> None:
     assert "Operational UI/UX Implementation Rules" in fe_skill
     assert "System Drift / `Lệch hệ`" in vr_skill
 
-    probe_source = _read(dom_probe)
-    assert "MIT License" in probe_source
-    assert "4d021537edc853fd91d2bb3aade1f5076ab7556e" in probe_source
-    assert "disallowFocusRings: false" in probe_source
-
+    # Invocation from a separate working directory (distribution check)
     help_proc = subprocess.run(
         ["node", str(dom_probe), "--help"],
+        cwd=tmp_path,
         capture_output=True,
         text=True,
         timeout=15,
@@ -459,9 +528,11 @@ def test_evondevkit_ui_ux_mindset_and_dom_probe_contract() -> None:
     )
     assert help_proc.returncode == 0
     assert "--disallow-focus-rings" in help_proc.stdout
+    assert "--fail-on-broken" in help_proc.stdout
 
     missing_url_proc = subprocess.run(
         ["node", str(dom_probe)],
+        cwd=tmp_path,
         capture_output=True,
         text=True,
         timeout=15,
@@ -469,3 +540,218 @@ def test_evondevkit_ui_ux_mindset_and_dom_probe_contract() -> None:
     )
     assert missing_url_proc.returncode == 2
     assert "Thiếu URL" in missing_url_proc.stderr
+
+
+def test_ui_dom_probe_classification_safety_lifecycle_and_rendered_focus(
+    tmp_path: Path,
+) -> None:
+    import subprocess
+
+    dom_probe = ROOT / "scripts" / "art-direction" / "ui-dom-probe.mjs"
+    script = f"""
+import assert from 'node:assert/strict';
+import {{ pathToFileURL }} from 'node:url';
+const probe = await import(pathToFileURL({json.dumps(str(dom_probe))}).href);
+
+// 1. Safety & default observational mode
+const defOpts = probe.parseArgs(['http://localhost:3000/orders']);
+assert.equal(defOpts.interactionMode, 'observational');
+assert.equal(defOpts.dynamicWidths.size, 0);
+assert.equal(defOpts.allowCreateClicks, false);
+assert.equal(defOpts.disallowFocusRings, false);
+
+const hfOpts = probe.parseArgs(['http://localhost:3000/orders', '--hover-focus', '--widths', '375,1280']);
+assert.equal(hfOpts.interactionMode, 'hover-focus');
+assert.equal(hfOpts.dynamicWidths.has(375), true);
+assert.equal(hfOpts.dynamicWidths.has(1280), true);
+
+// 2. Classification: taste-only vs genuine clipping vs harmless wrapping & fixed/sweep parity
+const tasteOnlyResult = [{{
+  width: 1280,
+  focusChecked: true,
+  hoverChecked: true,
+  clickProbed: false,
+  weakHovers: ['button "Lọc"'],
+  liftingHovers: ['div.card'],
+  scrollbarStyles: ['::-webkit-scrollbar 8px'],
+  heavyDecorativeBorders: ['#cbd5e1'],
+  wrappedControls: ['button "Tải báo cáo tháng"'],
+  smallTapTargets: [{{ element: 'button.inline-retry', isBelowFloor: true }}],
+  unmarkedFocusStops: ['button "Trợ giúp"'],
+}}];
+const sweepWithWrapAndClip = [{{
+  width: 900,
+  hasHorizontalScroll: false,
+  clippedBlocks: [{{ element: 'div.cell', hiddenText: '120.000đ' }}],
+  wrappedControls: ['button "Tải báo cáo tháng"'],
+  wrappedRows: [],
+  tooShortTexts: [],
+  swallowedNumbers: [],
+}}];
+const classifiedDefault = probe.classifyFindings(tasteOnlyResult, []);
+assert.equal(classifiedDefault.broken.length, 0, 'Taste and heuristic items must not be classified as broken');
+assert.equal(classifiedDefault.taste.length, 4, 'All 4 aesthetic items belong in taste');
+assert.equal(classifiedDefault.needsReview.length, 3, 'Wrapped button, <24px target, and suspected focus stop belong in needsReview');
+
+const classifiedSweep = probe.classifyFindings(tasteOnlyResult, sweepWithWrapAndClip);
+assert.equal(classifiedSweep.broken.length, 1, 'Genuine clipped text in sweep must be broken');
+assert.match(classifiedSweep.broken[0].text, /khung giấu mất chữ/);
+const wrapEntry = classifiedSweep.needsReview.find((i) => i.text.includes('chữ trong nút/link/tab xuống dòng'));
+assert.deepEqual(wrapEntry.widths, [1280, 900], 'Fixed-width and sweep wrappedControls share needsReview classification');
+
+const classifiedStrictStyle = probe.classifyFindings(tasteOnlyResult, [], [], {{ strictEvonStyle: true, disallowFocusRings: true }});
+assert.equal(classifiedStrictStyle.broken.length, 0, 'Strict style mode must not relabel style drift as broken accessibility');
+assert.equal(classifiedStrictStyle.referenceDeviation.length, 4, 'Strict style mode promotes style items to referenceDeviation');
+
+// 3. Coverage accounting
+const covObs = probe.computeCoverage([{{ width: 1280, focusChecked: false, hoverChecked: false, clickProbed: false }}], defOpts);
+assert.equal(covObs.complete, false);
+assert.deepEqual(covObs.skippedChecks, ['keyboard-focus', 'pointer-hover', 'interactive-click-layers']);
+
+// 4. Lifecycle: cleanup awaited on probeWidth error, mkdir error, write error, close error, and exit code precedence
+let closeCount = 0;
+const fakePw = () => ({{ chromium: {{}} }});
+const fakeLaunch = async () => ({{ close: async () => {{ closeCount += 1; }} }});
+
+// 4a. probeWidth failure -> closes browser and exits 2
+closeCount = 0;
+const errRun = await probe.runProbeCli(['http://localhost:3000', '--out', {json.dumps(str(tmp_path / "out1"))}], {{
+  loadPlaywright: fakePw,
+  launchBrowser: fakeLaunch,
+  probeWidth: async () => {{ throw new Error('ERR_CONNECTION_REFUSED'); }},
+  log: () => {{}},
+  errorLog: () => {{}},
+}});
+assert.equal(errRun.exitCode, 2);
+assert.equal(closeCount, 1, 'browser.close() must be awaited when probeWidth fails');
+
+// 4b. mkdirSync failure -> closes browser and exits 2
+closeCount = 0;
+const mkdirFailRun = await probe.runProbeCli(['http://localhost:3000', '--out', {json.dumps(str(tmp_path / "out2"))}], {{
+  loadPlaywright: fakePw,
+  launchBrowser: fakeLaunch,
+  mkdirSync: () => {{ throw new Error('EACCES'); }},
+  log: () => {{}},
+  errorLog: () => {{}},
+}});
+assert.equal(mkdirFailRun.exitCode, 2);
+assert.equal(closeCount, 1, 'browser.close() must be awaited when mkdirSync fails');
+
+// 4c. writeFileSync failure -> closes browser and exits 2
+closeCount = 0;
+const writeFailRun = await probe.runProbeCli(['http://localhost:3000', '--widths', '1280', '--out', {json.dumps(str(tmp_path / "out3"))}], {{
+  loadPlaywright: fakePw,
+  launchBrowser: fakeLaunch,
+  probeWidth: async () => ({{ width: 1280, focusChecked: true, hoverChecked: true, clickProbed: true, openedLayerShots: [], stickyScrollColumns: [], swallowedNumbers: [], floatingContent: [], styledNativeSelects: [], squeezedBlocks: [], browserDefaultControls: [], invisibleFrames: [], hollowLayers: [], vanishedChildren: [], autoScrolledAreas: [], openerLayerProblems: [], flatOpenedLayers: [], layoutShifts: [], lowContrastTexts: [], clippedBlocks: [], wrappedControls: [], wrappedRows: [], shapeMismatches: [], stuckStates: [], mismatchedRuleColors: [], unevenHeaderActions: [], brokenRules: [], overflowX: 0 }}),
+  writeFileSync: () => {{ throw new Error('ENOSPC'); }},
+  log: () => {{}},
+  errorLog: () => {{}},
+}});
+assert.equal(writeFailRun.exitCode, 2);
+assert.equal(closeCount, 1);
+
+// 4d. browser.close() rejection -> exits 2
+const closeFailRun = await probe.runProbeCli(['http://localhost:3000', '--widths', '1280', '--out', {json.dumps(str(tmp_path / "out4"))}], {{
+  loadPlaywright: fakePw,
+  launchBrowser: async () => ({{ close: async () => {{ throw new Error('close failed'); }} }}),
+  probeWidth: async () => ({{ width: 1280, focusChecked: true, hoverChecked: true, clickProbed: true, openedLayerShots: [], stickyScrollColumns: [], swallowedNumbers: [], floatingContent: [], styledNativeSelects: [], squeezedBlocks: [], browserDefaultControls: [], invisibleFrames: [], hollowLayers: [], vanishedChildren: [], autoScrolledAreas: [], openerLayerProblems: [], flatOpenedLayers: [], layoutShifts: [], lowContrastTexts: [], clippedBlocks: [], wrappedControls: [], wrappedRows: [], shapeMismatches: [], stuckStates: [], mismatchedRuleColors: [], unevenHeaderActions: [], brokenRules: [], overflowX: 0 }}),
+  log: () => {{}},
+  errorLog: () => {{}},
+}});
+assert.equal(closeFailRun.exitCode, 2);
+
+// 4e. Exit code 1 on --fail-on-broken when broken finding exists, and 1 on --fail-on-incomplete when dynamic checks skipped
+const brokenGateRun = await probe.runProbeCli(['http://localhost:3000', '--widths', '375', '--fail-on-broken', '--out', {json.dumps(str(tmp_path / "out5"))}], {{
+  loadPlaywright: fakePw,
+  launchBrowser: fakeLaunch,
+  probeWidth: async () => ({{ width: 375, hasHorizontalScroll: true, overflowingElements: [{{ element: 'div.wide' }}], focusChecked: true, hoverChecked: true, clickProbed: true, openedLayerShots: [], stickyScrollColumns: [], swallowedNumbers: [], floatingContent: [], styledNativeSelects: [], squeezedBlocks: [], browserDefaultControls: [], invisibleFrames: [], hollowLayers: [], vanishedChildren: [], autoScrolledAreas: [], openerLayerProblems: [], flatOpenedLayers: [], layoutShifts: [], lowContrastTexts: [], clippedBlocks: [], wrappedControls: [], wrappedRows: [], shapeMismatches: [], stuckStates: [], mismatchedRuleColors: [], unevenHeaderActions: [], brokenRules: [] }}),
+  log: () => {{}},
+  errorLog: () => {{}},
+}});
+assert.equal(brokenGateRun.exitCode, 1);
+
+const incompleteGateRun = await probe.runProbeCli(['http://localhost:3000', '--widths', '375', '--fail-on-incomplete', '--out', {json.dumps(str(tmp_path / "out6"))}], {{
+  loadPlaywright: fakePw,
+  launchBrowser: fakeLaunch,
+  probeWidth: async () => ({{ width: 375, hasHorizontalScroll: false, focusChecked: false, hoverChecked: false, clickProbed: false, openedLayerShots: [], stickyScrollColumns: [], swallowedNumbers: [], floatingContent: [], styledNativeSelects: [], squeezedBlocks: [], browserDefaultControls: [], invisibleFrames: [], hollowLayers: [], vanishedChildren: [], autoScrolledAreas: [], openerLayerProblems: [], flatOpenedLayers: [], layoutShifts: [], lowContrastTexts: [], clippedBlocks: [], wrappedControls: [], wrappedRows: [], shapeMismatches: [], stuckStates: [], mismatchedRuleColors: [], unevenHeaderActions: [], brokenRules: [] }}),
+  log: () => {{}},
+  errorLog: () => {{}},
+}});
+assert.equal(incompleteGateRun.exitCode, 1);
+
+// 5. Real rendered Chromium focus semantics (unmarked input & button vs valid ring, caret, ::before, and :focus-within wrapper)
+const pw = probe.loadPlaywright('');
+assert.ok(pw, 'Playwright must be resolved from repo');
+{{
+  let browser = null;
+  try {{
+    browser = await pw.chromium.launch();
+  }} catch {{
+    try {{ browser = await pw.chromium.launch({{ channel: 'chrome' }}); }} catch {{ browser = null; }}
+  }}
+  assert.ok(browser, 'Real Chromium browser must launch');
+  {{
+    try {{
+      const page = await browser.newPage();
+      await page.setContent(`<!doctype html><html><head><style>
+        button, input {{ font-size: 16px; padding: 8px; }}
+        .unmarked-btn {{ outline: none; border: 1px solid #ccc; background: #fff; }}
+        .unmarked-input {{ outline: none; border: 1px solid #ccc; caret-color: transparent; }}
+        .ring-btn:focus-visible {{ outline: 2px solid #2563eb; }}
+        .caret-input {{ outline: none; border: 1px solid #ccc; caret-color: #111; }}
+        .before-btn {{ outline: none; position: relative; }}
+        .before-btn:focus-visible::before {{ content: ''; position: absolute; inset: -2px; border: 2px solid #10b981; }}
+        .focus-wrap {{ border: 1px solid #ccc; padding: 4px; }}
+        .focus-wrap:focus-within {{ border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.3); }}
+        .wrapped-input {{ outline: none; border: none; caret-color: transparent; }}
+      </style></head><body>
+        <button class='unmarked-btn'>Unmarked Button</button>
+        <input class='unmarked-input' placeholder='Unmarked Input' />
+        <button class='ring-btn'>Ring Button</button>
+        <input class='caret-input' placeholder='Caret Input' />
+        <button class='before-btn'>Before Button</button>
+        <div class='focus-wrap'><input class='wrapped-input' placeholder='Wrapper Input' /></div>
+      </body></html>`);
+      const defaultFocus = await probe.findDrawnFocusRings(page, false);
+      assert.equal(defaultFocus.drawnRings.length, 0, 'Default WCAG mode allows focus rings');
+      assert.equal(defaultFocus.observedRingCount, 1, 'Ring button observed');
+      assert.ok(defaultFocus.unmarkedFocusStops.some((s) => s.includes('Unmarked Button')), 'Unmarked button detected');
+      assert.ok(defaultFocus.unmarkedFocusStops.some((s) => s.includes('Unmarked Input')), 'Unmarked input detected');
+      assert.ok(!defaultFocus.unmarkedFocusStops.some((s) => s.includes('Ring Button')), 'Ring button not unmarked');
+      assert.ok(!defaultFocus.unmarkedFocusStops.some((s) => s.includes('Caret Input')), 'Caret input recognized');
+      assert.ok(!defaultFocus.unmarkedFocusStops.some((s) => s.includes('Before Button')), '::before indicator recognized');
+      assert.ok(!defaultFocus.unmarkedFocusStops.some((s) => s.includes('Wrapper Input')), ':focus-within wrapper recognized');
+
+      await page.evaluate(() => document.activeElement?.blur());
+      const i13Focus = await probe.findDrawnFocusRings(page, true);
+      assert.deepEqual(i13Focus.drawnRings, ['button "Ring Button"'], 'Disallow mode flags non-field ring');
+
+      // Verify probeWidth in observational and hover-focus modes never clicks or mutates page controls
+      const safeUrl = 'data:text/html,' + encodeURIComponent(`<!doctype html><html><body>
+        <button aria-haspopup="true" onclick="document.body.dataset.mutated='1'">Menu ▾</button>
+        <button onclick="document.body.dataset.mutated='1'">Tạo phiếu mới</button>
+        <button aria-expanded="false" onclick="document.body.dataset.mutated='1'">Accordion</button>
+      </body></html>`);
+      const hfProbeOpts = probe.parseArgs([safeUrl, '--hover-focus', '--widths', '375,1280', '--out', {json.dumps(str(tmp_path / "safe-out"))}]);
+      for (const w of hfProbeOpts.widths) {{
+        const resW = await probe.probeWidth(browser, hfProbeOpts, w);
+        assert.equal(resW.focusChecked, true);
+        assert.equal(resW.clickProbed, false);
+      }}
+    }} finally {{
+      await probe.closeBrowserSafely(browser);
+    }}
+  }}
+}}
+console.log('ALL_PROBE_BEHAVIOR_ASSERTIONS_PASSED');
+"""
+    proc = subprocess.run(
+        ["node", "--input-type=module", "-e", script],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=45,
+        check=False,
+    )
+    assert proc.returncode == 0, f"STDOUT: {proc.stdout}\nSTDERR: {proc.stderr}"
+    assert "ALL_PROBE_BEHAVIOR_ASSERTIONS_PASSED" in proc.stdout
