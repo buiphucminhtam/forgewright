@@ -18,7 +18,7 @@ export class PolicyReadyToolGateway implements Gateway {
 
   async execute(
     request: ToolExecutionRequest,
-    execute: () => Promise<ToolResult>,
+    execute: (signal?: AbortSignal) => Promise<ToolResult>,
   ): Promise<ToolResult> {
     if (this.gateway === null) {
       let trust: RuntimeTrustContext | null;

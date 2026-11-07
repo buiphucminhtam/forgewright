@@ -76,24 +76,44 @@ Không publish hoặc deploy khi chưa được duyệt.
 
 `INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
+Xem [sơ đồ 23 bước và gate MCP](README.md#how-it-works). Bản dưới tóm tắt;
+SHIP/SUSTAIN chạy khi có trong phạm vi.
+
 ```mermaid
-flowchart LR
-    A[Yêu cầu và AC] --> B[Phạm vi và rủi ro]
-    B --> C[Chọn context và kỹ năng]
-    C --> D[Thực thi qua công cụ được kiểm soát]
-    D --> E[Test và review độc lập]
-    E --> F{Đủ bằng chứng nghiệm thu?}
-    F -->|Có| G[Bàn giao được chủ dự án duyệt]
-    F -->|Chưa| H[Sửa hoặc báo blocker]
-    H --> B
-    G --> I[Checkpoint và bảo trì]
+flowchart TD
+    A[Prompt, AC và context] --> B{Chỉ trả lời/review?}
+    B -->|Có| Q[Thu thập bằng chứng]
+    B -->|Không| R[Research, tìm repo tái sử dụng]
+    R --> P[Chốt scope, plan và điều kiện]
+    P --> G{Được phép?}
+    G -->|Có| E[Thực hiện, kiểm tra]
+    G -->|Không| X
+    E --> M{Đạt?}
+    M -->|Không| F[Chẩn đoán; không lặp mù]
+    F --> H{Còn budget và hướng an toàn?}
+    H -->|Có: sửa phần lỗi| G
+    H -->|Không| X
+    M -->|Có| N{Còn việc?}
+    N -->|Có| G
+    N -->|Không| D[Nếu material: docs, state, gate, build]
+    D --> V[Evidence cuối và review]
+    V --> K{Đạt mọi gate?}
+    K -->|Không| F
+    K -->|Có| S{Cần phát hành?}
+    S -->|Có| T[Đủ quyền mới giao; kiểm chứng]
+    T -->|Lỗi| I[Phục hồi trong quyền đã duyệt]
+    I --> X
+    T -->|Đạt| L
+    S -->|Không| L
+    Q --> L[Cleanup và gate kết thúc]
+    L --> Z[Báo kết quả và giới hạn]
+    X[Cleanup, ghi nhận vướng mắc] --> W[Báo blocker]
 ```
 
-1. **Định cỡ nỗ lực theo rủi ro (Right-size):** Việc nhỏ, cục bộ, dễ hoàn tác đi theo luồng `QUICK` (1–3 bước, 1 lệnh kiểm tra trọng tâm). Tính năng/sửa lỗi thông thường đi theo `STANDARD`. Các thay đổi chạm tới thanh toán (payment/billing/IAP), xác thực, hợp đồng API công khai, đồng thời (concurrency) hoặc phát hành bắt buộc nâng lên `DEEP` và `HARD` ([ESCALATE.md](kernel/ESCALATE.md)).
-2. **Định tuyến chuyên gia theo nhu cầu:** Chỉ nạp overlay `LITE.md` của kỹ năng cần thiết thay vì nạp toàn bộ 85 kỹ năng vào đầu phiên.
-3. **Kiểm chứng từng bước và tại cổng kết thúc:** Mọi lệnh gọi công cụ được kiểm tra qua `.forgewright/execution-policy.yaml` ([POLICY.md](kernel/POLICY.md)), và khi kết thúc lượt, `stop_gate.py` đối chiếu bản ghi schema-v2 trong `.forgewright/verify/` ([VERIFY.md](kernel/VERIFY.md)).
-
-Xem chi tiết tại [pipeline reference](docs/pipeline-reference.md) và [canonical runtime ADR](docs/adr/0001-canonical-production-runtime.md).
+Cleanup áp dụng cả lỗi/hủy; không thử lại lệnh bị DENY. Dùng default an toàn
+hoặc chờ thông tin bắt buộc. Thiếu tooling không miễn gate material.
+Nguồn: [SOLVE](kernel/SOLVE.md), [POLICY](kernel/POLICY.md),
+[VERIFY](kernel/VERIFY.md), [pipeline](skills/_shared/protocols/pipeline-operating-contract.md).
 
 ## Những nâng cấp gần đây
 

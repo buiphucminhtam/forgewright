@@ -7,7 +7,6 @@ import hashlib
 import json
 import os
 import re
-import stat
 import subprocess
 from pytest_receipts import is_pytest, receipt_errors, run_observed
 import sys
@@ -19,7 +18,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evidence_common import (
     FINAL_PHASES,
-    SCHEMA_VERSION,
     STRONG_TIERS,
     acceptance_map,
     acceptance_test_map,
@@ -134,52 +132,21 @@ def _current_tree_sha(workspace: Path) -> str:
 
 
 def _find_evidence(project_root: Path, turn_env: str) -> Path | None:
-    verify_dir = project_root.resolve() / ".forgewright" / "verify"
-    if turn_env:
-        if Path(turn_env).name != turn_env or any(
-            part in {".", ".."} for part in Path(turn_env).parts
-        ):
-            return None
-        candidate = verify_dir / f"{turn_env}.json"
-        try:
-            read_evidence_json(project_root, candidate)
-        except ValueError:
-            return None
-        return candidate
-    try:
-        for directory in (verify_dir.parent, verify_dir):
-            info = directory.lstat()
-            if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
-                return None
-    except OSError:
+    """Select only the exact turn; a missing selector is never a discovery request."""
+    if (
+        not turn_env
+        or Path(turn_env).name != turn_env
+        or any(part in {".", ".."} for part in Path(turn_env).parts)
+    ):
         return None
-    files: list[tuple[int, Path]] = []
-    for path in verify_dir.glob("*.json"):
-        try:
-            info = path.lstat()
-        except OSError:
-            continue
-        if stat.S_ISREG(info.st_mode):
-            files.append((info.st_mtime_ns, path))
-    files.sort(key=lambda item: item[0], reverse=True)
-    current_tree = _current_tree_sha(project_root)
-    for _, path in files:
-        try:
-            candidate = read_evidence_json(project_root, path)
-        except ValueError:
-            continue
-        if (
-            candidate.get("schema_version") == SCHEMA_VERSION
-            and candidate.get("phase") in FINAL_PHASES
-            and candidate.get("exit_code") == 0
-            and not schema_errors(candidate)
-            and not _validate_output(candidate)
-            and not _validate_staleness(candidate)
-            and not _validate_workspace(candidate, project_root)
-            and not _validate_tree(candidate, current_tree)
-        ):
-            return path
-    return None
+    candidate = project_root.resolve() / ".forgewright" / "verify" / f"{turn_env}.json"
+    try:
+        evidence = read_evidence_json(project_root, candidate)
+    except ValueError:
+        return None
+    if evidence.get("turn") != turn_env:
+        return None
+    return candidate
 
 
 def _validate_schema(ev: dict) -> list[str]:

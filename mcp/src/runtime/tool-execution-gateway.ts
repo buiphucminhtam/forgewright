@@ -125,7 +125,7 @@ export class ToolExecutionGateway {
 
   async execute(
     request: ToolExecutionRequest,
-    execute: () => Promise<ToolResult>,
+    execute: (signal?: AbortSignal) => Promise<ToolResult>,
   ): Promise<ToolResult> {
     if (this.options.lifecycle === undefined) {
       const containment = this.options.containment?.admit(request.name, request.arguments);
@@ -181,7 +181,7 @@ export class ToolExecutionGateway {
           operationType: 'tool_execution',
           inputDigest,
         },
-        async () => {
+        async (signal) => {
           if (invalidArguments) throw new ToolResultLifecycleFailure(invalidToolArgumentsResult());
           const containment = this.options.containment?.admit(request.name, request.arguments);
           if (containment && !containment.allowed) {
@@ -196,7 +196,7 @@ export class ToolExecutionGateway {
               content: [{ type: 'text', text: containment.code }],
             });
           }
-          const result = await this.executeUnchecked(request, execute);
+          const result = await this.executeUnchecked(request, () => execute(signal));
           if (result.isError) throw new ToolResultLifecycleFailure(result);
           return result;
         },

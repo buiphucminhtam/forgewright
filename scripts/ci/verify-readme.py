@@ -29,7 +29,9 @@ def check_documents(root: Path) -> dict[str, int]:
     result = {}
     for name in ("README.md", "README.vi.md"):
         text = (root / name).read_text(encoding="utf-8")
-        assert len(text.encode()) < 24000, (
+        # The owner-requested detailed lifecycle diagram expands the EN front door.
+        max_bytes = 32000 if name == "README.md" else 24000
+        assert len(text.encode()) < max_bytes, (
             f"{name}: front door grew beyond its documented scope"
         )
         assert "<!-- padding -->" not in text, f"{name}: padding is not documentation"

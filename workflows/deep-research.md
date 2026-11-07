@@ -4,7 +4,7 @@ description: Resolve material research questions using original sources and expl
 status: active
 owner: Forgewright maintainers
 scope: Source discovery and decision-focused synthesis
-last_reviewed: 2026-10-07
+last_reviewed: 2026-11-07
 canonical: false
 ---
 
@@ -21,8 +21,10 @@ evaluation, README updates and authorized Git delivery.
 
 State the unknown and decision it can change. Inspect code, tests, configuration
 and relevant earlier research before browsing. Record engine/package/version,
-platform and acceptance. If local evidence resolves it, external research is
-unnecessary.
+platform and acceptance. Focused local evidence can suffice for a mechanical
+edit with an established approach. New projects, ideas, prototypes and
+substantial new capabilities must still complete the Research Gate's reuse
+discovery before a solution is selected, even when model confidence is high.
 
 ## 2. Inspect original sources
 

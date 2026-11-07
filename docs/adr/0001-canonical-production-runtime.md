@@ -50,3 +50,26 @@ until an integration test demonstrates equivalent enforcement.
 | Model-call estimated budgets fail closed before invocation | `BudgetLedger` in `mcp/src/runtime/model-call-gateway.ts` | `mcp/src/runtime/model-call-gateway.test.ts` | Local in-process atomic reservation, actual-cost settlement, and terminal-failure refunds are evidenced whenever callers use the gateway; live provider/operational evidence remains gated. |
 | Public product facts do not drift from the manifest | `scripts/ci/verify-product-truth.py` | `tests/unit_tests/test_product_truth.py`; aggregate CI gate | Covers declared product facts, not operational performance assertions. |
 | Stored evaluation comparisons only use compatible live evidence | `evals/cheap-model/run-evals.py` | `tests/unit_tests/test_eval_comparable.py`; aggregate CI gate | Historical reports without required metadata remain non-comparable. |
+
+## Executable lifecycle admission
+
+The canonical stateful route now injects `ProcessPipelineTransitionGate` into
+`PipelineService`. `pipeline_transition_gate.py` reuses the existing read-only
+Docs Hub continuity and schema-v2 completion checks. DEFINE → BUILD requires
+run-bound research; HARDEN → SHIP and SHIP → completion require current docs
+and exact evidence. The service checks outside the repository lock, then
+compares a versioned snapshot inside the transaction before publishing.
+Terminal runs cannot advance, active runs cannot restart around approval, and
+human approval cannot erase failing quality criteria. Reported retry limits are
+bounded to two. Runtime initialization/intake and actual research semantics are
+still host/agent responsibilities, not inferred from a phase label.
+
+Evidence replay is a process effect: the containment table admits only bounded
+local pipeline verification, while the restricted production profile refuses
+it. The adapter runs the framework-owned checker with isolated Python and a
+bounded process group, cleans that group on success/error/timeout, and refuses
+unsupported Windows group cleanup. It does not claim to reclaim other tools'
+resources or authorize deployment. Final transitions do not build docs or
+invoke Stop's retry-termination fallback; failed prerequisites leave state
+unchanged. Caller-supplied turn IDs and research records are not authenticated
+identities. Existing schema-v2/HARD/review-2 requirements remain authoritative.

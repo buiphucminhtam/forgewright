@@ -1,3 +1,4 @@
+import type { PipelineKind } from '../core/models/PipelineState.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { randomUUID } from 'node:crypto';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -77,10 +78,16 @@ export function registerTools(
         {
           name: 'fw_start_pipeline',
           description:
-            'Initialize the Forgewright pipeline for a new project/session. Use this when the user specifies a goal (e.g. Build a SaaS, add a feature).',
+            'Start a new run after intake. Refuses to reset an active/waiting run. Returns run ID for research and evidence binding.',
           inputSchema: {
             type: 'object',
             properties: {
+              kind: {
+                type: 'string',
+                enum: ['new-project', 'existing', 'mechanical'],
+                description:
+                  'Scope classification; defaults to new-project. Mechanical is only for established local reversible edits.',
+              },
               mode: {
                 type: 'string',
                 description:
@@ -102,16 +109,22 @@ export function registerTools(
         {
           name: 'fw_advance_to_next_phase',
           description:
-            'Transition to the next phase in the pipeline (e.g. from Research -> Execution). Blocks if waiting for a HITL gate.',
+            'Advance only an active run: research and docs baseline before BUILD; current docs and exact schema-v2 evidence before SHIP/completion. Denials preserve state.',
           inputSchema: {
             type: 'object',
-            properties: {},
+            properties: {
+              turn: {
+                type: 'string',
+                description:
+                  'Exact caller-selected evidence turn, required for HARDEN/SHIP; no latest-record fallback.',
+              },
+            },
           },
         },
         {
           name: 'fw_request_gate_approval',
           description:
-            'Lock the pipeline when you have completed work and need the explicit human user to approve it before continuing to the next phase. This is mandatory for production-grade robustness.',
+            'Lock the pipeline when you have completed work and need the explicit human user to approve it before continuing to the next phase. Use only when authorization is actually required; existing authorization persists.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -148,7 +161,7 @@ export function registerTools(
         {
           name: 'fw_approve_gate',
           description:
-            'Call this ONLY when the user says "I approve" or "Looks good". Unlocks the pipeline.',
+            'Report explicit user approval only when actually received. Caller-reported, not authenticated by this tool. Unlocks waiting state only when quality criteria pass.',
           inputSchema: {
             type: 'object',
             properties: {},
@@ -360,7 +373,7 @@ export function registerTools(
 
   server.setRequestHandler(
     CallToolRequestSchema,
-    async (request) =>
+    async (request, extra) =>
       toolGateway.execute(
         {
           name: request.params.name,
@@ -368,7 +381,7 @@ export function registerTools(
           sessionId,
           turnNumber: ++turnNumber,
         },
-        async () => {
+        async (signal) => {
           try {
             if (isProductIntentToolName(request.params.name)) {
               try {
@@ -427,8 +440,14 @@ export function registerTools(
               }
             }
             if (request.params.name === 'fw_start_pipeline') {
-              const result = await startPipeline(request.params.arguments?.mode as string);
-              return { content: [{ type: 'text', text: result }] };
+              const result = await startPipeline(
+                request.params.arguments?.mode as string,
+                request.params.arguments?.kind as PipelineKind | undefined,
+              );
+              return {
+                isError: result.startsWith('Error:'),
+                content: [{ type: 'text', text: result }],
+              };
             }
 
             if (request.params.name === 'fw_get_current_phase') {
@@ -436,6 +455,7 @@ export function registerTools(
               const phaseName = PIPELINE_PHASES[state.currentPhase] || 'Unknown Phase';
               let msg = `Mode: ${state.currentMode || 'None'}\nPhase: ${phaseName}\nStatus: ${state.status}`;
 
+              if (state.runId) msg += `\nRun ID: ${state.runId}\nKind: ${state.kind}`;
               if (state.activeAction) {
                 msg += `\nActive Action: ${state.activeAction}`;
               }
@@ -466,8 +486,14 @@ export function registerTools(
             }
 
             if (request.params.name === 'fw_advance_to_next_phase') {
-              const result = await advancePhase();
-              return { content: [{ type: 'text', text: result }] };
+              const result = await advancePhase(
+                request.params.arguments?.turn as string | undefined,
+                signal ? AbortSignal.any([signal, extra.signal]) : extra.signal,
+              );
+              return {
+                isError: result.startsWith('Error:'),
+                content: [{ type: 'text', text: result }],
+              };
             }
 
             if (request.params.name === 'fw_request_gate_approval') {
@@ -475,12 +501,18 @@ export function registerTools(
               const qualityGate = request.params.arguments?.qualityGate as
                 QualityGateState | undefined;
               const result = await requestGateApproval(message, qualityGate);
-              return { content: [{ type: 'text', text: result }] };
+              return {
+                isError: result.startsWith('Error:'),
+                content: [{ type: 'text', text: result }],
+              };
             }
 
             if (request.params.name === 'fw_approve_gate') {
               const result = await approveGate();
-              return { content: [{ type: 'text', text: result }] };
+              return {
+                isError: result.startsWith('Error:'),
+                content: [{ type: 'text', text: result }],
+              };
             }
 
             if (request.params.name === 'fw_update_subtask') {
@@ -515,7 +547,10 @@ export function registerTools(
             if (request.params.name === 'fw_fail_pipeline') {
               const reason = request.params.arguments?.reason as string | undefined;
               const result = await failPipeline(reason);
-              return { content: [{ type: 'text', text: result }] };
+              return {
+                isError: result.startsWith('Error:'),
+                content: [{ type: 'text', text: result }],
+              };
             }
 
             if (request.params.name === 'fw_log_token_usage') {

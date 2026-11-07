@@ -24,6 +24,11 @@ forge bootstrap preflight . --json
 
 Plugin installation itself remains side-effect-free. Automatic bootstrap requires both one-time global user opt-in and the host's current native-hook approval; do not replace a disabled/untrusted hook with a direct CLI call.
 
+Plugin-only continuation preserves applicable prerequisites. When missing tooling
+blocks the mandatory Docs Hub baseline for a material edit, continue independent
+read-only investigation or eligible local QUICK work and report that prerequisite;
+do not start the blocked material edit or waive its gate.
+
 ## Core flow
 
 1. **Frame the outcome** — state the objective, observable acceptance, material constraints/non-goals, and unresolved decisions that could change the solution.

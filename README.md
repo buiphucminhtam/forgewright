@@ -78,24 +78,157 @@ Do not publish or deploy without approval.
 
 `INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
+`QUICK` compresses; `STANDARD`/`DEEP` expand by risk. SHIP/SUSTAIN need agreed
+scope. Enforcement depends on the host and trusted hooks.
+
 ```mermaid
-flowchart LR
-    A[Request and acceptance] --> B[Scope and risk]
-    B --> C[Select context and specialists]
-    C --> D[Execute through controlled tools]
-    D --> E[Tests and independent review]
-    E --> F{Evidence supports acceptance?}
-    F -->|Yes| G[Owner-approved delivery]
-    F -->|No| H[Revise or report blocker]
-    H --> B
-    G --> I[Checkpoint and maintain]
+flowchart TD
+    Prompt([User prompt]) --> Intake
+
+    subgraph Interpret["INTERPRET"]
+        Intake["01 · Capture outcome, acceptance,<br/>constraints and non-goals"]
+        Intake --> Inspect["02 · Inspect workspace, user edits,<br/>runtime and bootstrap readiness"]
+        Inspect --> Ambiguous{"Material ambiguity?"}
+        Ambiguous -->|Yes| DefaultSafe{"Reversible default<br/>preserves acceptance?"}
+        DefaultSafe -->|Yes| Default["Record the default"]
+        Default --> Classify
+        DefaultSafe -->|No| Clarify["03 · Ask; continue only<br/>independent work while waiting"]
+        Clarify -->|Answer| Intake
+        Ambiguous -->|No| Classify["04 · Classify task and risk:<br/>QUICK / STANDARD / DEEP"]
+        Classify --> ReadOnly{"Answer or review<br/>with no task changes?"}
+        ReadOnly -->|Yes| Findings["Inspect needed evidence;<br/>prepare findings and limitations"]
+        ReadOnly -->|No| Research["05 · Research before choosing;<br/>model memory is hypothesis only"]
+        Research --> NewWork{"New project, idea or<br/>substantial capability?"}
+        NewWork -->|Yes| Discover["06 · Search existing code,<br/>repos, libraries and starters"]
+        Discover --> Compare["07 · Compare fit, rights, upkeep,<br/>security and adaptation effort"]
+        Compare --> Choice["08 · Choose reuse/customize/build;<br/>retain sources and reasons"]
+        NewWork -->|No| Choice
+        Choice --> Grounded{"Material decision<br/>supported by evidence?"}
+    end
+
+    subgraph Define["DEFINE"]
+        Visual{"Material visual work?"}
+        Visual -->|Yes| Basis["09 · Ground design authority,<br/>tokens, states and viewports"]
+        Visual -->|No| Plan
+        Basis --> Plan["10 · Bind scope, acceptance and checks;<br/>preserve oracles; resolve docs context"]
+        Plan --> Prereq{"MCP research record and<br/>material docs baseline ready?"}
+        Prereq -->|Yes| Route["11 · Select needed skill;<br/>pass verified PIPELINE_CONTEXT"]
+        Route --> Parallel{"Independent scopes with<br/>a real delegation benefit?"}
+        Parallel -->|No| Parent["12a · Parent works serially"]
+        Parallel -->|Yes| Workers["12b · Check capability, latency and cost;<br/>bound worker scope and handoffs"]
+        Parent --> Ready["13 · Lock deep/delegated plan;<br/>QUICK keeps a mini-plan"]
+        Workers --> Ready
+    end
+
+    subgraph Build["BUILD"]
+        Next["14 · Select next step;<br/>inspect target and impact"]
+        Next --> Budget{"Within budget/deadline?"}
+        Budget -->|Yes| Guard{"Action authorized<br/>and admitted?"}
+        Guard -->|Yes| Execute["15 · Implement/adapt in scope;<br/>preserve unrelated user work"]
+        Execute --> Observe["16 · Run affected domain checks;<br/>inspect actual results"]
+        Observe --> StepPass{"Step acceptance met?"}
+        StepPass -->|Yes| More{"More planned work?"}
+        More -->|Yes| Next
+        Guard -->|No| Alternative{"Different compliant<br/>action available?"}
+    end
+
+    subgraph Harden["HARDEN"]
+        Docs["17 · If material: docs/state,<br/>strict gate and persistent build"]
+        Docs -->|Pass or not required| Verify["18 · Capture final-tree acceptance<br/>and regression evidence; negative paths"]
+        Verify --> Review["19 · Audit diff, risks and requirements;<br/>bind required independent review"]
+        Review --> Audit{"MCP docs freshness, exact-turn<br/>evidence and required review pass?"}
+    end
+
+    subgraph Recovery["RECOVERY"]
+        Diagnose["R1 · Classify failure:<br/>hypothesis / code / environment / architecture"]
+        Diagnose -->|Within budget| Repeated{"Same approach failed twice<br/>or material replan trigger?"}
+        Repeated -->|No| Fix["R2 · Evidence-backed correction;<br/>rerun only affected work and gates"]
+        Fix --> RetryStep(("14"))
+        Repeated -->|Yes| Stuck["R3 · Stop approach; isolate assumption;<br/>inspect examples; research remaining gaps"]
+        Stuck --> Expert["R4 · Escalate if expert available;<br/>otherwise assess bounded fallback"]
+        Expert --> Resolved{"Safe supported path?<br/>HARD requirements remain binding"}
+        Resolved -->|Yes| Replan["R5 · Replan for a valid trigger;<br/>retain acceptance and ownership"]
+        Replan --> RetryPlan(("10"))
+    end
+
+    subgraph Close["SHIP / SUSTAIN"]
+        Ship{"Release still pending in scope?"}
+        Ship -->|Yes| Authorized{"Required authorization<br/>already granted?"}
+        Authorized -->|No| Approval["20a · Present reviewable release;<br/>wait for authorization"]
+        Approval -->|Granted| Release
+        Authorized -->|Yes| Release["20b · Recheck readiness and release;<br/>verify deployed result"]
+        Release --> ReleasePass{"Delivery verified?"}
+        ReleasePass -->|No| RecoveryAllowed{"Approved recovery<br/>safe and executable?"}
+        RecoveryAllowed -->|Yes| Contain["Contain/recover within that plan;<br/>preserve incident evidence"]
+        ReleasePass -->|Yes| DeliveryEvidence["Record delivery evidence; if tree changed,<br/>fresh evidence AND required review"]
+        Cleanup["21 · Reclaim owned resources<br/>or document deliberate retention"]
+        Cleanup --> FinalGate{"MCP final-tree recheck and<br/>host closeout gates pass?"}
+        FinalGate -->|Yes| Done(["22 · Report outcome/findings,<br/>observed evidence and limitations"])
+        Done --> Sustain{"Ongoing operation in scope?"}
+        Sustain -->|No| End([Current request complete])
+        Sustain -->|Yes| Monitor["23 · Monitor agreed signals;<br/>keep useful project-local lessons"]
+        Monitor -->|Incident or approved iteration| Restart(("01"))
+    end
+
+    StopCleanup["R6 · Reclaim owned resources;<br/>record retained resources or cleanup blockers"]
+    StopCleanup --> Blocked(["BLOCKED / PAUSED<br/>Report evidence and required next condition"])
+    Blocked -.->|New input or changed conditions| Resume(("01"))
+    Cancel([User cancels or deadline expires]) --> StopCleanup
+    Clarify -->|Required answer still missing| StopCleanup
+    Grounded -->|No safe provisional work| StopCleanup
+    Grounded -->|Provisional: independent work only| Visual
+    Grounded -->|Yes| Visual
+    Findings --> Cleanup
+    Prereq -->|No| StopCleanup
+    Ready --> Next
+    Budget -->|No| StopCleanup
+    Alternative -->|No| StopCleanup
+    Alternative -->|Yes - never retry denied action| Diagnose
+    StepPass -->|No| Diagnose
+    More -->|No| Docs
+    Audit -->|No| Diagnose
+    Audit -->|Yes| Ship
+    Diagnose -->|Budget exhausted| StopCleanup
+    Resolved -->|No| StopCleanup
+    Ship -->|No| Cleanup
+    Approval -->|Declined or still waiting| StopCleanup
+    RecoveryAllowed -->|No| StopCleanup
+    Contain --> Diagnose
+    Docs -->|Fail| Diagnose
+    DeliveryEvidence --> Cleanup
+    FinalGate -->|No: affected step only| Diagnose
 ```
 
-1. **Right-size the effort:** Clear local edits take the `QUICK` path (1–3 actions, focused check, zero ceremony). Feature or debug work takes `STANDARD`. Touching payment, billing, IAP, auth, public contracts, concurrency, or release triggers `DEEP` and `HARD` escalation ([ESCALATE.md](kernel/ESCALATE.md)).
-2. **Route only the needed specialist:** The boot table selects one compact `LITE.md` skill overlay on demand instead of loading all **85 skills**.
-3. **Gate every tool call and completion claim:** Pre-tool hooks validate commands against `.forgewright/execution-policy.yaml` ([POLICY.md](kernel/POLICY.md)). On completion, `stop_gate.py` verifies the exact-turn schema-v2 record in `.forgewright/verify/` ([VERIFY.md](kernel/VERIFY.md)).
+Circles return to **01** intake, **10** planning or **14** execution. Later covered
+writes require fresh evidence and review. Provisional choices record limitations;
+only independent work proceeds.
 
-See the [pipeline reference](docs/pipeline-reference.md) and [canonical runtime ADR](docs/adr/0001-canonical-production-runtime.md) for enforcement boundaries.
+| Steps | Required behavior |
+|---|---|
+| **01–04** | Inspect first; safe defaults preserve acceptance. No-change reports cite findings. HARD/payment retains DEEP. |
+| **05–08** | Search reusable code, compare fit/rights/upkeep, and justify building. Missing evidence keeps choices provisional. |
+| **09–13** | Ground design; Baoyu retains review gates. Serial work needs no model-price lookup. Material edits need Docs Hub baseline. |
+| **14–16 / R1–R6** | Preserve acceptance/oracles. Fixes need RED → GREEN; HARD adds mutation/backcheck. Never retry a denied action or waive HARD for missing experts. Cleanup covers every exit. |
+| **17–23** | Finish writes before final evidence/review. Recheck before release; use existing authorization. Recovery stays authorized. |
+
+**Executable boundary:** local MCP enforces research/docs admission, exact-turn
+final checks, active/terminal state rules and versioned transition commits.
+Research semantics, user authority and other tools' cleanup remain host-owned.
+See [runtime inputs and limits](docs/pipeline-reference.md#executable-mcp-lifecycle).
+
+**Loop limits.** Stop the same approach after two failures. Reset polluted context
+and replan only for invalidated assumptions, unreachable acceptance, new material
+risk, the same blocker twice or user scope change. No safe path, missing required
+input or exhausted budget ends at a truthful blocked/paused report. A failed
+completion hook is investigated, not disabled. Do not create more work after
+acceptance; SUSTAIN needs its own agreed scope.
+
+Sources: [entry/routing](kernel/ENTRY.md), [execution/recovery](kernel/SOLVE.md),
+[research/reuse](skills/_shared/protocols/research-gate.md),
+[pipeline contract](skills/_shared/protocols/pipeline-operating-contract.md),
+[tool policy](kernel/POLICY.md), [verification](kernel/VERIFY.md),
+[pipeline reference](docs/pipeline-reference.md) and
+[runtime boundaries](docs/adr/0001-canonical-production-runtime.md).
 
 ## Recent upgrades
 

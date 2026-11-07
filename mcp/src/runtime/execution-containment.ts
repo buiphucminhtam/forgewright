@@ -6,6 +6,7 @@ import { parse, relative, resolve, sep } from 'node:path';
 export type ContainmentMode = 'local' | 'production';
 export type ToolEffect =
   | 'state'
+  | 'local-pipeline-verification'
   | 'bounded-skill-read'
   | 'bounded-learning-proposal'
   | 'filesystem'
@@ -29,7 +30,8 @@ const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const EFFECTS: Record<string, ToolEffect> = {
   fw_start_pipeline: 'state',
   fw_get_current_phase: 'state',
-  fw_advance_to_next_phase: 'state',
+  // Phase checks replay evidence commands; never admit them as state-only work.
+  fw_advance_to_next_phase: 'local-pipeline-verification',
   fw_request_gate_approval: 'state',
   fw_approve_gate: 'state',
   fw_update_subtask: 'state',
@@ -132,6 +134,17 @@ export class ExecutionContainment {
     }
     const effect = Object.hasOwn(EFFECTS, toolName) ? EFFECTS[toolName] : undefined;
     if (!effect) return this.deny('CONTAINMENT_UNKNOWN_TOOL');
+    if (effect === 'local-pipeline-verification') {
+      if (this.trust.mode !== 'local') return this.deny('CONTAINMENT_EFFECT_DENIED');
+      if (
+        Object.keys(arguments_).some((key) => key !== 'turn') ||
+        (arguments_.turn !== undefined &&
+          (typeof arguments_.turn !== 'string' ||
+            !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(arguments_.turn)))
+      ) {
+        return this.deny('CONTAINMENT_INVALID_ARGUMENTS');
+      }
+    }
     if (effect === 'process' || effect === 'network') return this.deny('CONTAINMENT_EFFECT_DENIED');
     if (effect === 'filesystem') return this.deny('CONTAINMENT_EFFECT_DENIED');
     if (effect === 'bounded-learning-proposal' && !boundedLearningProposal(arguments_)) {

@@ -47,6 +47,88 @@ An ordinary larger catalog must not be confused with an invalid docs build.
 | **SHIP** | Packaging/deployment/release gates only when in scope |
 | **SUSTAIN** | Monitoring/operations/iteration only when ongoing operation is in scope |
 
+## Executable MCP lifecycle
+
+`fw_start_pipeline(mode, kind?)` creates a run ID after host intake. `kind` is
+`new-project` (default), `existing` (material work) or `mechanical` (established
+local reversible work). Classification is caller-attested; it is not an
+exemption from HARD evidence rules. No-change questions need not start a run.
+Five persisted phase keys cover INTERPRET through SHIP; SUSTAIN is host-owned.
+
+`fw_advance_to_next_phase(turn?)` runs these prerequisites before persistence:
+
+| Transition | Executed checks |
+|---|---|
+| DEFINE → BUILD | Run-bound supported research record; current Docs Hub baseline for non-mechanical work |
+| BUILD → HARDEN | Active state and existing quality restrictions; verification work happens in HARDEN |
+| HARDEN → SHIP | Research, current Docs Hub receipt (including mechanical runs that changed docs), exact-turn schema-v2 completion checks including replay/review requirements |
+| SHIP → COMPLETED | Repeat those checks against the delivered tree; stale evidence cannot complete |
+
+Finish docs/state updates, `forge docs gate --worktree`, and the persistent
+`forge docs build` **before** recording evidence. The phase checker reads the
+existing receipt; it never builds docs after evidence. Phases 3/4 require an
+explicit current catalog (bounded to 16 MiB; manifest/state remain 512 KiB) and an
+explicit `turn`; there is no latest-record fallback. The standalone verifier
+also rejects missing or unmapped selectors, matching the strict global hook. Evidence must postdate the
+run start and pass the canonical `verify_gate.completion_checks`, including
+HARD/review-2 when applicable. The full dirty workspace is conservatively checked.
+Changing covered files after evidence requires fresh evidence and review.
+The catalog limit is a resource budget, not a guarantee every valid catalog fits.
+Deleted docs require a rebuilt catalog, not a commit merely to clear the gate.
+With Docs Hub `adapters.git: false`, committed docs changes lose commit binding;
+refresh the build explicitly because the shared checker can miss that stale case.
+
+The executable research projection is `.forgewright/research/<runId>.json`:
+
+```json
+{
+  "schema_version": 1,
+  "run_id": "<runId returned by fw_start_pipeline>",
+  "status": "supported",
+  "queries": ["problem and reusable solution search"],
+  "sources": [{"url": "https://example.org/project", "revision": "inspected revision/date"}],
+  "candidates": [{"url": "https://example.org/project", "reason": "fit, rights, upkeep and adaptation assessment"}],
+  "decision": "customize",
+  "reason": "Evidence-backed selection and customization scope"
+}
+```
+
+The example URLs are placeholders, not research evidence. New projects require
+queries and an external source; `not_applicable` is refused. Reuse/customization
+requires candidates. A bounded search with no adequate candidate can choose
+`build` with sources, queries and a specific reason; never invent candidates.
+For existing/mechanical work, local source refs and `not_applicable` with a
+reason are accepted. Provisional/missing/malformed records block advancement.
+Records are bounded to 64 KiB with at most 200 items per list. Structural
+validation does not authenticate sources or judge research quality.
+
+An active/waiting run cannot restart around a gate. IDLE/FAILED/COMPLETED cannot
+advance, and approval cannot erase failing quality scores/criteria. Corrected
+criteria must be supplied on a new approval request; a failing threshold cannot be lowered.
+Approval is caller-reported, not authenticated. New messages/actions/reasons are
+bounded to 4096 characters, and quality input to 50 criteria with 128-character names. The service caps reported
+self-healing attempts at two; exceeding the bound fails the run and requires
+recovery before an explicit new run. This bounds reported state, not unobserved
+agent/tool retries. No service call executes a release or supplies user approval.
+
+Long checks run outside the state lock. A versioned snapshot comparison inside
+the final transaction rejects concurrent updates rather than overwriting them.
+The snapshot comparison protects pipeline state only: tree verification is
+point-in-time, not an atomic lock against external filesystem writers. Same-user
+framework edits are not an authenticated trust boundary. MCP request cancellation
+and runtime lifecycle cancellation both reach phase advancement: a cancelled
+advance reclaims its verifier and checks cancellation again inside the final transaction.
+All replay commands for one advance—including HARD final, contract, runtime and
+e2e evidence—share a total **320-second** budget; an over-budget check denies
+advancement without changing state. Keep combined replay below this limit.
+The framework-owned process adapter bounds output/time and reclaims its own
+POSIX process group on every exit; it refuses Windows until equivalent owned
+cleanup is implemented. Other tool resources remain the host's responsibility.
+The installed MCP packages the same Python helpers. Local containment admits
+only the bounded transition arguments; the restricted production profile denies
+verification subprocesses. Caller turn IDs and local records are not identity
+authentication. No Stop-hook termination fallback can approve a transition.
+
 ## Senior role contract
 
 Every routed domain role is senior by behavior, not by provider/model name: it owns outcomes, grounds claims in current evidence, reasons about trade-offs, challenges contradictions and unnecessary work, and protects client scope/time/budget. See `skills/_shared/protocols/senior-execution-contract.md`.

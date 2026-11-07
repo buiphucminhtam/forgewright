@@ -1,6 +1,6 @@
 # VERIFY — Evidence Contract
 
-Completion requires observed current workspace/runtime evidence. Schema v2 is the only completion format; Schema v1 is legacy and non-completion after v2 activation. Prose, checkboxes, test counts, and marker-only PASS/GREEN are `UNVERIFIED`.
+Implementation completion requires observed current workspace/runtime evidence. Schema v2 is the only completion format; Schema v1 is legacy and non-completion after v2 activation. Prose, checkboxes, test counts, and marker-only PASS/GREEN are `UNVERIFIED`.
 
 ## QUICK — Compact Evidence
 For clear local reversible work: `CHECK: <command/tool check> | EXIT: <code/result> | RESULT: PASS | FAIL`. One focused check may cover tightly coupled acceptance conditions.

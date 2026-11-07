@@ -110,6 +110,42 @@ describe('ToolExecutionGateway', () => {
     ).toMatchObject([{ payload: { outcome: 'failed' } }, { payload: { outcome: 'completed' } }]);
     expect(lifecycle.state).toBe('ACTIVE');
   });
+  it('forwards lifecycle cancellation to the executing handler', async () => {
+    const { lifecycle } = await lifecycleFixture();
+    const gateway = new ToolExecutionGateway({
+      lifecycle,
+      policyEvaluator: allowPolicy,
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    let aborted = false;
+    const pending = gateway.execute(
+      { name: 'cancel-aware', arguments: {}, sessionId: 's', turnNumber: 1 },
+      async (signal) => {
+        expect(signal).toBeDefined();
+        started();
+        await new Promise<void>((resolve) =>
+          signal!.addEventListener(
+            'abort',
+            () => {
+              aborted = true;
+              resolve();
+            },
+            { once: true },
+          ),
+        );
+        return { content: [{ type: 'text', text: 'cancelled' }] };
+      },
+    );
+    const outcome = pending.catch((error) => error);
+    await ready;
+    await lifecycle.cancel();
+    await outcome;
+    expect(aborted).toBe(true);
+  });
   it('records lifecycle scopes and operations without persisting raw tool arguments', async () => {
     const { ledger, lifecycle } = await lifecycleFixture();
     const gateway = new ToolExecutionGateway({

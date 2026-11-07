@@ -127,6 +127,20 @@ describe('ExecutionContainment', () => {
       'CONTAINMENT_INVALID_ARGUMENTS',
     );
   });
+  it('admits only bounded local pipeline verification, never production replay', () => {
+    const root = fixture();
+    const local = loadRuntimeTrustContext({ FORGEWRIGHT_WORKSPACE: root });
+    const gate = new ExecutionContainment(local);
+    expect(gate.admit('fw_advance_to_next_phase', { turn: 'turn-1' }).allowed).toBe(true);
+    expect(gate.admit('fw_advance_to_next_phase', { command: 'run' }).allowed).toBe(false);
+    expect(gate.admit('fw_advance_to_next_phase', { turn: '../escape' }).allowed).toBe(false);
+    expect(
+      new ExecutionContainment({ ...local, mode: 'production' }).admit(
+        'fw_advance_to_next_phase',
+        {},
+      ).code,
+    ).toBe('CONTAINMENT_EFFECT_DENIED');
+  });
   it('fails closed after policy replacement and validates production identity/profile', () => {
     const root = fixture();
     const containment = new ExecutionContainment(

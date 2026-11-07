@@ -40,11 +40,13 @@ from windows_secure_io import (  # noqa: E402
 MAX_METADATA_BYTES = 512 * 1024
 # The catalog includes rendered source content/relations, unlike small metadata.
 # Keep its read bounded without rejecting ordinary multi-document projects.
-MAX_CATALOG_BYTES = 8 * 1024 * 1024
 MAX_RECEIPT_BYTES = 256 * 1024
 MAX_RETRY_STATE_BYTES = 64 * 1024
 MAX_MATERIAL_FILE_BYTES = 2 * 1024 * 1024
 MAX_MATERIAL_TOTAL_BYTES = 8 * 1024 * 1024
+MAX_CATALOG_BYTES = (
+    2 * MAX_MATERIAL_TOTAL_BYTES
+)  # Includes rendered/indexed document content.
 STATE_TTL_SECONDS = 15 * 60
 CHECK_TIMEOUT_SECONDS = 1.0
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")

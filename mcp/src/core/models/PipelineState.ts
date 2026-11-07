@@ -30,7 +30,13 @@ export interface PhaseState {
   errorSummary?: string | null;
 }
 
+export type PipelineKind = 'new-project' | 'existing' | 'mechanical';
+
 export interface PipelineState {
+  runId?: string;
+  kind?: PipelineKind;
+  startedAt?: string;
+  stateVersion?: number;
   currentPhase: number;
   currentMode: string | null;
   status: 'IDLE' | 'IN_PROGRESS' | 'WAITING_FOR_GATE' | 'COMPLETED' | 'FAILED';
@@ -83,6 +89,10 @@ const PhaseStateSchema = z
 
 const PipelineStateSchema = z
   .object({
+    runId: z.string().uuid().optional(),
+    kind: z.enum(['new-project', 'existing', 'mechanical']).optional(),
+    startedAt: z.string().datetime().optional(),
+    stateVersion: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
     currentPhase: z.number().int().min(0).max(4),
     currentMode: z.string().nullable(),
     status: z.enum(['IDLE', 'IN_PROGRESS', 'WAITING_FOR_GATE', 'COMPLETED', 'FAILED']),

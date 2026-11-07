@@ -100,15 +100,15 @@ describe('Pipeline Manager', () => {
     });
   });
 
-  it('advancePhase increments phase', async () => {
+  it('advancePhase refuses missing executable prerequisites', async () => {
     const { startPipeline, advancePhase, getState, resetWorkspaceRoot } =
       await import('../state/pipeline-manager.js');
     resetWorkspaceRoot();
     cleanState();
     await startPipeline('Feature');
     const result = await advancePhase();
-    expect(result).toContain('Phase 2');
-    expect((await getState()).currentPhase).toBe(2);
+    expect(result).toContain('Error:');
+    expect((await getState()).currentPhase).toBe(1);
   });
 
   it('advancePhase blocked when waiting for gate', async () => {
@@ -125,7 +125,7 @@ describe('Pipeline Manager', () => {
     expect(JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8')).revision).toBe(revision);
   });
 
-  it('advancePhase completes pipeline at end', async () => {
+  it('repeated advance cannot complete a pipeline without prerequisites', async () => {
     const { startPipeline, advancePhase, getState, resetWorkspaceRoot } =
       await import('../state/pipeline-manager.js');
     resetWorkspaceRoot();
@@ -137,7 +137,8 @@ describe('Pipeline Manager', () => {
       await advancePhase();
     }
     const state = await getState();
-    expect(state.status).toBe('COMPLETED');
+    expect(state.status).toBe('IN_PROGRESS');
+    expect(state.currentPhase).toBe(1);
   });
 
   it('requestGateApproval locks pipeline', async () => {
@@ -260,7 +261,7 @@ describe('Pipeline Manager', () => {
 
     await updateSelfHealing(healing);
     state = await getState();
-    expect(state.selfHealing).toEqual(healing);
+    expect(state.selfHealing).toEqual({ ...healing, maxAttempts: 2 });
   });
 
   it('failPipeline updates status to FAILED and clears progress/action details', async () => {

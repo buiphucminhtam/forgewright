@@ -1,3 +1,5 @@
+import { ProcessPipelineTransitionGate } from '../infrastructure/adapters/ProcessPipelineTransitionGate.js';
+import type { PipelineKind } from '../core/models/PipelineState.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -142,7 +144,11 @@ function getServices() {
       httpPublisher,
     ]);
 
-    pipelineService = new PipelineService(stateRepo, combinedEventPublisher);
+    pipelineService = new PipelineService(
+      stateRepo,
+      combinedEventPublisher,
+      new ProcessPipelineTransitionGate(wsRoot, getForgewrightRoot()),
+    );
     queryService = new StateQueryService(stateRepo);
   }
   return { pipelineService, queryService, combinedEventPublisher };
@@ -155,14 +161,14 @@ export async function getState(): Promise<PipelineState> {
   return queryService.getState();
 }
 
-export async function startPipeline(mode: string): Promise<string> {
+export async function startPipeline(mode: string, kind?: PipelineKind): Promise<string> {
   const { pipelineService } = getServices();
-  return pipelineService.startPipeline(mode);
+  return pipelineService.startPipeline(mode, kind);
 }
 
-export async function advancePhase(): Promise<string> {
+export async function advancePhase(turn?: string, signal?: AbortSignal): Promise<string> {
   const { pipelineService } = getServices();
-  return pipelineService.advancePhase();
+  return pipelineService.advancePhase(turn, signal);
 }
 
 export async function requestGateApproval(

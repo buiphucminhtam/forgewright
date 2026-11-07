@@ -31,6 +31,19 @@ The pipeline owns visual-basis discovery and supplies a validated `PIPELINE_CONT
 
 If a major UI task arrives without a `GROUNDED` basis, return `NEEDS_PIPELINE_GROUNDING`; do not independently reopen generic market/reference research or substitute training memory. Model prior may suggest hypotheses only. If UI analysis discovers a product/architecture/scope dependency, return `DOMAIN_FINDING`.
 
+## Optional Baoyu design tools
+
+Use the independently installed [Baoyu Design plugins](https://github.com/JimLiu/baoyu-design/tree/main/chatgpt-plugins) when an editable design artifact fits the request:
+
+- `baoyu-canvas` provides `claude-design` for mockups, artboards and prototypes.
+- `baoyu-design-system` provides `claude-design-system` for tokens, typography, components and brand documentation.
+
+Resolve the installed plugin and read its current skill before use; do not assume a local cache path, version, model or server capability. If unavailable, continue with existing design tools and state the limitation. Do not install plugins into a client project merely because this integration is documented.
+
+Pass the approved Visual Basis, UI Style Profile, existing design system and target states/viewports into the selected tool. Its output still requires the UI/HUD checks below; a prototype is not production implementation or rendered acceptance evidence. Keep server/browser resources task-owned and local unless sharing is explicitly requested.
+
+Keep the plugins separate from the Forgewright distribution and retain their upstream license/notice files. The upstream [NOTICE](https://github.com/JimLiu/baoyu-design/blob/main/NOTICE.md) distinguishes maintainer MIT code from Anthropic-derived material for which it grants no license; do not treat the entire repository as MIT or vendor that material into the framework.
+
 ## Mandatory UI/HUD Review Gate
 
 For every material screen or gameplay HUD, apply the source-backed gate in

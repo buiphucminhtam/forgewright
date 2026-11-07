@@ -1,3 +1,4 @@
+import { ProcessPipelineTransitionGate } from '../infrastructure/adapters/ProcessPipelineTransitionGate.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -104,7 +105,7 @@ function getServices() {
             filePublisher,
             httpPublisher,
         ]);
-        pipelineService = new PipelineService(stateRepo, combinedEventPublisher);
+        pipelineService = new PipelineService(stateRepo, combinedEventPublisher, new ProcessPipelineTransitionGate(wsRoot, getForgewrightRoot()));
         queryService = new StateQueryService(stateRepo);
     }
     return { pipelineService, queryService, combinedEventPublisher };
@@ -114,13 +115,13 @@ export async function getState() {
     const { queryService } = getServices();
     return queryService.getState();
 }
-export async function startPipeline(mode) {
+export async function startPipeline(mode, kind) {
     const { pipelineService } = getServices();
-    return pipelineService.startPipeline(mode);
+    return pipelineService.startPipeline(mode, kind);
 }
-export async function advancePhase() {
+export async function advancePhase(turn, signal) {
     const { pipelineService } = getServices();
-    return pipelineService.advancePhase();
+    return pipelineService.advancePhase(turn, signal);
 }
 export async function requestGateApproval(message, qualityGate) {
     const { pipelineService } = getServices();

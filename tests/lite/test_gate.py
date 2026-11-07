@@ -1012,7 +1012,7 @@ class TestEvidenceValidation:
         r = _run_validate(self.tmp)
         assert r.returncode == 0, r.stderr
 
-    def test_no_turn_ignores_newer_review_and_historical_records(self):
+    def test_no_turn_rejects_even_when_current_final_evidence_exists(self):
         final = _make_evidence(self.tmp, turn="selected-final")
         red = _make_evidence(self.tmp, turn="newer-red", phase="red", exit_code=1)
         review = self.tmp / ".forgewright" / "verify" / "newest-review.json"
@@ -1053,8 +1053,24 @@ class TestEvidenceValidation:
         gate = _run_validate(self.tmp, turn="", response=_strict_response(final))
         validator = _run_rule_validator(self.tmp, _strict_response(final), "")
 
-        assert gate.returncode == 0, gate.stderr
-        assert validator.returncode == 0, validator.stderr
+        assert gate.returncode == 1, gate.stderr
+        assert validator.returncode != 0, validator.stderr
+
+    def test_explicit_selector_rejects_internal_turn_mismatch(self):
+        evidence = _make_evidence(self.tmp, turn="selected-turn")
+        record = json.loads(evidence.read_text())
+        record["turn"] = "different-turn"
+        evidence.write_text(json.dumps(record))
+        assert verify_gate_module._find_evidence(self.tmp, "selected-turn") is None
+
+    def test_explicit_selector_accepts_matching_turn_only(self):
+        evidence = _make_evidence(self.tmp, turn="selected-turn")
+        assert (
+            verify_gate_module._find_evidence(self.tmp, "selected-turn")
+            == evidence.resolve()
+        )
+        assert verify_gate_module._find_evidence(self.tmp, "missing-turn") is None
+        assert verify_gate_module._find_evidence(self.tmp, "../selected-turn") is None
 
     def test_final_replay_rejects_hand_authored_pass_in_both_validators(self):
         failing_check = self.tmp / "tests" / "failing_check.py"
@@ -1063,6 +1079,7 @@ class TestEvidenceValidation:
             self.tmp,
             turn="replay-forged-pass",
             command=[sys.executable, "tests/failing_check.py"],
+            test_refs=["tests/failing_check.py"],
             output="hand-authored pass\n",
             exit_code=0,
         )
@@ -1103,13 +1120,14 @@ class TestEvidenceValidation:
             self.tmp,
             turn="replay-mutating-worktree",
             command=[sys.executable, "tests/mutating_check.py"],
+            test_refs=["tests/mutating_check.py"],
         )
 
         result = _run_validate(self.tmp, turn="replay-mutating-worktree")
 
         assert result.returncode == 1
         assert "REPLAY" in result.stderr
-        assert "mutated final worktree" in result.stderr
+        assert "worktree changed during replay window" in result.stderr
         assert evidence.is_file()
 
     def test_final_replay_fails_closed_for_timeout_and_missing_command(self):
@@ -1119,6 +1137,7 @@ class TestEvidenceValidation:
             self.tmp,
             turn="replay-timeout",
             command=[sys.executable, "tests/timeout_check.py"],
+            test_refs=["tests/timeout_check.py"],
             output="completed\n",
         )
         timed_out = _run_validate(
@@ -1130,10 +1149,17 @@ class TestEvidenceValidation:
         assert "REPLAY" in timed_out.stderr
         assert "timed out" in timed_out.stderr
 
+        missing_wrapper = self.tmp / "tests" / "missing_command_wrapper.py"
+        missing_wrapper.write_text(
+            "import subprocess, sys\n"
+            "raise SystemExit(subprocess.run([sys.executable, 'tests/does-not-exist.py']).returncode)\n",
+            encoding="utf-8",
+        )
         missing_evidence = _make_evidence(
             self.tmp,
             turn="replay-missing-command",
-            command=[sys.executable, "tests/does-not-exist.py"],
+            command=[sys.executable, "tests/missing_command_wrapper.py"],
+            test_refs=["tests/missing_command_wrapper.py"],
             output="completed\n",
         )
         missing = _run_validate(self.tmp, turn="replay-missing-command")
@@ -2569,8 +2595,8 @@ class TestVerifyGateSh:
         assert json.loads(r.stdout) == {"continue": True}
         assert "Strict VERIFY response correlation passed" in r.stderr
 
-    def test_codex_unmapped_platform_turn_id_discovers_correlated_final_evidence(self):
-        """Native turn IDs cannot borrow otherwise valid evidence from another turn."""
+    def test_codex_unmapped_platform_turn_id_is_rejected(self):
+        """An unmapped Codex turn cannot borrow another turn's evidence."""
         source = self.tmp / "fixture.py"
         source.write_text("print('changed')\n")
         evidence = _make_evidence(self.tmp, turn="internal-evidence-turn")
@@ -2591,6 +2617,7 @@ class TestVerifyGateSh:
         accepted_payload = native_stop_result(accepted)
         assert accepted_payload["decision"] == "block"
         assert accepted_payload["forgewright"]["completion_state"] == "unverified"
+        assert accepted_payload["forgewright"]["host_action"] == "request_retry"
 
         payload["last_assistant_message"] = response.replace(
             "COMMAND:", "COMMAND: unrelated ", 1
@@ -2599,7 +2626,7 @@ class TestVerifyGateSh:
         assert rejected.returncode == 0, rejected.stderr
         assert native_stop_result(rejected)["decision"] == "block"
 
-    def test_codex_unmapped_platform_turn_field_discovers_correlated_final_evidence(
+    def test_codex_unmapped_platform_turn_field_is_rejected(
         self,
     ):
         """The native `turn` alias is exact too; unmapped evidence stays unverified."""
@@ -2612,7 +2639,7 @@ class TestVerifyGateSh:
             "last_assistant_message": response,
             "turn": "codex-platform-routing-uuid",
             "session_id": "opaque-turn-session",
-            "stop_hook_active": True,
+            "stop_hook_active": False,
         }
 
         accepted = self._stop_gate(payload)
@@ -2621,6 +2648,7 @@ class TestVerifyGateSh:
         parsed = native_stop_result(accepted)
         assert parsed["decision"] == "block"
         assert parsed["forgewright"]["completion_state"] == "unverified"
+        assert parsed["forgewright"]["host_action"] == "request_retry"
 
     def test_codex_identical_invalid_stop_reentry_is_bounded(self):
         """The first invalid Stop retries; its identical re-entry must terminate."""

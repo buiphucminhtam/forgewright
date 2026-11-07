@@ -3213,10 +3213,9 @@ stage_runtime_support() {
     # The installed MCP must not depend on the original checkout or consumer
     # project Python modules. Copy existing reviewed helpers into owned staging;
     # they are published/rolled back atomically with the rest of the runtime.
-    [[ -f "$FORGEWRIGHT_DIR/mcp/src/product-factory/native-learning-adapter.ts" ]] || return 0
     local support_dir="$CANONICAL_STAGE_DIR/runtime-support/scripts/lite" support_file
     mkdir -p "$support_dir"
-    for support_file in evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py policy-check.sh telemetry.sh; do
+    for support_file in evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py run_check.py verify_gate.py continuity_check.py windows_secure_io.py pipeline_transition_gate.py policy-check.sh telemetry.sh; do
         if [[ ! -f "$FORGEWRIGHT_DIR/scripts/lite/$support_file" ]] || [[ -L "$FORGEWRIGHT_DIR/scripts/lite/$support_file" ]]; then
             log_error "Missing or unsafe required runtime support: $support_file"
             return 1
