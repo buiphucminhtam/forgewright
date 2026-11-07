@@ -1233,12 +1233,26 @@ def changed_files(workspace: Path) -> list[str]:
 
 
 def hard_signal(workspace: Path, files: Iterable[str]) -> bool:
-    file_list = list(files)
+    file_list = [path for path in files if not _ignored_verify_path(path)]
     pieces: list[str] = [*file_list]
     has_git_diff = False
     try:
         for args in (("diff", "--no-ext-diff"), ("diff", "--cached", "--no-ext-diff")):
-            pieces.append(_run_git(workspace, list(args)).decode("utf-8", "replace"))
+            # Runtime logs can contain the gate's own payment-related errors.
+            # Filter paths before reading either diff, just as changed_files does.
+            # Disable rename folding so removed payment code remains observable.
+            diff_args = [*args, "--no-renames"]
+            paths = [
+                path
+                for path in _git_paths(workspace, [*diff_args, "--name-only", "-z"])
+                if not _ignored_verify_path(path)
+            ]
+            if paths:
+                pieces.append(
+                    _run_git(
+                        workspace, ["--literal-pathspecs", *diff_args, "--", *paths]
+                    ).decode("utf-8", "replace")
+                )
         has_git_diff = (workspace / ".git").exists()
     except (OSError, subprocess.SubprocessError, RuntimeError):
         pass

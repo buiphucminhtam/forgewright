@@ -129,6 +129,14 @@ only the bounded transition arguments; the restricted production profile denies
 verification subprocesses. Caller turn IDs and local records are not identity
 authentication. No Stop-hook termination fallback can approve a transition.
 
+The shared HARD classifier excludes verifier-owned volatile paths from both
+staged and unstaged diffs, as well as caller-supplied file lists. A gate's own
+log mentioning a receipt error must not turn unrelated work into payment work.
+Project configuration and source remain covered; deleted or renamed payment
+code still triggers HARD. Global Stop installations must carry the same
+canonical verifier bundle as the workspace evidence producer. Update them
+through the supported installer; hash mismatches remain blocking diagnostics.
+
 ## Senior role contract
 
 Every routed domain role is senior by behavior, not by provider/model name: it owns outcomes, grounds claims in current evidence, reasons about trade-offs, challenges contradictions and unnecessary work, and protects client scope/time/budget. See `skills/_shared/protocols/senior-execution-contract.md`.
