@@ -180,6 +180,10 @@ def _normalize_payload(
         normalized.pop("turn_id", None)
         return normalized
     selector = explicit or alternate
+    if not selector and "turn" not in normalized and "turn_id" not in normalized:
+        session_selector = _safe_selector(normalized.get("session_id"))
+        if _mapped_evidence(root, session_selector)[0]:
+            selector = session_selector
     mapped, exact_final = _mapped_evidence(root, selector)
     if selector and mapped:
         # Mapped-but-invalid evidence fails closed without fallback.

@@ -89,6 +89,76 @@ def test_status_with_preexisting_dirty_code_does_not_require_evidence(project):
     assert (project / "old.py").read_text() == "value = 2\n"
 
 
+def test_claude_session_scoped_baseline_ignores_preexisting_dirty_and_gates_new_edits(
+    project,
+):
+    prompt_res = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/lite/rule-context-hook.py"),
+            "--workspace",
+            str(project),
+            "--platform",
+            "CLAUDE",
+            "--event",
+            "UserPromptSubmit",
+        ],
+        input=json.dumps({"session_id": "claude-session-1"}),
+        text=True,
+        capture_output=True,
+        timeout=15,
+    )
+    assert prompt_res.returncode == 0, prompt_res.stderr
+
+    stop_clean = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/lite/stop_gate.py"),
+            "--platform",
+            "CLAUDE",
+            "--typed-stop-decision",
+        ],
+        cwd=project,
+        env={**os.environ, "FORGEWRIGHT_WORKSPACE": str(project)},
+        input=json.dumps(
+            {
+                "hook_event_name": "Stop",
+                "session_id": "claude-session-1",
+                "last_assistant_message": "Answered the question.",
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=20,
+    )
+    assert stop_clean.returncode == 0, stop_clean.stderr
+    assert "No code changes detected" in stop_clean.stdout
+
+    (project / "old.py").write_text("value = 3\n")
+    stop_edited = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/lite/stop_gate.py"),
+            "--platform",
+            "CLAUDE",
+            "--typed-stop-decision",
+        ],
+        cwd=project,
+        env={**os.environ, "FORGEWRIGHT_WORKSPACE": str(project)},
+        input=json.dumps(
+            {
+                "hook_event_name": "Stop",
+                "session_id": "claude-session-1",
+                "last_assistant_message": "Edited old.py without evidence.",
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=20,
+    )
+    assert stop_edited.returncode == 2
+
+
 def test_new_turn_edits_still_require_evidence(project):
     capture(project)
     (project / "old.py").write_text("value = 3\n")

@@ -146,4 +146,45 @@ then
   exit 0
 fi
 
+PROJECT_CLAUDE_CONFIG="${PROJECT_ROOT}/.claude/settings.json"
+if [[ "$POSIX_DEFERRAL" == true && "$PLATFORM" == "CLAUDE" && -n "$PROJECT_ROOT" &&
+      ! "$SCRIPT_DIR" -ef "$PROJECT_LITE_DIR" &&
+      -f "$PROJECT_LITE_DIR/stop-gate.sh" && ! -L "$PROJECT_LITE_DIR/stop-gate.sh" &&
+      -f "$PROJECT_CLAUDE_CONFIG" ]] &&
+  "${PYTHON_COMMAND[@]}" - "$PROJECT_CLAUDE_CONFIG" <<'PY'
+import json
+import sys
+
+legacy = "bash scripts/lite/stop-gate.sh --platform CLAUDE"
+canonical = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 1; cd \"$root\" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CLAUDE'"
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as handle:
+        config = json.load(handle)
+    groups = config.get("hooks", {}).get("Stop", [])
+    if not isinstance(groups, list) or len(groups) != 1:
+        raise SystemExit(1)
+    group = groups[0]
+    if not isinstance(group, dict) or set(group) - {"matcher", "hooks"}:
+        raise SystemExit(1)
+    if group.get("matcher", "*") != "*":
+        raise SystemExit(1)
+    hooks = group.get("hooks")
+    if not isinstance(hooks, list) or len(hooks) != 1:
+        raise SystemExit(1)
+    hook = hooks[0]
+    if not isinstance(hook, dict) or set(hook) - {"type", "command"}:
+        raise SystemExit(1)
+    if hook.get("type") != "command":
+        raise SystemExit(1)
+    command = hook.get("command")
+    if isinstance(command, str) and command.strip(" \t\n") in (legacy, canonical):
+        raise SystemExit(0)
+except (OSError, ValueError, TypeError, AttributeError):
+    pass
+raise SystemExit(1)
+PY
+then
+  exit 0
+fi
+
 exec "${PYTHON_COMMAND[@]}" "$STOP_GATE_PY" --platform "$PLATFORM" --typed-stop-decision

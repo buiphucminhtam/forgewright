@@ -19,11 +19,20 @@ SCHEMA = "forgewright-turn-baseline/v1"
 MAX_BYTES = 4 * 1024 * 1024
 MAX_FILE_BYTES = 32 * 1024 * 1024
 MAX_PATHS = 10_000
+SESSION_FALLBACK_TURN = "__session_scope__"
 
 
 def _identity(payload):
     session = payload.get("session_id")
     turn = payload.get("turn_id") or payload.get("turn")
+    if (
+        not turn
+        and "turn_id" not in payload
+        and "turn" not in payload
+        and isinstance(session, str)
+        and 0 < len(session) <= 256
+    ):
+        turn = SESSION_FALLBACK_TURN
     if not all(
         isinstance(value, str) and 0 < len(value) <= 256 for value in (session, turn)
     ):
@@ -158,9 +167,39 @@ def capture_turn(root: Path, payload: dict) -> None:
     if len(raw) > MAX_BYTES:
         raise ValueError("turn baseline exceeds byte budget")
     with _directory(root, create=True) as directory:
+        target_name = _name(identity)
+        if identity["turn"] == SESSION_FALLBACK_TURN:
+            temp_name = f".{target_name}.{os.getpid()}.{time.time_ns()}.tmp"
+            fd = os.open(
+                temp_name,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=directory,
+            )
+            try:
+                with os.fdopen(fd, "wb", closefd=False) as handle:
+                    handle.write(raw)
+                    handle.flush()
+                    os.fsync(fd)
+            finally:
+                os.close(fd)
+            try:
+                os.replace(
+                    temp_name,
+                    target_name,
+                    src_dir_fd=directory,
+                    dst_dir_fd=directory,
+                )
+            except BaseException:
+                try:
+                    os.unlink(temp_name, dir_fd=directory)
+                except OSError:
+                    pass
+                raise
+            return
         # Create once per exact host turn: retries cannot reset its baseline.
         fd = os.open(
-            _name(identity),
+            target_name,
             os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
             0o600,
             dir_fd=directory,
