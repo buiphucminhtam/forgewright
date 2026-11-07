@@ -2375,6 +2375,11 @@ class TestVerifyGateSh:
     def setup_method(self):
         self.tmp = _make_temp_git_repo()
 
+    @pytest.fixture(autouse=True)
+    def _isolate_workspace(self, monkeypatch):
+        """Nested gate replays must resolve evidence inside this test's repo."""
+        monkeypatch.setenv("FORGEWRIGHT_WORKSPACE", str(self.tmp))
+
     def teardown_method(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
