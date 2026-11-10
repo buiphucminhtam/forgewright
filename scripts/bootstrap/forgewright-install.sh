@@ -67,6 +67,7 @@ FULL_SKILLS=(
     "ux-researcher"
     "ui-designer"
     "interaction-designer"
+    "motion-director"
     "accessibility-engineer"
     "mobile-engineer"
     "game-designer"
@@ -637,7 +638,7 @@ rule_context_command() {
     resolver+='candidate=""; if [ -d "$hint" ]; then candidate="$(cd "$hint" 2>/dev/null && pwd -P || true)"; fi; '
     resolver+='if [ -z "${FORGEWRIGHT_PROJECT_ROOT:-}" ] && [ -z "${FORGEWRIGHT_WORKSPACE:-}" ] && [ -z "$host_hint" ] && command -v git >/dev/null 2>&1; then '
     resolver+='git_root="$(git -C "${candidate:-${PWD:-.}}" rev-parse --show-toplevel 2>/dev/null || true)"; '
-    resolver+='case "$git_root" in /*) candidate="$git_root";; esac; fi; '
+    resolver+='case "$git_root" in /*|[A-Za-z]:/*|[A-Za-z]:\\*) candidate="$git_root";; esac; fi; '
     resolver+='runtime="$hook_path"; workspace="$fallback_workspace"; '
     resolver+='if [ -f "$hook_path" ] && [ -n "$candidate" ] && [ -f "$candidate/kernel/rule-manifest.json" ] && run_python - "$hook_path" "$candidate" <<'"'"'PYEOF'"'"'
 import importlib.util
@@ -681,18 +682,24 @@ install_hooks() {
     local context_workspace="${FORGEWRIGHT_DIR}"
     local gate_runtime_file
     for gate_runtime_file in stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py \
-        gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh verify-gate.sh verify_gate.py \
+        gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh antigravity-stop-hook.sh verify-gate.sh verify_gate.py \
         run-check.sh run_check.py rule-validator.py rule-ledger.sh policy-check.sh telemetry.sh; do
         atomic_copy_file "${source_dir}/scripts/lite/${gate_runtime_file}" "${gate_runtime_dir}/${gate_runtime_file}"
     done
     chmod +x "$gate_runtime_dir/stop-gate.sh" "$gate_runtime_dir/gemini-before-tool-gate.sh" \
-        "$gate_runtime_dir/antigravity-pre-tool-gate.sh" \
+        "$gate_runtime_dir/antigravity-pre-tool-gate.sh" "$gate_runtime_dir/antigravity-stop-hook.sh" \
         "$gate_runtime_dir/verify-gate.sh" "$gate_runtime_dir/rule-validator.py" \
         "$gate_runtime_dir/run-check.sh" "$gate_runtime_dir/run_check.py" \
         "$gate_runtime_dir/rule-ledger.sh" "$gate_runtime_dir/policy-check.sh" \
         "$gate_runtime_dir/telemetry.sh"
+    mkdir -p "${FORGEWRIGHT_DIR}/scripts/runtime" "${FORGEWRIGHT_DIR}/scripts/memory"
+    atomic_copy_file "${source_dir}/scripts/runtime/windows_security.py" "${FORGEWRIGHT_DIR}/scripts/runtime/windows_security.py"
+    for memory_runtime_file in memory-session.sh memory_redaction.py; do
+        atomic_copy_file "${source_dir}/scripts/memory/${memory_runtime_file}" "${FORGEWRIGHT_DIR}/scripts/memory/${memory_runtime_file}"
+    done
+    chmod +x "${FORGEWRIGHT_DIR}/scripts/memory/memory-session.sh"
 
-    local claude_stop_cmd claude_session_cmd claude_subagent_cmd gemini_stop_cmd gemini_policy_cmd gemini_before_agent_cmd antigravity_pre_invocation_cmd antigravity_policy_cmd cursor_stop_cmd cursor_session_cmd codex_session_cmd codex_subagent_cmd codex_session_windows_cmd codex_subagent_windows_cmd
+    local claude_stop_cmd claude_session_cmd claude_subagent_cmd gemini_stop_cmd gemini_policy_cmd gemini_before_agent_cmd antigravity_pre_invocation_cmd antigravity_policy_cmd antigravity_stop_cmd cursor_stop_cmd cursor_session_cmd codex_session_cmd codex_subagent_cmd codex_session_windows_cmd codex_subagent_windows_cmd
     claude_stop_cmd="bash $(shell_quote "$gate_script") --platform CLAUDE"
     claude_session_cmd="$(rule_context_command "$context_hook" "$context_workspace" CLAUDE SessionStart)"
     claude_subagent_cmd="$(rule_context_command "$context_hook" "$context_workspace" CLAUDE SubagentStart)"
@@ -701,6 +708,7 @@ install_hooks() {
     gemini_before_agent_cmd="$(rule_context_command "$context_hook" "$context_workspace" GEMINI BeforeAgent)"
     antigravity_pre_invocation_cmd="$(rule_context_command "$context_hook" "$context_workspace" ANTIGRAVITY PreInvocation)"
     antigravity_policy_cmd="bash $(shell_quote "$gate_runtime_dir/antigravity-pre-tool-gate.sh")"
+    antigravity_stop_cmd="bash $(shell_quote "$gate_runtime_dir/antigravity-stop-hook.sh")"
     cursor_stop_cmd="bash $(shell_quote "$gate_script") --platform CURSOR"
     cursor_session_cmd="$(rule_context_command "$context_hook" "$context_workspace" CURSOR sessionStart)"
     codex_session_cmd="$(rule_context_command "$context_hook" "$context_workspace" CODEX SessionStart)"
@@ -926,7 +934,7 @@ NODE
     # Antigravity's native hook registry is ~/.gemini/config/hooks.json. It is
     # a map of named hooks, not the Gemini CLI settings.json hooks object.
     mkdir -p "$HOME/.gemini/config"
-    ANTIGRAVITY_PRE_INVOCATION_CMD="$antigravity_pre_invocation_cmd" ANTIGRAVITY_POLICY_CMD="$antigravity_policy_cmd" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "$(host_path "${HOME}/.gemini/config/hooks.json")" <<'NODE'
+    ANTIGRAVITY_PRE_INVOCATION_CMD="$antigravity_pre_invocation_cmd" ANTIGRAVITY_POLICY_CMD="$antigravity_policy_cmd" ANTIGRAVITY_STOP_CMD="$antigravity_stop_cmd" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "$(host_path "${HOME}/.gemini/config/hooks.json")" <<'NODE'
 var fs = require('fs');
 var path = require('path');
 var file = process.argv[2];
@@ -980,6 +988,14 @@ groups = groups.filter(function(h) {
 });
 if (!found) groups.push({ type: 'command', command: process.env.ANTIGRAVITY_PRE_INVOCATION_CMD, timeout: 2 });
 policy.PreInvocation = groups;
+var stopGroups = Array.isArray(policy.Stop) ? policy.Stop : [];
+var hasStopHook = stopGroups.some(function(h) {
+  return h && h.type === 'command' && h.command === process.env.ANTIGRAVITY_STOP_CMD && h.timeout === 5;
+});
+if (!hasStopHook && process.env.ANTIGRAVITY_STOP_CMD) {
+  stopGroups.push({ type: 'command', command: process.env.ANTIGRAVITY_STOP_CMD, timeout: 5 });
+}
+policy.Stop = stopGroups;
 cfg['forgewright-policy'] = policy;
 atomicWrite(file, JSON.stringify(cfg, null, 2));
 NODE

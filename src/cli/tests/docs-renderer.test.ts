@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import { renderMarkdown } from "../src/docs/markdown.js";
 import { exportObsidianVault } from "../src/docs/obsidian.js";
 import { buildDocsHub, renderStaticSite } from "../src/docs/render.js";
+import { scanProject } from "../src/docs/scanner.js";
 import { buildSearchIndex, searchDocuments } from "../src/docs/search.js";
 import type { DocsCatalog, DocsProjectState } from "../src/docs/types.js";
 
@@ -271,15 +272,20 @@ function readTree(root: string): Record<string, string> {
 describe("Docs Hub static presentation", () => {
   it("renders safe markdown blocks and escapes raw HTML/unsafe URLs", () => {
     const html = renderMarkdown(
-      "# Hello\n\n<script>alert(1)</script> [bad](javascript:alert(1))\n\n```ts\nconst x = 1;\n```",
+      "# Hello\n\n## Hello\n\n<script>alert(1)</script> [bad](javascript:alert(1)) [data](data:text/html;base64,PHNjcmlwdD4=) [traverse](../../etc/passwd) [good](https://example.com)\n\n```ts\nconst x = 1;\n```",
     );
     expect(html).toContain('<h1 id="hello">Hello</h1>');
+    expect(html).toContain('<h2 id="hello-1">Hello</h2>');
     expect(html).toContain("&lt;script&gt;");
     expect(html).not.toContain("javascript:");
+    expect(html).not.toContain("data:text/html");
+    expect(html).not.toContain("../../etc/passwd");
+    expect(html).toContain('<a href="https://example.com" rel="noreferrer" target="_blank">good</a>');
     expect(html).toContain("language-ts");
     expect(renderMarkdown("| A | B |\n| --- | --- |\n| 1 | 2 |")).toContain(
       "<thead>",
     );
+    expect(renderMarkdown("# Legacy", { engine: "legacy" })).toContain('<h1 id="legacy">Legacy</h1>');
   });
   it("builds offline pages, search index, CSS and progressive JS", () => {
     const root = mkdtempSync(join(tmpdir(), "forgewright-renderer-"));
@@ -817,5 +823,75 @@ describe("Docs Hub static presentation", () => {
     buildDocsHub([alpha, beta], secondOutput);
 
     expect(readTree(firstOutput)).toEqual(readTree(secondOutput));
+  });
+
+  it("resolves Unicode and parent-relative DocsHub links/assets while stripping unresolved traversal in both engines", () => {
+    const root = mkdtempSync(join(tmpdir(), "forgewright-docshub-r9-"));
+    mkdirSync(join(root, ".forgewright"), { recursive: true });
+    mkdirSync(join(root, "docs", "sub"), { recursive: true });
+    mkdirSync(join(root, "docs", "assets"), { recursive: true });
+    writeFileSync(
+      join(root, ".forgewright", "docs-manifest.json"),
+      JSON.stringify({
+        schema_version: 1,
+        project: { id: "r9-demo", title: "R9 Unicode Demo" },
+        sources: [{ path: "docs", type: "documentation" }],
+        truth: ["docs/Hướng-dẫn.md"],
+        adapters: { git: false, gitnexus: false, evidence_summary: false },
+        privacy: { mode: "allowlist", allow: ["docs"], exclude: [] },
+      }),
+      "utf8",
+    );
+    writeFileSync(
+      join(root, "docs", "Hướng-dẫn.md"),
+      "# Hướng dẫn\n\n## Mục 1\n\nTài liệu gốc.\n",
+      "utf8",
+    );
+    writeFileSync(
+      join(root, "docs", "assets", "Biểu-đồ.svg"),
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"></svg>\n",
+      "utf8",
+    );
+    writeFileSync(
+      join(root, "docs", "sub", "Nested.md"),
+      [
+        "# Trang con",
+        "",
+        "Xem [Hướng dẫn](../Hướng-dẫn.md) và [Tới mục](../Hướng-dẫn.md#muc-1).",
+        "",
+        "![Sơ đồ](../assets/Biểu-đồ.svg)",
+        "",
+        "Liên kết lỗi: [Thoát ra ngoài](../../../outside.md) [Encoded1](%2e%2e/%2e%2e/outside.md) [Encoded2](..%2f..%2foutside.md) [Encoded3](%2e%2e%5coutside.md) và ![Ảnh ngoài](../../../outside.svg) ![ẢnhEncoded](%2e%2e/%2e%2e/outside.svg).",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const scanned = scanProject(root);
+    const prevEngine = process.env.FORGEWRIGHT_DOCS_MARKDOWN_ENGINE;
+    try {
+      for (const engine of ["markdown-it", "legacy"] as const) {
+        process.env.FORGEWRIGHT_DOCS_MARKDOWN_ENGINE = engine;
+        const outDir = join(root, `site-${engine}`);
+        buildDocsHub([scanned], outDir);
+        const nestedHtml = readFileSync(
+          join(outDir, "projects/r9-demo/docs/docs/sub/Nested.md.html"),
+          "utf8",
+        );
+        expect(nestedHtml, engine).toContain('href="../H%C6%B0%E1%BB%9Bng-d%E1%BA%ABn.md.html"');
+        expect(nestedHtml, engine).toContain('href="../H%C6%B0%E1%BB%9Bng-d%E1%BA%ABn.md.html#muc-1"');
+        expect(nestedHtml, engine).toContain('src="../../../assets/docs/assets/Bi%E1%BB%83u-%C4%91%E1%BB%93.svg"');
+        expect(nestedHtml, engine).toContain("Thoát ra ngoài");
+        expect(nestedHtml, engine).toContain("Encoded1");
+        expect(nestedHtml, engine).toContain("Encoded2");
+        expect(nestedHtml, engine).toContain("Encoded3");
+        expect(nestedHtml, engine).not.toContain("outside.md");
+        expect(nestedHtml, engine).not.toContain("outside.svg");
+        expect(nestedHtml, engine).not.toContain("%2e%2e");
+      }
+    } finally {
+      if (prevEngine === undefined) delete process.env.FORGEWRIGHT_DOCS_MARKDOWN_ENGINE;
+      else process.env.FORGEWRIGHT_DOCS_MARKDOWN_ENGINE = prevEngine;
+    }
   });
 });

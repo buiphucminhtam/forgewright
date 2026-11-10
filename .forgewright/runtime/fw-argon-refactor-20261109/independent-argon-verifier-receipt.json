@@ -1,0 +1,252 @@
+{
+  "schema": "forgewright-independent-argon-verifier-receipt/v2",
+  "verifier_model_requested": "gemini-4-argon-high",
+  "verifier_effort_requested": "high",
+  "host": "native-agy-cli-1.5.3",
+  "base_head_sha": "c1200d575d63e8851fa6023ae1e78c996376b902",
+  "manifest_sha256": "0c5f76b0d4f88b037495890fa6f98f0fa729dd691452713350b8d6dbd6c475f6",
+  "manifest_serialization": "sha256 over '<rel>\\0<file_sha256>\\n' for each path in file_digests in listed order",
+  "file_digests": {
+    "scripts/runtime/skill_eval_receipt.py": {
+      "sha256": "1b0fe86e2f102bda053f391e848d3ec13089ef0cc752e8f8901ee2b98455199c",
+      "bytes": 35376
+    },
+    "scripts/runtime/verify_motion_drawer_artifact.mjs": {
+      "sha256": "7d34f7c127724beaf395b21c1be797476ad8f22932128999bf940035c9ee06fb",
+      "bytes": 8663
+    },
+    "evals/promptfoo/forgewright-runner-provider.ts": {
+      "sha256": "62b68776dd74108dc1191fdf1995016c7b401cf922d33f400f8d032abaa07591",
+      "bytes": 12411
+    },
+    "evals/promptfoo/promptfooconfig.yaml": {
+      "sha256": "b926b81a2eaf4827ac3a327409f9bc00c40d296afb7bd024f5070df794c8abff",
+      "bytes": 1549
+    },
+    "kernel/ENTRY.md": {
+      "sha256": "9f6ed2ed6789b863920125e44693604e09d83b230fef79fd76eb889e24b4b2eb",
+      "bytes": 3700
+    },
+    "kernel/SOLVE.md": {
+      "sha256": "baa4b4a69967e0ad032e510810e1ee8d0d1c19d33f3566311a4c532c76c367a6",
+      "bytes": 6146
+    },
+    "kernel/CLARIFY.md": {
+      "sha256": "9e4a2961c2a968b0b848aabc6b07c61e5e8bcc68af68e293fbeac6008613d828",
+      "bytes": 2054
+    },
+    "scripts/lite/sync-kernel.py": {
+      "sha256": "623248a1aafae98d567d61c0cb5466845faced32ea5f38ebe12dccf24dbfa64b",
+      "bytes": 7192
+    },
+    "skills/_shared/protocols/pipeline-operating-contract.md": {
+      "sha256": "9c12ab80129284b86e959c63e626e44c57dca5df7887b0a462faf35dda5774ce",
+      "bytes": 23568
+    },
+    "AGENTS.md": {
+      "sha256": "eaff72cbd9173d78396a40c0e6ddcf2fb4e675cab5e6fca408af942eac3d9a9a",
+      "bytes": 25347
+    },
+    "CLAUDE.md": {
+      "sha256": "564bfbeae300e6fb43216a43f70268791f5a239d46872944c2b8d43d7e32d330",
+      "bytes": 25312
+    },
+    "GEMINI.md": {
+      "sha256": "a8f4d9da43bedd09e29bb96ebf82077cc2502ee5573c32f7df7f3233d2ef2559",
+      "bytes": 24624
+    },
+    ".agents/hooks.json": {
+      "sha256": "7b2e6d9168a54efaed941d87b9968a151be7b1934c0096d71fa4f086f6461bd5",
+      "bytes": 910
+    },
+    "scripts/lite/antigravity-stop-hook.sh": {
+      "sha256": "80780ebf233e2bf89c7644efadd11c031e00c53b7f573ae777b66a519f624d07",
+      "bytes": 330
+    },
+    "scripts/runtime/runtime-hooks-install.sh": {
+      "sha256": "ea28933ad0532b902497a51505b7b63c43538fcf563855f0e2f498ef94d871ff",
+      "bytes": 22379
+    },
+    "scripts/bootstrap/forgewright-install.sh": {
+      "sha256": "6171eb2f751e55bc3d3e5d6d65e99eecc5476678b55d7bfce1d85a5939d727bf",
+      "bytes": 70049
+    },
+    "scripts/hooks/forgewright-hook-doctor.sh": {
+      "sha256": "23b2ae0ee95a97ad4a600edfd10a4d70b469ce4878e6427a12f41017d39a4e41",
+      "bytes": 85297
+    },
+    "integrations/pi/workspace.mjs": {
+      "sha256": "072a2acefb01aef5c4e0d0ef42be9b0ce9417e60156037172b515d72890cadda",
+      "bytes": 8502
+    },
+    "integrations/pi/runtime-state.mjs": {
+      "sha256": "4cd8bcdfe2530dbea80a868829770188f8ee76f9a82453d6edb0702965d61d64",
+      "bytes": 6598
+    },
+    "integrations/pi/provider.mjs": {
+      "sha256": "38ca795c5a1617ed55b9f0bc2235d9bef8fb18634d4d4b23e58dcc482170bf25",
+      "bytes": 11844
+    },
+    "scripts/runtime/openspec_contract_adapter.py": {
+      "sha256": "bd33cf0d7b976bfa9fc92439b74df9c3da27a03025070faf6ebe4402721709df",
+      "bytes": 11904
+    },
+    "src/cli/tsup.config.ts": {
+      "sha256": "d8e8682d989236eb1e485861da0b3bc449c466cbbf18df6870cb12c3a26bf575",
+      "bytes": 531
+    },
+    "src/cli/src/docs/markdown.ts": {
+      "sha256": "7a25cc9a8210567894ed5996617e9728db7a54430eabf0cd4e3b86577357aaa3",
+      "bytes": 16279
+    },
+    "src/cli/src/docs/normalize.ts": {
+      "sha256": "af6d951a0e592901ed7b2a3d1c6675615d4ad26a008f6e877300515763347ec9",
+      "bytes": 13059
+    },
+    "src/cli/src/docs/render.ts": {
+      "sha256": "acf4cc1f1cd70baf4acd404f75812a725b1104963c9d405f8519ffbfd2be3f26",
+      "bytes": 50147
+    },
+    "src/cli/dist/index.js": {
+      "sha256": "86a52ee26c6991980bc3c902c9a35e4646f72d79aafdbdfbf081f9bbdae258f2",
+      "bytes": 683715
+    },
+    "playwright.config.ts": {
+      "sha256": "a5c843eaa73f66e55ae85b0c8743a692930e7dfd74b757121a071971fa833d95",
+      "bytes": 1115
+    },
+    "src/testing/e2e/playwright.config.ts": {
+      "sha256": "100709d9a16be5f47735e0dbfdd920e2be8c41c652b4704236d05a5f8a2b8858",
+      "bytes": 268
+    },
+    "src/testing/e2e/healwright.config.ts": {
+      "sha256": "7ca9dfaeb2fb2cfde38440d98097b5454222eec1233ea0b36cf73f80876a4d56",
+      "bytes": 2174
+    },
+    "src/testing/e2e/tests/example.spec.ts": {
+      "sha256": "b9161322e42b8872c5ae3ffd6fb068e0a3013e3b8346791577cc56e1938db100",
+      "bytes": 8287
+    },
+    "src/testing/e2e/tests/motion-director.spec.ts": {
+      "sha256": "d97e970b9ceb0918be6025ee902d8fe7dc4c679bc209e54ede4bcb64a907a160",
+      "bytes": 16400
+    },
+    "skills/motion-director/SKILL.md": {
+      "sha256": "6bf09d998d190e155c4146f23a96d9c91fb1c103016d86e3aa8635dcca35f086",
+      "bytes": 4104
+    },
+    "skills/motion-director/LITE.md": {
+      "sha256": "85b389215e8ca1cfbfe056ce07c27ebe4d1938a56164d33b5d989c1f7dcdcc4d",
+      "bytes": 2387
+    },
+    "skills/motion-director/references/motion-quality-rubric.md": {
+      "sha256": "20d4ff6a60296d5172cdacbbd42990a0bde496bff72148967aea566c5b7d2156",
+      "bytes": 2000
+    },
+    "skills/motion-director/evals/routing.json": {
+      "sha256": "ddc34d5ccf6ba51b2027c61f59cfedb1332ec4a42a8995fde04fd2c1fea9ed73",
+      "bytes": 1540
+    },
+    "scripts/runtime/skill_routing.py": {
+      "sha256": "519e11703b36688576d5f4e17245461194a5523bc4d770b7b34a460c399e1455",
+      "bytes": 36199
+    },
+    "scripts/ci/verify-platform.py": {
+      "sha256": "4dfafe93e2569b9cbcdb1c7c65b788e309ae5d2aa1e9bce955ff2aa87a4d477a",
+      "bytes": 18167
+    },
+    "tests/unit_tests/test_skill_eval_receipt.py": {
+      "sha256": "d0f4674d508e583f9675d3bd203a5ea55b5dd6472cb797c38ce350884673aaf9",
+      "bytes": 14055
+    },
+    "tests/unit_tests/test_rf02_kernel_docshub.py": {
+      "sha256": "adc93a79e587d00eef44f210e7ac7fa36716999ca128b157b17d96a8eb652fd5",
+      "bytes": 2735
+    },
+    "tests/unit_tests/test_rf03_native_agy_hooks.py": {
+      "sha256": "d5026ee6da33a83f9b2dd7f31990fe49de5628a86e7cb50e97ade560e2645eb7",
+      "bytes": 10232
+    },
+    "tests/unit_tests/test_rf04_pi_capabilities.py": {
+      "sha256": "48fce7e789893af9994dcc478b5f25f3144e536a74040a93f20307a3743ee732",
+      "bytes": 2267
+    },
+    "tests/unit_tests/test_rf05_openspec_superpowers.py": {
+      "sha256": "3dfe4e84711521a33d6b7aca06c22bd8efae1d9436eb6ab74db53fd261493106",
+      "bytes": 8645
+    },
+    "tests/unit_tests/test_motion_director_skill.py": {
+      "sha256": "bab8ca2ab9cdb50c23da93234f2173818ee80d4a823000da02c9df770e07fbfd",
+      "bytes": 7228
+    },
+    "tests/unit_tests/test_rf12_platform_matrix.py": {
+      "sha256": "916c4e2d66906caa6f35c55f5ad91a7d6022eecd59a6d5618c2ce0af80268c62",
+      "bytes": 11396
+    },
+    "src/cli/tests/docs-renderer.test.ts": {
+      "sha256": "c2f3fc1511baff31628e790a15f493e02dec3f71013de10217e39241e6edf60d",
+      "bytes": 31484
+    }
+  },
+  "preexisting_working_tree_accounting": {
+    "total_manifest_files": 182,
+    "byte_identical_count": 175,
+    "overlapping_intentionally_updated_count": 7,
+    "missing_count": 0,
+    "overlapping_files": [
+      {
+        "path": "AGENTS.md",
+        "before_sha256": "1a8132c80f67217a0dfd16b3e67da53352c9f1d2f15185db74b1f8a3a20334ac",
+        "after_sha256": "eaff72cbd9173d78396a40c0e6ddcf2fb4e675cab5e6fca408af942eac3d9a9a"
+      },
+      {
+        "path": "CLAUDE.md",
+        "before_sha256": "1d378b375cdf129578c737f0fc033bd45ce0a9f33de32281a0b38a48f1fed0f8",
+        "after_sha256": "564bfbeae300e6fb43216a43f70268791f5a239d46872944c2b8d43d7e32d330"
+      },
+      {
+        "path": "docs/project-state.json",
+        "before_sha256": "6863286408d64c9368b9ba4028dc3c4e0ae9de373803ea360127279b54348710",
+        "after_sha256": "c2cc8657fc0e73c9e77d30a236ad1aaa3fa578ede1946f013692fbe8be7891ec"
+      },
+      {
+        "path": "scripts/bootstrap/forgewright-install.sh",
+        "before_sha256": "0437bde403dd8de2bc257233af389934143f2e89483e47dbb6ddab19b4bd2a6c",
+        "after_sha256": "6171eb2f751e55bc3d3e5d6d65e99eecc5476678b55d7bfce1d85a5939d727bf"
+      },
+      {
+        "path": "scripts/hooks/forgewright-hook-doctor.sh",
+        "before_sha256": "34f3073c7ed50db251065db05553afcdbac66ce100a5abba248aadb97a90edd2",
+        "after_sha256": "23b2ae0ee95a97ad4a600edfd10a4d70b469ce4878e6427a12f41017d39a4e41"
+      },
+      {
+        "path": "scripts/runtime/skill_routing.py",
+        "before_sha256": "83c067e4aca7bd6daba2d97179e1033cf0b18592e04eddefcf2d4e80c17b2e6f",
+        "after_sha256": "519e11703b36688576d5f4e17245461194a5523bc4d770b7b34a460c399e1455"
+      },
+      {
+        "path": "tests/unit_tests/test_hook_schema.py",
+        "before_sha256": "0f6b195482c318ef26907a5bac16d6862a927c86ce68ebf5e7cf0a7b15c14bb7",
+        "after_sha256": "44633beb22a07d60f5d172cc96891dd4551bf5c482c660b38b9dca5d8baf2141"
+      }
+    ]
+  },
+  "reviewer_packet_path": ".forgewright/runtime/fw-argon-refactor-20261109/superpowers-reviewer-packet.json",
+  "exit_code": 0,
+  "elapsed_sec": 79.453,
+  "raw_stdout": {
+    "conversation_id": "bdca2ac1-69cb-4720-9b75-9a38fab1e93f",
+    "status": "SUCCESS",
+    "response": "{\"verdict\":\"PASS\",\"p0_p1_defects\":[],\"verified_items\":[\"R1: Windows _execute_bounded_process delivers stdin_bytes via a private temp file and supervised Python wrapper without writing to or closing the windows_job_supervisor.py cancellation stdin pipe until cancel/timeout/overflow.\",\"R2: Promptfoo provider writes run evidence to a durable per-run directory under evidenceRootDir (.forgewright/runtime/promptfoo-evidence/<task>-<uuid>) and only cleans up the temporary spec staging directory.\",\"R3: Pi provider capability probe and resolveProvider report google-api as unsupported (pinned_pi_ai_adapter_rejects_guarded_custom_fetch) and fail closed without bypassing guardedFetch.\",\"R4: scripts/ci/verify-platform.py --matrix-summary executes real capability test suites, binds all 22 KEY_REVISION_FILES into revision_binding (head_sha and source_digest), and fails closed when any required toolchain binary is unavailable or any capability check fails.\",\"R5: scripts/runtime/openspec_contract_adapter.py binds each task to contract_revision and requirement_digest and invalidates verified task state across revisions whenever requirement or acceptance criteria change, while preserving evidence_paths and artifact_digests in reviewer packets.\",\"R6: scripts/runtime/skill_routing.py routes positive motion-director prompts in no-mode auto-detect execution and excludes backend/API/database/version tasks that merely mention GSAP or other motion library names.\",\"R7: evals/promptfoo/forgewright-runner-provider.ts computes outer spawnSync timeout as agentTimeout + verifierTimeout + 15s and emits a structured terminal fallback receipt when a child fails to write receipt.json.\",\"R8: scripts/runtime/runtime-hooks-install.sh separates documented_events from canary-backed observed_events, and scripts/bootstrap/forgewright-install.sh plus scripts/hooks/forgewright-hook-doctor.sh distribute and verify antigravity-stop-hook.sh for clean consumers.\",\"R9: src/cli/src/docs/markdown.ts and src/cli/src/docs/render.ts canonicalize raw/URI-decoded/NFC link targets in the catalog map, pass catalog resolution trust to safeUrl in both markdown-it and legacy engines, and strip unresolved parent traversal links.\",\"R10: scripts/runtime/skill_eval_receipt.py sets cleanup_complete=False whenever WindowsJobClient.validate raises CompletionError and aggregates agent and verifier cleanup completion conservatively.\",\"V2-01: scripts/ci/verify-platform.py ignores same-host merged receipts (same_host_merge_ignored=True), enforces distinct passing capability coverage on foreign-host merged receipts, and propagates invalid_merged_receipt / REVISION_MISMATCH to top-level status=FAIL and exit code 1.\",\"V2-02: scripts/runtime/openspec_contract_adapter.py uses a single strict task verification predicate requiring status=='verified' plus matching contract_revision and requirement_digest across projection, completion check, and revision reconciliation.\",\"V2-03: scripts/runtime/runtime-hooks-install.sh wires and verifies both PreToolUse and Stop hooks for Antigravity in standalone mode without clobbering existing custom hooks.\",\"V2-04: src/cli/src/docs/markdown.ts blocks raw, percent-encoded, double-encoded, and mixed-separator parent traversal in both links and images across markdown-it and legacy engines, with src/cli/dist/index.js rebuilt and matching the manifest digest.\",\"V2-05: scripts/runtime/verify_motion_drawer_artifact.mjs verifies Escape close without mouse fallback, mid-transition interruption at 35ms while animations are active, and mobile touch open/close under prefers-reduced-motion in real headless Chromium; all 43 durable artifact digests in rf01-baseline-runs.jsonl resolve on disk.\"],\"verified_remediations\":[\"R1\",\"R2\",\"R3\",\"R4\",\"R5\",\"R6\",\"R7\",\"R8\",\"R9\",\"R10\",\"V2-01\",\"V2-02\",\"V2-03\",\"V2-04\",\"V2-05\"],\"manifest_sha256_checked\":\"0c5f76b0d4f88b037495890fa6f98f0fa729dd691452713350b8d6dbd6c475f6\",\"diff_sha256_checked\":\"2855ee1c737ecbc1c99bc9961a6eebbda7faa507d9080236ab47d9e801a2ac18\"}\n",
+    "duration_seconds": 74.3237209,
+    "num_turns": 1,
+    "usage": {
+      "input_tokens": 64697,
+      "output_tokens": 3427,
+      "thinking_tokens": 1607,
+      "cache_read_tokens": 144955,
+      "total_tokens": 68124
+    }
+  },
+  "raw_stderr": ""
+}

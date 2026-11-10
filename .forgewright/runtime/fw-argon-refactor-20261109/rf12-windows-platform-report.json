@@ -1,0 +1,99 @@
+{
+  "schema": "forgewright-native-platform/v1",
+  "host": "Windows",
+  "python": "3.12.10",
+  "status": "PASS",
+  "production_eligible": false,
+  "rf12_matrix": {
+    "current_host_key": "windows_native_x64",
+    "os": "Windows",
+    "os_release": "11",
+    "os_version": "10.0.26200",
+    "architecture": "x64",
+    "revision_binding": {
+      "head_sha": "c1200d575d63e8851fa6023ae1e78c996376b902",
+      "source_digest": "e0545c87a614c4790a16e3b078a1538b8318ffb66c4f6b0659752fb9ad196580"
+    },
+    "toolchain": {
+      "python": "3.12.10",
+      "node": "v24.11.1",
+      "git": "git version 2.51.2.windows.1"
+    },
+    "toolchain_ready": true,
+    "matrix": {
+      "windows_native_x64": "PASS",
+      "macos_native_arm64": "NOT_RUN",
+      "macos_native_x64": "NOT_RUN",
+      "linux_x64": "NOT_RUN"
+    },
+    "capabilities": {
+      "core_cli_mcp_docshub": "PASS",
+      "motion_director_skill": "PASS",
+      "process_tree_cleanup": "PASS",
+      "windows_job_object_supervisor": "SUPPORTED",
+      "pi_darwin_sandbox_exec": "UNSUPPORTED"
+    },
+    "capability_checks": [
+      {
+        "capability": "core_cli_mcp_docshub",
+        "argv": [
+          "C:\\Users\\buiph\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+          "-X",
+          "utf8",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/unit_tests/test_rf02_kernel_docshub.py",
+          "tests/unit_tests/test_rf03_native_agy_hooks.py",
+          "tests/unit_tests/test_rf04_pi_capabilities.py",
+          "tests/unit_tests/test_rf05_openspec_superpowers.py"
+        ],
+        "exit_code": 0,
+        "status": "PASS",
+        "output_sha256": "0acf9380df8ee2530fb80f8f3bb200d9800ceddb95219872445b010a567031d2",
+        "seconds": 27.032
+      },
+      {
+        "capability": "motion_director_skill",
+        "argv": [
+          "C:\\Users\\buiph\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+          "-X",
+          "utf8",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/unit_tests/test_motion_director_skill.py"
+        ],
+        "exit_code": 0,
+        "status": "PASS",
+        "output_sha256": "3d6cc02a74a85e4251c63989e4d445e66bb511eb46d60744fe9f8822187646d4",
+        "seconds": 31.64
+      },
+      {
+        "capability": "process_tree_cleanup",
+        "argv": [
+          "C:\\Users\\buiph\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+          "-X",
+          "utf8",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/unit_tests/test_skill_eval_receipt.py"
+        ],
+        "exit_code": 0,
+        "status": "PASS",
+        "output_sha256": "33ba8666f12a122243e3522c5c57dad1cd660f2d597eebdf93ac05d9b13d6805",
+        "seconds": 10.047
+      }
+    ],
+    "same_host_merge_ignored": false,
+    "invalid_merged_receipt": false,
+    "overall_multi_os_matrix_status": "BLOCKED_PENDING_OTHER_OS_HOST"
+  }
+}

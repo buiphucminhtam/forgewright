@@ -1,14 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const channel = process.env.PLAYWRIGHT_CHANNEL ?? 'chrome';
+
 export default defineConfig({
-  testDir: './__tests__',
+  testDir: './src/testing/e2e/tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['html', { outputFolder: '.playwright/reports', open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -22,11 +24,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], channel },
     },
     {
       name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
+      use: { ...devices['Pixel 5'], channel },
     },
     {
       name: 'Mobile Safari',

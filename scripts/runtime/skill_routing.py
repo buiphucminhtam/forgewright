@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import re
+import stat
 import sys
 import unicodedata
 from pathlib import Path
@@ -128,6 +129,84 @@ def requests_game_vfx(prompt: str) -> bool:
         "hieu ung combo",
         "an mung thang man",
         "hoat anh moi truong",
+    )
+    return any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in terms)
+
+
+def excludes_motion_director(prompt: str) -> bool:
+    """Exclude backend/API/database/CLI/package-metadata tasks that merely mention a motion library name."""
+    text = unicodedata.normalize("NFD", prompt[:8192].casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[^\w]+", " ", text.replace("đ", "d")).strip()
+    motion_intent_terms = (
+        "motion concept",
+        "motion concepts",
+        "motion design",
+        "motion stack",
+        "motion system",
+        "animation system",
+        "animation timing",
+        "choreography",
+        "ui transition",
+        "ui transitions",
+        "transition timing",
+        "timing token",
+        "timing tokens",
+        "easing",
+        "reduced motion",
+        "prefers reduced motion",
+        "chuyen dong",
+        "thiet ke chuyen dong",
+        "hieu ung chuyen canh",
+    )
+    if any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in motion_intent_terms):
+        return False
+    backend_terms = (
+        "backend",
+        "rest endpoint",
+        "rest api",
+        "graphql",
+        "sql",
+        "postgresql",
+        "database",
+        "schema migration",
+        "package version",
+        "version string",
+        "cli argument",
+        "flag parser",
+    )
+    return any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in backend_terms)
+
+
+def requests_motion_director(prompt: str) -> bool:
+    """Lazy-load motion-director only when motion/choreography/timing/reduced-motion is requested."""
+    if excludes_motion_director(prompt):
+        return False
+    text = unicodedata.normalize("NFD", prompt[:8192].casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[^\w]+", " ", text.replace("đ", "d")).strip()
+    terms = (
+        "motion director",
+        "motion concept",
+        "motion concepts",
+        "motion design",
+        "motion stack",
+        "motion system",
+        "animation system",
+        "animation systems",
+        "animation timing",
+        "choreography",
+        "ui transition",
+        "ui transitions",
+        "transition timing",
+        "timing token",
+        "timing tokens",
+        "easing",
+        "reduced motion",
+        "prefers reduced motion",
+        "chuyen dong",
+        "thiet ke chuyen dong",
+        "hieu ung chuyen canh",
     )
     return any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in terms)
 
@@ -272,6 +351,22 @@ def _contains_path(path: Path, root: Path) -> bool:
     return True
 
 
+def _redirected_path(path: Path) -> bool:
+    """Check lexical components before resolve erases symlinks or reparse points."""
+    path = path.absolute()
+    for component in [*reversed(path.parents), path]:
+        try:
+            info = component.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode) or (
+            getattr(info, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        ):
+            return True
+    return False
+
+
 def _verified_skill(skill_name: str, *, skills_root: Path) -> dict[str, str]:
     if not isinstance(skill_name, str) or not skill_name.strip():
         raise ValueError("mode_skill_map contains an invalid skill name")
@@ -280,7 +375,7 @@ def _verified_skill(skill_name: str, *, skills_root: Path) -> dict[str, str]:
             f"invalid skill name or path escapes skills root: {skill_name}"
         )
     candidate_path = skills_root / skill_name
-    if candidate_path.is_symlink():
+    if _redirected_path(candidate_path):
         raise ValueError(f"symlinked skill directory is not allowed: {skill_name}")
     candidate = candidate_path.resolve()
     if not _contains_path(candidate, skills_root):
@@ -290,9 +385,9 @@ def _verified_skill(skill_name: str, *, skills_root: Path) -> dict[str, str]:
 
     skill_source = candidate / "SKILL.md"
     lite_source = candidate / "LITE.md"
-    if skill_source.is_symlink():
+    if _redirected_path(skill_source):
         raise ValueError(f"symlinked SKILL.md is not allowed: {skill_name}")
-    if lite_source.is_symlink():
+    if _redirected_path(lite_source):
         raise ValueError(f"symlinked LITE.md is not allowed: {skill_name}")
     skill_path = skill_source.resolve()
     lite_path = lite_source.resolve()
@@ -402,11 +497,11 @@ def _resolve_skills_root(root: Path, override: str | Path | None) -> Path:
             candidate = root / candidate
     elif package != root and _contains_path(package, root):
         candidate = package / "skills"
-    elif (root / "skills").exists() or (root / "skills").is_symlink():
+    elif (root / "skills").exists() or _redirected_path(root / "skills"):
         candidate = root / "skills"
     else:
         candidate = package / "skills"
-    if candidate.is_symlink():
+    if _redirected_path(candidate):
         raise ValueError("symlinked skills root is not allowed")
     candidate = candidate.resolve()
     if not candidate.is_dir():
@@ -558,14 +653,22 @@ def route_skills(
     game_engine: str | None = None,
 ) -> dict[str, Any]:
     """Return verified, ordered skill overlays from the local project config."""
-    root = Path(project_root or Path.cwd()).expanduser().resolve()
+    source = "explicit" if mode is not None else "local-rules"
+    requested_mode = _normalise_mode(mode) if mode is not None else None
+    root = Path(project_root or Path.cwd()).expanduser()
+    try:
+        if _redirected_path(root):
+            raise ValueError("symlinked skills root is not allowed")
+        root = root.resolve()
+    except (OSError, ValueError) as error:
+        return _result(
+            status="error", mode=requested_mode, source=source, errors=[str(error)]
+        )
     config = (
         Path(config_path or root / ".forgewright" / "skills-config.json")
         .expanduser()
         .resolve()
     )
-    source = "explicit" if mode is not None else "local-rules"
-    requested_mode = _normalise_mode(mode) if mode is not None else None
 
     if not config.is_file():
         return _result(
@@ -626,6 +729,23 @@ def route_skills(
         )
         selected_mode = decision["mode"]
         selected_source = decision["source"]
+        if (
+            selected_mode is None
+            and mode is None
+            and auto_detect
+            and requests_motion_director(prompt)
+            and "design" in candidates
+        ):
+            selected_mode = "design"
+            selected_source = "local-rules"
+            decision = dict(
+                decision,
+                status="selected",
+                mode="design",
+                source="local-rules",
+                rule_score=max(int(decision.get("rule_score", 0)), 1),
+                reason="motion-design-intent",
+            )
         if selected_mode is None:
             force_names = [
                 name
@@ -654,6 +774,13 @@ def route_skills(
                     errors=[message],
                 )
             selected_names = list(mode_map[selected_mode])
+            if (
+                auto_detect
+                and requests_motion_director(prompt)
+                and "motion-director" not in selected_names
+                and _enabled_value(settings.get("motion-director", {}), "motion-director") != "false"
+            ):
+                selected_names.append("motion-director")
             for name, value in settings.items():
                 if not isinstance(name, str):
                     raise ValueError("skills contains a non-string skill name")
@@ -761,6 +888,13 @@ def route_skills(
                 and enabled != "true"
                 and auto_detect
                 and excludes_game_vfx(prompt)
+            ):
+                continue
+            if (
+                name == "motion-director"
+                and enabled != "true"
+                and auto_detect
+                and not requests_motion_director(prompt)
             ):
                 continue
             verified.append(verified_skill)

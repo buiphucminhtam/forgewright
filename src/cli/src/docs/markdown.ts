@@ -1,3 +1,4 @@
+import MarkdownIt from "markdown-it";
 import type { DocsDiagram, DocsHeading, DocsLink } from "./types.js";
 import { renderDiagramSvg } from "./diagrams.js";
 
@@ -5,6 +6,7 @@ export interface MarkdownRenderOptions {
   links?: DocsLink[];
   diagrams?: DocsDiagram[];
   resolveLink?: (target: string, link?: DocsLink) => string | undefined;
+  engine?: "markdown-it" | "legacy";
 }
 
 export interface MarkdownRenderResult {
@@ -21,13 +23,60 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function safeUrl(value: string): string | null {
+function hasUnsafeRelativeSegments(candidate: string): boolean {
+  if (!candidate || /[\u0000-\u001F\u007F]/.test(candidate)) return true;
+  if (candidate.startsWith("/") || candidate.includes("\\")) return true;
+  return candidate.split("/").some((part) => part === "..");
+}
+
+function safeUrl(value: string, resolvedByCatalog = false): string | null {
   const target = value.trim();
-  if (!target || /^(?:javascript|vbscript|file|data):/i.test(target))
+  if (!target || /[\u0000-\u001F\u007F]/.test(target)) return null;
+  if (/^(?:javascript|vbscript|file|data|blob):/i.test(target))
     return null;
+  if (/^\/\//.test(target)) return null;
   if (/^(?:https?:|mailto:|tel:|#)/i.test(target)) return target;
   if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(target)) return null;
+  if (!resolvedByCatalog) {
+    const clean = target.split(/[?#]/, 1)[0] ?? "";
+    if (hasUnsafeRelativeSegments(clean)) return null;
+    let current = clean;
+    for (let depth = 0; depth < 3; depth += 1) {
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(current);
+      } catch {
+        return null;
+      }
+      if (hasUnsafeRelativeSegments(decoded)) return null;
+      if (decoded === current) break;
+      current = decoded;
+    }
+  }
   return target;
+}
+
+function lookupResolvedLink(
+  rawTarget: string,
+  resolveLink?: (target: string, link?: DocsLink) => string | undefined,
+): string | undefined {
+  if (!resolveLink) return undefined;
+  for (const candidate of [rawTarget, rawTarget.normalize("NFC")]) {
+    const direct = resolveLink(candidate);
+    if (direct !== undefined) return direct;
+  }
+  try {
+    const decoded = decodeURIComponent(rawTarget);
+    for (const candidate of [decoded, decoded.normalize("NFC")]) {
+      if (candidate !== rawTarget) {
+        const resolved = resolveLink(candidate);
+        if (resolved !== undefined) return resolved;
+      }
+    }
+  } catch {
+    // Ignore malformed URI encoding
+  }
+  return undefined;
 }
 
 function inline(value: string, options: MarkdownRenderOptions): string {
@@ -44,7 +93,8 @@ function inline(value: string, options: MarkdownRenderOptions): string {
     /!\[([^\]]*)\]\((?:<([^>]+)>|([^\s)]+))(?:\s+["']([^"']*)["'])?\)/g,
     (_, alt: string, wrapped: string, raw: string, title: string) => {
       const target = wrapped ?? raw;
-      const url = safeUrl(options.resolveLink?.(target) ?? target);
+      const resolved = lookupResolvedLink(target, options.resolveLink);
+      const url = safeUrl(resolved ?? target, resolved !== undefined);
       if (!url) return escapeHtml(alt);
       const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
       return stash(
@@ -56,7 +106,8 @@ function inline(value: string, options: MarkdownRenderOptions): string {
     /\[([^\]]+)\]\((?:<([^>]+)>|([^\s)]+))(?:\s+["']([^"']*)["'])?\)/g,
     (_, label: string, wrapped: string, raw: string, title: string) => {
       const target = wrapped ?? raw;
-      const url = safeUrl(options.resolveLink?.(target) ?? target);
+      const resolved = lookupResolvedLink(target, options.resolveLink);
+      const url = safeUrl(resolved ?? target, resolved !== undefined);
       if (!url) return escapeHtml(label);
       const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
       const external = /^(?:https?:|mailto:|tel:)/i.test(url)
@@ -108,7 +159,7 @@ function tableRow(line: string, options: MarkdownRenderOptions): string[] {
     .map((cell) => inline(cell.trim(), options));
 }
 
-export function renderMarkdownDocument(
+export function renderMarkdownDocumentLegacy(
   markdown: string,
   options: MarkdownRenderOptions = {},
 ): MarkdownRenderResult {
@@ -270,6 +321,129 @@ export function renderMarkdownDocument(
   closeList();
   if (tableHeader) output.push("</tbody></table>");
   return { html: output.join("\n"), headings };
+}
+
+export function renderMarkdownDocument(
+  markdown: string,
+  options: MarkdownRenderOptions = {},
+): MarkdownRenderResult {
+  const engine = options.engine ?? (process.env.FORGEWRIGHT_DOCS_MARKDOWN_ENGINE === "legacy" ? "legacy" : "markdown-it");
+  if (engine === "legacy") {
+    return renderMarkdownDocumentLegacy(markdown, options);
+  }
+  const headings: DocsHeading[] = [];
+  const slugCounts = new Map<string, number>();
+  let diagramIndex = 0;
+
+  const md = new MarkdownIt({
+    html: false,
+    xhtmlOut: false,
+    breaks: false,
+    linkify: false,
+    typographer: false,
+  });
+
+  md.validateLink = () => true;
+
+  md.core.ruler.push("forgewright_headings_and_links", (state) => {
+    for (let i = 0; i < state.tokens.length; i += 1) {
+      const token = state.tokens[i];
+      if (token.type === "heading_open") {
+        const inlineToken = state.tokens[i + 1];
+        const rawText = inlineToken && inlineToken.type === "inline" ? inlineToken.content : "";
+        const cleanText = rawText.replace(/[`*_~]/g, "").trim();
+        const base = slug(cleanText);
+        const seen = slugCounts.get(base) ?? 0;
+        slugCounts.set(base, seen + 1);
+        const headingSlug = seen ? `${base}-${seen}` : base;
+        const level = Number(token.tag.slice(1)) || 1;
+        const line = token.map ? token.map[0] + 1 : 1;
+        headings.push({ level, text: cleanText, slug: headingSlug, line });
+        token.attrSet("id", headingSlug);
+      }
+      if (token.type === "inline" && token.children) {
+        const nextChildren = [];
+        for (let j = 0; j < token.children.length; j += 1) {
+          const child = token.children[j];
+          if (child.type === "link_open") {
+            const rawHref = child.attrGet("href") ?? "";
+            const resolved = lookupResolvedLink(rawHref, options.resolveLink);
+            const url = safeUrl(resolved ?? rawHref, resolved !== undefined);
+            if (!url) {
+              // Strip unsafe link_open and its matching link_close, keeping inner text
+              let depth = 1;
+              j += 1;
+              while (j < token.children.length && depth > 0) {
+                const inner = token.children[j];
+                if (inner.type === "link_open") depth += 1;
+                else if (inner.type === "link_close") {
+                  depth -= 1;
+                  if (depth === 0) break;
+                }
+                if (depth > 0) nextChildren.push(inner);
+                j += 1;
+              }
+              continue;
+            }
+            child.attrSet("href", url);
+            if (/^(?:https?:|mailto:|tel:)/i.test(url)) {
+              child.attrSet("rel", "noreferrer");
+              if (/^https?:/i.test(url)) {
+                child.attrSet("target", "_blank");
+              }
+            }
+            nextChildren.push(child);
+          } else if (child.type === "image") {
+            const rawSrc = child.attrGet("src") ?? "";
+            const resolved = lookupResolvedLink(rawSrc, options.resolveLink);
+            const url = safeUrl(resolved ?? rawSrc, resolved !== undefined);
+            const altText = child.content || (child.children?.map((c) => c.content).join("") ?? "");
+            if (!url) {
+              const textToken = new state.Token("text", "", 0);
+              textToken.content = altText;
+              nextChildren.push(textToken);
+              continue;
+            }
+            child.attrSet("src", url);
+            child.attrSet("alt", altText);
+            child.attrSet("loading", "lazy");
+            nextChildren.push(child);
+          } else {
+            nextChildren.push(child);
+          }
+        }
+        token.children = nextChildren;
+      }
+    }
+  });
+
+  md.renderer.rules.fence = (tokens, idx) => {
+    const token = tokens[idx];
+    const info = (token.info || "").trim().split(/\s+/)[0] ?? "";
+    const source = token.content.replace(/\n$/, "");
+    if (info.toLowerCase() === "mermaid") {
+      const diagram = options.diagrams?.[diagramIndex];
+      diagramIndex += 1;
+      return renderDiagram(diagram, source) + "\n";
+    }
+    const lang = escapeHtml(info || "text");
+    return `<pre class="code-block"><code class="language-${lang}">${escapeHtml(source)}</code></pre>\n`;
+  };
+
+  md.renderer.rules.code_block = (tokens, idx) => {
+    const source = tokens[idx].content.replace(/\n$/, "");
+    return `<pre class="code-block"><code class="language-text">${escapeHtml(source)}</code></pre>\n`;
+  };
+
+  md.renderer.rules.table_open = () => '<div class="table-scroll"><table>';
+  md.renderer.rules.table_close = () => "</table></div>\n";
+  md.renderer.rules.th_open = (tokens, idx) => {
+    const align = tokens[idx].attrGet("style");
+    return align ? `<th scope="col" style="${escapeHtml(align)}">` : '<th scope="col">';
+  };
+
+  const html = md.render(markdown.replace(/\r\n?/g, "\n")).trim();
+  return { html, headings };
 }
 
 function renderDiagram(

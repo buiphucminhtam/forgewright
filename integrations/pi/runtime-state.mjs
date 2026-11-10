@@ -18,9 +18,9 @@ export function stateDirectory(projectRoot) {
 
 function atomicText(root, path, text) {
   // Validate the parent every time; no symlink traversal into another project.
-  const parent = relative(root, join(path, '..'));
+  const parent = relative(root, join(path, '..')).replaceAll('\\', '/');
   if (parent) relativeFile(root, parent, { protectedPaths: false, directory: true });
-  if (existsSync(path)) relativeFile(root, relative(root, path), { protectedPaths: false });
+  if (existsSync(path)) relativeFile(root, relative(root, path).replaceAll('\\', '/'), { protectedPaths: false });
   const tmp = `${path}.${randomUUID()}.tmp`;
   const fd = openSync(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
   try { writeFileSync(fd, text); fsyncSync(fd); } finally { closeSync(fd); }
@@ -85,7 +85,7 @@ export function createRun(projectRoot, data) {
   const save = () => atomicJson(projectRoot, join(runDir, 'receipt.json'), receipt);
   save();
   const assertOpen = () => {
-    relativeFile(projectRoot, relative(projectRoot, runDir), { protectedPaths: false, directory: true });
+    relativeFile(projectRoot, relative(projectRoot, runDir).replaceAll('\\', '/'), { protectedPaths: false, directory: true });
     if (existsSync(join(runDir, 'cancel.json'))) fail('pi_cancelled');
     if (!readWorkerConfig(projectRoot).enabled) fail('pi_disabled');
   };
@@ -101,7 +101,7 @@ export function cancelRun(projectRoot, runId) {
   projectRoot = realpathSync(projectRoot);
   if (!/^pi-[a-f0-9-]{36}$/.test(runId)) fail('pi_invalid_run_id');
   const dir = stateDirectory(projectRoot);
-  const receiptPath = relativeFile(projectRoot, relative(projectRoot, join(dir, runId, 'receipt.json')), { protectedPaths: false });
+  const receiptPath = relativeFile(projectRoot, relative(projectRoot, join(dir, runId, 'receipt.json')).replaceAll('\\', '/'), { protectedPaths: false });
   const receipt = JSON.parse(readFileSync(receiptPath, 'utf8'));
   if (receipt.runId !== runId || receipt.projectRoot !== projectRoot) fail('pi_invalid_run_id');
   if (['finished', 'failed', 'cancelled'].includes(receipt.status)) return { runId, status: receipt.status };

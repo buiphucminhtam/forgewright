@@ -659,12 +659,20 @@ function documentBody(document: DocsDocument, catalogs: DocsCatalog[]): string {
     (item) => item.project.id === document.projectId,
   );
   const allDocuments = catalogs.flatMap((item) => item.documents);
-  const links = new Map(
-    (document.links ?? []).map((link) => [
-      link.target,
-      link.resolvedRoute ?? link.target,
-    ]),
-  );
+  const links = new Map<string, string>();
+  for (const link of document.links ?? []) {
+    if (link.resolvedRoute) {
+      links.set(link.target, link.resolvedRoute);
+      links.set(link.target.normalize("NFC"), link.resolvedRoute);
+      try {
+        const decoded = decodeURIComponent(link.target);
+        links.set(decoded, link.resolvedRoute);
+        links.set(decoded.normalize("NFC"), link.resolvedRoute);
+      } catch {
+        // Ignore malformed URI encoding in raw link target
+      }
+    }
+  }
   const firstHeading = document.headings[0];
   const normalizedTitle = document.title
     .toLowerCase()

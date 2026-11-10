@@ -1,0 +1,44 @@
+{
+  "skill": "motion-director",
+  "upstream_commit": "713a8680f975cabc7f9fc9e462ebfd9532694f85",
+  "license": "CC0-1.0",
+  "positive": [
+    {
+      "id": "ui-drawer-choreography",
+      "prompt": "Design the UI transition choreography, timing/easing tokens, and prefers-reduced-motion behavior for our interactive drawer component.",
+      "mode": "design"
+    },
+    {
+      "id": "choose-motion-stack",
+      "prompt": "Help me choose a motion stack (CSS transitions vs Motion vs GSAP vs Rive) and specify animation timing for the onboarding cards.",
+      "mode": "feature"
+    },
+    {
+      "id": "vi-motion-transition",
+      "prompt": "Thiết kế chuyển động UI transition, easing và reduced motion cho modal xác nhận trên web và mobile.",
+      "mode": "design"
+    }
+  ],
+  "negative": [
+    {
+      "id": "backend-sql-migration",
+      "prompt": "Implement a PostgreSQL schema migration and REST API pagination endpoint for invoices.",
+      "mode": "feature"
+    },
+    {
+      "id": "cli-flag-parser",
+      "prompt": "Fix the CLI argument parser in src/cli/src/index.ts to reject unknown flags with exit code 2.",
+      "mode": "feature"
+    },
+    {
+      "id": "docs-readme-update",
+      "prompt": "Update the installation documentation in docs/guides/docs-hub.md to document the new CLI flag.",
+      "mode": "document"
+    },
+    {
+      "id": "static-color-token-audit",
+      "prompt": "Audit static typography hierarchy and color contrast ratios on the settings page.",
+      "mode": "design"
+    }
+  ]
+}

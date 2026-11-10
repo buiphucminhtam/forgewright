@@ -1,0 +1,659 @@
+{
+  "schema": "forgewright-supervisor-review/v3",
+  "task_id": "FW-ARGON-REFACTOR-20261109",
+  "supervisor": "ChatGPT",
+  "decision": "PC_ACCEPTED",
+  "scope": "Windows native x64; the five V2-01..V2-05 acceptance items from SUPERVISOR_REVIEW_CHATGPT_ROUND2.md. Earlier accepted Windows items remain accepted. macOS verification is deferred by the user.",
+  "reviewed_at_utc": "2026-11-09T22:02:43.167355+00:00",
+  "repository_root": "D:\\Sources\\Github\\forgewright",
+  "source_changes_by_supervisor": false,
+  "build_performed": true,
+  "model_calls_by_supervisor": 0,
+  "git_commit_or_push_performed": false,
+  "production_release_approval": false,
+  "remediations": [
+    {
+      "id": "V2-01",
+      "status": "CLOSED_WINDOWS",
+      "evidence": "Source review, full-gate regression tests, and a direct current FAIL + same-host PASS probe. Current host remains FAIL, same_host_merge_ignored=true. Missing/malformed/wrong-revision receipt regressions pass."
+    },
+    {
+      "id": "V2-02",
+      "status": "CLOSED",
+      "evidence": "Strict revision plus requirement-digest check used by projection/completion/reconciliation. Missing-binding direct probe gives unchecked and accepted=false; missing/wrong individual bindings covered by passing regressions."
+    },
+    {
+      "id": "V2-03",
+      "status": "CLOSED_WINDOWS",
+      "evidence": "Passing temporary-consumer regression covers idempotent standalone AGY install, Stop present, verification failure after Stop removal, and custom-hook preservation during uninstall."
+    },
+    {
+      "id": "V2-04",
+      "status": "CLOSED",
+      "evidence": "Six direct renderer probes block each of three encoded traversal strings for both link and image, on both engines; scan/build Unicode and catalog regressions pass. CLI rebuilt; final bundle digest unchanged from supplied manifest."
+    },
+    {
+      "id": "V2-05",
+      "status": "CLOSED_FOR_REVIEWED_ARTIFACTS",
+      "evidence": "Actual original HTML artifacts fail the behavioral verifier; lean-v2 passes desktop/mobile behavior. Additional independent browser probe proves Escape without fallback, focus restoration, and reversal while two transitions are active. Original artifact hashes remain unchanged."
+    }
+  ],
+  "final_integrity": {
+    "recorded_at_utc": "2026-11-09T22:02:43.167355+00:00",
+    "host": {
+      "system": "Windows",
+      "machine": "AMD64"
+    },
+    "head_sha": "c1200d575d63e8851fa6023ae1e78c996376b902",
+    "branch": "main",
+    "working_tree_status_count": 237,
+    "file_manifest": {
+      "count": 45,
+      "mismatches": [],
+      "missing": [],
+      "recorded_sha256": "25c44ac8875d423a88693a05e191be02ce508ea43dba211eb9bb867681a9939c",
+      "computed_sha256": "25c44ac8875d423a88693a05e191be02ce508ea43dba211eb9bb867681a9939c",
+      "serialization": "sha256 over '<rel>\\0<file_sha256>\\n' for each path in file_digests in listed order",
+      "file_digests": {
+        "scripts/runtime/skill_eval_receipt.py": {
+          "sha256": "1b0fe86e2f102bda053f391e848d3ec13089ef0cc752e8f8901ee2b98455199c",
+          "bytes": 35376
+        },
+        "scripts/runtime/verify_motion_drawer_artifact.mjs": {
+          "sha256": "4e963f1859d24a7e22e10082f0b8dc20a5267f6a0f29abcf9d439b3c2f2c22cf",
+          "bytes": 8348
+        },
+        "evals/promptfoo/forgewright-runner-provider.ts": {
+          "sha256": "62b68776dd74108dc1191fdf1995016c7b401cf922d33f400f8d032abaa07591",
+          "bytes": 12411
+        },
+        "evals/promptfoo/promptfooconfig.yaml": {
+          "sha256": "b926b81a2eaf4827ac3a327409f9bc00c40d296afb7bd024f5070df794c8abff",
+          "bytes": 1549
+        },
+        "kernel/ENTRY.md": {
+          "sha256": "9f6ed2ed6789b863920125e44693604e09d83b230fef79fd76eb889e24b4b2eb",
+          "bytes": 3700
+        },
+        "kernel/SOLVE.md": {
+          "sha256": "baa4b4a69967e0ad032e510810e1ee8d0d1c19d33f3566311a4c532c76c367a6",
+          "bytes": 6146
+        },
+        "kernel/CLARIFY.md": {
+          "sha256": "9e4a2961c2a968b0b848aabc6b07c61e5e8bcc68af68e293fbeac6008613d828",
+          "bytes": 2054
+        },
+        "scripts/lite/sync-kernel.py": {
+          "sha256": "623248a1aafae98d567d61c0cb5466845faced32ea5f38ebe12dccf24dbfa64b",
+          "bytes": 7192
+        },
+        "skills/_shared/protocols/pipeline-operating-contract.md": {
+          "sha256": "9c12ab80129284b86e959c63e626e44c57dca5df7887b0a462faf35dda5774ce",
+          "bytes": 23568
+        },
+        "AGENTS.md": {
+          "sha256": "eaff72cbd9173d78396a40c0e6ddcf2fb4e675cab5e6fca408af942eac3d9a9a",
+          "bytes": 25347
+        },
+        "CLAUDE.md": {
+          "sha256": "564bfbeae300e6fb43216a43f70268791f5a239d46872944c2b8d43d7e32d330",
+          "bytes": 25312
+        },
+        "GEMINI.md": {
+          "sha256": "a8f4d9da43bedd09e29bb96ebf82077cc2502ee5573c32f7df7f3233d2ef2559",
+          "bytes": 24624
+        },
+        ".agents/hooks.json": {
+          "sha256": "7b2e6d9168a54efaed941d87b9968a151be7b1934c0096d71fa4f086f6461bd5",
+          "bytes": 910
+        },
+        "scripts/lite/antigravity-stop-hook.sh": {
+          "sha256": "80780ebf233e2bf89c7644efadd11c031e00c53b7f573ae777b66a519f624d07",
+          "bytes": 330
+        },
+        "scripts/runtime/runtime-hooks-install.sh": {
+          "sha256": "ea28933ad0532b902497a51505b7b63c43538fcf563855f0e2f498ef94d871ff",
+          "bytes": 22379
+        },
+        "scripts/bootstrap/forgewright-install.sh": {
+          "sha256": "6171eb2f751e55bc3d3e5d6d65e99eecc5476678b55d7bfce1d85a5939d727bf",
+          "bytes": 70049
+        },
+        "scripts/hooks/forgewright-hook-doctor.sh": {
+          "sha256": "23b2ae0ee95a97ad4a600edfd10a4d70b469ce4878e6427a12f41017d39a4e41",
+          "bytes": 85297
+        },
+        "integrations/pi/workspace.mjs": {
+          "sha256": "072a2acefb01aef5c4e0d0ef42be9b0ce9417e60156037172b515d72890cadda",
+          "bytes": 8502
+        },
+        "integrations/pi/runtime-state.mjs": {
+          "sha256": "4cd8bcdfe2530dbea80a868829770188f8ee76f9a82453d6edb0702965d61d64",
+          "bytes": 6598
+        },
+        "integrations/pi/provider.mjs": {
+          "sha256": "38ca795c5a1617ed55b9f0bc2235d9bef8fb18634d4d4b23e58dcc482170bf25",
+          "bytes": 11844
+        },
+        "scripts/runtime/openspec_contract_adapter.py": {
+          "sha256": "bd33cf0d7b976bfa9fc92439b74df9c3da27a03025070faf6ebe4402721709df",
+          "bytes": 11904
+        },
+        "src/cli/tsup.config.ts": {
+          "sha256": "d8e8682d989236eb1e485861da0b3bc449c466cbbf18df6870cb12c3a26bf575",
+          "bytes": 531
+        },
+        "src/cli/src/docs/markdown.ts": {
+          "sha256": "7a25cc9a8210567894ed5996617e9728db7a54430eabf0cd4e3b86577357aaa3",
+          "bytes": 16279
+        },
+        "src/cli/src/docs/normalize.ts": {
+          "sha256": "af6d951a0e592901ed7b2a3d1c6675615d4ad26a008f6e877300515763347ec9",
+          "bytes": 13059
+        },
+        "src/cli/src/docs/render.ts": {
+          "sha256": "acf4cc1f1cd70baf4acd404f75812a725b1104963c9d405f8519ffbfd2be3f26",
+          "bytes": 50147
+        },
+        "src/cli/dist/index.js": {
+          "sha256": "86a52ee26c6991980bc3c902c9a35e4646f72d79aafdbdfbf081f9bbdae258f2",
+          "bytes": 683715
+        },
+        "playwright.config.ts": {
+          "sha256": "a5c843eaa73f66e55ae85b0c8743a692930e7dfd74b757121a071971fa833d95",
+          "bytes": 1115
+        },
+        "src/testing/e2e/playwright.config.ts": {
+          "sha256": "100709d9a16be5f47735e0dbfdd920e2be8c41c652b4704236d05a5f8a2b8858",
+          "bytes": 268
+        },
+        "src/testing/e2e/healwright.config.ts": {
+          "sha256": "7ca9dfaeb2fb2cfde38440d98097b5454222eec1233ea0b36cf73f80876a4d56",
+          "bytes": 2174
+        },
+        "src/testing/e2e/tests/example.spec.ts": {
+          "sha256": "b9161322e42b8872c5ae3ffd6fb068e0a3013e3b8346791577cc56e1938db100",
+          "bytes": 8287
+        },
+        "src/testing/e2e/tests/motion-director.spec.ts": {
+          "sha256": "d97e970b9ceb0918be6025ee902d8fe7dc4c679bc209e54ede4bcb64a907a160",
+          "bytes": 16400
+        },
+        "skills/motion-director/SKILL.md": {
+          "sha256": "6bf09d998d190e155c4146f23a96d9c91fb1c103016d86e3aa8635dcca35f086",
+          "bytes": 4104
+        },
+        "skills/motion-director/LITE.md": {
+          "sha256": "85b389215e8ca1cfbfe056ce07c27ebe4d1938a56164d33b5d989c1f7dcdcc4d",
+          "bytes": 2387
+        },
+        "skills/motion-director/references/motion-quality-rubric.md": {
+          "sha256": "20d4ff6a60296d5172cdacbbd42990a0bde496bff72148967aea566c5b7d2156",
+          "bytes": 2000
+        },
+        "skills/motion-director/evals/routing.json": {
+          "sha256": "ddc34d5ccf6ba51b2027c61f59cfedb1332ec4a42a8995fde04fd2c1fea9ed73",
+          "bytes": 1540
+        },
+        "scripts/runtime/skill_routing.py": {
+          "sha256": "519e11703b36688576d5f4e17245461194a5523bc4d770b7b34a460c399e1455",
+          "bytes": 36199
+        },
+        "scripts/ci/verify-platform.py": {
+          "sha256": "21dae4647440a316d4aa70a9780e9a114ef742dd4398e817fd30ac3bb9024dff",
+          "bytes": 17839
+        },
+        "tests/unit_tests/test_skill_eval_receipt.py": {
+          "sha256": "d0f4674d508e583f9675d3bd203a5ea55b5dd6472cb797c38ce350884673aaf9",
+          "bytes": 14055
+        },
+        "tests/unit_tests/test_rf02_kernel_docshub.py": {
+          "sha256": "adc93a79e587d00eef44f210e7ac7fa36716999ca128b157b17d96a8eb652fd5",
+          "bytes": 2735
+        },
+        "tests/unit_tests/test_rf03_native_agy_hooks.py": {
+          "sha256": "d5026ee6da33a83f9b2dd7f31990fe49de5628a86e7cb50e97ade560e2645eb7",
+          "bytes": 10232
+        },
+        "tests/unit_tests/test_rf04_pi_capabilities.py": {
+          "sha256": "48fce7e789893af9994dcc478b5f25f3144e536a74040a93f20307a3743ee732",
+          "bytes": 2267
+        },
+        "tests/unit_tests/test_rf05_openspec_superpowers.py": {
+          "sha256": "3dfe4e84711521a33d6b7aca06c22bd8efae1d9436eb6ab74db53fd261493106",
+          "bytes": 8645
+        },
+        "tests/unit_tests/test_motion_director_skill.py": {
+          "sha256": "bab8ca2ab9cdb50c23da93234f2173818ee80d4a823000da02c9df770e07fbfd",
+          "bytes": 7228
+        },
+        "tests/unit_tests/test_rf12_platform_matrix.py": {
+          "sha256": "916c4e2d66906caa6f35c55f5ad91a7d6022eecd59a6d5618c2ce0af80268c62",
+          "bytes": 11396
+        },
+        "src/cli/tests/docs-renderer.test.ts": {
+          "sha256": "c2f3fc1511baff31628e790a15f493e02dec3f71013de10217e39241e6edf60d",
+          "bytes": 31484
+        }
+      }
+    },
+    "preexisting": {
+      "count": 182,
+      "unchanged": 175,
+      "changed": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "docs/project-state.json",
+        "scripts/bootstrap/forgewright-install.sh",
+        "scripts/hooks/forgewright-hook-doctor.sh",
+        "scripts/runtime/skill_routing.py",
+        "tests/unit_tests/test_hook_schema.py"
+      ],
+      "missing": []
+    },
+    "platform": {
+      "recorded_binding": {
+        "head_sha": "c1200d575d63e8851fa6023ae1e78c996376b902",
+        "source_digest": "b022f1d6f71842b58bce27f1a7e0255be4482db1022a035282f09dde64dfdca1"
+      },
+      "computed_binding": {
+        "head_sha": "c1200d575d63e8851fa6023ae1e78c996376b902",
+        "source_digest": "b022f1d6f71842b58bce27f1a7e0255be4482db1022a035282f09dde64dfdca1"
+      },
+      "binding_matches": true,
+      "current_host_key": "windows_native_x64",
+      "status": "PASS",
+      "matrix": {
+        "windows_native_x64": "PASS",
+        "macos_native_arm64": "NOT_RUN",
+        "macos_native_x64": "NOT_RUN",
+        "linux_x64": "NOT_RUN"
+      },
+      "capabilities": {
+        "core_cli_mcp_docshub": "PASS",
+        "motion_director_skill": "PASS",
+        "process_tree_cleanup": "PASS",
+        "windows_job_object_supervisor": "SUPPORTED",
+        "pi_darwin_sandbox_exec": "UNSUPPORTED"
+      },
+      "capability_checks": [
+        {
+          "capability": "core_cli_mcp_docshub",
+          "argv": [
+            "C:\\Users\\buiph\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+            "-X",
+            "utf8",
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "tests/unit_tests/test_rf02_kernel_docshub.py",
+            "tests/unit_tests/test_rf03_native_agy_hooks.py",
+            "tests/unit_tests/test_rf04_pi_capabilities.py",
+            "tests/unit_tests/test_rf05_openspec_superpowers.py"
+          ],
+          "exit_code": 0,
+          "status": "PASS",
+          "output_sha256": "e15a656b7b54046631b94cf770d3f069cfb3c00599e30bc50c5b44dab599572e",
+          "seconds": 25.203
+        },
+        {
+          "capability": "motion_director_skill",
+          "argv": [
+            "C:\\Users\\buiph\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+            "-X",
+            "utf8",
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "tests/unit_tests/test_motion_director_skill.py"
+          ],
+          "exit_code": 0,
+          "status": "PASS",
+          "output_sha256": "7511fb9c30fc94e92361b1f2961f8f4546604f3f562efde41c1a5d4e62f79537",
+          "seconds": 26.047
+        },
+        {
+          "capability": "process_tree_cleanup",
+          "argv": [
+            "C:\\Users\\buiph\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+            "-X",
+            "utf8",
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "tests/unit_tests/test_skill_eval_receipt.py"
+          ],
+          "exit_code": 0,
+          "status": "PASS",
+          "output_sha256": "c700ce7fe723ce4353c15e3fc797a0c7275944fe5e51f414453e6be3f32e6d12",
+          "seconds": 10.375
+        }
+      ],
+      "key_revision_file_count": 22,
+      "overall_multi_os_matrix_status": "BLOCKED_PENDING_OTHER_OS_HOST"
+    },
+    "baseline": {
+      "rows": 6,
+      "entries": [
+        {
+          "arm": "replay-fixture",
+          "run_id": "run-c9093dcf-8ae6-4158-8c50-ba6fba2c6883",
+          "terminal_outcome": "accepted",
+          "usage_source": "unobserved",
+          "tokens": "unknown"
+        },
+        {
+          "arm": "replay-fixture",
+          "run_id": "run-3393e58f-d6f5-44fd-86fd-ae90cb2e42c0",
+          "terminal_outcome": "failed",
+          "usage_source": "unobserved",
+          "tokens": "unknown"
+        },
+        {
+          "arm": "native",
+          "run_id": "run-4abcc62f-369a-41cf-a1b2-ba07cb6fced8",
+          "terminal_outcome": "failed",
+          "usage_source": "agent_stdout_json_unattested",
+          "tokens": 27637
+        },
+        {
+          "arm": "current",
+          "run_id": "run-afcc7334-ec1b-41ad-8fad-eef796d38b4c",
+          "terminal_outcome": "failed",
+          "usage_source": "agent_stdout_json_unattested",
+          "tokens": 7545
+        },
+        {
+          "arm": "lean",
+          "run_id": "run-edb0e26a-e5fa-4949-a9cf-1d8bac0bd398",
+          "terminal_outcome": "failed",
+          "usage_source": "agent_stdout_json_unattested",
+          "tokens": 27423
+        },
+        {
+          "arm": "lean-v2",
+          "run_id": "run-92e4f2a3-08f8-4e06-8624-08ed4a0b7e74",
+          "terminal_outcome": "accepted",
+          "usage_source": "agent_stdout_json_unattested",
+          "tokens": 37557
+        }
+      ],
+      "digest_count": 43,
+      "digest_issues": [
+        {
+          "arm": "native",
+          "run_id": "run-4abcc62f-369a-41cf-a1b2-ba07cb6fced8",
+          "key": "workspace:.saved_agent_stdout.json",
+          "path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-native-workspace\\.saved_agent_stdout.json",
+          "expected": "e4764ed5c3ee53be8dcf753ae989a8c16f20ff871932fdbc8945b89b3d89013c",
+          "actual": null,
+          "matches": false
+        },
+        {
+          "arm": "current",
+          "run_id": "run-afcc7334-ec1b-41ad-8fad-eef796d38b4c",
+          "key": "workspace:.saved_agent_stdout.json",
+          "path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-current-workspace\\.saved_agent_stdout.json",
+          "expected": "59ba49a750a93530a0f27f8614a1ddf612b1c8991cec643f8f75723e9a775445",
+          "actual": null,
+          "matches": false
+        },
+        {
+          "arm": "lean",
+          "run_id": "run-edb0e26a-e5fa-4949-a9cf-1d8bac0bd398",
+          "key": "workspace:.saved_agent_stdout.json",
+          "path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-lean-workspace\\.saved_agent_stdout.json",
+          "expected": "808c14dbbaedf3bf4a93a77f534ec9092dbd5cf134f9409ab2efecb928a384cb",
+          "actual": null,
+          "matches": false
+        },
+        {
+          "arm": "lean-v2",
+          "run_id": "run-92e4f2a3-08f8-4e06-8624-08ed4a0b7e74",
+          "key": "workspace:.saved_agent_stdout.json",
+          "path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-lean-v2-workspace\\.saved_agent_stdout.json",
+          "expected": "841370c956e3124e70d5b1d66a104c88a6a54309a26697f00f07c10bc980a100",
+          "actual": null,
+          "matches": false
+        }
+      ],
+      "missing_workspace_aliases": [
+        {
+          "arm": "native",
+          "run_id": "run-4abcc62f-369a-41cf-a1b2-ba07cb6fced8",
+          "key": "workspace:.saved_agent_stdout.json",
+          "path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-native-workspace\\.saved_agent_stdout.json",
+          "expected": "e4764ed5c3ee53be8dcf753ae989a8c16f20ff871932fdbc8945b89b3d89013c",
+          "actual": null,
+          "matches": false,
+          "durable_equivalent_path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-native\\agent.stdout",
+          "durable_equivalent_sha256": "e4764ed5c3ee53be8dcf753ae989a8c16f20ff871932fdbc8945b89b3d89013c",
+          "durable_equivalent_verified": true,
+          "explanation": "The workspace replay input alias is no longer present; its identical bytes remain in the independently hash-checked durable agent.stdout."
+        },
+        {
+          "arm": "current",
+          "run_id": "run-afcc7334-ec1b-41ad-8fad-eef796d38b4c",
+          "key": "workspace:.saved_agent_stdout.json",
+          "path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-current-workspace\\.saved_agent_stdout.json",
+          "expected": "59ba49a750a93530a0f27f8614a1ddf612b1c8991cec643f8f75723e9a775445",
+          "actual": null,
+          "matches": false,
+          "durable_equivalent_path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-current\\agent.stdout",
+          "durable_equivalent_sha256": "59ba49a750a93530a0f27f8614a1ddf612b1c8991cec643f8f75723e9a775445",
+          "durable_equivalent_verified": true,
+          "explanation": "The workspace replay input alias is no longer present; its identical bytes remain in the independently hash-checked durable agent.stdout."
+        },
+        {
+          "arm": "lean",
+          "run_id": "run-edb0e26a-e5fa-4949-a9cf-1d8bac0bd398",
+          "key": "workspace:.saved_agent_stdout.json",
+          "path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-lean-workspace\\.saved_agent_stdout.json",
+          "expected": "808c14dbbaedf3bf4a93a77f534ec9092dbd5cf134f9409ab2efecb928a384cb",
+          "actual": null,
+          "matches": false,
+          "durable_equivalent_path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-lean\\agent.stdout",
+          "durable_equivalent_sha256": "808c14dbbaedf3bf4a93a77f534ec9092dbd5cf134f9409ab2efecb928a384cb",
+          "durable_equivalent_verified": true,
+          "explanation": "The workspace replay input alias is no longer present; its identical bytes remain in the independently hash-checked durable agent.stdout."
+        },
+        {
+          "arm": "lean-v2",
+          "run_id": "run-92e4f2a3-08f8-4e06-8624-08ed4a0b7e74",
+          "key": "workspace:.saved_agent_stdout.json",
+          "path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-lean-v2-workspace\\.saved_agent_stdout.json",
+          "expected": "841370c956e3124e70d5b1d66a104c88a6a54309a26697f00f07c10bc980a100",
+          "actual": null,
+          "matches": false,
+          "durable_equivalent_path": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf01-live-lean-v2\\agent.stdout",
+          "durable_equivalent_sha256": "841370c956e3124e70d5b1d66a104c88a6a54309a26697f00f07c10bc980a100",
+          "durable_equivalent_verified": true,
+          "explanation": "The workspace replay input alias is no longer present; its identical bytes remain in the independently hash-checked durable agent.stdout."
+        }
+      ],
+      "verified_at_declared_path": 39
+    }
+  },
+  "executions": {
+    "regression": {
+      "command": "python -B -X utf8 -m pytest -q -p no:cacheprovider tests/unit_tests/test_skill_eval_receipt.py tests/unit_tests/test_rf02_kernel_docshub.py tests/unit_tests/test_rf03_native_agy_hooks.py tests/unit_tests/test_rf04_pi_capabilities.py tests/unit_tests/test_rf05_openspec_superpowers.py tests/unit_tests/test_motion_director_skill.py tests/unit_tests/test_rf12_platform_matrix.py",
+      "passed": 40,
+      "failed": 0,
+      "warnings": 1,
+      "id": "4c66049e-731d-4fd2-959d-7ea7f8138a6c",
+      "status": "exited",
+      "exit_code": 0,
+      "stdout": "........................................                                 [100%]\r\n============================== warnings summary ===============================\r\nC:\\Users\\buiph\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\_hypothesis_pytestplugin.py:461\r\n  C:\\Users\\buiph\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\_hypothesis_pytestplugin.py:461: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.\r\n    warnings.warn(\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n40 passed, 1 warning in 153.94s (0:02:33)\r\n",
+      "stderr": ""
+    },
+    "docs": {
+      "command": "npm --prefix src/cli test -- --run docs",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 6,
+      "build": "PASS",
+      "id": "dd39ef67-6f0f-4e8f-b928-97f18854d53a",
+      "status": "exited",
+      "exit_code": 0,
+      "stdout": "\n> @forgewright/cli@0.1.0 pretest\n> npm run build\n\n\n> @forgewright/cli@0.1.0 build\n> tsup && node scripts/copy-mobile-template.mjs\n\nCLI Building entry: src/bootstrap-entry.ts, src/index.ts, src/mobile-entry.ts\nCLI Using tsconfig: tsconfig.json\nCLI tsup v8.5.1\nCLI Using tsup config: D:\\Sources\\Github\\forgewright\\src\\cli\\tsup.config.ts\nCLI Target: node22\nCLI Cleaning output folder\nESM Build start\nDTS Build start\nESM dist\\mobile-entry.js        18.43 KB\nESM dist\\bootstrap-entry.js     13.51 KB\nESM dist\\index.js               667.60 KB\nESM dist\\mobile-entry.js.map    43.78 KB\nESM dist\\bootstrap-entry.js.map 45.53 KB\nESM dist\\index.js.map           1.46 MB\nESM ⚡️ Build success in 1061ms\nDTS ⚡️ Build success in 3545ms\nDTS dist\\bootstrap-entry.d.ts 13.00 B\nDTS dist\\index.d.ts           389.00 B\nDTS dist\\mobile-entry.d.ts    26.94 KB\n\n> @forgewright/cli@0.1.0 test\n> vitest run --run docs\n\n\n RUN  v2.1.9 D:/Sources/Github/forgewright/src/cli\n\n ✓ tests/docs-renderer.test.ts (18 tests | 2 skipped) 635ms\n ✓ tests/docs-core.test.ts (22 tests | 4 skipped) 2905ms\n   ✓ privacy-safe scanning and deterministic normalization > supports Docs, docs, README-only and empty legacy projects 507ms\n   ✓ privacy-safe scanning and deterministic normalization > loads project state, reports contract failures, and fingerprints state content 767ms\n   ✓ privacy-safe scanning and deterministic normalization > degrades GitNexus explicitly when stale or unavailable 490ms\n ✓ tests/docs-change-gate.test.ts (11 tests) 11331ms\n   ✓ Docs Hub continuity gate > fails code-only changes and passes code plus canonical state 940ms\n   ✓ Docs Hub continuity gate > passes documentation-only and test-only changes without pretending they are material 1531ms\n   ✓ Docs Hub continuity gate > fails closed for missing, invalid, stale and future project state 1810ms\n   ✓ Docs Hub continuity gate > supports staged, worktree and base-ref change views including spaces 1873ms\n   ✓ Docs Hub continuity gate > copies staged Git snapshots without local hardlinks 681ms\n   ✓ Docs Hub continuity gate > validates staged and base-ref content from their selected Git snapshots 1331ms\n   ✓ Docs Hub continuity gate > classifies both sides of a rename so material sources cannot move into docs to bypass the gate 599ms\n   ✓ Docs Hub continuity gate > scopes nested projects relative to their own root and treats deletions as material 1040ms\n   ✓ Docs Hub continuity gate > rejects option conflicts, invalid Git roots and tracked generated output 1065ms\n   ✓ Docs Hub continuity gate > uses temporary output and never mutates project source or cache 456ms\n\n Test Files  3 passed (3)\n      Tests  45 passed | 6 skipped (51)\n   Start at  05:00:53\n   Duration  12.12s (transform 543ms, setup 0ms, collect 1.30s, tests 14.87s, environment 1ms, prepare 409ms)\n\n",
+      "stderr": "\"chmodSync\", \"closeSync\", \"fsyncSync\", \"mkdirSync\", \"openSync\", \"renameSync\" and \"writeFileSync\" are imported from external module \"fs\" but never used in \"dist/bootstrap-entry.js\".\n\"randomBytes\" is imported from external module \"crypto\" but never used in \"dist/bootstrap-entry.js\".\n\"fileURLToPath\" is imported from external module \"url\" but never used in \"dist/bootstrap-entry.js\".\n"
+    },
+    "direct_boundary_probes": [
+      {
+        "index": 0,
+        "cwd": "D:\\Sources\\Github\\forgewright",
+        "command": "@'\nimport json,sys,importlib.util\nfrom pathlib import Path\nroot=Path.cwd();task=root/'.forgewright/runtime/fw-argon-refactor-20261109'\nsys.path.insert(0,str(root/'scripts/ci'));spec=importlib.util.spec_from_file_location('vp',root/'scripts/ci/verify-platform.py');vp=importlib.util.module_from_spec(spec);spec.loader.exec_module(vp)\nr=vp.build_platform_matrix_summary('FAIL',capability_statuses={'core_cli_mcp_docshub':'FAIL','motion_director_skill':'PASS','process_tree_cleanup':'PASS'},merged_receipts=[json.loads((task/'rf12-windows-platform-report.json').read_text())])\nprint(json.dumps({'probe':'same-host-current-fail','current_status':r['matrix'][r['current_host_key']],'same_host_merge_ignored':r['same_host_merge_ignored'],'invalid_merge':r['invalid_merged_receipt'],'merge_status':r['overall_multi_os_matrix_status'],'revision_file_count':len(vp.KEY_REVISION_FILES)}))\nsys.path.insert(0,str(root/'scripts/runtime'));import openspec_contract_adapter as a\nc=a.compile_openspec_contract(change_id='r5-unbound-probe',revision=2,proposal='Stricter acceptance',spec_deltas=[{'id':'r1','requirement':'New requirement','acceptance':['New criterion']}],tasks=[{'id':'t1','title':'Implement','target_paths':['x.py']}])\ns={'t1':{'status':'verified','evidence_ref':'old-unbound-evidence'}}\nz=a.evaluate_openspec_completion(c,s,verifier_receipt={'terminal_outcome':'accepted','config_digest':c['contract_digest'],'verifier':{'passed':True,'independent':True}})\nprint(json.dumps({'probe':'missing-binding','projection_checked':'- [x]' in a.project_tasks_markdown(c,s),'accepted':z['accepted']}))\nr=json.loads((task/'independent-argon-verifier-receipt.json').read_text())\nprint(json.dumps({'manifest_serialization':r.get('manifest_serialization')}))\n\n'@ | python -B -X utf8 -",
+        "shell": "powershell",
+        "exit_code": 0,
+        "timed_out": false,
+        "stdout_truncated": false,
+        "stderr_truncated": false,
+        "stdout": "{\"probe\": \"same-host-current-fail\", \"current_status\": \"FAIL\", \"same_host_merge_ignored\": true, \"invalid_merge\": false, \"merge_status\": \"BLOCKED_PENDING_OTHER_OS_HOST\", \"revision_file_count\": 22}\r\n{\"probe\": \"missing-binding\", \"projection_checked\": false, \"accepted\": false}\r\n{\"manifest_serialization\": \"sha256 over '<rel>\\\\0<file_sha256>\\\\n' for each path in file_digests in listed order\"}\r\n",
+        "stderr": ""
+      },
+      {
+        "index": 1,
+        "cwd": "D:\\Sources\\Github\\forgewright",
+        "command": "@'\nimport {buildSync} from 'esbuild';import Module from 'node:module';\nconst b=buildSync({entryPoints:['src/cli/src/docs/markdown.ts'],bundle:true,platform:'node',format:'cjs',write:false});\nconst m=new Module('probe');m._compile(b.outputFiles[0].text,'probe.cjs');\nfor(const engine of ['markdown-it','legacy'])for(const target of ['%2e%2e/%2e%2e/outside.md','..%2f..%2foutside.md','%2e%2e%5coutside.md']){\n const link=m.exports.renderMarkdown('[outside]('+target+')',{engine});\n const img=m.exports.renderMarkdown('![outside]('+target+')',{engine});\n console.log(JSON.stringify({engine,target,linkBlocked:!link.includes('href='),imageBlocked:!img.includes('src=')}));\n}\n'@ | node --input-type=module -",
+        "shell": "powershell",
+        "exit_code": 0,
+        "timed_out": false,
+        "stdout_truncated": false,
+        "stderr_truncated": false,
+        "stdout": "{\"engine\":\"markdown-it\",\"target\":\"%2e%2e/%2e%2e/outside.md\",\"linkBlocked\":true,\"imageBlocked\":true}\n{\"engine\":\"markdown-it\",\"target\":\"..%2f..%2foutside.md\",\"linkBlocked\":true,\"imageBlocked\":true}\n{\"engine\":\"markdown-it\",\"target\":\"%2e%2e%5coutside.md\",\"linkBlocked\":true,\"imageBlocked\":true}\n{\"engine\":\"legacy\",\"target\":\"%2e%2e/%2e%2e/outside.md\",\"linkBlocked\":true,\"imageBlocked\":true}\n{\"engine\":\"legacy\",\"target\":\"..%2f..%2foutside.md\",\"linkBlocked\":true,\"imageBlocked\":true}\n{\"engine\":\"legacy\",\"target\":\"%2e%2e%5coutside.md\",\"linkBlocked\":true,\"imageBlocked\":true}\n",
+        "stderr": ""
+      },
+      {
+        "index": 2,
+        "cwd": "D:\\Sources\\Github\\forgewright",
+        "command": "@'\nimport {chromium} from '@playwright/test';import {readFileSync} from 'node:fs';import {createHash} from 'node:crypto';\nconst path='.forgewright/runtime/fw-argon-refactor-20261109/rf01-live-lean-v2-workspace/drawer-motion.html';\nconst bytes=readFileSync(path);const b=await chromium.launch({channel:'chrome',headless:true});\nconst out={artifactSha256:createHash('sha256').update(bytes).digest('hex')};\ntry{\n const c=await b.newContext({viewport:{width:1280,height:800},reducedMotion:'no-preference'});\n await c.route('**/*',r=>r.abort());const p=await c.newPage();await p.setContent(bytes.toString('utf8'));\n const t=p.locator('#drawer-toggle'),d=p.locator('#inspector-drawer'),close=p.locator('#drawer-close');\n await t.focus();await p.keyboard.press('Enter');await p.waitForTimeout(300);\n out.keyboardOpen=await t.getAttribute('aria-expanded');\n await p.keyboard.press('Escape');await p.waitForTimeout(300);\n out.escapeClosesWithoutFallback=(await t.getAttribute('aria-expanded'))==='false';\n out.focusRestored=await t.evaluate(el=>el===document.activeElement);\n await d.evaluate(el=>{window.__supervisorCancelCount=0;el.addEventListener('transitioncancel',()=>window.__supervisorCancelCount++);});\n await t.focus();await p.keyboard.press('Enter');await p.waitForTimeout(35);\n out.beforeReversal=await d.evaluate(el=>({running:el.getAnimations().filter(a=>a.playState==='running').length,opacity:getComputedStyle(el).opacity}));\n await close.focus();await p.keyboard.press('Enter');await p.waitForTimeout(35);\n out.afterReversal=await d.evaluate(el=>({running:el.getAnimations().filter(a=>a.playState==='running').length,cancelCount:window.__supervisorCancelCount,opacity:getComputedStyle(el).opacity}));\n await p.waitForTimeout(300);\n out.finalClosed=(await t.getAttribute('aria-expanded'))==='false';\n await c.close();\n}finally{await b.close();}\nconsole.log(JSON.stringify(out));\n\n'@ | node --input-type=module -",
+        "shell": "powershell",
+        "exit_code": 0,
+        "timed_out": false,
+        "stdout_truncated": false,
+        "stderr_truncated": false,
+        "stdout": "{\"artifactSha256\":\"1d3c93ddc6061d8ffe807d5273e274b787e4820422cae6e151b39443e76af1ef\",\"keyboardOpen\":\"true\",\"escapeClosesWithoutFallback\":true,\"focusRestored\":true,\"beforeReversal\":{\"running\":2,\"opacity\":\"0.765396\"},\"afterReversal\":{\"running\":2,\"cancelCount\":2,\"opacity\":\"0.048911\"},\"finalClosed\":true}\n",
+        "stderr": ""
+      }
+    ],
+    "behavioral_command": "@'\nimport json,sys,shutil,time\nfrom pathlib import Path\nroot=Path.cwd();sys.path.insert(0,str(root/'scripts/runtime'))\nimport skill_eval_receipt as runner\nverifier=root/'scripts/runtime/verify_motion_drawer_artifact.mjs'\ntask=root/'.forgewright/runtime/fw-argon-refactor-20261109'\nfor arm in ['native','current','lean','lean-v2']:\n workspace=task/('rf01-live-'+arm+'-workspace')\n r=runner._execute_bounded_process((shutil.which('node'),str(verifier),str(workspace/'drawer-motion.html')),b'',cwd=workspace,timeout_seconds=30,output_limit_bytes=16000)\n print(json.dumps({'arm':arm,**{k:v.decode('utf-8',errors='replace') if isinstance(v,bytes) else v for k,v in r.items()}},ensure_ascii=True),flush=True)\n\n'@ | python -B -X utf8 -",
+    "behavioral_rechecks": [
+      {
+        "arm": "native",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "{\"passed\":false,\"failedCheck\":\"unhandled_error\",\"error\":\"locator.click: Timeout 1500ms exceeded.\\nCall log:\\n\\u001b[2m  - waiting for locator('#drawer-toggle')\\u001b[22m\\n\\u001b[2m    - locator resolved to <button type=\\\"button\\\" id=\\\"drawer-toggle\\\" aria-expanded=\\\"true\\\" aria-controls=\\\"inspector-drawer\\\">↵      Toggle Inspector↵    </button>\\u001b[22m\\n\\u001b[2m  - attempting click action\\u001b[22m\\n\\u001b[2m    2 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - scrolling into view if needed\\u001b[22m\\n\\u001b[2m      - done scrolling\\u001b[22m\\n\\u001b[2m      - <h2>Inspector</h2> from <aside role=\\\"region\\\" data-open=\\\"true\\\" aria-hidden=\\\"false\\\" id=\\\"inspector-drawer\\\" aria-label=\\\"Inspector Drawer\\\">…</aside> subtree intercepts pointer events\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m    - waiting 20ms\\u001b[22m\\n\\u001b[2m    2 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - scrolling into view if needed\\u001b[22m\\n\\u001b[2m      - done scrolling\\u001b[22m\\n\\u001b[2m      - <h2>Inspector</h2> from <aside role=\\\"region\\\" data-open=\\\"true\\\" aria-hidden=\\\"false\\\" id=\\\"inspector-drawer\\\" aria-label=\\\"Inspector Drawer\\\">…</aside> subtree intercepts pointer events\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m      - waiting 100ms\\u001b[22m\\n\\u001b[2m    3 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - scrolling into view if needed\\u001b[22m\\n\\u001b[2m      - done scrolling\\u001b[22m\\n\\u001b[2m      - <h2>Inspector</h2> from <aside role=\\\"region\\\" data-open=\\\"true\\\" aria-hidden=\\\"false\\\" id=\\\"inspector-drawer\\\" aria-label=\\\"Inspector Drawer\\\">…</aside> subtree intercepts pointer events\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m      - waiting 500ms\\u001b[22m\\n\"}\n",
+        "elapsed_ms": 3156,
+        "failure": null,
+        "cleanup_complete": true
+      },
+      {
+        "arm": "current",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "{\"passed\":false,\"failedCheck\":\"unhandled_error\",\"error\":\"locator.click: Timeout 1500ms exceeded.\\nCall log:\\n\\u001b[2m  - waiting for locator('#drawer-toggle')\\u001b[22m\\n\\u001b[2m    - locator resolved to <button type=\\\"button\\\" id=\\\"drawer-toggle\\\" aria-expanded=\\\"true\\\" aria-controls=\\\"inspector-drawer\\\">↵      Toggle Inspector↵    </button>\\u001b[22m\\n\\u001b[2m  - attempting click action\\u001b[22m\\n\\u001b[2m    2 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is not stable\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m    - waiting 20ms\\u001b[22m\\n\\u001b[2m    2 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - scrolling into view if needed\\u001b[22m\\n\\u001b[2m      - done scrolling\\u001b[22m\\n\\u001b[2m      - <h2>Inspector</h2> from <aside class=\\\"is-open\\\" data-open=\\\"true\\\" id=\\\"inspector-drawer\\\" aria-label=\\\"Inspector Drawer\\\">…</aside> subtree intercepts pointer events\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m      - waiting 100ms\\u001b[22m\\n\\u001b[2m    3 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - scrolling into view if needed\\u001b[22m\\n\\u001b[2m      - done scrolling\\u001b[22m\\n\\u001b[2m      - <h2>Inspector</h2> from <aside class=\\\"is-open\\\" data-open=\\\"true\\\" id=\\\"inspector-drawer\\\" aria-label=\\\"Inspector Drawer\\\">…</aside> subtree intercepts pointer events\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m      - waiting 500ms\\u001b[22m\\n\"}\n",
+        "elapsed_ms": 3203,
+        "failure": null,
+        "cleanup_complete": true
+      },
+      {
+        "arm": "lean",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "{\"passed\":false,\"failedCheck\":\"unhandled_error\",\"error\":\"locator.click: Timeout 1500ms exceeded.\\nCall log:\\n\\u001b[2m  - waiting for locator('#drawer-toggle')\\u001b[22m\\n\\u001b[2m    - locator resolved to <button type=\\\"button\\\" id=\\\"drawer-toggle\\\" aria-expanded=\\\"true\\\" aria-controls=\\\"inspector-drawer\\\">↵      Toggle Inspector↵    </button>\\u001b[22m\\n\\u001b[2m  - attempting click action\\u001b[22m\\n\\u001b[2m    2 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - scrolling into view if needed\\u001b[22m\\n\\u001b[2m      - done scrolling\\u001b[22m\\n\\u001b[2m      - <aside role=\\\"region\\\" class=\\\"is-open\\\" data-open=\\\"true\\\" id=\\\"inspector-drawer\\\" aria-label=\\\"Inspector Drawer\\\">…</aside> intercepts pointer events\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m    - waiting 20ms\\u001b[22m\\n\\u001b[2m    2 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - scrolling into view if needed\\u001b[22m\\n\\u001b[2m      - done scrolling\\u001b[22m\\n\\u001b[2m      - <aside role=\\\"region\\\" class=\\\"is-open\\\" data-open=\\\"true\\\" id=\\\"inspector-drawer\\\" aria-label=\\\"Inspector Drawer\\\">…</aside> intercepts pointer events\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m      - waiting 100ms\\u001b[22m\\n\\u001b[2m    3 × waiting for element to be visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - element is visible, enabled and stable\\u001b[22m\\n\\u001b[2m      - scrolling into view if needed\\u001b[22m\\n\\u001b[2m      - done scrolling\\u001b[22m\\n\\u001b[2m      - <aside role=\\\"region\\\" class=\\\"is-open\\\" data-open=\\\"true\\\" id=\\\"inspector-drawer\\\" aria-label=\\\"Inspector Drawer\\\">…</aside> intercepts pointer events\\u001b[22m\\n\\u001b[2m    - retrying click action\\u001b[22m\\n\\u001b[2m      - waiting 500ms\\u001b[22m\\n\"}\n",
+        "elapsed_ms": 3031,
+        "failure": null,
+        "cleanup_complete": true
+      },
+      {
+        "arm": "lean-v2",
+        "exit_code": 0,
+        "stdout": "{\"passed\":true,\"htmlPath\":\"D:\\\\Sources\\\\Github\\\\forgewright\\\\.forgewright\\\\runtime\\\\fw-argon-refactor-20261109\\\\rf01-live-lean-v2-workspace\\\\drawer-motion.html\",\"htmlSha256\":\"1d3c93ddc6061d8ffe807d5273e274b787e4820422cae6e151b39443e76af1ef\",\"verifierSha256\":\"4e963f1859d24a7e22e10082f0b8dc20a5267f6a0f29abcf9d439b3c2f2c22cf\",\"skillMdSha256\":\"6bf09d998d190e155c4146f23a96d9c91fb1c103016d86e3aa8635dcca35f086\",\"liteMdSha256\":\"85b389215e8ca1cfbfe056ce07c27ebe4d1938a56164d33b5d989c1f7dcdcc4d\",\"checks\":{\"desktopKeyboardOpenClose\":\"PASS\",\"desktopRapidInterruption\":\"PASS\",\"mobileReducedMotionDuration\":\"0s\",\"mobileTouchOpen\":\"PASS\",\"mobileTouchClose\":\"PASS\",\"buttonsInsideDrawer\":1}}\n",
+        "stderr": "",
+        "elapsed_ms": 2812,
+        "failure": null,
+        "cleanup_complete": true
+      }
+    ],
+    "playwright_e2e_full_suite": "Not rerun in this supervisor round. Implementer reports 3/3. Separate actual-artifact Chromium checks were run by supervisor."
+  },
+  "historical_argon_verdict": {
+    "current_receipt_manifest": "25c44ac8875d423a88693a05e191be02ce508ea43dba211eb9bb867681a9939c",
+    "raw_response_checked_manifest": "0fb464006eeb37b5fe6b783e6e248d60f5626f9e4b205afae2d4e8502acb6054",
+    "raw_response": "{\"verdict\":\"PASS\",\"p0_p1_defects\":[],\"verified_remediations\":[\"R1: Windows _execute_bounded_process delivers stdin_bytes via a private temp file and supervised Python wrapper without writing to or closing the windows_job_supervisor.py cancellation stdin pipe until cancel/timeout/overflow.\",\"R2: Promptfoo provider writes run evidence to a durable per-run directory under evidenceRootDir (.forgewright/runtime/promptfoo-evidence/<task>-<uuid>) and only cleans up the temporary spec staging directory.\",\"R3: Pi provider capability probe and resolveProvider report google-api as unsupported (pinned_pi_ai_adapter_rejects_guarded_custom_fetch) and fail closed without bypassing guardedFetch.\",\"R4: scripts/ci/verify-platform.py --matrix-summary executes real capability test suites, binds head_sha and source_digest, and fails closed when any required toolchain binary is unavailable or any capability check fails.\",\"R5: scripts/runtime/openspec_contract_adapter.py binds each task to requirement_digest and invalidates verified task state across revisions whenever requirement or acceptance criteria change, while preserving evidence_paths and artifact_digests in reviewer packets.\",\"R6: scripts/runtime/skill_routing.py routes positive motion-director prompts in no-mode auto-detect execution and excludes backend/API/database/version tasks that merely mention GSAP or other motion library names.\",\"R7: evals/promptfoo/forgewright-runner-provider.ts computes outer spawnSync timeout as agentTimeout + verifierTimeout + 15s and emits a structured terminal fallback receipt when a child fails to write receipt.json.\",\"R8: scripts/runtime/runtime-hooks-install.sh separates documented_events from canary-backed observed_events, and scripts/bootstrap/forgewright-install.sh plus scripts/hooks/forgewright-hook-doctor.sh distribute and verify antigravity-stop-hook.sh for clean consumers.\",\"R9: src/cli/src/docs/markdown.ts and src/cli/src/docs/render.ts canonicalize raw/URI-decoded/NFC link targets in the catalog map, pass catalog resolution trust to safeUrl in both markdown-it and legacy engines, and strip unresolved parent traversal links.\",\"R10: scripts/runtime/skill_eval_receipt.py sets cleanup_complete=False whenever WindowsJobClient.validate raises CompletionError and aggregates agent and verifier cleanup completion conservatively.\"],\"manifest_sha256_checked\":\"0fb464006eeb37b5fe6b783e6e248d60f5626f9e4b205afae2d4e8502acb6054\",\"diff_sha256_checked\":\"a67d815634fa6e256db3c927093bee70be52e41f04bdec3a90ef524423608c30\"}\n",
+    "classification": "Historical verdict; not a fresh Argon review of the current 45-file manifest. Current acceptance is based on supervisor source review, executed regressions, browser probes, and recomputed hashes."
+  },
+  "evidence_qualifications": [
+    "The four motion receipts now execute saved agent stdout through a replay wrapper and rerun the behavioral verifier. They are not four fresh model-generation runs.",
+    "Token counts come from saved agent stdout; usage_source=agent_stdout_json_unattested and model/effort resolved remain unknown. cost_usd remains unknown.",
+    "lean-v2 saved generation stdout records 102.3512564 seconds and 37557 tokens; its 2672 ms receipt measures re-evaluation, not generation latency.",
+    "The original three artifacts exit early with unhandled_error because a drawer intercepts the desktop toggle click. Their failed outcomes are correct; this supervisor round does not attribute those exits to the later mobile_touch_close check.",
+    "The six baseline rows are two replay fixtures plus three failed original artifacts plus one accepted lean-v2 revision. They are not a valid four-trial estimate of general model quality.",
+    "39 of 43 artifact digest entries match at the declared paths. Four missing workspace replay-input aliases have the exact same digests as durable, present, hash-verified agent.stdout files; these bytes are retained, but the aliases themselves are not present.",
+    "45-file manifest verification is not a whole-repository fingerprint. The 175/182 unchanged accounting proves byte identity only for those 175 files. The seven overlapping changed files cannot have their historical hunks proved from a hash-only baseline.",
+    "The gate has 22 key revision paths, not the 19 stated in the handoff. Its source digest and the manifest aggregate were recomputed and match."
+  ],
+  "nonblocking_followups": [
+    {
+      "area": "Cross-OS receipt merge",
+      "observation": "Foreign capability-check validation verifies count>=3 and PASS/exit 0, but does not enforce distinct coverage of all three required capability IDs.",
+      "scope": "Must not use synthetic/merged foreign receipts as proof of native macOS success. Revisit before multi-OS acceptance; current Windows FAIL protection is fixed."
+    },
+    {
+      "area": "Behavioral verifier",
+      "observation": "The generic verifier still allows a mouse fallback after Escape and uses actionability-waited clicks for its rapid loop. Explicit supervisor probes close the Escape and active-transition evidence gaps for the reviewed lean-v2 bytes.",
+      "scope": "Acceptance is for reviewed artifacts. A stricter reusable oracle should reject broken Escape directly and assert reversal while animation is active."
+    },
+    {
+      "area": "Verifier process cleanup",
+      "observation": "Some failure branches call process.exit inside try. Supervisor negative runs used the Windows job-supervised runner; cleanup_complete=true for all four. Preserve the supervised-runner execution contract."
+    },
+    {
+      "area": "Markdown compatibility",
+      "observation": "Source review notes unresolved raw URLs containing an encoded literal percent may be stripped on repeated decoding; catalog-resolved product routes are unaffected in the passing regressions.",
+      "scope": "No demonstrated required product flow failure; maintenance note only."
+    },
+    {
+      "area": "Documentation",
+      "observation": "Historical prose still contains older accepted-arm counts, old manifest/digest references, and a stale AGY Stop comment. This supervisor report records authoritative outcomes for the current review."
+    }
+  ],
+  "handoff": {
+    "windows": "PC_ACCEPTED",
+    "macos_native_arm64": "NOT_RUN",
+    "macos_native_x64": "NOT_RUN",
+    "multi_os": "BLOCKED_PENDING_OTHER_OS_HOST",
+    "next_step": "Transfer the exact reviewed changes and retained evidence through an intentional commit/push or equivalent handoff, then run native macOS gates on the target architecture. The current dirty working tree is not itself retrievable by git pull."
+  },
+  "receipt_source_bindings": {
+    "rf08": {
+      "path": "rf08-artifacts/rf08-playwright-receipt.json",
+      "source_bindings_matched": 4,
+      "fields": [
+        "src/cli/dist/index.js",
+        "src/cli/src/docs/markdown.ts",
+        "src/cli/src/docs/normalize.ts",
+        "src/cli/src/docs/render.ts"
+      ]
+    },
+    "rf11": {
+      "path": "rf08-artifacts/rf11-motion-director-scenario.json",
+      "source_bindings_matched": 5,
+      "artifact_kind": "scenario-fixture-and-routing-verification",
+      "fields": [
+        "skills/motion-director/SKILL.md",
+        "skills/motion-director/LITE.md",
+        "skills/motion-director/references/motion-quality-rubric.md",
+        "scripts/runtime/verify_motion_drawer_artifact.mjs",
+        "src/testing/e2e/tests/motion-director.spec.ts"
+      ]
+    },
+    "basis": "Read-only review of stored receipts against the 45-file manifest independently matched to current PC bytes. No rerun of these full suites or rehash of screenshot/trace binaries in this round."
+  }
+}

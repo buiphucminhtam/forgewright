@@ -130,9 +130,9 @@ function extractHeadings(content: string, lineOffset: number): DocsHeading[] {
 
 function extractLinks(content: string, lineOffset: number): DocsLink[] {
   const links: DocsLink[] = [];
-  const regex = /(!?)\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
+  const regex = /(!?)\[([^\]]*)\]\((?:<([^>\n]+)>|([^)\s]+))(?:\s+["'][^"']*["'])?\)/g;
   for (const match of content.matchAll(regex)) {
-    const target = match[3].replace(/^<|>$/g, "");
+    const target = (match[3] ?? match[4] ?? "").trim();
     const image = match[1] === "!";
     let kind: DocsLink["kind"] = image ? "asset" : "document";
     if (target.startsWith("#")) {

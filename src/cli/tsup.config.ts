@@ -12,6 +12,7 @@ export default defineConfig({
   treeshake: true,
   minify: false,
   platform: "node",
+  noExternal: ["markdown-it"],
   // Keep the literal spelling checked by the repository's Node runtime policy.
   // prettier-ignore
   target: 'node22',

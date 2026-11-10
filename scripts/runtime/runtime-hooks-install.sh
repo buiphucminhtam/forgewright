@@ -36,8 +36,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # matches what `runtime-install.sh --verify` checksums.
 GATE_CMD_BASE="${FORGEWRIGHT_RLG_GATE:-$HOME/.forgewright/scripts/runtime/runtime-pretool-gate.sh}"
 SWEEP_CMD_BASE="${FORGEWRIGHT_RLG_SWEEP:-$HOME/.forgewright/scripts/runtime/runtime-sweep.sh}"
+AGY_STOP_CMD_BASE="${FORGEWRIGHT_AGY_STOP:-$HOME/.forgewright/scripts/lite/antigravity-stop-hook.sh}"
 MARKER="runtime-pretool-gate.sh"
 SWEEP_MARKER="runtime-sweep.sh"
+AGY_STOP_MARKER="antigravity-stop-hook.sh"
 
 CLAUDE_SETTINGS="${FORGEWRIGHT_CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
 CODEX_CONFIG="${FORGEWRIGHT_CODEX_CONFIG:-$HOME/.codex/config.toml}"
@@ -51,6 +53,7 @@ while [ $# -gt 0 ]; do
     --verify)    ACTION="verify";    shift ;;
     --uninstall) ACTION="uninstall"; shift ;;
     --status)    ACTION="status";    shift ;;
+    --probe-capabilities) ACTION="probe"; shift ;;
     --platform)  PLATFORMS="${2:-all}"; shift 2 ;;
     --dry-run)   DRY=1; shift ;;
     --claude-settings) CLAUDE_SETTINGS="${2:-}"; shift 2 ;;
@@ -178,17 +181,19 @@ claude_sweep_apply() {
 
 # ── agy: JSON, named-hook registry ───────────────────────────────────────────
 agy_cmd() { printf 'bash "%s" --platform ANTIGRAVITY' "$GATE_CMD_BASE"; }
+agy_stop_cmd() { printf 'bash "%s"' "$AGY_STOP_CMD_BASE"; }
 
 agy_apply() {
   local mode="$1"
   [ -f "$AGY_HOOKS" ] || { [ "$mode" = check ] && return 1; mkdir -p "$(dirname "$AGY_HOOKS")" 2>/dev/null; printf '{}\n' > "$AGY_HOOKS"; }
-  MODE="$mode" CMD="$(agy_cmd)" DRY="$DRY" \
+  MODE="$mode" CMD="$(agy_cmd)" STOP_CMD="$(agy_stop_cmd)" DRY="$DRY" \
   python3 - "$AGY_HOOKS" <<'PY'
 import json, os, sys
 
 path = sys.argv[1]
 mode = os.environ["MODE"]
 cmd = os.environ["CMD"]
+stop_cmd = os.environ["STOP_CMD"]
 dry = os.environ["DRY"] == "1"
 KEY = "forgewright-runtime-guard"   # our own key; never touch forgewright-policy
 
@@ -200,21 +205,28 @@ if not isinstance(data, dict) or isinstance(data, list):
     print("CORRUPT: Antigravity hooks registry must be an object", file=sys.stderr)
     sys.exit(2)
 
-present = KEY in data
+entry_obj = data.get(KEY)
+present = isinstance(entry_obj, dict) and isinstance(entry_obj.get("PreToolUse"), list) and len(entry_obj["PreToolUse"]) > 0
 
 if mode == "check":
     print("PRESENT" if present else "ABSENT")
     sys.exit(0 if present else 1)
 
 if mode == "install":
+    existing_stop = entry_obj.get("Stop") if isinstance(entry_obj, dict) and isinstance(entry_obj.get("Stop"), list) else None
     data[KEY] = {
         "PreToolUse": [{
             "matcher": "*",
             "hooks": [{"type": "command", "command": cmd, "timeout": 5}],
-        }]
+        }],
+        "Stop": existing_stop if existing_stop else [{
+            "type": "command",
+            "command": stop_cmd,
+            "timeout": 5,
+        }],
     }
 elif mode == "uninstall":
-    if not present:
+    if KEY not in data:
         print("not wired")
         sys.exit(0)
     del data[KEY]
@@ -231,6 +243,76 @@ json.load(open(tmp))
 os.replace(tmp, path)
 print("ok")
 PY
+}
+
+agy_sweep_apply() {
+  local mode="$1"
+  [ -f "$AGY_HOOKS" ] || { [ "$mode" = check ] && { echo ABSENT; return 1; }; mkdir -p "$(dirname "$AGY_HOOKS")" 2>/dev/null; printf '{}\n' > "$AGY_HOOKS"; }
+  MODE="$mode" STOP_CMD="$(agy_stop_cmd)" STOP_MARKER="$AGY_STOP_MARKER" SWEEP_MARKER="$SWEEP_MARKER" DRY="$DRY" \
+  python3 - "$AGY_HOOKS" <<'PYAGYSWEEP'
+import json, os, sys
+
+path = sys.argv[1]
+mode = os.environ["MODE"]
+stop_cmd = os.environ["STOP_CMD"]
+stop_marker = os.environ["STOP_MARKER"]
+sweep_marker = os.environ["SWEEP_MARKER"]
+dry = os.environ["DRY"] == "1"
+KEY = "forgewright-runtime-guard"
+
+try:
+    data = json.load(open(path))
+except Exception:
+    data = {}
+if not isinstance(data, dict) or isinstance(data, list):
+    print("CORRUPT: Antigravity hooks registry must be an object", file=sys.stderr)
+    sys.exit(2)
+
+def _has_stop(obj):
+    if not isinstance(obj, dict):
+        return False
+    stops = obj.get("Stop")
+    if not isinstance(stops, list) or not stops:
+        return False
+    for h in stops:
+        if isinstance(h, dict):
+            c = h.get("command", "")
+            if stop_marker in c or sweep_marker in c or c == stop_cmd:
+                return True
+    return False
+
+present = _has_stop(data.get(KEY)) or _has_stop(data.get("forgewright-policy"))
+
+if mode == "check":
+    print("PRESENT" if present else "ABSENT")
+    sys.exit(0 if present else 1)
+elif mode == "install":
+    entry = data.setdefault(KEY, {})
+    if not _has_stop(entry):
+        entry["Stop"] = [{"type": "command", "command": stop_cmd, "timeout": 5}]
+    else:
+        print("already wired")
+        sys.exit(0)
+elif mode == "uninstall":
+    entry = data.get(KEY)
+    if isinstance(entry, dict) and "Stop" in entry:
+        del entry["Stop"]
+    else:
+        print("not wired")
+        sys.exit(0)
+
+if dry:
+    print(f"[dry-run] would {mode} Antigravity Stop hook")
+    sys.exit(0)
+
+tmp = path + ".rlg-tmp"
+with open(tmp, "w") as fh:
+    json.dump(data, fh, indent=2)
+    fh.write("\n")
+json.load(open(tmp))
+os.replace(tmp, path)
+print("ok")
+PYAGYSWEEP
 }
 
 # ── codex: TOML, append-with-guard ───────────────────────────────────────────
@@ -378,6 +460,7 @@ do_install() {
   echo "  ${RLG_DIM}reclaim sweep (Stop hook):${RLG_NC}"
   wants claude && { run_for claude "$CLAUDE_SETTINGS" claude_sweep_apply install || fails=$((fails+1)); }
   wants codex  && { run_for codex  "$CODEX_CONFIG"    codex_sweep_apply  install || fails=$((fails+1)); }
+  wants agy    && { run_for agy    "$AGY_HOOKS"       agy_sweep_apply    install || fails=$((fails+1)); }
   echo
   [ "$fails" -eq 0 ] && rlg_ok "done — mode is $(rlg_mode); disable anytime with: touch $(rlg_disabled_file)"
   return "$fails"
@@ -388,6 +471,7 @@ do_uninstall() {
   echo "${RLG_BLUE}Removing Runtime Lifecycle Guard CLI hooks${RLG_NC}"
   wants claude && { run_for claude "$CLAUDE_SETTINGS" claude_sweep_apply uninstall || fails=$((fails+1)); }
   wants codex  && { run_for codex  "$CODEX_CONFIG"    codex_sweep_apply  uninstall || fails=$((fails+1)); }
+  wants agy    && { run_for agy    "$AGY_HOOKS"       agy_sweep_apply    uninstall || fails=$((fails+1)); }
   wants claude && { run_for claude "$CLAUDE_SETTINGS" claude_apply uninstall || fails=$((fails+1)); }
   wants codex  && { run_for codex  "$CODEX_CONFIG"    codex_apply  uninstall || fails=$((fails+1)); }
   wants agy    && { run_for agy    "$AGY_HOOKS"       agy_apply    uninstall || fails=$((fails+1)); }
@@ -408,13 +492,14 @@ do_verify() {
     case "$p" in
       claude) sweep="$(claude_sweep_apply check 2>/dev/null)" ;;
       codex)  sweep="$(codex_sweep_apply  check 2>/dev/null)" ;;
+      agy)    sweep="$(agy_sweep_apply    check 2>/dev/null)" ;;
     esac
-    if [ "$state" = "PRESENT" ]; then
+    if [ "$state" = "PRESENT" ] && [ "$sweep" = "PRESENT" ]; then
       printf "  %s %-6s gate ${RLG_DIM}·${RLG_NC} sweep %-8s %s\n" \
         "${RLG_GREEN}✓${RLG_NC}" "$p" \
         "$([ "$sweep" = "PRESENT" ] && printf "%b" "${RLG_GREEN}on${RLG_NC}" || printf "%b" "${RLG_DIM}$sweep${RLG_NC}")" "$f"
     else
-      printf '  %s %-6s %s ${RLG_DIM}(not wired)${RLG_NC}\n' "${RLG_YELLOW}○${RLG_NC}" "$p" "$f"
+      printf '  %s %-6s gate=%s sweep=%s %s ${RLG_DIM}(incomplete)${RLG_NC}\n' "${RLG_YELLOW}○${RLG_NC}" "$p" "${state:-ABSENT}" "${sweep:-ABSENT}" "$f"
       missing=$((missing + 1))
     fi
   done
@@ -423,9 +508,57 @@ do_verify() {
 
 do_status() { do_verify; echo; bash "${SCRIPT_DIR}/runtime-install.sh" --status 2>/dev/null; }
 
+do_probe() {
+  python3 - <<'PYPROBE'
+import json, os, shutil, subprocess
+from pathlib import Path
+
+agy_bin = shutil.which("agy") or shutil.which("agy.exe")
+agy_version = None
+if agy_bin:
+    try:
+        agy_version = subprocess.check_output([agy_bin, "--version"], text=True, stderr=subprocess.STDOUT, timeout=5).strip()
+    except Exception:
+        agy_version = None
+
+canary_receipt = os.environ.get("FORGEWRIGHT_AGY_CANARY_RECEIPT", "")
+observed_events = []
+observed_cwd_behavior = None
+if canary_receipt and Path(canary_receipt).is_file():
+    try:
+        data = json.loads(Path(canary_receipt).read_text(encoding="utf-8"))
+        if isinstance(data.get("observed_events"), list):
+            observed_events = [str(x) for x in data["observed_events"]]
+        if isinstance(data.get("observed_cwd_behavior"), str) and data["observed_cwd_behavior"].strip():
+            observed_cwd_behavior = data["observed_cwd_behavior"].strip()
+    except Exception:
+        observed_events = []
+
+report = {
+    "schema": "forgewright-host-hook-capabilities/v1",
+    "hosts": {
+        "agy": {
+            "installed": bool(agy_bin),
+            "executable": agy_bin,
+            "version": agy_version,
+            "documented_events": ["PreInvocation", "PreToolUse", "PostToolUse", "PostInvocation", "Stop"],
+            "observed_events": observed_events,
+            "observation_status": "observed_from_canary" if observed_events else "version_detected_only",
+            "supported_events": observed_events,
+            "documented_hook_cwd_behavior": "hooks.json parent directory (.agents/)",
+            "hook_cwd_behavior": observed_cwd_behavior or "unverified_without_canary",
+            "model_loop_owner": "native-host",
+        }
+    }
+}
+print(json.dumps(report, indent=2))
+PYPROBE
+}
+
 case "$ACTION" in
   install)   do_install ;;
   uninstall) do_uninstall ;;
   verify)    do_verify ;;
   status)    do_status ;;
+  probe)     do_probe ;;
 esac

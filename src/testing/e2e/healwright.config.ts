@@ -20,6 +20,8 @@ export interface HealwrightConfig {
     similarityThreshold: number;  // 0.0 - 1.0
     cacheEnabled: boolean;
     cacheTTL: number;  // seconds
+    allowOracleMutation: false;
+    preserveAcceptanceOracle: true;
   };
   
   // Smart locator generation
@@ -44,6 +46,8 @@ export const defaultConfig: HealwrightConfig = {
     similarityThreshold: 0.85,
     cacheEnabled: true,
     cacheTTL: 3600,  // 1 hour
+    allowOracleMutation: false,
+    preserveAcceptanceOracle: true,
   },
   
   smartLocators: {

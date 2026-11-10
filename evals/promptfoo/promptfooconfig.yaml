@@ -1,0 +1,38 @@
+# Promptfoo harness evaluation configuration for Forgewright (RF01)
+# Evaluates the isolated Forgewright runner + independent verifier rather than raw base model stdout.
+
+description: "Forgewright isolated runner & independent verifier evaluation (RF01)"
+
+prompts:
+  - "{{prompt}}"
+
+providers:
+  - id: "file://./forgewright-runner-provider.ts"
+    label: "forgewright-isolated-runner"
+    config:
+      arm: "current"
+      modelRequested: "google-antigravity/gemini-4-argon"
+      effortRequested: "medium"
+      hostKind: "codex-bridge-or-native-agy"
+      timeoutSeconds: 30
+
+tests:
+  - description: "Deterministic accepted run requires independent verifier pass"
+    vars:
+      task_id: "rf01-smoke-accepted"
+      prompt: "Apply bounded config change and verify."
+      command: ["python", "-c", "print('completed')"]
+      verifier_command: ["python", "-c", "raise SystemExit(0)"]
+    assert:
+      - type: javascript
+        value: "context.providerResponse.metadata.terminalOutcome === 'accepted' && context.providerResponse.metadata.verifierPassed === true"
+
+  - description: "Agent printing PASS without verifier passing is rejected"
+    vars:
+      task_id: "rf01-smoke-fake-pass"
+      prompt: "Claim PASS without fixing target."
+      command: ["python", "-c", "print('PASS')"]
+      verifier_command: ["python", "-c", "raise SystemExit(1)"]
+    assert:
+      - type: javascript
+        value: "context.providerResponse.metadata.terminalOutcome === 'failed' && context.providerResponse.metadata.errorCategory === 'acceptance_failure'"

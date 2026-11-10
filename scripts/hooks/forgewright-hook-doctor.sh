@@ -34,7 +34,7 @@ WINDOWS_NATIVE_HOOKS=false
 case "$(uname -s 2>/dev/null || true)" in
     MINGW*|MSYS*|CYGWIN*) WINDOWS_NATIVE_HOOKS=true ;;
 esac
-STOP_RUNTIME_FILES=(stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py verify_gate.py)
+STOP_RUNTIME_FILES=(stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py verify_gate.py antigravity-stop-hook.sh)
 
 # Colors
 RED='\033[0;31m'
@@ -248,6 +248,12 @@ stop_runtime_is_current() {
         [[ -f "${FRAMEWORK_DIR}/scripts/lite/${runtime_file}" ]] || return 1
         cmp -s "${SOURCE_ROOT}/scripts/lite/${runtime_file}" "${FRAMEWORK_DIR}/scripts/lite/${runtime_file}" || return 1
     done
+    for runtime_file in runtime/windows_security.py memory/memory-session.sh memory/memory_redaction.py; do
+        [[ -f "${SOURCE_ROOT}/scripts/${runtime_file}" ]] || return 1
+        [[ -f "${FRAMEWORK_DIR}/scripts/${runtime_file}" ]] || return 1
+        cmp -s "${SOURCE_ROOT}/scripts/${runtime_file}" "${FRAMEWORK_DIR}/scripts/${runtime_file}" || return 1
+    done
+    [[ -x "${FRAMEWORK_DIR}/scripts/memory/memory-session.sh" ]] || return 1
     [[ -x "${FRAMEWORK_DIR}/scripts/lite/stop-gate.sh" ]]
 }
 
@@ -260,11 +266,20 @@ repair_stop_runtime() {
             return 1
         fi
     done
-    mkdir -p "$target_runtime"
+    for runtime_file in runtime/windows_security.py memory/memory-session.sh memory/memory_redaction.py; do
+        if [[ ! -f "${SOURCE_ROOT}/scripts/${runtime_file}" ]]; then
+            log_warn "Stop runtime repair source is missing: ${runtime_file}"
+            return 1
+        fi
+    done
+    mkdir -p "$target_runtime" "${FRAMEWORK_DIR}/scripts/runtime" "${FRAMEWORK_DIR}/scripts/memory"
     for runtime_file in "${STOP_RUNTIME_FILES[@]}"; do
         atomic_copy_file "${SOURCE_ROOT}/scripts/lite/${runtime_file}" "${target_runtime}/${runtime_file}" || return 1
     done
-    chmod +x "${target_runtime}/stop-gate.sh" || return 1
+    for runtime_file in runtime/windows_security.py memory/memory-session.sh memory/memory_redaction.py; do
+        atomic_copy_file "${SOURCE_ROOT}/scripts/${runtime_file}" "${FRAMEWORK_DIR}/scripts/${runtime_file}" || return 1
+    done
+    chmod +x "${target_runtime}/stop-gate.sh" "${target_runtime}/antigravity-stop-hook.sh" "${FRAMEWORK_DIR}/scripts/memory/memory-session.sh" || return 1
     stop_runtime_is_current || return 1
     log_pass "Stop runtime dependency closure repaired in framework install"
 }
@@ -349,7 +364,7 @@ rule_context_command() {
     resolver+='candidate=""; if [ -d "$hint" ]; then candidate="$(cd "$hint" 2>/dev/null && pwd -P || true)"; fi; '
     resolver+='if [ -z "${FORGEWRIGHT_PROJECT_ROOT:-}" ] && [ -z "${FORGEWRIGHT_WORKSPACE:-}" ] && [ -z "$host_hint" ] && command -v git >/dev/null 2>&1; then '
     resolver+='git_root="$(git -C "${candidate:-${PWD:-.}}" rev-parse --show-toplevel 2>/dev/null || true)"; '
-    resolver+='case "$git_root" in /*) candidate="$git_root";; esac; fi; '
+    resolver+='case "$git_root" in /*|[A-Za-z]:/*|[A-Za-z]:\\*) candidate="$git_root";; esac; fi; '
     resolver+='runtime="$hook_path"; workspace="$fallback_workspace"; '
     resolver+='if [ -f "$hook_path" ] && [ -n "$candidate" ] && [ -f "$candidate/kernel/rule-manifest.json" ] && run_python - "$hook_path" "$candidate" <<'"'"'PYEOF'"'"'
 import importlib.util
@@ -1230,7 +1245,10 @@ antigravity_policy_registry() {
     local expected_command="$3"
     local framework_gate="$4"
     local project_gate="$5"
-    node - "$action" "$registry" "$expected_command" "$framework_gate" "$project_gate" <<'NODE'
+    local expected_stop_command="${6:-}"
+    local framework_stop_gate="${7:-}"
+    local project_stop_gate="${8:-}"
+    node - "$action" "$registry" "$expected_command" "$framework_gate" "$project_gate" "$expected_stop_command" "$framework_stop_gate" "$project_stop_gate" <<'NODE'
 var fs = require('fs');
 var path = require('path');
 var action = process.argv[2];
@@ -1238,7 +1256,11 @@ var file = process.argv[3];
 var expectedCommand = process.argv[4];
 var frameworkGate = process.argv[5];
 var projectGate = process.argv[6];
+var expectedStopCommand = process.argv[7] || '';
+var frameworkStopGate = process.argv[8] || '';
+var projectStopGate = process.argv[9] || '';
 var projectRelativeGate = 'scripts/lite/antigravity-pre-tool-gate.sh';
+var projectRelativeStopGate = 'scripts/lite/antigravity-stop-hook.sh';
 
 function normalizeGatePath(candidate) {
   if (typeof candidate !== 'string' || candidate.length === 0) return null;
@@ -1252,7 +1274,15 @@ function normalizeGatePath(candidate) {
 var trustedGates = [
   normalizeGatePath(frameworkGate),
   normalizeGatePath(projectGate),
-  projectRelativeGate
+  projectRelativeGate,
+  '../scripts/lite/antigravity-pre-tool-gate.sh'
+];
+
+var trustedStopGates = [
+  normalizeGatePath(frameworkStopGate),
+  normalizeGatePath(projectStopGate),
+  projectRelativeStopGate,
+  '../scripts/lite/antigravity-stop-hook.sh'
 ];
 
 function ownedPolicyGate(commandValue) {
@@ -1264,9 +1294,23 @@ function ownedPolicyGate(commandValue) {
   return candidate !== null && trustedGates.indexOf(candidate) !== -1;
 }
 
+function ownedStopGate(commandValue) {
+  if (!expectedStopCommand || typeof commandValue !== 'string') return false;
+  if (commandValue === expectedStopCommand) return true;
+  var match = commandValue.trim().match(/^(?:true\s*\|\|\s*)?bash\s+(?:"([^"]+)"|'([^']+)'|([^\s"'|&;]+))$/);
+  if (!match) return false;
+  var candidate = normalizeGatePath(match[1] || match[2] || match[3]);
+  return candidate !== null && trustedStopGates.indexOf(candidate) !== -1;
+}
+
 function healthyExact(group, hook) {
   return group && group.matcher === '*' && hook && hook.type === 'command' &&
     hook.command === expectedCommand && hook.timeout === 5;
+}
+
+function healthyExactStop(hook) {
+  return hook && hook.type === 'command' &&
+    hook.command === expectedStopCommand && hook.timeout === 5;
 }
 
 function atomicWrite(target, content) {
@@ -1293,6 +1337,7 @@ if (!cfg || Array.isArray(cfg) || typeof cfg !== 'object') throw new Error('Anti
 var policy = cfg['forgewright-policy'];
 if (!policy || Array.isArray(policy) || typeof policy !== 'object') policy = {};
 var policyGroups = Array.isArray(policy.PreToolUse) ? policy.PreToolUse : [];
+var stopEntries = Array.isArray(policy.Stop) ? policy.Stop : [];
 
 if (action === 'check') {
   var ownedCount = 0;
@@ -1304,7 +1349,17 @@ if (action === 'check') {
       if (healthyExact(group, hook)) healthyExactCount += 1;
     });
   });
-  console.log(Boolean(policy.enabled !== false && ownedCount === 1 && healthyExactCount === 1));
+  var stopOk = true;
+  if (expectedStopCommand) {
+    var ownedStopCount = 0;
+    var exactStopCount = 0;
+    stopEntries.forEach(function(hook) {
+      if (hook && ownedStopGate(hook.command)) ownedStopCount += 1;
+      if (healthyExactStop(hook)) exactStopCount += 1;
+    });
+    stopOk = ownedStopCount === 1 && exactStopCount === 1;
+  }
+  console.log(Boolean(policy.enabled !== false && ownedCount === 1 && healthyExactCount === 1 && stopOk));
 } else if (action === 'fix') {
   var foundPolicyGate = false;
   var repairedGroups = [];
@@ -1333,6 +1388,22 @@ if (action === 'check') {
   if (!foundPolicyGate) repairedGroups.push({ matcher: '*', hooks: [{ type: 'command', command: expectedCommand, timeout: 5 }] });
   policy.enabled = true;
   policy.PreToolUse = repairedGroups;
+  if (expectedStopCommand) {
+    var foundStopGate = false;
+    var repairedStop = [];
+    stopEntries.forEach(function(hook) {
+      if (!hook || !ownedStopGate(hook.command)) {
+        repairedStop.push(hook);
+        return;
+      }
+      if (!foundStopGate && hook.command === expectedStopCommand) {
+        foundStopGate = true;
+        repairedStop.push(Object.assign({}, hook, { type: 'command', timeout: 5 }));
+      }
+    });
+    if (!foundStopGate) repairedStop.push({ type: 'command', command: expectedStopCommand, timeout: 5 });
+    policy.Stop = repairedStop;
+  }
   cfg['forgewright-policy'] = policy;
   atomicWrite(file, JSON.stringify(cfg, null, 2));
 } else {
@@ -1346,16 +1417,19 @@ ANTIGRAVITY_HOOKS="$(host_path "${HOME}/.gemini/config/hooks.json")"
 ANTIGRAVITY_GATE="${FRAMEWORK_DIR}/scripts/lite/antigravity-pre-tool-gate.sh"
 ANTIGRAVITY_PROJECT_GATE="$PROJECT_ROOT/scripts/lite/antigravity-pre-tool-gate.sh"
 ANTIGRAVITY_POLICY_CMD="bash $(shell_quote "$ANTIGRAVITY_GATE")"
+ANTIGRAVITY_STOP_GATE="${FRAMEWORK_DIR}/scripts/lite/antigravity-stop-hook.sh"
+ANTIGRAVITY_PROJECT_STOP_GATE="$PROJECT_ROOT/scripts/lite/antigravity-stop-hook.sh"
+ANTIGRAVITY_STOP_CMD="bash $(shell_quote "$ANTIGRAVITY_STOP_GATE")"
 if [[ -f "$ANTIGRAVITY_HOOKS" ]]; then
     log_pass "Antigravity hook registry exists"
-    antigravity_schema="$(antigravity_policy_registry check "$ANTIGRAVITY_HOOKS" "$ANTIGRAVITY_POLICY_CMD" "$ANTIGRAVITY_GATE" "$ANTIGRAVITY_PROJECT_GATE" 2>/dev/null || echo "false")"
+    antigravity_schema="$(antigravity_policy_registry check "$ANTIGRAVITY_HOOKS" "$ANTIGRAVITY_POLICY_CMD" "$ANTIGRAVITY_GATE" "$ANTIGRAVITY_PROJECT_GATE" "$ANTIGRAVITY_STOP_CMD" "$ANTIGRAVITY_STOP_GATE" "$ANTIGRAVITY_PROJECT_STOP_GATE" 2>/dev/null || echo "false")"
     if [[ "$antigravity_schema" == "true" ]]; then
         log_pass "Antigravity PreToolUse policy hook uses the native named-hook schema"
     else
         log_warn "Antigravity PreToolUse policy hook is not configured correctly"
         if [[ "$AUTO_FIX" == "true" ]]; then
             cp "$ANTIGRAVITY_HOOKS" "${ANTIGRAVITY_HOOKS}.bak.$(date +%Y%m%d%H%M%S)"
-            antigravity_policy_registry fix "$ANTIGRAVITY_HOOKS" "$ANTIGRAVITY_POLICY_CMD" "$ANTIGRAVITY_GATE" "$ANTIGRAVITY_PROJECT_GATE"
+            antigravity_policy_registry fix "$ANTIGRAVITY_HOOKS" "$ANTIGRAVITY_POLICY_CMD" "$ANTIGRAVITY_GATE" "$ANTIGRAVITY_PROJECT_GATE" "$ANTIGRAVITY_STOP_CMD" "$ANTIGRAVITY_STOP_GATE" "$ANTIGRAVITY_PROJECT_STOP_GATE"
             log_info "  → Fixed: Installed native Antigravity PreToolUse hook"
         fi
     fi
@@ -1366,6 +1440,7 @@ else
         atomic_write_text "$ANTIGRAVITY_HOOKS" <<EOF
 {
   "forgewright-policy": {
+    "enabled": true,
     "PreToolUse": [
       {
         "matcher": "*",
@@ -1376,6 +1451,13 @@ else
             "timeout": 5
           }
         ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "$ANTIGRAVITY_STOP_CMD",
+        "timeout": 5
       }
     ]
   }

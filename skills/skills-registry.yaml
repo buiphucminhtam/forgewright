@@ -303,6 +303,12 @@ skills:
     has_lite_md: true
     version: 1.0.0
 
+  - name: motion-director
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
   - name: narrative-designer
     type: canonical
     has_skill_md: true

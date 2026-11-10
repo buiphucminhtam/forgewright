@@ -13,10 +13,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/lite/antigravity-pre-tool-gate.sh",
+            "command": "bash ../scripts/lite/antigravity-pre-tool-gate.sh",
             "timeout": 5
           }
         ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bash ../scripts/lite/antigravity-stop-hook.sh",
+        "timeout": 5
       }
     ]
   }

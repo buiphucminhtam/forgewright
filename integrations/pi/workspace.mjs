@@ -32,7 +32,8 @@ function bounded(value, fallback, maximum) {
 
 export function loadTaskContract(projectRoot, contractPath) {
   const root = realpathSync(projectRoot);
-  const path = relativeFile(root, relative(root, resolve(root, contractPath)), { protectedPaths: false });
+  const relContract = relative(root, resolve(root, contractPath)).replaceAll('\\', '/');
+  const path = relativeFile(root, relContract, { protectedPaths: false });
   if (lstatSync(path).size > 65536) fail('pi_contract_too_large');
   let input;
   try { input = snapshotJson(JSON.parse(readFileSync(path, 'utf8'))); } catch { fail('pi_invalid_contract'); }
@@ -60,8 +61,8 @@ export function loadTaskContract(projectRoot, contractPath) {
     const cwd = !verifier.cwd || verifier.cwd === '.' ? root : relativeFile(root, verifier.cwd, { directory: true });
     for (const arg of verifier.argv) {
       const candidate = resolve(cwd, arg);
-      if (candidate.startsWith(`${root}/`) && existsSync(candidate) && lstatSync(candidate).isFile()) {
-        const rel = relative(root, candidate);
+      const rel = relative(root, candidate).replaceAll('\\', '/');
+      if (rel && !rel.startsWith('..') && !isAbsolute(rel) && existsSync(candidate) && lstatSync(candidate).isFile()) {
         relativeFile(root, rel, { protectedPaths: false }); verifierFiles.add(rel);
         if (input.writePaths.includes(rel)) fail('pi_verifier_write_overlap');
       }
@@ -80,7 +81,7 @@ export function loadTaskContract(projectRoot, contractPath) {
 export function createWorkspaceScope(contract, { assertOpen, extraFiles = [], withWrite = (operation) => operation() }) {
   let revision = 0;
   const files = new Set([...contract.task.readPaths, ...contract.task.writePaths, ...contract.verifierFiles,
-    relative(contract.root, contract.path), ...extraFiles]);
+    relative(contract.root, contract.path).replaceAll('\\', '/'), ...extraFiles]);
   const snapshot = (file) => {
     const path = relativeFile(contract.root, file, { protectedPaths: false });
     const stat = lstatSync(path);

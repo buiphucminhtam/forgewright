@@ -1,0 +1,9 @@
+{
+  "schema": "forgewright-agy-canary-receipt/v1",
+  "observed_events": [
+    "PreToolUse",
+    "Stop"
+  ],
+  "observed_cwd_behavior": "hooks.json parent directory (.agents/)",
+  "events_log": "D:\\Sources\\Github\\forgewright\\.forgewright\\runtime\\fw-argon-refactor-20261109\\rf03-agy-hook-canary-events.jsonl"
+}

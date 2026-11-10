@@ -63,7 +63,33 @@ except Exception:
   } catch { fail('pi_current_provider_unresolved'); }
 }
 
+export function probePiProviderCapabilities(env = process.env) {
+  return Object.freeze({
+    schema: 'forgewright-pi-capabilities/v1',
+    routes: Object.freeze({
+      current: 'supported',
+      'openai-codex': 'supported',
+      local: 'supported',
+      'google-api': 'unsupported',
+    }),
+    googleApiReason: 'pinned_pi_ai_adapter_rejects_guarded_custom_fetch',
+    agySubscriptionGrantsGoogleApi: false,
+    verifierSandbox: process.platform === 'darwin' && lstatSync('/usr/bin/sandbox-exec', { throwIfNoEntry: false })?.isFile()
+      ? 'supported'
+      : 'unsupported',
+  });
+}
+
 export async function resolveProvider(config, { home = homedir(), codexHome = process.env.CODEX_HOME } = {}) {
+  if (config?.provider === 'google-api') {
+    if (process.env.FORGEWRIGHT_ENABLE_PI_GOOGLE_API !== '1') fail('pi_google_api_opt_in_required');
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+    if (!apiKey) fail('pi_auth_required');
+    // The pinned @earendil-works/pi-ai google-generative-ai adapter rejects
+    // custom fetch, which is mandatory for Forgewright's no-redirect, single-request,
+    // destination-guarded transport boundary. Never bypass guardedFetch.
+    fail('pi_google_api_unsupported_by_guarded_transport');
+  }
   if (!['current', 'openai-codex', 'local'].includes(config?.provider)) fail('pi_provider_required');
   const authRoot = codexHome ? resolve(codexHome) : join(home, '.codex');
   let modelId = config.model;
