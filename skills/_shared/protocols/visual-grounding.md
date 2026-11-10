@@ -115,6 +115,7 @@ Use applicable tooling before subjective review:
 - tokens/component states/DOM/CSS/layout constraints;
 - overflow, safe areas, focus order/contrast/accessibility;
 - screenshot/VRT pixel or region comparison where a stable baseline exists;
+- live URL / standalone HTML baseline capture via `node scripts/art-direction/unslop-snapshot.mjs <url-or-file> <out.html> [label] [--dark|--light]` when redlining an external or vibecoded screen without local source;
 - multi-viewport and continuous resize DOM probing via `node scripts/art-direction/ui-dom-probe.mjs <url> --sweep` when a rendered web/HTML surface is available (measuring horizontal overflow at 375px, clipped text, button wrapping, real backdrop/gradient contrast, hover-induced layout shifts, overflowing or hollow popovers, unstyled native controls inside closed layers, and dark-mode hue/surface inversions);
 - engine import/settings/performance constraints.
 

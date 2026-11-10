@@ -343,7 +343,7 @@ Catalog metadata requires upstream license verification; fixture checks do not c
 
 ### 8. Motion Director, Docs Hub `markdown-it` & multi-OS verification
 
-Adds lazy-routed [Motion Director](skills/motion-director/SKILL.md), safe `markdown-it` Docs Hub rendering, [eval receipts](scripts/runtime/skill_eval_receipt.py), and [verify-platform.py](scripts/ci/verify-platform.py) with Playwright 1.60.0.
+Adds [Motion Director](skills/motion-director/SKILL.md), [Unslop Redline](skills/ui-designer/references/unslop/redline-passes-and-direction.md), `markdown-it` Docs Hub, [eval receipts](scripts/runtime/skill_eval_receipt.py), and [verify-platform.py](scripts/ci/verify-platform.py).
 
 ## Quick start
 

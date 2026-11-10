@@ -755,3 +755,199 @@ console.log('ALL_PROBE_BEHAVIOR_ASSERTIONS_PASSED');
     )
     assert proc.returncode == 0, f"STDOUT: {proc.stdout}\nSTDERR: {proc.stderr}"
     assert "ALL_PROBE_BEHAVIOR_ASSERTIONS_PASSED" in proc.stdout
+
+
+def test_unslop_redline_integration_and_scripts_contract(tmp_path: Path) -> None:
+    import subprocess
+    from scripts.runtime.skill_routing import route_skills
+
+    redline_ref = (
+        ROOT
+        / "skills"
+        / "ui-designer"
+        / "references"
+        / "unslop"
+        / "redline-passes-and-direction.md"
+    )
+    tokens_ref = (
+        ROOT
+        / "skills"
+        / "ui-designer"
+        / "references"
+        / "unslop"
+        / "signs-tokens-and-visuals.md"
+    )
+    snapshot_script = ROOT / "scripts" / "art-direction" / "unslop-snapshot.mjs"
+    story_script = ROOT / "scripts" / "art-direction" / "unslop-story.mjs"
+    mindset_ref = (
+        ROOT / "skills" / "ui-designer" / "references" / "app-ui-ux-mindset.md"
+    )
+    registry_path = ROOT / "skills" / "ui-designer" / "data" / "reference-registry.json"
+    manifest_path = ROOT / ".forgewright" / "docs-manifest.json"
+    install_sh = ROOT / "scripts" / "bootstrap" / "forgewright-install.sh"
+
+    assert redline_ref.is_file()
+    assert tokens_ref.is_file()
+    assert snapshot_script.is_file()
+    assert story_script.is_file()
+
+    # Router budget invariant (< 6000 bytes) preserved after adding unslop links
+    assert len(mindset_ref.read_bytes()) < 6000
+    mindset_text = _read(mindset_ref)
+    redline_text = _read(redline_ref)
+    tokens_text = _read(tokens_ref)
+    protocol_mindset = _read(DESIGN_MINDSET)
+    grounding_text = _read(VISUAL_GROUNDING)
+    ui_lite = _read(ROOT / "skills" / "ui-designer" / "LITE.md")
+    ui_skill = _read(UI_SKILL)
+    int_skill = _read(ROOT / "skills" / "interaction-designer" / "SKILL.md")
+    motion_skill = _read(ROOT / "skills" / "motion-director" / "SKILL.md")
+    fe_skill = _read(ROOT / "skills" / "frontend-engineer" / "SKILL.md")
+    vr_skill = _read(VISION_REVIEW_SKILL)
+    registry = json.loads(_read(registry_path))
+    manifest = json.loads(_read(manifest_path))
+    install_text = _read(install_sh)
+
+    # 1. Registry & CC-BY-4.0 provenance
+    entries = {entry["id"]: entry for entry in registry["entries"]}
+    assert "unslop" in entries
+    assert entries["unslop"]["can_ground_without_card"] is False
+    assert entries["unslop"]["candidate_evidence_kind"] == "inspiration_only"
+    assert "97daa3eb365670ea3f87ed85356cbfcee18105a5" in json.dumps(entries["unslop"])
+
+    for req in (
+        "97daa3eb365670ea3f87ed85356cbfcee18105a5",
+        "CC-BY-4.0",
+        "Damir Sokolovsky",
+        "@heydamir",
+        "Heavy Slop",
+        "Light Slop",
+        "No Slop",
+        "1. Spacing",
+        "2. Color",
+        "3. Icons",
+        "4. Copy",
+        "5. Type",
+        "6. Layout",
+        "7. Details",
+        "8. Visuals",
+        "9. Motion",
+        "unslop-snapshot.mjs",
+        "unslop-story.mjs",
+    ):
+        assert req in redline_text, f"{req} missing from {redline_ref}"
+
+    for tok_req in (
+        "Graphite",
+        "Warm",
+        "Ink",
+        "#141415",
+        "#161513",
+        "#0b0d14",
+        "cubic-bezier(0.22, 1, 0.36, 1)",
+        "inner = outer - padding",
+        "mask-image",
+    ):
+        assert tok_req in tokens_text, f"{tok_req} missing from {tokens_ref}"
+
+    # 2. Cross-skill harmonization (no conflict / no gap)
+    assert "unslop/redline-passes-and-direction.md" in mindset_text
+    assert "unslop/signs-tokens-and-visuals.md" in mindset_text
+    assert "Unslop" in protocol_mindset and "9-pass" in protocol_mindset
+    assert "unslop-snapshot.mjs" in grounding_text
+    assert "unslop" in ui_lite.lower() and "unslop" in ui_skill.lower()
+    assert "unslop" in int_skill.lower()
+    assert "unslop" in motion_skill.lower()
+    assert "unslop" in fe_skill.lower()
+    assert "unslop" in vr_skill.lower()
+
+    # 3. Docs Hub manifest & bootstrap installer registration
+    manifest_sources = {s["path"] for s in manifest["sources"]}
+    manifest_allow = set(manifest["privacy"]["allow"])
+    for rel_doc in (
+        "skills/ui-designer/references/unslop/redline-passes-and-direction.md",
+        "skills/ui-designer/references/unslop/signs-tokens-and-visuals.md",
+    ):
+        assert rel_doc in manifest_sources
+        assert rel_doc in manifest_allow
+    assert '"art-direction/unslop-snapshot.mjs"' in install_text
+    assert '"art-direction/unslop-story.mjs"' in install_text
+
+    # 4. Routing: /unslop and vibecoded UI route to design mode; story video also loads motion-director
+    routed_unslop = route_skills(
+        prompt="/unslop this vibecoded dashboard and fix the purple glow and spacing",
+        project_root=ROOT,
+    )
+    assert routed_unslop["status"] == "ok"
+    assert routed_unslop["mode"] == "design"
+    unslop_names = [s["name"] for s in routed_unslop["skills"]]
+    assert "ui-designer" in unslop_names
+    assert "motion-director" not in unslop_names
+
+    routed_story = route_skills(
+        prompt="/unslop my landing page and render the unslop story video with motion transitions",
+        project_root=ROOT,
+    )
+    assert routed_story["status"] == "ok"
+    assert routed_story["mode"] == "design"
+    story_names = [s["name"] for s in routed_story["skills"]]
+    assert "ui-designer" in story_names
+    assert "motion-director" in story_names
+
+    # 5. Executable CLI validation for unslop-snapshot.mjs and unslop-story.mjs
+    snap_no_args = subprocess.run(
+        ["node", str(snapshot_script)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert snap_no_args.returncode == 1
+    assert "usage: node" in snap_no_args.stderr
+
+    snap_bad_width = subprocess.run(
+        ["node", str(snapshot_script), "file:///tmp/x.html", "out.html", "--width=0"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert snap_bad_width.returncode == 1
+    assert "must be a whole number above 0" in snap_bad_width.stderr
+
+    sample_page = tmp_path / "sample.html"
+    sample_out = tmp_path / "out.html"
+    sample_page.write_text(
+        "<!doctype html><html><head><meta charset='utf-8'><style>body{margin:0;background:#141415;color:#ededed}.card{padding:24px}</style></head><body><div class='card'><h1>Hello Unslop</h1></div></body></html>",
+        encoding="utf-8",
+    )
+    snap_ok = subprocess.run(
+        ["node", str(snapshot_script), str(sample_page), str(sample_out), "Baseline", "--dark", "--width", "800", "--height", "600"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=45,
+        check=False,
+    )
+    assert snap_ok.returncode == 0, snap_ok.stderr
+    assert sample_out.is_file()
+    assert 'name="unslop-pass" content="Baseline"' in sample_out.read_text(encoding="utf-8")
+    live_png = tmp_path / "out.live.png"
+    assert live_png.is_file()
+    png_bytes = live_png.read_bytes()
+    assert (int.from_bytes(png_bytes[16:20], "big"), int.from_bytes(png_bytes[20:24], "big")) == (800, 600)
+
+    story_missing_meta = tmp_path / "bad-story.html"
+    story_missing_meta.write_text("<!doctype html><html><head></head><body>Hi</body></html>", encoding="utf-8")
+    story_res = subprocess.run(
+        ["node", str(story_script), str(story_missing_meta), str(tmp_path / "out.mp4")],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert story_res.returncode == 1
+    assert 'needs <meta name="unslop-steps"' in story_res.stderr

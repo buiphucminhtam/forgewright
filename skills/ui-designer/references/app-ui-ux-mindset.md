@@ -14,8 +14,9 @@ owners: [core, design]
 1. **Project & Accessibility Authority First:** Explicit user requirements, `PIPELINE_CONTEXT.visual_basis`, `PIPELINE_CONTEXT.ui_style_profile`, project tokens, and WCAG accessibility govern visual identity and keyboard focus.
 2. **Mechanics vs. Taste Presets:** Reuse the operational workflows, codebase audit gates, engineering rules, and DOM probing below. Treat flat-hairline presets from `evondevKit` as optional hypotheses (`Taste / Gu`), never as laws overriding brand identity or WCAG focus visibility.
 3. **On-Demand Modules:** Load only what the active task needs:
-   - [workflows-u-v-l-d.md](evondevkit/workflows-u-v-l-d.md) — **Mode `U`** (`U1–U4` brief, screen jobs, wireframe URL params/toolbar/block numbers), **Mode `V`** (`V1` rubric, `V1b` structural, `V1c` per-block, `V6` comparative review), **Mode `L`** (`L1–L4` visual-preserving refactor), **Mode `D`** (`D1–D9` 7 core primitives & `inert data-demo-state`).
-   - [engineering-rules-t-i-r-m-w.md](evondevkit/engineering-rules-t-i-r-m-w.md) — Typography & Vietnamese copy (`T1–T30`), Interactive states/forms/modals (`I1–I32`), Responsive 375px (`R1–R11`), Dark Mode (`M1–M32`), Tailwind v4 traps (`W1–W9`), and **Gate 3 (`Cổng 3`)** protocol.
+   - [workflows-u-v-l-d.md](evondevkit/workflows-u-v-l-d.md) — **Mode `U`** (`U1–U4` brief/jobs/wireframes), **Mode `V`** (`V1/V1b/V1c/V6` review), **Mode `L`** (`L1–L4` refactor), **Mode `D`** (`D1–D9` 7 core primitives & `inert data-demo-state`).
+   - [engineering-rules-t-i-r-m-w.md](evondevkit/engineering-rules-t-i-r-m-w.md) — Typography/copy (`T1–T30`), states/modals (`I1–I32`), 375px (`R1–R11`), Dark Mode (`M1–M32`), Tailwind v4 (`W1–W9`), and **Gate 3 (`Cổng 3`)**.
+   - [unslop/redline-passes-and-direction.md](unslop/redline-passes-and-direction.md) & [unslop/signs-tokens-and-visuals.md](unslop/signs-tokens-and-visuals.md) — **Unslop Redline (`heydamir/unslop`, CC-BY-4.0):** Heavy/Light/No-Slop triage, 5-line Direction, 9 passes, `unslop-snapshot.mjs` & `unslop-story.mjs`.
 
 ## 0. Pre-Code Routing & Proportional Audit (`Audit:` Line)
 - **Mode `U` (New screen / redesign, default >=1 screen):** 3-tier `Audit:` → Brief (`U1`) + Screen Job Table (`U2`) → 2–3 distinct wireframes (`U3`) → Build (`U4`).

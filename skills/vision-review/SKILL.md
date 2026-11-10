@@ -102,6 +102,8 @@ Every material finding must be one of:
 - `TECHNICAL_ARTIFACT` (**Broken / `Hỏng`**) — rendering/generation/import defect, overflowing floating layer, or dark-mode sunken selection/hue inversion;
 - `SUBJECTIVE_PREFERENCE` (**Taste / `Gu`**) — optional layout/signal tightening not required by the contract, presented with user-facing rationale and never auto-enforced over brand identity.
 
+When reviewing an **Unslop Redline** pass (`skills/ui-designer/references/unslop/`), verify that audited slop items (unmotivated chrome gradients/glows, emoji labels, off-grid spacing, missing comparison baselines, layout-thrashing `transition-all`) are resolved and pass the **Template Check** while preserving approved brand identity in Light Slop / Keep-Brand mode.
+
 `SUBJECTIVE_PREFERENCE` cannot block production by itself unless the user/brand
 owner makes it an explicit requirement.
 

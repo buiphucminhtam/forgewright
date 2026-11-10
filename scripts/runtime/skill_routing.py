@@ -199,6 +199,10 @@ def requests_motion_director(prompt: str) -> bool:
         "ui transition",
         "ui transitions",
         "transition timing",
+        "motion transition",
+        "motion transitions",
+        "unslop story",
+        "story video",
         "timing token",
         "timing tokens",
         "easing",
@@ -207,6 +211,26 @@ def requests_motion_director(prompt: str) -> bool:
         "chuyen dong",
         "thiet ke chuyen dong",
         "hieu ung chuyen canh",
+    )
+    return any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in terms)
+
+
+def requests_unslop_design(prompt: str) -> bool:
+    """Detect UI unslop / vibecoded UI redline requests so they route to design mode."""
+    text = unicodedata.normalize("NFD", prompt[:8192].casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[^\w]+", " ", text.replace("đ", "d")).strip()
+    terms = (
+        "unslop",
+        "unslopping",
+        "vibecoded",
+        "vibe coded",
+        "ai looking ui",
+        "ai slop",
+        "ui redline",
+        "redline pass",
+        "khu slop",
+        "giao dien nhin giong ai",
     )
     return any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in terms)
 
@@ -730,12 +754,13 @@ def route_skills(
         selected_mode = decision["mode"]
         selected_source = decision["source"]
         if (
-            selected_mode is None
+            (selected_mode is None or (selected_mode == "marketing" and requests_unslop_design(prompt)))
             and mode is None
             and auto_detect
-            and requests_motion_director(prompt)
+            and (requests_motion_director(prompt) or requests_unslop_design(prompt))
             and "design" in candidates
         ):
+            unslop_only = requests_unslop_design(prompt) and not requests_motion_director(prompt)
             selected_mode = "design"
             selected_source = "local-rules"
             decision = dict(
@@ -744,7 +769,7 @@ def route_skills(
                 mode="design",
                 source="local-rules",
                 rule_score=max(int(decision.get("rule_score", 0)), 1),
-                reason="motion-design-intent",
+                reason="unslop-design-intent" if unslop_only else "motion-design-intent",
             )
         if selected_mode is None:
             force_names = [

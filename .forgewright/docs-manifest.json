@@ -168,6 +168,14 @@
     {
       "path": "skills/ui-designer/references/evondevkit/engineering-rules-t-i-r-m-w.md",
       "type": "operations"
+    },
+    {
+      "path": "skills/ui-designer/references/unslop/redline-passes-and-direction.md",
+      "type": "operations"
+    },
+    {
+      "path": "skills/ui-designer/references/unslop/signs-tokens-and-visuals.md",
+      "type": "operations"
     }
   ],
   "project_docs": {
@@ -242,7 +250,9 @@
       "docs/adr/ADR-010-runtime-lifecycle-guard.md",
       "skills/ui-designer/references/app-ui-ux-mindset.md",
       "skills/ui-designer/references/evondevkit/workflows-u-v-l-d.md",
-      "skills/ui-designer/references/evondevkit/engineering-rules-t-i-r-m-w.md"
+      "skills/ui-designer/references/evondevkit/engineering-rules-t-i-r-m-w.md",
+      "skills/ui-designer/references/unslop/redline-passes-and-direction.md",
+      "skills/ui-designer/references/unslop/signs-tokens-and-visuals.md"
     ],
     "exclude": [
       "docs/archive/**",

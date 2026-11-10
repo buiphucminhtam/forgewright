@@ -181,8 +181,8 @@ node forgewright/src/cli/dist/index.js delegate resources
 ### 6. Research chuyên môn trên toàn bộ skill
 
 [Catalog](docs/skill-catalog.md) ghi **86 skill chính, 3 alias, 168 câu hỏi**
-(thêm [Motion Director](skills/motion-director/SKILL.md) nạp lười), Docs Hub `markdown-it`
-và cổng [verify-platform.py](scripts/ci/verify-platform.py) kèm Playwright 1.60.0.
+(thêm [Motion Director](skills/motion-director/SKILL.md) và [Unslop Redline](skills/ui-designer/references/unslop/redline-passes-and-direction.md)),
+Docs Hub `markdown-it` và cổng [verify-platform.py](scripts/ci/verify-platform.py) kèm Playwright 1.60.0.
 
 ### 5. Hoàn thiện handoff game Phaser 4 / Three.js
 

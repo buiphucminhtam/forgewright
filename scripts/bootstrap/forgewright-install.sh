@@ -1513,6 +1513,8 @@ install_scripts() {
         "runtime/forgewright-session-tracker.sh"
         "skills/forgewright-lesson-migrator.sh"
         "art-direction/ui-dom-probe.mjs"
+        "art-direction/unslop-snapshot.mjs"
+        "art-direction/unslop-story.mjs"
     )
 
     for script_path in "${scripts[@]}"; do

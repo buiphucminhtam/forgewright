@@ -162,6 +162,26 @@
         "Do not treat this registry row as grounding evidence without a validated Visual Evidence Card."
       ],
       "can_ground_without_card": false
+    },
+    {
+      "id": "unslop",
+      "name": "unslop UI Redline & 9-Pass Craft Workflow",
+      "source_url": "https://github.com/heydamir/unslop",
+      "source_class": "exploration_library",
+      "candidate_evidence_kind": "inspiration_only",
+      "observed_mechanisms": [
+        "Observed 2026-11-10 at commit 97daa3eb365670ea3f87ed85356cbfcee18105a5 (CC-BY-4.0 license, Damir Sokolovsky @heydamir): triages screens into Heavy Slop, Light Slop (Polish), or No Slop; locks a 5-line product-derived Direction (Product, Character, World, Moments, Signature); and applies 9 ordered redline passes (Spacing, Color, Icons, Copy, Type, Layout, Details, Visuals, Motion) plus snapshot.mjs and story.mjs.",
+        "Separates quiet neutral chrome from 1-2 rich product Moments and provides Graphite/Warm/Ink candidate ramps and nested radius math when a project lacks an existing token system."
+      ],
+      "recommended_uses": [
+        "Use its Heavy/Light/No-Slop triage, 5-line Direction, 9-pass redline sequence, and unslop-snapshot.mjs / unslop-story.mjs tooling when cleaning up vibecoded or AI-generated UI.",
+        "Treat its Graphite/Warm/Ink ramps, font pairings, and 4px spacing values as candidate starting tokens only when the project has no validated token system."
+      ],
+      "prohibited_uses": [
+        "Do not override an approved project Visual Basis, brand palette, or typography in Light Slop / Keep-Brand mode.",
+        "Do not treat this registry row as grounding evidence without a validated Visual Evidence Card, and never ship story-video classes (.s1, .swap, data-slop) in production code."
+      ],
+      "can_ground_without_card": false
     }
   ]
 }

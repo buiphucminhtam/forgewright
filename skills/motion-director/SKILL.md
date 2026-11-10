@@ -37,6 +37,7 @@ upstream_listing: https://www.skillsdirectory.com/skills/frankxai-motion-directo
 - Gate hover-only movement with `(hover: hover) and (pointer: fine)`. Keep a visible keyboard focus state and touch access to every action.
 - Design reduced motion before implementation: preserve content, state, and reading order with static or gentle opacity/color feedback.
 - Pause continuous decoration when hidden or off-screen. Preserve meaningful progress and status information.
+- Coordinate with `ui-designer` on **Unslop Pass 9 (`Motion`)** and opt-in **Unslop Story Videos (`scripts/art-direction/unslop-story.mjs`)** (`skills/ui-designer/references/unslop/redline-passes-and-direction.md`): strip non-functional loops (`animate-pulse`, `animate-ping`, heading shimmer, floating parallax) and `transition-all` / layout-property animations (`width`, `height`, `top`, `left`), use one purposeful easing curve (such as `cubic-bezier(0.22, 1, 0.36, 1)` or the project token), and keep `.s1`/`.swap`/`data-slop` presentation markup isolated to `unslop-story/story.html` rather than production components.
 
 ## Verification and boundaries
 
