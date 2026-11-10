@@ -81,7 +81,7 @@ permission to load all listed roles, or a guaranteed execution capability.
 | **Explore** | "explain", "understand", "help me think", "what should I", "I'm not sure" | Polymath |
 | **Research** | "research", "deep research", "find sources", "analyze topic", "investigate [domain]", "NotebookLM", "study materials", "generate quiz" | NotebookLM Researcher → Polymath (research mode) + NotebookLM MCP (primary) |
 | **Optimize** | "performance", "slow", "optimize", "scale", "reliability" | Performance Engineer + SRE + Code Reviewer |
-| **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow" | UX/research → Concept Artist → Art Director → UI/technical handoff |
+| **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow", "unslop", "plan thiết kế" | UX/research → Concept Artist → Art Director → UI Designer + Unslop (`skills/unslop/SKILL.md`, mandatory) → technical handoff |
 | **Mobile** | "mobile app", "React Native", "Flutter", "iOS", "Android" | BA (if gaps detected) → Mobile Engineer (+ PM scoped, Architect scoped if needed) |
 | **Game Build** | "game", "Unity", "Unreal", "Godot", "Roblox", "Phaser", "Three.js", "gameplay", "game design", "build a game" | UX/research → Concept Artist → Art Director → UI/technical/engine handoff → Level/Narrative/TechArt/Audio |
 | **XR Build** | "VR", "AR", "MR", "XR", "spatial", "Quest", "Vision Pro", "WebXR" | XR Engineer (+ Game Build pipeline if game-like XR) |

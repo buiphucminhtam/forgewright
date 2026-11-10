@@ -483,6 +483,12 @@ skills:
     has_lite_md: true
     version: 1.0.0
 
+  - name: unslop
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
   - name: unity-engineer
     type: canonical
     has_skill_md: true

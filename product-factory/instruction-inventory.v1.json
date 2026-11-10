@@ -942,6 +942,14 @@
       "authority": "routed_skill"
     },
     {
+      "path": "skills/unslop/LITE.md",
+      "authority": "routed_lite"
+    },
+    {
+      "path": "skills/unslop/SKILL.md",
+      "authority": "routed_skill"
+    },
+    {
       "path": "skills/ux-researcher/LITE.md",
       "authority": "routed_lite"
     },

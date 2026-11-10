@@ -66,6 +66,7 @@ FULL_SKILLS=(
     "performance-engineer"
     "ux-researcher"
     "ui-designer"
+    "unslop"
     "interaction-designer"
     "motion-director"
     "accessibility-engineer"

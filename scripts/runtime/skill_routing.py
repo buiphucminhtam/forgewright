@@ -216,7 +216,9 @@ def requests_motion_director(prompt: str) -> bool:
 
 
 def requests_unslop_design(prompt: str) -> bool:
-    """Detect UI unslop / vibecoded UI redline requests so they route to design mode."""
+    """Detect UI design, design-planning, and unslop/redline requests so unslop is always applied."""
+    if excludes_motion_director(prompt):
+        return False
     text = unicodedata.normalize("NFD", prompt[:8192].casefold())
     text = "".join(char for char in text if not unicodedata.combining(char))
     text = re.sub(r"[^\w]+", " ", text.replace("đ", "d")).strip()
@@ -231,6 +233,19 @@ def requests_unslop_design(prompt: str) -> bool:
         "redline pass",
         "khu slop",
         "giao dien nhin giong ai",
+        "plan thiet ke",
+        "len plan thiet ke",
+        "ke hoach thiet ke",
+        "thiet ke giao dien",
+        "thiet ke ui",
+        "thiet ke ux",
+        "design plan",
+        "ui plan",
+        "ui design",
+        "ux design",
+        "screen design",
+        "wireframe",
+        "wireframes",
     )
     return any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in terms)
 
@@ -801,6 +816,14 @@ def route_skills(
             selected_names = list(mode_map[selected_mode])
             if (
                 auto_detect
+                and (selected_mode == "design" or requests_unslop_design(prompt))
+                and "unslop" not in selected_names
+                and (skills_root / "unslop" / "SKILL.md").is_file()
+                and _enabled_value(settings.get("unslop", {}), "unslop") != "false"
+            ):
+                selected_names.append("unslop")
+            if (
+                auto_detect
                 and requests_motion_director(prompt)
                 and "motion-director" not in selected_names
                 and _enabled_value(settings.get("motion-director", {}), "motion-director") != "false"
@@ -913,6 +936,14 @@ def route_skills(
                 and enabled != "true"
                 and auto_detect
                 and excludes_game_vfx(prompt)
+            ):
+                continue
+            if (
+                name == "unslop"
+                and selected_mode != "design"
+                and enabled != "true"
+                and auto_detect
+                and not requests_unslop_design(prompt)
             ):
                 continue
             if (

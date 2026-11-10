@@ -270,6 +270,17 @@ Performance + reliability analysis. Two skills.
 
 **1 gate:** After analysis, before fixes.
 
+### Design Mode
+
+UI/UX design, design-plan authoring, wireframe exploration, design-system setup, and UI redline/unslop. **Always loads and applies `skills/unslop/SKILL.md` (`skills/unslop/LITE.md`) alongside `skills/ui-designer/SKILL.md`.**
+
+1. **Pre-design audit & Unslop triage** — read `skills/ui-designer/SKILL.md` and `skills/unslop/SKILL.md`, emit the 3-tier `Audit:` line, and classify `Heavy Slop`, `Light Slop` (Keep-Brand), or `No Slop`.
+2. **UX Research & Concept/Art Direction (when in scope)** — `ux-researcher` frames the user job (`U1`/`U2`); `concept-artist` and `art-director` establish divergent visual concepts and `Style DNA` when a new visual identity is needed.
+3. **Mandatory Unslop Direction & Design Plan** — lock the 5-line `unslop` **Direction** (`Product`, `Character`, `World`, `Moments`, `Signature`) or existing Brand `Color Role Table`, plus wireframes (`Mode U`) or primitive contracts (`Mode D`).
+4. **Execute 9 Ordered Unslop Passes & Handoff** — apply `1. Spacing -> 2. Color -> 3. Icons -> 4. Copy -> 5. Type -> 6. Layout -> 7. Details -> 8. Visuals -> 9. Motion` (coordinating Pass 7/9 with `interaction-designer` and `motion-director`), verify with `node scripts/art-direction/ui-dom-probe.mjs <url> --sweep` (`Gate 3`) and the Template Check.
+
+**1 gate:** Direction & wireframe/plan confirmation before full multi-screen build (skipped when user requests direct execution).
+
 ### Marketing Mode
 
 Go-to-market strategy, content, and SEO. Primarily Growth Marketer.

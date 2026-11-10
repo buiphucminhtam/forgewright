@@ -11,7 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-8.7.1-blue?style=flat-square" alt="Version 8.7.1" />
-  <img src="https://img.shields.io/badge/skills-86-brightgreen?style=flat-square" alt="86 skills" />
+  <img src="https://img.shields.io/badge/skills-87-brightgreen?style=flat-square" alt="87 skills" />
   <img src="https://img.shields.io/badge/verification-local--first-24292f?style=flat-square" alt="Local-first verification" />
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-0078d4?style=flat-square" alt="macOS | Linux | Windows" />
   <img src="https://img.shields.io/badge/integration-MCP-7057ff?style=flat-square" alt="MCP integration" />
@@ -32,7 +32,7 @@
 **Forgewright is a local-first, provider-neutral engineering harness and orchestrator for AI coding agents** (Codex, Claude Code, Cursor, Antigravity, Gemini CLI/IDE, and Forge CLI).
 
 Instead of relying on ad-hoc prompts or letting an agent edit files blindly and declare success without proof, Forgewright wraps your existing model runtime in a structured software delivery system:
-- **86 canonical specialist skills** across **24 operating modes** (backend, frontend, fullstack, architecture, QA, security, DevOps, data/AI, mobile, Unity/Unreal/Godot/Phaser/Three.js game production, UX/UI, motion design, and product management).
+- **87 canonical specialist skills** across **24 operating modes** (backend, frontend, fullstack, architecture, QA, security, DevOps, data/AI, mobile, Unity/Unreal/Godot/Phaser/Three.js game production, UX/UI, unslop craft redline, motion design, and product management).
 - **Pre-tool execution guardrails** that block destructive commands and enforce project-owned safety policies across macOS, Linux, and Windows before a tool call runs.
 - **Schema-v2 completion verification** that binds every completion claim to an exact command, exit code, output digest, acceptance criterion, and full worktree fingerprint (`TREE:<sha256>`).
 - **Code intelligence & continuity** via GitNexus blast-radius analysis, bounded worker context packets, and a static local **Docs Hub** generated from canonical project state.
@@ -249,7 +249,7 @@ Default web-game routes retain UI Designer within the existing context budget.
 
 ### 2. Codex & Claude plugin distribution + Behavioral Skill Quality Engine
 
-Forgewright ships one unified plugin source for **Codex** and **Claude Code** ([plugin manifest](plugin.json)), exposing the entry workflow and **86 skills** with trigger-only descriptions and a consent-gated `PreToolUse` bootstrap hook ([auto-bootstrap.mjs](hooks/auto-bootstrap.mjs)). The [Skill Quality Engine](evals/skills/README.md) evaluates **baseline → current → candidate** behavior, minimal `PLAN_LOCKED` worker packets, and failure classification (`hypothesis_wrong`, `implementation_wrong`, `environment_wrong`, `architecture_wrong`).
+Forgewright ships one unified plugin source for **Codex** and **Claude Code** ([plugin manifest](plugin.json)), exposing the entry workflow and **87 skills** with trigger-only descriptions and a consent-gated `PreToolUse` bootstrap hook ([auto-bootstrap.mjs](hooks/auto-bootstrap.mjs)). The [Skill Quality Engine](evals/skills/README.md) evaluates **baseline → current → candidate** behavior, minimal `PLAN_LOCKED` worker packets, and failure classification (`hypothesis_wrong`, `implementation_wrong`, `environment_wrong`, `architecture_wrong`).
 
 ### 3. Evidence loop: observation, context, and learning (ECC)
 
@@ -302,7 +302,7 @@ For an enrolled host with shared config drift or quarantined dead-owner leases, 
 
 ### 6. Specialist research across all skills
 
-The [skill catalog](docs/skill-catalog.md) covers **86 canonical skills and 3 aliases**,
+The [skill catalog](docs/skill-catalog.md) covers **87 canonical skills and 3 aliases**,
 with **168 profession-specific research questions**, domain verifiers and seven bounded
 reference repairs (Game Engineer, API Designer, Solution Architect, MCP Generator,
 Eval Engineer, SRE, XLSX Engineer). The MCP template pins GitNexus 1.6.12 and Node
@@ -343,7 +343,7 @@ Catalog metadata requires upstream license verification; fixture checks do not c
 
 ### 8. Motion Director, Docs Hub `markdown-it` & multi-OS verification
 
-Adds [Motion Director](skills/motion-director/SKILL.md), [Unslop Redline](skills/ui-designer/references/unslop/redline-passes-and-direction.md), `markdown-it` Docs Hub, [eval receipts](scripts/runtime/skill_eval_receipt.py), and [verify-platform.py](scripts/ci/verify-platform.py).
+Adds [Unslop](skills/unslop/SKILL.md), [Motion Director](skills/motion-director/SKILL.md), `markdown-it` Docs Hub, [eval receipts](scripts/runtime/skill_eval_receipt.py), and [verify-platform.py](scripts/ci/verify-platform.py).
 
 ## Quick start
 

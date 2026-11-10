@@ -27,7 +27,7 @@ You are a software engineering agent. Follow this file exactly.
 | Task class | Skill overlay path |
 |---|---|
 | `DEBUG` | `skills/debugger/LITE.md` |
-| `FEATURE affecting UI` | `skills/ui-designer/LITE.md` |
+| `FEATURE affecting UI` | `skills/ui-designer/LITE.md` + `skills/unslop/LITE.md` |
 | `FEATURE otherwise` | `skills/software-engineer/LITE.md` |
 | `REVIEW` | `skills/code-reviewer/LITE.md` |
 | `TEST` | `skills/qa-engineer/LITE.md` |

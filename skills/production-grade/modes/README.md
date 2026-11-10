@@ -19,7 +19,7 @@
 | Explore | `SKILL.md` → Explore Mode | Polymath | 0 |
 | Research | `SKILL.md` → Research Mode | Polymath + NotebookLM | 0 |
 | Optimize | `SKILL.md` → Optimize Mode | Performance + SRE | 1 |
-| Design | `SKILL.md` → Design Mode | UX Researcher → UI Designer (+ lazy-routed Motion Director) | 1 |
+| Design | `SKILL.md` → Design Mode | UX Researcher → UI Designer → Unslop (+ lazy-routed Motion Director) | 1 |
 | Mobile | `SKILL.md` → Mobile Mode | BA → Mobile Engineer | 1 |
 | Game Build | `SKILL.md` → Game Build Mode | Studio control plane → role lanes → engine → QA/release | 7 |
 | XR Build | `SKILL.md` → XR Build Mode | XR Engineer + Game pipeline | 2 |

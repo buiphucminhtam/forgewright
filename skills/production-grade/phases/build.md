@@ -74,6 +74,7 @@ Context:
 - Read BRD user stories from: .forgewright/product-manager/BRD/
 - Read design specs from: .forgewright/ui-designer/ (if T1.5 ran)
 - Read design tokens from: docs/design/design-tokens.json (if T1.5 ran)
+- Apply `skills/unslop/LITE.md` (9 ordered passes: Spacing, Color, Icons, Copy, Type, Layout, Details, Visuals, Motion + Template Check) so shipped screens never retain vibecoded/AI slop.
 - Consume `PIPELINE_CONTEXT`, especially `visual_basis`, constraints/non-goals and owned risk signals.
 - Frontend implements the approved UI contract; it does not invent or rerun the visual direction gate.
 - Read .production-grade.yaml for framework and styling preferences.

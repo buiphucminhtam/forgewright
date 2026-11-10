@@ -85,9 +85,10 @@ If user selects "Show BRD details" → display BRD, re-present Gate 1.
 ```
 Update task.md: T1.5 status → in_progress
 
-Read skills/ui-designer/SKILL.md and follow its specialist instructions.
+Read skills/ui-designer/SKILL.md and skills/unslop/SKILL.md (mandatory for all design and design-planning work) and follow their specialist instructions.
 Context:
 - Consume `PIPELINE_CONTEXT.visual_basis`; if material visual direction lacks a reliable basis, return `NEEDS_PIPELINE_GROUNDING` rather than independently reopening generic research.
+- Mandatory Unslop Design Plan Gate: include the Slop Audit/Triage (`Heavy Slop` / `Light Slop` / `No Slop`), the 5-line Unslop Direction (`Product`, `Character`, `World`, `Moments`, `Signature`) or Keep-Brand `Color Role Table`, and the 9-pass redline plan in `design-brief.md` and `design-tokens.md`.
 - Read BRD from: .forgewright/product-manager/BRD/
 - Write design specs to: .forgewright/ui-designer/
 - Write design tokens to: docs/design/design-tokens.json

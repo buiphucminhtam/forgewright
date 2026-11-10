@@ -761,6 +761,11 @@ def test_unslop_redline_integration_and_scripts_contract(tmp_path: Path) -> None
     import subprocess
     from scripts.runtime.skill_routing import route_skills
 
+    unslop_skill = ROOT / "skills" / "unslop" / "SKILL.md"
+    unslop_lite = ROOT / "skills" / "unslop" / "LITE.md"
+    assert unslop_skill.is_file()
+    assert unslop_lite.is_file()
+
     redline_ref = (
         ROOT
         / "skills"
@@ -874,6 +879,16 @@ def test_unslop_redline_integration_and_scripts_contract(tmp_path: Path) -> None
     assert '"art-direction/unslop-story.mjs"' in install_text
 
     # 4. Routing: /unslop and vibecoded UI route to design mode; story video also loads motion-director
+    routed_design_mode = route_skills(
+        prompt="Lên plan thiết kế giao diện dashboard quản lý đơn hàng",
+        mode="design",
+        project_root=ROOT,
+    )
+    assert routed_design_mode["status"] == "ok"
+    design_mode_names = [s["name"] for s in routed_design_mode["skills"]]
+    assert "ui-designer" in design_mode_names
+    assert "unslop" in design_mode_names
+
     routed_unslop = route_skills(
         prompt="/unslop this vibecoded dashboard and fix the purple glow and spacing",
         project_root=ROOT,
@@ -882,6 +897,7 @@ def test_unslop_redline_integration_and_scripts_contract(tmp_path: Path) -> None
     assert routed_unslop["mode"] == "design"
     unslop_names = [s["name"] for s in routed_unslop["skills"]]
     assert "ui-designer" in unslop_names
+    assert "unslop" in unslop_names
     assert "motion-director" not in unslop_names
 
     routed_story = route_skills(
@@ -892,7 +908,18 @@ def test_unslop_redline_integration_and_scripts_contract(tmp_path: Path) -> None
     assert routed_story["mode"] == "design"
     story_names = [s["name"] for s in routed_story["skills"]]
     assert "ui-designer" in story_names
+    assert "unslop" in story_names
     assert "motion-director" in story_names
+
+    # Mandatory always-on design & design-plan rule across kernel and production-grade phases
+    entry_text = _read(ROOT / "kernel" / "ENTRY.md")
+    solve_text = _read(ROOT / "kernel" / "SOLVE.md")
+    define_phase = _read(ROOT / "skills" / "production-grade" / "phases" / "define.md")
+    mode_exec = _read(ROOT / "skills" / "production-grade" / "references" / "mode-execution.md")
+    assert "skills/unslop/LITE.md" in entry_text
+    assert "unslop" in solve_text.lower()
+    assert "skills/unslop/SKILL.md" in define_phase
+    assert "### Design Mode" in mode_exec and "skills/unslop/SKILL.md" in mode_exec
 
     # 5. Executable CLI validation for unslop-snapshot.mjs and unslop-story.mjs
     snap_no_args = subprocess.run(

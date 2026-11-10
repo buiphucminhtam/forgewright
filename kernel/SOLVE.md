@@ -29,7 +29,7 @@ Optimization requires an explicit KPI/SLA, measured bottleneck, or concrete reso
 - **STANDARD/DEEP edit:** `n. ACTION | TARGET | CHECK`.
 - **Question/review:** gather only enough evidence to answer or prove the finding.
 
-**UI DESIGN GATE / PIPELINE VISUAL GATE — proportional:** pipeline `visual-grounding.md` establishes the visual basis before a visual specialist runs. Major work records **Existing design-system audit**, source refs, **Tokens:** extracted style DNA, **Component states:** reachable states, **Responsive behavior matrix** / camera conditions, and prohibited drift; local fixes inspect only affected refs/states/viewports.
+**UI DESIGN GATE / PIPELINE VISUAL GATE — proportional:** pipeline `visual-grounding.md` establishes the visual basis before a visual specialist runs, and **all UI design and design-planning work MUST apply `skills/unslop/LITE.md`** (5-line Direction or Keep-Brand Color Role Table, Slop Triage, and 9-pass Redline + Template Check). Major work records **Existing design-system audit**, source refs, **Tokens:** extracted style DNA, **Component states:** reachable states, **Responsive behavior matrix** / camera conditions, and prohibited drift; local fixes inspect only affected refs/states/viewports.
 
 ### Parallel Orchestration
 Dispatch only genuinely independent scopes; small/serial work stays parent-owned. `orchestration_policy.py` selects `scout`/`builder`/`expert` tiers (**all remain senior**) from runtime capability routing, never kernel pins. No recursive spawning.
