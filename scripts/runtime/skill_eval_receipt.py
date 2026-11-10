@@ -162,6 +162,37 @@ class EvalTaskSpec:
     cancel_after_seconds: float | None = None
     cwd: Path | None = None
 
+_POSIX_QUIESCENCE_TIMEOUT_SECONDS = 0.5
+_READER_JOIN_TIMEOUT_SECONDS = 1.0
+
+
+def _wait_posix_pgid_quiescent(
+    pgid: int, timeout_seconds: float | None = None
+) -> bool:
+    """Wait until POSIX process group `pgid` has no remaining members (ESRCH).
+
+    Only ESRCH proves group absence. EPERM, unknown errors, or surviving members
+    at the deadline return False (fail-closed).
+    """
+    if pgid <= 0:
+        return False
+    budget = (
+        _POSIX_QUIESCENCE_TIMEOUT_SECONDS
+        if timeout_seconds is None
+        else timeout_seconds
+    )
+    deadline = time.monotonic() + max(0.02, budget)
+    while True:
+        try:
+            os.kill(-pgid, 0)
+        except ProcessLookupError:
+            return True
+        except OSError:
+            pass
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.005)
+
 
 def _execute_bounded_process(
     argv: Sequence[str],
@@ -328,50 +359,69 @@ def _execute_bounded_process(
                 cleanup_complete = False
             if stdin_file is not None:
                 stdin_file.unlink(missing_ok=True)
+        if read_failed.is_set() and failure is None:
+            failure = "environment_error"
         return {
             "exit_code": code,
             "stdout": bytes(chunks[0]),
             "stderr": bytes(chunks[1]),
             "elapsed_ms": round((time.monotonic() - started) * 1000, 3),
             "failure": failure,
-            "cleanup_complete": cleanup_complete,
+            "cleanup_complete": cleanup_complete and not read_failed.is_set(),
         }
 
     # POSIX process-group execution
     proc = None
+    pgid: int | None = None
+    stdin_file: Path | None = None
+    stdin_fh = None
     chunks = [bytearray(), bytearray()]
     lock = threading.Lock()
     overflow = threading.Event()
+    read_failed = threading.Event()
     readers = []
     failure = None
     cleanup_complete = False
+    exit_code: int | None = None
+    spawn_error: OSError | None = None
     try:
+        fd, stdin_path = tempfile.mkstemp(prefix="fw-eval-stdin-", suffix=".bin")
+        stdin_file = Path(stdin_path)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                if stdin_bytes:
+                    fh.write(stdin_bytes)
+                fh.flush()
+        except BaseException:
+            stdin_file.unlink(missing_ok=True)
+            stdin_file = None
+            raise
+        stdin_fh = stdin_file.open("rb")
         proc = subprocess.Popen(
             list(argv),
             cwd=str(cwd),
-            stdin=subprocess.PIPE,
+            stdin=stdin_fh,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             start_new_session=True,
         )
-        if stdin_bytes and proc.stdin is not None:
-            try:
-                proc.stdin.write(stdin_bytes)
-            except BrokenPipeError:
-                pass
-        if proc.stdin is not None:
-            proc.stdin.close()
+        pgid = proc.pid
+        stdin_fh.close()
+        stdin_fh = None
 
         def _collect_posix(stream, idx: int) -> None:
-            while True:
-                data = stream.read(4096)
-                if not data:
-                    return
-                with lock:
-                    if len(chunks[0]) + len(chunks[1]) + len(data) > output_limit_bytes:
-                        overflow.set()
+            try:
+                while True:
+                    data = stream.read(4096)
+                    if not data:
                         return
-                    chunks[idx].extend(data)
+                    with lock:
+                        if len(chunks[0]) + len(chunks[1]) + len(data) > output_limit_bytes:
+                            overflow.set()
+                            return
+                        chunks[idx].extend(data)
+            except OSError:
+                read_failed.set()
 
         for idx, stream in enumerate((proc.stdout, proc.stderr)):
             t = threading.Thread(target=_collect_posix, args=(stream, idx), daemon=True)
@@ -395,55 +445,105 @@ def _execute_bounded_process(
             if overflow.is_set():
                 failure = "output_limit"
                 break
+            if read_failed.is_set():
+                failure = "environment_error"
+                break
             time.sleep(0.01)
 
         if failure is not None and proc.poll() is None:
-            try:
-                os.killpg(proc.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
+            if pgid is not None:
+                try:
+                    os.killpg(pgid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                except OSError:
+                    pass
             try:
                 proc.wait(timeout=1.0)
             except subprocess.TimeoutExpired:
+                if pgid is not None:
+                    try:
+                        os.killpg(pgid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    except OSError:
+                        pass
                 try:
-                    os.killpg(proc.pid, signal.SIGKILL)
+                    proc.wait(timeout=2.0)
+                except subprocess.TimeoutExpired:
+                    pass
+        else:
+            try:
+                proc.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                failure = failure or "timeout"
+    except OSError as exc:
+        spawn_error = exc
+    finally:
+        if proc is not None:
+            signal_denied = False
+            if pgid is not None:
+                try:
+                    os.killpg(pgid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
-                proc.wait(timeout=2.0)
-        else:
-            proc.wait(timeout=2.0)
-        for t in readers:
-            t.join(timeout=1.0)
-        cleanup_complete = proc.returncode is not None
-        return {
-            "exit_code": proc.returncode,
-            "stdout": bytes(chunks[0]),
-            "stderr": bytes(chunks[1]),
-            "elapsed_ms": round((time.monotonic() - started) * 1000, 3),
-            "failure": failure,
-            "cleanup_complete": cleanup_complete,
-        }
-    except OSError as exc:
+                except OSError:
+                    signal_denied = True
+            if proc.poll() is None:
+                try:
+                    proc.wait(timeout=1.0)
+                except subprocess.TimeoutExpired:
+                    pass
+            exit_code = proc.returncode
+            group_quiescent = (
+                not signal_denied
+                and pgid is not None
+                and _wait_posix_pgid_quiescent(pgid)
+            )
+            readers_joined = True
+            for t in readers:
+                t.join(timeout=_READER_JOIN_TIMEOUT_SECONDS)
+                if t.is_alive():
+                    readers_joined = False
+            if readers_joined:
+                for s in (proc.stdout, proc.stderr):
+                    if s is not None:
+                        try:
+                            s.close()
+                        except OSError:
+                            pass
+            cleanup_complete = (
+                exit_code is not None
+                and group_quiescent
+                and readers_joined
+                and not read_failed.is_set()
+            )
+        if stdin_fh is not None:
+            try:
+                stdin_fh.close()
+            except OSError:
+                pass
+        if stdin_file is not None:
+            stdin_file.unlink(missing_ok=True)
+    if spawn_error is not None and proc is None:
         return {
             "exit_code": None,
             "stdout": b"",
-            "stderr": str(exc).encode("utf-8", errors="replace"),
+            "stderr": str(spawn_error).encode("utf-8", errors="replace"),
             "elapsed_ms": round((time.monotonic() - started) * 1000, 3),
             "failure": "environment_error",
             "cleanup_complete": True,
         }
-    finally:
-        if proc is not None:
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except Exception:
-                pass
-            for s in (proc.stdout, proc.stderr):
-                if s is not None:
-                    try:
-                        s.close()
-                    except OSError:
-                        pass
+    if (spawn_error is not None or read_failed.is_set()) and failure is None:
+        failure = "environment_error"
+    return {
+        "exit_code": exit_code,
+        "stdout": bytes(chunks[0]),
+        "stderr": bytes(chunks[1]),
+        "elapsed_ms": round((time.monotonic() - started) * 1000, 3),
+        "failure": failure,
+        "cleanup_complete": cleanup_complete and spawn_error is None,
+    }
 
 
 def _observe_git_provenance(cwd: Path) -> dict[str, Any]:

@@ -205,3 +205,7 @@ measure player enjoyment, model latency, token cost or skill uplift.
 Provider-specific adapters may call a local or subscription model, but such calls
 are separate owner-authorized evidence. The core engine and unit suite require no
 network, API key, or model spend.
+
+## Standardized run receipts and Promptfoo runner
+
+`scripts/runtime/skill_eval_receipt.py` records single-terminal-outcome evaluation receipts with distinct failure categories, preserved `unknown` token/cost fields, POSIX process-group quiescence (`ESRCH`) with file-backed stdin handoff, and Windows Job Object supervision (`windows_job_supervisor.py` / `windows_job_client.py`). `evals/promptfoo/forgewright-runner-provider.ts` wraps this runner for Promptfoo with durable artifact digests and two-stage timeout fallback receipts.

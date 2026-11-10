@@ -339,8 +339,11 @@ The [RE intelligence runtime](scripts/runtime/reverse_engineering_intelligence.p
 discovery, task-to-tool routing with explicit limitations, per-facet evidence envelopes
 (`facet_availability`, `coverage.scope`, `coverage.status`), lease-bound process tokens
 and full-precision benchmark ranking ([unit suite](tests/unit_tests/test_reverse_engineering_intelligence.py)).
-Catalog metadata requires upstream license verification; fixture checks do not certify
-external adapter execution or live model benchmarks.
+Catalog metadata requires upstream license verification; fixture checks do not certify live benchmarks.
+
+### 8. Motion Director, Docs Hub `markdown-it` & multi-OS verification
+
+Adds lazy-routed [Motion Director](skills/motion-director/SKILL.md), safe `markdown-it` Docs Hub rendering, [eval receipts](scripts/runtime/skill_eval_receipt.py), and [verify-platform.py](scripts/ci/verify-platform.py) with Playwright 1.60.0.
 
 ## Quick start
 

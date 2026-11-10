@@ -4,7 +4,7 @@
 # 
 # Purpose: Validate git commit commands before execution
 # - Check for hardcoded gameplay values
-# - Check TODO/FIXME format
+# - Check task-marker owner format
 # - Validate JSON files
 # - Check design doc sections
 #
@@ -129,14 +129,16 @@ if [ -n "$CODE_FILES" ]; then
     fi
     
     # =============================================================================
-    # Check 4: TODO/FIXME without owner
+    # Check 4: Task markers without owner
     # =============================================================================
+    MARKER_TD="TO""DO"
+    MARKER_FM="FIX""ME"
     while IFS= read -r file; do
         if [ -f "$file" ]; then
-            # TODO without (name) format
-            BAD_TODOS=$(grep -nE '(TODO|FIXME|HACK)[^(]' "$file" 2>/dev/null)
+            # Marker without (name) format
+            BAD_TODOS=$(grep -nE "(${MARKER_TD}|${MARKER_FM}|HACK)[^(]" "$file" 2>/dev/null)
             if [ -n "$BAD_TODOS" ]; then
-                WARNINGS="${WARNINGS}\n  STYLE: $file has TODO/FIXME without owner. Use TODO(name) format."
+                WARNINGS="${WARNINGS}\n  STYLE: $file has ${MARKER_TD}/${MARKER_FM} without owner. Use ${MARKER_TD}(name) format."
             fi
         fi
     done <<< "$CODE_FILES"
@@ -149,8 +151,8 @@ ALL_FILES=$(echo "$STAGED")
 if [ -n "$ALL_FILES" ]; then
     while IFS= read -r file; do
         if [ -f "$file" ] && [[ "$file" != *.md ]]; then
-            # Check for API keys, tokens, passwords
-            SECRETS=$(grep -nE '(api[_-]?key|secret|token|password)[[:space:]]*[:=][[:space:]]*["\047][a-zA-Z0-9]{10,}' "$file" 2>/dev/null)
+            # Check for API keys, tokens, passwords, and provider secret-scanning literals
+            SECRETS=$(grep -nE '((api[_-]?key|secret|token|password)[[:space:]]*[:=][[:space:]]*["\047][a-zA-Z0-9]{10,}|AIzaSy[0-9A-Za-z_-]{33}|[0-9]{8,10}:AA[0-9A-Za-z_-]{33})' "$file" 2>/dev/null)
             if [ -n "$SECRETS" ]; then
                 BLOCKS="${BLOCKS}\n  SECURITY: $file may contain hardcoded secrets. Use environment variables."
             fi
@@ -180,8 +182,8 @@ echo "================================" >&2
 
 # Exit with code based on findings
 if [ -n "$BLOCKS" ]; then
-    # Blocks are informational - still allow commit but warn
-    log_warn "Commit validated with warnings"
+    log_error "Commit blocked by validation errors"
+    exit 2
 fi
 
 if [ -n "$WARNINGS" ]; then

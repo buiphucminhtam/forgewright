@@ -208,9 +208,10 @@ def test_checked_in_antigravity_pre_tool_hook_uses_named_hook_schema() -> None:
     assert group["matcher"] == "*"
     hook = group["hooks"][0]
     assert hook["type"] == "command"
-    assert hook["command"] == "bash scripts/lite/antigravity-pre-tool-gate.sh"
+    assert "scripts/lite/antigravity-pre-tool-gate.sh" in hook["command"]
     assert isinstance(hook["timeout"], int)
     assert hook["timeout"] > 0
+    assert isinstance(named_hook.get("Stop"), list)
 
 
 def test_checked_in_cursor_stop_hook_uses_v1_schema() -> None:
@@ -331,6 +332,14 @@ def test_checked_in_claude_lifecycle_context_hooks_are_bounded_and_observe_only(
     None
 ):
     config = load_json(".claude/settings.json")
+
+    user_prompt = config["hooks"]["UserPromptSubmit"]
+    assert user_prompt[0]["matcher"] == "*"
+    assert_observe_context_hook(
+        context_hook_from_groups(user_prompt, "UserPromptSubmit"),
+        "CLAUDE",
+        "UserPromptSubmit",
+    )
 
     session_start = config["hooks"]["SessionStart"]
     assert session_start[0]["matcher"] == "startup|resume|clear|compact"
@@ -633,6 +642,62 @@ command = "bash scripts/lite/stop-gate.sh --platform CODEX"
     assert json.loads(result.stdout) == {"continue": True}
 
 
+def test_global_claude_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:
+    clean_git_workspace(tmp_path)
+    project_lite = tmp_path / "scripts" / "lite"
+    project_lite.mkdir(parents=True)
+    shutil.copy2(ROOT / "scripts/lite/stop-gate.sh", project_lite / "stop-gate.sh")
+    project_config = tmp_path / ".claude" / "settings.json"
+    project_config.parent.mkdir(parents=True)
+    project_config.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "Stop": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 1; cd \"$root\" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CLAUDE'",
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_home = tmp_path / "home"
+    global_lite = fake_home / ".forgewright" / "scripts" / "lite"
+    global_lite.mkdir(parents=True)
+    global_gate = global_lite / "stop-gate.sh"
+    shutil.copy2(ROOT / "scripts" / "lite" / "stop-gate.sh", global_gate)
+
+    env = clean_git_environment()
+    env["HOME"] = str(fake_home)
+    env["FORGEWRIGHT_DIR"] = str(fake_home / ".forgewright")
+    payload = json.dumps(
+        {
+            "last_assistant_message": "CLAIM: incomplete claim that would fail if not deferred",
+            "session_id": "duplicate-claude-stop-session",
+        }
+    )
+    result = subprocess.run(
+        [BASH, str(global_gate), "--platform", "CLAUDE"],
+        cwd=tmp_path,
+        env=env,
+        input=payload,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == ""
+
+
 def clean_git_workspace(path: Path) -> None:
     git_env = clean_git_environment()
 
@@ -820,6 +885,8 @@ PYEOF
         env=env,
         input=payload,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         check=False,
     )

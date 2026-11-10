@@ -9,7 +9,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-8.7.1-blue?style=flat-square" alt="Phiên bản 8.7.1" />
-  <img src="https://img.shields.io/badge/skills-85-brightgreen?style=flat-square" alt="85 kỹ năng" />
+  <img src="https://img.shields.io/badge/skills-86-brightgreen?style=flat-square" alt="86 kỹ năng" />
   <img src="https://img.shields.io/badge/verification-local--first-24292f?style=flat-square" alt="Kiểm chứng local-first" />
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-0078d4?style=flat-square" alt="macOS | Linux | Windows" />
   <img src="https://img.shields.io/badge/integration-MCP-7057ff?style=flat-square" alt="Tích hợp MCP" />
@@ -30,7 +30,7 @@
 **Forgewright là bộ khung điều phối kỹ thuật (engineering harness & orchestrator) local-first, không phụ thuộc nhà cung cấp model, dành cho các AI coding agent** (Codex, Claude Code, Cursor, Antigravity, Gemini CLI/IDE và Forge CLI).
 
 Thay vì để AI đọc prompt rồi sửa file tùy ý và tự tuyên bố “đã xong”, Forgewright đặt agent vào một quy trình kỹ thuật có kỷ luật:
-- **85 kỹ năng chuyên gia (canonical skills)** trên **24 chế độ vận hành (modes)**: từ Backend, Frontend, Fullstack, Kiến trúc, QA, Bảo mật, DevOps, AI/Data cho tới Mobile và phát triển Game (Unity, Unreal, Godot, Phaser 4, Three.js).
+- **86 kỹ năng chuyên gia (canonical skills)** trên **24 chế độ vận hành (modes)**: từ Backend, Frontend, Fullstack, Kiến trúc, QA, Bảo mật, DevOps, AI/Data cho tới Mobile, Motion Design và Game (Unity, Unreal, Godot, Phaser 4, Three.js).
 - **Cổng kiểm soát công cụ trước khi chạy (Pre-tool Guardrails):** Chặn lệnh phá hủy dữ liệu, giới hạn mở dư tab trình duyệt/emulator và áp dụng chính sách an toàn trên cả **macOS, Linux và Windows**.
 - **Nghiệm thu bằng bằng chứng thực thi (Schema-v2 Evidence):** Mọi tuyên bố hoàn thành phải gắn với lệnh kiểm tra thực tế, mã thoát `0`, mã băm `OUTPUT: sha256:...`, tiêu chí nghiệm thu (AC) và chữ ký toàn bộ cây thư mục (`TREE:<sha256>`).
 - **Trí tuệ mã nguồn & tính liên tục dự án:** Kết hợp đồ thị mã nguồn [GitNexus](docs/guides/gitnexus.md), gói ngữ cảnh tối thiểu cho worker và cổng tài liệu tĩnh **Docs Hub** sinh trực tiếp từ trạng thái chuẩn của dự án.
@@ -180,10 +180,9 @@ node forgewright/src/cli/dist/index.js delegate resources
 
 ### 6. Research chuyên môn trên toàn bộ skill
 
-[Catalog](docs/skill-catalog.md) ghi **85 skill chính, 3 alias, 168 câu hỏi**,
-bảy bản sửa reference và giới hạn bằng chứng. MCP pin GitNexus 1.6.12 và Node
-`^22.18.0 || >=24.11.0`; mới kiểm SDK/CLI trên Linux/Node 24.19. Candidate Godot
-còn giữ lại vì xung đột reconciliation. Chưa chứng minh model/game feel tốt hơn.
+[Catalog](docs/skill-catalog.md) ghi **86 skill chính, 3 alias, 168 câu hỏi**
+(thêm [Motion Director](skills/motion-director/SKILL.md) nạp lười), Docs Hub `markdown-it`
+và cổng [verify-platform.py](scripts/ci/verify-platform.py) kèm Playwright 1.60.0.
 
 ### 5. Hoàn thiện handoff game Phaser 4 / Three.js
 

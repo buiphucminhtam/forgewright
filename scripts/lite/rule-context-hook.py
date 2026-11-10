@@ -678,6 +678,20 @@ def run_hook(
                         "Use this native turn for run_check evidence and Stop. "
                         "CODEX_THREAD_ID identifies the session, not this turn."
                     )
+            elif platform.strip().upper() == "CLAUDE":
+                turn = (
+                    payload.get("turn_id")
+                    or payload.get("turn")
+                    or payload.get("session_id")
+                )
+                if isinstance(turn, str) and re.fullmatch(
+                    r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", turn
+                ):
+                    context = (
+                        "[Forgewright native turn]\n"
+                        f"Evidence selector: --turn {turn}\n"
+                        "Use this native turn for run_check evidence and Stop."
+                    )
             sys.stdout.write(
                 _serialize_native_response(platform, event, context) + "\n"
             )

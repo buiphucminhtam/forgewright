@@ -6,7 +6,6 @@ import json
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -41,6 +40,14 @@ def _pid_alive(pid: int) -> bool:
         return False
     except PermissionError:
         return True
+
+
+def _assert_pid_absent_immediately(pid: int) -> None:
+    if os.name == "nt":
+        assert not _pid_alive(pid)
+        return
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
 
 
 def test_accepted_run_requires_independent_verifier_and_records_single_terminal_event(tmp_path: Path):
@@ -160,15 +167,23 @@ def test_distinct_failure_modes_and_unknown_usage(tmp_path: Path, mode: str, exp
     assert rec["usage"]["cost_usd"] == "unknown"
 
 
-@pytest.mark.parametrize("mode", ["timeout", "cancelled"])
+@pytest.mark.parametrize("mode", ["normal", "exception", "abrupt", "overflow", "timeout", "cancelled"])
 def test_timeout_and_cancel_reap_spawned_descendant_processes(tmp_path: Path, mode: str):
     pid_file = tmp_path / f"child-{mode}.pid"
     worker_script = tmp_path / f"worker-{mode}.py"
+    finish_line = {
+        "normal": 'import json; print(json.dumps({"status":"ok"}))',
+        "exception": 'raise RuntimeError("worker failed")',
+        "abrupt": "import os; os._exit(7)",
+        "overflow": 'import time; print("X" * 4096, flush=True); time.sleep(30)',
+        "timeout": "import time; time.sleep(30)",
+        "cancelled": "import time; time.sleep(30)",
+    }[mode]
     worker_script.write_text(
         f'import subprocess, sys, time\n'
-        f'child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])\n'
+        f'child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n'
         f'open({str(pid_file)!r}, "w", encoding="utf-8").write(str(child.pid))\n'
-        f'time.sleep(30)\n',
+        f'{finish_line}\n',
         encoding="utf-8",
     )
     spec = receipt_mod.EvalTaskSpec(
@@ -179,17 +194,60 @@ def test_timeout_and_cancel_reap_spawned_descendant_processes(tmp_path: Path, mo
         verifier_command=(sys.executable, "-c", "raise SystemExit(0)"),
         timeout_seconds=0.5 if mode == "timeout" else 10.0,
         cancel_after_seconds=0.5 if mode == "cancelled" else None,
+        output_limit_bytes=1024 if mode == "overflow" else 1024 * 1024,
     )
     rec = receipt_mod.execute_eval_run(spec, output_dir=tmp_path / f"out-{mode}")
-    assert rec["terminal_outcome"] == mode
-    assert rec["error_category"] == mode
+    expected_outcome = {
+        "normal": ("accepted", "none"),
+        "exception": ("failed", "acceptance_failure"),
+        "abrupt": ("failed", "acceptance_failure"),
+        "overflow": ("malformed_output", "malformed_output"),
+        "timeout": ("timeout", "timeout"),
+        "cancelled": ("cancelled", "cancelled"),
+    }[mode]
+    assert (rec["terminal_outcome"], rec["error_category"]) == expected_outcome
     assert rec["cleanup"]["complete"] is True
     assert pid_file.is_file()
-    child_pid = int(pid_file.read_text(encoding="utf-8").strip())
-    deadline = time.monotonic() + 2.0
-    while _pid_alive(child_pid) and time.monotonic() < deadline:
-        time.sleep(0.05)
-    assert not _pid_alive(child_pid)
+    _assert_pid_absent_immediately(int(pid_file.read_text(encoding="utf-8").strip()))
+
+
+@pytest.mark.parametrize("mode", ["normal", "exception", "abrupt"])
+def test_execute_bounded_process_reaps_redirected_descendants_before_return(
+    tmp_path: Path, mode: str
+):
+    child_pid_file = tmp_path / f"direct-child-{mode}.pid"
+    grandchild_pid_file = tmp_path / f"direct-grandchild-{mode}.pid"
+    worker_script = tmp_path / f"direct-worker-{mode}.py"
+    finish_line = {
+        "normal": 'print("ok", flush=True)',
+        "exception": 'raise RuntimeError("worker error")',
+        "abrupt": "import os; os._exit(7)",
+    }[mode]
+    child_code = (
+        "import pathlib, subprocess, sys, time\n"
+        "p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+        "pathlib.Path(sys.argv[1]).write_text(str(p.pid), encoding='utf-8')\n"
+        "time.sleep(30)\n"
+    )
+    worker_script.write_text(
+        f'import pathlib, subprocess, sys, time\n'
+        f'child = subprocess.Popen([sys.executable, "-c", {child_code!r}, {str(grandchild_pid_file)!r}], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n'
+        f'pathlib.Path({str(child_pid_file)!r}).write_text(str(child.pid), encoding="utf-8")\n'
+        f'while not pathlib.Path({str(grandchild_pid_file)!r}).is_file(): time.sleep(0.01)\n'
+        f'{finish_line}\n',
+        encoding="utf-8",
+    )
+    res = receipt_mod._execute_bounded_process(
+        (sys.executable, str(worker_script)),
+        b"",
+        cwd=tmp_path,
+        timeout_seconds=10.0,
+        output_limit_bytes=1024 * 1024,
+    )
+    assert res["cleanup_complete"] is True
+    assert child_pid_file.is_file() and grandchild_pid_file.is_file()
+    _assert_pid_absent_immediately(int(child_pid_file.read_text(encoding="utf-8").strip()))
+    _assert_pid_absent_immediately(int(grandchild_pid_file.read_text(encoding="utf-8").strip()))
 
 
 def test_promptfoo_custom_typescript_provider_executes_real_runner_and_verifier(tmp_path: Path):
@@ -298,3 +356,181 @@ def test_windows_corrupt_completion_receipt_never_infers_cleanup_from_exit_code(
     )
     rec = receipt_mod.execute_eval_run(spec, output_dir=tmp_path / "out-corrupt")
     assert rec["cleanup"]["complete"] is False
+
+
+@pytest.mark.parametrize("fail_mode", ["always_present", "eperm", "unknown_error", "reader_not_finished"])
+def test_posix_unconfirmed_group_quiescence_marks_cleanup_incomplete_and_rejects_acceptance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fail_mode: str
+):
+    import threading
+
+    monkeypatch.setattr(receipt_mod, "_POSIX_QUIESCENCE_TIMEOUT_SECONDS", 0.06)
+    release_reader = threading.Event()
+    close_called_while_blocked = False
+    orig_kill = os.kill
+    orig_popen = subprocess.Popen
+
+    if fail_mode in ("always_present", "eperm", "unknown_error"):
+        def _mock_kill(pid: int, sig: int) -> None:
+            if pid < 0 and sig == 0:
+                if fail_mode == "always_present":
+                    return None
+                if fail_mode == "eperm":
+                    raise PermissionError(1, "Operation not permitted")
+                raise OSError(22, "Invalid argument")
+            return orig_kill(pid, sig)
+
+        monkeypatch.setattr(os, "kill", _mock_kill)
+        assert receipt_mod._wait_posix_pgid_quiescent(12345, timeout_seconds=0.05) is False
+    else:
+        monkeypatch.setattr(receipt_mod, "_READER_JOIN_TIMEOUT_SECONDS", 0.05)
+
+        class _BlockedStream:
+            def __init__(self, raw):
+                self._raw = raw
+                self._in_read = False
+
+            def read(self, size: int = -1) -> bytes:
+                self._in_read = True
+                try:
+                    release_reader.wait(timeout=5.0)
+                    return b""
+                finally:
+                    self._in_read = False
+
+            def close(self) -> None:
+                nonlocal close_called_while_blocked
+                if self._in_read and not release_reader.is_set():
+                    close_called_while_blocked = True
+                    raise AssertionError("buffered close must not run while reader is blocked")
+                self._raw.close()
+
+        def _wrapped_popen(*args, **kwargs):
+            proc = orig_popen(*args, **kwargs)
+            proc.stderr = _BlockedStream(proc.stderr)
+            return proc
+
+        monkeypatch.setattr(subprocess, "Popen", _wrapped_popen)
+
+    if os.name == "nt":
+        return
+    try:
+        spec = receipt_mod.EvalTaskSpec(
+            task_id=f"rf01-posix-unconfirmed-{fail_mode}",
+            arm="current",
+            prompt="test",
+            command=(sys.executable, "-c", 'import json; print(json.dumps({"status":"ok"}))'),
+            verifier_command=(sys.executable, "-c", "raise SystemExit(0)"),
+        )
+        rec = receipt_mod.execute_eval_run(spec, output_dir=tmp_path / f"out-posix-{fail_mode}")
+        assert rec["cleanup"]["complete"] is False
+        assert rec["terminal_outcome"] == "environment_error"
+        assert rec["error_category"] == "environment_error"
+        assert close_called_while_blocked is False
+    finally:
+        release_reader.set()
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    ["no_read_timeout", "no_read_cancel", "duplex_stdout_before_stdin"],
+)
+def test_large_stdin_no_read_and_duplex_do_not_deadlock(tmp_path: Path, scenario: str):
+    import hashlib
+    import signal
+    import threading
+
+    large_stdin = b"0123456789abcdef" * 32768  # 512 KiB (> OS pipe buffer)
+    expected_stdin_sha = hashlib.sha256(large_stdin).hexdigest()
+    leader_pid_file = tmp_path / f"stdin-leader-{scenario}.pid"
+    child_pid_file = tmp_path / f"stdin-child-{scenario}.pid"
+    digest_file = tmp_path / f"stdin-digest-{scenario}.txt"
+    worker_script = tmp_path / f"stdin-worker-{scenario}.py"
+
+    if scenario in ("no_read_timeout", "no_read_cancel"):
+        worker_script.write_text(
+            "import os, pathlib, subprocess, sys, time\n"
+            "pathlib.Path(sys.argv[1]).write_text(str(os.getpid()), encoding='utf-8')\n"
+            "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+            "pathlib.Path(sys.argv[2]).write_text(str(child.pid), encoding='utf-8')\n"
+            "time.sleep(30)\n",
+            encoding="utf-8",
+        )
+        argv = (sys.executable, str(worker_script), str(leader_pid_file), str(child_pid_file))
+    else:
+        worker_script.write_text(
+            "import hashlib, os, pathlib, sys\n"
+            "pathlib.Path(sys.argv[1]).write_text(str(os.getpid()), encoding='utf-8')\n"
+            "sys.stdout.buffer.write(b'D' * (256 * 1024))\n"
+            "sys.stdout.buffer.flush()\n"
+            "stdin_data = sys.stdin.buffer.read()\n"
+            "pathlib.Path(sys.argv[2]).write_text(f'{len(stdin_data)}:{hashlib.sha256(stdin_data).hexdigest()}', encoding='utf-8')\n",
+            encoding="utf-8",
+        )
+        argv = (sys.executable, str(worker_script), str(leader_pid_file), str(digest_file))
+
+    watchdog_triggered = threading.Event()
+
+    def _watchdog_reap() -> None:
+        watchdog_triggered.set()
+        for pfile in (leader_pid_file, child_pid_file):
+            if pfile.is_file():
+                try:
+                    pid = int(pfile.read_text(encoding="utf-8").strip())
+                    if os.name == "nt":
+                        subprocess.run(
+                            ["taskkill", "/PID", str(pid), "/T", "/F"],
+                            capture_output=True,
+                            check=False,
+                            timeout=5,
+                        )
+                    else:
+                        try:
+                            os.killpg(pid, signal.SIGKILL)
+                        except OSError:
+                            pass
+                        try:
+                            os.kill(pid, signal.SIGKILL)
+                        except OSError:
+                            pass
+                except Exception:
+                    pass
+
+    watchdog = threading.Timer(2.5, _watchdog_reap)
+    watchdog.daemon = True
+    watchdog.start()
+    try:
+        res = receipt_mod._execute_bounded_process(
+            argv,
+            large_stdin,
+            cwd=tmp_path,
+            timeout_seconds=0.5 if scenario == "no_read_timeout" else 5.0,
+            output_limit_bytes=1024 * 1024,
+            cancel_after_seconds=0.5 if scenario == "no_read_cancel" else None,
+        )
+    finally:
+        watchdog.cancel()
+        if watchdog_triggered.is_set():
+            _watchdog_reap()
+
+    if leader_pid_file.is_file():
+        _assert_pid_absent_immediately(int(leader_pid_file.read_text(encoding="utf-8").strip()))
+    if child_pid_file.is_file():
+        _assert_pid_absent_immediately(int(child_pid_file.read_text(encoding="utf-8").strip()))
+    assert not watchdog_triggered.is_set(), (
+        f"_execute_bounded_process deadlocked on 512 KiB stdin ({scenario}); watchdog reaped child"
+    )
+    assert res["cleanup_complete"] is True
+    assert leader_pid_file.is_file()
+    if scenario == "no_read_timeout":
+        assert res["failure"] == "timeout"
+        assert child_pid_file.is_file()
+    elif scenario == "no_read_cancel":
+        assert res["failure"] == "cancelled"
+        assert child_pid_file.is_file()
+    else:
+        assert res["failure"] is None
+        assert res["exit_code"] == 0
+        assert res["stdout"] == b"D" * (256 * 1024)
+        assert digest_file.is_file()
+        assert digest_file.read_text(encoding="utf-8").strip() == f"{len(large_stdin)}:{expected_stdin_sha}"

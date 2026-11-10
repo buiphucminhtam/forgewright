@@ -77,8 +77,14 @@ npm install -D vitest @vitest/ui playwright @playwright/test healwright inspectw
 # Run tests
 npm run test:unit    # Vitest
 npm run test:e2e     # Playwright
+npm run test:e2e:install # Install pinned Playwright 1.60.0 bundled Chromium shell
 npm run test:heal   # Self-healing
 
 # Setup
 npm run test:setup
 ```
+
+## Browser & Motion Verification Profile
+
+- Root and E2E Playwright configs share `scripts/runtime/playwright_chromium.mjs` (`@playwright/test@1.60.0` default bundled headless shell; Darwin uses `--disable-frame-rate-limit` for unthrottled headless begin-frames).
+- `scripts/runtime/verify_motion_drawer_artifact.mjs` verifies tokenized CSS, keyboard Enter/Escape focus restoration, capture-phase mid-transition reversal in both directions, and mobile `390x844` touch + `prefers-reduced-motion: reduce`.

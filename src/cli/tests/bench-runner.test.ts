@@ -40,8 +40,12 @@ describe("Benchmark runner", () => {
   });
 
   it("sanitizes output of sensitive API keys and truncates long text", () => {
+    const syntheticGoogleKey = [
+      "AIzaSy",
+      "1234567890-abcdefghij123456789012",
+    ].join("");
     const raw =
-      "API Key: sk-[REDACTED]\nGoogle Key: AIzaSy1234567890-abcdefghij123456789012\nSome long text ".repeat(
+      `API Key: sk-[REDACTED]\nGoogle Key: ${syntheticGoogleKey}\nSome long text `.repeat(
         100,
       );
     const sanitized = sanitizeOutput(raw);

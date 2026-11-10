@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { resolveChromiumFunctionalProfile } from './scripts/runtime/playwright_chromium.mjs';
 
-const channel = process.env.PLAYWRIGHT_CHANNEL ?? 'chrome';
+const chromiumProfile = resolveChromiumFunctionalProfile();
 
 export default defineConfig({
   testDir: './src/testing/e2e/tests',
@@ -24,11 +25,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], channel },
+      use: { ...devices['Desktop Chrome'], ...chromiumProfile.playwrightProjectUse },
     },
     {
       name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'], channel },
+      use: { ...devices['Pixel 5'], ...chromiumProfile.playwrightProjectUse },
     },
     {
       name: 'Mobile Safari',

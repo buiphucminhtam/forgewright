@@ -122,9 +122,27 @@ All replay commands for one advance—including HARD final, contract, runtime an
 e2e evidence—share a total **320-second** budget; an over-budget check denies
 advancement without changing state. Keep combined replay below this limit.
 The framework-owned process adapter bounds output/time and reclaims its own
-POSIX process group on every exit; it refuses Windows until equivalent owned
-cleanup is implemented. Other tool resources remain the host's responsibility.
-The installed MCP packages the same Python helpers. Local containment admits
+POSIX process group starting on every cleanup request, polling the owned PGID against
+a monotonic bounded deadline before settlement; only `ESRCH` confirms group absence,
+and any unconfirmed group state fails closed and cannot accept. This covers the
+owned POSIX process-group scope rather than containment of arbitrary `setsid`
+descendants. In the Python evaluation runner (`scripts/runtime/skill_eval_receipt.py`),
+POSIX stdin delivery uses owned file-backed handoff so unread or duplex-heavy inputs
+cannot block deadline enforcement. On Windows, a separate
+trusted supervisor admits its
+worker into an unnamed, non-inherited kill-on-close Job Object before releasing
+the checker. Cancellation closes the owned control pipe; normal and cancelled
+exits terminate the job and confirm zero active members before successful
+settlement. Setup or cleanup uncertainty denies advancement. This covers ordinary
+child-process creation, not hostile same-user manipulation or processes created
+through external services. Other tool resources remain the host's responsibility.
+The installed MCP packages the same Python helpers, and the native platform gate
+explicitly runs `npm --prefix mcp run build` before Product Factory and MCP tests,
+failing closed if the build fails even when capability summaries pass; it binds 36
+`KEY_REVISION_FILES` paths (including `scripts/runtime/playwright_chromium.mjs`),
+enforces strict current/foreign host receipt merge and revision checks, and bounds
+capability checks at 60s core, 120s motion, and 60s cleanup within a derived 255s
+outer summary budget. Local containment admits
 only the bounded transition arguments; the restricted production profile denies
 verification subprocesses. Caller turn IDs and local records are not identity
 authentication. No Stop-hook termination fallback can approve a transition.

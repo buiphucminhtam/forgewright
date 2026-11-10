@@ -480,6 +480,7 @@ def atomic_write_bytes(
     after_guard: Callable[[], None] | None = None,
     after_anchor: Callable[[], None] | None = None,
     after_publish: Callable[[], None] | None = None,
+    validate_temporary: Callable[[int, Path], None] | None = None,
 ) -> None:
     """Publish bytes below ``root`` without a path-redirection window on Windows."""
 
@@ -511,6 +512,8 @@ def atomic_write_bytes(
             opened = os.fstat(descriptor)
             if not stat.S_ISREG(opened.st_mode) or _is_reparse(opened):
                 raise OSError("Windows atomic-write temporary file is unsafe")
+            if validate_temporary is not None:
+                validate_temporary(descriptor, _temporary)
             remaining = memoryview(payload)
             while remaining:
                 written = os.write(descriptor, remaining)

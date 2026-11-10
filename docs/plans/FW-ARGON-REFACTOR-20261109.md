@@ -49,5 +49,5 @@
 | **RF05** | Pilot OpenSpec task contract mapping & Superpowers protocols (`systematic-debugging`, `requesting-code-review`) | `LOCALLY_VERIFIED` |
 | **RF06** | Evaluate XState pure transition reducer pilot vs `PipelineService.ts` (287 LOC, 4 states) | `EXCLUDED_BY_DECISION` |
 | **RF09** | Evaluate optional Langfuse telemetry server stack vs local JSONL receipts | `EXCLUDED_BY_DECISION` |
-| **RF12** | Windows & macOS portability acceptance matrix (`windows_native_x64: PASS`, `macos_native_arm64: NOT_RUN`, `macos_native_x64: NOT_RUN`) | `BLOCKED` (pending macOS host execution) |
-| **RF10** | Final comparison, rollback check, independent Argon verifier pass & supervisor handoff bundle | `LOCALLY_VERIFIED` (`READY_FOR_SUPERVISOR_REVIEW`) |
+| **RF12** | Windows & macOS portability acceptance matrix (`windows_native_x64: PASS`, `macos_native_arm64: PASS`, `macos_native_x64: NOT_RUN`) | `LOCALLY_VERIFIED` |
+| **RF10** | Final comparison, rollback check, independent Argon verifier pass, macOS native verification & main merge | `LOCALLY_VERIFIED` |

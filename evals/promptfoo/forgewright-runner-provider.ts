@@ -174,7 +174,7 @@ export default class ForgewrightRunnerProvider {
 
     try {
       writeFileSync(specPath, JSON.stringify(spec), "utf8");
-      const pythonBin = this.config.pythonExecutable ?? "python";
+      const pythonBin = this.config.pythonExecutable ?? process.env.PYTHON ?? (process.platform === "win32" ? "python" : "python3");
       const args = [
         "-X",
         "utf8",

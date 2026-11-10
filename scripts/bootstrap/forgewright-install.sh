@@ -693,14 +693,17 @@ install_hooks() {
         "$gate_runtime_dir/rule-ledger.sh" "$gate_runtime_dir/policy-check.sh" \
         "$gate_runtime_dir/telemetry.sh"
     mkdir -p "${FORGEWRIGHT_DIR}/scripts/runtime" "${FORGEWRIGHT_DIR}/scripts/memory"
-    atomic_copy_file "${source_dir}/scripts/runtime/windows_security.py" "${FORGEWRIGHT_DIR}/scripts/runtime/windows_security.py"
+    if [[ -f "${source_dir}/scripts/runtime/windows_security.py" ]]; then
+        atomic_copy_file "${source_dir}/scripts/runtime/windows_security.py" "${FORGEWRIGHT_DIR}/scripts/runtime/windows_security.py"
+    fi
     for memory_runtime_file in memory-session.sh memory_redaction.py; do
         atomic_copy_file "${source_dir}/scripts/memory/${memory_runtime_file}" "${FORGEWRIGHT_DIR}/scripts/memory/${memory_runtime_file}"
     done
     chmod +x "${FORGEWRIGHT_DIR}/scripts/memory/memory-session.sh"
 
-    local claude_stop_cmd claude_session_cmd claude_subagent_cmd gemini_stop_cmd gemini_policy_cmd gemini_before_agent_cmd antigravity_pre_invocation_cmd antigravity_policy_cmd antigravity_stop_cmd cursor_stop_cmd cursor_session_cmd codex_session_cmd codex_subagent_cmd codex_session_windows_cmd codex_subagent_windows_cmd
+    local claude_stop_cmd claude_prompt_cmd claude_session_cmd claude_subagent_cmd gemini_stop_cmd gemini_policy_cmd gemini_before_agent_cmd antigravity_pre_invocation_cmd antigravity_policy_cmd antigravity_stop_cmd cursor_stop_cmd cursor_session_cmd codex_session_cmd codex_subagent_cmd codex_session_windows_cmd codex_subagent_windows_cmd
     claude_stop_cmd="bash $(shell_quote "$gate_script") --platform CLAUDE"
+    claude_prompt_cmd="$(rule_context_command "$context_hook" "$context_workspace" CLAUDE UserPromptSubmit)"
     claude_session_cmd="$(rule_context_command "$context_hook" "$context_workspace" CLAUDE SessionStart)"
     claude_subagent_cmd="$(rule_context_command "$context_hook" "$context_workspace" CLAUDE SubagentStart)"
     gemini_stop_cmd="bash $(shell_quote "$gate_script") --platform GEMINI"
@@ -721,7 +724,7 @@ install_hooks() {
     # nested hooks array of {type, command} objects.  hooks.stop (lowercase) is
     # NOT a valid key and is silently ignored by Claude Code.
     mkdir -p "$HOME/.claude"
-    CLAUDE_STOP_CMD="$claude_stop_cmd" CLAUDE_SESSION_CMD="$claude_session_cmd" CLAUDE_SUBAGENT_CMD="$claude_subagent_cmd" GATE_SCRIPT="$gate_script" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "$(host_path "${HOME}/.claude/settings.json")" <<'NODE'
+    CLAUDE_STOP_CMD="$claude_stop_cmd" CLAUDE_PROMPT_CMD="$claude_prompt_cmd" CLAUDE_SESSION_CMD="$claude_session_cmd" CLAUDE_SUBAGENT_CMD="$claude_subagent_cmd" GATE_SCRIPT="$gate_script" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" FORGEWRIGHT_SOURCE_DIR="$source_dir" node - "$(host_path "${HOME}/.claude/settings.json")" <<'NODE'
 var fs = require('fs');
 var path = require('path');
 var file = process.argv[2];
@@ -758,6 +761,10 @@ function currentGate(command, platform) {
 }
 function legacyVerifyGate(command, platform) {
   var script = gateCommand(command, platform);
+  if (!script && typeof command === 'string') {
+    var bare = command.trim().match(/^(?:bash\s+)?(?:"([^"]+)"|'([^']+)'|([^\s"']+))$/);
+    if (bare) script = bare[1] || bare[2] || bare[3];
+  }
   if (!script || path.basename(script) !== 'verify-gate.sh') return false;
   if (!path.isAbsolute(script)) {
     var relative = path.posix.normalize(script.replace(/\\/g, '/'));
@@ -766,9 +773,14 @@ function legacyVerifyGate(command, platform) {
   var normalized = path.posix.normalize(script.replace(/\\/g, '/'));
   var installedLegacy = path.posix.normalize(path.dirname(process.env.GATE_SCRIPT).replace(/\\/g, '/') + '/verify-gate.sh');
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
+  var sourceRoot = process.env.FORGEWRIGHT_SOURCE_DIR ? path.resolve(process.env.FORGEWRIGHT_SOURCE_DIR) : framework;
   return normalized === installedLegacy ||
     normalized === path.posix.join(framework, 'verify-gate.sh') ||
-    normalized === path.posix.join(framework, 'scripts', 'verify-gate.sh');
+    normalized === path.posix.join(framework, 'scripts', 'verify-gate.sh') ||
+    normalized === path.posix.join(framework, 'scripts', 'lite', 'verify-gate.sh') ||
+    normalized === path.posix.join(sourceRoot, 'verify-gate.sh') ||
+    normalized === path.posix.join(sourceRoot, 'scripts', 'verify-gate.sh') ||
+    normalized === path.posix.join(sourceRoot, 'scripts', 'lite', 'verify-gate.sh');
 }
 // Remove any stale string-form stop key left by previous installs
 delete cfg.hooks.stop;
@@ -786,6 +798,7 @@ if (!already) {
 }
 cfg.hooks.Stop = Stop;
 [
+  ['UserPromptSubmit', '*', process.env.CLAUDE_PROMPT_CMD],
   ['SessionStart', 'startup|resume|clear|compact', process.env.CLAUDE_SESSION_CMD],
   ['SubagentStart', '*', process.env.CLAUDE_SUBAGENT_CMD]
 ].forEach(function(item) {
@@ -795,12 +808,13 @@ cfg.hooks.Stop = Stop;
   function ownedContext(commandValue) {
     if (commandValue === command) return true;
     if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
-    var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:\s+'[^']*'){2}\s+\|\|\s*true\s*$/);
+    var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:(?:\s+'[^']*'){2})?\s+\|\|\s*true\s*$/);
     if (!match) return false;
     var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
     var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
     return path.resolve(normalized) === path.join(framework, 'rule-context-hook.py') ||
-      path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py');
+      path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+      path.resolve(normalized) === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
   }
   groups = groups.map(function(g) {
     if (!Array.isArray(g.hooks)) return g;
@@ -906,12 +920,13 @@ var found = false;
 function ownedContext(commandValue) {
   if (commandValue === process.env.GEMINI_BEFORE_AGENT_CMD) return true;
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
-  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:\s+'[^']*'){2}\s+\|\|\s*true\s*$/);
+  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:(?:\s+'[^']*'){2})?\s+\|\|\s*true\s*$/);
   if (!match) return false;
   var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
   return path.resolve(normalized) === path.join(framework, 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py');
+    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+    path.resolve(normalized) === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
 }
 groups = groups.map(function(g) {
   if (!Array.isArray(g.hooks)) return g;
@@ -961,12 +976,13 @@ if (!cfg || Array.isArray(cfg) || typeof cfg !== 'object') throw new Error('Anti
 function ownedContext(commandValue) {
   if (commandValue === process.env.ANTIGRAVITY_PRE_INVOCATION_CMD) return true;
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
-  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:\s+'[^']*'){2}\s+\|\|\s*true\s*$/);
+  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:(?:\s+'[^']*'){2})?\s+\|\|\s*true\s*$/);
   if (!match) return false;
   var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
   return path.resolve(normalized) === path.join(framework, 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py');
+    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+    path.resolve(normalized) === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
 }
 var policy = cfg['forgewright-policy'];
 if (!policy || Array.isArray(policy) || typeof policy !== 'object') policy = {};
@@ -1069,12 +1085,13 @@ var foundSession = false;
 function ownedContext(commandValue) {
   if (commandValue === process.env.CURSOR_SESSION_CMD) return true;
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
-  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:\s+'[^']*'){2}\s+\|\|\s*true\s*$/);
+  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:(?:\s+'[^']*'){2})?\s+\|\|\s*true\s*$/);
   if (!match) return false;
   var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
   return path.resolve(normalized) === path.join(framework, 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py');
+    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+    path.resolve(normalized) === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
 }
 sessions = sessions.filter(function(h) {
   if (!h || !ownedContext(h.command)) return true;

@@ -646,6 +646,14 @@
       "authority": "routed_skill"
     },
     {
+      "path": "skills/motion-director/LITE.md",
+      "authority": "routed_lite"
+    },
+    {
+      "path": "skills/motion-director/SKILL.md",
+      "authority": "routed_skill"
+    },
+    {
       "path": "skills/narrative-designer/LITE.md",
       "authority": "routed_lite"
     },

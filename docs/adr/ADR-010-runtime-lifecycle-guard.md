@@ -1,7 +1,7 @@
 # ADR 010: Runtime Lifecycle Guard and finite build artifacts
 
 - Status: accepted contract; finite supervision, artifact retention and opt-in recurrence implemented; activation requires current session proof
-- Updated: 2026-10-18
+- Updated: 2026-11-10
 - Scope: cooperating jobs on one user account and machine; explicit physical workspace enrollment
 - Owners: Runtime maintainers
 
@@ -26,6 +26,66 @@ explicit admission-home override is visible in inventory; separate homes do not
 coordinate. Reservations are estimates, not OS limits. External processes and
 uncovered tools remain unmanaged. The supervisor does not suspend or kill them.
 
+## RLG installer provenance on Windows
+
+Native Windows RLG compatibility is observe-only. `runtime-lease.sh acquire`
+and `adopt`, `dev-run.sh`, and `runtime-reap.sh --execute` reject operations
+without Job Object ownership, including explicit force or disabled-guard paths.
+Git Bash background PIDs and native Windows PIDs are different namespaces;
+liveness probes conservatively retain a process alive in either namespace.
+An unavailable native probe never establishes death. Finite bootstrap/checker
+jobs use their separate admitted Job Object supervisor; their authority does
+not transfer to legacy RLG leases.
+
+Framework escalation is an explicitly internal finite-maintenance lane:
+`escalate.sh` retains its provider, confirmation, cost, opt-out and timeout gates
+before supplying a validated provider descriptor to `windows_escalation.py`.
+The adapter uses `run_job` with `profile=framework-escalation-v1` and
+`profile_digest=None`, acquiring real shared HostAdmission worker/heavy capacity
+and WindowsJobClient completion ownership. It is not public profile enrollment
+or a generic execute CLI, and creates no legacy RLG lease. Prompt arguments stay
+data and are not persisted in admission journals; provider output streams through
+inherited stdout/stderr. Native `.exe` providers are required; batch launchers
+are refused rather than interpreting prompt data through a shell. Confirmed
+timeout returns 124; uncertain ownership/completion returns 125 without fallback
+and retains quarantine. Unknown host pressure remains admission-blocking.
+The shared worker protocol normalizes reserved/out-of-range provider exits to
+124, so a quiescent worker reporting 124 is conservatively returned as 125
+without fallback; only confirmed owner timeout maps to 124. Exact recovery of
+those provider exit codes requires a separate shared-protocol extension.
+
+`scripts/runtime/runtime-install.sh --link` prefers a real native symlink. On
+Git Bash/MSYS/Cygwin it explicitly requests `MSYS=winsymlinks:nativestrict`;
+a successful `ln` that leaves a plain copy is an installation failure. Only a
+failed symlink attempt on Windows permits the `copy-native` fallback. Hardlinks
+are never an installation mode. This bounded exception replaces the historical
+symlink-only rule for Windows accounts without symlink privilege.
+
+Each file in `INSTALLED_FROM` records `link_mode` as `symlink` or `copy-native`.
+A missing mode retains the legacy meaning `symlink`; unknown modes fail closed.
+The verifier rejects `copy-native` on non-Windows platforms. A native copy must
+be a regular single-link file with no reparse point in its path. Its installed
+hash, recorded hash and live source hash must all match. The source directory
+must be exactly the recorded repository's `scripts/runtime` or `scripts/lite`,
+as selected by the installer's manifest, without symlink/reparse redirection.
+Windows records use native forward-slash paths; verification also understands
+legacy Git Bash paths. JSON parsing does not pass CRLF-delimited fields through
+a shell loop.
+
+Verification requires the complete known manifest and rejects empty, duplicate,
+unknown or missing entries, unmanaged files (including hidden entries), missing
+files, changed source and changed installed bytes. Symlink records continue to
+require the exact source link; they never adopt an unrecorded copy. Installation
+verifies before reporting success. This is provenance checking for cooperating
+same-user jobs, not protection against a hostile same-user writer or the interval
+between verification and execution. It changes no process ownership, admission,
+quiescence, kill authority or shared-runtime receipt reconciliation rules.
+
+Existing global copies are not automatically adopted. Any retirement or repair
+of drifted managed assets remains a separate owner-controlled operation through
+the shared-runtime installer. Legacy `--uninstall` removes symlinks only; it does
+not infer deletion authority over native copies.
+
 ## Finite profiles and lifecycle
 
 A reviewed `forgewright-finite-profile/v2` binds the physical project, working
@@ -40,6 +100,15 @@ Cancellation or a policy breach stops only the proven owned process group, then
 proves quiescence before releasing heavy and worker capacity. Unknown descendants
 or identity drift retain quarantine. Unsupported daemonization or writes outside
 the reviewed output paths are not contained by this cooperative mechanism.
+Separately, the MCP pipeline transition adapter (`ProcessPipelineTransitionGate.ts`)
+starts POSIX group reclamation on cleanup request and polls the owned process
+group with a monotonic bounded proof; only `ESRCH` confirms process-group
+absence, while any unconfirmed cleanup fails closed and cannot be accepted. This
+adapter covers process-group scope rather than containment of arbitrary `setsid`
+descendants, and the Windows Job Object supervisor remains a separate mechanism.
+In the Python evaluation runner (`scripts/runtime/skill_eval_receipt.py`), owned
+file-backed POSIX stdin delivery ensures unread or duplex-heavy input cannot
+block deadline enforcement.
 
 Resident-to-build handoff in this version closes the owned resident, proves it
 quiet and releases both leases before a build reacquires them. There is no
@@ -256,6 +325,25 @@ request replay. The rollout sequence is fixture checks, one enrolled project,
 competing projects, then an actual bounded build and rollback. Each stage records
 current evidence and limitations; source tests do not establish native dispatch,
 host-wide isolation or performance improvement.
+The browser verification lane pins exact `@playwright/test` `1.60.0` with its
+matching default bundled headless shell via `scripts/runtime/playwright_chromium.mjs`
+(shared by the standalone motion verifier and root Playwright configuration): on
+Darwin the default bundled headless Chromium profile launches with
+`--disable-frame-rate-limit`, while Windows/Linux defaults remain unchanged and
+explicit `PLAYWRIGHT_CHANNEL` selection stays opt-in without inheriting that Darwin
+default profile. The earlier `1.49.1` browser extraction hung on native Node 26,
+whereas `1.60.0` cold-installed cleanly on native macOS Node 26.7.0 and Windows
+Node 24.11.1 without a Node 20 prerequisite via the
+lockfile-tied local `npm run test:e2e:install` (`npx playwright install chromium`,
+optionally scoped by `PLAYWRIGHT_BROWSERS_PATH`) rather than global browser or
+Node mutations. This is a functional browser test profile that records configured
+launch arguments and profile metadata while treating actual launched executable as
+unknown unless directly observed and keeping physical FPS/performance unscored and
+ineligible. The strict motion oracle verifies actual captured keyboard input during
+a running, non-pending drawer-owned animation (`0 < progress < 1`) with captured
+`Animation.finished` abort/idle and property-matched cancellation; on macOS, a
+bounded harness-owned `/usr/bin/caffeinate -u` user-activity assertion is reaped by
+the harness without touching unowned processes or global power settings.
 
 The current rollout status is tracked by `host-resource-artifact-control` in
 `docs/project-state.json`. Pi worker permissions and verifier

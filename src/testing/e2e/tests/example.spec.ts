@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { extname, join, normalize, resolve } from 'node:path';
 import { test, expect } from '@playwright/test';
 import { defaultConfig as healwrightConfig } from '../healwright.config.js';
+import { resolveChromiumFunctionalProfile } from '../../../../scripts/runtime/playwright_chromium.mjs';
 
 const REPO_ROOT = resolve(process.cwd());
 
@@ -105,7 +106,11 @@ test.describe('Docs Hub Critical User Flow & Error Boundaries (RF08)', () => {
     expect(healwrightConfig.healing.allowOracleMutation).toBe(false);
     expect(healwrightConfig.healing.preserveAcceptanceOracle).toBe(true);
 
-    const evidenceDir = join(REPO_ROOT, '.forgewright/runtime/fw-argon-refactor-20261109/rf08-artifacts');
+    const evidenceBaseDir = resolve(
+      REPO_ROOT,
+      process.env.FORGEWRIGHT_E2E_EVIDENCE_DIR ?? '.forgewright/runtime/fw-argon-macfix-20261110/e2e-artifacts',
+    );
+    const evidenceDir = join(evidenceBaseDir, runId);
     mkdirSync(evidenceDir, { recursive: true });
     const tracePath = join(evidenceDir, `${runId}-trace.zip`);
     const screenshotPath = join(evidenceDir, `${runId}-hub.png`);
@@ -146,12 +151,22 @@ test.describe('Docs Hub Critical User Flow & Error Boundaries (RF08)', () => {
     const markdownSrcPath = join(REPO_ROOT, 'src/cli/src/docs/markdown.ts');
     const normalizeSrcPath = join(REPO_ROOT, 'src/cli/src/docs/normalize.ts');
     const renderSrcPath = join(REPO_ROOT, 'src/cli/src/docs/render.ts');
+    const chromiumProfile = resolveChromiumFunctionalProfile();
     const receipt = {
       schema: 'forgewright-playwright-e2e-receipt/v1',
       runId,
-      taskId: 'FW-ARGON-REFACTOR-20261109',
+      taskId: 'FW-ARGON-MACFIX-20261110',
       stage: 'RF08',
       baseRevision: 'c1200d575d63e8851fa6023ae1e78c996376b902',
+      browserInfo: {
+        browserVersion: browser.version(),
+        channel: chromiumProfile.channel,
+        profile: chromiumProfile.profile,
+        requestedLaunchArgs: chromiumProfile.launchArgs,
+        physicalPerformanceEligible: chromiumProfile.physicalPerformanceEligible,
+        physicalPerformanceScore: chromiumProfile.physicalPerformanceScore,
+        actualLaunchExecutable: chromiumProfile.actualLaunchExecutable,
+      },
       sourceBindings: {
         cliDistSha256: createHash('sha256').update(readFileSync(cliDistPath)).digest('hex'),
         markdownTsSha256: createHash('sha256').update(readFileSync(markdownSrcPath)).digest('hex'),

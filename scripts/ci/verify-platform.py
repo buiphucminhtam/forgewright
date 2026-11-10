@@ -23,11 +23,25 @@ KEY_REVISION_FILES = (
     "scripts/runtime/skill_routing.py",
     "scripts/runtime/openspec_contract_adapter.py",
     "scripts/runtime/runtime-hooks-install.sh",
+    "scripts/runtime/playwright_chromium.mjs",
+    "scripts/runtime/verify_motion_drawer_artifact.mjs",
     "scripts/bootstrap/forgewright-install.sh",
     "scripts/hooks/forgewright-hook-doctor.sh",
     "integrations/pi/provider.mjs",
     "integrations/pi/workspace.mjs",
     "integrations/pi/runtime-state.mjs",
+    "mcp/package.json",
+    "mcp/package-lock.json",
+    "mcp/tsconfig.json",
+    "mcp/src/infrastructure/adapters/ProcessPipelineTransitionGate.ts",
+    "mcp/src/infrastructure/adapters/ProcessPipelineTransitionGate.test.ts",
+    "package.json",
+    "package-lock.json",
+    "playwright.config.ts",
+    "src/testing/e2e/playwright.config.ts",
+    "src/testing/e2e/tests/example.spec.ts",
+    "src/testing/e2e/tests/motion-director.spec.ts",
+    "src/cli/package.json",
     "src/cli/src/docs/markdown.ts",
     "src/cli/src/docs/normalize.ts",
     "src/cli/src/docs/render.ts",
@@ -89,6 +103,14 @@ def _detect_toolchain() -> dict[str, str]:
     return info
 
 
+CAPABILITY_TIMEOUT_SECONDS: dict[str, int] = {
+    "core_cli_mcp_docshub": 60,
+    "motion_director_skill": 120,
+    "process_tree_cleanup": 60,
+}
+MATRIX_SUMMARY_SUBPROCESS_OVERHEAD_SECONDS = 15
+
+
 def _run_capability_checks(environment: dict[str, str]) -> tuple[dict[str, str], list[dict[str, object]]]:
     forced_fail = environment.get("FORGEWRIGHT_PLATFORM_FORCE_FAIL_CAPABILITY", "").strip()
     checks_spec = (
@@ -99,6 +121,7 @@ def _run_capability_checks(environment: dict[str, str]) -> tuple[dict[str, str],
     cap_status: dict[str, str] = {}
     records: list[dict[str, object]] = []
     for cap_id, argv in checks_spec:
+        timeout_seconds = CAPABILITY_TIMEOUT_SECONDS[cap_id]
         if forced_fail == cap_id:
             argv = [sys.executable, "-c", "import sys; sys.stderr.write('forced capability failure\\n'); raise SystemExit(1)"]
         t0 = time.monotonic()
@@ -109,7 +132,7 @@ def _run_capability_checks(environment: dict[str, str]) -> tuple[dict[str, str],
                 env=environment,
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=timeout_seconds,
                 check=False,
             )
             code = proc.returncode
@@ -123,6 +146,7 @@ def _run_capability_checks(environment: dict[str, str]) -> tuple[dict[str, str],
             {
                 "capability": cap_id,
                 "argv": argv,
+                "timeout_seconds": timeout_seconds,
                 "exit_code": code,
                 "status": status,
                 "output_sha256": hashlib.sha256(out_bytes).hexdigest(),
@@ -217,19 +241,26 @@ def build_platform_matrix_summary(
             caps_ok = isinstance(other_caps, dict) and all(
                 other_caps.get(c) == "PASS" for c in required_caps
             )
-            passed_check_ids = {
-                r.get("capability")
-                for r in (other_checks if isinstance(other_checks, list) else [])
-                if isinstance(r, dict) and r.get("status") == "PASS" and r.get("exit_code") == 0
-            }
+            passed_check_ids = (
+                {
+                    r.get("capability")
+                    for r in other_checks
+                    if isinstance(r, dict)
+                    and isinstance(r.get("capability"), str)
+                    and r.get("status") == "PASS"
+                    and r.get("exit_code") == 0
+                }
+                if isinstance(other_checks, list)
+                else set()
+            )
             checks_ok = (
                 isinstance(other_checks, list)
                 and len(other_checks) >= len(required_caps)
-                and set(required_caps).issubset(passed_check_ids)
                 and all(
                     isinstance(r, dict) and r.get("status") == "PASS" and r.get("exit_code") == 0
                     for r in other_checks
                 )
+                and set(required_caps).issubset(passed_check_ids)
             )
             if other.get("status") != "PASS" or not caps_ok or not checks_ok:
                 invalid_merged_receipt = True
@@ -352,6 +383,7 @@ def main() -> int:
             "native-hooks-and-evidence",
             [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *tests],
         ),
+        ("mcp-build", ["npm", "--prefix", "mcp", "run", "build"]),
         ("product-factory", [sys.executable, "scripts/ci/verify-product-factory.py"]),
         (
             "mcp-tests",

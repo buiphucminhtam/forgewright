@@ -17,6 +17,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { join, resolve } from 'node:path';
 import { test, expect } from '@playwright/test';
+import { resolveChromiumFunctionalProfile } from '../../../../scripts/runtime/playwright_chromium.mjs';
 
 const REPO_ROOT = resolve(process.cwd());
 
@@ -209,7 +210,11 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
   });
 
   test('verifies keyboard, touch, desktop/mobile viewports, rapid interruption, reduced-motion, and rubric packet', async ({ browser }) => {
-    const evidenceDir = join(REPO_ROOT, '.forgewright/runtime/fw-argon-refactor-20261109/rf08-artifacts');
+    const evidenceBaseDir = resolve(
+      REPO_ROOT,
+      process.env.FORGEWRIGHT_E2E_EVIDENCE_DIR ?? '.forgewright/runtime/fw-argon-macfix-20261110/e2e-artifacts',
+    );
+    const evidenceDir = join(evidenceBaseDir, runId);
     mkdirSync(evidenceDir, { recursive: true });
     const tracePath = join(evidenceDir, `${runId}-trace.zip`);
     const mobileTracePath = join(evidenceDir, `${runId}-mobile-trace.zip`);
@@ -217,8 +222,9 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
     const mobileShot = join(evidenceDir, `${runId}-mobile.png`);
 
     // 0. Route through real no-mode skill_routing.py caller and verify motion-director is selected
+    const pythonBin = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
     const routedRaw = execFileSync(
-      'python',
+      pythonBin,
       [
         '-X',
         'utf8',
@@ -234,12 +240,238 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
     expect(routed.status).toBe('ok');
     expect(routed.skills.map((s: { name: string }) => s.name)).toContain('motion-director');
 
-    // 1. Desktop viewport + keyboard focus + rapid interruption in both directions
-    const desktopCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    // 1. Desktop viewport + keyboard focus + generation-matched mid-transition reversal in both directions + rapid toggle
+    const desktopCtx = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      reducedMotion: 'no-preference',
+    });
     await desktopCtx.tracing.start({ screenshots: true, snapshots: true });
     const page = await desktopCtx.newPage();
+    let observedReversals: Array<{
+      phase: string;
+      activeAtInput: boolean;
+      sameGenerationCancelledOrReversed: boolean;
+      activeAnimations: Array<{
+        id: number;
+        property: string;
+        currentTimeAtInput: number;
+        progressAtInput: number;
+        finishedOutcome: string;
+        interruptedBeforeCompletion: boolean;
+      }>;
+    }> = [];
     try {
       await page.goto(url);
+      await page.evaluate(async () => {
+        const drawer = document.querySelector('#inspector-drawer') as HTMLElement | null;
+        const relevantProps = new Set(['opacity', 'transform']);
+        const ids = new WeakMap<Animation, number>();
+        const metaById = new Map<
+          number,
+          {
+            id: number;
+            anim: Animation;
+            property: string;
+            finishedOutcome: string;
+            settledAt: number | null;
+          }
+        >();
+        let seq = 0;
+        const win = window as unknown as Record<string, unknown>;
+        win.__fwMotionProbe = {
+          phase: 'setup',
+          events: [] as Array<Record<string, unknown>>,
+          cancels: [] as Array<{ phase: string; property: string; at: number }>,
+        };
+        const ensureTracked = (anim: Animation) => {
+          let id = ids.get(anim);
+          if (!id) {
+            id = ++seq;
+            ids.set(anim, id);
+            const prop = (anim as unknown as { transitionProperty?: string }).transitionProperty || '';
+            const rec = {
+              id,
+              anim,
+              property: prop,
+              finishedOutcome: 'pending',
+              settledAt: null as number | null,
+            };
+            metaById.set(id, rec);
+            anim.finished.then(
+              () => {
+                if (rec.finishedOutcome === 'pending') {
+                  rec.finishedOutcome = 'fulfilled';
+                  rec.settledAt = performance.now();
+                }
+              },
+              () => {
+                if (rec.finishedOutcome === 'pending') {
+                  rec.finishedOutcome = 'aborted';
+                  rec.settledAt = performance.now();
+                }
+              },
+            );
+          }
+          return metaById.get(id)!;
+        };
+        win.__fwSampleDrawerAnimations = (onlyRelevant = true) => {
+          if (!drawer) return [];
+          return drawer
+            .getAnimations()
+            .filter((a) => {
+              if ((a.effect as KeyframeEffect | null)?.target !== drawer) return false;
+              const prop = (a as unknown as { transitionProperty?: string }).transitionProperty || '';
+              if (onlyRelevant && prop && !relevantProps.has(prop)) return false;
+              return true;
+            })
+            .map((a) => {
+              const rec = ensureTracked(a);
+              const timing = (a.effect as KeyframeEffect).getComputedTiming();
+              return {
+                id: rec.id,
+                pending: Boolean(a.pending),
+                state: String(a.playState),
+                currentTime: typeof a.currentTime === 'number' ? a.currentTime : 0,
+                progress: typeof timing.progress === 'number' ? timing.progress : null,
+                duration: typeof timing.duration === 'number' ? timing.duration : 0,
+                property: rec.property,
+              };
+            });
+        };
+        window.addEventListener(
+          'keydown',
+          (event) => {
+            if (event.key === 'Enter' || event.key === 'Escape') {
+              const probe = win.__fwMotionProbe as {
+                phase: string;
+                events: Array<Record<string, unknown>>;
+              };
+              const sample = (win.__fwSampleDrawerAnimations as (r?: boolean) => Array<Record<string, unknown>>)(true);
+              probe.events.push({
+                phase: probe.phase,
+                key: event.key,
+                at: performance.now(),
+                animations: sample,
+              });
+            }
+          },
+          true,
+        );
+        drawer?.addEventListener('transitioncancel', (event) => {
+          if (event.target !== drawer) return;
+          (win.__fwSampleDrawerAnimations as (r?: boolean) => unknown)(false);
+          const probe = win.__fwMotionProbe as {
+            phase: string;
+            cancels: Array<{ phase: string; property: string; at: number }>;
+          };
+          probe.cancels.push({
+            phase: probe.phase,
+            property: event.propertyName,
+            at: performance.now(),
+          });
+        });
+        win.__fwEvaluateReversals = (phases = ['opening-to-closing', 'closing-to-opening']) => {
+          const probe = win.__fwMotionProbe as {
+            events: Array<{
+              phase: string;
+              at: number;
+              animations: Array<{
+                id: number;
+                pending: boolean;
+                state: string;
+                currentTime: number;
+                progress: number | null;
+                property: string;
+              }>;
+            }>;
+            cancels: Array<{ phase: string; property: string; at: number }>;
+          };
+          return phases.map((phase) => {
+            const ev = probe.events.find((e) => e.phase === phase);
+            const active = (ev?.animations ?? []).filter(
+              (a) =>
+                relevantProps.has(a.property) &&
+                !a.pending &&
+                a.state === 'running' &&
+                a.currentTime > 0 &&
+                typeof a.progress === 'number' &&
+                a.progress > 0 &&
+                a.progress < 1,
+            );
+            const matched = active.map((snap) => {
+              const rec = metaById.get(snap.id);
+              const finishedOutcome = rec ? rec.finishedOutcome : 'unknown';
+              const finalPlayState = rec ? String(rec.anim.playState) : 'unknown';
+              const settledAt = rec ? rec.settledAt : null;
+              const cancelCount = probe.cancels.filter(
+                (c) => c.phase === phase && c.property === snap.property && ev && c.at >= ev.at,
+              ).length;
+              const interruptedBeforeCompletion =
+                finishedOutcome === 'aborted' &&
+                finalPlayState === 'idle' &&
+                settledAt !== null &&
+                Boolean(ev && settledAt >= ev.at) &&
+                cancelCount > 0;
+              return {
+                id: snap.id,
+                property: snap.property,
+                currentTimeAtInput: snap.currentTime,
+                progressAtInput: snap.progress ?? 0,
+                finishedOutcome,
+                interruptedBeforeCompletion,
+              };
+            });
+            return {
+              phase,
+              interruptionContract: 'captured-css-transition-generation-aborted-and-transitioncancel',
+              activeAtInput: matched.length > 0,
+              sameGenerationCancelled:
+                matched.length > 0 && matched.every((m) => m.interruptedBeforeCompletion),
+              sameGenerationCancelledOrReversed:
+                matched.length > 0 && matched.every((m) => m.interruptedBeforeCompletion),
+              activeAnimations: matched,
+            };
+          });
+        };
+      });
+      const waitForFramesBounded = async (count = 2, flushStyle = true) => {
+        const ok = await page.evaluate(
+          ({ frameCount, shouldFlush }) =>
+            new Promise<boolean>((resolveFrame) => {
+              if (shouldFlush) {
+                const d = document.querySelector('#inspector-drawer');
+                if (d) {
+                  void getComputedStyle(d).opacity;
+                  void getComputedStyle(d).transform;
+                }
+              }
+              let remaining = frameCount;
+              let done = false;
+              const timer = setTimeout(() => {
+                if (!done) {
+                  done = true;
+                  resolveFrame(false);
+                }
+              }, 1500);
+              const step = () => {
+                if (done) return;
+                remaining -= 1;
+                if (remaining <= 0) {
+                  done = true;
+                  clearTimeout(timer);
+                  resolveFrame(true);
+                } else {
+                  requestAnimationFrame(step);
+                }
+              };
+              requestAnimationFrame(step);
+            }),
+          { frameCount: count, shouldFlush: flushStyle },
+        );
+        expect(ok).toBe(true);
+      };
+      await waitForFramesBounded(2, true);
+
       // Immediate input & focus without entrance block
       const input = page.locator('#command-input');
       await input.focus();
@@ -254,28 +486,130 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
 
       const toggle = page.locator('#drawer-toggle');
       const drawer = page.locator('#inspector-drawer');
-      // Mid-transition interruption (180ms transition interrupted at ~35ms intervals)
-      for (let i = 0; i < 5; i += 1) {
-        await toggle.click();
-        await page.waitForTimeout(35);
-      }
+
+      const waitActiveAndSetPhase = (nextPhase: string, blurToggle = false) =>
+        page.waitForFunction(
+          ({ phaseAfter, shouldBlur }) => {
+            const win = window as unknown as {
+              __fwSampleDrawerAnimations: (r?: boolean) => Array<{
+                pending: boolean;
+                state: string;
+                currentTime: number;
+                progress: number | null;
+              }>;
+              __fwMotionProbe: { phase: string };
+            };
+            const active = win.__fwSampleDrawerAnimations(true).some(
+              (a) =>
+                !a.pending &&
+                a.state === 'running' &&
+                a.currentTime > 0 &&
+                typeof a.progress === 'number' &&
+                a.progress > 0 &&
+                a.progress < 1,
+            );
+            if (active) {
+              if (shouldBlur && document.activeElement?.id === 'drawer-toggle') {
+                (document.activeElement as HTMLElement).blur();
+              }
+              win.__fwMotionProbe.phase = phaseAfter;
+            }
+            return active;
+          },
+          { phaseAfter: nextPhase, shouldBlur: blurToggle },
+          { polling: 'raf', timeout: 3000 },
+        );
+      const waitSettled = (wantOpen: boolean) =>
+        page.waitForFunction(
+          (expectedOpen) => {
+            const d = document.querySelector('#inspector-drawer');
+            if (!d) return false;
+            if (getComputedStyle(d).opacity !== (expectedOpen ? '1' : '0')) return false;
+            const win = window as unknown as {
+              __fwSampleDrawerAnimations: (r?: boolean) => Array<{ pending: boolean; state: string }>;
+            };
+            return win.__fwSampleDrawerAnimations(false).every((a) => a.state !== 'running' && !a.pending);
+          },
+          wantOpen,
+          { polling: 'raf', timeout: 3000 },
+        );
+
+      // 1a. Real capture-phase mid-transition reversal: opening -> closing (Enter then Escape) + focus restore
+      await toggle.focus();
+      await waitForFramesBounded(2, true);
+      await page.evaluate(() => {
+        (window as unknown as { __fwMotionProbe: { phase: string } }).__fwMotionProbe.phase = 'start-open';
+      });
+      await page.keyboard.press('Enter');
+      await waitActiveAndSetPhase('opening-to-closing', true);
+      await page.keyboard.press('Escape');
+      await expect(drawer).toHaveAttribute('data-state', 'closed');
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(await page.evaluate(() => document.activeElement?.id)).toBe('drawer-toggle');
+      await waitSettled(false);
+      await waitForFramesBounded(2, true);
+
+      // 1b. Reopen to completion, then real capture-phase mid-transition reversal: closing -> opening (Escape then Enter)
+      await toggle.focus();
+      await page.evaluate(() => {
+        (window as unknown as { __fwMotionProbe: { phase: string } }).__fwMotionProbe.phase = 'reopen-complete';
+      });
+      await page.keyboard.press('Enter');
       await expect(drawer).toHaveAttribute('data-state', 'open');
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      await expect(page.locator('#drawer-status')).toContainText('State: open · Toggles: 5');
+      await waitSettled(true);
+      await toggle.focus();
+      await waitForFramesBounded(2, true);
+      await page.evaluate(() => {
+        (window as unknown as { __fwMotionProbe: { phase: string } }).__fwMotionProbe.phase = 'start-close';
+      });
+      await page.keyboard.press('Escape');
+      await waitActiveAndSetPhase('closing-to-opening', false);
+      await page.keyboard.press('Enter');
+      await expect(drawer).toHaveAttribute('data-state', 'open');
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await waitSettled(true);
+      await waitForFramesBounded(2, true);
 
-      // Rapid 2-click interruption in reverse (open -> closed -> open -> closed via 3 more clicks)
-      for (let i = 0; i < 3; i += 1) {
-        await toggle.click();
-        await page.waitForTimeout(35);
+      observedReversals = await page.evaluate(() =>
+        (window as unknown as { __fwEvaluateReversals: (p?: string[]) => typeof observedReversals }).__fwEvaluateReversals(['opening-to-closing', 'closing-to-opening']),
+      );
+      expect(observedReversals).toHaveLength(2);
+      for (const rev of observedReversals) {
+        expect(rev.activeAtInput).toBe(true);
+        expect(rev.sameGenerationCancelledOrReversed).toBe(true);
+        expect(rev.activeAnimations.length).toBeGreaterThanOrEqual(2);
+        for (const anim of rev.activeAnimations) {
+          expect(anim.currentTimeAtInput).toBeGreaterThan(0);
+          expect(anim.progressAtInput).toBeGreaterThan(0);
+          expect(anim.progressAtInput).toBeLessThan(1);
+          expect(anim.finishedOutcome).toBe('aborted');
+          expect(anim.interruptedBeforeCompletion).toBe(true);
+        }
       }
+      const telemetryAfterReversals = await page.evaluate(() =>
+        (window as unknown as { __getMotionTelemetry: () => { transitionCancelledCount: number; count: number } }).__getMotionTelemetry(),
+      );
+      expect(telemetryAfterReversals.transitionCancelledCount).toBeGreaterThanOrEqual(4);
+      expect(telemetryAfterReversals.count).toBe(5);
+
+      // 1c. Separate rapid-toggle final-state check (open -> closed -> open -> closed via 3 rapid toggles)
+      await page.keyboard.press('Escape');
+      await waitForFramesBounded(1, false);
+      await toggle.focus();
+      await page.keyboard.press('Enter');
+      await waitForFramesBounded(1, false);
+      await page.keyboard.press('Escape');
       await expect(drawer).toHaveAttribute('data-state', 'closed');
       await expect(toggle).toHaveAttribute('aria-expanded', 'false');
       await expect(page.locator('#drawer-status')).toContainText('State: closed · Toggles: 8');
+      await waitSettled(false);
 
-      // Keyboard activation (Enter to open, Escape to close and restore focus)
+      // 1d. Settled keyboard open -> screenshot -> Escape close + focus restoration
       await toggle.focus();
       await page.keyboard.press('Enter');
       await expect(drawer).toHaveAttribute('data-state', 'open');
+      await waitSettled(true);
       await page.screenshot({ path: desktopShot });
       await page.keyboard.press('Escape');
       await expect(drawer).toHaveAttribute('data-state', 'closed');
@@ -299,6 +633,7 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
       await mobilePage.goto(url);
       const toggle = mobilePage.locator('#drawer-toggle');
       const drawer = mobilePage.locator('#inspector-drawer');
+      const closeBtn = mobilePage.locator('#drawer-close');
       const duration = await drawer.evaluate((el) => getComputedStyle(el).transitionDuration);
       expect(duration).toBe('0s');
       await toggle.tap();
@@ -307,6 +642,10 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
       expect(beforeCleanup.hasActiveTimer).toBe(true);
       const overflow = await mobilePage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(overflow).toBe(false);
+      await closeBtn.tap();
+      await expect(drawer).toHaveAttribute('data-state', 'closed');
+      await toggle.tap();
+      await expect(drawer).toHaveAttribute('data-state', 'open');
       const cleaned = await mobilePage.evaluate(() => (window as unknown as { __cleanupMotion: () => boolean }).__cleanupMotion());
       expect(cleaned).toBe(true);
       const afterCleanup = await mobilePage.evaluate(() => (window as unknown as { __getMotionTelemetry: () => { hasActiveTimer: boolean } }).__getMotionTelemetry());
@@ -321,12 +660,14 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
     const liteMdPath = join(REPO_ROOT, 'skills/motion-director/LITE.md');
     const rubricPath = join(REPO_ROOT, 'skills/motion-director/references/motion-quality-rubric.md');
     const verifierScriptPath = join(REPO_ROOT, 'scripts/runtime/verify_motion_drawer_artifact.mjs');
+    const chromiumHelperPath = join(REPO_ROOT, 'scripts/runtime/playwright_chromium.mjs');
     const selfSpecPath = join(REPO_ROOT, 'src/testing/e2e/tests/motion-director.spec.ts');
     expect(existsSync(rubricPath)).toBe(true);
+    const chromiumProfile = resolveChromiumFunctionalProfile();
     const packet = {
       schema: 'forgewright-motion-packet/v1',
       artifactKind: 'scenario-fixture-and-routing-verification',
-      taskId: 'FW-ARGON-REFACTOR-20261109',
+      taskId: 'FW-ARGON-MACFIX-20261110',
       stage: 'RF11',
       runId,
       baseRevision: 'c1200d575d63e8851fa6023ae1e78c996376b902',
@@ -335,6 +676,7 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
         liteMdSha256: createHash('sha256').update(readFileSync(liteMdPath)).digest('hex'),
         rubricMdSha256: createHash('sha256').update(readFileSync(rubricPath)).digest('hex'),
         verifierScriptSha256: createHash('sha256').update(readFileSync(verifierScriptPath)).digest('hex'),
+        playwrightChromiumHelperSha256: createHash('sha256').update(readFileSync(chromiumHelperPath)).digest('hex'),
         specFileSha256: createHash('sha256').update(readFileSync(selfSpecPath)).digest('hex'),
         routedMode: routed.mode,
         routedSkills: routed.skills.map((s: { name: string }) => s.name),
@@ -346,9 +688,16 @@ test.describe('Motion Director Interactive UI Scenario (RF11)', () => {
       choreography: 'Single-surface disclosure (translateY -8px -> 0, opacity 0 -> 1); hover lift gated behind (hover: hover) and (pointer: fine).',
       tokens: { duration: '180ms', easing: 'cubic-bezier(0.22, 1, 0.36, 1)', reducedMotionDuration: '0s' },
       reducedMotionPath: 'Instant opacity/visibility state change with transition-duration: 0s and transform: none.',
-      interruptionAndCleanup: 'Mid-transition interruption verified at 35ms intervals across 180ms transitions, inert/visibility focus exclusion when closed, Escape focus restoration, and active timer cleanup verified.',
+      interruptionAndCleanup: 'Generation-bound mid-transition interruption verified in both directions via capture-phase input, Animation.finished abort, and transitioncancel; separate rapid-toggle final state, Escape focus restoration, mobile touch open/close, and active timer cleanup verified.',
+      reversals: observedReversals,
       environment: {
-        browser: 'Chromium (channel: chrome)',
+        browserVersion: browser.version(),
+        channel: chromiumProfile.channel,
+        profile: chromiumProfile.profile,
+        requestedLaunchArgs: chromiumProfile.launchArgs,
+        physicalPerformanceEligible: chromiumProfile.physicalPerformanceEligible,
+        physicalPerformanceScore: chromiumProfile.physicalPerformanceScore,
+        actualLaunchExecutable: chromiumProfile.actualLaunchExecutable,
         desktopViewport: '1280x800',
         mobileViewport: '390x844 (hasTouch: true, isMobile: true, reducedMotion: reduce)',
       },

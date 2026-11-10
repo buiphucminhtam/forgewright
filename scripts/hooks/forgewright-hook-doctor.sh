@@ -249,6 +249,7 @@ stop_runtime_is_current() {
         cmp -s "${SOURCE_ROOT}/scripts/lite/${runtime_file}" "${FRAMEWORK_DIR}/scripts/lite/${runtime_file}" || return 1
     done
     for runtime_file in runtime/windows_security.py memory/memory-session.sh memory/memory_redaction.py; do
+        [[ -f "${SOURCE_ROOT}/scripts/${runtime_file}" ]] || continue
         [[ -f "${SOURCE_ROOT}/scripts/${runtime_file}" ]] || return 1
         [[ -f "${FRAMEWORK_DIR}/scripts/${runtime_file}" ]] || return 1
         cmp -s "${SOURCE_ROOT}/scripts/${runtime_file}" "${FRAMEWORK_DIR}/scripts/${runtime_file}" || return 1
@@ -267,6 +268,7 @@ repair_stop_runtime() {
         fi
     done
     for runtime_file in runtime/windows_security.py memory/memory-session.sh memory/memory_redaction.py; do
+        [[ -f "${SOURCE_ROOT}/scripts/${runtime_file}" ]] || continue
         if [[ ! -f "${SOURCE_ROOT}/scripts/${runtime_file}" ]]; then
             log_warn "Stop runtime repair source is missing: ${runtime_file}"
             return 1
@@ -277,6 +279,7 @@ repair_stop_runtime() {
         atomic_copy_file "${SOURCE_ROOT}/scripts/lite/${runtime_file}" "${target_runtime}/${runtime_file}" || return 1
     done
     for runtime_file in runtime/windows_security.py memory/memory-session.sh memory/memory_redaction.py; do
+        [[ -f "${SOURCE_ROOT}/scripts/${runtime_file}" ]] || continue
         atomic_copy_file "${SOURCE_ROOT}/scripts/${runtime_file}" "${FRAMEWORK_DIR}/scripts/${runtime_file}" || return 1
     done
     chmod +x "${target_runtime}/stop-gate.sh" "${target_runtime}/antigravity-stop-hook.sh" "${FRAMEWORK_DIR}/scripts/memory/memory-session.sh" || return 1
@@ -470,9 +473,10 @@ rule_context_doctor_json() {
     local command="$3"
     local auto_fix="$4"
     local command2="${5:-$command}"
+    local command3="${6:-$command}"
     local result
     file="$(host_path "$file")" || return 1
-    if result="$(RULE_CONTEXT_COMMAND="$command" RULE_CONTEXT_COMMAND_2="$command2" FORGEWRIGHT_DIR="$FRAMEWORK_DIR" node - "$platform" "$file" "$auto_fix" <<'NODE'
+    if result="$(RULE_CONTEXT_COMMAND="$command" RULE_CONTEXT_COMMAND_2="$command2" RULE_CONTEXT_COMMAND_3="$command3" FORGEWRIGHT_DIR="$FRAMEWORK_DIR" node - "$platform" "$file" "$auto_fix" <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const platform = process.argv[2];
@@ -480,7 +484,12 @@ const file = process.argv[3];
 const shouldFix = process.argv[4] === 'true';
 const command = process.env.RULE_CONTEXT_COMMAND;
 const command2 = process.env.RULE_CONTEXT_COMMAND_2 || command;
-function commandFor(event) { return event === 'SubagentStart' ? command2 : command; }
+const command3 = process.env.RULE_CONTEXT_COMMAND_3 || command;
+function commandFor(event) {
+  if (event === 'SubagentStart') return command2;
+  if (event === 'UserPromptSubmit') return command3;
+  return command;
+}
 function atomicWrite(file, content) {
   const temporary = path.join(path.dirname(file), '.' + path.basename(file) + '.' + process.pid + '.tmp');
   let mode = 0o600;
@@ -502,6 +511,7 @@ function atomicWrite(file, content) {
 
 const specs = {
   CLAUDE: [
+    ['UserPromptSubmit', '*', 2],
     ['SessionStart', 'startup|resume|clear|compact', 2],
     ['SubagentStart', '*', 2]
   ],
@@ -523,7 +533,8 @@ function ownedContextCommand(candidate, event) {
   const normalized = path.resolve(tail.slice(0, pathEnd).replace(/\\/g, '/'));
   const framework = path.resolve(process.env.FORGEWRIGHT_DIR);
   return normalized === path.join(framework, 'rule-context-hook.py') ||
-    normalized === path.join(framework, 'scripts', 'rule-context-hook.py');
+    normalized === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+    normalized === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
 }
 
 function isContextHook(h, event) {
@@ -1018,7 +1029,8 @@ if [[ "$RULE_CONTEXT_RUNTIME_READY" == "true" ]]; then
     CODEX_SUBAGENT_WINDOWS_COMMAND="$(codex_lifecycle_windows_command "${FRAMEWORK_DIR}/scripts/lite/codex-hook-windows.ps1" SubagentStart || true)"
     rule_context_doctor_json CLAUDE "${HOME}/.claude/settings.json" \
         "$(rule_context_command CLAUDE SessionStart)" "$AUTO_FIX" \
-        "$(rule_context_command CLAUDE SubagentStart)"
+        "$(rule_context_command CLAUDE SubagentStart)" \
+        "$(rule_context_command CLAUDE UserPromptSubmit)"
     rule_context_doctor_json GEMINI "${HOME}/.gemini/settings.json" \
         "$(rule_context_command GEMINI BeforeAgent)" "$AUTO_FIX"
     rule_context_doctor_json ANTIGRAVITY "${HOME}/.gemini/config/hooks.json" \
@@ -1064,7 +1076,7 @@ fi
 CLAUDE_SETTINGS="$(host_path "${HOME}/.claude/settings.json")"
 if [[ -f "$CLAUDE_SETTINGS" ]]; then
     log_pass "Claude Code settings file exists"
-    claude_schema=$(CONFIG_FILE="$CLAUDE_SETTINGS" GATE_SCRIPT="$GATE_SCRIPT" FRAMEWORK_GATE="$FRAMEWORK_GATE" PROJECT_STOP_CMD="$CLAUDE_PROJECT_STOP_CMD" FRAMEWORK_STOP_CMD="$CLAUDE_FRAMEWORK_STOP_CMD" node -e "try { var fs=require('fs'), c=JSON.parse(fs.readFileSync(process.env.CONFIG_FILE)); var expected=[process.env.PROJECT_STOP_CMD,process.env.FRAMEWORK_STOP_CMD,'bash '+process.env.GATE_SCRIPT+' --platform CLAUDE','bash '+process.env.FRAMEWORK_GATE+' --platform CLAUDE']; function current(h){ return Boolean(h && h.type === 'command' && typeof h.command === 'string' && expected.includes(h.command)); } var ok=c.hooks && !('stop' in c.hooks) && Array.isArray(c.hooks.Stop) && c.hooks.Stop.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(current); }); console.log(Boolean(ok)); } catch (_) { console.log(false); }" 2>/dev/null || echo "false")
+    claude_schema=$(CONFIG_FILE="$CLAUDE_SETTINGS" GATE_SCRIPT="$GATE_SCRIPT" FRAMEWORK_GATE="$FRAMEWORK_GATE" PROJECT_STOP_CMD="$CLAUDE_PROJECT_STOP_CMD" FRAMEWORK_STOP_CMD="$CLAUDE_FRAMEWORK_STOP_CMD" node -e "try { var fs=require('fs'), path=require('path'), c=JSON.parse(fs.readFileSync(process.env.CONFIG_FILE)); var expected=[process.env.PROJECT_STOP_CMD,process.env.FRAMEWORK_STOP_CMD,'bash '+process.env.GATE_SCRIPT+' --platform CLAUDE','bash '+process.env.FRAMEWORK_GATE+' --platform CLAUDE']; function current(h){ return Boolean(h && h.type === 'command' && typeof h.command === 'string' && expected.includes(h.command)); } function legacy(h){ var cmd=h&&h.command; if(typeof cmd!=='string')return false; var m=cmd.trim().match(/^(?:bash\\s+)?(?:\\x22([^\\x22]+)\\x22|'([^']+)'|([^\\s\\x22']+))(?:\\s+--platform\\s+CLAUDE)?$/); var s=m&&(m[1]||m[2]||m[3]); if(!s||path.basename(s)!=='verify-gate.sh')return false; var n=path.resolve(s), fw=path.resolve(process.env.FRAMEWORK_GATE,'..','..','..'), pr=path.resolve(process.env.GATE_SCRIPT,'..','..','..'); return [path.join(fw,'verify-gate.sh'),path.join(fw,'scripts','verify-gate.sh'),path.join(fw,'scripts','lite','verify-gate.sh'),path.join(pr,'verify-gate.sh'),path.join(pr,'scripts','verify-gate.sh'),path.join(pr,'scripts','lite','verify-gate.sh')].includes(n); } var ok=c.hooks && !('stop' in c.hooks) && Array.isArray(c.hooks.Stop) && c.hooks.Stop.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(current); }) && !c.hooks.Stop.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(legacy); }); console.log(Boolean(ok)); } catch (_) { console.log(false); }" 2>/dev/null || echo "false")
     if [[ "$claude_schema" == "true" ]]; then
         log_pass "Claude Stop hook uses the native matcher-group schema"
     else
@@ -1095,12 +1107,20 @@ var currentCommands = [process.env.PROJECT_STOP_CMD, process.env.FRAMEWORK_STOP_
 function currentGate(command) { return currentCommands.includes(command); }
 function legacyGate(command, platform) {
   var script = gatePath(command, platform);
+  if (!script && typeof command === 'string') {
+    var bare = command.trim().match(/^(?:bash\\s+)?(?:\\x22([^\\x22]+)\\x22|'([^']+)'|([^\\s\\x22']+))$/);
+    if (bare) script = bare[1] || bare[2] || bare[3];
+  }
   if (!script || path.basename(script) !== 'verify-gate.sh') return false;
   var normalized = path.resolve(script);
   var framework = path.resolve(process.env.FRAMEWORK_GATE, '..', '..', '..');
+  var projectRoot = path.resolve(process.env.GATE_SCRIPT, '..', '..', '..');
   return normalized === path.join(framework, 'verify-gate.sh') ||
     normalized === path.join(framework, 'scripts', 'verify-gate.sh') ||
-    normalized === path.join(framework, 'scripts', 'lite', 'verify-gate.sh');
+    normalized === path.join(framework, 'scripts', 'lite', 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'scripts', 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'scripts', 'lite', 'verify-gate.sh');
 }
 var Stop = Array.isArray(cfg.hooks.Stop) ? cfg.hooks.Stop : [];
 Stop = Stop.map(function(g){
@@ -1173,12 +1193,20 @@ var currentCommands = [process.env.PROJECT_STOP_CMD, process.env.FRAMEWORK_STOP_
 function currentGate(command) { return currentCommands.includes(command); }
 function legacyGate(command, platform) {
   var script = gatePath(command, platform);
+  if (!script && typeof command === 'string') {
+    var bare = command.trim().match(/^(?:bash\\s+)?(?:\\x22([^\\x22]+)\\x22|'([^']+)'|([^\\s\\x22']+))$/);
+    if (bare) script = bare[1] || bare[2] || bare[3];
+  }
   if (!script || path.basename(script) !== 'verify-gate.sh') return false;
   var normalized = path.resolve(script);
   var framework = path.resolve(process.env.FRAMEWORK_GATE, '..', '..', '..');
+  var projectRoot = path.resolve(process.env.GATE_SCRIPT, '..', '..', '..');
   return normalized === path.join(framework, 'verify-gate.sh') ||
     normalized === path.join(framework, 'scripts', 'verify-gate.sh') ||
-    normalized === path.join(framework, 'scripts', 'lite', 'verify-gate.sh');
+    normalized === path.join(framework, 'scripts', 'lite', 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'scripts', 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'scripts', 'lite', 'verify-gate.sh');
 }
 if (Array.isArray(cfg.hooks.AfterAgent) && cfg.hooks.AfterAgent.length > 0 && typeof cfg.hooks.AfterAgent[0] === 'string') cfg.hooks.AfterAgent = [];
 var AA = Array.isArray(cfg.hooks.AfterAgent) ? cfg.hooks.AfterAgent : [];
@@ -1511,12 +1539,20 @@ var currentCommands = [process.env.PROJECT_STOP_CMD, process.env.FRAMEWORK_STOP_
 function currentGate(command) { return currentCommands.includes(command); }
 function legacyGate(command, platform) {
   var script = gatePath(command, platform);
+  if (!script && typeof command === 'string') {
+    var bare = command.trim().match(/^(?:bash\\s+)?(?:\\x22([^\\x22]+)\\x22|'([^']+)'|([^\\s\\x22']+))$/);
+    if (bare) script = bare[1] || bare[2] || bare[3];
+  }
   if (!script || path.basename(script) !== 'verify-gate.sh') return false;
   var normalized = path.resolve(script);
   var framework = path.resolve(process.env.FRAMEWORK_GATE, '..', '..', '..');
+  var projectRoot = path.resolve(process.env.GATE_SCRIPT, '..', '..', '..');
   return normalized === path.join(framework, 'verify-gate.sh') ||
     normalized === path.join(framework, 'scripts', 'verify-gate.sh') ||
-    normalized === path.join(framework, 'scripts', 'lite', 'verify-gate.sh');
+    normalized === path.join(framework, 'scripts', 'lite', 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'scripts', 'verify-gate.sh') ||
+    normalized === path.join(projectRoot, 'scripts', 'lite', 'verify-gate.sh');
 }
 var stop = Array.isArray(cfg.hooks.stop) ? cfg.hooks.stop : [];
 stop = stop.filter(function(h){ return !legacyGate(h && h.command, 'CURSOR'); });

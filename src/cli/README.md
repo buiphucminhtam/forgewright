@@ -100,6 +100,14 @@ forge validate --json                     # JSON output
 forge validate --report report.json       # Save report
 ```
 
+### Docs Hub
+
+```bash
+forge docs build . --strict                # Build static Docs Hub (markdown-it default, legacy fallback via FORGEWRIGHT_DOCS_MARKDOWN_ENGINE=legacy)
+forge docs gate . --worktree --json        # Validate Docs Hub continuity gate
+forge docs doctor . --strict --json        # Run Docs Hub diagnostics
+```
+
 ### Completion
 
 ```bash
