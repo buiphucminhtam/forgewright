@@ -14,7 +14,9 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 from pathlib import Path, PureWindowsPath
@@ -641,6 +643,102 @@ def _serialize_native_response(platform: str, event: str, context: str = "") -> 
     return best
 
 
+PROJECT_CLAUDE_CONTEXT_COMMAND = (
+    "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; "
+    "[ -n \"$root\" ] || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; "
+    "script=\"$root/scripts/lite/rule-context-hook.py\"; [ -f \"$script\" ] || exit 0; "
+    "python3 \"$script\" --workspace \"$root\" --platform CLAUDE --event {event} || true'"
+)
+PROJECT_CLAUDE_CONTEXT_EVENTS = frozenset(
+    {"SessionStart", "UserPromptSubmit", "SubagentStart"}
+)
+
+
+def _read_settings(path: Path) -> dict[str, Any] | None:
+    """Return a settings object, {} when absent, or None when unreadable."""
+    if not path.exists() and not path.is_symlink():
+        return {}
+    try:
+        value = json.loads(_read_limited(path, MAX_INPUT_BYTES))
+    except (OSError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _matcher_selects(matcher: Any, event: str, payload: dict[str, Any]) -> bool:
+    if matcher in (None, "", "*"):
+        return True
+    if event != "SessionStart" or not isinstance(matcher, str):
+        return False
+    source = payload.get("source")
+    if not isinstance(source, str):
+        return False
+    return source in matcher.split("|")
+
+
+def _project_claude_hook_owns(
+    root: Path, platform: str, event: str, payload: dict[str, Any] | None = None
+) -> bool:
+    """True when a global copy should defer to the project's own Claude hook.
+
+    Claude Code merges user and project settings, so a project that checks in
+    its own rule-context hook would otherwise receive the same context (and
+    turn capture) twice per event. Defer only when the project registration is
+    the exact canonical command, its matcher selects this event, nothing in the
+    project settings disables hooks, and that command's own preconditions
+    (git toplevel == workspace, python3 on PATH, a regular hook file) hold.
+    Any doubt keeps the global hook active: a duplicate beats a missing rule.
+    """
+    if platform.strip().upper() != "CLAUDE" or event not in PROJECT_CLAUDE_CONTEXT_EVENTS:
+        return False
+    payload = payload or {}
+    project_lite = root / "scripts" / "lite"
+    project_hook = project_lite / "rule-context-hook.py"
+    try:
+        if Path(__file__).resolve().parent == project_lite.resolve():
+            return False
+        if not project_hook.is_file() or project_hook.is_symlink():
+            return False
+        if shutil.which("python3") is None:
+            return False
+        toplevel = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if toplevel.returncode != 0 or Path(toplevel.stdout.strip()).resolve() != root.resolve():
+            return False
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+    shared = _read_settings(root / ".claude" / "settings.json")
+    local = _read_settings(root / ".claude" / "settings.local.json")
+    if shared is None or local is None:
+        return False
+    if shared.get("disableAllHooks") is True or local.get("disableAllHooks") is True:
+        return False
+    expected = PROJECT_CLAUDE_CONTEXT_COMMAND.format(event=event)
+    hooks = shared.get("hooks")
+    groups = hooks.get(event) if isinstance(hooks, dict) else None
+    if not isinstance(groups, list):
+        return False
+    for group in groups:
+        if not isinstance(group, dict) or not _matcher_selects(
+            group.get("matcher"), event, payload
+        ):
+            continue
+        handlers = group.get("hooks")
+        for handler in handlers if isinstance(handlers, list) else []:
+            if (
+                isinstance(handler, dict)
+                and handler.get("type") == "command"
+                and handler.get("command") == expected
+            ):
+                return True
+    return False
+
+
 def run_hook(
     platform: str, event: str, raw_input: str, workspace: str | Path | None = None
 ) -> int:
@@ -655,6 +753,9 @@ def run_hook(
         if not isinstance(payload, dict):
             raise ValueError("hook payload must be a JSON object")
         root = _workspace_root(workspace)
+        if _project_claude_hook_owns(root, platform, event, payload):
+            _allow_output(platform, event)
+            return 0
         if event == "UserPromptSubmit":
             from turn_scope import capture_turn
 

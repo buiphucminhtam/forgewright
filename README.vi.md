@@ -125,6 +125,17 @@ target thực tế. Regression chạy chính ví dụ FollowCamera ở 30/60/120
 mutation theo frame. [Cải thiện model/người chơi/thiết bị chưa được đo](evals/skills/README.md).
 Router giữ UI Designer trong budget context hiện có.
 
+### Claude Code: mỗi sự kiện chỉ chèn rule một lần
+
+Claude Code gộp hook của user và project, nên
+[rule-context hook](scripts/lite/rule-context-hook.py) bản global và bản trong repo
+từng chèn ngữ cảnh Forgewright hai lần. Giờ bản global chỉ nhường khi project đăng ký
+đúng lệnh chuẩn, matcher khớp sự kiện và điều kiện chạy được thỏa (git toplevel,
+`python3`, không có `disableAllHooks` trong `settings.json` hay `settings.local.json`);
+còn nghi ngờ thì vẫn chạy. `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` sinh ra giờ có link
+kernel hợp lệ ([AUDIT](kernel/AUDIT.md) đọc khi cần), và ngân sách boot tính cả
+`POLICY.md` (6916/7000). Cơ chế workspace-trust của host không kiểm được từ file.
+
 ### 1. Tối ưu hóa đường nóng (Hot-path) & Hỗ trợ toàn diện Windows
 
 - **Kiểm tra chính sách tức thời:** [policy-check.sh](scripts/lite/policy-check.sh), [telemetry.sh](scripts/lite/telemetry.sh) và [rule-ledger.sh](scripts/lite/rule-ledger.sh) chạy trực tiếp bằng Bash, tự dò Python trên Windows/POSIX, chuẩn hóa `cygpath` và chặn lệnh phá hủy định dạng `.exe`/`.cmd`/`.bat`.
@@ -184,7 +195,7 @@ node forgewright/src/cli/dist/index.js delegate resources
 (thêm [Unslop](skills/unslop/SKILL.md) và [Motion Director](skills/motion-director/SKILL.md)),
 Docs Hub `markdown-it` và cổng [verify-platform.py](scripts/ci/verify-platform.py) kèm Playwright 1.60.0.
 
-### 5. Hoàn thiện handoff game Phaser 4 / Three.js
+### 7. Hoàn thiện handoff game Phaser 4 / Three.js
 
 2D mới dùng **Phaser 4**, 3D **Three.js**, giữ project/pin cũ.
 [Router](scripts/runtime/skill_routing.py), [checker](scripts/art-direction/game-experience.py)
@@ -196,7 +207,7 @@ có build/contract/model checks; runner compile trước admission. Browser clou
 bị chặn (`pi_host_capacity_timeout`): render, thiết bị, specialist/người chơi còn
 **UNVERIFIED**. Approval tổng hợp trong fixture không duyệt production.
 
-### 7. Reverse-engineering intelligence & bằng chứng theo facet
+### 8. Reverse-engineering intelligence & bằng chứng theo facet
 
 [Runtime RE intelligence](scripts/runtime/reverse_engineering_intelligence.py) và
 [catalog cố định](.forgewright/re-discovery-catalog.json) bổ sung tra cứu offline

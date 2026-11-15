@@ -1165,3 +1165,94 @@ def test_antigravity_pre_tool_rejects_oversized_payload(tmp_path: Path) -> None:
 
     assert result.returncode == 0
     assert json.loads(result.stdout)["decision"] == "deny"
+
+
+CLAUDE_CONTEXT_EVENTS = ("SessionStart", "UserPromptSubmit", "SubagentStart")
+
+
+def _load_global_rule_context_copy(tmp_path: Path):
+    import importlib.util
+    import sys
+
+    global_lite = tmp_path / "global-forgewright" / "scripts" / "lite"
+    global_lite.mkdir(parents=True)
+    hook_copy = global_lite / "rule-context-hook.py"
+    shutil.copy2(ROOT / "scripts" / "lite" / "rule-context-hook.py", hook_copy)
+    spec = importlib.util.spec_from_file_location("global_rule_context_copy", hook_copy)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return hook_copy, module
+
+
+def test_checked_in_claude_context_hooks_satisfy_global_deferral_contract(
+    tmp_path: Path,
+) -> None:
+    """The checked-in project registration is exactly what a global copy defers to."""
+    _, module = _load_global_rule_context_copy(tmp_path)
+    config = load_json(".claude/settings.json")
+    for event in CLAUDE_CONTEXT_EVENTS:
+        assert module.PROJECT_CLAUDE_CONTEXT_COMMAND.format(event=event) in hook_commands(
+            config["hooks"][event]
+        ), event
+        payload = {"source": "startup"} if event == "SessionStart" else {}
+        assert module._project_claude_hook_owns(ROOT, "CLAUDE", event, payload) is True, event
+    assert module._project_claude_hook_owns(ROOT, "CLAUDE", "PreToolUse") is False
+    assert module._project_claude_hook_owns(ROOT, "CODEX", "SessionStart") is False
+
+
+def test_claude_merged_user_and_project_context_hooks_emit_once(tmp_path: Path) -> None:
+    """Run the checked-in project command plus a global copy, as Claude merges them."""
+    project = tmp_path / "project"
+    project.mkdir()
+    clean_git_workspace(project)
+    (project / "kernel").mkdir()
+    shutil.copy2(ROOT / "kernel" / "rule-manifest.json", project / "kernel" / "rule-manifest.json")
+    manifest = json.loads((ROOT / "kernel" / "rule-manifest.json").read_text(encoding="utf-8"))
+    for rule in manifest["rules"]:
+        shutil.copy2(ROOT / rule["source"], project / rule["source"])
+    (project / "scripts" / "lite").mkdir(parents=True)
+    shutil.copy2(
+        ROOT / "scripts" / "lite" / "rule-context-hook.py",
+        project / "scripts" / "lite" / "rule-context-hook.py",
+    )
+    (project / ".claude").mkdir()
+    shutil.copy2(ROOT / ".claude" / "settings.json", project / ".claude" / "settings.json")
+    global_hook, _ = _load_global_rule_context_copy(tmp_path)
+    project_config = load_json(".claude/settings.json")
+    env = clean_git_environment()
+    env["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
+
+    for event in ("SessionStart", "SubagentStart"):
+        payload = json.dumps({"source": "startup"} if event == "SessionStart" else {})
+        outputs = []
+        for command in hook_commands(project_config["hooks"][event]):
+            outputs.append(
+                run_bash_command(
+                    command, cwd=project, env=env, input=payload, text=True,
+                    capture_output=True, check=False,
+                ).stdout
+            )
+        outputs.append(
+            subprocess.run(
+                [os.sys.executable, str(global_hook), "--platform", "CLAUDE",
+                 "--event", event, "--workspace", str(project)],
+                cwd=project, env=env, input=payload, text=True,
+                capture_output=True, check=False,
+            ).stdout
+        )
+        injected = [
+            out for out in outputs
+            if "Forgewright rule inventory" in out
+        ]
+        assert len(injected) == 1, (event, outputs)
+
+    # Without a project registration the global copy is the only source.
+    (project / ".claude" / "settings.json").unlink()
+    lone = subprocess.run(
+        [os.sys.executable, str(global_hook), "--platform", "CLAUDE",
+         "--event", "SessionStart", "--workspace", str(project)],
+        cwd=project, env=env, input="{}", text=True, capture_output=True, check=False,
+    )
+    assert "Forgewright rule inventory" in lone.stdout

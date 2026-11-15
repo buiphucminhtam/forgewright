@@ -61,8 +61,16 @@ def _read_kernel() -> str:
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read().strip()
             # Clean up links to kernel files so agents don't try to reread them
+            # Generated files live at the repo root, so sibling links such as
+            # [AUDIT.md](AUDIT.md) would not resolve. Inlined LITE files become
+            # section references; lazy kernel files (AUDIT, INDEX) keep a
+            # root-relative kernel/ link so agents can read them on demand.
             content = re.sub(
-                r"\[kernel/([A-Z]+)\.md\]\([^)]+\)", r"\1 section", content
+                r"\[(?:kernel/)?([A-Z]+)\.md\]\((?:kernel/)?\1\.md\)",
+                lambda m: f"{m.group(1)} section"
+                if f"{m.group(1)}.md" in LITE_FILES
+                else f"[kernel/{m.group(1)}.md](kernel/{m.group(1)}.md)",
+                content,
             )
             kernel_contents.append(
                 f"<!-- START OF {filename} -->\n{content}\n<!-- END OF {filename} -->"

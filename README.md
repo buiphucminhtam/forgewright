@@ -241,6 +241,18 @@ now passes equal-elapsed 30/60/120Hz checks and rejects a fixed-frame mutation.
 [Model/player/device uplift remains unmeasured](evals/skills/README.md).
 Default web-game routes retain UI Designer within the existing context budget.
 
+### Claude Code: one rule-context injection per event
+
+Claude Code merges user and project hook settings, so the global and checked-in
+[rule-context hook](scripts/lite/rule-context-hook.py) used to inject Forgewright
+context twice. A global copy now defers only to the exact canonical project
+registration whose matcher selects the event and whose preconditions hold
+(git toplevel, `python3`, no `disableAllHooks` in `settings.json` or
+`settings.local.json`); any doubt keeps it running. Generated `CLAUDE.md`,
+`AGENTS.md` and `GEMINI.md` now resolve kernel links (lazy
+[AUDIT](kernel/AUDIT.md)), and the boot budget counts inlined `POLICY.md`
+(6916/7000). Host workspace-trust gating is not observable from files.
+
 ### 1. Windows & cross-platform hot-path optimization
 
 - **Fast, zero-subshell policy validation:** [policy-check.sh](scripts/lite/policy-check.sh), [telemetry.sh](scripts/lite/telemetry.sh), and [rule-ledger.sh](scripts/lite/rule-ledger.sh) now parse policy files in pure Bash, resolve `python3`/`python`/`py.exe -3` across POSIX and Windows, normalize `FORGEWRIGHT_WORKSPACE` via `cygpath`, and fall back to Python when `jq` is not installed.
@@ -310,7 +322,7 @@ Eval Engineer, SRE, XLSX Engineer). The MCP template pins GitNexus 1.6.12 and No
 quality remain unverified). A Godot buffer candidate stays held on reconciliation
 conflict; these are reference corrections, not model benchmarks or player-outcome proof.
 
-### 5. Phaser 4 / Three.js production handoff
+### 7. Phaser 4 / Three.js production handoff
 
 New 2D work uses **Phaser 4**, 3D **Three.js**, preserving legacy pins and manual
 controls. The [router](scripts/runtime/skill_routing.py),
@@ -332,7 +344,7 @@ setup and beta simulation separate provider availability from device evidence.
 Native SDK/store adapters, account access and player/revenue gains still need
 actual target-project validation.
 
-### 7. Reverse-engineering intelligence & facet evidence
+### 8. Reverse-engineering intelligence & facet evidence
 
 The [RE intelligence runtime](scripts/runtime/reverse_engineering_intelligence.py) and
 [pinned catalog](.forgewright/re-discovery-catalog.json) add offline SHA-256-pinned
@@ -341,7 +353,7 @@ discovery, task-to-tool routing with explicit limitations, per-facet evidence en
 and full-precision benchmark ranking ([unit suite](tests/unit_tests/test_reverse_engineering_intelligence.py)).
 Catalog metadata requires upstream license verification; fixture checks do not certify live benchmarks.
 
-### 8. Motion Director, Docs Hub `markdown-it` & multi-OS verification
+### 9. Motion Director, Docs Hub `markdown-it` & multi-OS verification
 
 Adds [Unslop](skills/unslop/SKILL.md), [Motion Director](skills/motion-director/SKILL.md), `markdown-it` Docs Hub, [eval receipts](scripts/runtime/skill_eval_receipt.py), and [verify-platform.py](scripts/ci/verify-platform.py).
 

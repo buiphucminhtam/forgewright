@@ -599,3 +599,115 @@ def test_static_validator_checks_rule_manifest() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def _git_init(root: Path) -> None:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    subprocess.run(["git", "init", "-q", str(root)], env=env, check=True)
+
+
+def _claude_project_registration(
+    root: Path,
+    event: str,
+    *,
+    command: str | None = None,
+    matcher: str = "*",
+    git: bool = True,
+    local: dict | None = None,
+) -> None:
+    module = load_hook_module()
+    if git:
+        _git_init(root)
+    (root / "kernel").mkdir(parents=True, exist_ok=True)
+    (root / "kernel" / "ENTRY.md").write_text("# Entry\nrule\n", encoding="utf-8")
+    write_manifest(root, [active_rule()])
+    project_lite = root / "scripts" / "lite"
+    project_lite.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(HOOK, project_lite / "rule-context-hook.py")
+    if command is None:
+        command = module.PROJECT_CLAUDE_CONTEXT_COMMAND.format(event=event)
+    (root / ".claude").mkdir(exist_ok=True)
+    (root / ".claude" / "settings.json").write_text(
+        json.dumps(
+            {"hooks": {event: [{"matcher": matcher, "hooks": [{"type": "command", "command": command}]}]}}
+        ),
+        encoding="utf-8",
+    )
+    if local is not None:
+        (root / ".claude" / "settings.local.json").write_text(
+            json.dumps(local), encoding="utf-8"
+        )
+
+
+def _global_injects(root: Path, event: str = "SessionStart", payload: str = "{}") -> bool:
+    result = run_hook(root, payload, platform="CLAUDE", event=event)
+    assert result.returncode == 0
+    return "hookSpecificOutput" in json.loads(result.stdout)
+
+
+def test_global_claude_context_hook_defers_to_project_registration(tmp_path: Path) -> None:
+    _claude_project_registration(tmp_path, "SessionStart")
+
+    assert _global_injects(tmp_path) is False
+
+    project = subprocess.run(
+        [sys.executable, str(tmp_path / "scripts/lite/rule-context-hook.py"),
+         "--platform", "CLAUDE", "--event", "SessionStart", "--workspace", str(tmp_path)],
+        cwd=tmp_path, input="{}", text=True, capture_output=True, check=False,
+    )
+    assert project.returncode == 0
+    assert "Forgewright rule inventory" in json.loads(project.stdout)[
+        "hookSpecificOutput"]["additionalContext"]
+
+
+def test_global_claude_context_hook_runs_without_matching_project_event(tmp_path: Path) -> None:
+    _claude_project_registration(tmp_path, "SubagentStart")
+    assert _global_injects(tmp_path, "SessionStart") is True
+    codex = run_hook(tmp_path, "{}", platform="CODEX", event="SubagentStart")
+    assert "hookSpecificOutput" in json.loads(codex.stdout)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo scripts/lite/rule-context-hook.py --platform CLAUDE --event SessionStart",
+        "bash -c 'exit 0; python3 scripts/lite/rule-context-hook.py --platform CLAUDE --event SessionStart'",
+    ],
+)
+def test_global_claude_context_hook_ignores_foreign_or_unreachable_commands(
+    tmp_path: Path, command: str
+) -> None:
+    _claude_project_registration(tmp_path, "SessionStart", command=command)
+    assert _global_injects(tmp_path) is True
+
+
+def test_global_claude_context_hook_runs_when_project_command_cannot_run(tmp_path: Path) -> None:
+    # The canonical project command exits silently outside a git worktree.
+    _claude_project_registration(tmp_path, "SessionStart", git=False)
+    assert _global_injects(tmp_path) is True
+
+
+def test_global_claude_context_hook_honors_local_disable_all_hooks(tmp_path: Path) -> None:
+    _claude_project_registration(tmp_path, "SessionStart", local={"disableAllHooks": True})
+    assert _global_injects(tmp_path) is True
+
+
+def test_global_claude_context_hook_respects_project_matcher(tmp_path: Path) -> None:
+    _claude_project_registration(tmp_path, "SessionStart", matcher="startup|resume")
+    assert _global_injects(tmp_path, payload='{"source":"startup"}') is False
+    assert _global_injects(tmp_path, payload='{"source":"compact"}') is True
+    assert _global_injects(tmp_path, payload="{}") is True
+
+    other = tmp_path / "other"
+    other.mkdir()
+    _claude_project_registration(other, "SubagentStart", matcher="nomatch")
+    assert _global_injects(other, "SubagentStart") is True
+
+
+def test_generated_instruction_files_have_no_unresolvable_kernel_links() -> None:
+    import re
+
+    for name in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
+        text = (ROOT / name).read_text(encoding="utf-8")
+        for target in re.findall(r"\]\(([^)#]+\.md)\)", text):
+            assert (ROOT / target).is_file(), f"{name} links missing {target}"

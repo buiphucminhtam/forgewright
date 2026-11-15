@@ -32,7 +32,7 @@ echo ""
 
 # 1. Root instruction payload: kernel/*.md files assembled by sync-kernel.py
 KERNEL_CHARS=0
-KERNEL_FILES=("ENTRY.md" "SOLVE.md" "VERIFY.md" "ESCALATE.md" "CLARIFY.md")
+KERNEL_FILES=("ENTRY.md" "SOLVE.md" "VERIFY.md" "ESCALATE.md" "CLARIFY.md" "POLICY.md")
 for f in "${KERNEL_FILES[@]}"; do
     fpath="${PROJECT_ROOT}/kernel/${f}"
     if [[ ! -f "$fpath" ]]; then
