@@ -125,6 +125,52 @@ model/reasoning-effort pair. Missing, malformed, or unsupported capability data
 emits `provider-managed` (or `unavailable`) with no unsafe override. This
 resolver is not the external AGY adapter.
 
+## Native Claude Code Configuration
+
+Claude Code routes by agent type. The plugin ships three tier agents under
+`agents/`, each pinning a model alias in its frontmatter:
+
+| Tier | Agent | Model alias | Tools / use |
+|---|---|---|---|
+| `scout` | `forgewright-scout` | `haiku` | Read, Grep, Glob only (no shell, no edits): lookups, inventories, summaries of files already on disk |
+| `builder` | `forgewright-builder` | `sonnet` | Normal bounded implementation, tests, debugging, code review |
+| `expert` | `forgewright-expert` | `opus` | HARD signals and independent adversarial review |
+
+How selection happens, and what is enforced:
+
+1. **Interactive delegation is description-driven.** The parent model chooses an
+   agent from these descriptions, which state the difficulty and HARD criteria.
+   That choice is model judgment, not a deterministic gate.
+2. **Orchestrated dispatch is deterministic.** Before an Agent tool call, run
+   the resolver with the requested tier (for example `worker.role` from
+   `orchestration_policy.py`) and the scope's risk signals as free text. Any
+   ESCALATE HARD signal (matched by keyword stems such as payment, receipt,
+   in-app, public, schema, migration, release, guardrail, termination; broad on
+   purpose, so a false positive costs an expert run rather than a downgrade)
+   floors the tier at `expert`. The floor only sees the signals passed, so
+   always pass the task brief or summary itself as one more `--risk-signal`;
+   HARD wording in the task is then matched even when no explicit signal was
+   derived. A requested tier can raise it but never lower it, so a HARD scope cannot be downgraded to save tokens. With no HARD
+   signal, mechanical inventory resolves to `scout` and other work to `builder`.
+3. A scout or builder that discovers a HARD signal stops and reports for
+   re-routing.
+
+```sh
+python3 scripts/runtime/claude-subagent-routing.py \
+  --tier "$TIER" --risk-signal "$SIGNAL" \
+  --capabilities-json '{"models": ["haiku", "sonnet", "opus"], "agent_types": ["forgewright:forgewright-scout", "forgewright:forgewright-builder", "forgewright:forgewright-expert", "general-purpose"]}'
+```
+
+Pass only the emitted `agent_args`. `subagent_type` appears only for an
+advertised agent (bare, or a unique plugin-namespaced match). `model` appears
+only for an advertised alias (`model_selection: verified`). Otherwise the
+subagent inherits the parent model (`provider-managed`). Aliases resolve to the
+runtime's current model of that family; they are not pinned snapshots. The
+plugin-namespaced names (`forgewright:forgewright-<tier>`) were observed in a
+headless Claude Code session loaded with `--plugin-dir` on 2026-11-15; other
+hosts or install paths remain `UNVERIFIED` until probed. Configuration lives in
+`subagents.claude.tiers` in `.production-grade.yaml`.
+
 ## Codex GPT-5.6 Family
 
 When no project/user preference resolves and the current Codex runtime advertises

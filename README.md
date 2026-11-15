@@ -241,6 +241,18 @@ now passes equal-elapsed 30/60/120Hz checks and rejects a fixed-frame mutation.
 [Model/player/device uplift remains unmeasured](evals/skills/README.md).
 Default web-game routes retain UI Designer within the existing context budget.
 
+### Claude Code: tier agents pick the subagent model
+
+The plugin ships [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, Read/Grep/Glob only),
+[`forgewright-builder`](agents/forgewright-builder.md) (`sonnet`) and
+[`forgewright-expert`](agents/forgewright-expert.md) (`opus`, HARD signals and independent
+review). Their descriptions carry the difficulty criteria, so delegation picks the cheapest
+tier likely to finish correctly (description-driven). For orchestrated dispatch the resolver
+floors any HARD signal at `expert`, so HARD scopes cannot be downgraded.
+[claude-subagent-routing.py](scripts/runtime/claude-subagent-routing.py) maps a tier to Agent
+tool arguments and emits only advertised agents and model aliases
+([model-tier protocol](skills/_shared/protocols/model-tier.md)).
+
 ### Claude Code: one rule-context injection per event
 
 Claude Code merges user and project hook settings, so the global and checked-in

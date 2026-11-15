@@ -85,3 +85,11 @@ subagents:
     agent_types:
       explorer: { model: "gpt-5.6-luna", reasoning_effort: "low" }
       worker: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
+  claude:
+    # Claude Code Agent tool: tier -> plugin agent (model pinned in agents/*.md
+    # frontmatter) plus a model alias that is passed only when the active
+    # Agent tool schema advertises it; otherwise the parent model is inherited.
+    tiers:
+      scout: { agent: "forgewright-scout", model: "haiku" }
+      builder: { agent: "forgewright-builder", model: "sonnet" }
+      expert: { agent: "forgewright-expert", model: "opus" }

@@ -125,6 +125,18 @@ target thực tế. Regression chạy chính ví dụ FollowCamera ở 30/60/120
 mutation theo frame. [Cải thiện model/người chơi/thiết bị chưa được đo](evals/skills/README.md).
 Router giữ UI Designer trong budget context hiện có.
 
+### Claude Code: agent theo tier tự chọn model cho subagent
+
+Plugin có sẵn [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, chỉ Read/Grep/Glob),
+[`forgewright-builder`](agents/forgewright-builder.md) (`sonnet`) và
+[`forgewright-expert`](agents/forgewright-expert.md) (`opus`, cho tín hiệu HARD và review độc lập).
+Mô tả của từng agent ghi rõ tiêu chí độ khó, nên khi giao việc Claude chọn tier rẻ nhất mà vẫn
+làm đúng (dựa vào mô tả). Khi điều phối tự động, resolver đặt sàn `expert` cho mọi tín hiệu HARD,
+nên việc HARD không thể bị hạ tier.
+[claude-subagent-routing.py](scripts/runtime/claude-subagent-routing.py) chuyển tier thành tham số
+tool Agent, chỉ dùng agent và model mà runtime thực sự hỗ trợ
+([model-tier protocol](skills/_shared/protocols/model-tier.md)).
+
 ### Claude Code: mỗi sự kiện chỉ chèn rule một lần
 
 Claude Code gộp hook của user và project, nên
