@@ -22,6 +22,16 @@
             "timeout": 2
           }
         ]
+      },
+      {
+        "matcher": "compact|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/memory/native_hook.py\"; [ -f \"$script\" ] || exit 0; exec python3 \"$script\" --workspace \"$root\" --platform CLAUDE'",
+            "timeout": 3
+          }
+        ]
       }
     ],
     "SubagentStart": [
@@ -42,6 +52,15 @@
           {
             "type": "command",
             "command": "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 1; cd \"$root\" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CLAUDE'"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/memory/native_hook.py\"; [ -f \"$script\" ] || exit 0; FORGEWRIGHT_MEMORY_CAPTURE=\"${FORGEWRIGHT_MEMORY_CAPTURE-1}\" exec python3 \"$script\" --workspace \"$root\" --platform CLAUDE'",
+            "timeout": 3
           }
         ]
       }

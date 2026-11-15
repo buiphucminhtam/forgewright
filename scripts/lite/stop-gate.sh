@@ -157,12 +157,29 @@ import sys
 
 legacy = "bash scripts/lite/stop-gate.sh --platform CLAUDE"
 canonical = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 1; cd \"$root\" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CLAUDE'"
+memory = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/memory/native_hook.py\"; [ -f \"$script\" ] || exit 0; FORGEWRIGHT_MEMORY_CAPTURE=\"${FORGEWRIGHT_MEMORY_CAPTURE-1}\" exec python3 \"$script\" --workspace \"$root\" --platform CLAUDE'"
 try:
     with open(sys.argv[1], "r", encoding="utf-8") as handle:
         config = json.load(handle)
     groups = config.get("hooks", {}).get("Stop", [])
-    if not isinstance(groups, list) or len(groups) != 1:
+    if not isinstance(groups, list) or len(groups) not in (1, 2):
         raise SystemExit(1)
+    if len(groups) == 2:
+        # Only the exact optional memory adjunct is supported. Unknown siblings,
+        # extra controls and modified commands still require global validation.
+        optional = [
+            candidate
+            for candidate in groups
+            if isinstance(candidate, dict)
+            and set(candidate) == {"hooks"}
+            and isinstance(candidate["hooks"], list)
+            and len(candidate["hooks"]) == 1
+            and candidate["hooks"][0]
+            == {"type": "command", "command": memory, "timeout": 3}
+        ]
+        if len(optional) != 1:
+            raise SystemExit(1)
+        groups = [candidate for candidate in groups if candidate is not optional[0]]
     group = groups[0]
     if not isinstance(group, dict) or set(group) - {"matcher", "hooks"}:
         raise SystemExit(1)

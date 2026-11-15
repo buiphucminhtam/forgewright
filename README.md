@@ -241,6 +241,14 @@ now passes equal-elapsed 30/60/120Hz checks and rejects a fixed-frame mutation.
 [Model/player/device uplift remains unmeasured](evals/skills/README.md).
 Default web-game routes retain UI Designer within the existing context budget.
 
+### Claude Code: memory that survives compaction
+
+Every Claude Code turn now saves (on by default) a bounded, redacted handoff to
+local session memory, and `SessionStart` after `compact`/`resume` re-injects the latest ones,
+so context no longer depends on the compaction summary
+([memory adapter](skills/memory-manager/SKILL.md#native-claude-code-adapter-compaction-independent)).
+Verified with a real headless compaction; opt out with `FORGEWRIGHT_MEMORY_CAPTURE=0`.
+
 ### Claude Code: tier agents pick the subagent model
 
 The plugin ships [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, Read/Grep/Glob only),

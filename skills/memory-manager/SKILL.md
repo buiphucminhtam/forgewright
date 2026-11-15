@@ -134,6 +134,36 @@ context delivery. Native acceptance still requires a fresh canary observed in
 the real host context after trusted dispatch; cloud recreation is a separate
 acceptance lane. See the [official hook contract](https://developers.openai.com/codex/hooks).
 
+## Native Claude Code adapter (compaction-independent)
+
+The project `.claude/settings.json` registers `native_hook.py --platform CLAUDE`
+for `Stop` and for `SessionStart` with matcher `compact|resume`:
+
+- **Stop** captures every turn into session memory. This is **on by default**:
+  the hook command sets `FORGEWRIGHT_MEMORY_CAPTURE=1` unless the environment
+  already sets it, so set `FORGEWRIGHT_MEMORY_CAPTURE=0` to opt out. An explicit
+  single `forgewright-memory` block wins (any kind/scope); otherwise a bounded
+  excerpt (≤1500 chars, strict VERIFY blocks removed, 24h TTL) of the final
+  reply is stored as a `handoff`. `memory_redaction.py` removes credential
+  shapes (OpenAI incl. `sk-proj-`, GitHub, Slack `xox*-`, AWS, Google, Bearer,
+  private keys, DB URLs, `password=`-style pairs) and personal data (email,
+  international/US phone numbers, Luhn-valid card numbers) before storage.
+  Redaction is pattern-based, not a guarantee; restored text stays labelled
+  untrusted context-only. Retries (`stop_hook_active`), short
+  replies and ambiguous blocks are skipped; a replayed reply is a duplicate.
+- **SessionStart** after `compact` or `resume` re-injects that session's latest
+  handoffs (`memory_flow.py recent`, session-scoped, ≤2000 chars, marked
+  untrusted context-only). Fresh `startup` sessions inject nothing unless
+  `FORGEWRIGHT_MEMORY_QUERY` is set.
+
+So working context survives host compaction without relying on the compaction
+summary. The global `stop-gate.sh` still defers to the project gate because it
+accepts exactly this memory adjunct as the only extra `Stop` group. Observed on
+2026-11-15 in a headless Claude Code session: a real Stop payload was captured,
+and both `SessionStart:resume` and `SessionStart:compact` re-injected it. The
+adapter is project-scoped: other repositories get it only if their own
+`.claude/settings.json` registers the same commands.
+
 ## Explicit maintenance and migration
 
 ```bash

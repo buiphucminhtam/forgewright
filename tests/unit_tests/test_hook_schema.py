@@ -1256,3 +1256,75 @@ def test_claude_merged_user_and_project_context_hooks_emit_once(tmp_path: Path) 
         cwd=project, env=env, input="{}", text=True, capture_output=True, check=False,
     )
     assert "Forgewright rule inventory" in lone.stdout
+
+
+def _claude_stop_deferral_fixture(tmp_path: Path, stop_groups: list) -> tuple[Path, dict]:
+    clean_git_workspace(tmp_path)
+    project_lite = tmp_path / "scripts" / "lite"
+    project_lite.mkdir(parents=True)
+    shutil.copy2(ROOT / "scripts/lite/stop-gate.sh", project_lite / "stop-gate.sh")
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "settings.json").write_text(
+        json.dumps({"hooks": {"Stop": stop_groups}}), encoding="utf-8"
+    )
+    fake_home = tmp_path / "home"
+    global_lite = fake_home / ".forgewright" / "scripts" / "lite"
+    global_lite.mkdir(parents=True)
+    global_gate = global_lite / "stop-gate.sh"
+    shutil.copy2(ROOT / "scripts" / "lite" / "stop-gate.sh", global_gate)
+    env = clean_git_environment()
+    env["HOME"] = str(fake_home)
+    env["FORGEWRIGHT_DIR"] = str(fake_home / ".forgewright")
+    return global_gate, env
+
+
+def _run_global_claude_gate(tmp_path: Path, stop_groups: list) -> subprocess.CompletedProcess:
+    global_gate, env = _claude_stop_deferral_fixture(tmp_path, stop_groups)
+    payload = json.dumps(
+        {
+            "last_assistant_message": "CLAIM: incomplete claim that would fail if not deferred",
+            "session_id": "claude-memory-adjunct-session",
+        }
+    )
+    return subprocess.run(
+        [BASH, str(global_gate), "--platform", "CLAUDE"],
+        cwd=tmp_path, env=env, input=payload, text=True, capture_output=True, check=False,
+    )
+
+
+def test_global_claude_stop_gate_defers_with_checked_in_memory_adjunct(tmp_path: Path) -> None:
+    stop_groups = load_json(".claude/settings.json")["hooks"]["Stop"]
+    assert len(stop_groups) == 2
+    assert any("native_hook.py" in c and "--platform CLAUDE" in c for c in hook_commands(stop_groups))
+    result = _run_global_claude_gate(tmp_path, stop_groups)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == ""
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda h: h.update(command=h["command"].replace("--platform CLAUDE", "--platform CLAUDE; true")),
+        lambda h: h.update(timeout=30),
+        lambda h: h.update(statusMessage="extra"),
+    ],
+)
+def test_global_claude_stop_gate_validates_when_memory_adjunct_is_modified(
+    tmp_path: Path, mutate
+) -> None:
+    import copy
+
+    stop_groups = copy.deepcopy(load_json(".claude/settings.json")["hooks"]["Stop"])
+    memory = next(g for g in stop_groups if "native_hook.py" in g["hooks"][0]["command"])
+    mutate(memory["hooks"][0])
+    result = _run_global_claude_gate(tmp_path, stop_groups)
+    assert not (result.returncode == 0 and result.stdout == ""), "modified adjunct must not defer"
+
+
+def test_global_claude_stop_gate_validates_with_unknown_second_group(tmp_path: Path) -> None:
+    import copy
+
+    stop_groups = copy.deepcopy(load_json(".claude/settings.json")["hooks"]["Stop"])
+    stop_groups.append({"hooks": [{"type": "command", "command": "true"}]})
+    result = _run_global_claude_gate(tmp_path, stop_groups)
+    assert not (result.returncode == 0 and result.stdout == "")

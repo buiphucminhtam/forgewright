@@ -313,3 +313,147 @@ def test_expired_fact_is_not_injected_and_unicode_output_remains_bounded(tmp_pat
     assert (
         packet(invoke(tmp_path, env={"FORGEWRIGHT_MEMORY_QUERY": "Nebulacanary"})) == ""
     )
+
+
+def claude_invoke(workspace, event, session="claude-chat", env=None, **fields):
+    return subprocess.run(
+        [sys.executable, str(HOOK), "--workspace", str(workspace), "--platform", "CLAUDE"],
+        input=json.dumps({"hook_event_name": event, "session_id": session, "cwd": str(workspace), **fields}),
+        env={**os.environ, **(env or {})},
+        capture_output=True,
+        text=True,
+        timeout=8,
+    )
+
+
+CAPTURE_ON = {"FORGEWRIGHT_MEMORY_CAPTURE": "1"}
+REPLY = (
+    "Decided to route Quasarbeacon payments through the expert tier and keep the "
+    "resolver floor; next step is the review.\n\nVERIFY:\nACCEPTANCE: x\nCLAIM: secretclaimtext\n"
+    "COMMAND: pytest\nOUTPUT: sha256:abc\nEXIT CODE: 0\nVERDICT: PASS\n"
+)
+
+
+def _observations(workspace):
+    with sqlite3.connect(workspace / ".forgewright/memory.db") as connection:
+        return [row[0] for row in connection.execute("select content from observations")]
+
+
+def test_claude_stop_auto_captures_reply_without_block_and_restores_after_compact(tmp_path):
+    stop = claude_invoke(tmp_path, "Stop", env=CAPTURE_ON, last_assistant_message=REPLY)
+    assert json.loads(stop.stdout) == {"continue": True}, stop.stdout
+    stored = _observations(tmp_path)
+    assert len(stored) == 1 and "Quasarbeacon" in stored[0]
+    assert "secretclaimtext" not in stored[0] and "VERDICT" not in stored[0]
+
+    restored = packet(claude_invoke(tmp_path, "SessionStart", source="compact"))
+    assert "Quasarbeacon" in restored and "Untrusted memory" in restored
+    assert "Quasarbeacon" in packet(claude_invoke(tmp_path, "SessionStart", source="resume"))
+
+
+def test_claude_restore_is_session_scoped_and_not_on_fresh_startup(tmp_path):
+    claude_invoke(tmp_path, "Stop", env=CAPTURE_ON, last_assistant_message=REPLY)
+    assert packet(claude_invoke(tmp_path, "SessionStart", session="other-chat", source="compact")) == ""
+    assert packet(claude_invoke(tmp_path, "SessionStart", source="startup")) == ""
+
+
+def test_claude_stop_replay_is_duplicate_not_new_memory(tmp_path):
+    for _ in range(2):
+        claude_invoke(tmp_path, "Stop", env=CAPTURE_ON, last_assistant_message=REPLY)
+    assert len(_observations(tmp_path)) == 1
+
+
+@pytest.mark.parametrize(
+    ("env", "fields"),
+    [
+        ({}, {"last_assistant_message": REPLY}),
+        (CAPTURE_ON, {"last_assistant_message": REPLY, "stop_hook_active": True}),
+        (CAPTURE_ON, {"last_assistant_message": "ok, done."}),
+        (CAPTURE_ON, {"last_assistant_message": 7}),
+        (CAPTURE_ON, {"last_assistant_message": "```forgewright-memory\n{}\n```\n```forgewright-memory\n{}\n```"}),
+    ],
+)
+def test_claude_stop_skips_when_capture_unset_on_retry_short_or_ambiguous(tmp_path, env, fields):
+    result = claude_invoke(tmp_path, "Stop", env=env, **fields)
+    assert json.loads(result.stdout) == {"continue": True}
+    assert not (tmp_path / ".forgewright/memory.db").exists() or _observations(tmp_path) == []
+
+
+def test_claude_stop_prefers_explicit_memory_block(tmp_path):
+    block = json.dumps({"kind": "decision", "scope": "project", "summary": "Zephyrlatch uses opus for review"})
+    message = "Public text that is long enough to be an auto summary otherwise.\n```forgewright-memory\n" + block + "\n```"
+    claude_invoke(tmp_path, "Stop", env=CAPTURE_ON, last_assistant_message=message)
+    assert _observations(tmp_path) == ["Zephyrlatch uses opus for review"]
+    fresh = packet(claude_invoke(tmp_path, "SessionStart", session="new-chat", env={"FORGEWRIGHT_MEMORY_QUERY": "Zephyrlatch"}, source="startup"))
+    assert "Zephyrlatch" in fresh
+
+
+def test_codex_stop_still_requires_turn_and_block(tmp_path):
+    result = invoke(tmp_path, "Stop", env=CAPTURE_ON, last_assistant_message=REPLY)
+    assert json.loads(result.stdout) == {"continue": True}
+    assert not (tmp_path / ".forgewright/memory.db").exists() or _observations(tmp_path) == []
+
+
+def test_checked_in_claude_memory_hook_commands_round_trip_through_compact(tmp_path):
+    """Run the exact .claude/settings.json commands as Claude Code would."""
+    import shutil
+
+    settings = json.loads((ROOT / ".claude/settings.json").read_text(encoding="utf-8"))["hooks"]
+
+    def memory_command(event):
+        commands = [
+            hook["command"]
+            for group in settings[event]
+            for hook in group["hooks"]
+            if "native_hook.py" in hook["command"]
+        ]
+        assert len(commands) == 1, event
+        return commands[0]
+
+    assert any(
+        g.get("matcher") == "compact|resume"
+        for g in settings["SessionStart"]
+        if "native_hook.py" in g["hooks"][0]["command"]
+    )
+    project = tmp_path / "project"
+    (project / "scripts").mkdir(parents=True)
+    shutil.copytree(ROOT / "scripts/memory", project / "scripts/memory", ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(ROOT / "scripts/lite", project / "scripts/lite", ignore=shutil.ignore_patterns("__pycache__"))
+    git_env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    subprocess.run(["git", "init", "-q"], cwd=project, env=git_env, check=True)
+    env = {**git_env}
+    env.pop("FORGEWRIGHT_MEMORY_CAPTURE", None)
+    real = str(project.resolve())
+
+    def run(event, **fields):
+        return subprocess.run(
+            ["bash", "-c", memory_command(event)],
+            cwd=project,
+            env=env,
+            input=json.dumps({"hook_event_name": event, "session_id": "claude-e2e", "cwd": real, **fields}),
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+    stop = run("Stop", last_assistant_message=REPLY)
+    assert json.loads(stop.stdout) == {"continue": True}, stop.stderr
+    restored = packet(run("SessionStart", source="compact"))
+    assert "Quasarbeacon" in restored and "secretclaimtext" not in restored
+
+
+SENSITIVE_REPLY = (
+    "Copied the config for Lyrafield: OPENAI_API_KEY sk-proj-abcdefghijklmnopqrstuvwxyz0123456789, "
+    "slack xoxb-1234567890-abcdefghij, owner jane.doe@example.com, phone +1 415 555 0100, "
+    "card 4111 1111 1111 1111. Logged at 2026-11-15 10:57:05 for commit bfe874fc."
+)
+
+
+def test_claude_auto_capture_redacts_secrets_and_personal_data(tmp_path):
+    claude_invoke(tmp_path, "Stop", env=CAPTURE_ON, last_assistant_message=SENSITIVE_REPLY)
+    (stored,) = _observations(tmp_path)
+    for leaked in ("sk-proj-", "xoxb-", "jane.doe@example.com", "415 555 0100", "4111 1111 1111 1111"):
+        assert leaked not in stored, leaked
+    assert "Lyrafield" in stored and "2026-11-15 10:57:05" in stored and "bfe874fc" in stored
+    restored = packet(claude_invoke(tmp_path, "SessionStart", source="compact"))
+    assert "Lyrafield" in restored and "sk-proj-" not in restored and "@example.com" not in restored

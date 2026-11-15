@@ -125,6 +125,13 @@ target thực tế. Regression chạy chính ví dụ FollowCamera ở 30/60/120
 mutation theo frame. [Cải thiện model/người chơi/thiết bị chưa được đo](evals/skills/README.md).
 Router giữ UI Designer trong budget context hiện có.
 
+### Claude Code: memory không phụ thuộc vào compact
+
+Mỗi lượt Claude Code giờ lưu (bật sẵn mặc định) một bản tóm tắt ngắn (đã che key, email, số điện thoại, số thẻ) vào memory cục bộ của phiên,
+và `SessionStart` sau `compact`/`resume` nạp lại các bản gần nhất, nên ngữ cảnh không còn phụ thuộc
+vào bản tóm tắt của compact ([memory adapter](skills/memory-manager/SKILL.md#native-claude-code-adapter-compaction-independent)).
+Đã kiểm chứng bằng một lần compact thật ở chế độ headless; tắt bằng `FORGEWRIGHT_MEMORY_CAPTURE=0`.
+
 ### Claude Code: agent theo tier tự chọn model cho subagent
 
 Plugin có sẵn [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, chỉ Read/Grep/Glob),

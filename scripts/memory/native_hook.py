@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""Optional Codex SessionStart/Stop adapter for structured local memory.
+"""Optional Codex / Claude Code SessionStart/Stop adapter for structured local memory.
 
 No transcript ingestion, model call, implicit migration or hook-trust changes.
 Host delivery must be verified separately from direct invocation of this file.
+
+Claude Code (`--platform CLAUDE`) differs from Codex because the host compacts
+long conversations: Stop captures every turn (an explicit forgewright-memory
+block, else a bounded excerpt of the final reply) into session memory, and
+SessionStart after `compact`/`resume` re-injects that session's latest
+handoffs, so continuity never depends on the compaction summary.
 """
 
 import argparse
@@ -22,9 +28,23 @@ ALLOW = {"continue": True}
 # The selected summary may precede strict VERIFY and a terminal citation
 # appendix. Only this unique fenced JSON value is captured, never its suffix.
 SUMMARY = re.compile(r"(?m)^```forgewright-memory\r?\n(.*?)\r?\n```[ \t]*\r?$", re.S)
+VERIFY_BLOCK = re.compile(r"(?ms)^VERIFY:\s*$.*?^VERDICT:[^\n]*$")
+AUTO_SUMMARY_CHARS = 1500
+AUTO_SUMMARY_MIN_CHARS = 40
+AUTO_TTL_SECONDS = 86400
+RESTORE_SOURCES = {"compact", "resume"}
 
 
-def handle(payload, workspace):
+def _auto_summary(message):
+    """Bounded excerpt of a final reply; strict VERIFY blocks are dropped."""
+    text = VERIFY_BLOCK.sub("", message)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) < AUTO_SUMMARY_MIN_CHARS:
+        return None
+    return text[:AUTO_SUMMARY_CHARS]
+
+
+def handle(payload, workspace, platform="CODEX"):
     """Treat native fields as data; an unavailable optional adapter allows work."""
     try:
         if any(
@@ -67,7 +87,21 @@ def handle(payload, workspace):
         }
         command = [sys.executable, str(Path(__file__).with_name("memory_flow.py"))]
         summary = None
-        if event == "SessionStart":
+        claude = platform.strip().upper() == "CLAUDE"
+        if (
+            event == "SessionStart"
+            and claude
+            and payload.get("source") in RESTORE_SOURCES
+        ):
+            command += [
+                "recent",
+                "--session",
+                session,
+                "--char-cap",
+                str(CONTEXT_CHARS),
+                "--json",
+            ]
+        elif event == "SessionStart":
             query = os.environ.get("FORGEWRIGHT_MEMORY_QUERY", "").strip()
             if not query or len(query) > 1024:
                 return ALLOW.copy()
@@ -89,20 +123,38 @@ def handle(payload, workspace):
                 return ALLOW.copy()
             turn = payload.get("turn_id")
             message = payload.get("last_assistant_message")
-            if (
-                not isinstance(turn, str)
-                or not turn
-                or len(turn) > 128
-                or not isinstance(message, str)
-            ):
+            if not isinstance(message, str) or len(message) > MAX_INPUT_BYTES:
                 return ALLOW.copy()
-            if message.count("```forgewright-memory") != 1:
+            if claude:
+                # Claude Code has no per-turn id; bind the event to this
+                # session and exact reply so a replayed Stop is a duplicate.
+                if turn is not None and (not isinstance(turn, str) or len(turn) > 128):
+                    return ALLOW.copy()
+                identity = f"{session}\0{turn or message}"
+                event_id = (
+                    "claude-stop-" + hashlib.sha256(identity.encode()).hexdigest()[:32]
+                )
+            elif not isinstance(turn, str) or not turn or len(turn) > 128:
                 return ALLOW.copy()
-            match = SUMMARY.search(message)
-            if not match:
+            else:
+                event_id = (
+                    "codex-stop-" + hashlib.sha256(turn.encode()).hexdigest()[:32]
+                )
+            blocks = message.count("```forgewright-memory")
+            if blocks == 1 and (match := SUMMARY.search(message)):
+                summary = json.loads(match[1])
+            elif claude and blocks == 0:
+                excerpt = _auto_summary(message)
+                if excerpt is None:
+                    return ALLOW.copy()
+                summary = {
+                    "kind": "handoff",
+                    "scope": "session",
+                    "summary": excerpt,
+                    "ttl_seconds": AUTO_TTL_SECONDS,
+                }
+            else:
                 return ALLOW.copy()
-            summary = json.loads(match[1])
-            event_id = "codex-stop-" + hashlib.sha256(turn.encode()).hexdigest()[:32]
             command += ["capture", "--session", session, "--event", event_id]
         else:
             return ALLOW.copy()
@@ -130,7 +182,7 @@ def handle(payload, workspace):
                     "hookEventName": event,
                     "additionalContext": context,
                 }
-        elif data.get("status") in {"captured", "duplicate"}:
+        elif data.get("status") in {"captured", "duplicate"} and not claude:
             response["systemMessage"] = (
                 f"Forgewright memory: {data['status']} (mem0:{int(data['observation_id'])})."
             )
@@ -147,11 +199,12 @@ def handle(payload, workspace):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", type=Path, required=True)
+    parser.add_argument("--platform", default="CODEX", choices=("CODEX", "CLAUDE"))
     args = parser.parse_args()
     try:
         raw = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
         response = (
-            handle(json.loads(raw), args.workspace)
+            handle(json.loads(raw), args.workspace, args.platform)
             if len(raw) <= MAX_INPUT_BYTES
             else ALLOW.copy()
         )
