@@ -115,3 +115,6 @@ ruff_errors.json
 
 # Qoder workspace metadata (editor/tool scratch, not project source)
 .qoder/
+
+# macOS Finder metadata (rejected by the Claude plugin directory)
+.DS_Store
