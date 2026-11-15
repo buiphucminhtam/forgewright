@@ -2408,6 +2408,38 @@ class TestVerifyGateSh:
             input=json.dumps(payload),
         )
 
+    def _claude_stop(self, stop_hook_active: bool) -> subprocess.CompletedProcess:
+        (self.tmp / "fixture.py").write_text("print('changed')\n")
+        return subprocess.run(
+            ["bash", str(STOP_SH), "--platform", "claude"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=os.environ.copy(),
+            input=json.dumps(
+                {
+                    "hook_event_name": "Stop",
+                    "session_id": "claude-reentry-session",
+                    "last_assistant_message": "Still waiting on background work.",
+                    "stop_hook_active": stop_hook_active,
+                }
+            ),
+        )
+
+    def test_claude_first_unverified_stop_still_blocks(self):
+        """Without re-entry, unverified code changes keep the Claude gate closed."""
+        result = self._claude_stop(stop_hook_active=False)
+        assert result.returncode == 2, result.stderr
+        assert "gate BLOCKED" in result.stderr
+
+    def test_claude_stop_reentry_allows_stop_as_unverified(self):
+        """Claude re-entry (stop_hook_active) must not block again: one retry only."""
+        result = self._claude_stop(stop_hook_active=True)
+        assert result.returncode == 0, result.stderr
+        assert "gate BLOCKED" not in result.stderr
+        assert "UNVERIFIED" in result.stderr
+
     def test_no_code_changes_gate_open(self):
         """Clean repo with no code changes → gate open immediately."""
         r = self._gate(platform="claude", stdin_json="")
@@ -2926,7 +2958,9 @@ class TestVerifyGateSh:
             ),
             "turn": f"{platform}-routing-reentry",
             "session_id": f"{platform}-bounded-session",
-            "stop_hook_active": True,
+            # Claude sends stop_hook_active=false on the first Stop and true on
+            # the re-entry that follows a block; other hosts keep the payload.
+            "stop_hook_active": platform != "claude",
         }
         state_dir = self.tmp / ".forgewright" / "runtime" / "stop-attempts"
         env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
@@ -2941,6 +2975,8 @@ class TestVerifyGateSh:
             env=env,
             input=json.dumps(payload),
         )
+        if platform == "claude":
+            payload["stop_hook_active"] = True
         second = subprocess.run(
             command,
             capture_output=True,

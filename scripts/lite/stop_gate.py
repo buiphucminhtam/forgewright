@@ -812,6 +812,19 @@ def main() -> int:
         )
     root = _project_root()
     raw_payload = _parse_payload(raw)
+    if platform == "CLAUDE" and raw_payload.get("stop_hook_active") is True:
+        # Claude Code sets stop_hook_active when this Stop follows a previous
+        # block. The earlier block already requested one retry; blocking again
+        # only loops (each reply changes the payload, so duplicate suppression
+        # never matches). Allow the stop but keep completion UNVERIFIED.
+        print(
+            "[VERIFY-GATE] Stop re-entry (stop_hook_active) — allowing stop; "
+            "completion remains UNVERIFIED",
+            file=sys.stderr,
+        )
+        return _emit_allow(
+            platform, args.typed_stop_decision, "unverified", "stop_hook_reentry", True
+        )
     native = platform == "CODEX" and raw_payload.get("hook_event_name") == "Stop"
     files = _files_to_check(root, raw_payload)
     payload = _normalize_payload(root, raw_payload, native=native)
