@@ -49,6 +49,8 @@ _FINGERPRINT_RUNTIME_DIRS = frozenset(
         ".forgewright/memory-bank",
         ".forgewright/metrics",
         ".forgewright/offload",
+        # Written by the local-ci commit hook on every commit.
+        ".forgewright/reports/local-ci",
         ".forgewright/runtime",
         ".forgewright/subagent-context",
         ".forgewright/telemetry",

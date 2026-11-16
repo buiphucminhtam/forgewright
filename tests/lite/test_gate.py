@@ -3520,3 +3520,51 @@ class TestContentIdenticalCommit:
         )
         assert gate.returncode != 0
         assert "content_sha" in gate.stderr
+
+
+class TestCommitPipelineReports:
+    """The local-ci commit hook writes reports; they must not void evidence."""
+
+    def setup_method(self):
+        self.tmp = _make_temp_git_repo()
+        (self.tmp / ".gitignore").write_text(".forgewright/\n", encoding="utf-8")
+        _commit_all(self.tmp, "ignore runtime state")
+
+    def teardown_method(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _record(self, turn: str) -> Path:
+        (self.tmp / "feature.py").write_text("VALUE = 1\n", encoding="utf-8")
+        result = _run_check(
+            self.tmp,
+            [sys.executable, "tests/evidence_contract_check.py", turn],
+            test_ref="tests/evidence_contract_check.py",
+            turn=turn,
+        )
+        assert result.returncode == 0, result.stderr
+        return self.tmp / ".forgewright" / "verify" / f"{turn}.json"
+
+    def test_local_ci_report_written_by_commit_keeps_evidence_valid(self):
+        evidence = self._record("local-ci-report")
+        report = self.tmp / ".forgewright" / "reports" / "local-ci" / "latest.json"
+        report.parent.mkdir(parents=True)
+        report.write_text('{"status": "pass"}\n', encoding="utf-8")
+        _commit_all(self.tmp)
+
+        gate = _run_validate(
+            self.tmp, turn="local-ci-report", response=_strict_response(evidence)
+        )
+        assert gate.returncode == 0, gate.stderr
+
+    def test_other_report_directories_stay_covered(self):
+        evidence = self._record("other-report")
+        report = self.tmp / ".forgewright" / "reports" / "audit-final.json"
+        report.parent.mkdir(parents=True)
+        report.write_text('{"status": "pass"}\n', encoding="utf-8")
+        _commit_all(self.tmp)
+
+        gate = _run_validate(
+            self.tmp, turn="other-report", response=_strict_response(evidence)
+        )
+        assert gate.returncode != 0
+        assert "MISMATCH: exact worktree fingerprint changed" in gate.stderr
