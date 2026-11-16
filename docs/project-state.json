@@ -1797,6 +1797,24 @@
           "path": "workflows/game-skill-evolution.md"
         }
       ]
+    },
+    {
+      "id": "uninitialized-submodule-fingerprint",
+      "title": "Stable worktree fingerprint for uninitialized submodules",
+      "type": "bug",
+      "status": "done",
+      "priority": "high",
+      "owner": "Runtime maintainers",
+      "acceptance": [
+        "An uninitialized gitlink is recorded as UNINIT:<gitlink sha> without running git inside its empty folder.",
+        "The fingerprint is identical across call depths and after writing verifier-owned evidence, so run_check and the Stop gate agree.",
+        "Initialized submodules still hash their nested content (existing dirty-submodule test)."
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
     }
   ],
   "status": {

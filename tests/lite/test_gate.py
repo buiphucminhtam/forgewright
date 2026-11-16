@@ -1711,6 +1711,39 @@ class TestDirtyBaseline:
         finally:
             shutil.rmtree(submodule_source, ignore_errors=True)
 
+    def test_uninitialized_submodule_fingerprint_is_stable(self):
+        empty = self.tmp / "vendor" / "empty"
+        empty.mkdir(parents=True)
+        subprocess.run(
+            [
+                "git",
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                "160000,78463cf241603a083b40ce92e3cf1ece6b71a7fc,vendor/empty",
+            ],
+            cwd=self.tmp,
+            capture_output=True,
+            check=True,
+        )
+
+        def at_depth(depth: int) -> str:
+            return worktree_fingerprint(self.tmp) if depth == 0 else at_depth(depth - 1)
+
+        records: dict[str, str] = {}
+        shallow = worktree_fingerprint(self.tmp, records_out=records)
+        deep = at_depth(sys.getrecursionlimit() // 2)
+        verify_dir = self.tmp / ".forgewright" / "verify"
+        verify_dir.mkdir(parents=True, exist_ok=True)
+        (verify_dir / "turn.json").write_text("{}", encoding="utf-8")
+        after_evidence = worktree_fingerprint(self.tmp)
+
+        assert shallow.startswith("TREE:")
+        assert shallow == deep == after_evidence
+        assert records["vendor/empty"].endswith(
+            "submodule|vendor/empty|UNINIT:78463cf241603a083b40ce92e3cf1ece6b71a7fc"
+        )
+
     def test_untracked_embedded_repository_content_is_fingerprinted(self):
         embedded = self.tmp / "scratch-repo"
         embedded.mkdir()

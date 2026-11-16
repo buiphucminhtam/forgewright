@@ -1194,10 +1194,20 @@ def worktree_fingerprint(
         if cache_dirty[0]:
             _save_stat_cache(workspace, stat_cache)
         for relative in sorted(set(submodule_paths)):
+            if normalize_relative(relative) in ("", "."):
+                # Only reachable when git resolved an outer repository's gitlink
+                # for this very directory; recursing would loop on itself.
+                continue
             submodule = workspace / relative
-            nested = (
-                worktree_fingerprint(submodule) if submodule.is_dir() else "MISSING"
-            )
+            if not submodule.is_dir():
+                nested = "MISSING"
+            elif not (submodule / ".git").exists():
+                # An uninitialized submodule is an empty folder. Running git in
+                # it discovers the parent repository, so hash only the gitlink.
+                gitlink = index_metadata.get(relative, "").split(" ")
+                nested = "UNINIT:" + (gitlink[1] if len(gitlink) > 1 else "")
+            else:
+                nested = worktree_fingerprint(submodule)
             submodule_record = f"submodule|{relative}|{nested}"
             records.append(submodule_record)
             if records_out is not None:
