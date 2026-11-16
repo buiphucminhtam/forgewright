@@ -8,7 +8,13 @@ import json
 import os
 import re
 import subprocess
-from pytest_receipts import is_pytest, receipt_errors, run_observed
+from pytest_receipts import (
+    _BUNDLE_MODULES,
+    PLUGIN,
+    is_pytest,
+    receipt_errors,
+    run_observed,
+)
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -513,8 +519,95 @@ def _redact_source_file(fp: Path) -> bool:
     return False
 
 
+VERIFIER_EXEMPTION_PREFIX = "verifier bundle exemption: "
+_EXEMPTABLE_MODULES = tuple(name for name in _BUNDLE_MODULES if name != f"{PLUGIN}.py")
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+
+def _bundle_modules(record: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(record, dict):
+        return {}
+    execution = record.get("execution")
+    bundle = execution.get("bundle") if isinstance(execution, dict) else None
+    modules = bundle.get("modules") if isinstance(bundle, dict) else None
+    return modules if isinstance(modules, dict) else {}
+
+
+def _verifier_bundle_exemptions(
+    ev: dict[str, Any], records: dict[str, dict[str, Any]], *, hard: bool
+) -> tuple[frozenset[str], list[str]]:
+    """Return verifier modules a HARD fix chain may change, with any errors.
+
+    A fix that edits a verifier module runs RED and mutation under a different
+    bundle hash for that module. Only modules the mutation names as targets
+    under scripts/lite/, that RED or mutation actually carry a different hash
+    for, and that the final GREEN discloses, are exempt. The observer module is
+    never exempt, and pre-mutation GREEN must still match the final exactly.
+    """
+    if not (
+        hard
+        and ev.get("change_kind") == "fix"
+        and all(name in records for name in ("red", "pre_mutation", "mutation"))
+    ):
+        return frozenset(), []
+    metadata = records["mutation"].get("mutation")
+    targets = metadata.get("target_paths") if isinstance(metadata, dict) else None
+    if not isinstance(targets, list):
+        return frozenset(), []
+    green = _bundle_modules(ev)
+    red = _bundle_modules(records["red"])
+    mutation = _bundle_modules(records["mutation"])
+    errors: list[str] = []
+    exempt: set[str] = set()
+    for name in _EXEMPTABLE_MODULES:
+        if f"scripts/lite/{name}" not in targets:
+            continue
+        expected = green.get(name)
+        if red.get(name) == expected and mutation.get(name) == expected:
+            continue
+        if not all(
+            isinstance(value, str) and _SHA256_RE.fullmatch(value)
+            for value in (expected, red.get(name), mutation.get(name))
+        ):
+            continue
+        if mutation.get(name) == expected:
+            errors.append(
+                f"MISMATCH: mutation names scripts/lite/{name} as a target but "
+                f"leaves verifier module {name!r} unchanged"
+            )
+            continue
+        limitations = ev.get("limitations")
+        disclosure = f"{VERIFIER_EXEMPTION_PREFIX}scripts/lite/{name}"
+        if not isinstance(limitations, list) or disclosure not in limitations:
+            errors.append(
+                f"HARD: final GREEN must disclose {disclosure!r} in limitations"
+            )
+            continue
+        exempt.add(name)
+    return frozenset(exempt), errors
+
+
+def _with_green_bundle(
+    record: dict[str, Any], ev: dict[str, Any], exempt: frozenset[str]
+) -> dict[str, Any]:
+    """Copy record with exempt module hashes taken from the final GREEN."""
+    if not exempt or not _bundle_modules(record):
+        return record
+    copied = json.loads(json.dumps(record))
+    modules = copied["execution"]["bundle"]["modules"]
+    green = _bundle_modules(ev)
+    for name in exempt:
+        if name in modules:
+            modules[name] = green.get(name)
+    return copied
+
+
 def _linked_record_errors(
-    ev: dict[str, Any], project_root: Path, *, current_path: Path | None = None
+    ev: dict[str, Any],
+    project_root: Path,
+    *,
+    current_path: Path | None = None,
+    hard: bool = False,
 ) -> tuple[list[str], dict[str, dict[str, Any]]]:
     errors: list[str] = []
     records: dict[str, dict[str, Any]] = {}
@@ -536,12 +629,20 @@ def _linked_record_errors(
                 f"FORGED: linked {relation} evidence is not valid JSON: {error}"
             )
             continue
-        errors.extend(schema_errors(linked))
+        records[relation] = linked
+    exempt, exemption_errors = _verifier_bundle_exemptions(ev, records, hard=hard)
+    errors.extend(exemption_errors)
+    for relation, linked in records.items():
+        checked = (
+            _with_green_bundle(linked, ev, exempt)
+            if relation in ("red", "mutation")
+            else linked
+        )
+        errors.extend(schema_errors(checked))
         errors.extend(_validate_output(linked))
         errors.extend(_validate_staleness(linked))
         errors.extend(_validate_workspace(linked, project_root))
         errors.extend(phase_errors(linked))
-        records[relation] = linked
     return errors, records
 
 
@@ -568,15 +669,17 @@ def _validate_chain(
             "FAILED: HARD fixes require linked RED, pre-mutation GREEN, and mutation evidence"
         )
     link_errors, records = _linked_record_errors(
-        ev, project_root, current_path=current_path
+        ev, project_root, current_path=current_path, hard=hard
     )
     errors.extend(link_errors)
+    exempt, _ = _verifier_bundle_exemptions(ev, records, hard=hard)
     red = records.get("red")
     if red is not None:
         if red.get("phase") != "red":
             errors.append("MISMATCH: linked red evidence must have phase=red")
+        compared_red = _with_green_bundle(red, ev, exempt)
         for field in ("tier", "test_refs", "command", "execution"):
-            if red.get(field) != ev.get(field):
+            if compared_red.get(field) != ev.get(field):
                 errors.append(
                     f"MISMATCH: linked RED {field} must exactly match green evidence"
                 )
@@ -631,8 +734,9 @@ def _validate_chain(
     if mutation is not None:
         if mutation.get("phase") != "mutation":
             errors.append("MISMATCH: linked mutation evidence must have phase=mutation")
+        compared_mutation = _with_green_bundle(mutation, ev, exempt)
         for field in ("tier", "test_refs", "command", "execution"):
-            if mutation.get(field) != ev.get(field):
+            if compared_mutation.get(field) != ev.get(field):
                 errors.append(
                     f"MISMATCH: linked mutation {field} must exactly match green evidence"
                 )

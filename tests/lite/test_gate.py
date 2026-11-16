@@ -3568,3 +3568,124 @@ class TestCommitPipelineReports:
         )
         assert gate.returncode != 0
         assert "MISMATCH: exact worktree fingerprint changed" in gate.stderr
+
+
+class TestVerifierModuleFixChain:
+    """A HARD fix to a verifier module changes that module's bundle hash.
+
+    RED and mutation records then carry a different hash for the module the
+    fix edits. Only that module may differ, only when the mutation names it as
+    a target, and only when the final GREEN discloses the exemption.
+    """
+
+    MODULE = "evidence_common.py"
+    TARGET = "scripts/lite/evidence_common.py"
+    DISCLOSURE = "verifier bundle exemption: scripts/lite/evidence_common.py"
+    OLD = "0" * 64
+    BROKEN = "1" * 64
+
+    def setup_method(self):
+        self.tmp = _make_temp_git_repo()
+        (self.tmp / ".gitignore").write_text(".forgewright/\n", encoding="utf-8")
+        _commit_all(self.tmp, "ignore runtime state")
+
+    def teardown_method(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _chain(
+        self,
+        turn: str,
+        *,
+        red: dict[str, str] | None = None,
+        mutation: dict[str, str] | None = None,
+        pre_mutation: dict[str, str] | None = None,
+        targets: list[str] | None = None,
+        limitations: list[str] | None = None,
+    ) -> subprocess.CompletedProcess:
+        final, _ = _keyless_hard_review(self.tmp, turn)
+        verify = self.tmp / ".forgewright" / "verify"
+        final_ev = json.loads(final.read_text(encoding="utf-8"))
+        links = final_ev["links"]
+
+        def patch(relation: str, modules: dict[str, str] | None, **fields) -> None:
+            path = verify / links[relation]
+            record = json.loads(path.read_text(encoding="utf-8"))
+            record["execution"]["bundle"]["modules"].update(modules or {})
+            if "targets" in fields:
+                record["mutation"]["target_paths"] = fields["targets"]
+            path.write_text(json.dumps(record), encoding="utf-8")
+
+        patch("red", {self.MODULE: self.OLD} if red is None else red)
+        patch(
+            "mutation",
+            {self.MODULE: self.BROKEN} if mutation is None else mutation,
+            targets=["purchase.py", self.TARGET] if targets is None else targets,
+        )
+        patch("pre_mutation", pre_mutation)
+        final_ev["limitations"] = (
+            [self.DISCLOSURE] if limitations is None else limitations
+        )
+        final.write_text(json.dumps(final_ev), encoding="utf-8")
+        created = _run_py(
+            REVIEW_ATTEST, ["create", "--evidence", str(final)], cwd=self.tmp
+        )
+        assert created.returncode == 0, created.stderr
+        return _run_validate(
+            self.tmp,
+            files_str="purchase.py",
+            turn=turn,
+            response=_strict_response(final),
+        )
+
+    def test_targeted_verifier_module_may_differ_in_red_and_mutation(self):
+        result = self._chain("verifier-fix-accepted")
+        assert result.returncode == 0, result.stderr
+
+    def test_untargeted_module_difference_is_rejected(self):
+        result = self._chain(
+            "verifier-fix-other-module",
+            red={self.MODULE: self.OLD, "verify_gate.py": "2" * 64},
+        )
+        assert result.returncode == 1
+        assert "hash mismatch for 'verify_gate.py'" in result.stderr
+
+    def test_module_not_named_as_mutation_target_is_rejected(self):
+        result = self._chain("verifier-fix-no-target", targets=["purchase.py"])
+        assert result.returncode == 1
+        assert "hash mismatch for 'evidence_common.py'" in result.stderr
+
+    def test_target_outside_scripts_lite_is_not_exempt(self):
+        result = self._chain(
+            "verifier-fix-wrong-path", targets=["purchase.py", "evidence_common.py"]
+        )
+        assert result.returncode == 1
+        assert "hash mismatch for 'evidence_common.py'" in result.stderr
+
+    def test_missing_disclosure_is_rejected(self):
+        result = self._chain("verifier-fix-undisclosed", limitations=[])
+        assert result.returncode == 1
+        assert "verifier bundle exemption" in result.stderr
+
+    def test_observer_module_is_never_exempt(self):
+        observer = "forgewright_pytest_receipt.py"
+        result = self._chain(
+            "verifier-fix-observer",
+            red={observer: self.OLD},
+            mutation={observer: self.BROKEN},
+            targets=["purchase.py", f"scripts/lite/{observer}"],
+            limitations=[f"verifier bundle exemption: scripts/lite/{observer}"],
+        )
+        assert result.returncode == 1
+        assert f"hash mismatch for '{observer}'" in result.stderr
+
+    def test_pre_mutation_bundle_must_match_final_exactly(self):
+        result = self._chain(
+            "verifier-fix-pre-mutation", pre_mutation={self.MODULE: self.OLD}
+        )
+        assert result.returncode == 1
+        assert "hash mismatch for 'evidence_common.py'" in result.stderr
+
+    def test_target_claimed_but_mutation_left_module_unchanged(self):
+        result = self._chain("verifier-fix-unmutated", mutation={})
+        assert result.returncode == 1
+        assert "leaves verifier module" in result.stderr
