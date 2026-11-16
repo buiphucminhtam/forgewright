@@ -56,6 +56,7 @@ import continuity_check as continuity_check_module  # noqa: E402
 import stop_gate as stop_gate_module  # noqa: E402
 import verify_gate as verify_gate_module  # noqa: E402
 import windows_secure_io as windows_secure_io_module  # noqa: E402
+import evidence_common as evidence_common_module  # noqa: E402
 
 from evidence_common import (  # noqa: E402
     command_text,
@@ -630,6 +631,7 @@ def _make_evidence(
     reviewer: dict[str, str] | None = None,
     risk: str | None = None,
     links: dict[str, str] | None = None,
+    with_content: bool = False,
 ) -> Path:
     """Write a v2 evidence file to tmp/.forgewright/verify/<turn>.json."""
     ts = datetime.now(timezone.utc) + timedelta(seconds=timestamp_offset_secs)
@@ -689,6 +691,9 @@ def _make_evidence(
         ev["risk"] = risk
     if links:
         ev["links"] = links
+    if with_content:
+        # Looked up at call time so a missing feature fails only these tests.
+        ev["content_sha"] = evidence_common_module.worktree_content_fingerprint(tmp)
 
     ev_file = ev_dir / f"{turn}.json"
     ev_file.write_text(json.dumps(ev, indent=2))
@@ -915,7 +920,9 @@ def _run_rule_validator(
     )
 
 
-def _keyless_hard_review(tmp: Path, turn: str = "keyless-review") -> tuple[Path, str]:
+def _keyless_hard_review(
+    tmp: Path, turn: str = "keyless-review", *, with_content: bool = False
+) -> tuple[Path, str]:
     """Build one valid keyless HARD evidence chain for review regressions."""
     source = tmp / "purchase.py"
     source.write_text("purchase = 'red'\n", encoding="utf-8")
@@ -966,6 +973,7 @@ def _keyless_hard_review(tmp: Path, turn: str = "keyless-review") -> tuple[Path,
             "evidence_ref": "review.json",
         },
         links={"red": red.name, "mutation": mutation.name},
+        with_content=with_content,
     )
     _add_hard_support(tmp, final, criteria=criteria, command=command, test_refs=refs)
     response = _strict_response(final)
@@ -3383,3 +3391,132 @@ def test_completion_checks_skips_replay_when_prerequisites_fail(
     )
     assert any("MISMATCH: exact worktree fingerprint changed" in e for e in drift_errs)
     assert replay_calls == []
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Content-identical commits: evidence survives a commit that changes no content
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def _commit_all(tmp: Path, message: str = "commit evidenced work") -> None:
+    subprocess.run(["git", "add", "-A"], cwd=tmp, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", message],
+        cwd=tmp,
+        capture_output=True,
+        check=True,
+    )
+
+
+class TestContentIdenticalCommit:
+    def setup_method(self):
+        self.tmp = _make_temp_git_repo()
+        (self.tmp / ".gitignore").write_text(".forgewright/\n*.log\n", encoding="utf-8")
+        _commit_all(self.tmp, "ignore runtime state")
+
+    def teardown_method(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _record(self, turn: str) -> Path:
+        result = _run_check(
+            self.tmp,
+            [sys.executable, "tests/evidence_contract_check.py", turn],
+            test_ref="tests/evidence_contract_check.py",
+            turn=turn,
+        )
+        assert result.returncode == 0, result.stderr
+        return self.tmp / ".forgewright" / "verify" / f"{turn}.json"
+
+    def _dirty_work(self) -> None:
+        (self.tmp / "README.md").write_text("# test\nchanged\n", encoding="utf-8")
+        (self.tmp / "feature.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (self.tmp / "build.log").write_text("ignored output\n", encoding="utf-8")
+
+    def test_content_identical_commit_keeps_evidence_valid(self):
+        self._dirty_work()
+        evidence = self._record("identical-commit")
+        recorded = json.loads(evidence.read_text(encoding="utf-8"))
+        assert re.fullmatch(r"CONTENT:[0-9a-f]{64}", recorded["content_sha"])
+
+        _commit_all(self.tmp)
+
+        assert worktree_fingerprint(self.tmp) != recorded["tree_sha"]
+        response = _strict_response(evidence)
+        gate = _run_validate(self.tmp, turn="identical-commit", response=response)
+        assert gate.returncode == 0, gate.stderr
+        runtime = _run_rule_validator(self.tmp, response, "identical-commit")
+        assert runtime.returncode == 0, runtime.stderr
+
+    def test_hard_review_survives_content_identical_commit(self):
+        final, response = _keyless_hard_review(
+            self.tmp, "content-review", with_content=True
+        )
+        _commit_all(self.tmp)
+
+        gate = _run_validate(
+            self.tmp, files_str="purchase.py", turn="content-review", response=response
+        )
+        assert gate.returncode == 0, gate.stderr
+        runtime = _run_rule_validator(self.tmp, response, "content-review")
+        assert runtime.returncode == 0, runtime.stderr
+
+    @pytest.mark.parametrize(
+        ("relative", "content"),
+        [
+            ("README.md", "# test\nedited after commit\n"),
+            ("feature.py", "VALUE = 2\n"),
+            ("build.log", "edited ignored output\n"),
+            ("new-untracked.txt", "appeared after commit\n"),
+        ],
+    )
+    def test_content_change_after_commit_still_mismatches(self, relative, content):
+        self._dirty_work()
+        evidence = self._record("changed-after-commit")
+        _commit_all(self.tmp)
+        (self.tmp / relative).write_text(content, encoding="utf-8")
+
+        gate = _run_validate(
+            self.tmp,
+            turn="changed-after-commit",
+            response=_strict_response(evidence),
+        )
+        assert gate.returncode != 0
+        assert "MISMATCH: exact worktree fingerprint changed" in gate.stderr
+
+    def test_commit_with_extra_content_mismatches(self):
+        self._dirty_work()
+        evidence = self._record("extra-content")
+        (self.tmp / "feature.py").write_text("VALUE = 'extra'\n", encoding="utf-8")
+        _commit_all(self.tmp)
+
+        gate = _run_validate(
+            self.tmp, turn="extra-content", response=_strict_response(evidence)
+        )
+        assert gate.returncode != 0
+        assert "MISMATCH: exact worktree fingerprint changed" in gate.stderr
+
+    def test_legacy_evidence_without_content_sha_stays_strict(self):
+        self._dirty_work()
+        evidence = self._record("legacy-strict")
+        payload = json.loads(evidence.read_text(encoding="utf-8"))
+        payload.pop("content_sha", None)
+        evidence.write_text(json.dumps(payload), encoding="utf-8")
+        _commit_all(self.tmp)
+
+        gate = _run_validate(
+            self.tmp, turn="legacy-strict", response=_strict_response(evidence)
+        )
+        assert gate.returncode != 0
+        assert "MISMATCH: exact worktree fingerprint changed" in gate.stderr
+
+    def test_malformed_content_sha_is_rejected(self):
+        evidence = self._record("malformed-content")
+        payload = json.loads(evidence.read_text(encoding="utf-8"))
+        payload["content_sha"] = "CONTENT:not-a-digest"
+        evidence.write_text(json.dumps(payload), encoding="utf-8")
+
+        gate = _run_validate(
+            self.tmp, turn="malformed-content", response=_strict_response(evidence)
+        )
+        assert gate.returncode != 0
+        assert "content_sha" in gate.stderr

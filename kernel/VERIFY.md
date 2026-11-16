@@ -30,9 +30,10 @@ The machine record gives exact acceptance traceability and a derived execution m
 ```
 Each acceptance ID and negative paths entry maps to invoked concrete refs and bindings in the derived manifest; derive it from the command/runner, never caller text.
 
-`tree_sha` covers HEAD/index and tracked, untracked, or ignored project content.
-Only verifier-owned volatile paths are excluded; arbitrary ignored files and
-same-HEAD source changes remain covered.
+`tree_sha` covers HEAD/index and tracked, untracked, or ignored project content;
+only verifier-owned volatile paths are excluded. A recorded `content_sha` (same
+content, minus HEAD/index) keeps evidence valid across a commit that changes no
+covered content; any content change still mismatches.
 
 ## Fixes and HARD
 Every fix uses the same command unchanged and must show observed RED then observed GREEN. Payment, billing, IAP/in-app purchase, receipt validation, entitlements, subscription, and checkout are mandatory `HARD` and `DEEP`, regardless of file count. Other HARD fixes require controlled mutation/backcheck: `RED → pre-mutation GREEN → mutation fail → exact final GREEN`, with the clean pre-mutation target tree restored. Completion is blocked until this sequence is observed.

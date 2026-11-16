@@ -37,7 +37,9 @@ from evidence_common import (
     schema_errors,
     sha256_text,
     execution_manifest,
+    CONTENT_FINGERPRINT_RE,
     worktree_fingerprint,
+    worktree_fingerprints,
 )
 
 
@@ -127,8 +129,31 @@ def _workspace() -> Path:
     return Path.cwd().resolve()
 
 
-def _current_tree_sha(workspace: Path) -> str:
-    return worktree_fingerprint(workspace)
+def _current_tree_sha(workspace: Path, evidence: dict[str, Any] | None = None) -> str:
+    """Return the current exact fingerprint, as seen by ``evidence``.
+
+    When ``evidence`` records a ``content_sha`` and only HEAD/index changed (for
+    example the evidenced work was committed), the current content digest
+    still equals it and the evidence's own ``tree_sha`` is returned. Any
+    covered content change, or evidence without ``content_sha``, keeps the
+    exact comparison.
+    """
+    expected_content = evidence.get("content_sha") if evidence is not None else None
+    if not (
+        isinstance(expected_content, str)
+        and CONTENT_FINGERPRINT_RE.fullmatch(expected_content)
+    ):
+        return worktree_fingerprint(workspace)
+    current_tree, current_content = worktree_fingerprints(workspace)
+    expected_tree = evidence.get("tree_sha")
+    if (
+        current_tree != expected_tree
+        and isinstance(expected_tree, str)
+        and expected_tree.startswith("TREE:")
+        and current_content == expected_content
+    ):
+        return expected_tree
+    return current_tree
 
 
 def _find_evidence(project_root: Path, turn_env: str) -> Path | None:
@@ -252,7 +277,7 @@ def _final_replay_records(
     """Return only final-tree records; historical red/mutation records are excluded."""
     if evidence.get("phase") not in FINAL_PHASES:
         return []
-    if evidence.get("tree_sha") != _current_tree_sha(project_root):
+    if evidence.get("tree_sha") != _current_tree_sha(project_root, evidence):
         return []
 
     records: list[tuple[str, dict[str, Any]]] = [("final", evidence)]
@@ -306,7 +331,7 @@ def _replay_final_commands(
     expected_tree = evidence.get("tree_sha")
     for command_tuple, command_records in commands.items():
         command = list(command_tuple)
-        before_tree = _current_tree_sha(project_root)
+        before_tree = _current_tree_sha(project_root, evidence)
         if before_tree != expected_tree:
             errors.append(
                 "MISMATCH: exact worktree fingerprint changed since evidence was written. "
@@ -318,7 +343,7 @@ def _replay_final_commands(
                 command, cwd=project_root, env=_replay_env(), timeout=_replay_timeout()
             )
         except subprocess.TimeoutExpired as error:
-            after_tree = _current_tree_sha(project_root)
+            after_tree = _current_tree_sha(project_root, evidence)
             if after_tree != before_tree and not mutated_worktree:
                 errors.append(
                     "REPLAY: worktree changed during replay window outside excluded evidence directory. "
@@ -335,7 +360,7 @@ def _replay_final_commands(
             )
             continue
         except (OSError, UnicodeError) as error:
-            after_tree = _current_tree_sha(project_root)
+            after_tree = _current_tree_sha(project_root, evidence)
             if after_tree != before_tree and not mutated_worktree:
                 errors.append(
                     "REPLAY: worktree changed during replay window outside excluded evidence directory. "
@@ -352,7 +377,7 @@ def _replay_final_commands(
         detail = _bounded_replay_detail((result.stdout or "") + (result.stderr or ""))
         for label, record in command_records:
             if is_pytest(command):
-                current_tree = _current_tree_sha(project_root)
+                current_tree = _current_tree_sha(project_root, evidence)
                 fresh = (
                     {**observed, "tree_sha": current_tree}
                     if observed is not None
@@ -384,7 +409,7 @@ def _replay_final_commands(
                     + (f" detail={detail!r}" if detail else "")
                 )
 
-        replay_tree = _current_tree_sha(project_root)
+        replay_tree = _current_tree_sha(project_root, evidence)
         if replay_tree != before_tree and not mutated_worktree:
             errors.append(
                 "REPLAY: worktree changed during replay window outside excluded evidence directory. "
@@ -392,7 +417,7 @@ def _replay_final_commands(
             )
             mutated_worktree = True
 
-    final_tree = _current_tree_sha(project_root)
+    final_tree = _current_tree_sha(project_root, evidence)
     if final_tree != expected_tree and not mutated_worktree:
         errors.append(
             "MISMATCH: exact worktree fingerprint changed since evidence was written. "
@@ -870,7 +895,7 @@ def completion_checks(
 ) -> tuple[bool, tuple[tuple[str, list[str]], ...]]:
     """Return the one canonical completion decision used by both validators."""
 
-    current_tree = _current_tree_sha(project_root)
+    current_tree = _current_tree_sha(project_root, evidence)
     files_for_signal = files_to_check or changed_files(project_root)
     hard = evidence.get("risk") == "hard" or hard_signal(project_root, files_for_signal)
     prereq_checks = (

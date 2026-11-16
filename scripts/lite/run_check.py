@@ -34,6 +34,7 @@ from evidence_common import (
     sha256_text,
     validate_evidence_link_syntax,
     worktree_fingerprint,
+    worktree_fingerprints,
 )
 
 
@@ -128,7 +129,9 @@ def _parse_links(
         add_link("red", item, "--red-evidence")
 
     mutation_items = (
-        [mutation] if isinstance(mutation, str) else (list(mutation) if mutation else [])
+        [mutation]
+        if isinstance(mutation, str)
+        else (list(mutation) if mutation else [])
     )
     for item in mutation_items:
         add_link("mutation", item, "--mutation-evidence")
@@ -474,10 +477,13 @@ def main() -> None:
         "output_truncated": output_truncated,
         "timestamp_utc": timestamp_utc,
         "workspace": str(workspace),
-        # Compute only after the command; .forgewright/verify is excluded by the helper.
-        "tree_sha": _tree_sha(workspace),
         "reviewer": reviewer,
     }
+    # Compute only after the command; .forgewright/verify is excluded by the helper.
+    tree_sha, content_sha = worktree_fingerprints(workspace)
+    ev["tree_sha"] = tree_sha
+    if content_sha is not None:
+        ev["content_sha"] = content_sha
     if args.risk is not None:
         ev["risk"] = args.risk
     if is_pytest(command):

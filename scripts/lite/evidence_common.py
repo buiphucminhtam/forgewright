@@ -33,6 +33,7 @@ RISKS = frozenset({"quick", "standard", "hard"})
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 TREE_FINGERPRINT_RE = re.compile(r"^(?:TREE|NONGIT):[0-9a-f]{64}$")
+CONTENT_FINGERPRINT_RE = re.compile(r"^CONTENT:[0-9a-f]{64}$")
 MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 
 # Runtime-owned state changes as a consequence of verification, hooks, and
@@ -680,6 +681,11 @@ def schema_errors(ev: Any) -> list[str]:
         errors.append(
             "FORGED: tree_sha must be an exact TREE:<sha256> or NONGIT:<sha256> fingerprint"
         )
+    if "content_sha" in ev and not (
+        isinstance(ev["content_sha"], str)
+        and CONTENT_FINGERPRINT_RE.fullmatch(ev["content_sha"])
+    ):
+        errors.append("FORGED: content_sha must be an exact CONTENT:<sha256> digest")
     if not isinstance(ev.get("output"), str):
         errors.append("FORGED: 'output' must be a string")
     output_sha = ev.get("output_sha256")
@@ -1045,6 +1051,7 @@ def worktree_fingerprint(
     *,
     records_out: dict[str, str] | None = None,
     excluded_paths: Iterable[str] = (),
+    content_records_out: list[str] | None = None,
 ) -> str:
     """Hash HEAD plus staged/unstaged tracked, untracked, and ignored source state.
 
@@ -1062,6 +1069,10 @@ def worktree_fingerprint(
     that a verifier is expected to rewrite. Defaults remain fail-closed: callers
     must opt in to every excluded path, and normal evidence fingerprints cover
     the full project state except verifier-owned runtime paths above.
+
+    When ``content_records_out`` is supplied for a Git worktree, append the
+    covered path content records (everything except the HEAD and index
+    records). It never changes the returned fingerprint.
     """
 
     def normalize_relative(value: str) -> str:
@@ -1172,6 +1183,8 @@ def worktree_fingerprint(
                 now_ns=now_ns,
             )
             records.append(record)
+            if content_records_out is not None:
+                content_records_out.append(record)
             if records_out is not None:
                 records_out[relative] = (
                     record + "|index|" + index_metadata.get(relative, "")
@@ -1187,6 +1200,8 @@ def worktree_fingerprint(
                 now_ns=now_ns,
             ):
                 records.append(record)
+                if content_records_out is not None:
+                    content_records_out.append(record)
                 if records_out is not None:
                     parts = record.split("|", 2)
                     diagnostic_path = parts[1] if len(parts) > 1 else relative
@@ -1210,6 +1225,8 @@ def worktree_fingerprint(
                 nested = worktree_fingerprint(submodule)
             submodule_record = f"submodule|{relative}|{nested}"
             records.append(submodule_record)
+            if content_records_out is not None:
+                content_records_out.append(submodule_record)
             if records_out is not None:
                 prior = records_out.get(relative, "")
                 records_out[relative] = (
@@ -1222,6 +1239,33 @@ def worktree_fingerprint(
         return f"TREE:{digest.hexdigest()}"
     except (OSError, subprocess.SubprocessError, RuntimeError, ValueError) as error:
         return f"GITERR:{hashlib.sha256(str(error).encode()).hexdigest()}"
+
+
+def worktree_fingerprints(workspace: Path) -> tuple[str, str | None]:
+    """Return the exact tree fingerprint and its HEAD/index-free content digest.
+
+    The content digest covers the same tracked, untracked, ignored, and
+    submodule records as the exact fingerprint, minus HEAD and the index, so a
+    commit that changes no covered content keeps the same digest. Paths that do
+    not exist hash the same whether Git tracks them or not. It is ``None`` when
+    the exact fingerprint is not a Git ``TREE`` fingerprint.
+    """
+    content_records: list[str] = []
+    tree = worktree_fingerprint(workspace, content_records_out=content_records)
+    if not tree.startswith("TREE:"):
+        return tree, None
+    digest = hashlib.sha256(b"content-v1\0")
+    for record in sorted(set(content_records)):
+        if record.endswith("|MISSING"):
+            continue
+        digest.update(record.encode("utf-8", "surrogateescape"))
+        digest.update(b"\0")
+    return tree, f"CONTENT:{digest.hexdigest()}"
+
+
+def worktree_content_fingerprint(workspace: Path) -> str | None:
+    """Return only the HEAD/index-free content digest of ``workspace``."""
+    return worktree_fingerprints(workspace)[1]
 
 
 def changed_files(workspace: Path) -> list[str]:
