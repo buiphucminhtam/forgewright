@@ -9,6 +9,7 @@
 #   bash scripts/lite/rule-ledger.sh stats
 #   bash scripts/lite/rule-ledger.sh top [N] [outcome]
 #   bash scripts/lite/rule-ledger.sh recent [N] [outcome]
+#   bash scripts/lite/rule-ledger.sh recurring [MIN] [DAYS]
 #
 # Storage: .forgewright/rule-ledger.jsonl
 # Record:  {"ts":"<ISO-8601 UTC>","rule":"<id>","outcome":"<outcome>","note":"..."}
@@ -100,6 +101,8 @@ Usage:
   rule-ledger.sh stats                               Per-rule totals with outcome breakdown
   rule-ledger.sh top [N] [outcome]                   Top N rules, optionally filtered
   rule-ledger.sh recent [N] [outcome]                Most recent events (default: violation)
+  rule-ledger.sh recurring [MIN] [DAYS]              Violation classes seen MIN+ times in DAYS
+                                                     (default 3, 14): propose a check
 
 Recommended outcomes: hit | violation | override | waived
 EOF
@@ -195,6 +198,92 @@ cmd_recent() {
   ' "$LEDGER_FILE" | awk -F'\t' '{printf "  %s  %-24s %-12s %s\n", $1, $2, $3, $4}'
 }
 
+cmd_recurring() {
+  local minimum="${1:-3}" days="${2:-14}" py
+  if [[ ! "$minimum" =~ ^[1-9][0-9]{0,5}$ ]]; then
+    log_error "MIN must be an integer from 1 to 999999, got: ${minimum}"
+    exit 1
+  fi
+  if [[ ! "$days" =~ ^[1-9][0-9]{0,4}$ ]]; then
+    log_error "DAYS must be an integer from 1 to 99999, got: ${days}"
+    exit 1
+  fi
+  py="${PYTHON_BIN:-$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)}"
+  [[ -n "$py" ]] || { log_error "python is required for recurring but not found in PATH."; exit 1; }
+  _require_ledger
+  # A class is a violation note with digests, quoted values, timestamps and
+  # numbers normalised away, so repeats of one failure group together.
+  "$py" - "$LEDGER_FILE" "$minimum" "$days" <<'PY_RECURRING'
+import json
+import re
+import sys
+from datetime import datetime, timedelta, timezone
+
+path, minimum, days = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+normalizers = (
+    (re.compile(r"'[^']*'"), "'…'"),
+    (re.compile(r'"[^"]*"'), '"…"'),
+    (re.compile(r"\b\d{4}-\d{2}-\d{2}T[0-9:.]+Z?"), "<ts>"),
+    (re.compile(r"\b[0-9a-fA-F]{8,}\b"), "<hex>"),
+    (re.compile(r"\d+(?:\.\d+)?"), "N"),
+    (re.compile(r"\s+"), " "),
+)
+control = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def inert(text):
+    """Keep ledger text from moving the cursor or forging extra lines."""
+    return control.sub("?", text)
+
+
+groups = {}
+with open(path, encoding="utf-8", errors="replace") as stream:
+    for line in stream:
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict) or event.get("outcome") != "violation":
+            continue
+        rule, stamp = event.get("rule"), event.get("ts")
+        if not isinstance(rule, str) or not isinstance(stamp, str):
+            continue
+        try:
+            when = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        if when < cutoff:
+            continue
+        note = event.get("note") if isinstance(event.get("note"), str) else ""
+        for pattern, replacement in normalizers:
+            note = pattern.sub(replacement, note)
+        key = (rule, note.strip()[:160])
+        entry = groups.setdefault(key, [0, when, when])
+        entry[0] += 1
+        entry[1] = min(entry[1], when)
+        entry[2] = max(entry[2], when)
+
+recurring = sorted(
+    ((count, rule, note, first, last) for (rule, note), (count, first, last) in groups.items() if count >= minimum),
+    key=lambda item: (-item[0], item[1], item[2]),
+)
+print(f"── Recurring violations ({minimum}+ in {days}d) ──────────────────────────")
+if not recurring:
+    print(f"  No violation class recurred {minimum}+ times in the last {days} days.")
+for count, rule, note, first, last in recurring:
+    span = f"{first:%Y-%m-%d}..{last:%Y-%m-%d}"
+    print(f"  PROPOSE CHECK  {inert(rule)} x{count}  {span}  {inert(note)}")
+if recurring:
+    print(
+        "  Encode each class as a deterministic check (lint, test, hook) or a design"
+        " that removes the wrong choice, not another prose rule."
+    )
+PY_RECURRING
+}
+
 [[ $# -ge 1 ]] || usage
 cmd="$1"; shift
 case "$cmd" in
@@ -202,5 +291,6 @@ case "$cmd" in
   stats) cmd_stats "$@" ;;
   top)   cmd_top "$@" ;;
   recent) cmd_recent "$@" ;;
+  recurring) cmd_recurring "$@" ;;
   *)     usage ;;
 esac

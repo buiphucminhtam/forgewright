@@ -22,3 +22,8 @@ if [[ -x "scripts/lite/rule-ledger.sh" ]]; then
 else
     echo "No forgotten rules logged yet."
 fi
+echo "### RECURRING — PROPOSE A CHECK ###"
+if [[ -x "scripts/lite/rule-ledger.sh" ]]; then
+    bash scripts/lite/rule-ledger.sh recurring 3 14 \
+        || echo "  (recurring check unavailable; it needs python)"
+fi

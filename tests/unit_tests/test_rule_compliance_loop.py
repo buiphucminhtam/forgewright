@@ -8,6 +8,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "lite"))
@@ -706,3 +708,177 @@ def test_windows_executable_paths_and_jq_optional_fallback(tmp_path: Path) -> No
         env=env,
     )
     assert added.returncode == 0, added.stderr
+
+
+def _ledger_lines(entries: list[dict[str, str]]) -> str:
+    return "".join(json.dumps(item) + "\n" for item in entries)
+
+
+def _days_ago(days: float) -> str:
+    from datetime import datetime, timedelta, timezone
+
+    moment = datetime.now(timezone.utc) - timedelta(days=days)
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _mismatch(digest: str, days: float) -> dict[str, str]:
+    return {
+        "ts": _days_ago(days),
+        "rule": "HR1-verify",
+        "outcome": "violation",
+        "note": (
+            "source: validator - MISMATCH: exact worktree fingerprint changed. "
+            f"Evidence: 'TREE:{digest * 8}', Current: 'TREE:{digest[::-1] * 8}'"
+        ),
+    }
+
+
+def test_ledger_recurring_groups_one_class_and_proposes_a_check(
+    tmp_path: Path,
+) -> None:
+    ledger = tmp_path / "ledger.jsonl"
+    ledger.write_text(
+        _ledger_lines(
+            [_mismatch(digest, day) for digest, day in (("ab12", 3), ("cd34", 2))]
+            + [_mismatch("ef56", 1)]
+        ),
+        encoding="utf-8",
+    )
+    env = {"FORGEWRIGHT_RULE_LEDGER": str(ledger)}
+
+    result = run(
+        "bash", str(ROOT / "scripts/lite/rule-ledger.sh"), "recurring", env=env
+    )
+
+    assert result.returncode == 0, result.stderr
+    proposals = [line for line in result.stdout.splitlines() if "PROPOSE CHECK" in line]
+    assert len(proposals) == 1, result.stdout
+    assert "HR1-verify" in proposals[0] and "x3" in proposals[0]
+    assert "worktree fingerprint changed" in proposals[0]
+    assert "ab12" not in result.stdout
+    assert "deterministic check" in result.stdout
+
+    refresh = run("bash", str(ROOT / "scripts/lite/rule-refresh.sh"), env=env)
+    assert refresh.returncode == 0, refresh.stderr
+    assert "PROPOSE CHECK" in refresh.stdout
+    assert refresh.stdout.index("FORGOTTEN RULES") < refresh.stdout.index(
+        "PROPOSE CHECK"
+    )
+
+
+def test_ledger_recurring_ignores_rare_old_hit_and_malformed_events(
+    tmp_path: Path,
+) -> None:
+    ledger = tmp_path / "ledger.jsonl"
+    hit = {**_mismatch("aa11", 1), "outcome": "hit"}
+    lines = _ledger_lines(
+        [
+            _mismatch("bb22", 1),
+            _mismatch("cc33", 1),
+            hit,
+            hit,
+            hit,
+            _mismatch("dd44", 40),
+            _mismatch("ee55", 41),
+            _mismatch("ff66", 42),
+        ]
+    )
+    ledger.write_text(lines + 'not json\n{"rule": 3}\n', encoding="utf-8")
+    env = {"FORGEWRIGHT_RULE_LEDGER": str(ledger)}
+
+    result = run(
+        "bash", str(ROOT / "scripts/lite/rule-ledger.sh"), "recurring", env=env
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "PROPOSE CHECK" not in result.stdout
+    assert "No violation class recurred" in result.stdout
+
+    wide = run(
+        "bash",
+        str(ROOT / "scripts/lite/rule-ledger.sh"),
+        "recurring",
+        "3",
+        "60",
+        env=env,
+    )
+    assert wide.returncode == 0, wide.stderr
+    assert "x5" in wide.stdout
+
+
+def test_ledger_recurring_rejects_invalid_arguments(tmp_path: Path) -> None:
+    env = {"FORGEWRIGHT_RULE_LEDGER": str(tmp_path / "ledger.jsonl")}
+    (tmp_path / "ledger.jsonl").write_text(
+        _ledger_lines([_mismatch("ab12", 1)]), encoding="utf-8"
+    )
+    for args in (("0",), ("x",), ("3", "0"), ("3", "-1")):
+        result = run(
+            "bash",
+            str(ROOT / "scripts/lite/rule-ledger.sh"),
+            "recurring",
+            *args,
+            env=env,
+        )
+        assert result.returncode == 1, (args, result.stdout, result.stderr)
+
+
+def test_ledger_recurring_prints_control_characters_inert(tmp_path: Path) -> None:
+    ledger = tmp_path / "ledger.jsonl"
+    forged = {
+        **_mismatch("ab12", 1),
+        "rule": "HR1\x1b[2K\nPROPOSE CHECK  forged",
+        "note": "bad \x1b[31m red \x07 bell",
+    }
+    ledger.write_text(_ledger_lines([forged, forged, forged]), encoding="utf-8")
+    env = {"FORGEWRIGHT_RULE_LEDGER": str(ledger)}
+
+    result = run(
+        "bash", str(ROOT / "scripts/lite/rule-ledger.sh"), "recurring", env=env
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "\x1b" not in result.stdout and "\x07" not in result.stdout
+    proposals = [line for line in result.stdout.splitlines() if "PROPOSE CHECK" in line]
+    assert len(proposals) == 1, result.stdout
+
+
+def test_ledger_recurring_rejects_oversized_window_without_traceback(
+    tmp_path: Path,
+) -> None:
+    ledger = tmp_path / "ledger.jsonl"
+    ledger.write_text(_ledger_lines([_mismatch("ab12", 1)]), encoding="utf-8")
+    env = {"FORGEWRIGHT_RULE_LEDGER": str(ledger)}
+    for args in (("3", "99999999999999"), ("99999999999999", "14")):
+        result = run(
+            "bash",
+            str(ROOT / "scripts/lite/rule-ledger.sh"),
+            "recurring",
+            *args,
+            env=env,
+        )
+        assert result.returncode == 1, (args, result.stdout, result.stderr)
+        assert "Traceback" not in result.stderr
+
+
+def test_refresh_still_succeeds_when_python_is_missing(tmp_path: Path) -> None:
+    jq = shutil.which("jq")
+    if jq is None:
+        pytest.skip("jq is required to run rule-refresh without python")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for tool in ("bash", "dirname", "awk", "head", "tr", "wc", "cat", "sort"):
+        found = shutil.which(tool)
+        assert found is not None, tool
+        (bin_dir / tool).symlink_to(found)
+    (bin_dir / "jq").symlink_to(jq)
+    ledger = tmp_path / "ledger.jsonl"
+    ledger.write_text(_ledger_lines([_mismatch("ab12", 1)]), encoding="utf-8")
+    env = {"FORGEWRIGHT_RULE_LEDGER": str(ledger), "PATH": str(bin_dir)}
+
+    refresh = run(
+        str(bin_dir / "bash"), str(ROOT / "scripts/lite/rule-refresh.sh"), env=env
+    )
+
+    assert refresh.returncode == 0, refresh.stderr
+    assert "FORGOTTEN RULES" in refresh.stdout
+    assert "recurring check unavailable" in refresh.stdout

@@ -232,6 +232,14 @@ Sources: [entry/routing](kernel/ENTRY.md), [execution/recovery](kernel/SOLVE.md)
 
 ## Recent upgrades
 
+### Evidence gate: fewer re-runs, repeated failures become checks
+
+Evidence now records a `content_sha` beside `tree_sha`, so committing the
+evidenced work no longer invalidates it; any content change still mismatches
+([VERIFY contract](kernel/VERIFY.md)). `rule-ledger.sh recurring` groups violations
+that repeat 3+ times in 14 days and proposes encoding each as a deterministic
+check rather than another prose rule; `rule-refresh.sh` shows the proposals.
+
 ### Game feel: control, fit and signature
 
 [Designer guidance](skills/game-designer/references/game-feel.md) adds an action

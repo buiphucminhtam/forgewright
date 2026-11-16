@@ -117,6 +117,14 @@ Nguồn: [SOLVE](kernel/SOLVE.md), [POLICY](kernel/POLICY.md),
 
 ## Những nâng cấp gần đây
 
+### Gate evidence: ít phải chạy lại, lỗi lặp lại thành check
+
+Evidence giờ ghi thêm `content_sha` cạnh `tree_sha`, nên commit phần việc đã kiểm
+chứng không còn làm evidence mất hiệu lực; đổi nội dung bất kỳ vẫn bị MISMATCH
+([hợp đồng VERIFY](kernel/VERIFY.md)). `rule-ledger.sh recurring` gom các vi phạm lặp
+từ 3 lần trở lên trong 14 ngày và đề xuất biến mỗi loại thành một check tự động thay
+vì thêm quy tắc bằng chữ; `rule-refresh.sh` hiển thị các đề xuất này.
+
 ### Game feel: điều khiển, sự phù hợp và bản sắc
 
 [Hướng dẫn Designer](skills/game-designer/references/game-feel.md) có action card
