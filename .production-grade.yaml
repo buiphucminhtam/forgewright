@@ -20,16 +20,20 @@ expertMode:
 # when the active spawn_agent schema advertises the exact model and effort.
 subagents:
   codex:
+    # Owner-approved 2026-11-17: gpt-6.1-sol does the main work, gpt-6.1-terra
+    # the chores, gpt-6-astra plans and reviews.
     default:
-      model: "gpt-5.6-luna"
+      model: "gpt-6.1-sol"
       reasoning_effort: "medium"
     tiers:
-      scout: { model: "gpt-5.6-luna", reasoning_effort: "low" }
-      builder: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
-      expert: { model: "gpt-5.6-sol", reasoning_effort: "high" }
+      scout: { model: "gpt-6.1-terra", reasoning_effort: "low" }
+      builder: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
+      expert: { model: "gpt-6.1-sol", reasoning_effort: "high" }
+      planner: { model: "gpt-6-astra", reasoning_effort: "high" }
+      reviewer: { model: "gpt-6-astra", reasoning_effort: "high" }
     agent_types:
-      explorer: { model: "gpt-5.6-luna", reasoning_effort: "low" }
-      worker: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
+      explorer: { model: "gpt-6.1-terra", reasoning_effort: "low" }
+      worker: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
   claude:
     # Claude Code Agent tool: tier -> plugin agent (model pinned in agents/*.md
     # frontmatter) plus a model alias that is passed only when the active
@@ -38,6 +42,8 @@ subagents:
       scout: { agent: "forgewright-scout", model: "haiku" }
       builder: { agent: "forgewright-builder", model: "sonnet" }
       expert: { agent: "forgewright-expert", model: "opus" }
+      planner: { agent: "forgewright-planner", model: "fable" }
+      reviewer: { agent: "forgewright-reviewer", model: "fable" }
 
 token_tracking:
   enabled: true

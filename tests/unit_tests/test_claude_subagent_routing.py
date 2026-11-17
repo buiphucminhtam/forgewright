@@ -14,11 +14,13 @@ CONFIG = ROOT / ".production-grade.yaml"
 TEMPLATE = ROOT / "skills" / "_shared" / "templates" / "production-grade.yaml.tmpl"
 AGENTS = ROOT / "agents"
 ALL_CAPS = {
-    "models": ["haiku", "sonnet", "opus"],
+    "models": ["haiku", "sonnet", "opus", "fable"],
     "agent_types": [
         "forgewright:forgewright-scout",
         "forgewright:forgewright-builder",
         "forgewright:forgewright-expert",
+        "forgewright:forgewright-planner",
+        "forgewright:forgewright-reviewer",
         "general-purpose",
     ],
 }
@@ -26,7 +28,11 @@ EXPECTED = {
     "scout": ("forgewright-scout", "haiku"),
     "builder": ("forgewright-builder", "sonnet"),
     "expert": ("forgewright-expert", "opus"),
+    "planner": ("forgewright-planner", "fable"),
+    "reviewer": ("forgewright-reviewer", "fable"),
 }
+ROLE_TIERS = ("planner", "reviewer")
+EDIT_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
 
 
 def _resolver():
@@ -49,8 +55,12 @@ def _config() -> dict:
 
 @pytest.mark.parametrize("source", [CONFIG, TEMPLATE])
 def test_claude_tier_config_maps_each_tier_to_agent_and_alias(source: Path) -> None:
-    tiers = yaml.safe_load(source.read_text(encoding="utf-8"))["subagents"]["claude"]["tiers"]
-    assert {tier: (entry["agent"], entry["model"]) for tier, entry in tiers.items()} == EXPECTED
+    tiers = yaml.safe_load(source.read_text(encoding="utf-8"))["subagents"]["claude"][
+        "tiers"
+    ]
+    assert {
+        tier: (entry["agent"], entry["model"]) for tier, entry in tiers.items()
+    } == EXPECTED
 
 
 @pytest.mark.parametrize("tier", sorted(EXPECTED))
@@ -70,7 +80,14 @@ def test_scout_agent_has_no_shell_or_write_tools() -> None:
 
 def test_expert_description_names_hard_signals() -> None:
     description = _frontmatter(AGENTS / "forgewright-expert.md")["description"].lower()
-    for signal in ("security", "schema", "concurrency", "payment", "migration", "review"):
+    for signal in (
+        "security",
+        "schema",
+        "concurrency",
+        "payment",
+        "migration",
+        "review",
+    ):
         assert signal in description
 
 
@@ -78,7 +95,10 @@ def test_expert_description_names_hard_signals() -> None:
 def test_resolver_emits_verified_namespaced_agent_and_model(tier: str) -> None:
     result = _resolver().resolve_routing(_config(), ALL_CAPS, tier=tier)
     agent, model = EXPECTED[tier]
-    assert result["agent_args"] == {"subagent_type": f"forgewright:{agent}", "model": model}
+    assert result["agent_args"] == {
+        "subagent_type": f"forgewright:{agent}",
+        "model": model,
+    }
     assert result["model_selection"] == "verified"
 
 
@@ -96,7 +116,9 @@ def test_resolver_rejects_ambiguous_namespaced_agents() -> None:
 
 
 @pytest.mark.parametrize("caps", [None, {}, {"models": "haiku"}, {"models": [1]}, []])
-def test_resolver_missing_or_malformed_capabilities_inherit_parent(caps: object) -> None:
+def test_resolver_missing_or_malformed_capabilities_inherit_parent(
+    caps: object,
+) -> None:
     result = _resolver().resolve_routing(_config(), caps, tier="builder")
     assert result["agent_args"] == {}
     assert result["model_selection"] == "provider-managed"
@@ -109,7 +131,14 @@ def test_resolver_rejects_unknown_tier() -> None:
 
 def test_resolver_cli_outputs_agent_args() -> None:
     result = subprocess.run(
-        [sys.executable, str(RESOLVER), "--tier", "expert", "--capabilities-json", json.dumps(ALL_CAPS)],
+        [
+            sys.executable,
+            str(RESOLVER),
+            "--tier",
+            "expert",
+            "--capabilities-json",
+            json.dumps(ALL_CAPS),
+        ],
         capture_output=True,
         text=True,
         check=True,
@@ -121,7 +150,9 @@ def test_resolver_cli_outputs_agent_args() -> None:
 
 
 def test_model_tier_protocol_documents_claude_routing() -> None:
-    text = (ROOT / "skills" / "_shared" / "protocols" / "model-tier.md").read_text(encoding="utf-8")
+    text = (ROOT / "skills" / "_shared" / "protocols" / "model-tier.md").read_text(
+        encoding="utf-8"
+    )
     assert "## Native Claude Code Configuration" in text
     assert "scripts/runtime/claude-subagent-routing.py" in text
     for agent, model in EXPECTED.values():
@@ -130,7 +161,9 @@ def test_model_tier_protocol_documents_claude_routing() -> None:
 
 def test_plugin_agents_resolve_end_to_end_from_shipped_files() -> None:
     """Advertise exactly what the shipped plugin provides and route every tier."""
-    plugin = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["name"]
+    plugin = json.loads(
+        (ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+    )["name"]
     shipped = {path.stem: _frontmatter(path) for path in AGENTS.glob("*.md")}
     caps = {
         "models": sorted({meta["model"] for meta in shipped.values()}),
@@ -138,8 +171,17 @@ def test_plugin_agents_resolve_end_to_end_from_shipped_files() -> None:
     }
     for tier in sorted(EXPECTED):
         result = subprocess.run(
-            [sys.executable, str(RESOLVER), "--tier", tier, "--capabilities-json", json.dumps(caps)],
-            capture_output=True, text=True, check=True,
+            [
+                sys.executable,
+                str(RESOLVER),
+                "--tier",
+                tier,
+                "--capabilities-json",
+                json.dumps(caps),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
         )
         args = json.loads(result.stdout)["agent_args"]
         agent = args["subagent_type"].split(":", 1)[1]
@@ -203,7 +245,9 @@ HARD_PHRASES = [
 @pytest.mark.parametrize("phrase", HARD_PHRASES)
 @pytest.mark.parametrize("requested", ["scout", "builder", None])
 def test_hard_signal_floors_tier_at_expert(phrase: str, requested: str | None) -> None:
-    result = _resolver().resolve_routing(_config(), ALL_CAPS, tier=requested, risk_signals=[phrase])
+    result = _resolver().resolve_routing(
+        _config(), ALL_CAPS, tier=requested, risk_signals=[phrase]
+    )
     assert result["tier"] == "expert"
     assert result["agent_args"]["subagent_type"] == "forgewright:forgewright-expert"
     assert result["hard_signals"]
@@ -226,9 +270,201 @@ def test_tier_selection_without_hard_signals_stays_cheap() -> None:
 
 def test_resolver_cli_applies_hard_floor() -> None:
     result = subprocess.run(
-        [sys.executable, str(RESOLVER), "--tier", "scout", "--risk-signal", "Payment",
-         "--capabilities-json", json.dumps(ALL_CAPS)],
-        capture_output=True, text=True, check=True,
+        [
+            sys.executable,
+            str(RESOLVER),
+            "--tier",
+            "scout",
+            "--risk-signal",
+            "Payment",
+            "--capabilities-json",
+            json.dumps(ALL_CAPS),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
     )
     out = json.loads(result.stdout)
     assert out["tier"] == "expert" and out["agent_args"]["model"] == "opus"
+
+
+@pytest.mark.parametrize(
+    "agent,tools",
+    [
+        (
+            "forgewright-planner",
+            {"Read", "Grep", "Glob", "Bash", "WebSearch", "WebFetch"},
+        ),
+        ("forgewright-reviewer", {"Read", "Grep", "Glob", "Bash"}),
+    ],
+)
+def test_role_agents_have_exact_tools_without_edit_tools(
+    agent: str, tools: set[str]
+) -> None:
+    meta = _frontmatter(AGENTS / f"{agent}.md")
+    granted = {tool.strip() for tool in meta["tools"].split(",")}
+    assert granted == tools
+    assert not granted & EDIT_TOOLS
+
+
+def test_role_agent_descriptions_scope_planning_and_review() -> None:
+    planner = _frontmatter(AGENTS / "forgewright-planner.md")["description"].lower()
+    for term in (
+        "plan_locked",
+        "architecture",
+        "game design",
+        "never edits",
+        "quick work stays",
+    ):
+        assert term in planner, term
+    reviewer = _frontmatter(AGENTS / "forgewright-reviewer.md")["description"].lower()
+    for term in ("independent", "review-2", "different model", "never edits"):
+        assert term in reviewer, term
+    for sibling in ("forgewright-expert", "forgewright-builder", "forgewright-scout"):
+        text = _frontmatter(AGENTS / f"{sibling}.md")["description"]
+        assert "forgewright-reviewer" in text and "forgewright-planner" in text, sibling
+        assert "independent HARD review — use forgewright-expert" not in text, sibling
+
+
+@pytest.mark.parametrize("role", ROLE_TIERS)
+@pytest.mark.parametrize("phrase", ["Payment", "schema change", "security-sensitive"])
+def test_hard_signal_keeps_requested_role_tier(role: str, phrase: str) -> None:
+    result = _resolver().resolve_routing(
+        _config(), ALL_CAPS, tier=role, risk_signals=[phrase]
+    )
+    assert result["tier"] == role
+    assert result["tier_floor"] == "expert"
+    assert result["hard_signals"]
+    assert result["escalated"] is False
+    assert result["agent_args"] == {
+        "subagent_type": f"forgewright:forgewright-{role}",
+        "model": "fable",
+    }
+
+
+@pytest.mark.parametrize("role", ROLE_TIERS)
+def test_role_tier_is_kept_when_mechanical(role: str) -> None:
+    assert _resolver().select_tier(role, [], mechanical=True)["tier"] == role
+
+
+def test_role_tiers_are_never_chosen_implicitly() -> None:
+    select = _resolver().select_tier
+    for signals, mechanical in (
+        ([], False),
+        ([], True),
+        (["Payment"], False),
+        (["docs"], True),
+    ):
+        assert select(None, signals, mechanical=mechanical)["tier"] not in ROLE_TIERS
+    for requested in ("scout", "builder", "expert"):
+        assert select(requested, ["checkout"])["tier"] == "expert"
+
+
+def test_role_tier_without_advertised_fable_inherits_parent_model() -> None:
+    caps = {"models": ["haiku", "sonnet", "opus"], "agent_types": ["general-purpose"]}
+    result = _resolver().resolve_routing(_config(), caps, tier="planner")
+    assert result["agent_args"] == {"subagent_type": "general-purpose"}
+    assert result["model_selection"] == "provider-managed"
+    assert any("'fable' not advertised" in reason for reason in result["reasons"])
+
+
+NO_FABLE_CAPS = [
+    {"models": ["haiku", "sonnet", "opus"], "agent_types": ["general-purpose"]},
+    {
+        "models": ["haiku", "sonnet", "opus"],
+        "agent_types": [
+            "forgewright:forgewright-expert",
+            "forgewright:forgewright-planner",
+            "forgewright:forgewright-reviewer",
+            "general-purpose",
+        ],
+    },
+]
+
+
+@pytest.mark.parametrize("role", ROLE_TIERS)
+@pytest.mark.parametrize("caps_index", range(len(NO_FABLE_CAPS)))
+def test_hard_role_tier_without_fable_falls_back_to_expert(
+    role: str, caps_index: int
+) -> None:
+    caps = NO_FABLE_CAPS[caps_index]
+    result = _resolver().resolve_routing(
+        _config(), caps, tier=role, risk_signals=["Payment"]
+    )
+    assert result["tier"] == "expert"
+    assert result["requested_tier"] == role
+    assert result["escalated"] is True
+    assert result["agent_args"]["model"] == "opus"
+    assert result["model_selection"] == "verified"
+    assert any("using the expert tier" in reason for reason in result["reasons"])
+    scout = _resolver().resolve_routing(
+        _config(), caps, tier="scout", risk_signals=["Payment"]
+    )
+    assert result["agent_args"] == scout["agent_args"]
+
+
+def test_hard_role_tier_fallback_via_cli() -> None:
+    caps = NO_FABLE_CAPS[1]
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(RESOLVER),
+            "--tier",
+            "reviewer",
+            "--risk-signal",
+            "Payment",
+            "--capabilities-json",
+            json.dumps(caps),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    out = json.loads(result.stdout)
+    assert out["tier"] == "expert" and out["escalated"] is True
+    assert out["agent_args"] == {
+        "subagent_type": "forgewright:forgewright-expert",
+        "model": "opus",
+    }
+
+
+def test_resolver_cli_accepts_role_tiers() -> None:
+    for role in ROLE_TIERS:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(RESOLVER),
+                "--tier",
+                role,
+                "--risk-signal",
+                "Payment",
+                "--capabilities-json",
+                json.dumps(ALL_CAPS),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        out = json.loads(result.stdout)
+        assert out["tier"] == role
+        assert out["agent_args"] == {
+            "subagent_type": f"forgewright:forgewright-{role}",
+            "model": "fable",
+        }
+    rejected = subprocess.run(
+        [sys.executable, str(RESOLVER), "--tier", "genius"],
+        capture_output=True,
+        text=True,
+    )
+    assert rejected.returncode != 0 and "invalid choice" in rejected.stderr
+
+
+def test_kernel_routes_planning_and_review_to_role_tiers() -> None:
+    solve = (ROOT / "kernel" / "SOLVE.md").read_text(encoding="utf-8")
+    assert (
+        "planning goes to the `planner` role tier and independent review to `reviewer`"
+        in solve
+    )
+    for generated in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
+        text = (ROOT / generated).read_text(encoding="utf-8")
+        assert "planning goes to the `planner` role tier" in text, generated

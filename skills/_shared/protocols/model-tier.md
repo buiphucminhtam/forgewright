@@ -64,7 +64,15 @@ This record is compact task state, not a new durable report.
 |---|---|
 | `scout` | Mechanical inventory, bounded read-only search, status extraction |
 | `builder` | Normal implementation, synthesis, testing, and code review |
-| `expert` | Security, schema, public API, concurrency, disagreement, or high-stakes independent review |
+| `expert` | Security, schema, public API, concurrency, disagreement, or a step that failed twice |
+| `planner` | STANDARD/DEEP planning and design decisions: `PLAN_LOCKED`, task decomposition, architecture, requirements, roadmaps, game design, open-ended exploration |
+| `reviewer` | Independent adversarial review of a finished change, including HARD review-2 (a different model from the implementer) |
+
+`scout`, `builder` and `expert` form the escalation ladder that HARD signals
+floor at `expert`. `planner` and `reviewer` are role tiers on the most capable
+configured model: they are requested explicitly and kept as requested; under
+HARD signals without their verified model they fall back to `expert`. QUICK
+work never delegates to them.
 
 Small or serial tasks stay in the parent agent. Parallel work uses two or three
 workers only when scopes are genuinely independent; mechanical inventory may use
@@ -73,32 +81,36 @@ one scout.
 ## Native Codex Configuration
 
 Read `subagents.codex` from `.production-grade.yaml` before a native Codex
-dispatch. This project keeps the provider-validated default moderate, uses low
-reasoning for bounded discovery, medium reasoning for implementation, and high
-reasoning only for expert/audit work:
+dispatch. The owner-approved map (2026-11-17) gives the main work to `gpt-6.1-sol`
+(medium reasoning, high for expert), chores and bounded discovery to
+`gpt-6.1-terra` (low), and planning and independent review to `gpt-6-astra`
+(high):
 
 ```yaml
 subagents:
   codex:
     default:
-      model: "gpt-5.6-luna"
+      model: "gpt-6.1-sol"
       reasoning_effort: "medium"
     tiers:
-      scout: { model: "gpt-5.6-luna", reasoning_effort: "low" }
-      builder: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
-      expert: { model: "gpt-5.6-sol", reasoning_effort: "high" }
+      scout: { model: "gpt-6.1-terra", reasoning_effort: "low" }
+      builder: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
+      expert: { model: "gpt-6.1-sol", reasoning_effort: "high" }
+      planner: { model: "gpt-6-astra", reasoning_effort: "high" }
+      reviewer: { model: "gpt-6-astra", reasoning_effort: "high" }
     agent_types:
-      explorer: { model: "gpt-5.6-luna", reasoning_effort: "low" }
-      worker: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
+      explorer: { model: "gpt-6.1-terra", reasoning_effort: "low" }
+      worker: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
 ```
 
 Resolve `model` and `reasoning_effort` independently with this precedence:
 
 1. Explicit user/task dispatch override.
-2. `agent_types.<spawn_agent agent_type>`.
-3. `tiers.<scout|builder|expert>`.
-4. `default`.
-5. Parent/provider inheritance when no configured value survives validation.
+2. `tiers.<planner|reviewer>`: a role tier names the job, so it outranks the spawn agent type.
+3. `agent_types.<spawn_agent agent_type>`.
+4. `tiers.<scout|builder|expert>`.
+5. `default`.
+6. Parent/provider inheritance when no configured value survives validation.
 
 Treat configuration as preference only. Before every spawn, inspect the active
 `spawn_agent` schema and apply a field only when the exact model and reasoning
@@ -127,14 +139,16 @@ resolver is not the external AGY adapter.
 
 ## Native Claude Code Configuration
 
-Claude Code routes by agent type. The plugin ships three tier agents under
+Claude Code routes by agent type. The plugin ships five tier agents under
 `agents/`, each pinning a model alias in its frontmatter:
 
 | Tier | Agent | Model alias | Tools / use |
 |---|---|---|---|
 | `scout` | `forgewright-scout` | `haiku` | Read, Grep, Glob only (no shell, no edits): lookups, inventories, summaries of files already on disk |
 | `builder` | `forgewright-builder` | `sonnet` | Normal bounded implementation, tests, debugging, code review |
-| `expert` | `forgewright-expert` | `opus` | HARD signals and independent adversarial review |
+| `expert` | `forgewright-expert` | `opus` | HARD-signal implementation and debugging |
+| `planner` | `forgewright-planner` | `fable` | Read, Grep, Glob, Bash (read-only use), WebSearch, WebFetch; no edits: planning and design decisions |
+| `reviewer` | `forgewright-reviewer` | `fable` | Read, Grep, Glob, Bash; no edits: independent review and HARD review-2 |
 
 How selection happens, and what is enforced:
 
@@ -152,13 +166,17 @@ How selection happens, and what is enforced:
    HARD wording in the task is then matched even when no explicit signal was
    derived. A requested tier can raise it but never lower it, so a HARD scope cannot be downgraded to save tokens. With no HARD
    signal, mechanical inventory resolves to `scout` and other work to `builder`.
+   Request `--tier planner` for planning and `--tier reviewer` for independent
+   review; the resolver keeps them as requested. Under HARD signals it keeps
+   them only when their `fable` model is verified, and otherwise routes to
+   `expert` (`escalated: true`), so a role tier never lands below the expert floor.
 3. A scout or builder that discovers a HARD signal stops and reports for
    re-routing.
 
 ```sh
 python3 scripts/runtime/claude-subagent-routing.py \
   --tier "$TIER" --risk-signal "$SIGNAL" \
-  --capabilities-json '{"models": ["haiku", "sonnet", "opus"], "agent_types": ["forgewright:forgewright-scout", "forgewright:forgewright-builder", "forgewright:forgewright-expert", "general-purpose"]}'
+  --capabilities-json '{"models": ["haiku", "sonnet", "opus", "fable"], "agent_types": ["forgewright:forgewright-scout", "forgewright:forgewright-builder", "forgewright:forgewright-expert", "forgewright:forgewright-planner", "forgewright:forgewright-reviewer", "general-purpose"]}'
 ```
 
 Pass only the emitted `agent_args`. `subagent_type` appears only for an
@@ -171,19 +189,17 @@ headless Claude Code session loaded with `--plugin-dir` on 2026-11-15; other
 hosts or install paths remain `UNVERIFIED` until probed. Configuration lives in
 `subagents.claude.tiers` in `.production-grade.yaml`.
 
-## Codex GPT-5.6 Family
+## Codex GPT-6 Family
 
 When no project/user preference resolves and the current Codex runtime advertises
 matching model overrides, use this workload mapping as an optional fallback:
 
 | Tier | Preferred model | Workload |
 |---|---|---|
-| `expert` | Sol | Hardest problems and high-stakes reasoning |
-| `builder` | Terra | Everyday production work |
-| `scout` | Luna | High-volume workflows and bounded mechanical tasks |
+| `planner`, `reviewer` | Astra | Planning, design decisions and independent review |
+| `expert`, `builder` | Sol (6.1) | Main implementation work; high reasoning for HARD scopes |
+| `scout` | Terra (6.1) | Chores: bounded mechanical tasks and read-only discovery |
 
-Together, the GPT-5.6 family provides a tier-aware fallback: Sol for the hardest
-problems, Terra for everyday production work, and Luna for high-volume workflows.
 The configured native Codex default takes precedence over this preset. These
 family names express routing intent, not verified model IDs.
 Pass a model override only for an exact model ID advertised by the current Codex runtime.

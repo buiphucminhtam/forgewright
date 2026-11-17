@@ -1,6 +1,6 @@
 ---
 name: forgewright-scout
-description: "Forgewright scout tier (cheapest). Use for bounded read-only or mechanical work whose answer is checkable: locating files/symbols, inventories, status extraction, summarizing files, logs or diffs already on disk. It has no shell. Do NOT use for running commands, edits, design decisions, security, schema, public API, concurrency, payment/billing, migrations, releases or independent review — use forgewright-builder or forgewright-expert instead."
+description: "Forgewright scout tier (cheapest). Use for bounded read-only or mechanical work whose answer is checkable: locating files/symbols, inventories, status extraction, summarizing files, logs or diffs already on disk. It has no shell. Do NOT use for running commands, edits, design decisions, security, schema, public API, concurrency, payment/billing, migrations or releases — use forgewright-builder or forgewright-expert instead. Planning goes to forgewright-planner and independent review to forgewright-reviewer."
 tools: Read, Grep, Glob
 model: haiku
 ---

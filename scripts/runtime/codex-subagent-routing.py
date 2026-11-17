@@ -7,7 +7,7 @@ overrides to a parent ``spawn_agent`` call.  The capability payload must be a
 structured, same-invocation object of this form::
 
     {"status": "available", "models": [
-        {"id": "gpt-5.6-luna", "reasoning_efforts": ["high", "medium"]}
+        {"id": "gpt-6.1-sol", "reasoning_efforts": ["high", "medium"]}
     ]}
 
 It emits one JSON object on stdout.  ``spawn_agent_args`` is safe to pass to
@@ -31,6 +31,7 @@ except ImportError:  # pragma: no cover - exercised only in minimal runtimes
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / ".production-grade.yaml"
 FIELDS = ("model", "reasoning_effort")
+ROLE_TIERS = ("planner", "reviewer")
 _MISSING = object()
 
 
@@ -97,18 +98,25 @@ def _preference_sources(
         if not isinstance(value, Mapping):
             warnings.append(f"{name} is malformed")
 
+    tier_source: tuple[str, Mapping[str, Any]] | None = None
+    if tier and isinstance(tiers, Mapping) and tier in tiers:
+        entry = _mapping(tiers[tier])
+        if entry is None:
+            warnings.append(f"tiers.{tier} is malformed")
+        else:
+            tier_source = ("tier", entry)
+    # A role tier names the job itself (planning or independent review), so
+    # it outranks the generic spawn agent type; ladder tiers do not.
+    if tier_source and tier in ROLE_TIERS:
+        sources.append(tier_source)
     if agent_type and isinstance(agent_types, Mapping) and agent_type in agent_types:
         entry = _mapping(agent_types[agent_type])
         if entry is None:
             warnings.append(f"agent_types.{agent_type} is malformed")
         else:
             sources.append(("agent_type", entry))
-    if tier and isinstance(tiers, Mapping) and tier in tiers:
-        entry = _mapping(tiers[tier])
-        if entry is None:
-            warnings.append(f"tiers.{tier} is malformed")
-        else:
-            sources.append(("tier", entry))
+    if tier_source and tier not in ROLE_TIERS:
+        sources.append(tier_source)
     if isinstance(default, Mapping):
         sources.append(("default", default))
 

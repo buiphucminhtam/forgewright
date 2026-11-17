@@ -143,11 +143,16 @@ vào bản tóm tắt của compact ([memory adapter](skills/memory-manager/SKIL
 ### Claude Code: agent theo tier tự chọn model cho subagent
 
 Plugin có sẵn [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, chỉ Read/Grep/Glob),
-[`forgewright-builder`](agents/forgewright-builder.md) (`sonnet`) và
-[`forgewright-expert`](agents/forgewright-expert.md) (`opus`, cho tín hiệu HARD và review độc lập).
+[`forgewright-builder`](agents/forgewright-builder.md) (`sonnet`),
+[`forgewright-expert`](agents/forgewright-expert.md) (`opus`, cho tín hiệu HARD),
+[`forgewright-planner`](agents/forgewright-planner.md) (`fable`, lập kế hoạch và quyết định thiết
+kế, không sửa file) và [`forgewright-reviewer`](agents/forgewright-reviewer.md) (`fable`, review
+độc lập và review-2 cho việc HARD, không sửa file).
 Mô tả của từng agent ghi rõ tiêu chí độ khó, nên khi giao việc Claude chọn tier rẻ nhất mà vẫn
 làm đúng (dựa vào mô tả). Khi điều phối tự động, resolver đặt sàn `expert` cho mọi tín hiệu HARD,
-nên việc HARD không thể bị hạ tier.
+nên việc HARD không thể bị hạ tier; `planner` và `reviewer` được giữ đúng như yêu cầu, và khi có
+tín hiệu HARD mà runtime không có `fable` thì chuyển sang `expert`. Codex dùng
+`gpt-6.1-terra` cho việc vặt, `gpt-6.1-sol` cho việc chính và `gpt-6-astra` để lập kế hoạch và review.
 [claude-subagent-routing.py](scripts/runtime/claude-subagent-routing.py) chuyển tier thành tham số
 tool Agent, chỉ dùng agent và model mà runtime thực sự hỗ trợ
 ([model-tier protocol](skills/_shared/protocols/model-tier.md)).

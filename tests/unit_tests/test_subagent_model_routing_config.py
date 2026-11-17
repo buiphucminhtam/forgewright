@@ -46,17 +46,19 @@ def test_native_codex_defaults_and_tiers_are_phase_appropriate() -> None:
     codex = config["subagents"]["codex"]
 
     assert codex["default"] == {
-        "model": "gpt-5.6-luna",
+        "model": "gpt-6.1-sol",
         "reasoning_effort": "medium",
     }
     assert codex["tiers"] == {
-        "scout": {"model": "gpt-5.6-luna", "reasoning_effort": "low"},
-        "builder": {"model": "gpt-5.6-terra", "reasoning_effort": "medium"},
-        "expert": {"model": "gpt-5.6-sol", "reasoning_effort": "high"},
+        "scout": {"model": "gpt-6.1-terra", "reasoning_effort": "low"},
+        "builder": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"},
+        "expert": {"model": "gpt-6.1-sol", "reasoning_effort": "high"},
+        "planner": {"model": "gpt-6-astra", "reasoning_effort": "high"},
+        "reviewer": {"model": "gpt-6-astra", "reasoning_effort": "high"},
     }
     assert codex["agent_types"] == {
-        "explorer": {"model": "gpt-5.6-luna", "reasoning_effort": "low"},
-        "worker": {"model": "gpt-5.6-terra", "reasoning_effort": "medium"},
+        "explorer": {"model": "gpt-6.1-terra", "reasoning_effort": "low"},
+        "worker": {"model": "gpt-6.1-sol", "reasoning_effort": "medium"},
     }
 
 
@@ -66,10 +68,11 @@ def test_model_tier_defines_precedence_and_capability_validation() -> None:
     _assert_in_order(
         protocol,
         "1. Explicit user/task dispatch override.",
-        "2. agent_types.<spawn_agent agent_type>.",
-        "3. tiers.<scout|builder|expert>.",
-        "4. default.",
-        "5. Parent/provider inheritance when no configured value survives validation.",
+        "2. tiers.<planner|reviewer>: a role tier names the job",
+        "3. agent_types.<spawn_agent agent_type>.",
+        "4. tiers.<scout|builder|expert>.",
+        "5. default.",
+        "6. Parent/provider inheritance when no configured value survives validation.",
     )
     assert "Treat configuration as preference only" in protocol
     assert "exact model and reasoning effort are advertised for that model" in protocol
@@ -281,18 +284,61 @@ def test_resolver_handles_malformed_or_missing_config_and_capabilities() -> None
     }
 
 
-def test_luna_medium_default_is_verified_only_for_exact_capability_pair() -> None:
+def test_sol_medium_default_is_verified_only_for_exact_capability_pair() -> None:
     resolver = _load_resolver()
     config = yaml.safe_load(_read(CONFIG))
     result = resolver.resolve_routing(
         config,
-        _capabilities({"id": "gpt-5.6-luna", "reasoning_efforts": ["medium"]}),
+        _capabilities({"id": "gpt-6.1-sol", "reasoning_efforts": ["medium"]}),
     )
     assert result["spawn_agent_args"] == {
-        "model": "gpt-5.6-luna",
+        "model": "gpt-6.1-sol",
         "reasoning_effort": "medium",
     }
     assert result["model_selection"] == "verified"
+
+
+# The owner-approved map: astra plans and reviews, 6.1-sol does the main work,
+# 6.1-terra does chores. Efforts match the live Codex catalog (low..ultra).
+OWNER_MAP = {
+    "scout": ("gpt-6.1-terra", "low"),
+    "builder": ("gpt-6.1-sol", "medium"),
+    "expert": ("gpt-6.1-sol", "high"),
+    "planner": ("gpt-6-astra", "high"),
+    "reviewer": ("gpt-6-astra", "high"),
+}
+CATALOG = _capabilities(
+    *(
+        {"id": model, "reasoning_efforts": ["low", "medium", "high", "xhigh"]}
+        for model in ("gpt-6.1-terra", "gpt-6.1-sol", "gpt-6-astra")
+    )
+)
+
+
+def test_each_tier_resolves_to_the_owner_approved_codex_model() -> None:
+    resolver = _load_resolver()
+    config = yaml.safe_load(_read(CONFIG))
+    for tier, (model, effort) in OWNER_MAP.items():
+        result = resolver.resolve_routing(config, CATALOG, tier=tier)
+        assert result["spawn_agent_args"] == {
+            "model": model,
+            "reasoning_effort": effort,
+        }, tier
+        assert result["model_selection"] == "verified", tier
+
+
+def test_role_tier_without_advertised_astra_is_not_substituted() -> None:
+    resolver = _load_resolver()
+    config = yaml.safe_load(_read(CONFIG))
+    catalog = _capabilities(
+        {"id": "gpt-6.1-sol", "reasoning_efforts": ["high"]},
+        {"id": "gpt-6.1-terra", "reasoning_efforts": ["low"]},
+    )
+    for tier in ("planner", "reviewer"):
+        result = resolver.resolve_routing(config, catalog, tier=tier)
+        assert "model" not in result["spawn_agent_args"], tier
+        assert result["model_selection"] == "provider-managed", tier
+        assert "gpt-6.1-sol" not in json.dumps(result["spawn_agent_args"]), tier
 
 
 def test_cli_emits_spawn_args_and_audit_json(tmp_path: Path) -> None:
@@ -329,8 +375,31 @@ def test_cli_emits_spawn_args_and_audit_json(tmp_path: Path) -> None:
 def test_template_and_reference_define_phase_appropriate_routing_maps() -> None:
     for path in (TEMPLATE, TECHNICAL_REFERENCE):
         text = _read(path)
-        assert 'scout: { model: "gpt-5.6-luna", reasoning_effort: "low" }' in text
-        assert 'builder: { model: "gpt-5.6-terra", reasoning_effort: "medium" }' in text
-        assert 'expert: { model: "gpt-5.6-sol", reasoning_effort: "high" }' in text
-        assert 'explorer: { model: "gpt-5.6-luna", reasoning_effort: "low" }' in text
-        assert 'worker: { model: "gpt-5.6-terra", reasoning_effort: "medium" }' in text
+        assert 'scout: { model: "gpt-6.1-terra", reasoning_effort: "low" }' in text
+        assert 'builder: { model: "gpt-6.1-sol", reasoning_effort: "medium" }' in text
+        assert 'expert: { model: "gpt-6.1-sol", reasoning_effort: "high" }' in text
+        assert 'planner: { model: "gpt-6-astra", reasoning_effort: "high" }' in text
+        assert 'reviewer: { model: "gpt-6-astra", reasoning_effort: "high" }' in text
+        assert 'explorer: { model: "gpt-6.1-terra", reasoning_effort: "low" }' in text
+        assert 'worker: { model: "gpt-6.1-sol", reasoning_effort: "medium" }' in text
+
+
+def test_role_tier_outranks_agent_type_but_ladder_tiers_do_not() -> None:
+    resolver = _load_resolver()
+    config = yaml.safe_load(_read(CONFIG))
+    for tier in ("planner", "reviewer"):
+        for agent_type in ("explorer", "worker"):
+            result = resolver.resolve_routing(
+                config, CATALOG, tier=tier, agent_type=agent_type
+            )
+            assert result["spawn_agent_args"] == {
+                "model": "gpt-6-astra",
+                "reasoning_effort": "high",
+            }, (tier, agent_type)
+    explorer_scout = resolver.resolve_routing(
+        config, CATALOG, tier="expert", agent_type="explorer"
+    )
+    assert explorer_scout["spawn_agent_args"] == {
+        "model": "gpt-6.1-terra",
+        "reasoning_effort": "low",
+    }
