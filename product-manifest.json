@@ -17,9 +17,9 @@
   "skills": {
     "root": "skills",
     "registry": "skills/skills-registry.yaml",
-    "canonicalCount": 87,
+    "canonicalCount": 90,
     "aliasCount": 3,
-    "installedCount": 90,
+    "installedCount": 93,
     "excludedDirectories": [
       "_shared",
       "_test",

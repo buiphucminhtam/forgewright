@@ -5,3 +5,6 @@
 # Immutable, digest-bound historical test inputs must survive Windows checkout unchanged.
 tests/fixtures/product-factory/baseline-local-ci.json -text
 product-factory/baseline-evidence.v1.json -text
+
+# Vendored third-party skill scripts stay byte-identical to upstream (see ruff.toml).
+skills/ui-ux-pro-max/scripts/** -whitespace

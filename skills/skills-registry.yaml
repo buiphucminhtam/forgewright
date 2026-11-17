@@ -164,6 +164,12 @@ skills:
     has_lite_md: true
     version: 1.0.0
 
+  - name: emil-design-eng
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
   - name: eval-engineer
     type: canonical
     has_skill_md: true
@@ -179,6 +185,12 @@ skills:
   - name: forgewright
     type: alias
     alias_target: production-grade
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: frontend-design
+    type: canonical
     has_skill_md: true
     has_lite_md: true
     version: 1.0.0
@@ -478,6 +490,12 @@ skills:
     version: 1.0.0
 
   - name: ui-designer
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
+  - name: ui-ux-pro-max
     type: canonical
     has_skill_md: true
     has_lite_md: true

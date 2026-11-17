@@ -458,6 +458,14 @@
       "authority": "routed_skill"
     },
     {
+      "path": "skills/emil-design-eng/LITE.md",
+      "authority": "routed_lite"
+    },
+    {
+      "path": "skills/emil-design-eng/SKILL.md",
+      "authority": "routed_skill"
+    },
+    {
       "path": "skills/eval-engineer/LITE.md",
       "authority": "routed_lite"
     },
@@ -471,6 +479,14 @@
     },
     {
       "path": "skills/forgewright/SKILL.md",
+      "authority": "routed_skill"
+    },
+    {
+      "path": "skills/frontend-design/LITE.md",
+      "authority": "routed_lite"
+    },
+    {
+      "path": "skills/frontend-design/SKILL.md",
       "authority": "routed_skill"
     },
     {
@@ -883,6 +899,14 @@
     },
     {
       "path": "skills/ui-designer/SKILL.md",
+      "authority": "routed_skill"
+    },
+    {
+      "path": "skills/ui-ux-pro-max/LITE.md",
+      "authority": "routed_lite"
+    },
+    {
+      "path": "skills/ui-ux-pro-max/SKILL.md",
       "authority": "routed_skill"
     },
     {

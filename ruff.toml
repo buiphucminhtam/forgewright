@@ -1,0 +1,6 @@
+# Ruff runs with its default rules. This file only keeps vendored third-party
+# skill scripts out of lint/format so they stay byte-identical to upstream.
+# force-exclude applies the exclusion even when files are passed explicitly,
+# as the local-ci pre-commit hook does.
+force-exclude = true
+extend-exclude = ["skills/ui-ux-pro-max/scripts"]
