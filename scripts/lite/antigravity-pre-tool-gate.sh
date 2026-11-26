@@ -4,6 +4,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRAMEWORK_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 MAX_PAYLOAD_BYTES=1048576
 PYTHON_COMMAND=()
 for _cand in "${FORGEWRIGHT_PYTHON_BIN:-}" python3 python python3.13 python3.12 python3.11; do
@@ -63,7 +64,7 @@ if [[ "$PAYLOAD_SIZE" -gt "$MAX_PAYLOAD_BYTES" ]]; then
   exit 0
 fi
 
-if ! "${PYTHON_COMMAND[@]}" - "$PAYLOAD_FILE" "$TOOL_FILE" "$ARGS_FILE" "$WORKSPACE_FILE" <<'PYEOF'
+if ! "${PYTHON_COMMAND[@]}" - "$PAYLOAD_FILE" "$TOOL_FILE" "$ARGS_FILE" "$WORKSPACE_FILE" "$FRAMEWORK_ROOT" <<'PYEOF'
 import json
 import os
 import sys
@@ -83,6 +84,7 @@ if not isinstance(tool_name, str) or not tool_name.strip():
 if not isinstance(tool_args, dict):
     raise ValueError("toolCall.args must be an object")
 payload_cwd = payload.get("cwd")
+framework_root = sys.argv[5] if len(sys.argv) > 5 else None
 candidate_paths = workspace_paths if isinstance(workspace_paths, list) else []
 candidate_paths = [
     *candidate_paths,
@@ -98,13 +100,19 @@ for candidate in candidate_paths:
     if not os.path.isdir(resolved):
         continue
     while True:
-        if os.path.isfile(os.path.join(resolved, ".forgewright", "execution-policy.yaml")):
+        if os.path.lexists(os.path.join(resolved, ".forgewright", "execution-policy.yaml")):
             workspaces.append(resolved)
             break
         parent = os.path.dirname(resolved)
         if parent == resolved:
             break
         resolved = parent
+if not workspaces and isinstance(framework_root, str) and framework_root.strip():
+    resolved_fw = os.path.realpath(framework_root)
+    if os.path.isdir(resolved_fw) and os.path.lexists(
+        os.path.join(resolved_fw, ".forgewright", "execution-policy.yaml")
+    ):
+        workspaces.append(resolved_fw)
 workspace = workspaces[0] if workspaces else None
 if workspace is None:
     raise ValueError("no workspace contains a Forgewright execution policy")

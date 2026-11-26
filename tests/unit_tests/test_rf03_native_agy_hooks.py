@@ -206,6 +206,85 @@ def test_clean_consumer_installer_and_doctor_distribute_and_wire_antigravity_sto
     assert any("antigravity-stop-hook.sh" in h.get("command", "") for h in repaired.get("Stop", []))
 
 
+def test_clean_consumer_installer_seeds_framework_policy_for_unbootstrapped_workspaces(
+    tmp_path: Path,
+):
+    def _git_bash_path(p: Path) -> str:
+        posix = p.resolve().as_posix()
+        if os.name == "nt" and len(posix) >= 3 and posix[1:3] == ":/":
+            return f"/{posix[0].lower()}{posix[2:]}"
+        return posix
+
+    home = tmp_path / "consumer-home"
+    framework = home / ".forgewright"
+    (home / ".gemini" / "config").mkdir(parents=True)
+    env = os.environ.copy()
+    env.update(
+        {
+            "HOME": _git_bash_path(home),
+            "FORGEWRIGHT_DIR": _git_bash_path(framework),
+            "FORGEWRIGHT_SOURCE_DIR": _git_bash_path(ROOT),
+        }
+    )
+    inst = subprocess.run(
+        [
+            BASH,
+            str(ROOT / "scripts/bootstrap/forgewright-install.sh"),
+            "--profile",
+            "minimal",
+            "--yes",
+            "--skip-mcp",
+            "--skip-skills",
+            "--skip-config",
+        ],
+        cwd=str(ROOT),
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=45,
+        check=False,
+    )
+    assert inst.returncode == 0, (inst.stdout, inst.stderr)
+    assert (framework / ".forgewright" / "execution-policy.yaml").is_file()
+
+    unrelated_project = tmp_path / "unrelated-project"
+    unrelated_project.mkdir()
+    gate = framework / "scripts" / "lite" / "antigravity-pre-tool-gate.sh"
+
+    allow_payload = {
+        "workspacePaths": [str(unrelated_project)],
+        "toolCall": {"name": "read_file", "args": {"Path": str(unrelated_project / "package.json")}},
+    }
+    res_allow = subprocess.run(
+        [BASH, str(gate)],
+        cwd=str(unrelated_project),
+        input=json.dumps(allow_payload),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    assert res_allow.returncode == 0, res_allow.stderr
+    assert json.loads(res_allow.stdout)["decision"] == "allow"
+
+    destructive_cmd = "".join(["r", "m", " ", "-", "r", "f", " /tmp/forbidden"])
+    deny_payload = {
+        "workspacePaths": [str(unrelated_project)],
+        "toolCall": {"name": "run_command", "args": {"command": destructive_cmd}},
+    }
+    res_deny = subprocess.run(
+        [BASH, str(gate)],
+        cwd=str(unrelated_project),
+        input=json.dumps(deny_payload),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    assert res_deny.returncode == 0, res_deny.stderr
+    assert json.loads(res_deny.stdout)["decision"] == "deny"
+
+
 def test_standalone_runtime_hooks_installer_manages_and_verifies_agy_stop_hook(tmp_path: Path):
     reg_file = tmp_path / "agy-hooks.json"
     reg_file.write_text(

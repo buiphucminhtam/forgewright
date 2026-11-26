@@ -1167,6 +1167,220 @@ def test_antigravity_pre_tool_rejects_oversized_payload(tmp_path: Path) -> None:
     assert json.loads(result.stdout)["decision"] == "deny"
 
 
+def _create_isolated_framework(tmp_path: Path, *, include_policy: bool = True) -> Path:
+    fw_root = tmp_path / "framework"
+    lite_dir = fw_root / "scripts" / "lite"
+    lite_dir.mkdir(parents=True)
+    for name in (
+        "antigravity-pre-tool-gate.sh",
+        "gemini-before-tool-gate.sh",
+        "policy-check.sh",
+        "telemetry.sh",
+    ):
+        src = ROOT / "scripts" / "lite" / name
+        if src.exists():
+            dst = lite_dir / name
+            shutil.copy2(src, dst)
+            dst.chmod(0o755)
+    if include_policy:
+        write_policy(fw_root)
+    return fw_root
+
+
+def test_antigravity_pre_tool_falls_back_to_framework_policy_for_unbootstrapped_workspace(
+    tmp_path: Path,
+) -> None:
+    fw_root = _create_isolated_framework(tmp_path, include_policy=True)
+    gate = fw_root / "scripts" / "lite" / "antigravity-pre-tool-gate.sh"
+    unbootstrapped = tmp_path / "unbootstrapped"
+    unbootstrapped.mkdir()
+
+    safe_payload = {
+        "workspacePaths": [str(unbootstrapped)],
+        "toolCall": {"name": "read_file", "args": {"Path": str(unbootstrapped / "README.md")}},
+    }
+    safe_result = subprocess.run(
+        [BASH, str(gate)],
+        cwd=unbootstrapped,
+        input=json.dumps(safe_payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert safe_result.returncode == 0, safe_result.stderr
+    assert json.loads(safe_result.stdout)["decision"] == "allow"
+
+    destructive_cmd = "".join(["r", "m", " ", "-", "r", "f", " /tmp/example"])
+    deny_payload = {
+        "workspacePaths": [str(unbootstrapped)],
+        "toolCall": {"name": "run_command", "args": {"command": destructive_cmd}},
+    }
+    deny_result = subprocess.run(
+        [BASH, str(gate)],
+        cwd=unbootstrapped,
+        input=json.dumps(deny_payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert deny_result.returncode == 0, deny_result.stderr
+    assert json.loads(deny_result.stdout)["decision"] == "deny"
+
+
+def test_antigravity_pre_tool_does_not_bypass_malformed_project_policy_via_framework_fallback(
+    tmp_path: Path,
+) -> None:
+    fw_root = _create_isolated_framework(tmp_path, include_policy=True)
+    gate = fw_root / "scripts" / "lite" / "antigravity-pre-tool-gate.sh"
+
+    project_bad = tmp_path / "project-bad"
+    project_bad.mkdir()
+    write_policy(project_bad, malformed=True)
+
+    project_broken_link = tmp_path / "project-broken-link"
+    (project_broken_link / ".forgewright").mkdir(parents=True)
+    (project_broken_link / ".forgewright" / "execution-policy.yaml").symlink_to(
+        tmp_path / "nonexistent-policy.yaml"
+    )
+
+    for proj in (project_bad, project_broken_link):
+        payload = {
+            "workspacePaths": [str(proj)],
+            "toolCall": {"name": "read_file", "args": {"Path": str(proj / "README.md")}},
+        }
+        result = subprocess.run(
+            [BASH, str(gate)],
+            cwd=proj,
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout)["decision"] == "deny"
+
+
+def test_antigravity_pre_tool_fails_closed_when_neither_workspace_nor_framework_has_policy(
+    tmp_path: Path,
+) -> None:
+    fw_root = _create_isolated_framework(tmp_path, include_policy=False)
+    gate = fw_root / "scripts" / "lite" / "antigravity-pre-tool-gate.sh"
+    unbootstrapped = tmp_path / "unbootstrapped"
+    unbootstrapped.mkdir()
+
+    payload = {
+        "workspacePaths": [str(unbootstrapped)],
+        "toolCall": {"name": "read_file", "args": {"Path": str(unbootstrapped / "README.md")}},
+    }
+    result = subprocess.run(
+        [BASH, str(gate)],
+        cwd=unbootstrapped,
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["decision"] == "deny"
+
+
+def test_gemini_before_tool_falls_back_to_framework_policy_for_unbootstrapped_workspace(
+    tmp_path: Path,
+) -> None:
+    fw_root = _create_isolated_framework(tmp_path, include_policy=True)
+    gate = fw_root / "scripts" / "lite" / "gemini-before-tool-gate.sh"
+    unbootstrapped = tmp_path / "unbootstrapped"
+    unbootstrapped.mkdir()
+
+    safe_payload = {
+        "tool_name": "run_shell_command",
+        "tool_input": {"command": "echo safe"},
+    }
+    safe_result = subprocess.run(
+        [BASH, str(gate)],
+        cwd=unbootstrapped,
+        input=json.dumps(safe_payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert safe_result.returncode == 0, safe_result.stderr
+    assert json.loads(safe_result.stdout) == {}
+
+    destructive_cmd = "".join(["r", "m", " ", "-", "r", "f", " /tmp/example"])
+    deny_payload = {
+        "tool_name": "run_shell_command",
+        "tool_input": {"command": destructive_cmd},
+    }
+    deny_result = subprocess.run(
+        [BASH, str(gate)],
+        cwd=unbootstrapped,
+        input=json.dumps(deny_payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert deny_result.returncode == 2
+    assert deny_result.stdout == ""
+
+
+def test_gemini_before_tool_does_not_bypass_malformed_project_policy_via_framework_fallback(
+    tmp_path: Path,
+) -> None:
+    fw_root = _create_isolated_framework(tmp_path, include_policy=True)
+    gate = fw_root / "scripts" / "lite" / "gemini-before-tool-gate.sh"
+
+    project_bad = tmp_path / "project-bad"
+    project_bad.mkdir()
+    write_policy(project_bad, malformed=True)
+
+    project_broken_link = tmp_path / "project-broken-link"
+    (project_broken_link / ".forgewright").mkdir(parents=True)
+    (project_broken_link / ".forgewright" / "execution-policy.yaml").symlink_to(
+        tmp_path / "nonexistent-policy.yaml"
+    )
+
+    for proj in (project_bad, project_broken_link):
+        payload = {
+            "tool_name": "run_shell_command",
+            "tool_input": {"command": "echo safe"},
+        }
+        result = subprocess.run(
+            [BASH, str(gate)],
+            cwd=proj,
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 2
+        assert result.stdout == ""
+
+
+def test_gemini_before_tool_fails_closed_when_neither_workspace_nor_framework_has_policy(
+    tmp_path: Path,
+) -> None:
+    fw_root = _create_isolated_framework(tmp_path, include_policy=False)
+    gate = fw_root / "scripts" / "lite" / "gemini-before-tool-gate.sh"
+    unbootstrapped = tmp_path / "unbootstrapped"
+    unbootstrapped.mkdir()
+
+    payload = {
+        "tool_name": "run_shell_command",
+        "tool_input": {"command": "echo safe"},
+    }
+    result = subprocess.run(
+        [BASH, str(gate)],
+        cwd=unbootstrapped,
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert result.stdout == ""
+
+
 CLAUDE_CONTEXT_EVENTS = ("SessionStart", "UserPromptSubmit", "SubagentStart")
 
 

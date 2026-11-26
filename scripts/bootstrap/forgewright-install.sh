@@ -687,7 +687,7 @@ install_hooks() {
     local gate_runtime_file
     for gate_runtime_file in stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py \
         gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh antigravity-stop-hook.sh verify-gate.sh verify_gate.py \
-        run-check.sh run_check.py rule-validator.py rule-ledger.sh policy-check.sh telemetry.sh; do
+        run-check.sh run_check.py rule-validator.py rule-ledger.sh policy-check.sh ensure-project-policy.sh telemetry.sh; do
         atomic_copy_file "${source_dir}/scripts/lite/${gate_runtime_file}" "${gate_runtime_dir}/${gate_runtime_file}"
     done
     chmod +x "$gate_runtime_dir/stop-gate.sh" "$gate_runtime_dir/gemini-before-tool-gate.sh" \
@@ -695,7 +695,10 @@ install_hooks() {
         "$gate_runtime_dir/verify-gate.sh" "$gate_runtime_dir/rule-validator.py" \
         "$gate_runtime_dir/run-check.sh" "$gate_runtime_dir/run_check.py" \
         "$gate_runtime_dir/rule-ledger.sh" "$gate_runtime_dir/policy-check.sh" \
-        "$gate_runtime_dir/telemetry.sh"
+        "$gate_runtime_dir/ensure-project-policy.sh" "$gate_runtime_dir/telemetry.sh"
+    if [[ -f "${source_dir}/.forgewright/execution-policy.yaml" && -f "${gate_runtime_dir}/ensure-project-policy.sh" ]]; then
+        bash "${gate_runtime_dir}/ensure-project-policy.sh" "$source_dir" "$FORGEWRIGHT_DIR" >/dev/null
+    fi
     mkdir -p "${FORGEWRIGHT_DIR}/scripts/runtime" "${FORGEWRIGHT_DIR}/scripts/memory"
     if [[ -f "${source_dir}/scripts/runtime/windows_security.py" ]]; then
         atomic_copy_file "${source_dir}/scripts/runtime/windows_security.py" "${FORGEWRIGHT_DIR}/scripts/runtime/windows_security.py"
