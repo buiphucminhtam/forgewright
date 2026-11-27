@@ -30,6 +30,12 @@ Evaluate rendered output against `PIPELINE_CONTEXT.visual_basis`, validated Visu
 5. PREFERENCE | Taste-only disagreement (`Gu`) | Label `SUBJECTIVE_PREFERENCE` with user-facing rationale; it stays optional and cannot block production or override brand identity unless made an explicit requirement.
 6. VERDICT | Evidence + findings | `APPROVE | REVISE | REJECT | UNVERIFIED`.
 
+For mobile games/WebViews, use the [runtime evidence checklist](../ui-designer/references/game-ui-kit.md#runtime-evidence-for-mobile-ui).
+Include project widths and heights outside the default DOM sweep. Use rendered
+frames for clipping/occlusion, live input for transformed hit areas, target
+devices for grip/assistive technology, and motion plus input/state evidence for
+timing and cue overlap.
+
 ## Verdict Rules
 
 - `APPROVE`: relevant deterministic checks pass and no unresolved material evidence-backed finding remains.

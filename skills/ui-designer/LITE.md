@@ -28,6 +28,7 @@ For every material screen or gameplay HUD, verify these before handoff:
 - **Semantic system:** bound container/border/elevation roles; avoid uniform rounded-card/glow defaults. Keep semantic color families consistent and pair meaning with text/icon/shape cues.
 - **Typography:** verify actual resolution, viewing distance, localization and up-to-200% scaling. Prefer sentence case and locale-aware alignment; reserve all-caps for short labels or approved identity.
 - **Measured accessibility:** calculate contrast instead of judging by eye and apply the target platform's thresholds. Use the source-backed UI/HUD checks in `skills/_shared/protocols/visual-grounding.md`.
+- **Mobile games/WebView:** apply the [mobile UI/HUD guidance](references/game-ui-kit.md#mobile-game-ui-and-hud) for safe-area reflow, reach, occlusion and actual touch targets after camera and display transforms.
 - **States, audit and DOM probe:** review interaction states, responsive/camera conditions, and apply [references/app-ui-ux-mindset.md](references/app-ui-ux-mindset.md) (pre-code `Audit:` line, `U/V/L/D` routing, Unslop 9-pass redline triage in `references/unslop/`, Color Role Table, `N1–N12`, and `scripts/art-direction/ui-dom-probe.mjs --sweep`). A static frame cannot prove motion or state quality.
 
 ## SOLVE Step 3: DECOMPOSE (UI Designer Domain Slots)
