@@ -978,3 +978,24 @@ def test_unslop_redline_integration_and_scripts_contract(tmp_path: Path) -> None
     )
     assert story_res.returncode == 1
     assert 'needs <meta name="unslop-steps"' in story_res.stderr
+
+
+def test_mobile_game_ui_guidance_is_reachable_from_full_and_lite_skills() -> None:
+    ui_guide = UI_SKILL.parent / "references" / "game-ui-kit.md"
+    mobile_routes = (
+        (UI_SKILL, ui_guide, "mobile-game-ui-and-hud", "Mobile game UI and HUD"),
+        (
+            VISION_REVIEW_SKILL,
+            ui_guide,
+            "runtime-evidence-for-mobile-ui",
+            "Runtime evidence for mobile UI",
+        ),
+    )
+    for full_skill, guide, anchor, heading in mobile_routes:
+        assert re.search(rf"^##+ {heading}$", _read(guide), re.MULTILINE)
+        for entrypoint in (full_skill, full_skill.with_name("LITE.md")):
+            links = re.findall(r"\]\(([^)#]+)#([^)]*)\)", _read(entrypoint))
+            assert any(
+                fragment == anchor and (entrypoint.parent / path).resolve() == guide
+                for path, fragment in links
+            ), entrypoint

@@ -3,7 +3,7 @@ title: Game feel judgment and action handoff
 status: active
 owner: Game Designer maintainers
 scope: Moment-to-moment design and approved differentiation, especially Phaser 4 2D and Three.js 3D games
-last_reviewed: 2026-10-17
+last_reviewed: 2026-11-27
 canonical: true
 ---
 
@@ -62,6 +62,47 @@ Trade-offs to resolve explicitly:
 - **Signature and fidelity:** for clone/polish, freeze observed mechanics and
   unknowns; evaluate approved ProductDelta separately. New preview, buffering,
   hitboxes or camera rules may change mechanics. Keep the comparator/oracle.
+
+## Mobile touch, feedback and repetition
+
+When a touch action feels wrong, classify the likely cause before choosing a
+change. Test physicality (what the object does), amplification (what the
+response communicates), and support (how input is interpreted or assisted).
+Pichlmair and Johansen's survey provides these lenses for diagnosing the
+affected action [9].
+
+1. **Make every outcome legible.** For a board-placement gesture, show pickup
+   and the candidate landing cells while the piece is held. Check whether a
+   preview offset, ghost or outline keeps the candidate visible under the
+   player's finger. Release commits only a valid placement. An invalid drop or
+   system cancellation clears the preview and leaves the board intact. When
+   WCAG's web drag criterion applies, provide a single-pointer path such as tap
+   piece, then tap cell, unless a defined exception applies. Use the same
+   placement rules for both paths [10].
+2. **Give frequent, urgent and rare events distinct weight.** For example, show a
+   brief settling cue for a normal placement and a more readable cue for a line
+   clear. During rapid placements and overlapping clears, check whether the
+   player can read the next legal move and see when control returns. Keep the
+   committed score and board state visible with sound, haptics and secondary
+   motion off, including when these settings are combined. Use audio and haptics
+   as reinforcing channels where available [4, 5].
+3. **Compare one treatment in repeated play.** Capture a baseline, change one
+   property (such as preview position or clear-effect intensity), and run the
+   same task with mechanics, starting state and device held constant. Compare
+   wrong-target placements, unrecognized rejects, time to next valid move and
+   player explanations of the outcome as applicable. For a timing claim, align
+   input receipt, first visible acknowledgment, authoritative commit and return
+   to control with the recording. State the measurement boundary, such as
+   event-to-render or instrumented touch-to-photon. Add a cue-off comparison
+   when an effect's contribution is unclear.
+
+In one action RPG experiment, Kao's four treatment levels produced lower play
+time, reported experience and motivation, and performance at the lowest and
+highest levels than at the two middle levels [11].
+In a later action RPG experiment, success-linked feedback improved the measured
+motives while the tested amplification reduced them [12]. Use those results to
+test whether an effect clarifies the action and survives repetition in this
+game. Select timing and intensity from representative play evidence.
 
 ## Worked decisions
 
@@ -179,7 +220,7 @@ trusted observed-host verifier; contract replays do not qualify.
 
 ## Primary sources and limits
 
-Reviewed 2026-10-17. Practitioner accounts guide hypotheses, not universal
+Reviewed 2026-11-27. Practitioner accounts guide hypotheses, not universal
 timings or causal proof. Version-sensitive code must compile against the project
 pin (reference fixtures: Phaser 4.2.1, Three 0.183.2); no version migration implied.
 
@@ -191,3 +232,7 @@ pin (reference fixtures: Phaser 4.2.1, Three 0.183.2); no version migration impl
 6. [Xbox Accessibility Guideline 118](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/118) — photosensitivity, including combined presentation; no safety certification inferred.
 7. [W3C Understanding 2.3.3](https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html) — animation from interaction, Level AAA scope.
 8. [MDN requestAnimationFrame](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame) — elapsed timestamps, refresh/background behavior; not end-to-end input latency.
+9. [Pichlmair and Johansen, Designing Game Feel](https://arxiv.org/abs/2011.09201) — survey and design taxonomy for physicality, amplification and support.
+10. [WCAG 2.2 Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html) and [Pointer Cancellation](https://www.w3.org/WAI/WCAG22/Understanding/pointer-cancellation.html) — applicable web functionality, exceptions and cancellation semantics.
+11. [Kao, The Effects of Juiciness in an Action RPG](https://experts.illinois.edu/en/publications/the-effects-of-juiciness-in-an-action-rpg/) — four feedback treatments in one action RPG.
+12. [Kao et al., How Does Juicy Game Feedback Motivate?](https://people.csail.mit.edu/dkao/pdf/3613904.3642656.pdf) — experiment on feedback amplification, success dependence and variability in an action RPG.

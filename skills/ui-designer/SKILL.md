@@ -54,6 +54,10 @@ redundant cues, actual-scale typography, measured contrast, component/state
 language and responsive/camera evidence. A static frame cannot prove gameplay,
 motion or interaction quality.
 
+For mobile game or WebView UI, apply the [mobile UI/HUD guidance](references/game-ui-kit.md#mobile-game-ui-and-hud)
+for safe-area reflow, reach and occlusion, contrast across gameplay states,
+and effective touch targets after camera and display transforms.
+
 Fixed values and component snippets below are illustrative implementation examples, not project defaults or visual evidence. The validated visual basis/card IDs, target-platform requirements and mandatory UI/HUD gate override them. Generic model familiarity with these examples must never be used to choose project style.
 
 ## Operational App UI/UX Workflow & Mindset

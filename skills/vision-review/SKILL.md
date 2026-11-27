@@ -165,6 +165,14 @@ Inspect primary task/content, overlay coverage, scan hierarchy, semantic color,
 actual-scale typography, component/state language, responsive/safe-area behavior
 and interaction affordance. A static frame cannot prove focus or motion behavior.
 
+For mobile games/WebViews, use the [runtime evidence checklist](../ui-designer/references/game-ui-kit.md#runtime-evidence-for-mobile-ui).
+Check project viewport widths and heights, including any width below the default
+DOM sweep. Inspect frames for hierarchy, clipping and visible occlusion. Use
+live input and measured transformed hit areas for activation and reachability,
+device evidence for grip/assistive technology, and ordered frames or video plus
+input/state traces for timing, recovery and rapid-repeat cue overlap. Mark each
+material claim with missing evidence `UNVERIFIED`.
+
 ### Game 2D / Character / Icon
 
 Inspect silhouette at actual gameplay/display scale, intended stylization,
