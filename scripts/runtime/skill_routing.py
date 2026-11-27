@@ -159,7 +159,9 @@ def excludes_motion_director(prompt: str) -> bool:
         "thiet ke chuyen dong",
         "hieu ung chuyen canh",
     )
-    if any(re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in motion_intent_terms):
+    if any(
+        re.search(r"(?<!\w)" + term + r"(?!\w)", text) for term in motion_intent_terms
+    ):
         return False
     backend_terms = (
         "backend",
@@ -769,13 +771,18 @@ def route_skills(
         selected_mode = decision["mode"]
         selected_source = decision["source"]
         if (
-            (selected_mode is None or (selected_mode == "marketing" and requests_unslop_design(prompt)))
+            (
+                selected_mode is None
+                or (selected_mode == "marketing" and requests_unslop_design(prompt))
+            )
             and mode is None
             and auto_detect
             and (requests_motion_director(prompt) or requests_unslop_design(prompt))
             and "design" in candidates
         ):
-            unslop_only = requests_unslop_design(prompt) and not requests_motion_director(prompt)
+            unslop_only = requests_unslop_design(
+                prompt
+            ) and not requests_motion_director(prompt)
             selected_mode = "design"
             selected_source = "local-rules"
             decision = dict(
@@ -784,7 +791,9 @@ def route_skills(
                 mode="design",
                 source="local-rules",
                 rule_score=max(int(decision.get("rule_score", 0)), 1),
-                reason="unslop-design-intent" if unslop_only else "motion-design-intent",
+                reason="unslop-design-intent"
+                if unslop_only
+                else "motion-design-intent",
             )
         if selected_mode is None:
             force_names = [
@@ -826,7 +835,10 @@ def route_skills(
                 auto_detect
                 and requests_motion_director(prompt)
                 and "motion-director" not in selected_names
-                and _enabled_value(settings.get("motion-director", {}), "motion-director") != "false"
+                and _enabled_value(
+                    settings.get("motion-director", {}), "motion-director"
+                )
+                != "false"
             ):
                 selected_names.append("motion-director")
             for name, value in settings.items():
@@ -907,7 +919,11 @@ def route_skills(
             art_index + 1 if art_index >= 0 else len(selected_names), specialist
         )
         insertion = selected_names.index(specialist) + 1
-        for common in ("game-engineer", "ui-designer"):
+        common_order = ("game-engineer", "ui-designer")
+        if game_engine == "threejs":
+            # Prioritize the UI handoff when the budget cannot fit both overlays.
+            common_order = ("ui-designer", "game-engineer")
+        for common in common_order:
             if common in selected_names:
                 selected_names.remove(common)
                 selected_names.insert(insertion, common)

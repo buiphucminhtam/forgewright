@@ -81,27 +81,35 @@ one scout.
 ## Native Codex Configuration
 
 Read `subagents.codex` from `.production-grade.yaml` before a native Codex
-dispatch. The owner-approved map (2026-11-17) gives the main work to `gpt-6.1-sol`
-(medium reasoning, high for expert), chores and bounded discovery to
-`gpt-6.1-terra` (low), and planning and independent review to `gpt-6-astra`
-(high):
+dispatch. The owner-approved map (2026-11-28) assigns routine
+implementation to `gpt-6.2-sol` at medium effort and expert work to Sol at
+high effort. Use `gpt-6-luna` at low effort for bounded mechanical inventory,
+`gpt-6.1-terra` at low effort for exploration and visual inspection, and
+`gpt-6.2-astra` at high effort for planning and independent review.
 
 ```yaml
 subagents:
   codex:
     default:
-      model: "gpt-6.1-sol"
+      model: "gpt-6.2-sol"
       reasoning_effort: "medium"
     tiers:
-      scout: { model: "gpt-6.1-terra", reasoning_effort: "low" }
-      builder: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
-      expert: { model: "gpt-6.1-sol", reasoning_effort: "high" }
-      planner: { model: "gpt-6-astra", reasoning_effort: "high" }
-      reviewer: { model: "gpt-6-astra", reasoning_effort: "high" }
+      scout: { model: "gpt-6-luna", reasoning_effort: "low" }
+      builder: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
+      expert: { model: "gpt-6.2-sol", reasoning_effort: "high" }
+      planner: { model: "gpt-6.2-astra", reasoning_effort: "high" }
+      reviewer: { model: "gpt-6.2-astra", reasoning_effort: "high" }
     agent_types:
       explorer: { model: "gpt-6.1-terra", reasoning_effort: "low" }
-      worker: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
+      worker: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
 ```
+
+On FrontierCode 2.0 in Codex at max effort, GPT-6.2 Sol scored 43.8%
+at $1.29 per rollout and GPT-6.2 Astra scored 44.2% at $5.97 per rollout.
+The results support the role split. Measure the project workload before
+changing the default reasoning effort or speed tier.
+[Cognition FrontierCode](https://cognition.com/frontiercode) ·
+[OpenAI model selection](https://developers.openai.com/api/docs/guides/model-selection)
 
 Resolve `model` and `reasoning_effort` independently with this precedence:
 
@@ -194,11 +202,12 @@ hosts or install paths remain `UNVERIFIED` until probed. Configuration lives in
 When no project/user preference resolves and the current Codex runtime advertises
 matching model overrides, use this workload mapping as an optional fallback:
 
-| Tier | Preferred model | Workload |
+| Tier or agent type | Preferred model | Workload |
 |---|---|---|
-| `planner`, `reviewer` | Astra | Planning, design decisions and independent review |
-| `expert`, `builder` | Sol (6.1) | Main implementation work; high reasoning for HARD scopes |
-| `scout` | Terra (6.1) | Chores: bounded mechanical tasks and read-only discovery |
+| `planner`, `reviewer` | Astra (6.2) | Planning, design decisions and independent review |
+| `expert`, `builder` | Sol (6.2) | Main implementation work; high reasoning for HARD scopes |
+| `scout` | Luna (6) | Bounded mechanical inventory |
+| `explorer` | Terra (6.1) | Read-only exploration and visual inspection |
 
 The configured native Codex default takes precedence over this preset. These
 family names express routing intent, not verified model IDs.

@@ -1,9 +1,9 @@
 # VERIFY — Evidence Contract
 
-Implementation completion requires observed current workspace/runtime evidence. Schema v2 is the only completion format; Schema v1 is legacy and non-completion after v2 activation. Prose, checkboxes, test counts, and marker-only PASS/GREEN are `UNVERIFIED`.
+Only current workspace/runtime evidence in Schema v2 proves completion. Schema v1 is legacy and non-completion after v2 activation. Prose, checkboxes, counts and marker-only passes are `UNVERIFIED`.
 
 ## QUICK — Compact Evidence
-For clear local reversible work: `CHECK: <command/tool check> | EXIT: <code/result> | RESULT: PASS | FAIL`. One focused check may cover tightly coupled acceptance conditions.
+For local reversible work use `CHECK: <command/tool check> | EXIT: <code/result> | RESULT: PASS | FAIL`. One check may cover related conditions.
 
 ## UI / Visual Evidence
 A successful build alone must not prove responsiveness or visual quality. Use inspected basis, deterministic checks, and rendered evidence when applicable. Record **Project breakpoints/fallback viewports tested** and **Horizontal overflow checked**; missing basis/render is `UNVERIFIED`.
@@ -12,7 +12,7 @@ A successful build alone must not prove responsiveness or visual quality. Use in
 For non-obvious math/algorithms/state/concurrency, use a focused executable test or scratch script and report its result.
 
 ## Runtime Ledger
-For a task-started long-running process, report reclaimed/kept status and actual PID/process state.
+For task-owned long-running processes, report actual PID, state and cleanup or retention.
 
 ## Rules
 1. Never report `PASS` from prose or memory. Narrative claims without current evidence are automatically FALSE.

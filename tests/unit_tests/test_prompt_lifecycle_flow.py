@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
 
@@ -28,7 +29,19 @@ def project():
     root = _make_temp_git_repo()
     (root / "fixture.py").write_text("print('changed')\n")
     yield root
-    shutil.rmtree(root)
+    shutil.rmtree(root, onerror=_retry_readonly_git_cleanup)
+
+
+def _retry_readonly_git_cleanup(function, path, exc_info):
+    error = exc_info[1]
+    if (
+        os.name != "nt"
+        or function is not os.unlink
+        or not isinstance(error, PermissionError)
+    ):
+        raise error
+    os.chmod(path, stat.S_IWRITE)
+    function(path)
 
 
 def stop(root, payload):
@@ -99,6 +112,34 @@ def test_standalone_legacy_discovery_is_preserved(project):
     result = stop(project, {"response_content": _strict_response(evidence)})
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["forgewright"]["completion_state"] == "verified"
+
+
+def test_standalone_discovers_matching_response_among_newer_records(project):
+    evidence = _make_evidence(project, turn="matching-turn")
+    _make_evidence(project, turn="newer-turn", output="unrelated response\n")
+    result = stop(project, {"response_content": _strict_response(evidence)})
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["forgewright"]["completion_state"] == "verified"
+
+
+def test_standalone_discovers_content_equivalent_record_after_staging(project):
+    evidence = _make_evidence(project, turn="staged-turn", with_content=True)
+    old_tree = worktree_fingerprint(project)
+    subprocess.run(["git", "add", "fixture.py"], cwd=project, check=True)
+    assert worktree_fingerprint(project) != old_tree
+    result = stop(project, {"response_content": _strict_response(evidence)})
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["forgewright"]["completion_state"] == "verified"
+
+
+def test_standalone_explicit_missing_turn_cannot_discover_other_evidence(project):
+    evidence = _make_evidence(project, turn="standalone-turn")
+    result = stop(
+        project,
+        {"turn": "missing-turn", "response_content": _strict_response(evidence)},
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["forgewright"]["completion_state"] == "unverified"
 
 
 def prompt(root, identity):
@@ -288,7 +329,8 @@ def test_docs_catalog_has_its_own_bounded_budget(tmp_path, oversized):
         guide.read_bytes()
     ).hexdigest()
     if oversized:
-        catalog["documents"][0]["content"] = "x" * (8 * 1024 * 1024)
+        # The catalog has a 16 MiB budget, separate from the 8 MiB source budget.
+        catalog["documents"][0]["content"] = "x" * (16 * 1024 * 1024)
     path.write_text(json.dumps(catalog))
     _refresh_fixture_fingerprint(tmp_path)
     assert path.stat().st_size > 512 * 1024

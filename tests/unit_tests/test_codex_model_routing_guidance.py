@@ -6,17 +6,32 @@ MODEL_TIER = ROOT / "skills" / "_shared" / "protocols" / "model-tier.md"
 KERNEL_SOLVE = ROOT / "kernel" / "SOLVE.md"
 
 
-def test_codex_gpt56_family_maps_workloads_to_role_tiers() -> None:
+def test_codex_fallback_guidance_matches_the_owner_approved_roles() -> None:
     protocol = MODEL_TIER.read_text(encoding="utf-8")
     kernel = KERNEL_SOLVE.read_text(encoding="utf-8")
-    assert "| `expert` | Sol | Hardest problems" in protocol
-    assert "| `builder` | Terra | Everyday production work" in protocol
-    assert "| `scout` | Luna | High-volume workflows" in protocol
+    fallback = protocol.split("## Codex GPT-6 Family\n", 1)[1].split("\n## ", 1)[0]
+    rows = {}
+    for line in fallback.splitlines():
+        if line.startswith("| `"):
+            role, model, workload = (
+                cell.strip() for cell in line.strip("|").split("|")
+            )
+            assert workload
+            rows[role] = model
+
+    assert rows == {
+        "`planner`, `reviewer`": "Astra (6.2)",
+        "`expert`, `builder`": "Sol (6.2)",
+        "`scout`": "Luna (6)",
+        "`explorer`": "Terra (6.1)",
+    }
 
     # Provider-family mapping is intentionally lazy and protocol-local. The generic
     # boot kernel must stay provider-neutral so unrelated/weak models do not receive
     # stale provider-specific routing instructions.
     assert "GPT-5.6" not in kernel
+    assert "GPT-6" not in kernel
+    assert "gpt-6" not in kernel
     assert "Terra" not in kernel
     assert "Luna" not in kernel
     assert "Sol for" not in kernel

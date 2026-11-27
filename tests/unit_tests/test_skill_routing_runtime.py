@@ -898,6 +898,24 @@ def test_bundled_web_game_routing_uses_requested_engine_without_extra_flags(
     assert "ui-designer" in names
 
 
+def test_bundled_phaser3_routing_keeps_game_engineer_under_description_cap():
+    result = router.route_skills(
+        prompt="a Phaser 3 browser game", project_root=REPO_ROOT
+    )
+
+    assert result["status"] == "ok"
+    budget = result["context_budget"]
+    assert budget["limit"] == 8000
+    assert [skill["name"] for skill in result["skills"]] == [
+        "game-designer",
+        "concept-artist",
+        "art-director",
+        "phaser3-engineer",
+        "game-engineer",
+    ]
+    assert budget["deferred_skills"][0] == "ui-designer"
+
+
 def test_opted_in_web_default_preserves_actual_project_pin(tmp_path):
     config = _write_config(
         tmp_path,

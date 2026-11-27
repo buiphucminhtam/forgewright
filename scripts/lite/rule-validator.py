@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -18,12 +19,22 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evidence_common import (
+    FINAL_PHASES,
+    MAX_EVIDENCE_BYTES,
     acceptance_map,
     command_text,
     read_evidence_json,
     redact,
 )
-from verify_gate import _find_evidence, completion_checks
+from verify_gate import (
+    _current_tree_sha,
+    _find_evidence,
+    _validate_output,
+    _validate_schema,
+    _validate_staleness,
+    _validate_workspace,
+    completion_checks,
+)
 
 
 EXECUTABLE_ROOT = Path(__file__).resolve().parents[2]
@@ -68,6 +79,8 @@ KERNEL_FILES = (
 )
 RULE_MANIFEST = "rule-manifest.json"
 RULE_MANIFEST_MAX_BYTES = 128 * 1024
+MAX_LEGACY_EVIDENCE_ENTRIES = 1024
+MAX_LEGACY_EVIDENCE_CANDIDATES = 16
 RULE_SOURCE_MAX_BYTES = 32 * 1024
 RULE_TOTAL_SOURCE_MAX_BYTES = 256 * 1024
 RULE_MAX_COUNT = 8
@@ -571,6 +584,49 @@ def validate_verify_blocks(
     return errors
 
 
+def _select_standalone_turn(root: Path, response: str) -> str:
+    # Selection only chooses an exact turn. The regular runtime path still
+    # validates the full completion chain and replays the selected evidence.
+    directory = root / ".forgewright" / "verify"
+    if directory.is_symlink() or directory.parent.is_symlink():
+        return ""
+    candidates: list[tuple[int, str]] = []
+    try:
+        with os.scandir(directory) as entries:
+            for index, entry in enumerate(entries):
+                if index >= MAX_LEGACY_EVIDENCE_ENTRIES:
+                    return ""
+                if not entry.name.endswith(".json"):
+                    continue
+                turn = entry.name.removesuffix(".json")
+                if not turn or turn != turn.strip() or turn in {".", ".."}:
+                    continue
+                info = entry.stat(follow_symlinks=False)
+                if stat.S_ISREG(info.st_mode) and info.st_size <= MAX_EVIDENCE_BYTES:
+                    candidates.append((info.st_mtime_ns, turn))
+    except OSError:
+        return ""
+
+    for _, turn in sorted(candidates, reverse=True)[:MAX_LEGACY_EVIDENCE_CANDIDATES]:
+        try:
+            evidence = read_evidence_json(root, directory / f"{turn}.json")
+            if (
+                evidence.get("turn") == turn
+                and evidence.get("phase") in FINAL_PHASES
+                and evidence.get("exit_code") == 0
+                and not _validate_schema(evidence)
+                and not _validate_staleness(evidence)
+                and not _validate_workspace(evidence, root)
+                and not _validate_output(evidence)
+                and not validate_verify_blocks(response, evidence)
+                and evidence.get("tree_sha") == _current_tree_sha(root, evidence)
+            ):
+                return turn
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return ""
+
+
 def record_violation(note: str) -> int:
     ledger = EXECUTABLE_ROOT / "scripts" / "lite" / "rule-ledger.sh"
     result = subprocess.run(
@@ -639,6 +695,9 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--static", action="store_true")
     mode.add_argument("--runtime", action="store_true")
+    mode.add_argument(
+        "--select-standalone-turn", action="store_true", help=argparse.SUPPRESS
+    )
     parser.add_argument("--transcript", help="Transcript path, or '-' for stdin")
     args = parser.parse_args()
     if WORKSPACE_ERROR:
@@ -650,6 +709,11 @@ def main() -> int:
         raw = read_runtime_input(args.transcript)
     except (OSError, UnicodeError) as error:
         return _runtime_input_failure(str(error))
+    if args.select_standalone_turn:
+        turn = _select_standalone_turn(PROJECT_ROOT, raw)
+        if turn:
+            print(turn)
+        return 0
     return runtime_validation(raw)
 
 

@@ -32,11 +32,8 @@ else:
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evidence_common import (
-    FINAL_PHASES,
     MAX_EVIDENCE_BYTES,
-    SCHEMA_VERSION,
     read_evidence_bytes,
-    read_evidence_json,
     worktree_fingerprint,
 )
 from windows_secure_io import (
@@ -63,7 +60,7 @@ except ImportError:  # An older global install must preserve the old Stop path.
         return ContinuityResult("off")
 
 
-from verify_gate import _check_stubs, _find_evidence, changed_files
+from verify_gate import _check_stubs, changed_files
 from turn_scope import files_changed_this_turn
 
 
@@ -140,25 +137,28 @@ def _safe_selector(value: Any) -> str:
     return value
 
 
-def _mapped_evidence(root: Path, selector: str) -> tuple[bool, bool]:
-    """Return (path exists in any form, exact passing final record)."""
-    if not selector:
-        return False, False
-    candidate = root / ".forgewright" / "verify" / f"{selector}.json"
-    mapped = candidate.exists() or candidate.is_symlink()
-    if not mapped:
-        return False, False
+def _discover_legacy_turn(root: Path, response: str) -> str:
+    if _has_symlink_component(root, root / ".forgewright" / "verify"):
+        return ""
+    validator = Path(__file__).resolve().parent / "rule-validator.py"
     try:
-        evidence = read_evidence_json(root, candidate)
-    except ValueError:
-        return True, False
-    exact_final = (
-        evidence.get("schema_version") == SCHEMA_VERSION
-        and evidence.get("turn") == selector
-        and evidence.get("phase") in FINAL_PHASES
-        and evidence.get("exit_code") == 0
-    )
-    return True, exact_final
+        result = subprocess.run(
+            [sys.executable, str(validator), "--select-standalone-turn"],
+            cwd=root,
+            env={
+                **os.environ,
+                "FORGEWRIGHT_WORKSPACE": str(root),
+                "PYTHONIOENCODING": "utf-8",
+            },
+            input=response,
+            encoding="utf-8",
+            capture_output=True,
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError, UnicodeError):
+        return ""
+    return _safe_selector(result.stdout) if result.returncode == 0 else ""
 
 
 def _normalize_payload(
@@ -180,22 +180,15 @@ def _normalize_payload(
         normalized.pop("turn_id", None)
         return normalized
     selector = explicit or alternate
-    if not selector and "turn" not in normalized and "turn_id" not in normalized:
+    if "turn" not in normalized and "turn_id" not in normalized:
         session_selector = _safe_selector(normalized.get("session_id"))
-        if _mapped_evidence(root, session_selector)[0]:
+        mapped = root / ".forgewright" / "verify" / f"{session_selector}.json"
+        if session_selector and (mapped.exists() or mapped.is_symlink()):
             selector = session_selector
-    mapped, exact_final = _mapped_evidence(root, selector)
-    if selector and mapped:
-        # Mapped-but-invalid evidence fails closed without fallback.
+        elif _has_verify_marker(normalized):
+            selector = _discover_legacy_turn(root, normalized["response_content"])
+    if selector:
         normalized["turn"] = selector
-    elif selector and exact_final:
-        normalized["turn"] = selector
-    else:
-        discovered = _find_evidence(root, "")
-        if discovered is not None:
-            normalized["turn"] = discovered.stem
-        elif selector:
-            normalized["turn"] = selector
     normalized.pop("turn_id", None)
     return normalized
 

@@ -20,20 +20,20 @@ expertMode:
 # when the active spawn_agent schema advertises the exact model and effort.
 subagents:
   codex:
-    # Owner-approved 2026-11-17: gpt-6.1-sol does the main work, gpt-6.1-terra
-    # the chores, gpt-6-astra plans and reviews.
+    # Owner-approved 2026-11-28: Luna handles bounded inventory, Terra handles
+    # exploration, Sol implements, and Astra plans and reviews.
     default:
-      model: "gpt-6.1-sol"
+      model: "gpt-6.2-sol"
       reasoning_effort: "medium"
     tiers:
-      scout: { model: "gpt-6.1-terra", reasoning_effort: "low" }
-      builder: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
-      expert: { model: "gpt-6.1-sol", reasoning_effort: "high" }
-      planner: { model: "gpt-6-astra", reasoning_effort: "high" }
-      reviewer: { model: "gpt-6-astra", reasoning_effort: "high" }
+      scout: { model: "gpt-6-luna", reasoning_effort: "low" }
+      builder: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
+      expert: { model: "gpt-6.2-sol", reasoning_effort: "high" }
+      planner: { model: "gpt-6.2-astra", reasoning_effort: "high" }
+      reviewer: { model: "gpt-6.2-astra", reasoning_effort: "high" }
     agent_types:
       explorer: { model: "gpt-6.1-terra", reasoning_effort: "low" }
-      worker: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
+      worker: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
   claude:
     # Claude Code Agent tool: tier -> plugin agent (model pinned in agents/*.md
     # frontmatter) plus a model alias that is passed only when the active
