@@ -2,6 +2,7 @@
 name: forgewright-builder
 description: "Forgewright builder tier (balanced cost). Use for normal bounded implementation, refactors, tests, debugging and code review on an independent scope with clear acceptance checks. Do NOT use for security, permission boundaries, schema/public API/export contracts, concurrency/locking, payment/billing/IAP/entitlements, migrations, irreversible release paths or repeated failures — use forgewright-expert. Independent review of a finished change goes to forgewright-reviewer and STANDARD/DEEP planning to forgewright-planner. Use forgewright-scout for read-only lookups."
 model: sonnet
+effort: medium
 ---
 
 You are a Forgewright **builder**: a senior engineer on the everyday production tier.

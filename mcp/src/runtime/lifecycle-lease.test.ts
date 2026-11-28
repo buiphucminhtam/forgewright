@@ -1,7 +1,23 @@
 import { mkdtempSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { processQuery } = vi.hoisted(() => ({ processQuery: vi.fn() }));
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    execFile: Object.assign(
+      () => {
+        throw new Error('unexpected unpromisified execFile');
+      },
+      {
+        [Symbol.for('nodejs.util.promisify.custom')]: processQuery,
+      },
+    ),
+  };
+});
 
 import {
   LifecycleLeaseStore,
@@ -13,6 +29,107 @@ import {
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+
+describe('Windows lifecycle process query certainty', () => {
+  const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+  const alive = {
+    stdout: JSON.stringify({
+      state: 'alive',
+      pidStartedAt: 'start-a',
+      pgid: 901,
+      parentPid: 800,
+      parentStartedAt: 'parent-a',
+      command: 'owned-worker',
+    }),
+    stderr: '',
+  };
+
+  beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    processQuery.mockReset().mockResolvedValue(alive);
+  });
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', platform);
+    processQuery.mockReset();
+  });
+
+  async function windowsFixture() {
+    const root = mkdtempSync(join(tmpdir(), 'forgewright-windows-query-'));
+    roots.push(root);
+    const signal = vi.fn(async () => {});
+    const store = new LifecycleLeaseStore({
+      root,
+      sender: { signal },
+      now: () => 1_000,
+      wait: async () => {},
+    });
+    const lease = await store.acquire({
+      workspaceId: 'workspace-a',
+      sessionId: 'session-a',
+      identity: await store.inspectCurrent(901),
+      ttlMs: 0,
+    });
+    const path = join(root, `${lease.leaseId}.json`);
+    return { store, lease, signal, path, before: readFileSync(path, 'utf8') };
+  }
+
+  it.each(['access denied', 'CIM provider unavailable', 'query timed out', 'exit 1'])(
+    'retains the lease on %s instead of claiming death',
+    async (message) => {
+      const { store, lease, signal, path, before } = await windowsFixture();
+      const failure = new Error(message);
+      processQuery.mockRejectedValue(failure);
+      await expect(store.reap(lease.leaseId, lease.ownerToken)).rejects.toThrow(
+        'process_identity_unavailable:901',
+      );
+      expect(readFileSync(path, 'utf8')).toBe(before);
+      expect(signal).not.toHaveBeenCalled();
+      expect(await store.reconcile()).toEqual([
+        { leaseId: lease.leaseId, result: 'reconcile_error' },
+      ]);
+      expect(readFileSync(path, 'utf8')).toBe(before);
+      expect(signal).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    '',
+    'garbage',
+    'null',
+    '{}',
+    '{"state":"dead","pid":902}',
+    '{"state":"alive","pidStartedAt":"a","command":"x","pgid":902,"parentPid":0,"parentStartedAt":""}',
+    '{"state":"alive","pidStartedAt":7,"command":"x","pgid":901,"parentPid":0,"parentStartedAt":""}',
+  ])('rejects incomplete or unbound query output %s', async (stdout) => {
+    const { store, lease, signal, path, before } = await windowsFixture();
+    processQuery.mockResolvedValue({ stdout, stderr: '' });
+    await expect(store.reap(lease.leaseId, lease.ownerToken)).rejects.toThrow(
+      'process_identity_unavailable:901',
+    );
+    expect(readFileSync(path, 'utf8')).toBe(before);
+    expect(signal).not.toHaveBeenCalled();
+  });
+
+  it.each([2, 3, 4])('retains ownership if query %i fails during reap', async (failureAt) => {
+    const { store, lease, signal, path, before } = await windowsFixture();
+    processQuery.mockReset();
+    for (let index = 1; index < failureAt; index += 1) processQuery.mockResolvedValueOnce(alive);
+    processQuery.mockRejectedValue(new Error('query unavailable'));
+    await expect(store.reap(lease.leaseId, lease.ownerToken)).rejects.toThrow(
+      'process_identity_unavailable:901',
+    );
+    expect(readFileSync(path, 'utf8')).toBe(before);
+    expect(signal.mock.calls).toEqual(failureAt === 2 ? [] : [[901, 'SIGTERM']]);
+  });
+
+  it('reclaims only successful explicit absence bound to the requested PID', async () => {
+    const { store, lease, signal, path } = await windowsFixture();
+    processQuery.mockResolvedValue({ stdout: '{"state":"dead","pid":901}', stderr: '' });
+    await expect(store.reap(lease.leaseId, lease.ownerToken)).resolves.toBe('dead_reclaimed');
+    expect(JSON.parse(readFileSync(path, 'utf8')).status).toBe('closed');
+    expect(signal).not.toHaveBeenCalled();
+  });
 });
 
 function fixture() {

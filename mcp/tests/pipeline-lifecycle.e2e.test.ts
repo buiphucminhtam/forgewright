@@ -31,7 +31,7 @@ it.each(['checkout', 'installed'])(
     git('config', 'user.name', 'Fixture');
     writeFileSync(
       join(root, 'check.py'),
-      `import os, pathlib, subprocess, sys, time\ncontrol = pathlib.Path('.forgewright/runtime/stdio')\nif (control / 'slow').exists():\n    child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])\n    (control / 'replay-pids.json').write_text(__import__('json').dumps([os.getpgrp(), os.getpid(), child.pid]))\n    time.sleep(30)\ndef bounded(value):\n    if value < 0: raise ValueError("negative")\n    return value\nassert bounded(7) == 7\ntry:\n    bounded(-1)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError("negative accepted")\nprint("bounded input and rejection checked")\n`,
+      `import os, pathlib, subprocess, sys, time\ncontrol = pathlib.Path('.forgewright/runtime/stdio')\nif (control / 'slow').exists():\n    child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])\n    (control / 'replay-pids.json').write_text(__import__('json').dumps([(os.getppid() if os.name == "nt" else os.getpgrp()), os.getpid(), child.pid]))\n    time.sleep(30)\ndef bounded(value):\n    if value < 0: raise ValueError("negative")\n    return value\nassert bounded(7) == 7\ntry:\n    bounded(-1)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError("negative accepted")\nprint("bounded input and rejection checked")\n`,
     );
     writeFileSync(join(root, '.gitignore'), '.forgewright/runtime/\n.forgewright/verify/\n');
     copyFileSync(
@@ -71,7 +71,7 @@ it.each(['checkout', 'installed'])(
         const source = existsSync(local) ? local : join(framework, 'node_modules', name);
         const destination = join(installation, 'node_modules', name);
         mkdirSync(dirname(destination), { recursive: true });
-        symlinkSync(source, destination, 'dir');
+        symlinkSync(source, destination, process.platform === 'win32' ? 'junction' : 'dir');
       }
       execFileSync(
         'bash',
@@ -79,9 +79,9 @@ it.each(['checkout', 'installed'])(
           '-c',
           'source "$1"; FORGEWRIGHT_DIR="$2"; CANONICAL_STAGE_DIR="$3"; stage_runtime_support',
           'stage-support',
-          join(framework, 'scripts/mcp/forgewright-mcp-setup.sh'),
-          framework,
-          installation,
+          join(framework, 'scripts/mcp/forgewright-mcp-setup.sh').replaceAll('\\', '/'),
+          framework.replaceAll('\\', '/'),
+          installation.replaceAll('\\', '/'),
         ],
         { cwd: installation },
       );
@@ -94,6 +94,7 @@ it.each(['checkout', 'installed'])(
       stderr: 'pipe',
       env: {
         PATH: process.env.PATH ?? '',
+        ...(process.env.SYSTEMROOT ? { SYSTEMROOT: process.env.SYSTEMROOT } : {}),
         HOME: runtime,
         TMPDIR: tmpdir(),
         LANG: 'en_US.UTF-8',
@@ -248,7 +249,7 @@ it.each(['checkout', 'installed'])(
         controller.abort();
         if (ownedGroup) {
           try {
-            process.kill(-ownedGroup, 'SIGKILL');
+            process.kill(process.platform === 'win32' ? ownedGroup : -ownedGroup, 'SIGKILL');
           } catch (error) {
             if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
           }

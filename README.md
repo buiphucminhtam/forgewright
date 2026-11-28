@@ -259,19 +259,23 @@ Verified with a real headless compaction; opt out with `FORGEWRIGHT_MEMORY_CAPTU
 
 ### Claude Code: tier agents pick the subagent model
 
-The plugin ships [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, Read/Grep/Glob only),
-[`forgewright-builder`](agents/forgewright-builder.md) (`sonnet`),
-[`forgewright-expert`](agents/forgewright-expert.md) (`opus`, HARD signals),
-[`forgewright-planner`](agents/forgewright-planner.md) (`fable`, planning and design decisions,
-no edits) and [`forgewright-reviewer`](agents/forgewright-reviewer.md) (`fable`, independent
+The plugin ships [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, effort `low`, Read/Grep/Glob only),
+[`forgewright-builder`](agents/forgewright-builder.md) (`sonnet`, `medium`),
+[`forgewright-expert`](agents/forgewright-expert.md) (`opus`, `high`, HARD signals),
+[`forgewright-planner`](agents/forgewright-planner.md) (`fable`, `high`, planning and design decisions,
+no edits) and [`forgewright-reviewer`](agents/forgewright-reviewer.md) (`fable`, `high`, independent
 review and HARD review-2, no edits). Their descriptions carry the difficulty criteria, so
 delegation picks the cheapest tier likely to finish correctly (description-driven). For
 orchestrated dispatch the resolver floors any HARD signal at `expert`, so HARD scopes cannot be
 downgraded; `planner` and `reviewer` are kept as requested, falling back to `expert` under HARD
-signals when `fable` is not available. Native Codex uses `gpt-6.1-terra`
-for chores, `gpt-6.1-sol` for the main work and `gpt-6-astra` for planning and review.
+signals when `fable` is not available. Native Codex uses `gpt-6-luna` for bounded inventory, `gpt-6.1-terra`
+for exploration, `gpt-6.2-sol` for the main work and `gpt-6.2-astra` for planning and review.
+Antigravity adds `subagents.antigravity` (`gemini-3.8-flash-low` for `scout`, `gemini-4-neon-medium`
+for `builder`, `gemini-4-neon-high` for `expert`/`planner`/`reviewer`, and `gemini-pro-orchestrator-neon`),
+alongside a cross-platform 6-field skill/agent card contract ([skill-maker](skills/skill-maker/LITE.md))
+and bounded 2-round Checker / human-gated weekly review loops ([parallel protocol](skills/_shared/protocols/parallel-protocol.md)).
 [claude-subagent-routing.py](scripts/runtime/claude-subagent-routing.py) maps a tier to Agent
-tool arguments and emits only advertised agents and model aliases
+tool arguments and emits only advertised agents, model aliases and effort levels
 ([model-tier protocol](skills/_shared/protocols/model-tier.md)).
 
 ### Claude Code: one rule-context injection per event

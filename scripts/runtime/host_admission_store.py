@@ -22,6 +22,22 @@ class AdmissionError(RuntimeError):
     """Stable public diagnostic code."""
 
 
+def _redirected_path(path: Path) -> bool:
+    """Inspect lexical components before mkdir/resolve can follow redirection."""
+    path = path.absolute()
+    for component in [*reversed(path.parents), path]:
+        try:
+            info = component.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode) or (
+            getattr(info, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        ):
+            return True
+    return False
+
+
 class AdmissionStore:
     def __init__(
         self,
@@ -37,11 +53,11 @@ class AdmissionStore:
             if home is not None
             else Path.home() / ".forgewright/runtime/admission"
         )
-        if path.is_symlink():
+        if _redirected_path(path):
             raise AdmissionError("unsafe-state-directory")
         path.mkdir(parents=True, mode=0o700, exist_ok=True)
         info = path.lstat()
-        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
+        if not stat.S_ISDIR(info.st_mode) or _redirected_path(path):
             raise AdmissionError("unsafe-state-directory")
         if hasattr(os, "getuid") and (
             info.st_uid != os.getuid() or info.st_mode & 0o077

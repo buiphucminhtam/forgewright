@@ -8,7 +8,17 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+case "${OSTYPE:-}" in
+    msys*|cygwin*) SCRIPT_PATH="$(cygpath -u -- "$SCRIPT_PATH")" ;;
+esac
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+# Framework-owned import location, never a caller-selected execute adapter.
+FORGEWRIGHT_ESCALATION_LIBRARY="$SCRIPT_DIR"
+case "${OSTYPE:-}" in
+    msys*|cygwin*) FORGEWRIGHT_ESCALATION_LIBRARY="$(cygpath -m -- "$SCRIPT_DIR")" ;;
+esac
+export FORGEWRIGHT_ESCALATION_LIBRARY
 # Respect a pre-existing PROJECT_ROOT (e.g., set by test harness or CI).
 # Only compute from script path when not already exported.
 : "${PROJECT_ROOT:="$(cd "$SCRIPT_DIR/../.." && pwd)"}"
@@ -52,9 +62,22 @@ def _yaml_int(text, key, default):
         return default
 
 
+def _yaml_bool(text, key, default=False):
+    v = _yaml_scalar(text, key)
+    if v is None:
+        return default
+    lowered = v.strip().lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    return default
+
+
 def load_config():
     config_path = os.path.join(os.environ.get("PROJECT_ROOT", "."), ".production-grade.yaml")
     defaults = {
+        "enabled": False,
         "activeCli": "agy",
         "fallbackCli": None,
         "maxExpertCallsPerRun": 5,
@@ -69,8 +92,11 @@ def load_config():
             text = f.read()
         # Only read inside the expertMode block (stop at next top-level key)
         block_m = re.search(r'(?m)^expertMode:\s*\n((?:[ \t]+.*\n?)*)', text)
-        block = block_m.group(0) if block_m else text
+        if not block_m:
+            return defaults
+        block = block_m.group(0)
 
+        enabled = _yaml_bool(block, "enabled", False)
         active  = _yaml_scalar(block, "activeCli")  or defaults["activeCli"]
         fallback = _yaml_scalar(block, "fallbackCli")
 
@@ -86,6 +112,7 @@ def load_config():
         )
 
         return {
+            "enabled":                enabled,
             "activeCli":              active,
             "fallbackCli":            fallback if fallback else None,
             "maxExpertCallsPerRun":   max_calls,
@@ -321,6 +348,19 @@ def terminate_leased_process(proc):
 
 
 def run_provider(argv, env, timeout_seconds):
+    if os.name == "nt":
+        # main has already enforced provider, confirmation and cost gates.
+        # Native authority is HostAdmission + owned Job Object completion,
+        # never the observe-only legacy runtime-lease acquire override.
+        sys.path.insert(0, os.environ["FORGEWRIGHT_ESCALATION_LIBRARY"])
+        from windows_escalation import validate_provider, run_internal
+        try:
+            descriptor = validate_provider(argv, env, timeout_seconds)
+        except (OSError, ValueError, KeyError):
+            return subprocess.CompletedProcess(argv, 125, "",
+                "[ESCALATE] ERROR: native provider descriptor/executable unavailable; "
+                "batch/shell fallback refused.\n")
+        return run_internal(descriptor, env)
     # The child waits behind a pipe barrier until its RLG lease is recorded.
     # If leasing fails, closing the pipe exits the wrapper without starting the provider.
     wrapper = [
@@ -405,25 +445,55 @@ def main():
         )
         sys.exit(1)
 
-    # Budget check
-    prior = count_prior_escalations()
-    if prior >= max_calls:
-        print(
-            f"[ESCALATE] BUDGET EXCEEDED: {prior}/{max_calls} expert calls used this run.\n"
-            f"  Pausing. Security / schema / public-interface work must wait for user approval.\n"
-            f"  Raise expertMode.budget.maxExpertCallsPerRun in .production-grade.yaml to continue.",
-            file=sys.stderr
-        )
-        sys.exit(2)
+    def enforce_call_gates():
+        used = count_prior_escalations()
+        if used >= max_calls:
+            print(
+                f"[ESCALATE] BUDGET EXCEEDED: {used}/{max_calls} expert calls used this run.\n"
+                f"  Pausing. Security / schema / public-interface work must wait for user approval.\n"
+                f"  Raise expertMode.budget.maxExpertCallsPerRun in .production-grade.yaml to continue.",
+                file=sys.stderr
+            )
+            sys.exit(2)
+        if used >= req_confirm:
+            print(
+                f"[ESCALATE] CONFIRMATION REQUIRED: {used}/{req_confirm} calls used (requireConfirmationAbove).\n"
+                f"  Re-run with FW_CONFIRM=1 to proceed.",
+                file=sys.stderr
+            )
+            if os.environ.get("FW_CONFIRM") != "1":
+                sys.exit(3)
+        return used
 
-    if prior >= req_confirm:
-        print(
-            f"[ESCALATE] CONFIRMATION REQUIRED: {prior}/{req_confirm} calls used (requireConfirmationAbove).\n"
-            f"  Re-run with FW_CONFIRM=1 to proceed.",
-            file=sys.stderr
+    def write_escalation_record(cli_name, argv_used, returncode, latency_ms, suffix=""):
+        log_dir = escalation_log_dir()
+        run_id = os.environ.get("FW_RUN_ID", time.strftime("%Y%m%d"))
+        safe_task = re.sub(r'[^A-Za-z0-9_-]', '-', task_desc[:40])
+        extra = f"-{suffix}" if suffix else ""
+        record_path = os.path.join(
+            log_dir, f"{run_id}-{int(time.time() * 1000)}{extra}-{safe_task}.json"
         )
-        if os.environ.get("FW_CONFIRM") != "1":
-            sys.exit(3)
+        record = {
+            "timestamp": time.time(),
+            "cli": cli_name,
+            "task": task_desc,
+            "argv": argv_used,
+            "exit_code": returncode,
+            "latency_ms": latency_ms,
+            "timeout_seconds": provider_timeout,
+            "timed_out": returncode == 124,
+        }
+        with open(record_path, "w") as fh:
+            json.dump(record, fh, indent=2)
+        return record_path
+
+    prior = enforce_call_gates()
+    if not cfg.get("enabled", False):
+        print(
+            "[ESCALATE] REFUSED: expertMode.enabled is not true in .production-grade.yaml.",
+            file=sys.stderr,
+        )
+        sys.exit(125)
 
     # Build context packet (diff + evidence redacted)
     evidence_slices = get_evidence()
@@ -446,7 +516,7 @@ def main():
         print(f"[DRY RUN] Would execute argv: {argv}")
         print(f"[DRY RUN] Budget: {prior}/{max_calls} calls used. reqConfirm threshold: {req_confirm}.")
         print(f"[DRY RUN] Provider timeout: {provider_timeout}s.")
-        print(f"[DRY RUN] Escalation log dir: {escalation_log_dir()}")
+        print(f"[DRY RUN] Escalation log dir: {escalation_log_dir().replace(os.sep, '/')}")
         sys.exit(0)
 
     # Write packet to temp file (keeps prompt off argv and out of ps output)
@@ -478,24 +548,9 @@ def main():
         if result.stderr:
             print(result.stderr, file=sys.stderr)
 
-        # Persist escalation record to .forgewright/escalations/
-        log_dir = escalation_log_dir()
-        run_id  = os.environ.get("FW_RUN_ID", time.strftime("%Y%m%d"))
-        safe_task = re.sub(r'[^A-Za-z0-9_-]', '-', task_desc[:40])
-        record_path = os.path.join(log_dir, f"{run_id}-{int(time.time())}-{safe_task}.json")
-
-        record = {
-            "timestamp":  time.time(),
-            "cli":        active_cli,
-            "task":       task_desc,
-            "argv":       argv,
-            "exit_code":  result.returncode,
-            "latency_ms": latency_ms,
-            "timeout_seconds": provider_timeout,
-            "timed_out": result.returncode == 124,
-        }
-        with open(record_path, "w") as fh:
-            json.dump(record, fh, indent=2)
+        record_path = write_escalation_record(
+            active_cli, argv, result.returncode, latency_ms, "primary"
+        )
 
         print(f"[ESCALATE] Done in {latency_ms}ms. Record: {record_path}")
 
@@ -505,14 +560,21 @@ def main():
             and fallback_cli
             and fallback_cli in KNOWN_CLIS
         ):
+            enforce_call_gates()
             print(f"[ESCALATE] Primary CLI exited {result.returncode}. Trying fallback: {fallback_cli}.")
             fallback_argv = build_argv(fallback_cli, prompt_text)
+            fb_start = time.time()
             fb_result = run_provider(
                 fallback_argv, delegation_env, provider_timeout
             )
+            fb_latency_ms = int((time.time() - fb_start) * 1000)
             print(fb_result.stdout)
             if fb_result.stderr:
                 print(fb_result.stderr, file=sys.stderr)
+            fb_record_path = write_escalation_record(
+                fallback_cli, fallback_argv, fb_result.returncode, fb_latency_ms, "fallback"
+            )
+            print(f"[ESCALATE] Fallback done in {fb_latency_ms}ms. Record: {fb_record_path}")
             sys.exit(fb_result.returncode)
 
         sys.exit(result.returncode)

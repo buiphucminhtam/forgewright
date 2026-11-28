@@ -468,3 +468,156 @@ def test_kernel_routes_planning_and_review_to_role_tiers() -> None:
     for generated in ("CLAUDE.md", "AGENTS.md", "GEMINI.md"):
         text = (ROOT / generated).read_text(encoding="utf-8")
         assert "planning goes to the `planner` role tier" in text, generated
+
+
+EXPECTED_EFFORT = {
+    "scout": "low",
+    "builder": "medium",
+    "expert": "high",
+    "planner": "high",
+    "reviewer": "high",
+}
+CLAUDE_EFFORTS = ["low", "medium", "high", "xhigh", "max"]
+
+
+@pytest.mark.parametrize("source", [CONFIG, TEMPLATE])
+def test_claude_tier_config_sets_effort_matching_codex(source: Path) -> None:
+    subagents = yaml.safe_load(source.read_text(encoding="utf-8"))["subagents"]
+    claude = {
+        tier: entry["effort"] for tier, entry in subagents["claude"]["tiers"].items()
+    }
+    codex = {
+        tier: entry["reasoning_effort"]
+        for tier, entry in subagents["codex"]["tiers"].items()
+    }
+    assert claude == EXPECTED_EFFORT
+    assert claude == codex
+
+
+@pytest.mark.parametrize("tier", sorted(EXPECTED))
+def test_tier_agent_definitions_pin_the_configured_effort(tier: str) -> None:
+    agent, _ = EXPECTED[tier]
+    meta = _frontmatter(AGENTS / f"{agent}.md")
+    assert meta["effort"] == EXPECTED_EFFORT[tier]
+    assert meta["effort"] in CLAUDE_EFFORTS
+
+
+@pytest.mark.parametrize("tier", sorted(EXPECTED))
+def test_resolver_emits_advertised_effort(tier: str) -> None:
+    caps = {**ALL_CAPS, "efforts": CLAUDE_EFFORTS}
+    result = _resolver().resolve_routing(_config(), caps, tier=tier)
+    agent, model = EXPECTED[tier]
+    assert result["agent_args"] == {
+        "subagent_type": f"forgewright:{agent}",
+        "model": model,
+        "effort": EXPECTED_EFFORT[tier],
+    }
+    assert result["effort_selection"] == "verified"
+    assert result["configured"]["effort"] == EXPECTED_EFFORT[tier]
+
+
+def test_resolver_never_substitutes_an_unadvertised_effort() -> None:
+    caps = {**ALL_CAPS, "efforts": ["low", "medium"]}
+    result = _resolver().resolve_routing(_config(), caps, tier="expert")
+    assert "effort" not in result["agent_args"]
+    assert result["agent_args"]["model"] == "opus"
+    assert result["effort_selection"] == "provider-managed"
+    assert any("effort 'high' not advertised" in reason for reason in result["reasons"])
+
+
+@pytest.mark.parametrize(
+    "efforts", [None, "high", "medium", [1], [""], ["medium", 1], ["MEDIUM"]]
+)
+def test_resolver_malformed_or_missing_efforts_inherit_parent(efforts: object) -> None:
+    caps = dict(ALL_CAPS)
+    if efforts is not None:
+        caps["efforts"] = efforts
+    result = _resolver().resolve_routing(_config(), caps, tier="builder")
+    assert "effort" not in result["agent_args"]
+    assert result["effort_selection"] == "provider-managed"
+
+
+def test_role_tier_hard_fallback_carries_expert_effort() -> None:
+    config = _config()
+    tiers = config["subagents"]["claude"]["tiers"]
+    tiers["expert"] = {**tiers["expert"], "effort": "xhigh"}
+    tiers["planner"] = {**tiers["planner"], "effort": "max"}
+    caps = {
+        **ALL_CAPS,
+        "models": ["haiku", "sonnet", "opus"],
+        "efforts": CLAUDE_EFFORTS,
+    }
+    result = _resolver().resolve_routing(
+        config, caps, tier="planner", risk_signals=["schema migration"]
+    )
+    assert result["tier"] == "expert"
+    assert result["agent_args"]["effort"] == "xhigh"
+    assert result["configured"]["effort"] == "xhigh"
+
+
+def test_role_tier_hard_fallback_reasons_have_no_duplicates() -> None:
+    caps = {
+        "models": ["haiku", "sonnet", "opus"],
+        "agent_types": ALL_CAPS["agent_types"],
+    }
+    result = _resolver().resolve_routing(
+        _config(), caps, tier="planner", risk_signals=["schema migration"]
+    )
+    assert result["tier"] == "expert"
+    assert (
+        "efforts capability missing or malformed; passing no effort"
+        in result["reasons"]
+    )
+    assert len(result["reasons"]) == len(set(result["reasons"]))
+
+
+def test_resolver_resolves_effort_independently_of_model() -> None:
+    caps = {**ALL_CAPS, "models": [], "efforts": CLAUDE_EFFORTS}
+    result = _resolver().resolve_routing(_config(), caps, tier="builder")
+    assert result["agent_args"] == {
+        "subagent_type": "forgewright:forgewright-builder",
+        "effort": "medium",
+    }
+    assert result["model_selection"] == "provider-managed"
+    assert result["effort_selection"] == "verified"
+
+
+def test_resolver_cli_emits_effort_from_shipped_frontmatter() -> None:
+    shipped = {path.stem: _frontmatter(path) for path in AGENTS.glob("*.md")}
+    caps = {
+        **ALL_CAPS,
+        "efforts": sorted({meta["effort"] for meta in shipped.values()}),
+    }
+    for tier in sorted(EXPECTED):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(RESOLVER),
+                "--tier",
+                tier,
+                "--capabilities-json",
+                json.dumps(caps),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        args = json.loads(result.stdout)["agent_args"]
+        agent = args["subagent_type"].split(":", 1)[1]
+        assert shipped[agent]["effort"] == args["effort"] == EXPECTED_EFFORT[tier]
+
+
+def test_model_tier_protocol_documents_claude_effort() -> None:
+    text = (ROOT / "skills" / "_shared" / "protocols" / "model-tier.md").read_text(
+        encoding="utf-8"
+    )
+    section = text.split("## Native Claude Code Configuration", 1)[1].split("\n## ", 1)[
+        0
+    ]
+    assert "| Effort |" in section
+    assert "effort_selection: verified" in section
+    for tier, (agent, model) in EXPECTED.items():
+        assert (
+            f"| `{tier}` | `{agent}` | `{model}` | `{EXPECTED_EFFORT[tier]}` |"
+            in section
+        )

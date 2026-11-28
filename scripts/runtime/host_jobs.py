@@ -153,7 +153,11 @@ def main(argv=None):
         cancel = threading.Event()
         previous = {
             sig: signal.signal(sig, lambda *_: cancel.set())
-            for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+            for sig in (
+                signal.SIGTERM,
+                signal.SIGINT,
+                *([signal.SIGHUP] if hasattr(signal, "SIGHUP") else []),
+            )
         }
         admission = None
         try:

@@ -32,6 +32,20 @@ RLG_DIRECTORIES = ("locks", "logs")
 MAX_TREE_ENTRIES = 100_000
 MAX_TREE_BYTES = 2 * 1024 * 1024 * 1024
 MCP_ADMISSION_LOCK = "mcp-admission.lock"
+MCP_SUPPORT_FILES = (
+    "evidence_common.py",
+    "pytest_receipts.py",
+    "forgewright_pytest_receipt.py",
+    "run_check.py",
+    "verify_gate.py",
+    "continuity_check.py",
+    "windows_secure_io.py",
+    "windows_job_supervisor.py",
+    "pipeline_transition_gate.py",
+    "policy-check.sh",
+    "telemetry.sh",
+)
+MCP_RUNTIME_SUPPORT_FILES = ("windows_job_client.py", "windows_security.py")
 
 
 @contextmanager
@@ -61,9 +75,13 @@ def runtime_maintenance(*, home: Path):
             json.dumps({"pid": os.getpid(), "token": uuid.uuid4().hex}).encode(),
         )
         os.fsync(descriptor)
+        if os.name == "nt":
+            os.close(descriptor)
+            descriptor = None
         yield (identity.st_dev, identity.st_ino)
     finally:
-        os.close(descriptor)
+        if descriptor is not None:
+            os.close(descriptor)
         failure = sys.exception()
         try:
             current = path.lstat()
@@ -126,7 +144,14 @@ def _safe_directory(path: Path, *, allow_missing: bool = True) -> None:
             raise SharedRuntimeError(
                 "runtime_asset_missing", f"missing path: {candidate}"
             )
-        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        if (
+            stat.S_ISLNK(info.st_mode)
+            or not stat.S_ISDIR(info.st_mode)
+            or (
+                getattr(info, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+            )
+        ):
             raise SharedRuntimeError(
                 "unsafe_runtime_path", f"unsafe directory: {candidate}"
             )
@@ -139,6 +164,19 @@ def _safe_managed_root(path: Path, *, allow_missing: bool = False) -> None:
     if not path.exists():
         return
     info = path.stat()
+    if os.name == "nt":
+        from windows_security import is_private_path
+
+        try:
+            private = is_private_path(path)
+        except OSError as error:
+            raise SharedRuntimeError(
+                "unsafe_runtime_path", f"unconfirmed managed-root ACL: {path}"
+            ) from error
+        if not private:
+            raise SharedRuntimeError(
+                "unsafe_runtime_path", f"foreign or writable managed root: {path}"
+            )
     if hasattr(os, "getuid") and info.st_uid != os.getuid():
         raise SharedRuntimeError("unsafe_runtime_path", f"foreign managed root: {path}")
     if os.name != "nt" and info.st_mode & 0o022:
@@ -153,7 +191,14 @@ def _safe_regular(path: Path) -> None:
         info = path.lstat()
     except FileNotFoundError:
         return
-    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or info.st_nlink != 1
+        or (
+            getattr(info, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        )
+    ):
         raise SharedRuntimeError("unsafe_runtime_path", f"unsafe file: {path}")
 
 
@@ -163,13 +208,44 @@ def _ensure_directory(path: Path) -> None:
     _safe_directory(path, allow_missing=False)
 
 
+def _runtime_members(path: Path):
+    """Bound traversal and reject native redirection before entering a directory."""
+    pending = [path]
+    count = 0
+    while pending:
+        with os.scandir(pending.pop()) as entries:
+            for entry in entries:
+                info = entry.stat(follow_symlinks=False)
+                member = Path(entry.path)
+                count += 1
+                if count > MAX_TREE_ENTRIES:
+                    raise SharedRuntimeError(
+                        "runtime_tree_too_large", "runtime tree entry bound exceeded"
+                    )
+                if getattr(info, "st_file_attributes", 0) & getattr(
+                    stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
+                ):
+                    raise SharedRuntimeError(
+                        "unsafe_runtime_path", f"reparse runtime member: {member}"
+                    )
+                yield member
+                if stat.S_ISDIR(info.st_mode):
+                    pending.append(member)
+
+
 def _tree_digest(path: Path) -> str:
     _safe_directory(path, allow_missing=False)
     digest = hashlib.sha256()
     entries = 0
     total = 0
-    for item in sorted(path.rglob("*"), key=lambda value: value.as_posix()):
+    for item in sorted(_runtime_members(path), key=lambda value: value.as_posix()):
         info = item.lstat()
+        if getattr(info, "st_file_attributes", 0) & getattr(
+            stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
+        ):
+            raise SharedRuntimeError(
+                "unsafe_runtime_path", f"reparse runtime member: {item}"
+            )
         relative = item.relative_to(path).as_posix().encode()
         entries += 1
         if entries > MAX_TREE_ENTRIES:
@@ -266,9 +342,14 @@ def _publish_file_no_replace(source: Path, destination: Path, temporary: Path) -
             "runtime_recovery_required", f"runtime publication temp exists: {temporary}"
         ) from error
     try:
-        os.fchmod(descriptor, stat.S_IMODE(source.stat().st_mode))
-        with source.open("rb") as source_handle, os.fdopen(descriptor, "wb") as target:
-            shutil.copyfileobj(source_handle, target)
+        with os.fdopen(descriptor, "wb") as target:
+            mode = stat.S_IMODE(source.stat().st_mode)
+            if os.name == "nt":
+                os.chmod(temporary, mode)
+            else:
+                os.fchmod(target.fileno(), mode)
+            with source.open("rb") as source_handle:
+                shutil.copyfileobj(source_handle, target)
             target.flush()
             os.fsync(target.fileno())
     except BaseException:
@@ -415,8 +496,11 @@ def _validate_source(root: Path, *, need_mcp: bool) -> None:
     if need_mcp:
         required.extend(
             [
-                root / "scripts/lite/policy-check.sh",
-                root / "scripts/lite/telemetry.sh",
+                *[root / "scripts/lite" / name for name in MCP_SUPPORT_FILES],
+                *[
+                    root / "scripts/runtime" / name
+                    for name in MCP_RUNTIME_SUPPORT_FILES
+                ],
                 root / "mcp/package.json",
                 root / "mcp/package-lock.json",
                 root / "mcp/tsconfig.json",
@@ -440,7 +524,7 @@ def _validate_source(root: Path, *, need_mcp: bool) -> None:
 
 def _validate_copy_source_tree(path: Path) -> None:
     _safe_directory(path, allow_missing=False)
-    for member in path.rglob("*"):
+    for member in _runtime_members(path):
         info = member.lstat()
         if stat.S_ISDIR(info.st_mode):
             continue
@@ -472,6 +556,8 @@ def _clean_environment(
     result["HOME"] = str(home)
     result["NO_COLOR"] = "1"
     result.update(extra or {})
+    result["PYTHONUTF8"] = "1"
+    result["PYTHONIOENCODING"] = "utf-8"
     return result
 
 
@@ -920,7 +1006,8 @@ def install_shared_runtime(
                 "runtime_stage_invalid", "invalid staged RLG receipt"
             ) from error
         if (
-            record.get("target") != str(staged_target)
+            not isinstance(record.get("target"), str)
+            or Path(record["target"]) != staged_target
             or not isinstance(record.get("files"), list)
             or not record["files"]
         ):
@@ -982,6 +1069,18 @@ def install_shared_runtime(
         staged_lite = stage / "lite"
         staged_mcp.mkdir()
         staged_lite.mkdir()
+        support = staged_mcp / "runtime-support/scripts/lite"
+        support.mkdir(parents=True)
+        for name in MCP_SUPPORT_FILES:
+            source = root / "scripts/lite" / name
+            _safe_regular(source)
+            shutil.copy2(source, support / name)
+        runtime_support = support.parent / "runtime"
+        runtime_support.mkdir()
+        for name in MCP_RUNTIME_SUPPORT_FILES:
+            source = root / "scripts/runtime" / name
+            _safe_regular(source)
+            shutil.copy2(source, runtime_support / name)
         for name in ("policy-check.sh", "telemetry.sh"):
             shutil.copy2(root / "scripts/lite" / name, staged_lite / name)
         for name in (
@@ -1265,7 +1364,7 @@ def assert_runtime_quiescent(
                 )
     checked = runner(
         [
-            "python3",
+            sys.executable,
             str(root / "scripts/runtime/runtime_registry.py"),
             "list",
             "--state",

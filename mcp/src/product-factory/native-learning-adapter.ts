@@ -169,7 +169,7 @@ function writeScoped(root: string, path: string, value: unknown, immutable = fal
   const target = confinedPath(root, path, true);
   const parent = dirname(target);
   mkdirSync(parent, { recursive: true, mode: 0o700 });
-  confinedPath(root, relative(realpathSync(root), parent));
+  confinedPath(root, relative(realpathSync(root), parent).replaceAll('\\', '/'));
   const parentIdentity = lstatSync(parent);
   if (immutable && existsSync(target)) {
     if (!readScoped(root, path).equals(data)) throw new Error('NATIVE_IMMUTABLE_CONFLICT');
@@ -185,7 +185,7 @@ function writeScoped(root: string, path: string, value: unknown, immutable = fal
   );
   let owned = true;
   try {
-    confinedPath(root, relative(realpathSync(root), parent));
+    confinedPath(root, relative(realpathSync(root), parent).replaceAll('\\', '/'));
     const currentParent = lstatSync(parent);
     if (currentParent.dev !== parentIdentity.dev || currentParent.ino !== parentIdentity.ino)
       throw new Error('NATIVE_PARENT_CHANGED');
@@ -390,32 +390,32 @@ function derivedInvocation(
   root: string,
   command: string[],
 ): { runner: string; entrypoints: string[] } {
-  const executable = basename(command[0]);
+  const executable = basename(command[0]).toLowerCase();
   let runner: string;
   let candidates: string[];
   if (['pytest', 'py.test', 'vitest', 'jest', 'mocha', 'playwright'].includes(executable)) {
     runner = executable;
     candidates = command.slice(1);
   } else if (
-    /^python(?:[0-9]+(?:\.[0-9]+)*[a-z]*)?$/.test(executable) &&
+    /^python(?:[0-9]+(?:\.[0-9]+)*[a-z]*)?(?:\.exe)?$/.test(executable) &&
     command[1] === '-m' &&
     command[2] === 'pytest'
   ) {
     runner = 'pytest';
     candidates = command.slice(3);
   } else if (
-    /^python(?:[0-9]+(?:\.[0-9]+)*[a-z]*)?$/.test(executable) &&
+    /^python(?:[0-9]+(?:\.[0-9]+)*[a-z]*)?(?:\.exe)?$/.test(executable) &&
     command[1] &&
     !command[1].startsWith('-')
   ) {
     runner = 'python-script';
     candidates = [command[1]];
   } else if (
-    ['node', 'ruby', 'perl'].includes(executable) &&
+    ['node', 'node.exe', 'ruby', 'perl'].includes(executable) &&
     command[1] &&
     !command[1].startsWith('-')
   ) {
-    runner = `${executable}-script`;
+    runner = `${executable.replace(/\.exe$/, '')}-script`;
     candidates = [command[1]];
   } else if (
     ['sh', 'bash', 'zsh', 'dash'].includes(executable) &&
@@ -424,7 +424,7 @@ function derivedInvocation(
   ) {
     runner = 'shell-script';
     candidates = [command[1]];
-  } else if (command[0].includes('/')) {
+  } else if (command[0].includes('/') || command[0].includes('\\')) {
     runner = 'project-executable';
     candidates = [command[0]];
   } else throw new Error('NATIVE_UNSUPPORTED_VERIFIER_COMMAND');
@@ -432,7 +432,10 @@ function derivedInvocation(
   for (const candidate of candidates) {
     const [file, ...suffix] = candidate.split('::');
     if (file.startsWith('-')) continue;
-    const path = isAbsolute(file) ? relative(root, file) : file.replace(/^\.\//, '');
+    const path = (isAbsolute(file) ? relative(root, file) : file.replace(/^\.\//, '')).replaceAll(
+      '\\',
+      '/',
+    );
     try {
       readScoped(root, path);
       entrypoints.push(path + (suffix.length ? `::${suffix.join('::')}` : ''));

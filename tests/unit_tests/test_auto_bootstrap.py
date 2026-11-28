@@ -42,6 +42,75 @@ def index_fixture(project):
     return {"status": "ready", "stdout": "indexed"}
 
 
+def make_fake_call_forge(bm, calls: list[list[str]]):
+    """Adapter stub shared with subprocess e2e drivers; no real forge CLI."""
+
+    def fake_call_forge(args, *, project, required, stage):
+        calls.append(list(args))
+        if args[0] == "init":
+            target = Path(project) / ".forgewright/project.json"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists():
+                target.write_text('{"schema_version":1}\n', encoding="utf-8")
+        elif args[0] == "onboard":
+            target = Path(project) / ".forgewright/project-profile.json"
+            if not target.exists():
+                target.write_text(
+                    '{"schema_version":1,"facts":{'
+                    '"git_present":true,"package_json_present":false,'
+                    '"lockfiles":[],"declared_test_script":null}}\n',
+                    encoding="utf-8",
+                )
+        elif args[:2] == ["docs", "init"]:
+            state = Path(project) / "docs/project-state.json"
+            state.parent.mkdir(parents=True, exist_ok=True)
+            if not state.exists():
+                state.write_text('{"schema_version":1}')
+            manifest = Path(project) / ".forgewright/docs-manifest.json"
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            if not manifest.exists():
+                manifest.write_text(
+                    json.dumps(
+                        {
+                            "schema_version": 1,
+                            "project": {"id": "fixture", "title": "Fixture"},
+                            "sources": [{"path": "README.md", "type": "overview"}],
+                            "privacy": {"mode": "allowlist"},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+        elif args[:3] == ["docs", "registry", "add"]:
+            registry = bm._docs_registry()
+            if not any(x["root"] == str(project) for x in registry["projects"]):
+                registry["projects"].append(
+                    {"id": Path(project).name, "root": str(project)}
+                )
+            bm.atomic_json(bm._docs_registry_path(), registry)
+            return {
+                "status": "ready",
+                "stdout": json.dumps(
+                    {
+                        "ok": True,
+                        "data": {
+                            "status": "added",
+                            "project": {"id": "fixture"},
+                        },
+                    }
+                ),
+            }
+        elif args[:3] == ["docs", "registry", "remove"]:
+            registry = bm._docs_registry()
+            registry["projects"] = [
+                x for x in registry["projects"] if x["root"] != str(project)
+            ]
+            bm.atomic_json(bm._docs_registry_path(), registry)
+        return {"status": "ready", "stdout": json.dumps({"ok": True, "data": {}})}
+
+    return fake_call_forge
+
+
 @pytest.fixture
 def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
     # Each test owns its client configuration; explicit override tests set theirs later.
@@ -116,68 +185,7 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bm):
 
     calls: list[list[str]] = []
 
-    def fake_call_forge(args, *, project, required, stage):
-        calls.append(list(args))
-        if args[0] == "init":
-            target = Path(project) / ".forgewright/project.json"
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if not target.exists():
-                target.write_text('{"schema_version":1}\n', encoding="utf-8")
-        elif args[0] == "onboard":
-            target = Path(project) / ".forgewright/project-profile.json"
-            if not target.exists():
-                target.write_text(
-                    '{"schema_version":1,"facts":{'
-                    '"git_present":true,"package_json_present":false,'
-                    '"lockfiles":[],"declared_test_script":null}}\n',
-                    encoding="utf-8",
-                )
-        elif args[:2] == ["docs", "init"]:
-            state = Path(project) / "docs/project-state.json"
-            state.parent.mkdir(parents=True, exist_ok=True)
-            if not state.exists():
-                state.write_text('{"schema_version":1}')
-            manifest = Path(project) / ".forgewright/docs-manifest.json"
-            manifest.parent.mkdir(parents=True, exist_ok=True)
-            if not manifest.exists():
-                manifest.write_text(
-                    json.dumps(
-                        {
-                            "schema_version": 1,
-                            "project": {"id": "fixture", "title": "Fixture"},
-                            "sources": [{"path": "README.md", "type": "overview"}],
-                            "privacy": {"mode": "allowlist"},
-                        }
-                    )
-                    + "\n",
-                    encoding="utf-8",
-                )
-        elif args[:3] == ["docs", "registry", "add"]:
-            registry = bm._docs_registry()
-            if not any(x["root"] == str(project) for x in registry["projects"]):
-                registry["projects"].append(
-                    {"id": Path(project).name, "root": str(project)}
-                )
-            bm.atomic_json(bm._docs_registry_path(), registry)
-            return {
-                "status": "ready",
-                "stdout": json.dumps(
-                    {
-                        "ok": True,
-                        "data": {
-                            "status": "added",
-                            "project": {"id": "fixture"},
-                        },
-                    }
-                ),
-            }
-        elif args[:3] == ["docs", "registry", "remove"]:
-            registry = bm._docs_registry()
-            registry["projects"] = [
-                x for x in registry["projects"] if x["root"] != str(project)
-            ]
-            bm.atomic_json(bm._docs_registry_path(), registry)
-        return {"status": "ready", "stdout": json.dumps({"ok": True, "data": {}})}
+    fake_call_forge = make_fake_call_forge(bm, calls)
 
     monkeypatch.setattr(bm, "call_forge", fake_call_forge)
     return {

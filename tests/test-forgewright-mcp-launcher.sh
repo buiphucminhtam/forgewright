@@ -32,6 +32,10 @@ assert_argv() {
     local expected_path="$1"
     local first_argument argument_count
 
+    if ! grep -Fq 'Parsing manifest...' "$TEST_ROOT/stderr"; then
+        fail "launcher did not use the workspace manifest"
+        return
+    fi
     first_argument="$(sed -n '1p' "$FAKE_NPX_OUTPUT")"
     argument_count="$(wc -l < "$FAKE_NPX_OUTPUT" | tr -d '[:space:]')"
     if [[ "$argument_count" == "1" ]] && [[ "$first_argument" == "$expected_path" ]]; then
@@ -42,12 +46,19 @@ assert_argv() {
     fi
 }
 
+node_path() {
+    case "$OSTYPE" in
+        msys*|cygwin*) cygpath -am -- "$1" ;;
+        *) printf '%s\n' "$1" ;;
+    esac
+}
+
 write_manifest() {
     local workspace="$1"
     local command="$2"
 
     mkdir -p "$workspace/.antigravity"
-    node - "$workspace/.antigravity/mcp-manifest.json" "$workspace" "$command" <<'NODE'
+    node - "$(node_path "$workspace/.antigravity/mcp-manifest.json")" "$(node_path "$workspace")" "$command" <<'NODE'
 const fs = require('fs');
 const [manifestPath, workspace, command] = process.argv.slice(2);
 fs.writeFileSync(manifestPath, JSON.stringify({
@@ -68,7 +79,7 @@ write_path_manifest() {
     local server_path="$2"
 
     mkdir -p "$workspace/.antigravity"
-    node - "$workspace/.antigravity/mcp-manifest.json" "$workspace" "$server_path" <<'NODE'
+    node - "$(node_path "$workspace/.antigravity/mcp-manifest.json")" "$(node_path "$workspace")" "$(node_path "$server_path")" <<'NODE'
 const fs = require('fs');
 const [manifestPath, workspace, serverPath] = process.argv.slice(2);
 fs.writeFileSync(manifestPath, JSON.stringify({
@@ -86,9 +97,18 @@ NODE
 }
 
 run_launcher() {
-    local workspace="$1"
+    local workdir="$1" workspace_hint
+    workspace_hint="$(node_path "$workdir")"
+    if [[ $# -gt 1 ]]; then
+        workspace_hint="$2"
+    fi
     rm -f "$FAKE_NPX_OUTPUT"
-    HOME="$TEST_HOME" FORGEWRIGHT_DEBUG=1 FORGEWRIGHT_WORKSPACE="$workspace" FAKE_NPX_OUTPUT="$FAKE_NPX_OUTPUT" bash "$LAUNCHER" >/dev/null 2>"$TEST_ROOT/stderr"
+    (
+        cd "$workdir"
+        HOME="$TEST_HOME" FORGEWRIGHT_DEBUG=1 FORGEWRIGHT_WORKSPACE="$workspace_hint" \
+            MCP_WORKSPACE_ROOT= CLAUDE_DESKTOP_WORKSPACE= FAKE_NPX_OUTPUT="$FAKE_NPX_OUTPUT" \
+            bash "$LAUNCHER"
+    ) >/dev/null 2>"$TEST_ROOT/stderr"
 }
 
 mkdir -p "$(dirname "$CANONICAL_SERVER")" "$(dirname "$CANONICAL_TSX")"
@@ -105,7 +125,7 @@ mkdir -p "$valid_workspace"
 valid_server_resolved="$(cd "$(dirname "$valid_server")" && pwd -P)/$(basename "$valid_server")"
 write_manifest "$valid_workspace" "npx tsx $valid_server"
 if run_launcher "$valid_workspace"; then
-    assert_argv "$valid_server_resolved"
+    assert_argv "$(node_path "$valid_server_resolved")"
 else
     fail "valid manifest command should launch"
 fi
@@ -114,11 +134,24 @@ path_workspace="$TEST_ROOT/setup manifest"
 path_server="$CANONICAL_SERVER"
 mkdir -p "$path_workspace"
 path_server_resolved="$(cd "$(dirname "$path_server")" && pwd -P)/$(basename "$path_server")"
-write_path_manifest "$path_workspace" "$path_server"
+manifest_server="$path_server"
+case "$OSTYPE" in
+    msys*|cygwin*) manifest_server="${path_server%/*}/INDEX.TS" ;;
+esac
+write_path_manifest "$path_workspace" "$manifest_server"
 if run_launcher "$path_workspace"; then
-    assert_argv "$path_server_resolved"
+    assert_argv "$(node_path "$path_server_resolved")"
 else
     fail "setup-generated path manifest should launch"
+fi
+
+write_path_manifest "$path_workspace" "$path_server"
+git -C "$path_workspace" init --quiet
+mkdir "$path_workspace/nested"
+if run_launcher "$path_workspace/nested" ""; then
+    assert_argv "$(node_path "$path_server_resolved")"
+else
+    fail "launcher should find the Git root from a nested directory"
 fi
 
 malicious_workspace="$TEST_ROOT/malicious"

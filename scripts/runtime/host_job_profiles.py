@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 import re
 import stat
+import sys
+from contextlib import ExitStack
 
 from host_job_runner import JobRequest, validate, JobError
 from project_storage import disk_limits, StorageError
@@ -26,32 +28,179 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def _windows_io():
+    # Resolve only the framework-owned helper package, never profile content.
+    scripts_root = str(Path(__file__).resolve().parents[1])
+    if scripts_root not in sys.path:
+        sys.path.insert(0, scripts_root)
+    from lite import windows_secure_io
+    from windows_security import is_private_path
+
+    return windows_secure_io, is_private_path
+
+
+def _windows_path(path, io):
+    path = Path(path)
+    if ".." in path.parts:
+        raise ValueError("profile path must not traverse parent components")
+    path = Path(os.path.abspath(path))
+    for component in path.relative_to(Path(path.anchor)).parts:
+        io._safe_basename(component)
+    return path
+
+
+def _windows_private_dir(path):
+    io, is_private = _windows_io()
+    try:
+        path = _windows_path(path, io)
+        missing = []
+        existing = path
+        while not existing.exists():
+            missing.append(existing)
+            existing = existing.parent
+        # Pin ancestry without imposing current-user ownership on the drive or
+        # system ancestors. Authority starts at the existing creation parent.
+        with ExitStack() as stack:
+            stack.enter_context(io.locked_directory_chain(Path(path.anchor), existing))
+            if not is_private(existing, confidential=True):
+                raise ProfileError("unsafe-profile-directory")
+            if (
+                not missing
+                and existing.parent != existing
+                and not is_private(existing.parent, confidential=True)
+            ):
+                raise ProfileError("unsafe-profile-directory")
+            for directory in reversed(missing):
+                directory.mkdir(mode=0o700, exist_ok=True)
+                stack.enter_context(io.locked_directory_chain(directory, directory))
+                if not is_private(directory, confidential=True):
+                    raise ProfileError("unsafe-profile-directory")
+    except (OSError, ValueError) as error:
+        raise ProfileError("unsafe-profile-directory") from error
+
+
+def _open_windows_profile(path, io):
+    """Open an existing leaf without following reparse points or sharing writes."""
+    import ctypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    pointer = ctypes.c_void_p
+    dword = ctypes.c_uint32
+    create = kernel.CreateFileW
+    create.argtypes = [ctypes.c_wchar_p, dword, dword, pointer, dword, dword, pointer]
+    create.restype = pointer
+    query = kernel.GetFileInformationByHandleEx
+    query.argtypes = [pointer, ctypes.c_int32, pointer, dword]
+    query.restype = ctypes.c_int32
+    # GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING,
+    # FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT.
+    handle = create(str(path), 0x80000000, 1, None, 3, 0x02200000, None)
+    if not handle or handle == pointer(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        attributes = (dword * 2)()  # FILE_ATTRIBUTE_TAG_INFO
+        if not query(handle, 9, ctypes.byref(attributes), ctypes.sizeof(attributes)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if attributes[0] & (0x400 | 0x10):  # reparse point or directory
+            raise ProfileError("unsafe-profile-file")
+        return msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+    except BaseException:
+        io._close_windows_handle(handle)
+        raise
+
+
+def _windows_private_read(path, limit):
+    io, is_private = _windows_io()
+    file_opened = False
+    try:
+        path = _windows_path(path, io)
+        if not isinstance(limit, int) or limit < 0:
+            raise ValueError("invalid profile size limit")
+        with io.locked_directory_chain(Path(path.anchor), path.parent):
+            try:
+                parent_private = is_private(path.parent, confidential=True)
+            except OSError as error:
+                # A failed authority query is not proof that the file is absent.
+                raise ProfileError("unsafe-profile-file") from error
+            if not parent_private:
+                raise ProfileError("unsafe-profile-file")
+            fd = _open_windows_profile(path, io)
+            file_opened = True
+            with os.fdopen(fd, "rb") as stream:
+                opened = os.fstat(stream.fileno())
+                current = path.lstat()
+                identity = (opened.st_dev, opened.st_ino)
+                if (
+                    not stat.S_ISREG(opened.st_mode)
+                    or not stat.S_ISREG(current.st_mode)
+                    or opened.st_nlink != 1
+                    or current.st_nlink != 1
+                    or io._is_reparse(current)
+                    or identity != (current.st_dev, current.st_ino)
+                    or not is_private(path, confidential=True)
+                ):
+                    raise ProfileError("unsafe-profile-file")
+                if opened.st_size > limit:
+                    raise ProfileError("profile-too-large")
+                raw = stream.read(limit + 1)
+                if len(raw) > limit:
+                    raise ProfileError("profile-too-large")
+                final = os.fstat(stream.fileno())
+                current = path.lstat()
+                if (
+                    not stat.S_ISREG(current.st_mode)
+                    or io._is_reparse(current)
+                    or identity != (current.st_dev, current.st_ino)
+                    or final.st_nlink != 1
+                    or current.st_nlink != 1
+                    or final.st_size != opened.st_size
+                    or final.st_mtime_ns != opened.st_mtime_ns
+                    or current.st_size != final.st_size
+                    or current.st_mtime_ns != final.st_mtime_ns
+                ):
+                    raise ProfileError("unsafe-profile-file")
+                return raw
+    except FileNotFoundError as error:
+        if file_opened:
+            raise ProfileError("unsafe-profile-file") from error
+        # Preserve the original os.open absence contract for enrollment callers.
+        # Only directory-chain opening or leaf opening can reach this branch.
+        raise
+    except (OSError, ValueError) as error:
+        raise ProfileError("unsafe-profile-file") from error
+
+
 def private_dir(path):
     path = Path(path)
+    if os.name == "nt":
+        _windows_private_dir(path)
+        return path
     # Do not normalize away symlinks before checking each component.
     if any(p.is_symlink() for p in [path, *path.parents]):
         raise ProfileError("unsafe-profile-path")
     path.mkdir(parents=True, mode=0o700, exist_ok=True)
     info = path.lstat()
-    if (
-        not stat.S_ISDIR(info.st_mode)
-        or info.st_uid != os.getuid()
-        or info.st_mode & 0o077
+    if not stat.S_ISDIR(info.st_mode) or (
+        hasattr(os, "getuid") and (info.st_uid != os.getuid() or info.st_mode & 0o077)
     ):
         raise ProfileError("unsafe-profile-directory")
     return path
 
 
 def private_read(path, limit=16384):
+    if os.name == "nt":
+        return _windows_private_read(path, limit)
     if any(p.is_symlink() for p in [path, *path.parents]):
         raise ProfileError("unsafe-profile-path")
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0))
+    fd = os.open(
+        path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    )
     with os.fdopen(fd, "rb") as stream:
         info = os.fstat(stream.fileno())
-        if (
-            not stat.S_ISREG(info.st_mode)
-            or info.st_uid != os.getuid()
-            or info.st_mode & 0o077
+        if not stat.S_ISREG(info.st_mode) or (
+            hasattr(os, "getuid")
+            and (info.st_uid != os.getuid() or info.st_mode & 0o077)
         ):
             raise ProfileError("unsafe-profile-file")
         raw = stream.read(limit + 1)
@@ -192,8 +341,20 @@ def install_profile(home, value):
         if private_read(path) == raw:
             return digest(raw)
         raise ProfileError("profile-exists-use-new-version")
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    fd = os.open(
+        path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600
+    )
     with os.fdopen(fd, "wb") as stream:
+        if os.name == "nt":
+            # Inspect the inherited DACL while the new file is still empty.
+            # Confidential parent validation alone must not publish a token if
+            # the created file has acquired an unsafe default/inherited grant.
+            _, is_private = _windows_io()
+            try:
+                if not is_private(path, confidential=True):
+                    raise ProfileError("unsafe-profile-file")
+            except OSError as error:
+                raise ProfileError("unsafe-profile-file") from error
         stream.write(raw)
         stream.flush()
         os.fsync(stream.fileno())

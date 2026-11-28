@@ -6,7 +6,11 @@ from host_resources import MIB
 from dataclasses import replace
 import os
 import math
-import resource
+
+try:
+    import resource
+except ImportError:
+    resource = None  # type: ignore[assignment]
 import sys
 import time
 
@@ -278,7 +282,11 @@ class HostScheduler(AdmissionStore):
                 "coordinator": {
                     "pid": os.getpid(),
                     "cpuSeconds": time.process_time(),
-                    "peakRssMiB": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-                    / (MIB if sys.platform == "darwin" else 1024),
+                    "peakRssMiB": (
+                        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                        / (MIB if sys.platform == "darwin" else 1024)
+                    )
+                    if resource is not None
+                    else 0.0,
                 },
             }

@@ -46,11 +46,21 @@ deny() {
 PAYLOAD_SIZE="$(wc -c < "$PAYLOAD_FILE" | tr -d ' ')"
 [[ "$PAYLOAD_SIZE" -le "$MAX_PAYLOAD_BYTES" ]] || deny
 
-"${PYTHON_COMMAND[@]}" - "$PAYLOAD_FILE" "$TOOL_FILE" "$ARGS_FILE" "$WORKSPACE_FILE" "$FRAMEWORK_ROOT" <<'PYEOF' || deny
+"${PYTHON_COMMAND[@]}" - "$PAYLOAD_FILE" "$TOOL_FILE" "$ARGS_FILE" "$WORKSPACE_FILE" "$FRAMEWORK_ROOT" <<'PYEOF' 2>/dev/null || deny
 import json
 import os
+import re
 import sys
 from pathlib import Path
+
+def normalize_path(candidate: str) -> str:
+    if os.name == "nt":
+        match = re.match(r"^/([A-Za-z])(?:/(.*))?$", candidate)
+        if match:
+            drive = match.group(1).upper()
+            rest = match.group(2) or ""
+            return f"{drive}:/{rest}"
+    return candidate
 
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 if not isinstance(payload, dict):
@@ -59,22 +69,22 @@ tool_name = payload.get("tool_name")
 tool_input = payload.get("tool_input")
 if not isinstance(tool_name, str) or not tool_name.strip():
     raise ValueError("tool_name is required")
+if tool_input is None:
+    tool_input = {}
 if not isinstance(tool_input, dict):
     raise ValueError("tool_input must be an object")
 
-payload_cwd = payload.get("cwd")
 framework_root = sys.argv[5] if len(sys.argv) > 5 else None
 candidate_paths = [
-    payload_cwd,
-    os.getcwd(),
+    payload.get("cwd"),
     os.environ.get("FORGEWRIGHT_WORKSPACE"),
+    os.getcwd(),
 ]
-
 workspaces = []
 for candidate in candidate_paths:
     if not isinstance(candidate, str) or not candidate.strip():
         continue
-    resolved = os.path.realpath(candidate)
+    resolved = os.path.realpath(normalize_path(candidate))
     if not os.path.isdir(resolved):
         continue
     while True:
@@ -86,7 +96,7 @@ for candidate in candidate_paths:
             break
         resolved = parent
 if not workspaces and isinstance(framework_root, str) and framework_root.strip():
-    resolved_fw = os.path.realpath(framework_root)
+    resolved_fw = os.path.realpath(normalize_path(framework_root))
     if os.path.isdir(resolved_fw) and os.path.lexists(
         os.path.join(resolved_fw, ".forgewright", "execution-policy.yaml")
     ):

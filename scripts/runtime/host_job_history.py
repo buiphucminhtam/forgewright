@@ -4,6 +4,7 @@ Run outside the native hook. The enrollment lock serializes issue/claim/prune;
 unknown references, owner observation and storage states always preserve data.
 """
 
+from contextlib import nullcontext
 import json
 import math
 import os
@@ -23,6 +24,31 @@ SCAN_SECONDS = 3
 
 def process_ids():
     try:
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+
+            enum = ctypes.WinDLL("psapi", use_last_error=True).EnumProcesses
+            enum.argtypes = [
+                ctypes.POINTER(wintypes.DWORD),
+                wintypes.DWORD,
+                ctypes.POINTER(wintypes.DWORD),
+            ]
+            enum.restype = wintypes.BOOL
+            # A full buffer is ambiguous: grow within a fixed census bound.
+            for capacity in (1024, 4096, 16384, 65536):
+                buffer = (wintypes.DWORD * capacity)()
+                needed = wintypes.DWORD()
+                if not enum(buffer, ctypes.sizeof(buffer), ctypes.byref(needed)):
+                    return None
+                if needed.value % ctypes.sizeof(wintypes.DWORD):
+                    return None
+                if needed.value < ctypes.sizeof(buffer):
+                    values = set(
+                        buffer[: needed.value // ctypes.sizeof(wintypes.DWORD)]
+                    )
+                    return values if os.getpid() in values else None
+            return None
         values = {
             int(line) for line in command(["/bin/ps", "-ax", "-o", "pid="]).splitlines()
         }
@@ -32,6 +58,10 @@ def process_ids():
 
 
 def sync_directory(folder):
+    if os.name == "nt":
+        from windows_project_storage import sync_directory as native_sync
+
+        return native_sync(folder)
     descriptor = os.open(folder, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
         os.fsync(descriptor)
@@ -65,10 +95,21 @@ def valid_context(value, state):
     }
     if state == "claimed":
         required |= {"job_id", "owner_pid", "owner_identity"}
-    observed = {key for key in ("invocation_sha256", "lesson_context_sha256", "lesson_context_chars") if key in value}
+    observed = {
+        key
+        for key in (
+            "invocation_sha256",
+            "lesson_context_sha256",
+            "lesson_context_chars",
+        )
+        if key in value
+    }
     if (
         set(value) != required | observed
-        or (bool("lesson_context_sha256" in observed) != bool("lesson_context_chars" in observed))
+        or (
+            bool("lesson_context_sha256" in observed)
+            != bool("lesson_context_chars" in observed)
+        )
         or not isinstance(value.get("native"), dict)
         or set(value["native"]) != {"session_id", "turn_id", "tool_use_id"}
     ):
@@ -80,12 +121,18 @@ def valid_context(value, state):
         return False
     if any(
         not isinstance(value.get(k), str) or not re.fullmatch(r"[0-9a-f]{64}", value[k])
-        for k in ("profile_digest", "command_sha256", "code_sha256", "config_sha256",
-                  *[key for key in observed if key.endswith("sha256")])
+        for k in (
+            "profile_digest",
+            "command_sha256",
+            "code_sha256",
+            "config_sha256",
+            *[key for key in observed if key.endswith("sha256")],
+        )
     ):
         return False
     if "lesson_context_chars" in observed and (
-        type(value["lesson_context_chars"]) is not int or not 0 <= value["lesson_context_chars"] <= 2000
+        type(value["lesson_context_chars"]) is not int
+        or not 0 <= value["lesson_context_chars"] <= 2000
     ):
         return False
     return state != "claimed" or (
@@ -97,11 +144,21 @@ def valid_context(value, state):
 
 
 def snapshot(home, deadline):
+    if os.name == "nt":
+        from windows_project_storage import private_metadata, pinned
+
+        read = private_metadata
+    else:
+        read = private_read
     result = {"jobs": {}, "native-requests": {}, "locks": {}}
     entries = size = 0
     for name in ("jobs", "native-requests"):
-        folder = private_dir(home / name)
-        with os.scandir(folder) as directory:
+        with pinned(home) if os.name == "nt" else nullcontext():
+            folder = private_dir(home / name)
+        with (
+            pinned(folder) if os.name == "nt" else nullcontext(),
+            os.scandir(folder) as directory,
+        ):
             for entry in directory:
                 entries += 1
                 if entries > SCAN_LIMIT or time.monotonic() > deadline:
@@ -110,7 +167,7 @@ def snapshot(home, deadline):
                 if name == "native-requests" and re.fullmatch(
                     r"[0-9a-f]{32}\.lock", entry.name
                 ):
-                    result["locks"][entry.name] = private_read(path, 64)
+                    result["locks"][entry.name] = read(path, 64)
                     continue
                 pattern = (
                     r"job-[0-9a-f]{32}\.json"
@@ -124,7 +181,7 @@ def snapshot(home, deadline):
                     ):
                         continue
                     raise ValueError("unknown-history-entry")
-                raw = private_read(path, 65536)
+                raw = read(path, 65536)
                 size += len(raw)
                 if size > BYTE_LIMIT:
                     raise ValueError("history-census-incomplete")
@@ -137,6 +194,11 @@ def snapshot(home, deadline):
 
 def unlink_exact(path, raw):
     """Only a private, unchanged metadata leaf in the locked namespace."""
+    if os.name == "nt":
+        from windows_project_storage import private_metadata
+
+        private_metadata(path, max(65536, len(raw)), expected=raw)
+        return
     if private_read(path, max(65536, len(raw))) != raw:
         raise ValueError("history-drift")
     info = path.lstat()
@@ -215,7 +277,7 @@ def _collect_history(admission, *, keep_recent, limit):
                     or not valid_timestamp(journal.get("requested_at"))
                 ):
                     raise ValueError("unknown-journal-reference")
-        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, StorageError):
             return dict(result, status="incomplete")
 
         owners = process_ids()

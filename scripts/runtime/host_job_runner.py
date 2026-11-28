@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Supervise explicitly enrolled finite POSIX jobs over HostAdmission v1.
+"""Supervise explicitly enrolled finite jobs over HostAdmission v1.
 
 This is cooperative containment, not a sandbox. Only reviewed finite profiles
 may be enrolled: daemonizing/reusing foreign processes is unsupported. Tokens
@@ -25,6 +25,7 @@ import time
 import uuid
 
 from host_resources import command, inspect_process
+from windows_job_client import WindowsJobClient, CompletionError
 from project_storage import (
     JobStorage,
     StorageError,
@@ -64,6 +65,10 @@ def process_table():
     This cooperative guard cannot authenticate a hostile same-user process.
     """
     rows = {}
+    if os.name == "nt":
+        from windows_processes import NativeProcesses
+
+        return NativeProcesses().snapshot()
     raw = command(["/bin/ps", "-ax", "-o", "pid=,ppid=,pgid=,stat=,lstart="])
     lines = [line for line in raw.splitlines() if line.strip()]
     if not lines:
@@ -81,11 +86,61 @@ def process_table():
     return rows
 
 
-def ancestry():
-    table, result, pid = process_table(), {}, os.getpid()
+class AncestorIdentities(dict):
+    boundary_birth = None
+
+
+def _windows_process_identity(pid):
+    from windows_processes import NativeProcesses
+
+    raw = NativeProcesses().identity_text(pid)
+    birth = int(raw.split("\n", 2)[1]) - 504911232000000000
+    return hashlib.sha256(raw.encode()).hexdigest(), birth
+
+
+def windows_ancestry(table, pid):
+    result = AncestorIdentities()
     for _ in range(64):
-        if pid <= 1:
-            return result
+        if pid in (0, 4):
+            # A walk reaching a terminal PID is not proof: UTC rollback can
+            # conceal reuse of an intermediate parent PID. Certify every edge.
+            return result, _windows_complete_ancestry_proof(table, result)
+        if pid in result or pid not in table:
+            raise JobError("ancestry-unavailable")
+        parent, _group, birth = table[pid]
+        if type(birth) is not int or birth <= 0:
+            raise JobError("ancestry-unavailable")
+        try:
+            identity, actual_birth = _windows_process_identity(pid)
+        except (OSError, ValueError) as error:
+            raise JobError("ancestry-unavailable") from error
+        if not identity or actual_birth != birth:
+            raise JobError("ancestry-unavailable")
+        result[pid] = identity
+        result.boundary_birth = birth
+        if parent not in (0, 4):
+            if parent not in table:
+                return result, False
+            parent_birth = table[parent][2]
+            if type(parent_birth) is not int or parent_birth <= 0:
+                raise JobError("ancestry-unavailable")
+            if parent_birth > birth:
+                return result, False
+        pid = parent
+    raise JobError("ancestry-unavailable")
+
+
+def ancestry():
+    try:
+        table = process_table()
+    except (OSError, ValueError) as error:
+        raise JobError("ancestry-unavailable") from error
+    result, pid = {}, os.getpid()
+    if os.name == "nt":
+        return windows_ancestry(table, pid)
+    for _ in range(64):
+        if pid <= 1 or (os.name == "nt" and pid == 4):
+            return result, True
         if pid in result or pid not in table:
             raise JobError("ancestry-unavailable")
         identity = inspect_process(pid)
@@ -96,17 +151,259 @@ def ancestry():
     raise JobError("ancestry-unavailable")
 
 
-def reject_nested(admission, ancestors):
+@dataclass(frozen=True)
+class WindowsLineage:
+    pid: int
+    parent: int
+    identity: str
+    boot: int
+    sequence: int
+    interrupt: int
+    unbiased: int
+
+
+def _windows_read_lineage(native, handle, pid):
+    """Same-handle identity and documented native telemetry; no UTC ordering."""
+    import ctypes
+    from ctypes import wintypes as w
+
+    class Basic(ctypes.Structure):
+        _fields_ = [
+            ("status", w.LONG),
+            ("peb", ctypes.c_void_p),
+            ("affinity", ctypes.c_size_t),
+            ("priority", w.LONG),
+            ("pid", ctypes.c_size_t),
+            ("parent", ctypes.c_size_t),
+        ]
+
+    class Telemetry(ctypes.Structure):
+        _fields_ = (
+            [("size", w.ULONG), ("pid", w.ULONG)]
+            + [
+                (name, ctypes.c_uint64)
+                for name in (
+                    "key",
+                    "utc",
+                    "interrupt",
+                    "unbiased",
+                    "sequence",
+                    "session_created",
+                )
+            ]
+            + [
+                (name, w.ULONG)
+                for name in (
+                    "session",
+                    "boot",
+                    "checksum",
+                    "stamp",
+                    "sid",
+                    "image",
+                    "package",
+                    "app",
+                    "command",
+                )
+            ]
+        )
+
+    # Both information classes are documented. Future/unsupported layouts are
+    # uncertainty, never a reason to fall back to wall-clock birth ordering.
+    query = ctypes.WinDLL("ntdll").NtQueryInformationProcess
+    query.argtypes = [
+        w.HANDLE,
+        w.ULONG,
+        ctypes.c_void_p,
+        w.ULONG,
+        ctypes.POINTER(w.ULONG),
+    ]
+    query.restype = w.LONG
+    if native.api.WaitForSingleObject(handle, 0) != 258:
+        raise ValueError("lineage process not alive")
+    basic, size = Basic(), w.ULONG()
+    if (
+        query(handle, 0, ctypes.byref(basic), ctypes.sizeof(basic), ctypes.byref(size))
+        != 0
+        or size.value != ctypes.sizeof(basic)
+        or basic.pid != pid
+    ):
+        raise ValueError("lineage basic information unavailable")
+    buffer = ctypes.create_string_buffer(65536)
+    if query(
+        handle, 64, buffer, len(buffer), ctypes.byref(size)
+    ) != 0 or not ctypes.sizeof(Telemetry) <= size.value <= len(buffer):
+        raise ValueError("lineage telemetry unavailable")
+    metadata = Telemetry.from_buffer_copy(buffer)
+    birth = native.birth(handle)
+    if (
+        metadata.size != ctypes.sizeof(Telemetry)
+        or metadata.pid != pid
+        or metadata.utc != birth
+        or not metadata.sequence
+        or not metadata.interrupt
+        or not metadata.unbiased
+    ):
+        raise ValueError("lineage telemetry invalid")
+    image = ctypes.create_unicode_buffer(32768)
+    length = w.DWORD(len(image))
+    if (
+        not native.api.QueryFullProcessImageNameW(
+            handle, 0, image, ctypes.byref(length)
+        )
+        or not 0 < length.value < len(image)
+        or native.api.WaitForSingleObject(handle, 0) != 258
+    ):
+        raise ValueError("lineage identity unavailable")
+    raw = f"{pid}\n{birth + 504911232000000000}\n{image.value}"
+    return WindowsLineage(
+        pid,
+        int(basic.parent),
+        hashlib.sha256(raw.encode()).hexdigest(),
+        metadata.boot,
+        metadata.sequence,
+        metadata.interrupt,
+        metadata.unbiased,
+    )
+
+
+def _windows_are_siblings(caller, worker, parent):
+    """Positive parent-edge proof, not an age-based exemption for a worker."""
+    observations = (caller, worker, parent)
+    if (
+        any(type(value) is not WindowsLineage for value in observations)
+        or len({value.pid for value in observations}) != 3
+        or any(value.pid <= 4 for value in observations)
+        or caller.parent != parent.pid
+        or worker.parent != parent.pid
+        or parent.parent in (caller.pid, worker.pid)
+        or len({value.boot for value in observations}) != 1
+        or len({value.sequence for value in observations}) != 3
+        or any(value.sequence <= 0 for value in observations)
+    ):
+        return False
+    # The retained parent object must have existed before both children. Two
+    # nonadjustable counters reject a recycled parent PID even after UTC rollback.
+    # Equality is insufficient at the native counter's resolution. Sequence
+    # numbers are used only for identity uniqueness, never ordering.
+    return all(
+        0 < getattr(parent, field) < getattr(child, field)
+        for field in ("interrupt", "unbiased")
+        for child in (caller, worker)
+    )
+
+
+def _windows_complete_ancestry_proof(table, ancestors):
+    """Certify the entire walked chain through simultaneously held objects."""
+    if os.name != "nt" or not ancestors or len(ancestors) > 64:
+        return False
+    from contextlib import ExitStack
+    from windows_processes import NativeProcesses
+
+    try:
+        native = NativeProcesses()
+        with ExitStack() as stack:
+            handles, observations = {}, {}
+            for pid, identity in ancestors.items():
+                handles[pid] = stack.enter_context(
+                    native.process(pid, synchronize=True)
+                )
+                observed = _windows_read_lineage(native, handles[pid], pid)
+                if observed.identity != identity or observed.parent != table[pid][0]:
+                    return False
+                observations[pid] = observed
+            for child in observations.values():
+                if child.parent in (0, 4):
+                    continue  # Same-handle basic information confirms the terminal edge.
+                parent = observations.get(child.parent)
+                if (
+                    parent is None
+                    or parent.boot != child.boot
+                    or parent.sequence == child.sequence
+                    or not 0 < parent.interrupt < child.interrupt
+                    or not 0 < parent.unbiased < child.unbiased
+                ):
+                    return False
+            for pid, handle in handles.items():
+                if _windows_read_lineage(native, handle, pid) != observations[pid]:
+                    return False
+            return True
+    except (OSError, ValueError, AttributeError, KeyError):
+        return False
+
+
+def _windows_independent_sibling(worker_pid, worker_identity, caller_identity):
+    if (
+        os.name != "nt"
+        or not caller_identity
+        or not worker_identity
+        or type(worker_pid) is not int
+        or worker_pid <= 4
+        or worker_pid == os.getpid()
+    ):
+        return False
+    from contextlib import ExitStack
+    from windows_processes import NativeProcesses
+
+    try:
+        native = NativeProcesses()
+        with ExitStack() as stack:
+            caller_pid = os.getpid()
+            caller_handle = stack.enter_context(
+                native.process(caller_pid, synchronize=True)
+            )
+            worker_handle = stack.enter_context(
+                native.process(worker_pid, synchronize=True)
+            )
+            caller = _windows_read_lineage(native, caller_handle, caller_pid)
+            worker = _windows_read_lineage(native, worker_handle, worker_pid)
+            if (
+                caller.identity != caller_identity
+                or worker.identity != worker_identity
+                or caller.parent != worker.parent
+                or caller.parent in (0, 4, caller_pid, worker_pid)
+            ):
+                return False
+            parent_handle = stack.enter_context(
+                native.process(caller.parent, synchronize=True)
+            )
+            parent = _windows_read_lineage(native, parent_handle, caller.parent)
+            if not _windows_are_siblings(caller, worker, parent):
+                return False
+            # Hold all three objects until the final observations agree. A
+            # disappearing process, API error or close failure invalidates proof.
+            for handle, original in (
+                (caller_handle, caller),
+                (worker_handle, worker),
+                (parent_handle, parent),
+            ):
+                if _windows_read_lineage(native, handle, original.pid) != original:
+                    return False
+            return True
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def reject_nested(admission, ancestors, *, complete=True):
     with admission.transaction():
         rows = admission.connection.execute(
             "SELECT pid,identity FROM jobs WHERE kind='worker' AND state!='released'"
         ).fetchall()
         for row in rows:
-            if (
-                ancestors.get(row["pid"]) == row["identity"]
-                and admission.inspector(row["pid"]) == row["identity"]
-            ):
-                raise JobError("nested-worker-unsupported")
+            if ancestors.get(row["pid"]) == row["identity"]:
+                observed = admission.inspector(row["pid"])
+                if observed is None:
+                    raise JobError("ancestry-unavailable")
+                if observed == row["identity"]:
+                    raise JobError("nested-worker-unsupported")
+        if not complete and rows:
+            # Windows creation times are wall-clock values, not monotonic
+            # lineage evidence. Clock rollback can make a real ancestor look
+            # younger; unresolved unreleased workers must remain blocking.
+            for row in rows:
+                if not _windows_independent_sibling(
+                    row["pid"], row["identity"], ancestors.get(os.getpid())
+                ):
+                    raise JobError("ancestry-incomplete")
 
 
 def check_disk(paths, scratch_bytes, floor_bytes, probe=None, expected_devices=None):
@@ -137,32 +434,79 @@ def write_journal(home, record):
     folder = home / "jobs"
     folder.mkdir(mode=0o700, exist_ok=True)
     info = folder.lstat()
-    if (
-        not stat.S_ISDIR(info.st_mode)
-        or info.st_uid != os.getuid()
-        or info.st_mode & 0o077
+    if not stat.S_ISDIR(info.st_mode) or (
+        hasattr(os, "getuid") and (info.st_uid != os.getuid() or info.st_mode & 0o077)
     ):
         raise JobError("unsafe-journal")
     target = folder / (record["job_id"] + ".json")
+    if os.name == "nt":
+        from windows_security import is_private_path
+
+        scripts_root = str(Path(__file__).resolve().parents[1])
+        if scripts_root not in sys.path:
+            sys.path.insert(0, scripts_root)
+        from lite.windows_secure_io import atomic_write_bytes
+
+        try:
+            if not is_private_path(home, confidential=True) or not is_private_path(
+                folder, confidential=True
+            ):
+                raise JobError("unsafe-journal")
+            if target.exists() and not is_private_path(target, confidential=True):
+                raise JobError("unsafe-journal")
+
+            def validate_temporary(_descriptor, path):
+                if not is_private_path(path, confidential=True):
+                    raise JobError("unsafe-journal")
+
+            deadline = time.monotonic() + 1
+            while True:
+                try:
+                    atomic_write_bytes(
+                        home,
+                        target,
+                        json.dumps(record, separators=(",", ":")).encode(),
+                        validate_temporary=validate_temporary,
+                    )
+                    break
+                except OSError as error:
+                    # Other pinned readers/writers can briefly deny a rename.
+                    # Release every anchor/temp before retrying the full guarded
+                    # publication; persistent conflict remains a failed journal.
+                    if (
+                        getattr(error, "winerror", None) != 32
+                        or getattr(error, "__notes__", None)
+                        or time.monotonic() >= deadline
+                    ):
+                        raise
+                    time.sleep(0.005 + secrets.randbelow(10) / 1000)
+        except (OSError, ValueError) as error:
+            raise JobError("unsafe-journal") from error
+        return
     temp = folder / (record["job_id"] + "." + uuid.uuid4().hex + ".tmp")
-    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    fd = os.open(
+        temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600
+    )
     try:
         with os.fdopen(fd, "w") as stream:
             json.dump(record, stream, separators=(",", ":"))
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temp, target)
-        directory = os.open(folder, os.O_RDONLY)
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
+        if os.name != "nt":
+            directory = os.open(folder, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
     finally:
         temp.unlink(missing_ok=True)
 
 
 def validate(request):
-    if os.name != "posix" or not Path("/bin/ps").exists():
+    if os.name not in {"nt", "posix"} or (
+        os.name == "posix" and not Path("/bin/ps").exists()
+    ):
         raise JobError("platform-unavailable")
     if (
         not isinstance(request.argv, list)
@@ -278,17 +622,27 @@ def storage_journals(admission, current):
             raise StorageError("journal-census-incomplete")
         if path.stem == current["job_id"]:
             continue
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-        with os.fdopen(descriptor, "rb") as stream:
-            info = os.fstat(stream.fileno())
-            if (
-                not stat.S_ISREG(info.st_mode)
-                or info.st_uid != os.getuid()
-                or info.st_mode & 0o077
-                or info.st_size > 65536
-            ):
-                raise StorageError("unsafe-storage-journal")
-            journal = json.load(stream)
+        if os.name == "nt":
+            from host_job_profiles import private_read, ProfileError
+
+            try:
+                journal = json.loads(private_read(path, limit=65536))
+            except (OSError, ValueError, ProfileError) as error:
+                raise StorageError("unsafe-storage-journal") from error
+        else:
+            descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            with os.fdopen(descriptor, "rb") as stream:
+                info = os.fstat(stream.fileno())
+                if (
+                    not stat.S_ISREG(info.st_mode)
+                    or (
+                        hasattr(os, "getuid")
+                        and (info.st_uid != os.getuid() or info.st_mode & 0o077)
+                    )
+                    or info.st_size > 65536
+                ):
+                    raise StorageError("unsafe-storage-journal")
+                journal = json.load(stream)
         if (
             journal.get("physical_workspace") != current["physical_workspace"]
             or journal.get("profile") != current["profile"]
@@ -423,12 +777,57 @@ def revalidate_profile(admission, request):
         raise JobError("profile-drift") from error
 
 
+def supervise_windows(process, cancel, deadline, heartbeat):
+    """Only a trusted job supervisor can attest native descendant cleanup."""
+    channel = getattr(process, "_forgewright_job_cancel", None)
+    client = getattr(process, "_forgewright_job_client", None)
+    if channel is None or client is None:
+        return False, False
+    stopped, uncertain, last_heartbeat = False, False, 0.0
+    cleanup_deadline = None
+    try:
+        while True:
+            code = process.poll()
+            if code is not None:
+                try:
+                    client.validate(code)
+                    return not uncertain, stopped
+                except CompletionError:
+                    return False, stopped
+            now = time.monotonic()
+            if cleanup_deadline is None and now - last_heartbeat >= 1:
+                try:
+                    if heartbeat() is False:
+                        stopped = True
+                except Exception:
+                    uncertain, stopped = True, True
+                last_heartbeat = now
+            if cancel.is_set() or now >= deadline:
+                stopped = True
+            if stopped and cleanup_deadline is None:
+                channel.close()
+                cleanup_deadline = time.monotonic() + 5
+            if cleanup_deadline is not None and time.monotonic() >= cleanup_deadline:
+                # Killing our helper is last-resort reclamation, never proof
+                # that the entire job settled. Keep leases quarantined.
+                process.kill()
+                process.wait(timeout=2)
+                return False, stopped
+            time.sleep(0.05)
+    except (OSError, subprocess.SubprocessError):
+        return False, stopped
+    finally:
+        channel.close()
+
+
 def supervise(process, cancel, deadline, heartbeat):
     """Keep birth-bound descendants accounted; recheck before every signal.
 
     Profiles forbid daemonization. Census catches observed escapes, but cannot
     prove absence of an unobserved double-fork; never enroll those profiles.
     """
+    if os.name == "nt" and sys.platform == "win32":
+        return supervise_windows(process, cancel, deadline, heartbeat)
     known, uncertain, stopped = {}, False, False
     last_heartbeat = 0.0
     cleanup_deadline, kill_sent = None, False
@@ -545,7 +944,7 @@ def supervise(process, cancel, deadline, heartbeat):
                     terminate(signal.SIGTERM)
                 if now >= cleanup_deadline:
                     if not kill_sent:
-                        terminate(signal.SIGKILL)
+                        terminate(getattr(signal, "SIGKILL", signal.SIGTERM))
                         kill_sent = True
                         cleanup_deadline = now + 2
                     else:
@@ -619,12 +1018,14 @@ def run_job(admission, request, *, cancel=None):
         write_journal(admission.home, record)
         return receipt
     try:
-        reject_nested(admission, ancestry())
+        ancestors, complete = ancestry()
+        reject_nested(admission, ancestors, complete=complete)
     except JobError:
         record.update(state="rejected", never_spawned=True, exit_code=125)
         record["terminal_release"] = terminal_release_witness(record)
         write_journal(admission.home, record)
         raise
+    job_client = None
     uncertain, process, monitor_finished, storage, storage_finished = (
         False,
         None,
@@ -749,10 +1150,35 @@ def run_job(admission, request, *, cancel=None):
         uncertain = True
         try:
             # Inherited streams have bounded supervisor memory and preserve TTY.
+            argv = request.argv
+            if os.name == "nt":
+                if (
+                    shutil.which(
+                        argv[0], path=(child_environment or os.environ).get("PATH")
+                    )
+                    is None
+                ):
+                    raise FileNotFoundError("worker executable unavailable")
+                job_client = WindowsJobClient(parent=admission.home).prepare()
+                argv = job_client.supervisor_argv(argv)
             process = subprocess.Popen(
-                request.argv, cwd=cwd, start_new_session=True, env=child_environment
+                argv,
+                cwd=cwd,
+                start_new_session=os.name != "nt",
+                env=child_environment,
+                stdin=subprocess.PIPE if os.name == "nt" else None,
+                stdout=sys.stdout if os.name == "nt" else None,
+                stderr=sys.stderr if os.name == "nt" else None,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                if os.name == "nt"
+                else 0,
             )
-        except OSError as error:
+            if os.name == "nt":
+                process._forgewright_job_cancel = process.stdin
+                process._forgewright_job_client = job_client
+        except (OSError, CompletionError) as error:
+            if job_client is not None:
+                job_client.cleanup()
             uncertain = False
             record["spawn_pending"] = False
             raise JobError("spawn-failed") from error
@@ -871,6 +1297,15 @@ def run_job(admission, request, *, cancel=None):
             cleanup = threading.Event()
             cleanup.set()
             supervise(process, cleanup, time.monotonic(), lambda: None)
+        if (
+            job_client is not None
+            and process is not None
+            and process.poll() is not None
+        ):
+            try:
+                job_client.cleanup()
+            except CompletionError:
+                uncertain = True
         if storage and not storage_finished:
             try:
                 receipt["storage"] = storage.finish(

@@ -45,8 +45,7 @@ TEST_GIT_ENV: dict[str, str | None] = dict.fromkeys(
         "GIT_OBJECT_DIRECTORY",
         "GIT_ALTERNATE_OBJECT_DIRECTORIES",
         "TMPDIR",
-        "TMP",
-        "TEMP",
+        *(("TMP", "TEMP") if os.name != "nt" else ()),
     )
 )
 

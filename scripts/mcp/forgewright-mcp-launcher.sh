@@ -52,6 +52,13 @@ CANONICAL_TSX_PATH="$HOME/.forgewright/mcp-server/node_modules/.bin/tsx"
 
 # ─── Workspace Detection ────────────────────────────────────────
 
+host_path() {
+    case "$OSTYPE" in
+        msys*|cygwin*) /usr/bin/cygpath.exe -am -- "$1" ;;
+        *) printf '%s\n' "$1" ;;
+    esac
+}
+
 resolve_workspace() {
     local workspace=""
 
@@ -70,8 +77,7 @@ resolve_workspace() {
         workspace="$CLAUDE_DESKTOP_WORKSPACE"
         log_debug "  → Using CLAUDE_DESKTOP_WORKSPACE: $workspace"
     # Priority 4: Git repository root
-    elif git rev-parse --show-toplevel 2>/dev/null | grep -q '^/'; then
-        workspace="$(git rev-parse --show-toplevel)"
+    elif workspace="$(git rev-parse --show-toplevel 2>/dev/null)" && [[ -n "$workspace" ]]; then
         log_debug "  → Using git root: $workspace"
     # Priority 5: Current working directory
     else
@@ -86,7 +92,9 @@ resolve_workspace() {
     fi
 
     # Convert relative to absolute
-    if [[ "$workspace" != /* ]]; then
+    if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
+        workspace="$(/usr/bin/cygpath.exe -au -- "$workspace")" || return 1
+    elif [[ "$workspace" != /* ]]; then
         workspace="$(pwd)/$workspace"
     fi
 
@@ -153,8 +161,9 @@ validate_manifest() {
     fi
 
     # Check workspace matches
-    local manifest_workspace
-    manifest_workspace="$(node - "$manifest" <<'NODE'
+    local manifest_workspace native_manifest
+    native_manifest="$(host_path "$manifest")" || return 1
+    manifest_workspace="$(node - "$native_manifest" <<'NODE'
 try {
   const manifest = JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
   process.stdout.write(typeof manifest.workspace === 'string' ? manifest.workspace : '');
@@ -180,7 +189,7 @@ NODE
 
     # Check manifest has servers
     local server_count
-    server_count="$(node - "$manifest" <<'NODE'
+    server_count="$(node - "$native_manifest" <<'NODE'
 try {
   const manifest = JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
   process.stdout.write(String(Array.isArray(manifest.servers) ? manifest.servers.length : 0));
@@ -264,8 +273,13 @@ resolve_server_cmd() {
         log_debug "  → Parsing manifest..."
 
         # Find forgewright-mcp-server from manifest
-        local server_path
-        server_path="$(node - "$manifest" "$CANONICAL_SERVER_PATH" <<'NODE'
+        local server_path native_manifest native_server native_cygpath=""
+        native_manifest="$(host_path "$manifest")" || return 1
+        native_server="$(host_path "$CANONICAL_SERVER_PATH")" || return 1
+        if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
+            native_cygpath="$(host_path /usr/bin/cygpath.exe)" || return 1
+        fi
+        server_path="$(node - "$native_manifest" "$native_server" "$native_cygpath" <<'NODE'
 var fs = require('fs');
 try {
   var m = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
@@ -281,13 +295,30 @@ try {
       }
       scriptPath = sp.slice('npx tsx '.length);
     }
-    var canonicalPath = process.argv[3];
-    if (scriptPath.startsWith('/') && !/[\r\n\0]/.test(scriptPath) &&
-        fs.statSync(scriptPath).isFile() && fs.realpathSync(scriptPath) === fs.realpathSync(canonicalPath)) {
-        process.stdout.write(fs.realpathSync(scriptPath));
-    } else {
-        process.exit(1);
+    if (/[\r\n\0]/.test(scriptPath)) {
+      process.exit(1);
     }
+    var windows = process.platform === 'win32';
+    if (windows && scriptPath.startsWith('/') && !scriptPath.startsWith('//')) {
+      var cygpath = process.argv[4];
+      if (!cygpath) {
+        process.exit(1);
+      }
+      scriptPath = require('child_process').execFileSync(cygpath, ['-am', '--', scriptPath], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).replace(/\r?\n$/, '');
+    }
+    var absolute = windows ? /^[A-Za-z]:[\\/]/.test(scriptPath) : scriptPath.startsWith('/');
+    if (!absolute || !fs.statSync(scriptPath).isFile()) {
+      process.exit(1);
+    }
+    var realpath = windows ? fs.realpathSync.native : fs.realpathSync;
+    var resolved = realpath(scriptPath);
+    if (resolved !== realpath(process.argv[3])) {
+      process.exit(1);
+    }
+    process.stdout.write(windows ? resolved.replace(/\\/g, '/') : resolved);
   } else {
     process.exit(1);
   }
@@ -311,7 +342,9 @@ NODE
     # Never execute workspace-owned TypeScript. The setup command owns and
     # verifies the canonical server and its local tsx runtime.
     if [[ -f "$CANONICAL_SERVER_PATH" ]] && [[ -x "$CANONICAL_TSX_PATH" ]]; then
-        SERVER_ARGV=("$CANONICAL_TSX_PATH" "$CANONICAL_SERVER_PATH")
+        local native_server
+        native_server="$(host_path "$CANONICAL_SERVER_PATH")" || return 1
+        SERVER_ARGV=("$CANONICAL_TSX_PATH" "$native_server")
         return 0
     fi
 

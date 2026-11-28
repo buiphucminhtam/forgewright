@@ -81,27 +81,35 @@ one scout.
 ## Native Codex Configuration
 
 Read `subagents.codex` from `.production-grade.yaml` before a native Codex
-dispatch. The owner-approved map (2026-11-17) gives the main work to `gpt-6.1-sol`
-(medium reasoning, high for expert), chores and bounded discovery to
-`gpt-6.1-terra` (low), and planning and independent review to `gpt-6-astra`
-(high):
+dispatch. The owner-approved map (2026-11-28) assigns routine
+implementation to `gpt-6.2-sol` at medium effort and expert work to Sol at
+high effort. Use `gpt-6-luna` at low effort for bounded mechanical inventory,
+`gpt-6.1-terra` at low effort for exploration and visual inspection, and
+`gpt-6.2-astra` at high effort for planning and independent review.
 
 ```yaml
 subagents:
   codex:
     default:
-      model: "gpt-6.1-sol"
+      model: "gpt-6.2-sol"
       reasoning_effort: "medium"
     tiers:
-      scout: { model: "gpt-6.1-terra", reasoning_effort: "low" }
-      builder: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
-      expert: { model: "gpt-6.1-sol", reasoning_effort: "high" }
-      planner: { model: "gpt-6-astra", reasoning_effort: "high" }
-      reviewer: { model: "gpt-6-astra", reasoning_effort: "high" }
+      scout: { model: "gpt-6-luna", reasoning_effort: "low" }
+      builder: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
+      expert: { model: "gpt-6.2-sol", reasoning_effort: "high" }
+      planner: { model: "gpt-6.2-astra", reasoning_effort: "high" }
+      reviewer: { model: "gpt-6.2-astra", reasoning_effort: "high" }
     agent_types:
       explorer: { model: "gpt-6.1-terra", reasoning_effort: "low" }
-      worker: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
+      worker: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
 ```
+
+On FrontierCode 2.0 in Codex at max effort, GPT-6.2 Sol scored 43.8%
+at $1.29 per rollout and GPT-6.2 Astra scored 44.2% at $5.97 per rollout.
+The results support the role split. Measure the project workload before
+changing the default reasoning effort or speed tier.
+[Cognition FrontierCode](https://cognition.com/frontiercode) ·
+[OpenAI model selection](https://developers.openai.com/api/docs/guides/model-selection)
 
 Resolve `model` and `reasoning_effort` independently with this precedence:
 
@@ -140,15 +148,16 @@ resolver is not the external AGY adapter.
 ## Native Claude Code Configuration
 
 Claude Code routes by agent type. The plugin ships five tier agents under
-`agents/`, each pinning a model alias in its frontmatter:
+`agents/`, each pinning a model alias and an effort level in its frontmatter
+(`model:` and `effort:`). The efforts match the Codex tiers:
 
-| Tier | Agent | Model alias | Tools / use |
-|---|---|---|---|
-| `scout` | `forgewright-scout` | `haiku` | Read, Grep, Glob only (no shell, no edits): lookups, inventories, summaries of files already on disk |
-| `builder` | `forgewright-builder` | `sonnet` | Normal bounded implementation, tests, debugging, code review |
-| `expert` | `forgewright-expert` | `opus` | HARD-signal implementation and debugging |
-| `planner` | `forgewright-planner` | `fable` | Read, Grep, Glob, Bash (read-only use), WebSearch, WebFetch; no edits: planning and design decisions |
-| `reviewer` | `forgewright-reviewer` | `fable` | Read, Grep, Glob, Bash; no edits: independent review and HARD review-2 |
+| Tier | Agent | Model alias | Effort | Tools / use |
+|---|---|---|---|---|
+| `scout` | `forgewright-scout` | `haiku` | `low` | Read, Grep, Glob only (no shell, no edits): lookups, inventories, summaries of files already on disk |
+| `builder` | `forgewright-builder` | `sonnet` | `medium` | Normal bounded implementation, tests, debugging, code review |
+| `expert` | `forgewright-expert` | `opus` | `high` | HARD-signal implementation and debugging |
+| `planner` | `forgewright-planner` | `fable` | `high` | Read, Grep, Glob, Bash (read-only use), WebSearch, WebFetch; no edits: planning and design decisions |
+| `reviewer` | `forgewright-reviewer` | `fable` | `high` | Read, Grep, Glob, Bash; no edits: independent review and HARD review-2 |
 
 How selection happens, and what is enforced:
 
@@ -176,18 +185,70 @@ How selection happens, and what is enforced:
 ```sh
 python3 scripts/runtime/claude-subagent-routing.py \
   --tier "$TIER" --risk-signal "$SIGNAL" \
-  --capabilities-json '{"models": ["haiku", "sonnet", "opus", "fable"], "agent_types": ["forgewright:forgewright-scout", "forgewright:forgewright-builder", "forgewright:forgewright-expert", "forgewright:forgewright-planner", "forgewright:forgewright-reviewer", "general-purpose"]}'
+  --capabilities-json '{"models": ["haiku", "sonnet", "opus", "fable"], "agent_types": ["forgewright:forgewright-scout", "forgewright:forgewright-builder", "forgewright:forgewright-expert", "forgewright:forgewright-planner", "forgewright:forgewright-reviewer", "general-purpose"], "efforts": ["low", "medium", "high", "xhigh", "max"]}'
 ```
 
 Pass only the emitted `agent_args`. `subagent_type` appears only for an
 advertised agent (bare, or a unique plugin-namespaced match). `model` appears
 only for an advertised alias (`model_selection: verified`). Otherwise the
-subagent inherits the parent model (`provider-managed`). Aliases resolve to the
+subagent inherits the parent model (`provider-managed`). `effort` is resolved
+independently: it appears only when the configured level is in the schema's
+`efforts` list (`effort_selection: verified`). Otherwise no `effort` is passed:
+a `forgewright-*` agent then runs at its frontmatter effort, a generic agent
+type inherits the parent effort, and the resolver never substitutes another
+level. Aliases resolve to the
 runtime's current model of that family; they are not pinned snapshots. The
 plugin-namespaced names (`forgewright:forgewright-<tier>`) were observed in a
 headless Claude Code session loaded with `--plugin-dir` on 2026-11-15; other
 hosts or install paths remain `UNVERIFIED` until probed. Configuration lives in
 `subagents.claude.tiers` in `.production-grade.yaml`.
+
+## Native Antigravity Configuration
+
+Antigravity (`agy` CLI and IDE) runs on the Gemini 4 / 3.8 model family and
+Orchestrator plan-execute routing. Treat configured model IDs as preferences
+only: apply a model or subagent parameter only when advertised by the active
+session (for example via `agy models` or the active `invoke_subagent` / `swarm`
+tool schema); never invent or pin an unverified ID.
+
+Observed `agy models` capabilities (`agy` v1.5.14, probed 2026-11-25):
+
+| Tier | Preferred `agy` model | `invoke_subagent` `Model` | Workload / native primitive |
+|---|---|---|---|
+| `scout` | `gemini-3.8-flash-low` | `flash_lite` (`flash` for `browser`) | Bounded read-only discovery, `research`, `browser` UI inspection |
+| `builder` | `gemini-4-neon-medium` | `inherit` | Normal bounded implementation, tests, debugging |
+| `expert` | `gemini-4-neon-high` | `pro` | HARD signals, security/concurrency/public-contract changes |
+| `planner` | `gemini-4-neon-high` | `pro` | Orchestrator planning (`gemini-pro-orchestrator-neon`: Neon plans `PLAN_LOCKED`, faster execution model builds) |
+| `reviewer` | `gemini-4-neon-high` | `pro` | Independent adversarial review & HARD review-2 |
+
+Antigravity-native execution primitives:
+
+1. **Plan/Execute Orchestrator (`gemini-pro-orchestrator-neon`)**: the planning
+   turn reasons on Neon high/medium to lock `PLAN_LOCKED`; execution runs on a
+   faster model and hands back via `enter_plan_mode` on failed assumptions or
+   repeated errors.
+2. **`/swarm` (native parallel team)**: spawn independent workers under one
+   coordinator using `workspace: "share"` for concurrent file authors and
+   `inherit` for readers/checkers.
+3. **`invoke_subagent`**: delegate bounded `research`, `browser` (default
+   `Model: "flash"`), or isolated `self` tasks instead of polluting parent
+   context.
+4. **`/schedule` / `automation`**: run optional periodic reviews (for example
+   weekly ledger/outcome review); require explicit user confirmation before
+   creating automations or applying proposed prompt/rule changes.
+
+### Cross-Platform Tier Parity
+
+| Tier | Antigravity (`subagents.antigravity`) | Claude Code (`subagents.claude`) | OpenAI Codex (`subagents.codex`) |
+|---|---|---|---|
+| `scout` | `gemini-3.8-flash-low` (`flash_lite`) | `forgewright-scout` (`haiku`, `low`) | `gpt-6-luna` (`low`) |
+| `builder` | `gemini-4-neon-medium` (`inherit`) | `forgewright-builder` (`sonnet`, `medium`) | `gpt-6.2-sol` (`medium`) |
+| `expert` | `gemini-4-neon-high` (`pro`) | `forgewright-expert` (`opus`, `high`) | `gpt-6.2-sol` (`high`) |
+| `planner` | `gemini-4-neon-high` (`pro`) | `forgewright-planner` (`fable`, `high`) | `gpt-6.2-astra` (`high`) |
+| `reviewer` | `gemini-4-neon-high` (`pro`) | `forgewright-reviewer` (`fable`, `high`) | `gpt-6.2-astra` (`high`) |
+
+Configured values are preferences only and apply solely when advertised by the
+active runtime session.
 
 ## Codex GPT-6 Family
 

@@ -591,6 +591,30 @@ def test_lifecycle_context_hooks_fail_open_when_interpreter_is_missing(
         assert result.stdout == "", (platform, event, result.stdout)
 
 
+def _install_global_stop_fixture(tmp_path: Path) -> tuple[Path, dict[str, str]]:
+    fake_home = tmp_path / "home"
+    framework = fake_home / ".forgewright"
+    global_lite = framework / "scripts" / "lite"
+    shutil.copytree(
+        ROOT / "scripts" / "lite",
+        global_lite,
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    env = clean_git_environment()
+    env["HOME"] = str(fake_home)
+    env["FORGEWRIGHT_DIR"] = str(framework)
+    return global_lite / "stop-gate.sh", env
+
+
+def _assert_claude_global_stop(
+    result: subprocess.CompletedProcess[str], *, defers: bool
+) -> None:
+    assert result.returncode == (0 if defers else 2), result.stderr
+    assert result.stdout == ""
+    if not defers:
+        assert "[VERIFY-GATE]" in result.stderr and "gate BLOCKED" in result.stderr
+
+
 def test_global_codex_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:
     clean_git_workspace(tmp_path)
     project_lite = tmp_path / "scripts" / "lite"
@@ -613,18 +637,10 @@ command = "bash scripts/lite/stop-gate.sh --platform CODEX"
         encoding="utf-8",
     )
 
-    fake_home = tmp_path / "home"
-    global_lite = fake_home / ".forgewright" / "scripts" / "lite"
-    global_lite.mkdir(parents=True)
-    global_gate = global_lite / "stop-gate.sh"
-    shutil.copy2(ROOT / "scripts" / "lite" / "stop-gate.sh", global_gate)
-
-    env = clean_git_environment()
-    env["HOME"] = str(fake_home)
-    env["FORGEWRIGHT_DIR"] = str(fake_home / ".forgewright")
+    global_gate, env = _install_global_stop_fixture(tmp_path)
     payload = json.dumps(
         {
-            "last_assistant_message": "No verification block in this response.",
+            "last_assistant_message": "CLAIM: incomplete claim that would fail if not deferred",
             "turn_id": "duplicate-stop-turn",
         }
     )
@@ -639,7 +655,13 @@ command = "bash scripts/lite/stop-gate.sh --platform CODEX"
     )
 
     assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout) == {"continue": True}
+    decision = json.loads(result.stdout)
+    # On Windows the global hook runs validation directly; the shell defers on POSIX.
+    if os.name == "nt":
+        assert decision["decision"] == "block"
+        assert decision["forgewright"]["reason_code"] == "validation_failed"
+    else:
+        assert decision == {"continue": True}
 
 
 def test_global_claude_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:
@@ -658,7 +680,7 @@ def test_global_claude_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 1; cd \"$root\" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CLAUDE'",
+                                    "command": 'bash -c \'root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1; cd "$root" || exit 1; exec bash scripts/lite/stop-gate.sh --platform CLAUDE\'',
                                 }
                             ]
                         }
@@ -669,15 +691,7 @@ def test_global_claude_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    fake_home = tmp_path / "home"
-    global_lite = fake_home / ".forgewright" / "scripts" / "lite"
-    global_lite.mkdir(parents=True)
-    global_gate = global_lite / "stop-gate.sh"
-    shutil.copy2(ROOT / "scripts" / "lite" / "stop-gate.sh", global_gate)
-
-    env = clean_git_environment()
-    env["HOME"] = str(fake_home)
-    env["FORGEWRIGHT_DIR"] = str(fake_home / ".forgewright")
+    global_gate, env = _install_global_stop_fixture(tmp_path)
     payload = json.dumps(
         {
             "last_assistant_message": "CLAIM: incomplete claim that would fail if not deferred",
@@ -694,8 +708,7 @@ def test_global_claude_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:
         check=False,
     )
 
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == ""
+    _assert_claude_global_stop(result, defers=os.name != "nt")
 
 
 def clean_git_workspace(path: Path) -> None:
@@ -1000,6 +1013,49 @@ def test_gemini_before_tool_fails_closed_on_bad_payload_or_policy(
     assert bad_policy.returncode == 2
 
 
+def test_gemini_before_tool_falls_back_to_framework_policy_and_preserves_malformed(
+    tmp_path: Path,
+) -> None:
+    project_without_policy = tmp_path / "external-gemini-project"
+    project_without_policy.mkdir()
+
+    allowed = subprocess.run(
+        [BASH, str(ROOT / "scripts/lite/gemini-before-tool-gate.sh")],
+        cwd=project_without_policy,
+        input=json.dumps(
+            {"tool_name": "run_shell_command", "tool_input": {"command": "echo safe"}}
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert allowed.returncode == 0
+    assert json.loads(allowed.stdout) == {}
+
+    destructive_cmd = " ".join(["rm", "-rf", "/tmp/example"])
+    denied = subprocess.run(
+        [BASH, str(ROOT / "scripts/lite/gemini-before-tool-gate.sh")],
+        cwd=project_without_policy,
+        input=json.dumps(
+            {
+                "tool_name": "run_shell_command",
+                "tool_input": {"command": destructive_cmd},
+            }
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert denied.returncode == 2
+
+    bad_policy = run_gemini_before_tool(
+        tmp_path,
+        {"tool_name": "run_shell_command", "tool_input": {"command": "echo safe"}},
+        malformed_policy=True,
+    )
+    assert bad_policy.returncode == 2
+
+
 def run_antigravity_pre_tool(
     tmp_path: Path,
     payload: dict | str,
@@ -1167,6 +1223,108 @@ def test_antigravity_pre_tool_rejects_oversized_payload(tmp_path: Path) -> None:
     assert json.loads(result.stdout)["decision"] == "deny"
 
 
+def test_antigravity_pre_tool_falls_back_to_framework_policy_when_workspace_lacks_one(
+    tmp_path: Path,
+) -> None:
+    project_without_policy = tmp_path / "external-project"
+    project_without_policy.mkdir()
+
+    allow_result = subprocess.run(
+        [BASH, str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
+        cwd=project_without_policy,
+        input=json.dumps(
+            {
+                "workspacePaths": [str(project_without_policy)],
+                "toolCall": {
+                    "name": "read_file",
+                    "args": {"Path": str(project_without_policy / "README.md")},
+                },
+            }
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert allow_result.returncode == 0
+    assert json.loads(allow_result.stdout)["decision"] == "allow"
+
+    destructive_cmd = " ".join(["rm", "-rf", "/tmp/example"])
+    deny_result = subprocess.run(
+        [BASH, str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
+        cwd=project_without_policy,
+        input=json.dumps(
+            antigravity_payload(project_without_policy, {"command": destructive_cmd})
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert deny_result.returncode == 0
+    assert json.loads(deny_result.stdout)["decision"] == "deny"
+
+
+def test_antigravity_pre_tool_fails_closed_when_workspace_and_framework_lack_policy(
+    tmp_path: Path,
+) -> None:
+    isolated_root = tmp_path / "isolated-fw"
+    isolated_lite = isolated_root / "scripts" / "lite"
+    isolated_lite.mkdir(parents=True)
+    for name in ("antigravity-pre-tool-gate.sh", "policy-check.sh", "telemetry.sh"):
+        shutil.copy2(ROOT / "scripts" / "lite" / name, isolated_lite / name)
+
+    project = tmp_path / "no-policy-project"
+    project.mkdir()
+
+    result = subprocess.run(
+        [BASH, str(isolated_lite / "antigravity-pre-tool-gate.sh")],
+        cwd=project,
+        input=json.dumps(antigravity_payload(project, {"command": "echo safe"})),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert json.loads(result.stdout)["decision"] == "deny"
+
+
+def test_antigravity_pre_tool_allows_zero_arg_tool_and_denies_non_dict_args(
+    tmp_path: Path,
+) -> None:
+    omitted_args = run_antigravity_pre_tool(
+        tmp_path,
+        {
+            "workspacePaths": [str(tmp_path)],
+            "toolCall": {"name": "list_plugin_accounts"},
+        },
+    )
+    null_args = run_antigravity_pre_tool(
+        tmp_path,
+        {
+            "workspacePaths": [str(tmp_path)],
+            "toolCall": {"name": "list_plugin_accounts", "args": None},
+        },
+    )
+    list_args = run_antigravity_pre_tool(
+        tmp_path,
+        {
+            "workspacePaths": [str(tmp_path)],
+            "toolCall": {"name": "list_plugin_accounts", "args": ["bad"]},
+        },
+    )
+    str_args = run_antigravity_pre_tool(
+        tmp_path,
+        {
+            "workspacePaths": [str(tmp_path)],
+            "toolCall": {"name": "list_plugin_accounts", "args": "bad"},
+        },
+    )
+
+    assert json.loads(omitted_args.stdout)["decision"] == "allow"
+    assert json.loads(null_args.stdout)["decision"] == "allow"
+    assert json.loads(list_args.stdout)["decision"] == "deny"
+    assert json.loads(str_args.stdout)["decision"] == "deny"
+
+
 def _create_isolated_framework(tmp_path: Path, *, include_policy: bool = True) -> Path:
     fw_root = tmp_path / "framework"
     lite_dir = fw_root / "scripts" / "lite"
@@ -1227,6 +1385,25 @@ def test_antigravity_pre_tool_falls_back_to_framework_policy_for_unbootstrapped_
     assert json.loads(deny_result.stdout)["decision"] == "deny"
 
 
+def _create_dangling_policy_link(project: Path, target: Path) -> None:
+    policy = project / ".forgewright" / "execution-policy.yaml"
+    policy.parent.mkdir(parents=True)
+    try:
+        policy.symlink_to(target)
+    except OSError as error:
+        if os.name != "nt" or getattr(error, "winerror", None) != 1314:
+            raise
+        import _winapi
+
+        # An unprivileged directory junction exercises the same dangling entry.
+        target.mkdir()
+        try:
+            _winapi.CreateJunction(str(target), str(policy))
+        finally:
+            target.rmdir()
+    assert os.path.lexists(policy) and not policy.exists()
+
+
 def test_antigravity_pre_tool_does_not_bypass_malformed_project_policy_via_framework_fallback(
     tmp_path: Path,
 ) -> None:
@@ -1238,10 +1415,7 @@ def test_antigravity_pre_tool_does_not_bypass_malformed_project_policy_via_frame
     write_policy(project_bad, malformed=True)
 
     project_broken_link = tmp_path / "project-broken-link"
-    (project_broken_link / ".forgewright").mkdir(parents=True)
-    (project_broken_link / ".forgewright" / "execution-policy.yaml").symlink_to(
-        tmp_path / "nonexistent-policy.yaml"
-    )
+    _create_dangling_policy_link(project_broken_link, tmp_path / "nonexistent-policy.yaml")
 
     for proj in (project_bad, project_broken_link):
         payload = {
@@ -1335,10 +1509,7 @@ def test_gemini_before_tool_does_not_bypass_malformed_project_policy_via_framewo
     write_policy(project_bad, malformed=True)
 
     project_broken_link = tmp_path / "project-broken-link"
-    (project_broken_link / ".forgewright").mkdir(parents=True)
-    (project_broken_link / ".forgewright" / "execution-policy.yaml").symlink_to(
-        tmp_path / "nonexistent-policy.yaml"
-    )
+    _create_dangling_policy_link(project_broken_link, tmp_path / "nonexistent-policy.yaml")
 
     for proj in (project_bad, project_broken_link):
         payload = {
@@ -1407,11 +1578,13 @@ def test_checked_in_claude_context_hooks_satisfy_global_deferral_contract(
     _, module = _load_global_rule_context_copy(tmp_path)
     config = load_json(".claude/settings.json")
     for event in CLAUDE_CONTEXT_EVENTS:
-        assert module.PROJECT_CLAUDE_CONTEXT_COMMAND.format(event=event) in hook_commands(
-            config["hooks"][event]
-        ), event
+        assert module.PROJECT_CLAUDE_CONTEXT_COMMAND.format(
+            event=event
+        ) in hook_commands(config["hooks"][event]), event
         payload = {"source": "startup"} if event == "SessionStart" else {}
-        assert module._project_claude_hook_owns(ROOT, "CLAUDE", event, payload) is True, event
+        assert (
+            module._project_claude_hook_owns(ROOT, "CLAUDE", event, payload) is True
+        ), event
     assert module._project_claude_hook_owns(ROOT, "CLAUDE", "PreToolUse") is False
     assert module._project_claude_hook_owns(ROOT, "CODEX", "SessionStart") is False
 
@@ -1422,8 +1595,13 @@ def test_claude_merged_user_and_project_context_hooks_emit_once(tmp_path: Path) 
     project.mkdir()
     clean_git_workspace(project)
     (project / "kernel").mkdir()
-    shutil.copy2(ROOT / "kernel" / "rule-manifest.json", project / "kernel" / "rule-manifest.json")
-    manifest = json.loads((ROOT / "kernel" / "rule-manifest.json").read_text(encoding="utf-8"))
+    shutil.copy2(
+        ROOT / "kernel" / "rule-manifest.json",
+        project / "kernel" / "rule-manifest.json",
+    )
+    manifest = json.loads(
+        (ROOT / "kernel" / "rule-manifest.json").read_text(encoding="utf-8")
+    )
     for rule in manifest["rules"]:
         shutil.copy2(ROOT / rule["source"], project / rule["source"])
     (project / "scripts" / "lite").mkdir(parents=True)
@@ -1432,7 +1610,9 @@ def test_claude_merged_user_and_project_context_hooks_emit_once(tmp_path: Path) 
         project / "scripts" / "lite" / "rule-context-hook.py",
     )
     (project / ".claude").mkdir()
-    shutil.copy2(ROOT / ".claude" / "settings.json", project / ".claude" / "settings.json")
+    shutil.copy2(
+        ROOT / ".claude" / "settings.json", project / ".claude" / "settings.json"
+    )
     global_hook, _ = _load_global_rule_context_copy(tmp_path)
     project_config = load_json(".claude/settings.json")
     env = clean_git_environment()
@@ -1444,35 +1624,64 @@ def test_claude_merged_user_and_project_context_hooks_emit_once(tmp_path: Path) 
         for command in hook_commands(project_config["hooks"][event]):
             outputs.append(
                 run_bash_command(
-                    command, cwd=project, env=env, input=payload, text=True,
-                    capture_output=True, check=False,
+                    command,
+                    cwd=project,
+                    env=env,
+                    input=payload,
+                    text=True,
+                    capture_output=True,
+                    check=False,
                 ).stdout
             )
         outputs.append(
             subprocess.run(
-                [os.sys.executable, str(global_hook), "--platform", "CLAUDE",
-                 "--event", event, "--workspace", str(project)],
-                cwd=project, env=env, input=payload, text=True,
-                capture_output=True, check=False,
+                [
+                    os.sys.executable,
+                    str(global_hook),
+                    "--platform",
+                    "CLAUDE",
+                    "--event",
+                    event,
+                    "--workspace",
+                    str(project),
+                ],
+                cwd=project,
+                env=env,
+                input=payload,
+                text=True,
+                capture_output=True,
+                check=False,
             ).stdout
         )
-        injected = [
-            out for out in outputs
-            if "Forgewright rule inventory" in out
-        ]
+        injected = [out for out in outputs if "Forgewright rule inventory" in out]
         assert len(injected) == 1, (event, outputs)
 
     # Without a project registration the global copy is the only source.
     (project / ".claude" / "settings.json").unlink()
     lone = subprocess.run(
-        [os.sys.executable, str(global_hook), "--platform", "CLAUDE",
-         "--event", "SessionStart", "--workspace", str(project)],
-        cwd=project, env=env, input="{}", text=True, capture_output=True, check=False,
+        [
+            os.sys.executable,
+            str(global_hook),
+            "--platform",
+            "CLAUDE",
+            "--event",
+            "SessionStart",
+            "--workspace",
+            str(project),
+        ],
+        cwd=project,
+        env=env,
+        input="{}",
+        text=True,
+        capture_output=True,
+        check=False,
     )
     assert "Forgewright rule inventory" in lone.stdout
 
 
-def _claude_stop_deferral_fixture(tmp_path: Path, stop_groups: list) -> tuple[Path, dict]:
+def _claude_stop_deferral_fixture(
+    tmp_path: Path, stop_groups: list
+) -> tuple[Path, dict]:
     clean_git_workspace(tmp_path)
     project_lite = tmp_path / "scripts" / "lite"
     project_lite.mkdir(parents=True)
@@ -1481,18 +1690,12 @@ def _claude_stop_deferral_fixture(tmp_path: Path, stop_groups: list) -> tuple[Pa
     (tmp_path / ".claude" / "settings.json").write_text(
         json.dumps({"hooks": {"Stop": stop_groups}}), encoding="utf-8"
     )
-    fake_home = tmp_path / "home"
-    global_lite = fake_home / ".forgewright" / "scripts" / "lite"
-    global_lite.mkdir(parents=True)
-    global_gate = global_lite / "stop-gate.sh"
-    shutil.copy2(ROOT / "scripts" / "lite" / "stop-gate.sh", global_gate)
-    env = clean_git_environment()
-    env["HOME"] = str(fake_home)
-    env["FORGEWRIGHT_DIR"] = str(fake_home / ".forgewright")
-    return global_gate, env
+    return _install_global_stop_fixture(tmp_path)
 
 
-def _run_global_claude_gate(tmp_path: Path, stop_groups: list) -> subprocess.CompletedProcess:
+def _run_global_claude_gate(
+    tmp_path: Path, stop_groups: list
+) -> subprocess.CompletedProcess:
     global_gate, env = _claude_stop_deferral_fixture(tmp_path, stop_groups)
     payload = json.dumps(
         {
@@ -1502,23 +1705,34 @@ def _run_global_claude_gate(tmp_path: Path, stop_groups: list) -> subprocess.Com
     )
     return subprocess.run(
         [BASH, str(global_gate), "--platform", "CLAUDE"],
-        cwd=tmp_path, env=env, input=payload, text=True, capture_output=True, check=False,
+        cwd=tmp_path,
+        env=env,
+        input=payload,
+        text=True,
+        capture_output=True,
+        check=False,
     )
 
 
-def test_global_claude_stop_gate_defers_with_checked_in_memory_adjunct(tmp_path: Path) -> None:
+def test_global_claude_stop_gate_defers_with_checked_in_memory_adjunct(
+    tmp_path: Path,
+) -> None:
     stop_groups = load_json(".claude/settings.json")["hooks"]["Stop"]
     assert len(stop_groups) == 2
-    assert any("native_hook.py" in c and "--platform CLAUDE" in c for c in hook_commands(stop_groups))
+    assert any(
+        "native_hook.py" in c and "--platform CLAUDE" in c
+        for c in hook_commands(stop_groups)
+    )
     result = _run_global_claude_gate(tmp_path, stop_groups)
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == ""
+    _assert_claude_global_stop(result, defers=os.name != "nt")
 
 
 @pytest.mark.parametrize(
     "mutate",
     [
-        lambda h: h.update(command=h["command"].replace("--platform CLAUDE", "--platform CLAUDE; true")),
+        lambda h: h.update(
+            command=h["command"].replace("--platform CLAUDE", "--platform CLAUDE; true")
+        ),
         lambda h: h.update(timeout=30),
         lambda h: h.update(statusMessage="extra"),
     ],
@@ -1529,16 +1743,20 @@ def test_global_claude_stop_gate_validates_when_memory_adjunct_is_modified(
     import copy
 
     stop_groups = copy.deepcopy(load_json(".claude/settings.json")["hooks"]["Stop"])
-    memory = next(g for g in stop_groups if "native_hook.py" in g["hooks"][0]["command"])
+    memory = next(
+        g for g in stop_groups if "native_hook.py" in g["hooks"][0]["command"]
+    )
     mutate(memory["hooks"][0])
     result = _run_global_claude_gate(tmp_path, stop_groups)
-    assert not (result.returncode == 0 and result.stdout == ""), "modified adjunct must not defer"
+    _assert_claude_global_stop(result, defers=False)
 
 
-def test_global_claude_stop_gate_validates_with_unknown_second_group(tmp_path: Path) -> None:
+def test_global_claude_stop_gate_validates_with_unknown_second_group(
+    tmp_path: Path,
+) -> None:
     import copy
 
     stop_groups = copy.deepcopy(load_json(".claude/settings.json")["hooks"]["Stop"])
     stop_groups.append({"hooks": [{"type": "command", "command": "true"}]})
     result = _run_global_claude_gate(tmp_path, stop_groups)
-    assert not (result.returncode == 0 and result.stdout == "")
+    _assert_claude_global_stop(result, defers=False)

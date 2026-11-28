@@ -576,6 +576,104 @@ def verify_context_snapshot(packet: Mapping[str, Any], root: Path) -> None:
         raise ContextPacketError("supplemental worker packet digest mismatch")
 
 
+def _read_windows_context_bytes(root: Path, target: str, read_limit: int) -> bytes:
+    """Read a bounded prefix while the parent chain and leaf remain pinned."""
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    try:
+        from scripts.lite.windows_secure_io import (
+            _close_windows_handle,
+            _is_reparse,
+            _safe_basename,
+            locked_directory_chain,
+        )
+    except ImportError:
+        from lite.windows_secure_io import (
+            _close_windows_handle,
+            _is_reparse,
+            _safe_basename,
+            locked_directory_chain,
+        )
+
+    # Reject Windows aliases, devices and alternate streams before opening any
+    # target; repository paths and authorization remain governed by the caller.
+    for component in target.split("/"):
+        _safe_basename(component)
+    candidate = Path(os.path.abspath(root / target))
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create_file.restype = wintypes.HANDLE
+
+    def identity(info):
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or _is_reparse(info):
+            raise ValueError("context source is not a single-link regular file")
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+
+    # The workspace's ancestors are part of the lookup too. Start at the
+    # volume anchor so a junction substituted above root after scope resolution
+    # is rejected, and hold the entire chain through opening and reading.
+    with locked_directory_chain(Path(candidate.anchor), candidate.parent) as parents:
+        if not parents:
+            raise OSError("Windows context directory handles unavailable")
+        handle = create_file(
+            str(candidate),
+            0x80000000,  # GENERIC_READ
+            0x00000001,  # FILE_SHARE_READ; deny writes and deletion while reading
+            None,
+            3,  # OPEN_EXISTING: never create missing context
+            0x00200000 | 0x02000000,  # OPEN_REPARSE_POINT | BACKUP_SEMANTICS
+            None,
+        )
+        if handle == wintypes.HANDLE(-1).value:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            fd = msvcrt.open_osfhandle(
+                handle, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT
+            )
+        except BaseException:
+            _close_windows_handle(handle)
+            raise
+        try:
+            opened = os.fstat(fd)
+            initial_path = candidate.lstat()
+            before = identity(opened)
+            if identity(initial_path) != before:
+                raise ValueError("context source changed while opening")
+            chunks = []
+            remaining = read_limit + 1
+            while remaining > 0:
+                chunk = os.read(fd, min(remaining, 16 * 1024))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            final = os.fstat(fd)
+            final_path = candidate.lstat()
+            # Python Windows can expose change time through fstat and birth
+            # time through lstat. Compare ctime within each API, never between.
+            if (
+                identity(final) != before
+                or identity(final_path) != before
+                or final.st_ctime_ns != opened.st_ctime_ns
+                or final_path.st_ctime_ns != initial_path.st_ctime_ns
+            ):
+                raise ValueError("context source changed while reading")
+            return b"".join(chunks)
+        finally:
+            os.close(fd)
+
+
 def _safe_read_regular_file(
     root: Path,
     target: str,
@@ -583,9 +681,9 @@ def _safe_read_regular_file(
     read_limit: int,
 ) -> tuple[str, str, dict[str, Any], bytes]:
     """Read regular file within allowed scopes safely on supported platforms using descriptor pinning."""
-    if sys.platform not in ("darwin", "linux"):
+    if sys.platform not in ("darwin", "linux", "win32"):
         raise ContextPacketError(
-            f"unsupported platform: {sys.platform} (supported: darwin, linux)"
+            f"unsupported platform: {sys.platform} (supported: darwin, linux, win32)"
         )
 
     in_scope = any(
@@ -608,6 +706,13 @@ def _safe_read_regular_file(
 
     if not file_path.exists():
         return ("no_match", "file_not_found", {"path": target}, b"")
+
+    if sys.platform == "win32":
+        try:
+            content = _read_windows_context_bytes(root, target, read_limit)
+            return ("ok", "", {"path": target}, content)
+        except (OSError, ValueError):
+            return ("inaccessible", "read_error", {"path": target}, b"")
 
     parts = target.strip("/").split("/")
     open_fds = []

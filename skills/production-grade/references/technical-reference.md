@@ -114,17 +114,17 @@ pipeline:
 subagents:
   codex:
     default:
-      model: "gpt-6.1-sol"
+      model: "gpt-6.2-sol"
       reasoning_effort: "medium"
     tiers:
-      scout: { model: "gpt-6.1-terra", reasoning_effort: "low" }
-      builder: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
-      expert: { model: "gpt-6.1-sol", reasoning_effort: "high" }
-      planner: { model: "gpt-6-astra", reasoning_effort: "high" }
-      reviewer: { model: "gpt-6-astra", reasoning_effort: "high" }
+      scout: { model: "gpt-6-luna", reasoning_effort: "low" }
+      builder: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
+      expert: { model: "gpt-6.2-sol", reasoning_effort: "high" }
+      planner: { model: "gpt-6.2-astra", reasoning_effort: "high" }
+      reviewer: { model: "gpt-6.2-astra", reasoning_effort: "high" }
     agent_types:
       explorer: { model: "gpt-6.1-terra", reasoning_effort: "low" }
-      worker: { model: "gpt-6.1-sol", reasoning_effort: "medium" }
+      worker: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
 
 # Review settings
 review:

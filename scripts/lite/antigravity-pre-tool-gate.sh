@@ -64,11 +64,21 @@ if [[ "$PAYLOAD_SIZE" -gt "$MAX_PAYLOAD_BYTES" ]]; then
   exit 0
 fi
 
-if ! "${PYTHON_COMMAND[@]}" - "$PAYLOAD_FILE" "$TOOL_FILE" "$ARGS_FILE" "$WORKSPACE_FILE" "$FRAMEWORK_ROOT" <<'PYEOF'
+if ! "${PYTHON_COMMAND[@]}" - "$PAYLOAD_FILE" "$TOOL_FILE" "$ARGS_FILE" "$WORKSPACE_FILE" "$FRAMEWORK_ROOT" <<'PYEOF' 2>/dev/null
 import json
 import os
+import re
 import sys
 from pathlib import Path
+
+def normalize_path(candidate: str) -> str:
+    if os.name == "nt":
+        match = re.match(r"^/([A-Za-z])(?:/(.*))?$", candidate)
+        if match:
+            drive = match.group(1).upper()
+            rest = match.group(2) or ""
+            return f"{drive}:/{rest}"
+    return candidate
 
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 if not isinstance(payload, dict):
@@ -81,6 +91,8 @@ tool_name = tool_call.get("name")
 tool_args = tool_call.get("args")
 if not isinstance(tool_name, str) or not tool_name.strip():
     raise ValueError("toolCall.name is required")
+if tool_args is None:
+    tool_args = {}
 if not isinstance(tool_args, dict):
     raise ValueError("toolCall.args must be an object")
 payload_cwd = payload.get("cwd")
@@ -96,7 +108,7 @@ workspaces = []
 for candidate in candidate_paths:
     if not isinstance(candidate, str) or not candidate.strip():
         continue
-    resolved = os.path.realpath(candidate)
+    resolved = os.path.realpath(normalize_path(candidate))
     if not os.path.isdir(resolved):
         continue
     while True:
@@ -108,7 +120,7 @@ for candidate in candidate_paths:
             break
         resolved = parent
 if not workspaces and isinstance(framework_root, str) and framework_root.strip():
-    resolved_fw = os.path.realpath(framework_root)
+    resolved_fw = os.path.realpath(normalize_path(framework_root))
     if os.path.isdir(resolved_fw) and os.path.lexists(
         os.path.join(resolved_fw, ".forgewright", "execution-policy.yaml")
     ):
@@ -146,6 +158,7 @@ POLICY_RC=$?
 
 case "$POLICY_RC" in
   0) emit_decision allow "Forgewright policy allowed this tool call." ;;
+  1) emit_decision deny "Forgewright policy denied this tool call." ;;
   2) emit_decision force_ask "Forgewright policy requires explicit permission." ;;
   *) emit_deny ;;
 esac
