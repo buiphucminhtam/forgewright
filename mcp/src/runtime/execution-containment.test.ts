@@ -6,7 +6,9 @@ import {
   ExecutionContainment,
   loadRuntimeTrustContext,
   loadRuntimeTrustContextIfPolicyPresent,
+  loadRuntimeWorkspaceContext,
 } from './execution-containment.js';
+import { resolveRuntimeWorkspaceEnvironment } from '../index.js';
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'containment-'));
@@ -164,5 +166,22 @@ describe('ExecutionContainment', () => {
         FORGEWRIGHT_RUNTIME_MODE: 'staging',
       }),
     ).toThrow('RUNTIME_TRUST_CONTEXT_INVALID');
+  });
+
+  it('falls back to resolved workspace when FORGEWRIGHT_WORKSPACE is unset or unresolved template', () => {
+    const root = fixture();
+    expect(
+      loadRuntimeWorkspaceContext(
+        resolveRuntimeWorkspaceEnvironment({ FORGEWRIGHT_WORKSPACE: '${workspaceFolder}' }, root),
+      ).workspace,
+    ).toBe(loadRuntimeWorkspaceContext({ FORGEWRIGHT_WORKSPACE: root }).workspace);
+    expect(
+      loadRuntimeWorkspaceContext(resolveRuntimeWorkspaceEnvironment({}, root)).workspace,
+    ).toBe(loadRuntimeWorkspaceContext({ FORGEWRIGHT_WORKSPACE: root }).workspace);
+    expect(() =>
+      loadRuntimeWorkspaceContext(
+        resolveRuntimeWorkspaceEnvironment({ FORGEWRIGHT_WORKSPACE: homedir() }, root),
+      ),
+    ).toThrow('RUNTIME_WORKSPACE_BROAD_ROOT');
   });
 });

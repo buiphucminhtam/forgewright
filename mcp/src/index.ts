@@ -33,7 +33,7 @@ import {
   loadRuntimeTrustContextIfPolicyPresent,
 } from './runtime/execution-containment.js';
 import { PolicyReadyToolGateway } from './runtime/policy-ready-tool-gateway.js';
-import { setWorkspaceRoot } from './state/pipeline-manager.js';
+import { getWorkspaceRoot, setWorkspaceRoot } from './state/pipeline-manager.js';
 import { setMcpServer, setRuntimeTrustContext } from './state/rpc-client.js';
 
 const server = new Server(
@@ -135,11 +135,24 @@ function installShutdownHandlers(): void {
   }
 }
 
+export function resolveRuntimeWorkspaceEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+  fallbackWorkspace: string = getWorkspaceRoot(),
+): NodeJS.ProcessEnv {
+  const configured = environment.FORGEWRIGHT_WORKSPACE;
+  if (configured && configured.trim() !== '' && !/\$\{[^}]+\}/.test(configured)) {
+    return environment;
+  }
+  return { ...environment, FORGEWRIGHT_WORKSPACE: fallbackWorkspace };
+}
+
 export async function run(): Promise<void> {
   setWorkspaceRoot();
   setMcpServer(server);
   registerPrompts(server);
-  const workspace = loadRuntimeWorkspaceContext().workspace;
+  const workspace = loadRuntimeWorkspaceContext(
+    resolveRuntimeWorkspaceEnvironment(process.env, getWorkspaceRoot()),
+  ).workspace;
   // Pin the caller context for this transport. Missing policy is the only
   // deferred condition; invalid roots, identities and existing policy still fail.
   const trustEnvironment = { ...process.env, FORGEWRIGHT_WORKSPACE: workspace };

@@ -165,9 +165,10 @@ export class ProcessPolicyEvaluator implements PolicyEvaluator {
   private readonly policySnapshot: string;
 
   constructor(options: ProcessPolicyEvaluatorOptions = {}) {
+    const configuredWorkspace = process.env.FORGEWRIGHT_WORKSPACE;
     this.cwd = realpathSync(
-      process.env.FORGEWRIGHT_WORKSPACE
-        ? resolve(process.env.FORGEWRIGHT_WORKSPACE)
+      configuredWorkspace && !/\$\{[^}]+\}/.test(configuredWorkspace)
+        ? resolve(configuredWorkspace)
         : findWorkspaceRoot(options.cwd ?? process.cwd()),
     );
     this.scriptPath = secureRegularFile(
