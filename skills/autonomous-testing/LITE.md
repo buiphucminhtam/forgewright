@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Autonomous Testing Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target testing libraries (Vitest, Stryker, fast-check, Playwright, Maestro) are installed | `cat package.json \| jq '.dependencies, .devDependencies \| select(. != null) \| with_entries(select(.key \| match("vitest\|stryker\|fast-check\|playwright\|maestro")))'` | ... | run the check command and paste output |
-| Existing test configurations, suites, or specifications exist in the workspace | `find tests/ src/ -name "*.test.ts" -o -name "*.spec.ts" -o -name "playwright.config.ts"` | ... | run the check command and paste output |
+| Target testing libraries (Vitest, Stryker, fast-check, Playwright, Maestro) are installed | `cat package.json \| jq '.dependencies, .devDependencies \| select(. != null) \| with_entries(select(.key \| match("vitest\|stryker\|fast-check\|playwright\|maestro")))'` | ... | Observed command exit code & stdout confirming target testing libraries (vitest, |
+| Existing test configurations, suites, or specifications exist in the workspace | `find tests/ src/ -name "*.test.ts" -o -name "*.spec.ts" -o -name "playwright.config.ts"` | ... | Observed command exit code & stdout confirming existing test configurations, suites, or |
 
 ## SOLVE Step 3: DECOMPOSE (Autonomous Testing Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

@@ -14,9 +14,9 @@ For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/proto
 ## SOLVE Step 2: GROUND (Growth Marketer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target landing pages, copy configs, or funnel assets are indexed | `find docs/01-product/ -name "*marketing*" -o -name "*landing*" -o -name "*funnel*"` | ... | run the check command and paste output |
-| Analytics tracking libraries (Plausible, Mixpanel, Google Analytics) are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("plausible\|mixpanel\|analytics")))'` | ... | run the check command and paste output |
-| Active project tech stack and onboarding status profile are defined | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target landing pages, copy configs, or funnel assets are indexed | `find docs/01-product/ -name "*marketing*" -o -name "*landing*" -o -name "*funnel*"` | ... | Observed command exit code & stdout confirming target landing pages, copy configs, or |
+| Analytics tracking libraries (Plausible, Mixpanel, Google Analytics) are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("plausible\|mixpanel\|analytics")))'` | ... | Observed command exit code & stdout confirming analytics tracking libraries (plausible, |
+| Active project tech stack and onboarding status profile are defined | `cat .forgewright/project-profile.json` | ... | Observed command exit code & stdout confirming active project tech stack and onboarding |
 
 ## SOLVE Step 3: DECOMPOSE (Growth Marketer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

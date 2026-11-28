@@ -2,9 +2,9 @@
 # scripts/forgewright-wiki-sync-all.sh
 
 # Đường dẫn đến Shared Vault và Thư mục GitHub chứa các dự án
-SHARED_VAULT_PATH="$HOME/forgewright-shared-vault"
-GITHUB_DIR="/Users/buiphucminhtam/GitHub"
-API_URL="http://localhost:3000"
+SHARED_VAULT_PATH="${FORGEWRIGHT_SHARED_VAULT:-$HOME/forgewright-shared-vault}"
+GITHUB_DIR="${FORGEWRIGHT_GITHUB_DIR:-$HOME/GitHub}"
+API_URL="${FORGEWRIGHT_WIKI_API_URL:-http://localhost:3000}"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🔍 FORGEWRIGHT BATCH SYNC — Quét tất cả dự án"
@@ -65,7 +65,7 @@ for project_dir in "$GITHUB_DIR"/*; do
         mkdir -p "$PROJECT_RAW_DIR"
         
         # Dọn dẹp liên kết cũ để tránh rác
-        rm -rf "$PROJECT_RAW_DIR"/*
+        find "${PROJECT_RAW_DIR:?}" -mindepth 1 -delete
         
         LINKED_FILES=0
         
@@ -86,7 +86,7 @@ for project_dir in "$GITHUB_DIR"/*; do
                     
                     while IFS= read -r -d '' filepath; do
                         # Lấy đường dẫn tương đối so với thư mục nguồn
-                        relative_path="${filepath#$source_path/}"
+                        relative_path="${filepath#"$source_path"/}"
                         dest_filepath="$PROJECT_RAW_DIR/$dest_name/$relative_path"
                         dest_parent_dir=$(dirname "$dest_filepath")
                         
@@ -97,7 +97,7 @@ for project_dir in "$GITHUB_DIR"/*; do
                         abs_filepath=$(cd "$(dirname "$filepath")" && pwd)/$(basename "$filepath")
                         
                         # Tạo symlink file
-                        rm -rf "$dest_filepath"
+                        rm -f "${dest_filepath:?}"
                         ln -sf "$abs_filepath" "$dest_filepath"
                         LINKED_FILES=$((LINKED_FILES + 1))
                     done < <(find "$source_path" -type f -print0)
@@ -107,7 +107,7 @@ for project_dir in "$GITHUB_DIR"/*; do
                     abs_source=$(cd "$parent_dir" && pwd)/$(basename "$source_path")
                     
                     # Xóa liên kết cũ nếu có
-                    rm -rf "$PROJECT_RAW_DIR/$dest_name"
+                    rm -f "${PROJECT_RAW_DIR:?}/${dest_name:?}"
                     
                     # Tạo liên kết mềm (Symlink)
                     ln -sf "$abs_source" "$PROJECT_RAW_DIR/$dest_name"

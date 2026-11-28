@@ -15,10 +15,10 @@ worktrees, branches, commits, or recursive agents by itself.
 
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Manifest is valid JSON v1 | `python3 -m json.tool <manifest>` | ... | run the check command and paste output |
-| Scope paths are disjoint | runner validation during dry-run | ... | run the check command and paste output |
-| Token/concurrency/deadline limits are positive | policy validation during dry-run | ... | run the check command and paste output |
-| AGY model IDs are machine-readable | same-invocation `agy models` runtime probe | ... | run the check command and paste output |
+| Manifest is valid JSON v1 | `python3 -m json.tool <manifest>` | ... | Observed command exit code & stdout confirming manifest is valid json v1 |
+| Scope paths are disjoint | runner validation during dry-run | ... | Observed command exit code & stdout confirming scope paths are disjoint |
+| Token/concurrency/deadline limits are positive | policy validation during dry-run | ... | Observed command exit code & stdout confirming token/concurrency/deadline limits are positive |
+| AGY model IDs are machine-readable | same-invocation `agy models` runtime probe | ... | Observed command exit code & stdout confirming agy model ids are machine-readable |
 
 ## Decision Contract
 

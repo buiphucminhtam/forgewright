@@ -382,7 +382,7 @@ openupm add com.ivanmurzak.unity.ai-probuilder
 - [Unity-MCP GitHub](https://github.com/IvanMurzak/Unity-MCP)
 - [Documentation](https://github.com/IvanMurzak/Unity-MCP/wiki)
 - [Discord Community](https://discord.gg/unity-mcp)
-- [Forgewright Unity Skills](./unity-mcp-integration)
+- [Forgewright Unity Skills](../skills/unity-mcp/SKILL.md)
 
 ---
 

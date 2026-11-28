@@ -13,11 +13,11 @@ tags: [orchestrator, meta, routing, pipeline]
 ## SOLVE Step 2: GROUND (Orchestrator Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project has git repo | `git status 2>/dev/null` | ... | run the check command and paste output |
-| Forgewright workspace exists | `ls .forgewright/ 2>/dev/null` | ... | run the check command and paste output |
-| Config file present | `cat .production-grade.yaml 2>/dev/null` | ... | run the check command and paste output |
-| Skills registry exists | `cat skills/skills-registry.yaml 2>/dev/null \| head -5` | ... | run the check command and paste output |
-| MCP tools available | Check if `fw_start_pipeline` is callable | ... | run the check command and paste output |
+| Project has git repo | `git status 2>/dev/null` | ... | Observed command exit code & stdout confirming project has git repo |
+| Forgewright workspace exists | `ls .forgewright/ 2>/dev/null` | ... | Observed command exit code & stdout confirming forgewright workspace exists |
+| Config file present | `cat .production-grade.yaml 2>/dev/null` | ... | Verified `Config file present` facts from inspected file/command output |
+| Skills registry exists | `cat skills/skills-registry.yaml 2>/dev/null \| head -5` | ... | Verified `Skills registry exists` facts from inspected file/command output |
+| MCP tools available | Check if `fw_start_pipeline` is callable | ... | Verified `MCP tools available` facts from inspected file/command output |
 | Pipeline context is decision-ready | Read current request + workspace evidence and `pipeline-operating-contract.md` | ... | objective, acceptance, constraints/non-goals, safe scope, risk owners, research/visual basis as applicable |
 
 ## SOLVE Step 3: DECOMPOSE (Orchestrator Domain Slots)

@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Data Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target database type, project tech stack, and profile settings are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Active schema definitions, DB indexes, or migration folders are indexed | `find db/ -name "*.sql" -o -name "*schema*" -o -name "*migration*"` | ... | run the check command and paste output |
+| Target database type, project tech stack, and profile settings are active | `cat .forgewright/project-profile.json` | ... | Verified `Target database type, project tech stack,` facts from inspected file/command output |
+| Active schema definitions, DB indexes, or migration folders are indexed | `find db/ -name "*.sql" -o -name "*schema*" -o -name "*migration*"` | ... | Observed command exit code & stdout confirming active schema definitions, db indexes, or |
 
 ## SOLVE Step 3: DECOMPOSE (Data Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

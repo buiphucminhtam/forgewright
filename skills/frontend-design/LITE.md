@@ -12,10 +12,10 @@ version: 1.0.0
 Proposes the aesthetic point of view. `unslop` remains the mandatory craft gate: its 5-line Direction and Template Check decide whether a proposal ships, and existing brand tokens always win. `art-director` and `concept-artist` own in-game art and world visuals; this skill covers the interface layer around them (title, menus, settings, store, overlays) so it matches the game's world instead of a generic web template.
 
 ## SOLVE Step 2: GROUND
-| Input | Check | Evidence |
-|---|---|---|
-| Brief and world | Game genre, setting, audience, platform; existing art and brand tokens | One-paragraph brief |
-| Current UI | Rendered screenshot of the screens in scope | Baseline image |
+| Input | Check | Result | Script-produced evidence |
+|---|---|---|---|
+| Brief and world | Game genre, setting, audience, platform; existing art and brand tokens | ... | One-paragraph brief |
+| Current UI | Rendered screenshot of the screens in scope | ... | Baseline image |
 
 ## SOLVE Step 3: DECOMPOSE
 1. PLAN | compact token system (color, type, layout) tied to the game's world | Each choice names the brief detail it comes from.

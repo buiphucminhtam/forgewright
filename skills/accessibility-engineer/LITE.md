@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Accessibility Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target accessibility testing tools (axe-core or playwright) are installed | `cat package.json \| jq '.devDependencies["@axe-core/playwright"]'` | ... | run the check command and paste output |
-| Standardized QA/testing templates are present | `cat docs/04-testing/TEMPLATE-TEST-PLAN.md` | ... | run the check command and paste output |
-| Existing accessibility documentation or audits are located | `find docs/04-testing/ -name "*accessibility*" -o -name "*wcag*"` | ... | run the check command and paste output |
+| Target accessibility testing tools (axe-core or playwright) are installed | `cat package.json \| jq '.devDependencies["@axe-core/playwright"]'` | ... | Verified `Target accessibility testing tools (axe-core` facts from inspected file/command output |
+| Standardized QA/testing templates are present | `cat docs/04-testing/TEMPLATE-TEST-PLAN.md` | ... | Verified `Standardized QA/testing templates are present` facts from inspected file/command output |
+| Existing accessibility documentation or audits are located | `find docs/04-testing/ -name "*accessibility*" -o -name "*wcag*"` | ... | Observed command exit code & stdout confirming existing accessibility documentation or |
 
 ## SOLVE Step 3: DECOMPOSE (Accessibility Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

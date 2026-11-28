@@ -306,6 +306,61 @@ def _validate_skills(root: Path, manifest: dict[str, Any], errors: list[str]) ->
     if unregistered:
         errors.append("unregistered skill directories: " + ", ".join(unregistered))
 
+    _validate_skill_index(root, installed, errors)
+
+
+def _validate_skill_index(
+    root: Path, installed: set[str], errors: list[str]
+) -> None:
+    index_path = root / "kernel" / "INDEX.md"
+    if not index_path.is_file():
+        errors.append("missing kernel/INDEX.md")
+        return
+
+    index_content = index_path.read_text(encoding="utf-8")
+    indexed: dict[str, tuple[str, str]] = {}
+    corrupt_prefix_re = re.compile(r"^(?:Nd|Creen|Ject|Ader|Ken)\b")
+    for line_no, line in enumerate(index_content.splitlines(), 1):
+        if not line.startswith("| **"):
+            continue
+        match = re.match(
+            r"^\|\s*\*\*([a-z0-9-]+)\*\*\s*\|\s*(.*?)\s*\|\s*\[([^\]]+)\]\(([^)]+)\)\s*\|$",
+            line,
+        )
+        if not match:
+            errors.append(f"kernel/INDEX.md malformed row at line {line_no}")
+            continue
+        name, trigger, _label, rel_target = match.groups()
+        indexed[name] = (trigger.strip(), rel_target.strip())
+        if not trigger.strip() or trigger.strip() in {">", "|", ">-", "|-"}:
+            errors.append(
+                f"kernel/INDEX.md skill {name!r} has empty or unparsed trigger {trigger!r}"
+            )
+        elif corrupt_prefix_re.match(trigger.strip()):
+            errors.append(
+                f"kernel/INDEX.md skill {name!r} has truncated trigger {trigger!r}"
+            )
+        resolved = (index_path.parent / rel_target.strip()).resolve()
+        if not resolved.is_file():
+            errors.append(
+                f"kernel/INDEX.md skill {name!r} links to missing overlay {rel_target!r}"
+            )
+
+    expected_indexed = {
+        name for name in installed if (root / "skills" / name / "LITE.md").is_file()
+    }
+    missing_from_index = sorted(expected_indexed - set(indexed))
+    extra_in_index = sorted(set(indexed) - expected_indexed)
+    if missing_from_index:
+        errors.append(
+            "kernel/INDEX.md missing skills with LITE.md: "
+            + ", ".join(missing_from_index)
+        )
+    if extra_in_index:
+        errors.append(
+            "kernel/INDEX.md contains unknown skills: " + ", ".join(extra_in_index)
+        )
+
 
 def _validate_modes(root: Path, manifest: dict[str, Any], errors: list[str]) -> None:
     mode_truth = manifest["modes"]

@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Prompt Optimizer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Token tracking and budget alerts are active | `cat .forgewright/budget.yaml` | ... | run the check command and paste output |
-| Local token trackers and usage logs are initialized | `ls -la ~/.forgewright/usage/` | ... | run the check command and paste output |
-| Context Offload (DeerFlow IV) and Tool Sandbox thresholds are set | `cat .production-grade.yaml` | ... | run the check command and paste output |
+| Token tracking and budget alerts are active | `cat .forgewright/budget.yaml` | ... | Verified `Token tracking and budget alerts are active` facts from inspected file/command output |
+| Local token trackers and usage logs are initialized | `ls -la ~/.forgewright/usage/` | ... | Observed command exit code & stdout confirming local token trackers and usage logs are |
+| Context Offload (DeerFlow IV) and Tool Sandbox thresholds are set | `cat .production-grade.yaml` | ... | Verified `Context Offload (DeerFlow IV) and Tool` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Prompt Optimizer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

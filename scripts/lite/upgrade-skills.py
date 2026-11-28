@@ -102,6 +102,63 @@ def parse_markdown(raw_output: str) -> str:
     return content
 
 
+def _extract_frontmatter_fields(content: str, fallback_name: str) -> tuple[str, str]:
+    """Extract name and description from YAML frontmatter without external deps."""
+    fm_match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
+    if not fm_match:
+        return fallback_name, ""
+
+    lines = fm_match.group(1).splitlines()
+    name = fallback_name
+    desc = ""
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith("name:"):
+            raw_name = line.split(":", 1)[1].strip().strip("\"'")
+            if raw_name:
+                name = raw_name
+            i += 1
+            continue
+        if line.startswith("description:"):
+            raw_val = line.split(":", 1)[1].strip()
+            if raw_val in {">", "|", ">-", "|-"}:
+                block_lines = []
+                i += 1
+                while i < len(lines):
+                    nxt = lines[i]
+                    if nxt.strip() == "":
+                        i += 1
+                        continue
+                    if nxt.startswith((" ", "\t")):
+                        block_lines.append(nxt.strip())
+                        i += 1
+                    else:
+                        break
+                desc = " ".join(block_lines).strip()
+                continue
+            desc = raw_val.strip("\"'")
+        i += 1
+    return name, desc
+
+
+def _normalize_trigger(desc: str) -> str:
+    """Derive a clean, untruncated trigger phrase from a skill description."""
+    triggers = re.sub(r"\s+", " ", desc).strip()
+    if "Use when" in triggers:
+        triggers = triggers.split("Use when", 1)[1].strip()
+        triggers = re.sub(
+            r"^(?:the user\s+)?(?:requests|reports|asks(?:\s+(?:to|for))?)\s+",
+            "",
+            triggers,
+            flags=re.IGNORECASE,
+        ).strip()
+    triggers = triggers.rstrip(".")
+    if triggers:
+        triggers = triggers[0].upper() + triggers[1:]
+    return triggers
+
+
 def update_index(skills_dir: str, index_path: str):
     """Regenerate kernel/INDEX.md dynamically by scanning all LITE.md files"""
     log_info("Regenerating Skill Index (kernel/INDEX.md)...")
@@ -113,38 +170,16 @@ def update_index(skills_dir: str, index_path: str):
         if entry.is_dir() and entry.name not in exclude:
             lite_path = os.path.join(entry.path, "LITE.md")
             if os.path.exists(lite_path):
-                # Read frontmatter to get description and triggers
                 try:
-                    with open(lite_path, "r") as f:
+                    with open(lite_path, "r", encoding="utf-8") as f:
                         content = f.read()
 
-                    fm_match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
-                    if fm_match:
-                        fm_text = fm_match.group(1)
-                        name_match = re.search(r"^name:\s*(.+)$", fm_text, re.MULTILINE)
-                        desc_match = re.search(
-                            r"^description:\s*[\"']?(.+?)[\"']?$", fm_text, re.MULTILINE
-                        )
-
-                        name = name_match.group(1).strip() if name_match else entry.name
-                        desc = desc_match.group(1).strip() if desc_match else ""
-
-                        # Extract triggers (everything after "Use when...")
-                        triggers = desc
-                        if "Use when" in desc:
-                            triggers = desc.split("Use when", 1)[1].strip()
-                            triggers = (
-                                triggers.lstrip("the user requests")
-                                .lstrip("the user reports")
-                                .lstrip(" ")
-                                .strip(".")
-                            )
-                            triggers = triggers[0].upper() + triggers[1:]
-
-                        rel_path = f"skills/{entry.name}/LITE.md"
-                        skills_data.append(
-                            {"name": name, "triggers": triggers, "path": rel_path}
-                        )
+                    name, desc = _extract_frontmatter_fields(content, entry.name)
+                    triggers = _normalize_trigger(desc)
+                    rel_path = f"skills/{entry.name}/LITE.md"
+                    skills_data.append(
+                        {"name": name, "triggers": triggers, "path": rel_path}
+                    )
                 except Exception as e:
                     log_warning(f"Failed to parse LITE.md in {entry.name}: {e}")
 
@@ -157,11 +192,12 @@ def update_index(skills_dir: str, index_path: str):
     ]
 
     for skill in skills_data:
+        safe_trigger = skill["triggers"].replace("|", "\\|")
         lines.append(
-            f"| **{skill['name']}** | {skill['triggers']} | [{skill['path']}](../{skill['path']}) |\n"
+            f"| **{skill['name']}** | {safe_trigger} | [{skill['path']}](../{skill['path']}) |\n"
         )
 
-    with open(index_path, "w") as f:
+    with open(index_path, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
     log_success(
@@ -180,12 +216,21 @@ def main():
     parser.add_argument(
         "--skill", type=str, help="Process a single specific skill only"
     )
+    parser.add_argument(
+        "--index-only",
+        action="store_true",
+        help="Only regenerate kernel/INDEX.md from existing skills/*/LITE.md files",
+    )
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
     skills_dir = os.path.join(repo_root, "skills")
     index_path = os.path.join(repo_root, "kernel", "INDEX.md")
+
+    if args.index_only:
+        update_index(skills_dir, index_path)
+        sys.exit(0)
 
     # 1. Single skill mode
     if args.skill:

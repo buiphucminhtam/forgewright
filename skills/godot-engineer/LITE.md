@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Godot Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project structure contains a valid main project configuration | `cat project.godot` | ... | run the check command and paste output |
-| Project-specific tech stack and baseline profile are defined | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Active scripts, scene files, or resource catalogs are indexed | `find . -name "*.gd" -o -name "*.tscn" -o -name "*.tres"` | ... | run the check command and paste output |
+| Project structure contains a valid main project configuration | `cat project.godot` | ... | Verified `Project structure contains a valid main` facts from inspected file/command output |
+| Project-specific tech stack and baseline profile are defined | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and baseline` facts from inspected file/command output |
+| Active scripts, scene files, or resource catalogs are indexed | `find . -name "*.gd" -o -name "*.tscn" -o -name "*.tres"` | ... | Observed command exit code & stdout confirming active scripts, scene files, or resource |
 
 ## SOLVE Step 3: DECOMPOSE (Godot Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

@@ -12,11 +12,11 @@ version: 1.0.0
 Owns the feel of individual interactions: what a press, hover, open, close or drag does and how long it takes. `unslop` Pass 9 (Motion) and `motion-director` own the motion system and stack choice; `interaction-designer` owns state graphs; `game-asset-vfx` owns in-world particles and impact feedback. This skill decides the per-control details inside those systems. Input must stay immediate: no animation may delay a keypress, tap or gamepad action.
 
 ## SOLVE Step 2: GROUND
-| Input | Check | Evidence |
-|---|---|---|
-| Control under review | Read the component code and its states (idle, hover, pressed, focus, disabled) | List of states with current timing/easing |
-| Interaction cost | Time from input to visible response; frame drops during the transition | Recorded timing or trace |
-| Reduced motion | `prefers-reduced-motion: reduce` path | Rendered result with motion reduced |
+| Input | Check | Result | Script-produced evidence |
+|---|---|---|---|
+| Control under review | Read the component code and its states (idle, hover, pressed, focus, disabled) | ... | List of states with current timing/easing |
+| Interaction cost | Time from input to visible response; frame drops during the transition | ... | Recorded timing or trace |
+| Reduced motion | `prefers-reduced-motion: reduce` path | ... | Rendered result with motion reduced |
 
 ## SOLVE Step 3: DECOMPOSE
 1. AUDIT | each interactive control | Name the detail that feels wrong (timing, origin, easing, missing pressed state).

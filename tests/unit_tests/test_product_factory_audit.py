@@ -151,7 +151,7 @@ def test_default_inventory_is_versioned_and_covers_required_surfaces() -> None:
     assert any(path.startswith("skills/_shared/protocols/") for path in paths)
     assert any(path.endswith("/LITE.md") for path in paths)
     assert any(path.endswith("/SKILL.md") for path in paths)
-    assert "skills/generated/hook-expert/SKILL.md" in paths
+    assert "skills/generated/hook-expert/SKILL.md" not in paths
 
 
 def test_stored_inventory_artifact_declares_exact_v1_selection() -> None:

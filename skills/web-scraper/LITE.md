@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Web Scraper Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target web scraping libraries (e.g., Axios, Cheerio, Playwright, BeautifulSoup) are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("cheerio\|puppeteer\|playwright\|beautifulsoup4\|requests\|scrapy")))'` | ... | run the check command and paste output |
-| Project-specific tech stack and baseline profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target web scraping libraries (e.g., Axios, Cheerio, Playwright, BeautifulSoup) are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("cheerio\|puppeteer\|playwright\|beautifulsoup4\|requests\|scrapy")))'` | ... | Observed command exit code & stdout confirming target web scraping libraries (e.g., |
+| Project-specific tech stack and baseline profile configurations are active | `cat .forgewright/project-profile.json` | ... | Observed command exit code & stdout confirming project-specific tech stack and baseline |
 
 ## SOLVE Step 3: DECOMPOSE (Web Scraper Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

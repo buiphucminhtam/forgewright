@@ -113,8 +113,14 @@ ruff_errors.json
 .forgewright/runtime/
 .forgewright/verify/
 
-# Qoder workspace metadata (editor/tool scratch, not project source)
+# Local editor & personal workspace metadata
+.obsidian/
 .qoder/
-
-# macOS Finder metadata (rejected by the Claude plugin directory)
 .DS_Store
+
+# Agent session/runtime artifacts that must never be tracked
+.agent/state/
+.forgewright/recipes/
+.forgewright/marketing-insights.md
+.forgewright/goal-progress.md
+.forgewright/code-reviewer/review-report.md

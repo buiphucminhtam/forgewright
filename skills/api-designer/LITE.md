@@ -10,10 +10,10 @@ tags: [api, rest, graphql, grpc, openapi, asyncapi, versioning, design, contract
 ## SOLVE Step 2: GROUND (API Designer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| OpenAPI spec path exists | Search directory for `openapi.yaml` or `swagger.json` | ... | run the check command and paste output |
-| Spec version format | Read file header of the OpenAPI spec | ... | run the check command and paste output |
-| API linting tool exists | Check for `spectral` or `swagger-cli` in `package.json` | ... | run the check command and paste output |
-| Error Schema Convention | Look for RFC 7807 references in docs/spec | ... | run the check command and paste output |
+| OpenAPI spec path exists | Search directory for `openapi.yaml` or `swagger.json` | ... | Observed command exit code & stdout confirming openapi spec path exists |
+| Spec version format | Read file header of the OpenAPI spec | ... | Verified `Spec version format` facts from inspected file/command output |
+| API linting tool exists | Check for `spectral` or `swagger-cli` in `package.json` | ... | Verified `API linting tool exists` facts from inspected file/command output |
+| Error Schema Convention | Look for RFC 7807 references in docs/spec | ... | Observed command exit code & stdout confirming error schema convention |
 
 ## SOLVE Step 3: DECOMPOSE (API Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

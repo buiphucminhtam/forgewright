@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Physics Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Engine's gravity and physics delta-time parameters are known | Check project settings / `which` engine | ... | run the check command and paste output |
-| Collision matrix configuration is documented | Read `physics-matrix.md` or editor settings | ... | run the check command and paste output |
-| Rigidbody types (Dynamic, Kinematic, Static) are assigned correctly | Verify component definitions in code | ... | run the check command and paste output |
+| Engine's gravity and physics delta-time parameters are known | Check project settings / `which` engine | ... | Verified `Engine's gravity and physics delta-time` facts from inspected file/command output |
+| Collision matrix configuration is documented | Read `physics-matrix.md` or editor settings | ... | Verified `Collision matrix configuration is documented` facts from inspected file/command output |
+| Rigidbody types (Dynamic, Kinematic, Static) are assigned correctly | Verify component definitions in code | ... | Observed command exit code & stdout confirming rigidbody types (dynamic, kinematic, static) |
 
 ## SOLVE Step 3: DECOMPOSE (Physics Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Skill Maker Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Master skills directory and existing custom skills are indexed | `find skills/ -maxdepth 2 -name "SKILL.md" \| sort` | ... | run the check command and paste output |
-| Project-specific tech stack and base configuration are loaded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Master skills directory and existing custom skills are indexed | `find skills/ -maxdepth 2 -name "SKILL.md" \| sort` | ... | Observed command exit code & stdout confirming master skills directory and existing custom |
+| Project-specific tech stack and base configuration are loaded | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and base` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Skill Maker Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

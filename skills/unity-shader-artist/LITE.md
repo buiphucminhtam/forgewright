@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Unity Shader Artist Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target render pipeline (URP, HDRP, or Built-in) is defined in dependencies | `cat Packages/manifest.json \| grep -E "(render-pipeline\|core-pipeline)"` | ... | run the check command and paste output |
-| Existing shader assets, HLSL libraries, or Shader Graphs are indexed | `find Assets/ -name "*.shader" -o -name "*.hlsl" -o -name "*.shadergraph"` | ... | run the check command and paste output |
+| Target render pipeline (URP, HDRP, or Built-in) is defined in dependencies | `cat Packages/manifest.json \| grep -E "(render-pipeline\|core-pipeline)"` | ... | Observed command exit code & stdout confirming target render pipeline (urp, hdrp, or |
+| Existing shader assets, HLSL libraries, or Shader Graphs are indexed | `find Assets/ -name "*.shader" -o -name "*.hlsl" -o -name "*.shadergraph"` | ... | Observed command exit code & stdout confirming existing shader assets, hlsl libraries, |
 
 ## SOLVE Step 3: DECOMPOSE (Unity Shader Artist Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

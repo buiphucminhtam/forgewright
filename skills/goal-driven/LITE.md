@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Goal Driven Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project-specific tech stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Standard task list or target execution checklist is initialized | `cat TASKS.md \|\| cat docs/05-operations/tasks.md` | ... | run the check command and paste output |
-| Live session execution graph is initialized to monitor progress | `cat .forgewright/offload/canvas.mmd` | ... | run the check command and paste output |
+| Project-specific tech stack and baseline profile are onboarded | `cat .forgewright/project-profile.json` | ... | Observed command exit code & stdout confirming project-specific tech stack and baseline |
+| Standard task list or target execution checklist is initialized | `cat TASKS.md \|\| cat docs/05-operations/tasks.md` | ... | Observed command exit code & stdout confirming standard task list or target execution |
+| Live session execution graph is initialized to monitor progress | `cat .forgewright/offload/canvas.mmd` | ... | Observed command exit code & stdout confirming live session execution graph is |
 
 ## SOLVE Step 3: DECOMPOSE (Goal Driven Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

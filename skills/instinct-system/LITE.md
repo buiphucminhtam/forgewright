@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Instinct System Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| SQLite Layer 2 Cognitive Graph database (`flux_nodes` and `flux_edges`) is active | `sqlite3 .forgewright/memory.db ".tables"` | ... | run the check command and paste output |
-| Memory bank structures (persona and scenario layers) are initialized | `find .forgewright/memory-bank/ -name "*.md"` | ... | run the check command and paste output |
+| SQLite Layer 2 Cognitive Graph database (`flux_nodes` and `flux_edges`) is active | `sqlite3 .forgewright/memory.db ".tables"` | ... | Observed command exit code & stdout confirming sqlite layer 2 cognitive graph database |
+| Memory bank structures (persona and scenario layers) are initialized | `find .forgewright/memory-bank/ -name "*.md"` | ... | Observed command exit code & stdout confirming memory bank structures (persona and scenario |
 
 ## SOLVE Step 3: DECOMPOSE (Instinct System Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

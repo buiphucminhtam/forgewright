@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Performance Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Local dockerized performance monitoring stack (k6, InfluxDB, Grafana) is active | `docker ps --filter "name=perf-stack" --format "{{.Names}}"` | ... | run the check command and paste output |
-| Metric tracking and load script configurations exist in the performance stack | `find docker/perf-stack/ -name "*.js" -o -name "*.json"` | ... | run the check command and paste output |
-| Baseline performance runbooks are documented in operations folder | `find docs/05-operations/ -name "*performance*" -o -name "*benchmark*"` | ... | run the check command and paste output |
+| Local dockerized performance monitoring stack (k6, InfluxDB, Grafana) is active | `docker ps --filter "name=perf-stack" --format "{{.Names}}"` | ... | Observed command exit code & stdout confirming local dockerized performance monitoring |
+| Metric tracking and load script configurations exist in the performance stack | `find docker/perf-stack/ -name "*.js" -o -name "*.json"` | ... | Observed command exit code & stdout confirming metric tracking and load script |
+| Baseline performance runbooks are documented in operations folder | `find docs/05-operations/ -name "*performance*" -o -name "*benchmark*"` | ... | Observed command exit code & stdout confirming baseline performance runbooks are documented |
 
 ## SOLVE Step 3: DECOMPOSE (Performance Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Mcp Generator Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| **Active MCP server dependencies** are declared | `cat mcp/package.json` | ... | run the check command and paste output |
-| **Workspace-level or global registrations** exist | `cat ~/.cursor/mcp.json \|\| cat default.project.json` | ... | run the check command and paste output |
-| **Model optimization settings and thresholds** are active | `cat .production-grade.yaml` | ... | run the check command and paste output |
+| **Active MCP server dependencies** are declared | `cat mcp/package.json` | ... | Observed command exit code & stdout confirming active mcp server dependencies are declared |
+| **Workspace-level or global registrations** exist | `cat ~/.cursor/mcp.json \|\| cat default.project.json` | ... | Observed command exit code & stdout confirming workspace-level or global registrations exist |
+| **Model optimization settings and thresholds** are active | `cat .production-grade.yaml` | ... | Observed command exit code & stdout confirming model optimization settings and |
 
 ## SOLVE Step 3: DECOMPOSE (Mcp Generator Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

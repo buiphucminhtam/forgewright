@@ -9,10 +9,10 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Token Tracker Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Built-in cost control and local token tracking are activated | `forge token status` or `forge token on` | ... | run the check command and paste output |
-| Active project budget configuration is established | `cat .forgewright/budget.yaml` | ... | run the check command and paste output |
-| Structured token usage log directory and JSONL files exist | `ls -la ~/.forgewright/usage/` | ... | run the check command and paste output |
-| Offline context caching thresholds are configured | `cat .production-grade.yaml` | ... | run the check command and paste output |
+| Built-in cost control and local token tracking are activated | `forge token status` or `forge token on` | ... | Observed command exit code & stdout confirming built-in cost control and local token |
+| Active project budget configuration is established | `cat .forgewright/budget.yaml` | ... | Verified `Active project budget configuration is` facts from inspected file/command output |
+| Structured token usage log directory and JSONL files exist | `ls -la ~/.forgewright/usage/` | ... | Observed command exit code & stdout confirming structured token usage log directory and |
+| Offline context caching thresholds are configured | `cat .production-grade.yaml` | ... | Verified `Offline context caching thresholds are` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Token Tracker Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

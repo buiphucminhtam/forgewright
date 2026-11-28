@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Project Manager Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack and onboarding status profile are established | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Task boards or target execution files exist in standard directories | `find docs/ -name "*tasks*" -o -name "*roadmap*" -o -name "*milestones*"` | ... | run the check command and paste output |
-| Standardized product specification templates are onboarded | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | ... | run the check command and paste output |
+| Project tech stack and onboarding status profile are established | `cat .forgewright/project-profile.json` | ... | Verified `Project tech stack and onboarding status` facts from inspected file/command output |
+| Task boards or target execution files exist in standard directories | `find docs/ -name "*tasks*" -o -name "*roadmap*" -o -name "*milestones*"` | ... | Observed command exit code & stdout confirming task boards or target execution files exist |
+| Standardized product specification templates are onboarded | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | ... | Verified `Standardized product specification templates` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Project Manager Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

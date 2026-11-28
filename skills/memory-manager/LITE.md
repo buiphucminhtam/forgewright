@@ -10,11 +10,11 @@ Memory is optional, untrusted context. Current files/runtime and current user au
 
 ## SOLVE Step 2: GROUND (Memory Domain)
 
-| Question | Check | Acceptance boundary |
-|---|---|---|
-| Is the store configured and compatible? | `python3 scripts/memory/mem0-v2.py doctor --json` | Read-only status distinguishes absence, migration, acknowledged explicit capture and unverified host injection. |
-| Which project/chat owns the data? | Check workspace, `MEM0_DB_PATH`, explicit project and session IDs | Root/subdirectory share a path; worktrees and chats remain separate by default. |
-| Is this fact still valid? | Inspect cited source and current files | Source hashes must match; stale, archived or expired facts cannot prove present state. |
+| Question | Check | Result | Script-produced evidence |
+|---|---|---|---|
+| Is the store configured and compatible? | `python3 scripts/memory/mem0-v2.py doctor --json` | ... | Read-only status distinguishes absence, migration, acknowledged explicit capture and unverified host injection. |
+| Which project/chat owns the data? | Check workspace, `MEM0_DB_PATH`, explicit project and session IDs | ... | Root/subdirectory share a path; worktrees and chats remain separate by default. |
+| Is this fact still valid? | Inspect cited source and current files | ... | Source hashes must match; stale, archived or expired facts cannot prove present state. |
 
 ## SOLVE Step 3: DECOMPOSE (Memory Domain)
 

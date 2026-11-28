@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Solution Architect Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target project-specific tech stack and profile are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Existing system architecture records, design specs, or ADRs are indexed | `find docs/02-architecture/ -name "*.md"` | ... | run the check command and paste output |
-| GitNexus symbol database is initialized and ready for structural analysis | `gitnexus analyze --status \|\| find . -name \"*.gitnexus\"` | ... | run the check command and paste output |
+| Target project-specific tech stack and profile are active | `cat .forgewright/project-profile.json` | ... | Verified `Target project-specific tech stack and` facts from inspected file/command output |
+| Existing system architecture records, design specs, or ADRs are indexed | `find docs/02-architecture/ -name "*.md"` | ... | Observed command exit code & stdout confirming existing system architecture records, design |
+| GitNexus symbol database is initialized and ready for structural analysis | `gitnexus analyze --status \|\| Observed command exit code & stdout confirming gitnexus symbol database is initialized and | ... | Observed command exit code & stdout confirming gitnexus symbol database is initialized and |
 
 ## SOLVE Step 3: DECOMPOSE (Solution Architect Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

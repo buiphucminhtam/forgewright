@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Roblox Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Rojo project configuration file is active | `cat default.project.json` | ... | run the check command and paste output |
-| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Rojo project configuration file is active | `cat default.project.json` | ... | Verified `Rojo project configuration file is active` facts from inspected file/command output |
+| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and profile` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Roblox Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

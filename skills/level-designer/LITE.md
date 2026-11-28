@@ -14,8 +14,8 @@ For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/proto
 ## SOLVE Step 2: GROUND (Level Designer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project-specific game engine tech stack is active and profile is established | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Existing scene structures, level configurations, or map layout files are indexed | `find . -name "*.tscn" -o -name "*.unity" -o -name "*.umap" -o -name "*.json"` | ... | run the check command and paste output |
+| Project-specific game engine tech stack is active and profile is established | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific game engine tech stack is` facts from inspected file/command output |
+| Existing scene structures, level configurations, or map layout files are indexed | `find . -name "*.tscn" -o -name "*.unity" -o -name "*.umap" -o -name "*.json"` | ... | Observed command exit code & stdout confirming existing scene structures, level |
 
 ## SOLVE Step 3: DECOMPOSE (Level Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

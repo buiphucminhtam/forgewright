@@ -243,5 +243,5 @@ func unload_chunk(key: String):
 
 ## See Also
 
-- [Coordinate System Docs](../coordinate-systems/cheatsheet.md)
-- [Unity Floating Origin](../templates/floating-origin-unity.cs)
+- [Coordinate System Docs](../cheatsheet.md)
+- [Unity Floating Origin](floating-origin-unity.md)

@@ -354,5 +354,5 @@ void ForcePhysicsSync()
 
 ## See Also
 
-- [Coordinate System Docs](../coordinate-systems/cheatsheet.md)
+- [Coordinate System Docs](../cheatsheet.md)
 - [Godot Floating Origin](../templates/floating-origin-godot.md)

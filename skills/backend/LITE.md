@@ -10,10 +10,10 @@ tags: [backend, server, api, rest, authentication, middleware, routing]
 ## SOLVE Step 2: GROUND (Backend Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Web framework is installed | Read package configuration (`package.json`, `go.mod`) | ... | run the check command and paste output |
-| DB connection configuration exists | Check `.env` files or database config module | ... | run the check command and paste output |
-| API router base path | Search for routing file or router registration | ... | run the check command and paste output |
-| Auth strategy / secrets set | Read environment setup for token secrets | ... | run the check command and paste output |
+| Web framework is installed | Read package configuration (`package.json`, `go.mod`) | ... | Verified `Web framework is installed` facts from inspected file/command output |
+| DB connection configuration exists | Check `.env` files or database config module | ... | Verified `DB connection configuration exists` facts from inspected file/command output |
+| API router base path | Search for routing file or router registration | ... | Observed command exit code & stdout confirming api router base path |
+| Auth strategy / secrets set | Read environment setup for token secrets | ... | Verified `Auth strategy / secrets set` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Backend Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

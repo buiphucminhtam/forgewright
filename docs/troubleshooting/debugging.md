@@ -12,7 +12,7 @@
 
 ### Wrong mode selected
 
-Add more context to your request. See [Mode Reference](mode-reference.md) for mode descriptions.
+Add more context to your request. See [Mode Reference](../mode-reference.md) for mode descriptions.
 
 ### Skills not loading
 
@@ -30,7 +30,7 @@ python3 scripts/memory-middleware.py checkpoint
 
 ### Plan quality score low
 
-See [Research Gate](../skills/_shared/protocols/research-gate.md) for improving plan scores.
+See [Research Gate](../../skills/_shared/protocols/research-gate.md) for evidence-backed recovery when stuck.
 
 ### GitNexus index stale
 

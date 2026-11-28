@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Code Reviewer Go Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Go module and toolchain version are defined | `cat go.mod` | ... | run the check command and paste output |
-| Active Go installation and environment variables are verified | `go version && go env GOPATH` | ... | run the check command and paste output |
+| Target Go module and toolchain version are defined | `cat go.mod` | ... | Verified `Target Go module and toolchain version are` facts from inspected file/command output |
+| Active Go installation and environment variables are verified | `go version && go env GOPATH` | ... | Observed command exit code & stdout confirming active go installation and environment |
 
 ## SOLVE Step 3: DECOMPOSE (Code Reviewer Go Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

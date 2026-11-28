@@ -14,8 +14,8 @@ For Phaser 4/Three.js on Android/iOS, use [Mobile Monetization](../_shared/proto
 ## SOLVE Step 2: GROUND (Liveops Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack, operational profile, and status are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Live environment configs, feature flags, or server variables are indexed | `find . -name "*.env" -o -name "config*.json" -o -name "docker-compose*.yml"` | ... | run the check command and paste output |
+| Project tech stack, operational profile, and status are active | `cat .forgewright/project-profile.json` | ... | Verified `Project tech stack, operational profile, and` facts from inspected file/command output |
+| Live environment configs, feature flags, or server variables are indexed | `find . -name "*.env" -o -name "config*.json" -o -name "docker-compose*.yml"` | ... | Observed command exit code & stdout confirming live environment configs, feature flags, or |
 
 ## SOLVE Step 3: DECOMPOSE (Liveops Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

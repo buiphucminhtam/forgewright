@@ -10,10 +10,10 @@ tags: [frontend, react, nextjs, typescript, tailwindcss, state-management, api-c
 ## SOLVE Step 2: GROUND (Frontend Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Frontend structure / path | Check directories for `frontend/` or `src/` | ... | run the check command and paste output |
-| Framework and styling framework | Read `package.json` and CSS/config files | ... | run the check command and paste output |
-| API base URLs & client ready | Read `.env` or client service configuration | ... | run the check command and paste output |
-| Accessibility audit runner | Check for `jest-axe` or devtools config | ... | run the check command and paste output |
+| Frontend structure / path | Check directories for `frontend/` or `src/` | ... | Verified `Frontend structure / path` facts from inspected file/command output |
+| Framework and styling framework | Read `package.json` and CSS/config files | ... | Verified `Framework and styling framework` facts from inspected file/command output |
+| API base URLs & client ready | Read `.env` or client service configuration | ... | Verified `API base URLs & client ready` facts from inspected file/command output |
+| Accessibility audit runner | Check for `jest-axe` or devtools config | ... | Verified `Accessibility audit runner` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Frontend Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

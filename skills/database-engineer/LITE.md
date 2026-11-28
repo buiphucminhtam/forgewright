@@ -10,10 +10,10 @@ tags: [database, postgresql, mysql, mongodb, redis, schema, indexing, migration,
 ## SOLVE Step 2: GROUND (Database Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Database dialect / version | Connect to DB and run version query, or check config | ... | run the check command and paste output |
-| Migration engine is set up | Check `package.json` or schema directory structure | ... | run the check command and paste output |
-| Slow query log or query plan | Run `EXPLAIN` on the target SQL query | ... | run the check command and paste output |
-| Indexes present on table | Query db system tables/information schema | ... | run the check command and paste output |
+| Database dialect / version | Connect to DB and run version query, or check config | ... | Verified `Database dialect / version` facts from inspected file/command output |
+| Migration engine is set up | Check `package.json` or schema directory structure | ... | Verified `Migration engine is set up` facts from inspected file/command output |
+| Slow query log or query plan | Run `EXPLAIN` on the target SQL query | ... | Observed command exit code & stdout confirming slow query log or query plan |
+| Indexes present on table | Query db system tables/information schema | ... | Observed command exit code & stdout confirming indexes present on table |
 
 ## SOLVE Step 3: DECOMPOSE (Database Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

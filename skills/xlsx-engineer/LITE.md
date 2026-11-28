@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Xlsx Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target spreadsheet and data processing dependencies are installed | `cat requirements.txt \|\| cat pyproject.toml` | ... | run the check command and paste output |
-| Project-specific tech stack and baseline profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target spreadsheet and data processing dependencies are installed | `cat requirements.txt \|\| cat pyproject.toml` | ... | Observed command exit code & stdout confirming target spreadsheet and data processing |
+| Project-specific tech stack and baseline profile configurations are active | `cat .forgewright/project-profile.json` | ... | Observed command exit code & stdout confirming project-specific tech stack and baseline |
 
 ## SOLVE Step 3: DECOMPOSE (Xlsx Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

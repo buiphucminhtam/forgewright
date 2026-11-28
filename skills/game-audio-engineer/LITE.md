@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Game Audio Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target game framework (Phaser, Three.js) or Web Audio library is configured | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | run the check command and paste output |
-| Audio assets directory structure exists with compatible file formats | `find public/assets/audio/ -name "*.mp3" -o -name "*.ogg" -o -name "*.wav"` | ... | run the check command and paste output |
+| Target game framework (Phaser, Three.js) or Web Audio library is configured | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | Verified `Target game framework (Phaser, Three.js) or` facts from inspected file/command output |
+| Audio assets directory structure exists with compatible file formats | `find public/assets/audio/ -name "*.mp3" -o -name "*.ogg" -o -name "*.wav"` | ... | Observed command exit code & stdout confirming audio assets directory structure exists with |
 
 ## SOLVE Step 3: DECOMPOSE (Game Audio Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

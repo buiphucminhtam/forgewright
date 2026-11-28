@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Technical Artist Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target assets and metadata schemas are in correct project folders | `find assets/ -name "*.meta" -o -name "*.json"` | ... | run the check command and paste output |
-| Active shader compiler or engine pipelines are available (e.g., glslangValidator, Node/Three) | `which glslangValidator \|\| npm list -g` | ... | run the check command and paste output |
-| Project-specific tech stack and render pipeline are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target assets and metadata schemas are in correct project folders | `find assets/ -name "*.meta" -o -name "*.json"` | ... | Observed command exit code & stdout confirming target assets and metadata schemas are in |
+| Active shader compiler or engine pipelines are available (e.g., glslangValidator, Node/Three) | `which glslangValidator \|\| Observed command exit code & stdout confirming active shader compiler or engine pipelines | ... | Observed command exit code & stdout confirming active shader compiler or engine pipelines |
+| Project-specific tech stack and render pipeline are onboarded | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and render` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Technical Artist Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

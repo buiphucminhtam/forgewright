@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Mobile Tester Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Native mobile or React Native framework dependencies are installed | `cat package.json \| jq '.dependencies["react-native"]'` | ... | run the check command and paste output |
-| Local emulator setup scripts and tool configurations exist in the project | `ls -la scripts/setup-local-emulators.sh` | ... | run the check command and paste output |
-| Maestro, Midscene.js, or Appium configuration configurations are active | `find tests/ -name "*.yaml" -o -name "*.spec.ts"` | ... | run the check command and paste output |
+| Native mobile or React Native framework dependencies are installed | `cat package.json \| jq '.dependencies["react-native"]'` | ... | Verified `Native mobile or React Native framework` facts from inspected file/command output |
+| Local emulator setup scripts and tool configurations exist in the project | `ls -la scripts/setup-local-emulators.sh` | ... | Observed command exit code & stdout confirming local emulator setup scripts and tool |
+| Maestro, Midscene.js, or Appium configuration configurations are active | `find tests/ -name "*.yaml" -o -name "*.spec.ts"` | ... | Observed command exit code & stdout confirming maestro, midscene.js, or appium |
 
 ## SOLVE Step 3: DECOMPOSE (Mobile Tester Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

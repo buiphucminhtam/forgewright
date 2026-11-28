@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Mobile Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target mobile project dependencies and scripts exist | `cat package.json \|\| find . -name "App.tsx" -o -name "App.js"` | ... | run the check command and paste output |
-| Local emulator creation and mobile test scripts are present | `find scripts/ -name "*emulator*" -o -name "*publish*"` | ... | run the check command and paste output |
+| Target mobile project dependencies and scripts exist | `cat package.json \|\| find . -name "App.tsx" -o -name "App.js"` | ... | Observed command exit code & stdout confirming target mobile project dependencies and |
+| Local emulator creation and mobile test scripts are present | `find scripts/ -name "*emulator*" -o -name "*publish*"` | ... | Observed command exit code & stdout confirming local emulator creation and mobile test |
 
 ## SOLVE Step 3: DECOMPOSE (Mobile Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

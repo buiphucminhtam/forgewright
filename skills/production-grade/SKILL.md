@@ -11,7 +11,6 @@ description: >
 # Production Grade
 
 !`git status 2>/dev/null || echo "No git repo detected"`
-!`cat CLAUDE.md 2>/dev/null || echo "No CLAUDE.md found"`
 !`ls .forgewright/ 2>/dev/null || echo "No existing workspace"`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config file — defaults apply"`
 

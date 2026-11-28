@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Data Scientist Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Python environment, data packages (pandas, numpy, scikit-learn), and model frameworks are defined | `cat requirements.txt \|\| cat pyproject.toml` | ... | run the check command and paste output |
-| GitNexus symbol index and dataset profiles are active | `gitnexus analyze --status \|\| find . -name "*.gitnexus"` | ... | run the check command and paste output |
+| Target Python environment, data packages (pandas, numpy, scikit-learn), and model frameworks are defined | `cat requirements.txt \|\| cat pyproject.toml` | ... | Observed command exit code & stdout confirming target python environment, data packages |
+| GitNexus symbol index and dataset profiles are active | `gitnexus analyze --status \|\| find . -name "*.gitnexus"` | ... | Observed command exit code & stdout confirming gitnexus symbol index and dataset |
 
 ## SOLVE Step 3: DECOMPOSE (Data Scientist Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

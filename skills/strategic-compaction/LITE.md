@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Strategic Compaction Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Active session logs, raw history files, or offload traces exist | `find .forgewright/offload/ -name \"*.md\" \|\| find ~/.forgewright/usage/ -name \"*.jsonl\"` | ... | run the check command and paste output |
-| Memory hygiene, garbage collection, or compression scripts exist | `find scripts/ -name \"*memory-hygiene*\" -o -name \"*compress*\"` | ... | run the check command and paste output |
-| Twin-middleware execution properties and context offload thresholds are defined | `cat .production-grade.yaml` | ... | run the check command and paste output |
+| Active session logs, raw history files, or offload traces exist | `find .forgewright/offload/ -name \"*.md\" \|\| Observed command exit code & stdout confirming active session logs, raw history files, or | ... | Observed command exit code & stdout confirming active session logs, raw history files, or |
+| Memory hygiene, garbage collection, or compression scripts exist | `find scripts/ -name \"*memory-hygiene*\" -o -name \"*compress*\"` | ... | Observed command exit code & stdout confirming memory hygiene, garbage collection, or |
+| Twin-middleware execution properties and context offload thresholds are defined | `cat .production-grade.yaml` | ... | Verified `Twin-middleware execution properties and` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Strategic Compaction Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

@@ -215,7 +215,7 @@ bash scripts/forgewright-mcp-setup.sh
 | Document | Description |
 |----------|-------------|
 | [Architecture](architecture.md) | 5-layer system architecture with visualizations |
-| [Roadmap](improvement-roadmap-v2.md) | Release history and planned features |
+| [Roadmap](active-roadmap.md) | Release history and planned features |
 | [Setup Guide](SETUP.md) | Detailed installation instructions |
 | [Skill Catalog](skill-catalog.md) | Full listing of 90 AI skills |
 | [CHANGELOG](../CHANGELOG.md) | Detailed version history |

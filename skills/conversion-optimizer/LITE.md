@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Conversion Optimizer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target conversion pages, checkout flows, or landing page configs are indexed | `find docs/01-product/ -name \"*conversion*\" -o -name \"*checkout*\" -o -name \"*cta*\"` | ... | run the check command and paste output |
-| Analytics tracking dependencies and scripts are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match(\"plausible\\|mixpanel\\|analytics\\|segment\")))'` | ... | run the check command and paste output |
-| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target conversion pages, checkout flows, or landing page configs are indexed | `find docs/01-product/ -name \"*conversion*\" -o -name \"*checkout*\" -o -name \"*cta*\"` | ... | Observed command exit code & stdout confirming target conversion pages, checkout flows, |
+| Analytics tracking dependencies and scripts are installed | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match(\"plausible\\|mixpanel\\|analytics\\|segment\")))'` | ... | Observed command exit code & stdout confirming analytics tracking dependencies and |
+| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | Observed command exit code & stdout confirming project-specific tech stack and profile |
 
 ## SOLVE Step 3: DECOMPOSE (Conversion Optimizer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

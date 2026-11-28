@@ -28,6 +28,7 @@
     "test:e2e:install": "npx playwright install chromium",
     "test:mobile-studio": "npm run build:cli && npm exec --workspace src/cli -- vitest run tests/mobile-studio.test.ts tests/mobile-beta.test.ts tests/mobile-package.test.ts && node --test tests/game/mobile-monetization/runtime.test.mjs tests/game/mobile-monetization/delivery.test.mjs && node tests/game/mobile-monetization/pilot.mjs",
     "verify:product-truth": "python3 scripts/ci/verify-product-truth.py",
+    "verify:slop": "python3 scripts/ci/slop-check.py",
     "verify:roadmap": "node scripts/ci/local-ci.mjs roadmap",
     "verify:product-factory": "node scripts/ci/local-ci.mjs product-factory",
     "verify:platform": "node scripts/ci/local-ci.mjs platform",
@@ -77,7 +78,7 @@
       "ruff format"
     ],
     "scripts/**/*.sh": [
-      "shellcheck -e SC2296,SC2034,SC2155,SC2329,SC2005,SC2206,SC2221,SC2222,SC2030,SC2031,SC2295,SC2148,SC1037,SC2012,SC2016,SC2001,SC2086,SC2115,SC2126,SC2064,SC2015,SC2162,SC2207,SC2129,SC2038,SC2116,SC2044,SC2059,SC2120,SC2119,SC2216,SC2320,SC2181,SC2178,SC2128,SC2164"
+      "shellcheck -e SC2296,SC2034,SC2155,SC2329,SC2005,SC2206,SC2221,SC2222,SC2030,SC2031,SC2295,SC2148,SC1037,SC2012,SC2016,SC2001,SC2126,SC2162,SC2207,SC2129,SC2038,SC2116,SC2044,SC2120,SC2119,SC2216,SC2320,SC2181,SC2178,SC2128"
     ]
   }
 }

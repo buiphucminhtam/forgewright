@@ -9,10 +9,10 @@ version: 2.0.0
 ## SOLVE Step 2: GROUND (Debugger Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Bug reproduces on main/branch | Run tests or execute repro script | ... | run the check command and paste output |
-| Location of error trace / log | Read log file or check CLI output | ... | run the check command and paste output |
-| Target file exists at `<path>` | `ls` / View file `<path>` | ... | run the check command and paste output |
-| Current state of offending variables | View file / add print/debug statement | ... | run the check command and paste output |
+| Bug reproduces on main/branch | Run tests or execute repro script | ... | Observed command exit code & stdout confirming bug reproduces on main/branch |
+| Location of error trace / log | Read log file or check CLI output | ... | Verified `Location of error trace / log` facts from inspected file/command output |
+| Target file exists at `<path>` | `ls` / View file `<path>` | ... | Verified `Target file exists at <path>` facts from inspected file/command output |
+| Current state of offending variables | View file / add print/debug statement | ... | Verified `Current state of offending variables` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Debugger Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

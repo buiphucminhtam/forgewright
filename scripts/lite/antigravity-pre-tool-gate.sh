@@ -32,6 +32,7 @@ TOOL_FILE="${TEMP_ROOT}/tool-name"
 ARGS_FILE="${TEMP_ROOT}/tool-args"
 WORKSPACE_FILE="${TEMP_ROOT}/workspace"
 
+# shellcheck disable=SC2329
 cleanup() {
   rm -f "$PAYLOAD_FILE" "$TOOL_FILE" "$ARGS_FILE" "$WORKSPACE_FILE"
   rmdir "$TEMP_ROOT" 2>/dev/null || true
@@ -117,16 +118,46 @@ workspace = workspaces[0] if workspaces else None
 if workspace is None:
     raise ValueError("no workspace contains a Forgewright execution policy")
 
+NON_SHELL_FILE_TOOLS = {
+    "write_file",
+    "edit_file",
+    "read_file",
+    "view_file",
+    "write_to_file",
+    "replace_file_content",
+    "multi_replace_file_content",
+    "Write",
+    "Edit",
+    "MultiEdit",
+    "Read",
+}
+FILE_BODY_KEYS = {
+    "Content",
+    "content",
+    "Replacement",
+    "Target",
+    "TargetContent",
+    "ReplacementContent",
+    "CodeContent",
+    "new_string",
+    "old_string",
+}
+
 args = next(
     (
         tool_args[key]
-        for key in ("command", "cmd")
+        for key in ("command", "cmd", "CommandLine")
         if isinstance(tool_args.get(key), str)
     ),
     None,
 )
 if args is None:
-    args = json.dumps(tool_args, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    filtered_args = (
+        {k: v for k, v in tool_args.items() if k not in FILE_BODY_KEYS}
+        if tool_name.strip() in NON_SHELL_FILE_TOOLS
+        else tool_args
+    )
+    args = json.dumps(filtered_args, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
 
 Path(sys.argv[2]).write_text(tool_name.strip(), encoding="utf-8")
 Path(sys.argv[3]).write_text(args, encoding="utf-8")

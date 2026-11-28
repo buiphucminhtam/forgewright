@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Narrative Designer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack and game engine alignments are defined | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Standardized narrative docs or world bibles are tracked in correct paths | `find docs/00-vision/ -name "*narrative*" -o -name "*story*"` | ... | run the check command and paste output |
+| Project tech stack and game engine alignments are defined | `cat .forgewright/project-profile.json` | ... | Verified `Project tech stack and game engine` facts from inspected file/command output |
+| Standardized narrative docs or world bibles are tracked in correct paths | `find docs/00-vision/ -name "*narrative*" -o -name "*story*"` | ... | Observed command exit code & stdout confirming standardized narrative docs or world bibles |
 
 ## SOLVE Step 3: DECOMPOSE (Narrative Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

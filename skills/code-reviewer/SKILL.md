@@ -75,6 +75,15 @@ This order matters:
 
 Only after spec compliance passes.
 
+#### Mandatory AI Code Slop Audit (SlopCodeBench & 2026 Anti-Slop Checklist)
+In addition to standard architecture and maintainability checks, every review MUST inspect changed code for common LLM-generated slop patterns:
+1. **Structural Erosion & Bloat:** Flag new or expanded God functions (>100 LOC), high cyclomatic complexity (>20), deep nesting, and duplicated helpers where an existing abstraction should be reused.
+2. **Silent Error Swallowing:** Reject bare `except:`, empty `catch {}`, blanket `|| true` in shell scripts, or `try/catch` blocks that silently return empty collections/defaults to mask outages.
+3. **Supply-Chain & API Grounding (Anti-Slopsquatting):** Confirm every newly added package, CLI flag, or framework API exists in current lockfiles/docs rather than hallucinated or deprecated signatures.
+4. **Test Theater & Oracle Integrity:** Verify tests assert observable domain behavior and negative paths — not implementation-mirroring mocks, assertion-free checks, weakened oracles, or brittle markdown prose greps standing in for runtime checks.
+5. **Lint & Repo Hygiene:** Reject global linter rule suppressions used to turn CI green, hardcoded local paths (`/Users/...`), leaked runtime artifacts, or unrequested transient `docs/` files.
+Run `python3 scripts/ci/slop-check.py` when available to ground these checks deterministically.
+
 ---
 
 ## Input Classification

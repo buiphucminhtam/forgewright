@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Phaser3 Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Phaser 3 package is configured as a dependency in the workspace | `cat package.json \| jq '.dependencies["phaser"]'` | ... | run the check command and paste output |
-| Existing game configurations or scene files are indexed under source directories | `find src/ -name "*game*" -o -name "*scene*" -o -name "*phaser*"` | ... | run the check command and paste output |
+| Target Phaser 3 package is configured as a dependency in the workspace | `cat package.json \| jq '.dependencies["phaser"]'` | ... | Verified `Target Phaser 3 package is configured as a` facts from inspected file/command output |
+| Existing game configurations or scene files are indexed under source directories | `find src/ -name "*game*" -o -name "*scene*" -o -name "*phaser*"` | ... | Observed command exit code & stdout confirming existing game configurations or scene files |
 
 ## SOLVE Step 3: DECOMPOSE (Phaser3 Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

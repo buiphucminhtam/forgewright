@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (3D Spatial Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target scene assets/prefabs exist | `ls Assets/Prefabs` / engine tools | ... | run the check command and paste output |
-| Metric system of target engine is known | Engine docs (Unity: Y-up LHS, Godot: Y-up RHS, Unreal: Z-up LHS) | ... | run the check command and paste output |
+| Target scene assets/prefabs exist | `ls Assets/Prefabs` / engine tools | ... | Observed command exit code & stdout confirming target scene assets/prefabs exist |
+| Metric system of target engine is known | Engine docs (Unity: Y-up LHS, Godot: Y-up RHS, Unreal: Z-up LHS) | ... | Observed command exit code & stdout confirming metric system of target engine is known |
 
 ## SOLVE Step 3: DECOMPOSE (3D Spatial Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

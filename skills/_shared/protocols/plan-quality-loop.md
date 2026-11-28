@@ -3,11 +3,11 @@ id: plan-quality-loop
 title: Plan Quality Loop Protocol
 summary: Core protocol for plan quality loop.
 status: active
-version: 1.0.0
+version: 2.0.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: []
+related: [verification, senior-execution-contract]
 supersedes: []
 superseded_by: null
 ---
@@ -18,15 +18,22 @@ superseded_by: null
 
 **MANDATORY: Right-size planning before execution.** Use the effort class from the Senior Execution Contract / kernel.
 
+> **Anti-Slop Policy (v2.0 — No Self-Scoring Theater):** Numeric LLM self-grading (e.g., inventing `9.0/10` weighted averages) is deprecated because self-assigned scores are unverified theater. Use deterministic, binary readiness checks grounded in current workspace evidence instead.
+
 ### `QUICK` fast path
 For clear, reversible, low-risk work, use a three-field mini-plan: `ACTION | TARGET | CHECK`. Do not numeric-score the plan or trigger research merely to improve a score. Escalate to the full loop if grounding reveals a HARD signal or materially wider blast radius.
 
-### `STANDARD` / `DEEP` loop
-1. **PLAN** — Create a plan against the rubric below
-2. **SCORE** — Score against the applicable mode-specific threshold
-3. **META-EVALUATE** — Check the complexity-scaled threshold
-4. **IMPROVE** (if materially below threshold) — close evidence/constraint gaps, research only when needed, then re-plan
-5. **EXECUTE** — Only after the applicable threshold passes
+### `STANDARD` / `DEEP` Evidence-Backed Readiness Loop
+1. **PLAN** — Build the smallest adequate plan covering objective, scope boundaries, blast radius, and deterministic checks.
+2. **VERIFY READINESS (Binary Gate)** — Confirm every applicable check below has observed workspace evidence (PASS / FAIL / N/A — never self-invented numeric scores):
+   - **Completeness & Specificity:** Exact target files/symbols and observable acceptance criteria verified in workspace.
+   - **Feasibility & Dependency Ordering:** Prerequisites, tools, and step order verified against current runtime.
+   - **Scope Control & Risk Awareness:** Non-goals, blast radius (`gitnexus` `impact` / caller checks), and rollback path stated.
+   - **Evidence Verification & Verification Fit:** Every material assumption is grounded in workspace/runtime evidence and paired with a proportional deterministic check (`RED → GREEN` for fixes; mutation + `review-2` for `HARD`).
+3. **CLOSE GAPS** (if any readiness item is FAIL) — Inspect missing evidence or run bounded research only for a material knowledge gap, then update the plan.
+4. **EXECUTE** — Proceed once all applicable readiness items PASS (`PLAN_LOCKED` for `DEEP` work).
+
+> *Legacy Compatibility:* Older `.production-grade.yaml` files containing `planQuality.threshold` remain accepted without error; treat the configured mode risk level as selecting `QUICK` / `STANDARD` / `DEEP` rigor rather than requiring self-awarded numeric scores.
 
 ## 10-Criteria Rubric
 

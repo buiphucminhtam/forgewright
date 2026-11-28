@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Unity Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack matches Unity and C# guidelines | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Active C# solution or assembly definition files exist | `find . -name "*.sln" -o -name "*.asmdef"` | ... | run the check command and paste output |
+| Project tech stack matches Unity and C# guidelines | `cat .forgewright/project-profile.json` | ... | Verified `Project tech stack matches Unity and C#` facts from inspected file/command output |
+| Active C# solution or assembly definition files exist | `find . -name "*.sln" -o -name "*.asmdef"` | ... | Observed command exit code & stdout confirming active c# solution or assembly definition |
 
 ## SOLVE Step 3: DECOMPOSE (Unity Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

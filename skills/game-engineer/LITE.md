@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Game Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target game development libraries or frameworks are defined | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | run the check command and paste output |
-| Active project stack and health status profile are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target game development libraries or frameworks are defined | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | Verified `Target game development libraries or` facts from inspected file/command output |
+| Active project stack and health status profile are onboarded | `cat .forgewright/project-profile.json` | ... | Verified `Active project stack and health status` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Game Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

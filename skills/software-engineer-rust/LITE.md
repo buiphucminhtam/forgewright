@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Software Engineer Rust Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Cargo manifest file exists and defines target compiler edition | `cat Cargo.toml` | ... | run the check command and paste output |
-| Project-specific tech stack and baseline profile are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| GitNexus symbol index is loaded and ready for impact analysis | `gitnexus analyze --status \|\| find . -name \"*.gitnexus\"` | ... | run the check command and paste output |
+| Target Cargo manifest file exists and defines target compiler edition | `cat Cargo.toml` | ... | Verified `Target Cargo manifest file exists and` facts from inspected file/command output |
+| Project-specific tech stack and baseline profile are active | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and baseline` facts from inspected file/command output |
+| GitNexus symbol index is loaded and ready for impact analysis | `gitnexus analyze --status \|\| Observed command exit code & stdout confirming gitnexus symbol index is loaded and ready | ... | Observed command exit code & stdout confirming gitnexus symbol index is loaded and ready |
 
 ## SOLVE Step 3: DECOMPOSE (Software Engineer Rust Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

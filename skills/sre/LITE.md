@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Sre Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Active project tech stack and development profile are established | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Performance monitoring stack (k6/InfluxDB/Grafana) configurations exist | `find docker/perf-stack/ -name \"*.yml\" -o -name \"*.json\" \|\| ls -la docker-compose.test.yml` | ... | run the check command and paste output |
-| Deployment and staged-rollout automation scripts exist | `find scripts/ci/ scripts/ -maxdepth 2 -type f 2>/dev/null` | ... | run the check command and paste output |
+| Active project tech stack and development profile are established | `cat .forgewright/project-profile.json` | ... | Verified `Active project tech stack and development` facts from inspected file/command output |
+| Performance monitoring stack (k6/InfluxDB/Grafana) configurations exist | `find docker/perf-stack/ -name \"*.yml\" -o -name \"*.json\" \|\| Observed command exit code & stdout confirming performance monitoring stack | ... | Observed command exit code & stdout confirming performance monitoring stack |
+| Deployment and staged-rollout automation scripts exist | `find scripts/ci/ scripts/ -maxdepth 2 -type f 2>/dev/null` | ... | Observed command exit code & stdout confirming deployment and staged-rollout automation |
 
 ## SOLVE Step 3: DECOMPOSE (Sre Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

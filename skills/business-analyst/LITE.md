@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Business Analyst Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project stack and baseline profile are onboarded and defined | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Existing product specifications or active requirements exist in the designated product folder | `find docs/01-product/ -name "*.md"` | ... | run the check command and paste output |
-| Standardized feature specifications template is present for formatting consistency | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | ... | run the check command and paste output |
+| Project stack and baseline profile are onboarded and defined | `cat .forgewright/project-profile.json` | ... | Verified `Project stack and baseline profile are` facts from inspected file/command output |
+| Existing product specifications or active requirements exist in the designated product folder | `find docs/01-product/ -name "*.md"` | ... | Observed command exit code & stdout confirming existing product specifications or active |
+| Standardized feature specifications template is present for formatting consistency | `cat docs/01-product/TEMPLATE-FEATURE-SPEC.md` | ... | Verified `Standardized feature specifications template` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Business Analyst Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

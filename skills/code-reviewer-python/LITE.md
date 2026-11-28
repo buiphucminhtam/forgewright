@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Code Reviewer Python Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Python environment, dependencies, and modules are defined | `cat requirements.txt \|\| cat pyproject.toml \|\| cat setup.cfg` | ... | run the check command and paste output |
-| Static analysis and formatting packages are configured | `cat pyproject.toml \| grep -E \"(ruff\|mypy\|black\|flake8\|bandit)\"` | ... | run the check command and paste output |
+| Target Python environment, dependencies, and modules are defined | `cat requirements.txt \|\| cat pyproject.toml \|\| cat setup.cfg` | ... | Observed command exit code & stdout confirming target python environment, dependencies, |
+| Static analysis and formatting packages are configured | `cat pyproject.toml \| grep -E \"(ruff\|mypy\|black\|flake8\|bandit)\"` | ... | Observed command exit code & stdout confirming static analysis and formatting packages |
 
 ## SOLVE Step 3: DECOMPOSE (Code Reviewer Python Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

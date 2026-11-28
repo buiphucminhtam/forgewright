@@ -34,11 +34,15 @@ async function browserKit() {
   for (const name of ['@playwright/test', 'playwright', 'playwright-core']) {
     try {
       return await import(name);
-    } catch {}
+    } catch (_importErr) {
+      // Package not installed in default resolution; probe searchDirs below.
+    }
     for (const dir of searchDirs) {
       try {
         return createRequire(join(resolve(dir), 'package.json'))(name);
-      } catch {}
+      } catch (_resolveErr) {
+        continue;
+      }
     }
   }
   console.error('Playwright is not installed. In your project, run npm install -D playwright followed by npx playwright install chromium.');
@@ -445,7 +449,9 @@ try {
       let rules = [];
       try {
         rules = [...sheet.cssRules];
-      } catch {}
+      } catch (_corsErr) {
+        rules = [];
+      }
       const walk = (list) => list.forEach((rule) => {
         if (rule.cssRules) walk([...rule.cssRules]);
         const value = rule.style && rule.style.fontFamily;

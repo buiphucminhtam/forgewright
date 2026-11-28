@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Unreal Technical Artist Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Unreal project configuration exists | `find . -maxdepth 2 -name "*.uproject"` | ... | run the check command and paste output |
-| Project-specific tech stack and profile settings are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Shader files, HLSL materials, or Niagara assets are indexed | `find Content/ -name "*.uasset" -o -name "*.hlsl" -o -name "*.ush"` | ... | run the check command and paste output |
+| Target Unreal project configuration exists | `find . -maxdepth 2 -name "*.uproject"` | ... | Observed command exit code & stdout confirming target unreal project configuration exists |
+| Project-specific tech stack and profile settings are active | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and profile` facts from inspected file/command output |
+| Shader files, HLSL materials, or Niagara assets are indexed | `find Content/ -name "*.uasset" -o -name "*.hlsl" -o -name "*.ush"` | ... | Observed command exit code & stdout confirming shader files, hlsl materials, or niagara |
 
 ## SOLVE Step 3: DECOMPOSE (Unreal Technical Artist Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

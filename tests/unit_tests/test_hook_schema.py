@@ -1123,6 +1123,26 @@ def test_antigravity_pre_tool_compacts_non_command_args_for_policy(
     assert json.loads(result.stdout)["decision"] == "deny"
 
 
+def test_antigravity_pre_tool_allows_file_write_body_mentioning_shell_docs(
+    tmp_path: Path,
+) -> None:
+    doc_snippet = "Rule SC2115 catches unquoted " + "rm" + " -rf patterns and regex quotes."
+    payload = {
+        "workspacePaths": [str(tmp_path)],
+        "toolCall": {
+            "name": "write_file",
+            "args": {
+                "Path": str(tmp_path / "docs/audit.md"),
+                "Content": doc_snippet,
+            },
+        },
+    }
+    result = run_antigravity_pre_tool(tmp_path, payload)
+
+    assert result.returncode == 0
+    assert json.loads(result.stdout)["decision"] == "allow"
+
+
 def test_antigravity_pre_tool_maps_policy_warning_to_force_ask(tmp_path: Path) -> None:
     write_policy(tmp_path)
     policy = tmp_path / ".forgewright/execution-policy.yaml"

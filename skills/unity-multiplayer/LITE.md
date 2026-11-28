@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Unity Multiplayer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target multiplayer networking library (NGO, Mirror, Photon) is configured in dependencies | `cat Packages/manifest.json \| grep -E "(netcode\|mirror\|photon)"` | ... | run the check command and paste output |
-| Master NetworkManager configuration and entry points are initialized | `find Assets/ -name "*NetworkManager*" -o -name "*NetworkManager*.asset"` | ... | run the check command and paste output |
+| Target multiplayer networking library (NGO, Mirror, Photon) is configured in dependencies | `cat Packages/manifest.json \| grep -E "(netcode\|mirror\|photon)"` | ... | Observed command exit code & stdout confirming target multiplayer networking library |
+| Master NetworkManager configuration and entry points are initialized | `find Assets/ -name "*NetworkManager*" -o -name "*NetworkManager*.asset"` | ... | Observed command exit code & stdout confirming master networkmanager configuration and |
 
 ## SOLVE Step 3: DECOMPOSE (Unity Multiplayer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

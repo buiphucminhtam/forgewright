@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Fullstack Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack and language alignments are fully onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Active database schema, migrations, or model directories exist | `find src/ -name "schema*" -o -name "*.prisma" -o -name "models"` | ... | run the check command and paste output |
-| GitNexus code intelligence is indexed and active for symbol graph analysis | `gitnexus analyze` or `cat .gitnexus/config` | ... | run the check command and paste output |
+| Project tech stack and language alignments are fully onboarded | `cat .forgewright/project-profile.json` | ... | Verified `Project tech stack and language alignments` facts from inspected file/command output |
+| Active database schema, migrations, or model directories exist | `find src/ -name "schema*" -o -name "*.prisma" -o -name "models"` | ... | Observed command exit code & stdout confirming active database schema, migrations, or model |
+| GitNexus code intelligence is indexed and active for symbol graph analysis | `gitnexus analyze` or `cat .gitnexus/config` | ... | Verified `GitNexus code intelligence is indexed and` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Fullstack Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

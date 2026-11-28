@@ -612,6 +612,7 @@ class LocalCI:
 
     def quick(self) -> None:
         self.run("product-truth", [self.python, "scripts/ci/verify-product-truth.py"])
+        self.run("slop-check", [self.python, "scripts/ci/slop-check.py"])
         self.run(
             "adversarial-weak-model-rails",
             [self.python, "evals/adversarial-weak-model/run-evals.py", "--self-test"],

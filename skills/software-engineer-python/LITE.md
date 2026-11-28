@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Software Engineer Python Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Python environment, dependencies, and modules are defined | `cat requirements.txt \|\| cat pyproject.toml \|\| cat setup.cfg` | ... | run the check command and paste output |
-| GitNexus symbol index and call graphs are present and initialized | `gitnexus analyze --status \|\| find . -name \"*.gitnexus\"` | ... | run the check command and paste output |
+| Target Python environment, dependencies, and modules are defined | `cat requirements.txt \|\| cat pyproject.toml \|\| cat setup.cfg` | ... | Observed command exit code & stdout confirming target python environment, dependencies, |
+| GitNexus symbol index and call graphs are present and initialized | `gitnexus analyze --status \|\| find . -name \"*.gitnexus\"` | ... | Observed command exit code & stdout confirming gitnexus symbol index and call graphs are |
 
 ## SOLVE Step 3: DECOMPOSE (Software Engineer Python Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

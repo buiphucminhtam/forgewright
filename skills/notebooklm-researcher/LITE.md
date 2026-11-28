@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Notebooklm Researcher Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| NotebookLM CLI utility is installed and responsive | `nlm --version` | ... | run the check command and paste output |
-| Session tracker exists to monitor attempt counts | `ls -la scripts/forgewright-session-tracker.sh` | ... | run the check command and paste output |
-| Active lessons log exists under the local state directory | `cat .forgewright/lessons.md` | ... | run the check command and paste output |
+| NotebookLM CLI utility is installed and responsive | `nlm --version` | ... | Observed command exit code & stdout confirming notebooklm cli utility is installed and |
+| Session tracker exists to monitor attempt counts | `ls -la scripts/forgewright-session-tracker.sh` | ... | Observed command exit code & stdout confirming session tracker exists to monitor attempt counts |
+| Active lessons log exists under the local state directory | `cat .forgewright/lessons.md` | ... | Verified `Active lessons log exists under the local` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Notebooklm Researcher Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

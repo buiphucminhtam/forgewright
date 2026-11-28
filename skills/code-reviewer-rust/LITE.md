@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Code Reviewer Rust Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Cargo manifest file exists and specifies dependencies | `cat Cargo.toml` | ... | run the check command and paste output |
-| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target Cargo manifest file exists and specifies dependencies | `cat Cargo.toml` | ... | Verified `Target Cargo manifest file exists and` facts from inspected file/command output |
+| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and profile` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Code Reviewer Rust Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

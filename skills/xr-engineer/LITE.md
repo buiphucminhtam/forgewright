@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Xr Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target XR package declarations and 3D dependencies are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match(\"three\\|babylon\\|webxr\\|xr\")))'` | ... | run the check command and paste output |
-| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target XR package declarations and 3D dependencies are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match(\"three\\|babylon\\|webxr\\|xr\")))'` | ... | Observed command exit code & stdout confirming target xr package declarations and 3d |
+| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | Observed command exit code & stdout confirming project-specific tech stack and profile |
 
 ## SOLVE Step 3: DECOMPOSE (Xr Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

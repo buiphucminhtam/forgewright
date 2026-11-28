@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Godot Multiplayer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project is initialized with a valid Godot config | `cat project.godot` | ... | run the check command and paste output |
-| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Project is initialized with a valid Godot config | `cat project.godot` | ... | Verified `Project is initialized with a valid Godot config` facts from inspected file/command output |
+| Project-specific tech stack and profile configurations are active | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and profile` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Godot Multiplayer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

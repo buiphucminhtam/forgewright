@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Interaction Designer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target frontend libraries and styling frameworks are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("tailwind\|sass\|styled-components\|framer-motion")))'` | ... | run the check command and paste output |
-| Existing visual guidelines, mockups, or wireframe specs are indexed | `find docs/ -name "*design*" -o -name "*ux*" -o -name "*wireframe*"` | ... | run the check command and paste output |
-| Visual regression test (VRT) suites or screenshots are configured | `cat playwright.config.ts \|\| ls -la tests/` | ... | run the check command and paste output |
+| Target frontend libraries and styling frameworks are defined | `cat package.json \| jq '.dependencies \| select(. != null) \| with_entries(select(.key \| match("tailwind\|sass\|styled-components\|framer-motion")))'` | ... | Observed command exit code & stdout confirming target frontend libraries and styling |
+| Existing visual guidelines, mockups, or wireframe specs are indexed | `find docs/ -name "*design*" -o -name "*ux*" -o -name "*wireframe*"` | ... | Observed command exit code & stdout confirming existing visual guidelines, mockups, or |
+| Visual regression test (VRT) suites or screenshots are configured | `cat playwright.config.ts \|\| ls -la tests/` | ... | Observed command exit code & stdout confirming visual regression test (vrt) suites or |
 | Existing interactive primitives, state conventions, and DOM probe availability | Inspect existing buttons/modals/inputs/accordions and `skills/ui-designer/references/app-ui-ux-mindset.md` | ... | `Audit:` line of reusable interactive primitives + state/focus/motion rules (`N1–N12`, `I1–I32`) |
 
 ## SOLVE Step 3: DECOMPOSE (Interaction Designer Domain Slots)

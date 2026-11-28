@@ -554,10 +554,6 @@
       "authority": "routed_skill"
     },
     {
-      "path": "skills/generated/hook-expert/SKILL.md",
-      "authority": "routed_skill"
-    },
-    {
       "path": "skills/goal-driven/LITE.md",
       "authority": "routed_lite"
     },

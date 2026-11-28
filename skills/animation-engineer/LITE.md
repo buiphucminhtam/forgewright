@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Animation Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target animation and transition libraries (GSAP, Framer Motion, Anime.js) are installed | `cat package.json \| jq '.dependencies["gsap"] // .dependencies["framer-motion"]'` | ... | run the check command and paste output |
-| Existing animation stylesheets, assets, or motion configs are located | `find src/ -name "*anim*" -o -name "*motion*" -o -name "*tween*"` | ... | run the check command and paste output |
+| Target animation and transition libraries (GSAP, Framer Motion, Anime.js) are installed | `cat package.json \| jq '.dependencies["gsap"] // .dependencies["framer-motion"]'` | ... | Verified `Target animation and transition libraries` facts from inspected file/command output |
+| Existing animation stylesheets, assets, or motion configs are located | `find src/ -name "*anim*" -o -name "*motion*" -o -name "*tween*"` | ... | Observed command exit code & stdout confirming existing animation stylesheets, assets, or |
 
 ## SOLVE Step 3: DECOMPOSE (Animation Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Auto Publish Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Mobile project packaging and publishing configurations are present | `cat package.json \| jq '.dependencies["expo"] // .dependencies["react-native"]'` | ... | run the check command and paste output |
-| Fastlane configs or EAS configuration settings are located | `ls -la ios/Fastfile android/Fastfile eas.json` | ... | run the check command and paste output |
-| Standardized operational runbooks or deployment docs exist | `find docs/05-operations/ -name "*publish*" -o -name "*release*"` | ... | run the check command and paste output |
+| Mobile project packaging and publishing configurations are present | `cat package.json \| jq '.dependencies["expo"] // .dependencies["react-native"]'` | ... | Verified `Mobile project packaging and publishing` facts from inspected file/command output |
+| Fastlane configs or EAS configuration settings are located | `ls -la ios/Fastfile android/Fastfile eas.json` | ... | Observed command exit code & stdout confirming fastlane configs or eas configuration |
+| Standardized operational runbooks or deployment docs exist | `find docs/05-operations/ -name "*publish*" -o -name "*release*"` | ... | Observed command exit code & stdout confirming standardized operational runbooks or |
 
 ## SOLVE Step 3: DECOMPOSE (Auto Publish Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

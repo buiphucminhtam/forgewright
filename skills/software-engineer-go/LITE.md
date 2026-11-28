@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Software Engineer Go Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target Go module path and dependency configurations exist | `cat go.mod` | ... | run the check command and paste output |
-| Go workspace setup and toolchain are verified | `go version && go env` | ... | run the check command and paste output |
+| Target Go module path and dependency configurations exist | `cat go.mod` | ... | Verified `Target Go module path and dependency` facts from inspected file/command output |
+| Go workspace setup and toolchain are verified | `go version && go env` | ... | Observed command exit code & stdout confirming go workspace setup and toolchain are verified |
 
 ## SOLVE Step 3: DECOMPOSE (Software Engineer Go Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

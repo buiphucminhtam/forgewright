@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Unreal Multiplayer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Active Unreal project configuration file exists | `find . -maxdepth 2 -name "*.uproject"` | ... | run the check command and paste output |
-| Project-specific tech stack and profile settings are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Active Unreal project configuration file exists | `find . -maxdepth 2 -name "*.uproject"` | ... | Observed command exit code & stdout confirming active unreal project configuration file exists |
+| Project-specific tech stack and profile settings are active | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and profile` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Unreal Multiplayer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

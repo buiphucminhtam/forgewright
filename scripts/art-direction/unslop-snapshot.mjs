@@ -60,11 +60,15 @@ async function browserKit() {
   for (const name of ['@playwright/test', 'playwright', 'playwright-core']) {
     try {
       return await import(name);
-    } catch {}
+    } catch (_importErr) {
+      // Package not installed in default resolution; probe searchDirs below.
+    }
     for (const dir of searchDirs) {
       try {
         return createRequire(join(resolve(dir), 'package.json'))(name);
-      } catch {}
+      } catch (_resolveErr) {
+        continue;
+      }
     }
   }
   console.error('Playwright is not installed. In your project, run npm install -D playwright followed by npx playwright install chromium.');
@@ -164,7 +168,9 @@ try {
       if (!text) {
         try {
           text = [...sheet.cssRules].map((rule) => rule.cssText).join("\n");
-        } catch {}
+        } catch (_corsErr) {
+          text = "";
+        }
       }
       const media = sheet.media && sheet.media.mediaText;
       css.push(media && media !== "all" ? `@media ${media} {\n${text}\n}` : text);

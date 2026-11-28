@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Prompt Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target model configs and optimization levels are active | `cat .production-grade.yaml` | ... | run the check command and paste output |
-| Existing system prompts or template instructions are indexed | `find src/ -name "*prompt*" -o -name "*instruction*" -o -name "*template*"` | ... | run the check command and paste output |
+| Target model configs and optimization levels are active | `cat .production-grade.yaml` | ... | Verified `Target model configs and optimization levels` facts from inspected file/command output |
+| Existing system prompts or template instructions are indexed | `find src/ -name "*prompt*" -o -name "*instruction*" -o -name "*template*"` | ... | Observed command exit code & stdout confirming existing system prompts or template |
 
 ## SOLVE Step 3: DECOMPOSE (Prompt Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

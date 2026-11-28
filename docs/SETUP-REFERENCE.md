@@ -474,4 +474,4 @@ FORGENEXUS_DEBUG=1 bash scripts/forgenexus-mcp-launcher.sh
 
 - [Setup Guide](SETUP.md) - User documentation
 - [Quick Start](SETUP-QUICK.md) - Fast setup
-- [ForgeNexus](../forgenexus/README.md) - Code intelligence docs
+- [GitNexus Guide](guides/gitnexus.md) - Code intelligence docs (replaces deprecated ForgeNexus)

@@ -1,8 +1,8 @@
 ---
 name: software-engineer
 description: "Use for backend, API, service, or business-logic feature work, bounded bug fixes, and implementation refactors routed through the production pipeline."
-version: 2.0.0
-tags: [backend, api, services, implementation, clean-architecture, tdd]
+version: 2.1.0
+tags: [backend, api, services, implementation, clean-architecture, anti-slop, tdd]
 ---
 
 # Software Engineer (LITE)
@@ -10,16 +10,14 @@ tags: [backend, api, services, implementation, clean-architecture, tdd]
 ## SOLVE Step 2: GROUND (Software Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Service interface or types defined | View file containing service/model types | ... | run the check command and paste output |
-| Data repository / DB table exists | View schema file or run DB check | ... | run the check command and paste output |
-| Dependency packages are installed | Read `package.json` or `go.mod` etc. | ... | run the check command and paste output |
-| Test suite runs and is green | Run existing test command | ... | run the check command and paste output |
+| Existing domain abstractions & contracts | Inspect target modules, types, schemas, and callers before creating new helpers or files | ... | Verified existing file paths, symbols, and caller signatures |
+| Dependencies & runtime versions | Read `package.json`, `pyproject.toml`, `go.mod`, or lockfiles (never invent/slopsquat packages or APIs) | ... | Recorded installed package names and runtime versions |
+| Baseline tests & static checks | Run the focused existing test/lint/typecheck command for affected modules | ... | Captured baseline command, exit code, and pass/fail summary |
+| Failure & boundary semantics | Check existing error-handling conventions, authz boundaries, and rollback requirements | ... | Documented expected error types and negative-path behavior |
 
 ## SOLVE Step 3: DECOMPOSE (Software Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
-- `n. ACTION (write failing test) | TARGET (tests/feature.test.ts) | CHECK (npm test tests/feature.test.ts)`
-- `n. ACTION (define types/interfaces) | TARGET (src/types.ts) | CHECK (tsc --noEmit)`
-- `n. ACTION (implement business logic) | TARGET (src/services/feature.ts) | CHECK (npm test tests/feature.test.ts)`
-- `n. ACTION (wire handler/controller) | TARGET (src/controllers/feature.ts) | CHECK (npm test tests/feature.test.ts)`
-- `n. ACTION (run full tests) | TARGET (tests/) | CHECK (npm test)`
-- For multi-file edits: run AUDIT step (kernel/AUDIT.md) before delivery — re-read all changed files, build coverage matrix.
+1. REPRODUCE OR DEFINE CONTRACT | Failing behavioral test or minimal contract check | Observe RED before fixing bugs; keep tests behavior-focused (no mock mirroring).
+2. IMPLEMENT SMALLEST SAFE CHANGE | Reuse existing abstractions; keep functions cohesive (avoid >100 LOC God functions and deep nesting) | Explicit error propagation (no silent `catch {}`, bare `except:`, or swallowed defaults).
+3. VERIFY TARGET & ADJACENT REGRESSION | Run focused test suite, typecheck, and linter on changed files | Observe exact GREEN exit code and output.
+4. ANTI-SLOP SELF-AUDIT | Inspect `git diff` for dead code, copy-paste bloat, hardcoded local paths, or unrequested scope | Confirm minimal clean diff and run [kernel/AUDIT.md](../../kernel/AUDIT.md) for multi-file edits.

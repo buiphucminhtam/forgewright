@@ -193,7 +193,7 @@ Before marking asset placement as complete:
 
 ## See Also
 
-- [Coordinate System Cheatsheet](../coordinate-systems/cheatsheet.md)
-- [Import Settings Guide](../coordinate-systems/import-settings.md)
+- [Coordinate System Cheatsheet](cheatsheet.md)
+- [Import Settings Guide](import-settings.md)
 - [Floating Origin Guide](../guides/floating-origin.md)
-- [CLI Reference: forge coords](../../cli/src/commands/coords.ts)
+- [CLI Reference: forge coords](../../src/cli/src/commands/coords.ts)

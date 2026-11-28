@@ -682,6 +682,300 @@ def infer_game_engine(prompt: str, project_root: Path) -> str | None:
     return "threejs" if re.search(r"\b3d\b", text) else "phaser4"
 
 
+def _load_routing_inputs(
+    root: Path,
+    config: Path,
+    skills_root: str | Path | None,
+    allowed_modes: list[str] | None,
+    cache: ExactRoutingCache | None,
+    game_engine: str | None,
+) -> dict[str, Any]:
+    with config.open("r", encoding="utf-8") as handle:
+        raw = handle.read(1024 * 1024 + 1)
+        if len(raw) > 1024 * 1024:
+            raise ValueError("skills config exceeds 1 MiB")
+        document = json.loads(raw)
+    if not isinstance(document, dict):
+        raise ValueError("config root must be an object")
+    mode_map = _mode_skill_map(document)
+    settings = _skill_settings(document)
+    if len(settings) > 512:
+        raise ValueError("skills settings exceeds 512 entries")
+    for name, value in settings.items():
+        if not name.startswith("_"):
+            if not valid_name(name):
+                raise ValueError("invalid skill name or path escapes skills root")
+            _enabled_value(value, name)
+    resolved_skills_root = _resolve_skills_root(root, skills_root)
+    if game_engine is not None and game_engine not in GAME_ENGINES:
+        raise ValueError("unknown game engine selector")
+    candidates = _allowed_modes(document, mode_map, allowed_modes)
+    fingerprint = (
+        _routing_fingerprint(
+            root, config, document, resolved_skills_root, mode_map, settings
+        )
+        + ":"
+        + str(game_engine)
+        if cache is not None
+        else "uncached"
+    )
+    cap, description_budget = _context_budget(document)
+    return {
+        "document": document,
+        "mode_map": mode_map,
+        "settings": settings,
+        "skills_root": resolved_skills_root,
+        "candidates": candidates,
+        "fingerprint": fingerprint,
+        "cap": cap,
+        "description_budget": description_budget,
+    }
+
+
+def _select_mode_and_names(
+    *,
+    prompt: str,
+    mode: str | None,
+    requested_mode: str | None,
+    root: Path,
+    cache: ExactRoutingCache | None,
+    inputs: dict[str, Any],
+) -> tuple[str | None, str, dict[str, Any], list[str] | None, str | None]:
+    document = inputs["document"]
+    mode_map = inputs["mode_map"]
+    settings = inputs["settings"]
+    skills_root = inputs["skills_root"]
+    candidates = inputs["candidates"]
+    auto_detect = document.get("auto_detect", True)
+    if not isinstance(auto_detect, bool):
+        raise ValueError("auto_detect must be a boolean")
+
+    decision = select_mode(
+        prompt=prompt if auto_detect else "",
+        candidates=candidates,
+        project_root=root,
+        fingerprint=inputs["fingerprint"],
+        explicit=requested_mode,
+        cache=cache,
+    )
+    selected_mode = decision["mode"]
+    selected_source = decision["source"]
+    if (
+        (
+            selected_mode is None
+            or (selected_mode == "marketing" and requests_unslop_design(prompt))
+        )
+        and mode is None
+        and auto_detect
+        and (requests_motion_director(prompt) or requests_unslop_design(prompt))
+        and "design" in candidates
+    ):
+        unslop_only = requests_unslop_design(
+            prompt
+        ) and not requests_motion_director(prompt)
+        selected_mode = "design"
+        selected_source = "local-rules"
+        decision = dict(
+            decision,
+            status="selected",
+            mode="design",
+            source="local-rules",
+            rule_score=max(int(decision.get("rule_score", 0)), 1),
+            reason="unslop-design-intent" if unslop_only else "motion-design-intent",
+        )
+
+    if selected_mode is None:
+        force_names = [
+            name
+            for name, value in settings.items()
+            if isinstance(name, str)
+            and not name.startswith("_")
+            and _enabled_value(value, name) == "true"
+        ]
+        if force_names:
+            selected_source = "explicit"
+            decision = dict(decision, source="explicit", reason="host-forced-skills")
+        return selected_mode, selected_source, decision, force_names, None
+
+    if selected_mode not in mode_map:
+        message = (
+            f"unknown explicit mode: {selected_mode}"
+            if mode is not None
+            else f"classified mode is not configured: {selected_mode}"
+        )
+        return selected_mode, selected_source, decision, None, message
+
+    selected_names = list(mode_map[selected_mode])
+    if (
+        auto_detect
+        and (selected_mode == "design" or requests_unslop_design(prompt))
+        and "unslop" not in selected_names
+        and (skills_root / "unslop" / "SKILL.md").is_file()
+        and _enabled_value(settings.get("unslop", {}), "unslop") != "false"
+    ):
+        selected_names.append("unslop")
+    if (
+        auto_detect
+        and requests_motion_director(prompt)
+        and "motion-director" not in selected_names
+        and _enabled_value(settings.get("motion-director", {}), "motion-director")
+        != "false"
+    ):
+        selected_names.append("motion-director")
+    for name, value in settings.items():
+        if not isinstance(name, str):
+            raise ValueError("skills contains a non-string skill name")
+        if name.startswith("_"):
+            continue
+        enabled = _enabled_value(value, name)
+        if enabled == "false":
+            selected_names = [item for item in selected_names if item != name]
+        elif enabled == "true" and name not in selected_names:
+            selected_names.append(name)
+    return selected_mode, selected_source, decision, selected_names, None
+
+
+def _apply_game_engine_selection(
+    *,
+    prompt: str,
+    root: Path,
+    selected_mode: str | None,
+    auto_detect: bool,
+    document: dict[str, Any],
+    settings: dict[str, Any],
+    selected_names: list[str],
+    game_engine: str | None,
+) -> tuple[list[str], str | None]:
+    engine_auto = document.get("auto_detect_rules", {}).get(
+        "game_engine_routing", False
+    )
+    if not isinstance(engine_auto, bool):
+        return selected_names, "game_engine_routing must be a boolean"
+    if (
+        game_engine is None
+        and selected_mode == "game-build"
+        and auto_detect
+        and engine_auto
+    ):
+        try:
+            game_engine = infer_game_engine(prompt, root)
+        except (OSError, ValueError, UnicodeError) as error:
+            return selected_names, str(error)
+    if game_engine is None:
+        return selected_names, None
+    if selected_mode != "game-build":
+        return selected_names, "game engine selector requires game-build mode"
+    specialist = GAME_ENGINES[game_engine]
+    if _enabled_value(settings.get(specialist, {}), specialist) == "false":
+        return selected_names, f"selected game specialist is disabled: {specialist}"
+    ordered = [
+        name
+        for name in selected_names
+        if name not in ENGINE_SKILLS
+        or name == specialist
+        or _enabled_value(settings.get(name, {}), name) == "true"
+    ]
+    if specialist not in ordered:
+        ordered.append(specialist)
+    ordered.remove(specialist)
+    art_index = next(
+        (i for i, name in enumerate(ordered) if name == "art-director"), -1
+    )
+    ordered.insert(art_index + 1 if art_index >= 0 else len(ordered), specialist)
+    insertion = ordered.index(specialist) + 1
+    common_order = (
+        ("ui-designer", "game-engineer")
+        if game_engine == "threejs"
+        else ("game-engineer", "ui-designer")
+    )
+    for common in common_order:
+        if common in ordered:
+            ordered.remove(common)
+            ordered.insert(insertion, common)
+            insertion += 1
+    return ordered, None
+
+
+def _verify_and_order_skills(
+    *,
+    selected_names: list[str],
+    selected_mode: str | None,
+    prompt: str,
+    auto_detect: bool,
+    settings: dict[str, Any],
+    skills_root: Path,
+) -> list[dict[str, str]]:
+    verified: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for name in selected_names:
+        if name in seen:
+            continue
+        seen.add(name)
+        enabled = (
+            "auto" if name not in settings else _enabled_value(settings[name], name)
+        )
+        if enabled == "false":
+            continue
+        verified_skill = _verified_skill(name, skills_root=skills_root)
+        if (
+            name == "game-asset-vfx"
+            and enabled != "true"
+            and auto_detect
+            and excludes_game_vfx(prompt)
+        ):
+            continue
+        if (
+            name == "unslop"
+            and selected_mode != "design"
+            and enabled != "true"
+            and auto_detect
+            and not requests_unslop_design(prompt)
+        ):
+            continue
+        if (
+            name == "motion-director"
+            and enabled != "true"
+            and auto_detect
+            and not requests_motion_director(prompt)
+        ):
+            continue
+        verified.append(verified_skill)
+
+    if auto_detect and requests_game_vfx(prompt):
+        vfx = next(
+            (skill for skill in verified if skill["name"] == "game-asset-vfx"), None
+        )
+        if vfx is not None:
+            verified.remove(vfx)
+            art_index = next(
+                (i for i, skill in enumerate(verified) if skill["name"] == "art-director"),
+                -1,
+            )
+            verified.insert(art_index + 1, vfx)
+    return verified
+
+
+def _apply_context_budget(
+    verified: list[dict[str, str]], cap: int, description_budget: int
+) -> tuple[list[dict[str, Any]], int, list[str]]:
+    capped = verified[:cap] if cap else []
+    loaded: list[dict[str, Any]] = []
+    estimated_used = 0
+    estimates = [_estimate_overlay_tokens(skill) for skill in capped]
+    for skill, estimated_tokens in zip(capped, estimates):
+        if description_budget == 0 or estimated_used + estimated_tokens > description_budget:
+            break
+        enriched = dict(skill)
+        enriched["estimated_tokens"] = estimated_tokens
+        loaded.append(enriched)
+        estimated_used += estimated_tokens
+    loaded_names = {skill["name"] for skill in loaded}
+    deferred_names = [
+        skill["name"] for skill in verified if skill["name"] not in loaded_names
+    ]
+    return loaded, estimated_used, deferred_names
+
+
 def route_skills(
     *,
     prompt: str = "",
@@ -705,12 +999,12 @@ def route_skills(
         return _result(
             status="error", mode=requested_mode, source=source, errors=[str(error)]
         )
+
     config = (
         Path(config_path or root / ".forgewright" / "skills-config.json")
         .expanduser()
         .resolve()
     )
-
     if not config.is_file():
         return _result(
             status="error",
@@ -719,36 +1013,9 @@ def route_skills(
             errors=[f"missing config: {config}"],
         )
     try:
-        with config.open("r", encoding="utf-8") as handle:
-            raw = handle.read(1024 * 1024 + 1)
-            if len(raw) > 1024 * 1024:
-                raise ValueError("skills config exceeds 1 MiB")
-            document = json.loads(raw)
-        if not isinstance(document, dict):
-            raise ValueError("config root must be an object")
-        mode_map = _mode_skill_map(document)
-        settings = _skill_settings(document)
-        if len(settings) > 512:
-            raise ValueError("skills settings exceeds 512 entries")
-        for name, value in settings.items():
-            if not name.startswith("_"):
-                if not valid_name(name):
-                    raise ValueError("invalid skill name or path escapes skills root")
-                _enabled_value(value, name)
-        skills_root = _resolve_skills_root(root, skills_root)
-        if game_engine is not None and game_engine not in GAME_ENGINES:
-            raise ValueError("unknown game engine selector")
-        candidates = _allowed_modes(document, mode_map, allowed_modes)
-        fingerprint = (
-            _routing_fingerprint(
-                root, config, document, skills_root, mode_map, settings
-            )
-            + ":"
-            + str(game_engine)
-            if cache is not None
-            else "uncached"
+        inputs = _load_routing_inputs(
+            root, config, skills_root, allowed_modes, cache, game_engine
         )
-        cap, description_budget = _context_budget(document)
     except (OSError, UnicodeError, ValueError) as error:
         return _result(
             status="error", mode=requested_mode, source=source, errors=[str(error)]
@@ -757,100 +1024,20 @@ def route_skills(
     selected_mode: str | None = None
     selected_source = source
     try:
-        auto_detect = document.get("auto_detect", True)
-        if not isinstance(auto_detect, bool):
-            raise ValueError("auto_detect must be a boolean")
-        decision = select_mode(
-            prompt=prompt if auto_detect else "",
-            candidates=candidates,
-            project_root=root,
-            fingerprint=fingerprint,
-            explicit=requested_mode,
+        (
+            selected_mode,
+            selected_source,
+            decision,
+            selected_names,
+            mode_error,
+        ) = _select_mode_and_names(
+            prompt=prompt,
+            mode=mode,
+            requested_mode=requested_mode,
+            root=root,
             cache=cache,
+            inputs=inputs,
         )
-        selected_mode = decision["mode"]
-        selected_source = decision["source"]
-        if (
-            (
-                selected_mode is None
-                or (selected_mode == "marketing" and requests_unslop_design(prompt))
-            )
-            and mode is None
-            and auto_detect
-            and (requests_motion_director(prompt) or requests_unslop_design(prompt))
-            and "design" in candidates
-        ):
-            unslop_only = requests_unslop_design(
-                prompt
-            ) and not requests_motion_director(prompt)
-            selected_mode = "design"
-            selected_source = "local-rules"
-            decision = dict(
-                decision,
-                status="selected",
-                mode="design",
-                source="local-rules",
-                rule_score=max(int(decision.get("rule_score", 0)), 1),
-                reason="unslop-design-intent"
-                if unslop_only
-                else "motion-design-intent",
-            )
-        if selected_mode is None:
-            force_names = [
-                name
-                for name, value in settings.items()
-                if isinstance(name, str)
-                and not name.startswith("_")
-                and _enabled_value(value, name) == "true"
-            ]
-            selected_names = force_names
-            if force_names:
-                selected_source = "explicit"
-                decision = dict(
-                    decision, source="explicit", reason="host-forced-skills"
-                )
-        else:
-            if selected_mode not in mode_map:
-                message = (
-                    f"unknown explicit mode: {selected_mode}"
-                    if mode is not None
-                    else f"classified mode is not configured: {selected_mode}"
-                )
-                return _result(
-                    status="error",
-                    mode=selected_mode,
-                    source=selected_source,
-                    errors=[message],
-                )
-            selected_names = list(mode_map[selected_mode])
-            if (
-                auto_detect
-                and (selected_mode == "design" or requests_unslop_design(prompt))
-                and "unslop" not in selected_names
-                and (skills_root / "unslop" / "SKILL.md").is_file()
-                and _enabled_value(settings.get("unslop", {}), "unslop") != "false"
-            ):
-                selected_names.append("unslop")
-            if (
-                auto_detect
-                and requests_motion_director(prompt)
-                and "motion-director" not in selected_names
-                and _enabled_value(
-                    settings.get("motion-director", {}), "motion-director"
-                )
-                != "false"
-            ):
-                selected_names.append("motion-director")
-            for name, value in settings.items():
-                if not isinstance(name, str):
-                    raise ValueError("skills contains a non-string skill name")
-                if name.startswith("_"):
-                    continue
-                enabled = _enabled_value(value, name)
-                if enabled == "false":
-                    selected_names = [item for item in selected_names if item != name]
-                elif enabled == "true" and name not in selected_names:
-                    selected_names.append(name)
     except ValueError as error:
         return _result(
             status="error",
@@ -858,160 +1045,45 @@ def route_skills(
             source=selected_source,
             errors=[str(error)],
         )
+    if mode_error is not None or selected_names is None:
+        return _result(
+            status="error",
+            mode=selected_mode,
+            source=selected_source,
+            errors=[mode_error or "mode selection failed"],
+        )
 
-    engine_auto = document.get("auto_detect_rules", {}).get(
-        "game_engine_routing", False
+    auto_detect = inputs["document"].get("auto_detect", True)
+    selected_names, engine_error = _apply_game_engine_selection(
+        prompt=prompt,
+        root=root,
+        selected_mode=selected_mode,
+        auto_detect=auto_detect,
+        document=inputs["document"],
+        settings=inputs["settings"],
+        selected_names=selected_names,
+        game_engine=game_engine,
     )
-    if not isinstance(engine_auto, bool):
+    if engine_error is not None:
         return _result(
             status="error",
             mode=selected_mode,
             source=selected_source,
-            errors=["game_engine_routing must be a boolean"],
+            errors=[engine_error],
         )
-    if (
-        game_engine is None
-        and selected_mode == "game-build"
-        and auto_detect
-        and engine_auto
-    ):
-        try:
-            game_engine = infer_game_engine(prompt, root)
-        except (OSError, ValueError, UnicodeError) as error:
-            return _result(
-                status="error",
-                mode=selected_mode,
-                source=selected_source,
-                errors=[str(error)],
-            )
-    if game_engine is not None:
-        if selected_mode != "game-build":
-            return _result(
-                status="error",
-                mode=selected_mode,
-                source=selected_source,
-                errors=["game engine selector requires game-build mode"],
-            )
-        specialist = GAME_ENGINES[game_engine]
-        if _enabled_value(settings.get(specialist, {}), specialist) == "false":
-            return _result(
-                status="error",
-                mode=selected_mode,
-                source=selected_source,
-                errors=[f"selected game specialist is disabled: {specialist}"],
-            )
-        selected_names = [
-            name
-            for name in selected_names
-            if name not in ENGINE_SKILLS
-            or name == specialist
-            or _enabled_value(settings.get(name, {}), name) == "true"
-        ]
-        if specialist not in selected_names:
-            selected_names.append(specialist)
-        # After the creative prefix, make the actual engine available before
-        # unrelated optional roles. A small budget may still defer it honestly.
-        selected_names.remove(specialist)
-        art_index = next(
-            (i for i, name in enumerate(selected_names) if name == "art-director"), -1
-        )
-        selected_names.insert(
-            art_index + 1 if art_index >= 0 else len(selected_names), specialist
-        )
-        insertion = selected_names.index(specialist) + 1
-        common_order = ("game-engineer", "ui-designer")
-        if game_engine == "threejs":
-            # Prioritize the UI handoff when the budget cannot fit both overlays.
-            common_order = ("ui-designer", "game-engineer")
-        for common in common_order:
-            if common in selected_names:
-                selected_names.remove(common)
-                selected_names.insert(insertion, common)
-                insertion += 1
 
-    # Validate before applying the cap so a bad configured path can never be
-    # hidden by ordering or truncation.
-    verified: list[dict[str, str]] = []
-    seen: set[str] = set()
     try:
-        for name in selected_names:
-            if name in seen:
-                continue
-            seen.add(name)
-            if name not in settings:
-                # Unlisted skills are auto-enabled for compatibility with the
-                # ordered map; their files still must pass validation.
-                enabled = "auto"
-            else:
-                enabled = _enabled_value(settings[name], name)
-            if enabled == "false":
-                continue
-            verified_skill = _verified_skill(name, skills_root=skills_root)
-            if (
-                name == "game-asset-vfx"
-                and enabled != "true"
-                and auto_detect
-                and excludes_game_vfx(prompt)
-            ):
-                continue
-            if (
-                name == "unslop"
-                and selected_mode != "design"
-                and enabled != "true"
-                and auto_detect
-                and not requests_unslop_design(prompt)
-            ):
-                continue
-            if (
-                name == "motion-director"
-                and enabled != "true"
-                and auto_detect
-                and not requests_motion_director(prompt)
-            ):
-                continue
-            verified.append(verified_skill)
-    except (OSError, ValueError) as error:
-        return _result(
-            status="error",
-            mode=selected_mode,
-            source=selected_source,
-            errors=[str(error)],
+        verified = _verify_and_order_skills(
+            selected_names=selected_names,
+            selected_mode=selected_mode,
+            prompt=prompt,
+            auto_detect=auto_detect,
+            settings=inputs["settings"],
+            skills_root=inputs["skills_root"],
         )
-
-    # Keep the creative handoff first, then fit requested VFX before unrelated
-    # engine overlays consume the context budget. Validate the entire catalog
-    # first; never bypass config enablement, count or token limits.
-    if auto_detect and requests_game_vfx(prompt):
-        vfx = next(
-            (skill for skill in verified if skill["name"] == "game-asset-vfx"), None
+        loaded, estimated_used, deferred_names = _apply_context_budget(
+            verified, inputs["cap"], inputs["description_budget"]
         )
-        if vfx is not None:
-            verified.remove(vfx)
-            art_index = next(
-                (
-                    i
-                    for i, skill in enumerate(verified)
-                    if skill["name"] == "art-director"
-                ),
-                -1,
-            )
-            verified.insert(art_index + 1, vfx)
-
-    capped = verified[:cap] if cap else []
-    loaded: list[dict[str, Any]] = []
-    estimated_used = 0
-    try:
-        estimates = [_estimate_overlay_tokens(skill) for skill in capped]
-        for skill, estimated_tokens in zip(capped, estimates):
-            if (
-                description_budget == 0
-                or estimated_used + estimated_tokens > description_budget
-            ):
-                break
-            enriched = dict(skill)
-            enriched["estimated_tokens"] = estimated_tokens
-            loaded.append(enriched)
-            estimated_used += estimated_tokens
     except (OSError, UnicodeError, ValueError) as error:
         return _result(
             status="error",
@@ -1020,10 +1092,6 @@ def route_skills(
             errors=[str(error)],
         )
 
-    loaded_names = {skill["name"] for skill in loaded}
-    deferred_names = [
-        skill["name"] for skill in verified if skill["name"] not in loaded_names
-    ]
     return _result(
         status="ok",
         mode=selected_mode,
@@ -1031,7 +1099,7 @@ def route_skills(
         skills=loaded,
         routing=decision,
         context_budget={
-            "limit": description_budget,
+            "limit": inputs["description_budget"],
             "estimated_used": estimated_used,
             "estimator": "utf8_bytes_div_4_ceil",
             "deferred_skills": deferred_names,

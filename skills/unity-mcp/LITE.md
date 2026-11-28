@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Unity Mcp Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target IDE configuration (Cursor, Claude Desktop) is readable and writable | `cat ~/.cursor/mcp.json \| jq '.mcpServers["unity-mcp"]'` | ... | run the check command and paste output |
-| Project-specific Antigravity manifest or assembly definitions exist | `find . -name "*.asmdef" -o -name "mcp-manifest.json"` | ... | run the check command and paste output |
-| Local Unity socket bridge endpoints are active or listening | `ss -tlnp \| grep -E "(5000\|3000)"` | ... | run the check command and paste output |
+| Target IDE configuration (Cursor, Claude Desktop) is readable and writable | `cat ~/.cursor/mcp.json \| jq '.mcpServers["unity-mcp"]'` | ... | Verified `Target IDE configuration (Cursor, Claude` facts from inspected file/command output |
+| Project-specific Antigravity manifest or assembly definitions exist | `find . -name "*.asmdef" -o -name "mcp-manifest.json"` | ... | Observed command exit code & stdout confirming project-specific antigravity manifest or |
+| Local Unity socket bridge endpoints are active or listening | `ss -tlnp \| grep -E "(5000\|3000)"` | ... | Observed command exit code & stdout confirming local unity socket bridge endpoints are |
 
 ## SOLVE Step 3: DECOMPOSE (Unity Mcp Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

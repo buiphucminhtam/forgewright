@@ -9,9 +9,9 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Game Accessibility Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target game development framework and visual packages are defined | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | run the check command and paste output |
-| Keyboard, gamepad, and input map configurations are active | `find src/input/ -name "*map*" -o -name "*binding*"` | ... | run the check command and paste output |
-| Project-specific tech stack and game assets directory structure are mapped | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Target game development framework and visual packages are defined | `cat package.json \| jq '.dependencies["phaser"] // .dependencies["three"]'` | ... | Verified `Target game development framework and visual` facts from inspected file/command output |
+| Keyboard, gamepad, and input map configurations are active | `find src/input/ -name "*map*" -o -name "*binding*"` | ... | Observed command exit code & stdout confirming keyboard, gamepad, and input map |
+| Project-specific tech stack and game assets directory structure are mapped | `cat .forgewright/project-profile.json` | ... | Verified `Project-specific tech stack and game assets` facts from inspected file/command output |
 
 ## SOLVE Step 3: DECOMPOSE (Game Accessibility Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

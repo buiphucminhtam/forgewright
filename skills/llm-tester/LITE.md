@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Llm Tester Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target model configurations and API provider bindings are defined | `cat .production-grade.yaml` | ... | run the check command and paste output |
-| Existing prompt test cases, mock responses, or assertion files are indexed | `find tests/ -name "*test-llm*" -o -name "*assert*"` | ... | run the check command and paste output |
+| Target model configurations and API provider bindings are defined | `cat .production-grade.yaml` | ... | Verified `Target model configurations and API provider` facts from inspected file/command output |
+| Existing prompt test cases, mock responses, or assertion files are indexed | `find tests/ -name "*test-llm*" -o -name "*assert*"` | ... | Observed command exit code & stdout confirming existing prompt test cases, mock responses, |
 
 ## SOLVE Step 3: DECOMPOSE (Llm Tester Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

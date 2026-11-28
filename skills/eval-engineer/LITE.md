@@ -9,8 +9,8 @@ version: 1.0.0
 ## SOLVE Step 2: GROUND (Eval Engineer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target model configurations and thinking level overrides are active | `cat .production-grade.yaml` | ... | run the check command and paste output |
-| Existing validation matrices, mock answers, or evaluation scripts are indexed | `find tests/ -name "*eval*" -o -name "*assert*" -o -name "*benchmark*"` | ... | run the check command and paste output |
+| Target model configurations and thinking level overrides are active | `cat .production-grade.yaml` | ... | Verified `Target model configurations and thinking` facts from inspected file/command output |
+| Existing validation matrices, mock answers, or evaluation scripts are indexed | `find tests/ -name "*eval*" -o -name "*assert*" -o -name "*benchmark*"` | ... | Observed command exit code & stdout confirming existing validation matrices, mock answers, |
 
 ## SOLVE Step 3: DECOMPOSE (Eval Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
