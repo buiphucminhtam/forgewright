@@ -1,7 +1,7 @@
 {
   "name": "forgewright",
-  "description": "Adaptive AI pipeline orchestrator with 47 specialized skills and 19 execution modes. Covers the full software lifecycle — from greenfield builds, features, code review, testing, hardening, deployment, UI/UX design, mobile, to game development (Unity/Unreal/Godot/Roblox), XR, data engineering, MLOps, marketing, and business analysis. Smart routing with parallel execution via git worktrees.",
-  "version": "7.3.0",
+  "description": "Provider-neutral software production system with 90 canonical specialist skills across 24 execution modes, evidence-backed verification gates, bounded parallel execution, unslop UI craft redline, and local-first automation.",
+  "version": "8.7.1",
   "author": {
     "name": "buiphucminhtam"
   },
@@ -24,12 +24,15 @@
     "llm",
     "mlops",
     "ui-design",
+    "unslop",
     "ux-research",
     "mobile",
     "game-dev",
     "unity",
     "unreal",
     "godot",
+    "phaser",
+    "threejs",
     "roblox",
     "xr",
     "data-engineering",
