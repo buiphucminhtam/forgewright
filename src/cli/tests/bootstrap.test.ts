@@ -118,21 +118,41 @@ describe("bootstrap global policy and preflight", () => {
     saveBootstrapPolicy(policy);
     expect(launcher).toBe(getBootstrapLauncherPath());
 
-    const result = spawnSync(
-      launcher,
-      ["--json", "bootstrap", "policy", "status"],
-      {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          PATH: "/usr/bin:/bin",
-          FORGEWRIGHT_BOOTSTRAP_HOME: home,
-        },
-        encoding: "utf8",
-        shell: false,
-        timeout: 10_000,
-      },
-    );
+    const args = ["--json", "bootstrap", "policy", "status"];
+    const result =
+      process.platform === "win32"
+        ? spawnSync(
+            process.env.ComSpec ?? "cmd.exe",
+            [
+              "/d",
+              "/s",
+              "/c",
+              `"${[launcher, ...args].map((arg) => `"${arg.replaceAll('"', '""')}"`).join(" ")}"`,
+            ],
+            {
+              cwd: process.cwd(),
+              env: {
+                ...process.env,
+                PATH: "/usr/bin:/bin",
+                FORGEWRIGHT_BOOTSTRAP_HOME: home,
+              },
+              encoding: "utf8",
+              shell: false,
+              windowsVerbatimArguments: true,
+              timeout: 10_000,
+            },
+          )
+        : spawnSync(launcher, args, {
+            cwd: process.cwd(),
+            env: {
+              ...process.env,
+              PATH: "/usr/bin:/bin",
+              FORGEWRIGHT_BOOTSTRAP_HOME: home,
+            },
+            encoding: "utf8",
+            shell: false,
+            timeout: 10_000,
+          });
     expect(result.error).toBeUndefined();
     expect(result.status).toBe(0);
     const envelope = JSON.parse(result.stdout);

@@ -156,6 +156,11 @@ cmd_port() {
 main() {
   local sub="${1:-help}"
   [ $# -gt 0 ] && shift
+  case "${OSTYPE:-}:$sub" in
+    msys*:acquire|msys*:adopt|cygwin*:acquire|cygwin*:adopt|win32*:acquire|win32*:adopt)
+      rlg_err "native Windows leases require job-object ownership; observe only"
+      return 1 ;;
+  esac
   case "$sub" in
     acquire) cmd_acquire "$@" ;;
     adopt)   cmd_adopt "$@" ;;

@@ -105,6 +105,56 @@ class SystemProcessInspector implements ProcessInspector {
   async inspect(pid: number): Promise<ProcessIdentity | null> {
     if (!Number.isSafeInteger(pid) || pid <= 0) return null;
     try {
+      if (process.platform === 'win32') {
+        const script = [
+          "$ErrorActionPreference = 'Stop'",
+          `$p = Get-CimInstance Win32_Process -Filter 'ProcessId = ${pid}' -ErrorAction Stop`,
+          `if (-not $p) { @{ state = 'dead'; pid = ${pid} } | ConvertTo-Json -Compress; exit 0 }`,
+          "$parentStart = ''",
+          'if ($p.ParentProcessId -gt 0) { $parentStart = (Get-Process -Id $p.ParentProcessId -ErrorAction Stop).StartTime.ToUniversalTime().Ticks.ToString() }',
+          `$start = (Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().Ticks.ToString()`,
+          '$cmd = if ($p.CommandLine) { [string]$p.CommandLine } elseif ($p.ExecutablePath) { [string]$p.ExecutablePath } else { [string]$p.Name }',
+          "@{ state = 'alive'; pidStartedAt = $start; pgid = [int]$p.ProcessId; parentPid = [int]$p.ParentProcessId; parentStartedAt = $parentStart; command = $cmd } | ConvertTo-Json -Compress",
+        ].join('; ');
+        const { stdout } = await execFileAsync('powershell.exe', [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          script,
+        ]);
+        const parsed = JSON.parse(stdout.trim()) as Record<string, unknown> | null;
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('invalid_process_query_output');
+        }
+        // Only a successful absence response for this PID authorizes reclaim.
+        // Query errors, malformed output and missing identity remain unknown.
+        if (parsed.state === 'dead' && parsed.pid === pid) return null;
+        if (
+          parsed.state !== 'alive' ||
+          typeof parsed.pidStartedAt !== 'string' ||
+          !parsed.pidStartedAt.trim() ||
+          typeof parsed.command !== 'string' ||
+          !parsed.command.trim() ||
+          typeof parsed.parentPid !== 'number' ||
+          !Number.isSafeInteger(parsed.parentPid) ||
+          parsed.parentPid < 0 ||
+          typeof parsed.pgid !== 'number' ||
+          parsed.pgid !== pid ||
+          typeof parsed.parentStartedAt !== 'string' ||
+          (parsed.parentPid > 0 && !parsed.parentStartedAt.trim())
+        ) {
+          throw new Error('invalid_process_query_identity');
+        }
+        return {
+          pid,
+          pidStartedAt: parsed.pidStartedAt,
+          pgid: parsed.pgid,
+          parentPid: parsed.parentPid,
+          parentStartedAt: parsed.parentStartedAt,
+          commandDigest: digest(parsed.command),
+        };
+      }
       const [pidStartedAt, pgidRaw, parentRaw, command] = await Promise.all([
         psValue(pid, 'lstart'),
         psValue(pid, 'pgid'),
@@ -130,7 +180,12 @@ class SystemProcessInspector implements ProcessInspector {
         parentStartedAt,
         commandDigest: digest(command),
       };
-    } catch {
+    } catch (error) {
+      // Preserve the lease on every Windows uncertainty, including rechecks
+      // after TERM. reconcile already surfaces this rejection as reconcile_error.
+      if (process.platform === 'win32') {
+        throw new Error(`process_identity_unavailable:${pid}`, { cause: error });
+      }
       return null;
     }
   }
@@ -301,7 +356,15 @@ export class LifecycleLeaseStore {
       const results: Array<{ leaseId: string; result: ReapResult | 'reconcile_error' }> = [];
       for (const leaseId of leaseIds) {
         const lease = await this.readLease(leaseId);
-        if (lease === null || lease.status !== 'open') continue;
+        if (lease === null) continue;
+        if (lease.status !== 'open') {
+          if (this.now() - lease.issuedAtMs > 3_600_000) {
+            try {
+              await unlink(this.leasePath(leaseId));
+            } catch {}
+          }
+          continue;
+        }
         try {
           // Startup must not wait behind another owner's lease lock. The same
           // guarded reaper still handles every lease whose lock we acquire.
@@ -423,6 +486,17 @@ export class LifecycleLeaseStore {
         const windowsSharingViolation =
           process.platform === 'win32' && (code === 'EPERM' || code === 'EACCES');
         if (!waitForLock || (code !== 'EEXIST' && !windowsSharingViolation)) throw error;
+        if (code === 'EEXIST') {
+          try {
+            const lockStat = await lstat(lockPath);
+            if (this.now() - lockStat.mtimeMs > Math.max(10_000, this.graceMs * 5)) {
+              await unlink(lockPath);
+              continue;
+            }
+          } catch {
+            // Ignore race if lock was already removed
+          }
+        }
         await this.wait(retryDelayMs);
       }
     }

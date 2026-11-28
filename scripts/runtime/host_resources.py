@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
-import json
 import os
 from pathlib import Path
 import re
@@ -41,14 +40,23 @@ class MemorySnapshot:
         return 256 * MIB if self.total_bytes <= 4 * GIB else 512 * MIB
 
 
-def command(argv: list[str]) -> str:
+def command(argv: list[str], *, timeout: float = 2) -> str:
     result = subprocess.run(
         argv,
         capture_output=True,
         text=True,
-        timeout=2,
+        timeout=timeout,
         check=True,
-        env={"PATH": os.environ.get("PATH", ""), "LC_ALL": "C", "LANG": "C"},
+        env={
+            "PATH": os.environ.get("PATH", ""),
+            "LC_ALL": "C",
+            "LANG": "C",
+            **(
+                {"SYSTEMROOT": os.environ["SYSTEMROOT"]}
+                if os.environ.get("SYSTEMROOT")
+                else {}
+            ),
+        },
     )
     return result.stdout.strip()
 
@@ -92,15 +100,9 @@ def inspect_process(pid: int) -> str | None:
             # the random per-lease owner token remains mandatory as well.
             identity = f"{pid}:" + " ".join(parts[:5] + parts[8:])
         elif os.name == "nt":
-            identity = command(
-                [
-                    "powershell",
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    f"$p=Get-Process -Id {pid} -ErrorAction Stop; $p.Id; $p.StartTime.ToUniversalTime().Ticks; $p.Path",
-                ]
-            )
+            from windows_processes import NativeProcesses
+
+            identity = NativeProcesses().identity_text(pid)
         else:
             return None
         return hashlib.sha256(identity.encode()).hexdigest()
@@ -205,22 +207,18 @@ def memory_snapshot() -> MemorySnapshot:
                 total, available, pressure, "linux-memavailable+psi", load_ratio
             )
         if os.name == "nt":
-            rows = json.loads(
-                command(
-                    [
-                        "powershell",
-                        "-NoProfile",
-                        "-NonInteractive",
-                        "-Command",
-                        "Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory | ConvertTo-Json -Compress",
-                    ]
-                )
-            )
+            try:
+                from windows_memory import read_memory
+
+                total, available, pressure = read_memory()
+            except ImportError:
+                return MemorySnapshot(0, 0, "unknown", "telemetry-unavailable")
             return MemorySnapshot(
-                int(rows["TotalVisibleMemorySize"]) * 1024,
-                int(rows["FreePhysicalMemory"]) * 1024,
-                "unknown",
-                "windows-cim-pressure-unavailable",
+                total,
+                available,
+                pressure,
+                "windows-global-memory-status+resource-notification",
+                immediate_bytes=available,
             )
     except (
         OSError,

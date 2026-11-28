@@ -13,7 +13,7 @@ Event record (schema_version "1"):
     port, cmd, log, ttl_sec, policy(reap|keep), reason
 
 HARD INVARIANT: this module never signals, kills, or otherwise touches a
-process. It only reads liveness via os.kill(pid, 0). Reaping is P2.
+process. It uses a read-only native liveness probe. Reaping is P2.
 
 Called by runtime-lease.sh; not intended to be used directly.
 """
@@ -105,6 +105,41 @@ def read_events() -> list[dict]:
 # ── state fold ───────────────────────────────────────────────────────────────
 
 
+def _check_process_alive(pid: int) -> None:
+    """Probe without signalling; unknown ownership stays fail-closed."""
+    if os.name != "nt":
+        os.kill(pid, 0)
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    open_process = kernel.OpenProcess
+    open_process.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    open_process.restype = wintypes.HANDLE
+    wait = kernel.WaitForSingleObject
+    wait.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    wait.restype = wintypes.DWORD
+    close = kernel.CloseHandle
+    close.argtypes = [wintypes.HANDLE]
+    close.restype = wintypes.BOOL
+    handle = open_process(0x00100000, False, pid)  # SYNCHRONIZE only
+    if not handle:
+        error = ctypes.get_last_error()
+        if error == 87:  # ERROR_INVALID_PARAMETER: PID does not exist
+            raise ProcessLookupError(pid)
+        raise ctypes.WinError(error)
+    try:
+        status = wait(handle, 0)
+        if status == 0:  # terminated process object
+            raise ProcessLookupError(pid)
+        if status != 258:  # WAIT_TIMEOUT: still running
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        if not close(handle):
+            raise ctypes.WinError(ctypes.get_last_error())
+
+
 def pid_alive(pid) -> bool:
     try:
         pid = int(pid)
@@ -113,7 +148,7 @@ def pid_alive(pid) -> bool:
     if pid <= 0:
         return False
     try:
-        os.kill(pid, 0)
+        _check_process_alive(pid)
         return True
     except ProcessLookupError:
         return False
@@ -121,7 +156,8 @@ def pid_alive(pid) -> bool:
         # Exists but owned by another user — alive for our purposes.
         return True
     except OSError:
-        return False
+        # An unknown native probe must never become deletion authority.
+        return os.name == "nt"
 
 
 def fold(events: list[dict]) -> dict[str, dict]:
@@ -323,6 +359,10 @@ def cmd_ports(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="runtime_registry.py", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
+
+    probe = sub.add_parser("pid-alive", help="read-only liveness; exit 10 means dead")
+    probe.add_argument("pid", type=int)
+    probe.set_defaults(func=lambda args: 0 if pid_alive(args.pid) else 10)
 
     ap = sub.add_parser("append", help="append one lease event")
     ap.add_argument("--lease-id", required=True)

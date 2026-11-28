@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import socketserver
 import stat
+import sys
 import time
 
 from host_admission import AdmissionError, HostAdmission
@@ -83,6 +84,10 @@ class Handler(socketserver.StreamRequestHandler):
 
 
 def serve(home):
+    if os.name == "nt":
+        from windows_broker_transport import serve as serve_windows
+
+        return serve_windows(home, HostAdmission, dispatch, PROTOCOL)
     # AF_UNIX is intentionally not represented as portable OS execution isolation.
     if os.name != "posix" or not hasattr(socketserver, "UnixStreamServer"):
         raise AdmissionError("platform-unavailable")
@@ -143,12 +148,34 @@ def serve(home):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", type=Path)
+    parser.add_argument(
+        "--request",
+        action="store_true",
+        help="One bounded Windows pipe RPC; JSON on stdin/stdout",
+    )
     args = parser.parse_args()
     try:
-        serve(args.home)
+        if args.request:
+            from windows_broker_transport import request_bytes
+
+            raw = sys.stdin.buffer.readline(MAX_REQUEST + 1)
+            sys.stdout.buffer.write(request_bytes(args.home, raw))
+            sys.stdout.buffer.flush()
+        else:
+            serve(args.home)
     except Exception as error:
         code = (
             str(error) if isinstance(error, AdmissionError) else "admission-unavailable"
         )
-        print(json.dumps({"ok": False, "error": re.sub(r"[^a-z0-9-]", "", code)[:100]}))
+        transport = (
+            "ENOENT"
+            if isinstance(error, FileNotFoundError)
+            else "ETIMEDOUT"
+            if isinstance(error, TimeoutError)
+            else None
+        )
+        reply = {"ok": False, "error": re.sub(r"[^a-z0-9-]", "", code)[:100]}
+        if args.request:
+            reply.update(schema=PROTOCOL, transport=transport)
+        print(json.dumps(reply))
         raise SystemExit(1)

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OBSERVER_MJS = REPO_ROOT / ".forgewright" / "instincts" / "observer.mjs"
 HOOK_SH = REPO_ROOT / "scripts" / "hooks" / "forgewright-instinct-hook.sh"
+BASH = shutil.which("bash")
 
 
 def run_node(code: str, env: dict[str, str] | None = None) -> str:
@@ -22,6 +24,7 @@ def run_node(code: str, env: dict[str, str] | None = None) -> str:
         env=run_env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=True,
         timeout=15,
     )
@@ -65,7 +68,7 @@ def test_project_id_credential_sanitization(tmp_path: Path):
     )
     code = f"""
     import {{ getProjectId }} from './.forgewright/instincts/observer.mjs';
-    const id = getProjectId('{git_dir}');
+    const id = getProjectId({json.dumps(str(git_dir))});
     console.log(id);
     """
     project_id = run_node(code)
@@ -83,9 +86,9 @@ def test_session_isolation_across_projects(tmp_path: Path):
     code = f"""
     import {{ getSessionState, observeToolCall, resetSessions }} from './.forgewright/instincts/observer.mjs';
     resetSessions();
-    const s1 = getSessionState('shared-session', '{proj1}');
+    const s1 = getSessionState('shared-session', {json.dumps(str(proj1))});
     s1.toolSequence.push('tool_in_proj1');
-    const s2 = getSessionState('shared-session', '{proj2}');
+    const s2 = getSessionState('shared-session', {json.dumps(str(proj2))});
     console.log(JSON.stringify({{ s1Seq: s1.toolSequence, s2Seq: s2.toolSequence }}));
     """
     output = json.loads(run_node(code))
@@ -105,9 +108,9 @@ def test_failed_outcome_rejection(tmp_path: Path):
         timestamp: new Date().toISOString(),
         success: false
     }};
-    const res = await observeToolCall(event, '{tmp_path}');
-    const session = getSessionState('session-fail', '{tmp_path}');
-    const health = getHookHealth('{tmp_path}');
+    const res = await observeToolCall(event, {json.dumps(str(tmp_path))});
+    const session = getSessionState('session-fail', {json.dumps(str(tmp_path))});
+    const health = getHookHealth({json.dumps(str(tmp_path))});
     console.log(JSON.stringify({{ res, seqLen: session.toolSequence.length, health }}));
     """
     output = json.loads(run_node(code))
@@ -131,8 +134,8 @@ def test_self_observation_rejection(tmp_path: Path):
         timestamp: new Date().toISOString(),
         success: true
     }};
-    const res = await observeToolCall(event, '{tmp_path}');
-    const health = getHookHealth('{tmp_path}');
+    const res = await observeToolCall(event, {json.dumps(str(tmp_path))});
+    const health = getHookHealth({json.dumps(str(tmp_path))});
     console.log(JSON.stringify({{ res, health }}));
     """
     output = json.loads(run_node(code))
@@ -152,8 +155,8 @@ def test_malformed_event_rejection(tmp_path: Path):
         timestamp: new Date().toISOString(),
         success: true
     }};
-    const res = await observeToolCall(event, '{tmp_path}');
-    const health = getHookHealth('{tmp_path}');
+    const res = await observeToolCall(event, {json.dumps(str(tmp_path))});
+    const health = getHookHealth({json.dumps(str(tmp_path))});
     console.log(JSON.stringify({{ res, health }}));
     """
     output = json.loads(run_node(code))
@@ -174,8 +177,8 @@ def test_oversized_event_rejection(tmp_path: Path):
         timestamp: new Date().toISOString(),
         success: true
     }};
-    const res = await observeToolCall(event, '{tmp_path}');
-    const health = getHookHealth('{tmp_path}');
+    const res = await observeToolCall(event, {json.dumps(str(tmp_path))});
+    const health = getHookHealth({json.dumps(str(tmp_path))});
     console.log(JSON.stringify({{ res, health }}));
     """
     output = json.loads(run_node(code))
@@ -195,9 +198,9 @@ def test_context_cache_ttl_and_isolation(tmp_path: Path):
 
     code = f"""
     import {{ detectProjectContext }} from './.forgewright/instincts/observer.mjs';
-    const c1 = detectProjectContext('{p1}');
-    const c2 = detectProjectContext('{p2}');
-    const c1_cached = detectProjectContext('{p1}');
+    const c1 = detectProjectContext({json.dumps(str(p1))});
+    const c2 = detectProjectContext({json.dumps(str(p2))});
+    const c1_cached = detectProjectContext({json.dumps(str(p1))});
     console.log(JSON.stringify({{ c1, c2, c1_cached }}));
     """
     output = json.loads(run_node(code))
@@ -213,31 +216,34 @@ def test_hook_script_end_to_end_smoke(tmp_path: Path):
         FORGEWRIGHT_INSTINCTS_ENABLED="1",
     )
     res_status = subprocess.run(
-        [str(HOOK_SH), "status"],
+        [BASH, str(HOOK_SH), "status"],
         cwd=REPO_ROOT,
         env=env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=True,
     )
     assert "Hook State:   unregistered" in res_status.stdout
 
     res_obs = subprocess.run(
-        [str(HOOK_SH), "observe", "Read", '{"path": "README.md"}', "true"],
+        [BASH, str(HOOK_SH), "observe", "Read", '{"path": "README.md"}', "true"],
         cwd=REPO_ROOT,
         env=env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=True,
     )
     assert res_obs.returncode == 0
 
     res_health = subprocess.run(
-        [str(HOOK_SH), "health"],
+        [BASH, str(HOOK_SH), "health"],
         cwd=REPO_ROOT,
         env=env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=True,
     )
     health = json.loads(res_health.stdout)
@@ -250,11 +256,12 @@ def test_hook_default_off_no_write(tmp_path: Path):
     env = dict(os.environ, FORGEWRIGHT_WORKSPACE=str(tmp_path))
     env.pop("FORGEWRIGHT_INSTINCTS_ENABLED", None)
     res = subprocess.run(
-        [str(HOOK_SH), "observe", "Read", '{"path": "README.md"}', "true"],
+        [BASH, str(HOOK_SH), "observe", "Read", '{"path": "README.md"}', "true"],
         cwd=REPO_ROOT,
         env=env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=True,
     )
     assert res.returncode == 0
@@ -269,11 +276,12 @@ def test_hook_feature_flag_disabled(tmp_path: Path):
         FORGEWRIGHT_INSTINCTS_ENABLED="0",
     )
     res = subprocess.run(
-        [str(HOOK_SH), "observe", "Read", '{"path": "README.md"}', "true"],
+        [BASH, str(HOOK_SH), "observe", "Read", '{"path": "README.md"}', "true"],
         cwd=REPO_ROOT,
         env=env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=True,
     )
     assert res.returncode == 0
@@ -287,16 +295,21 @@ def test_missing_executable_reports_unsupported(tmp_path: Path):
         FORGEWRIGHT_WORKSPACE=str(tmp_path),
         PATH="/usr/bin:/bin",
     )
-    script = HOOK_SH.read_text().replace(
+    script = HOOK_SH.read_text(encoding="utf-8").replace(
         'REPO_INSTINCTS_DIR="$(cd "${SCRIPT_DIR}/../../.forgewright/instincts" 2>/dev/null && pwd || echo "")"',
         'REPO_INSTINCTS_DIR="/nonexistent"',
     )
     fake_hook = tmp_path / "fake_hook.sh"
-    fake_hook.write_text(script)
+    fake_hook.write_text(script, encoding="utf-8", newline="\n")
     fake_hook.chmod(0o755)
 
     res = subprocess.run(
-        [str(fake_hook), "health"], env=env, capture_output=True, text=True, check=True
+        [BASH, str(fake_hook), "health"],
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
     )
     health = json.loads(res.stdout)
     assert health["state"] == "unsupported"
@@ -308,7 +321,7 @@ def test_special_character_path(tmp_path: Path):
     special_dir.mkdir()
     code = f"""
     import {{ getProjectId, detectProjectContext }} from './.forgewright/instincts/observer.mjs';
-    const id = getProjectId('{special_dir}');
+    const id = getProjectId({json.dumps(str(special_dir))});
     console.log(id);
     """
     project_id = run_node(code)

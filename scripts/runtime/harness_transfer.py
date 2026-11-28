@@ -37,16 +37,27 @@ def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     if len(raw) > MAX_REGISTRY_BYTES:
         raise HarnessContractError("transfer-registry-exceeds-budget")
     fd, tmp_name = tempfile.mkstemp(prefix=".registry-", dir=path.parent)
+    fd_open = True
     try:
-        os.fchmod(fd, 0o600)
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, 0o600)
         with os.fdopen(fd, "wb") as stream:
+            fd_open = False
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(tmp_name, path)
     finally:
+        if fd_open:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
         if os.path.exists(tmp_name):
-            os.unlink(tmp_name)
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
 
 
 def load_registry(workspace: Path) -> dict[str, Any]:
@@ -201,7 +212,11 @@ def retrieve_transfer_candidates(
         if not same_model and not include_cross_model:
             continue
         # Rank exact model match higher than cross-model transfer, and higher net canary success higher.
-        score = (100 if same_model else 50) + int(entry.get("canary_trials", 0)) - int(entry.get("canary_failures", 0)) * 50
+        score = (
+            (100 if same_model else 50)
+            + int(entry.get("canary_trials", 0))
+            - int(entry.get("canary_failures", 0)) * 50
+        )
         matched.append((score, entry))
 
     matched.sort(key=lambda item: item[0], reverse=True)

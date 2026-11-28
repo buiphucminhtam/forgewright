@@ -69,6 +69,48 @@ TRUSTED_AGY_DIRECTORIES = (
     Path("/usr/local/bin"),
 )
 DELEGATION_ENV_KEYS = ("HOME", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR")
+WINDOWS_DELEGATION_ENV_KEYS = (
+    "USERPROFILE",
+    "LOCALAPPDATA",
+    "APPDATA",
+    "SYSTEMROOT",
+    "COMSPEC",
+    "TEMP",
+    "TMP",
+    "PATHEXT",
+)
+
+
+def _normalize_windows_msys_path(value: str) -> str:
+    if os.name == "nt":
+        match = re.match(r"^/([A-Za-z])(?:/(.*))?$", value)
+        if match:
+            return f"{match.group(1).upper()}:/{match.group(2) or ''}"
+    return value
+
+
+def _resolved_home() -> Path:
+    raw_home = os.environ.get("HOME")
+    if raw_home and raw_home.strip():
+        candidate = Path(_normalize_windows_msys_path(raw_home)).expanduser()
+    else:
+        candidate = Path.home()
+    return candidate.resolve(strict=True)
+
+
+def _trusted_agy_directories() -> tuple[Path, ...]:
+    dirs: list[Path] = [
+        _resolved_home() / ".local" / "bin",
+        *TRUSTED_AGY_DIRECTORIES[1:],
+    ]
+    if os.name == "nt":
+        dirs.append(_resolved_home() / "AppData" / "Local" / "agy" / "bin")
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data and local_app_data.strip():
+            dirs.append(Path(local_app_data) / "agy" / "bin")
+    return tuple(dict.fromkeys(dirs))
+
+
 SECRET_VALUE_PATTERN = re.compile(
     r"(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|"
     r"authorization|credential)\b\s*([:=])\s*(\"[^\"\r\n]*\"|'[^'\r\n]*'|[^\s,;]+)"
@@ -163,7 +205,7 @@ class TrustedParentHostAdapter(Protocol):
 
 def validate_global_antigravity_hook() -> Path:
     """Fail closed unless AGY's runtime-loaded global policy hook is exact and local."""
-    home = Path.home().resolve(strict=True)
+    home = _resolved_home()
     try:
         hooks_path = (home / ".gemini" / "config" / "hooks.json").resolve(strict=True)
     except OSError as error:
@@ -197,16 +239,23 @@ def validate_global_antigravity_hook() -> Path:
             if not isinstance(command, str):
                 continue
             try:
-                argv = shlex.split(command)
+                argv = shlex.split(command, posix=(os.name != "nt"))
             except ValueError:
                 continue
+            if os.name == "nt":
+                argv = [
+                    arg[1:-1]
+                    if len(arg) >= 2 and arg[0] == arg[-1] and arg[0] in {"'", '"'}
+                    else arg
+                    for arg in argv
+                ]
             if len(argv) == 2 and argv[0] == "bash":
                 gate_value = argv[1]
             elif len(argv) == 1:
                 gate_value = argv[0]
             else:
                 continue
-            gate = Path(gate_value).expanduser()
+            gate = Path(_normalize_windows_msys_path(gate_value)).expanduser()
             if not gate.is_absolute():
                 gate = hooks_path.parent / gate
             try:
@@ -381,26 +430,33 @@ def select_model(
 
 def _resolve_trusted_agy() -> str:
     """Resolve AGY from a local install location, never from the manifest or PATH."""
-    for directory in TRUSTED_AGY_DIRECTORIES:
-        candidate = directory / "agy"
-        try:
-            resolved = candidate.resolve(strict=True)
-        except OSError:
-            continue
-        if resolved.is_file() and os.access(resolved, os.X_OK):
-            return str(resolved)
+    names = ("agy.exe", "agy") if os.name == "nt" else ("agy",)
+    for directory in _trusted_agy_directories():
+        for name in names:
+            candidate = directory / name
+            try:
+                resolved = candidate.resolve(strict=True)
+            except OSError:
+                continue
+            if resolved.is_file() and os.access(resolved, os.X_OK):
+                return str(resolved)
     raise ManifestError("trusted agy executable not found")
 
 
 def _delegation_env(workspace: Path) -> dict[str, str]:
     trusted_path = os.pathsep.join(
-        [*(str(path) for path in TRUSTED_AGY_DIRECTORIES), os.defpath]
+        [*(str(path) for path in _trusted_agy_directories()), os.defpath]
     )
     environment = {
         "FORGEWRIGHT_WORKSPACE": str(workspace.resolve(strict=True)),
         "PATH": trusted_path,
     }
-    for key in DELEGATION_ENV_KEYS:
+    allowed_keys = (
+        (*DELEGATION_ENV_KEYS, *WINDOWS_DELEGATION_ENV_KEYS)
+        if os.name == "nt"
+        else DELEGATION_ENV_KEYS
+    )
+    for key in allowed_keys:
         value = os.environ.get(key)
         if value:
             environment[key] = value

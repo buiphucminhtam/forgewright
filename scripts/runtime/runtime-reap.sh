@@ -53,6 +53,15 @@ done
 
 rlg_enabled || { rlg_warn "RLG disabled — nothing to do"; exit 3; }
 
+case "${OSTYPE:-}" in
+  msys*|cygwin*|win32*)
+    if [ "$EXECUTE" -eq 1 ]; then
+      rlg_err "native Windows reaping requires job-object ownership; observe only"
+      exit 1
+    fi
+    ;;
+esac
+
 # Refuse to kill while the guard is only supposed to be watching.
 if [ "$EXECUTE" -eq 1 ] && [ "$(rlg_mode)" = "observe" ] && [ "$FORCE" -eq 0 ]; then
   rlg_err "refusing --execute while MODE=observe"

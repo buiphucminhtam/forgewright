@@ -10,9 +10,9 @@ version: 2.1.0
 
 | Material assumption | Check | Result | Script-produced evidence |
 |---|---|---|---|
-| Actual engine/toolchain | Inspect package/lockfile; preserve existing pins. Reference fixture uses Three 0.183.2. | ... | Observed verification output for actual engine/toolchain |
-| Rendering and production context | Inspect canvas, chosen renderer, camera, input, asset ownership and named target hardware/budgets. | ... | Observed verification output for rendering and production context |
-| Accepted experience | Consume the studio handoff, Visual Basis/Style DNA, required screen/state wireframes, applicable character/environment/UI concepts and component/asset IDs. | ... | Observed verification output for accepted experience |
+| Actual engine/toolchain | Inspect package/lockfile; preserve existing pins. Reference fixture uses Three 0.183.2. | ... | capture the current package/lockfile Three.js version pin |
+| Rendering and production context | Inspect canvas, chosen renderer, camera, input, asset ownership and named target hardware/budgets. | ... | capture the inspected renderer, camera, input, and target budget context |
+| Accepted experience | Consume the studio handoff, Visual Basis/Style DNA, required screen/state wireframes, applicable character/environment/UI concepts and component/asset IDs. | ... | capture the verified studio handoff and visual basis references |
 
 ## SOLVE Step 3: DECOMPOSE
 

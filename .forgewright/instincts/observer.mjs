@@ -8,8 +8,8 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
 // .forgewright/instincts/observer.ts
 import { createHash as createHash2 } from "crypto";
 import { existsSync as existsSync3, readFileSync as readFileSync2, writeFileSync as writeFileSync2, mkdirSync as mkdirSync2, lstatSync as lstatSync2, statSync as statSync2, realpathSync, renameSync as renameSync2 } from "fs";
-import { resolve as resolve3, dirname as dirname2, relative, isAbsolute } from "path";
-import { execSync } from "child_process";
+import { resolve as resolve3, dirname as dirname2, relative, isAbsolute, basename, sep } from "path";
+import { execFileSync } from "child_process";
 
 // .forgewright/instincts/instinct-store.ts
 import { readFileSync, writeFileSync, existsSync, mkdirSync, lstatSync, statSync, renameSync, unlinkSync } from "fs";
@@ -619,7 +619,8 @@ function isMetadataSymlinkSafe(projectRoot) {
     if (stat1) {
       if (stat1.isSymbolicLink()) return false;
       const real1 = realpathSync(fgDir);
-      if (!real1.startsWith(canonicalRoot + "/") && real1 !== canonicalRoot) return false;
+      const relative1 = relative(canonicalRoot, real1);
+      if (relative1 === ".." || relative1.startsWith(`..${sep}`) || isAbsolute(relative1)) return false;
       const instinctsDir = resolve3(fgDir, "instincts");
       let stat2;
       try {
@@ -630,7 +631,8 @@ function isMetadataSymlinkSafe(projectRoot) {
       if (stat2) {
         if (stat2.isSymbolicLink()) return false;
         const real2 = realpathSync(instinctsDir);
-        if (!real2.startsWith(canonicalRoot + "/")) return false;
+        const relative2 = relative(canonicalRoot, real2);
+        if (!relative2 || relative2 === ".." || relative2.startsWith(`..${sep}`) || isAbsolute(relative2)) return false;
         const healthFile = resolve3(instinctsDir, "health.json");
         let stat3;
         try {
@@ -782,26 +784,25 @@ function detectProjectContext(projectRoot) {
     projectType: void 0
   };
   try {
-    const exts = execSync(
-      `git ls-files 2>/dev/null | grep -E "\\.(ts|tsx|js|jsx|py|go|rs|java|cpp|c|h)$" | head -100 | sed 's/.*\\.//' | sort | uniq -c | sort -rn | head -5`,
-      { cwd: canonicalRoot, encoding: "utf-8", timeout: 5e3 }
-    ).trim();
-    if (exts) {
-      const lines = exts.split("\n").filter(Boolean);
-      const extCounts = {};
-      for (const line of lines) {
-        const match = line.trim().match(/^\s*(\d+)\s+(.+)$/);
-        if (match) {
-          extCounts[match[2]] = parseInt(match[1]);
-        }
-      }
-      const topExt = Object.entries(extCounts).sort((a, b) => b[1] - a[1])[0];
-      if (topExt) {
-        const ext = topExt[0];
-        context.language = extToLanguage(ext);
-      }
-      context.fileTypes = Object.keys(extCounts);
+    const files = execFileSync("git", ["ls-files", "-z"], {
+      cwd: canonicalRoot,
+      encoding: "utf-8",
+      timeout: 5e3,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "ignore"]
+    }).split("\0").filter((name) => /\.(ts|tsx|js|jsx|py|go|rs|java|cpp|c|h)$/.test(name)).slice(0, 100);
+    const counts = {};
+    for (const name of files) {
+      const extension = name.slice(name.lastIndexOf(".") + 1);
+      counts[extension] = (counts[extension] || 0) + 1;
     }
+    const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0])).slice(0, 5);
+    if (ranked.length) context.language = extToLanguage(ranked[0][0]);
+    context.fileTypes = ranked.map(([extension]) => extension);
+  } catch {
+  }
+  try {
     const pkgPath = resolve3(canonicalRoot, "package.json");
     if (existsSync3(pkgPath)) {
       const pkg = JSON.parse(readFileSync2(pkgPath, "utf-8"));
@@ -869,9 +870,17 @@ function getProjectId(projectRoot) {
   let remoteTag = null;
   if (existsSync3(resolve3(canonicalPath, ".git"))) {
     try {
-      const rawRemote = execSync(
-        "git remote get-url origin 2>/dev/null",
-        { cwd: canonicalPath, encoding: "utf-8", timeout: 3e3 }
+      const rawRemote = execFileSync(
+        "git",
+        ["remote", "get-url", "origin"],
+        {
+          cwd: canonicalPath,
+          encoding: "utf-8",
+          timeout: 3e3,
+          maxBuffer: 64 * 1024,
+          windowsHide: true,
+          stdio: ["ignore", "pipe", "ignore"]
+        }
       ).trim();
       if (rawRemote) {
         const sanitized = rawRemote.replace(/https?:\/\/[^@]+@/, "").replace(/\.git$/, "");
@@ -885,7 +894,7 @@ function getProjectId(projectRoot) {
     } catch {
     }
   }
-  const baseName = (canonicalPath.split("/").filter(Boolean).pop() || "project").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const baseName = (basename(canonicalPath) || "project").replace(/[^a-zA-Z0-9_-]/g, "_");
   if (remoteTag) {
     return `${remoteTag}--${pathHash}`;
   }

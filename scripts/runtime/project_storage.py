@@ -130,6 +130,16 @@ def measure_tree(path, *, max_entries=100000, timeout=5, visitor=None, active=Fa
     Logical and allocated bytes are distinct. APFS sharing, sparse files and
     hardlinks mean these numbers cannot promise physical free-space recovery.
     """
+    if os.name == "nt":
+        from windows_project_storage import measure_tree as native_measure
+
+        return native_measure(
+            path,
+            max_entries=max_entries,
+            timeout=timeout,
+            visitor=visitor,
+            active=active,
+        )
     deadline, count, pending, logical, allocated = (
         time.monotonic() + timeout,
         0,
@@ -393,14 +403,19 @@ def cleanup_absence_confirmed(record):
         )
     ):
         return False
+    transaction = Path(intent.get("transaction_path", ""))
+    if transaction.parent != path.parent or not re.fullmatch(
+        r"\.delete-[0-9a-f]{32}", transaction.name
+    ):
+        return False
+    names = (path.name, staged.name, transaction.name)
+    if os.name == "nt":
+        from windows_project_storage import absent
+
+        return absent(path.parent, names)
     parent = _open_directory(path.parent)
     try:
-        transaction = Path(intent.get("transaction_path", ""))
-        if transaction.parent != path.parent or not re.fullmatch(
-            r"\.delete-[0-9a-f]{32}", transaction.name
-        ):
-            return False
-        for name in (path.name, staged.name, transaction.name):
+        for name in names:
             try:
                 os.stat(name, dir_fd=parent, follow_symlinks=False)
                 return False
@@ -414,6 +429,10 @@ def cleanup_absence_confirmed(record):
 def _remove(record, expected, *, on_intent=None):
     """Stage by descriptor, then revalidate before irreversible removal."""
     path = _bound_root(record)
+    if os.name == "nt":
+        from windows_project_storage import remove
+
+        return remove(record, expected, on_intent=on_intent)
     if os.name != "posix":
         raise StorageError("storage-cleanup-platform-unavailable")
     parent = _open_directory(path.parent)
@@ -505,36 +524,43 @@ class JobStorage:
         )
         # Parent components are pinned before creating anything, and an
         # existing job root is never adopted by name.
-        current = workspace
-        for part in (".forgewright", "runtime", "build-jobs"):
-            parent = _open_directory(current)
+        if os.name == "nt":
+            from windows_project_storage import create_storage
+
+            info = create_storage(workspace, job_id)
+        else:
+            current = workspace
+            for part in (".forgewright", "runtime", "build-jobs"):
+                parent = _open_directory(current)
+                try:
+                    try:
+                        os.mkdir(part, mode=0o700, dir_fd=parent)
+                    except FileExistsError:
+                        pass
+                    child = os.open(
+                        part,
+                        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                        dir_fd=parent,
+                    )
+                    os.close(child)
+                finally:
+                    os.close(parent)
+                current = current / part
+            parent = _open_directory(self.root.parent)
             try:
                 try:
-                    os.mkdir(part, mode=0o700, dir_fd=parent)
-                except FileExistsError:
-                    pass
-                child = os.open(
-                    part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent
-                )
-                os.close(child)
+                    os.mkdir(job_id, mode=0o700, dir_fd=parent)
+                except FileExistsError as error:
+                    raise StorageError("storage-already-exists") from error
             finally:
                 os.close(parent)
-            current = current / part
-        parent = _open_directory(self.root.parent)
-        try:
+            descriptor = _open_directory(self.root)
             try:
-                os.mkdir(job_id, mode=0o700, dir_fd=parent)
-            except FileExistsError as error:
-                raise StorageError("storage-already-exists") from error
-        finally:
-            os.close(parent)
-        descriptor = _open_directory(self.root)
-        try:
-            os.mkdir("scratch", mode=0o700, dir_fd=descriptor)
-            os.mkdir("output", mode=0o700, dir_fd=descriptor)
-            info = os.fstat(descriptor)
-        finally:
-            os.close(descriptor)
+                os.mkdir("scratch", mode=0o700, dir_fd=descriptor)
+                os.mkdir("output", mode=0o700, dir_fd=descriptor)
+                info = os.fstat(descriptor)
+            finally:
+                os.close(descriptor)
         self.base = {
             "schema": SCHEMA,
             "workspace": str(workspace),
@@ -579,15 +605,20 @@ class JobStorage:
             self.base["inode"],
         ):
             raise StorageError("storage-drift")
-        descriptor = _open_directory(self.root)
-        try:
-            with os.scandir(descriptor) as entries:
-                valid_layout = {entry.name for entry in entries} == {
-                    "scratch",
-                    "output",
-                }
-        finally:
-            os.close(descriptor)
+        if os.name == "nt":
+            from windows_project_storage import directory_names
+
+            valid_layout = directory_names(self.root) == {"scratch", "output"}
+        else:
+            descriptor = _open_directory(self.root)
+            try:
+                with os.scandir(descriptor) as entries:
+                    valid_layout = {entry.name for entry in entries} == {
+                        "scratch",
+                        "output",
+                    }
+            finally:
+                os.close(descriptor)
         if not valid_layout:
             _remove(record, snapshot, on_intent=self.on_cleanup_intent)
             raise StorageError("storage-layout-violation", reclaimed=True)
@@ -612,16 +643,9 @@ class JobStorage:
         # never selected by a broad cache/build directory-name pattern.
         scratch = self.scratch
         if scratch.exists():
-            fd = _open_directory(self.root)
-            try:
-                observed = os.fstat(fd)
-                if (observed.st_dev, observed.st_ino) != (
-                    self.base["device"],
-                    self.base["inode"],
-                ):
-                    raise StorageError("storage-drift")
-                if os.name != "posix":
-                    raise StorageError("storage-cleanup-platform-unavailable")
+            if os.name == "nt":
+                from windows_project_storage import delete_tree, pinned
+
                 transaction_name = ".delete-" + uuid.uuid4().hex
                 record["scratch_cleanup_intent"] = {
                     "transaction_path": str(self.root / transaction_name),
@@ -630,17 +654,54 @@ class JobStorage:
                 }
                 if self.on_cleanup_intent:
                     self.on_cleanup_intent(record)
-                _delete_tree(
-                    fd,
-                    "scratch",
-                    (scratch_snapshot["device"], scratch_snapshot["inode"]),
-                    manifest=scratch_manifest,
-                    transaction_name=transaction_name,
-                )
-            except OSError as error:
-                raise StorageError("storage-cleanup-pending") from error
-            finally:
-                os.close(fd)
+                try:
+                    with pinned(self.root):
+                        observed = self.root.lstat()
+                        if (observed.st_dev, observed.st_ino) != (
+                            self.base["device"],
+                            self.base["inode"],
+                        ):
+                            raise StorageError("storage-drift")
+                    delete_tree(
+                        self.root,
+                        "scratch",
+                        (scratch_snapshot["device"], scratch_snapshot["inode"]),
+                        manifest=scratch_manifest,
+                        transaction_name=transaction_name,
+                        parent_identity=(self.base["device"], self.base["inode"]),
+                    )
+                except OSError as exc:
+                    raise StorageError("storage-cleanup-pending") from exc
+            else:
+                fd = _open_directory(self.root)
+                try:
+                    observed = os.fstat(fd)
+                    if (observed.st_dev, observed.st_ino) != (
+                        self.base["device"],
+                        self.base["inode"],
+                    ):
+                        raise StorageError("storage-drift")
+                    if os.name != "posix":
+                        raise StorageError("storage-cleanup-platform-unavailable")
+                    transaction_name = ".delete-" + uuid.uuid4().hex
+                    record["scratch_cleanup_intent"] = {
+                        "transaction_path": str(self.root / transaction_name),
+                        "target_path": str(self.scratch),
+                        "expected": scratch_snapshot,
+                    }
+                    if self.on_cleanup_intent:
+                        self.on_cleanup_intent(record)
+                    _delete_tree(
+                        fd,
+                        "scratch",
+                        (scratch_snapshot["device"], scratch_snapshot["inode"]),
+                        manifest=scratch_manifest,
+                        transaction_name=transaction_name,
+                    )
+                except OSError as error:
+                    raise StorageError("storage-cleanup-pending") from error
+                finally:
+                    os.close(fd)
         final = measure_tree(self.root)
         return dict(
             record, state="retained", output_bytes=final["bytes"], snapshot=final

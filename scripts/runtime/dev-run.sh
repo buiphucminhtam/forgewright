@@ -67,6 +67,12 @@ done
 [ "${#CMD[@]}" -gt 0 ] || { rlg_err "no command given — use: dev-run.sh --role R -- <command>"; exit 1; }
 [ -n "$ROLE" ] || { rlg_err "--role required (valid: $RLG_ROLES)"; exit 1; }
 
+case "${OSTYPE:-}" in
+  msys*|cygwin*|win32*)
+    rlg_err "native Windows spawn requires job-object ownership; observe only"
+    exit 1 ;;
+esac
+
 say() { [ "$AS_JSON" -eq 1 ] || echo -e "$*" >&2; }
 
 # ── fail-open escape hatch ───────────────────────────────────────────────────

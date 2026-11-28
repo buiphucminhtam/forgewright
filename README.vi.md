@@ -142,19 +142,23 @@ vào bản tóm tắt của compact ([memory adapter](skills/memory-manager/SKIL
 
 ### Claude Code: agent theo tier tự chọn model cho subagent
 
-Plugin có sẵn [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, chỉ Read/Grep/Glob),
-[`forgewright-builder`](agents/forgewright-builder.md) (`sonnet`),
-[`forgewright-expert`](agents/forgewright-expert.md) (`opus`, cho tín hiệu HARD),
-[`forgewright-planner`](agents/forgewright-planner.md) (`fable`, lập kế hoạch và quyết định thiết
-kế, không sửa file) và [`forgewright-reviewer`](agents/forgewright-reviewer.md) (`fable`, review
+Plugin có sẵn [`forgewright-scout`](agents/forgewright-scout.md) (`haiku`, effort `low`, chỉ Read/Grep/Glob),
+[`forgewright-builder`](agents/forgewright-builder.md) (`sonnet`, `medium`),
+[`forgewright-expert`](agents/forgewright-expert.md) (`opus`, `high`, cho tín hiệu HARD),
+[`forgewright-planner`](agents/forgewright-planner.md) (`fable`, `high`, lập kế hoạch và quyết định thiết
+kế, không sửa file) và [`forgewright-reviewer`](agents/forgewright-reviewer.md) (`fable`, `high`, review
 độc lập và review-2 cho việc HARD, không sửa file).
 Mô tả của từng agent ghi rõ tiêu chí độ khó, nên khi giao việc Claude chọn tier rẻ nhất mà vẫn
 làm đúng (dựa vào mô tả). Khi điều phối tự động, resolver đặt sàn `expert` cho mọi tín hiệu HARD,
 nên việc HARD không thể bị hạ tier; `planner` và `reviewer` được giữ đúng như yêu cầu, và khi có
 tín hiệu HARD mà runtime không có `fable` thì chuyển sang `expert`. Codex dùng
-`gpt-6.1-terra` cho việc vặt, `gpt-6.1-sol` cho việc chính và `gpt-6-astra` để lập kế hoạch và review.
+`gpt-6-luna` cho kiểm kê gọn, `gpt-6.1-terra` cho khảo sát, `gpt-6.2-sol` cho việc chính và `gpt-6.2-astra` để lập kế hoạch và review.
+Antigravity bổ sung `subagents.antigravity` (`gemini-3.8-flash-low` cho `scout`, `gemini-4-neon-medium`
+cho `builder`, `gemini-4-neon-high` cho `expert`/`planner`/`reviewer` và `gemini-pro-orchestrator-neon`),
+cùng chuẩn thẻ skill/agent 6 trường ([skill-maker](skills/skill-maker/LITE.md)) và vòng Checker tối đa
+2 lượt / đánh giá định kỳ có xác nhận người dùng ([parallel protocol](skills/_shared/protocols/parallel-protocol.md)).
 [claude-subagent-routing.py](scripts/runtime/claude-subagent-routing.py) chuyển tier thành tham số
-tool Agent, chỉ dùng agent và model mà runtime thực sự hỗ trợ
+tool Agent, chỉ dùng agent, model và mức effort mà runtime thực sự hỗ trợ
 ([model-tier protocol](skills/_shared/protocols/model-tier.md)).
 
 ### Claude Code: mỗi sự kiện chỉ chèn rule một lần

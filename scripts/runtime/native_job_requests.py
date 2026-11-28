@@ -4,13 +4,19 @@ Private local records prevent accidental replay/mixups. They do not authenticate
 a hostile same-user writer or substitute for actual native delivery evidence.
 """
 
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import json
 import os
 from itertools import islice
 import re
 import time
 import uuid
+
+if os.name == "nt":
+    import msvcrt
 
 from host_job_profiles import private_dir, private_read, digest
 
@@ -37,11 +43,20 @@ def issue(home, project, payload, profile, expected, enrollment, *, lesson_conte
         ):
             raise EnrollmentError("native-enrollment-changed")
         validate_binding(current)
-        return _issue_locked(home, project, payload, profile, expected, current,
-                             lesson_context=lesson_context)
+        return _issue_locked(
+            home,
+            project,
+            payload,
+            profile,
+            expected,
+            current,
+            lesson_context=lesson_context,
+        )
 
 
-def _issue_locked(home, project, payload, profile, expected, enrollment, *, lesson_context=""):
+def _issue_locked(
+    home, project, payload, profile, expected, enrollment, *, lesson_context=""
+):
     from resource_enrollment import atomic_private, EnrollmentError, operator_disabled
 
     if operator_disabled(home, str(project)):
@@ -70,7 +85,9 @@ def _issue_locked(home, project, payload, profile, expected, enrollment, *, less
         "profile": profile["id"],
         "profile_digest": expected,
         "command_sha256": digest(profile["command"].encode()),
-        "invocation_sha256": digest(str(payload.get("tool_input", {}).get("command", "")).encode()),
+        "invocation_sha256": digest(
+            str(payload.get("tool_input", {}).get("command", "")).encode()
+        ),
         "lesson_context_sha256": digest(lesson_context.encode()),
         "lesson_context_chars": len(lesson_context),
         "nonce": enrollment["nonce"],
@@ -110,10 +127,18 @@ def claim(
     folder = private_dir(home / "native-requests")
     path = folder / (request_id + ".json")
     fd = os.open(
-        folder / (request_id + ".lock"), os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
+        folder / (request_id + ".lock"),
+        os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
     )
+    locked_win = False
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        else:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+            locked_win = True
         with locked(home):
             if operator_disabled(home, str(project)):
                 raise EnrollmentError("operator-disabled")
@@ -143,4 +168,10 @@ def claim(
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise EnrollmentError("native-request-unavailable") from error
     finally:
+        if locked_win:
+            try:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
         os.close(fd)

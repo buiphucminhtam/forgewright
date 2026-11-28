@@ -1,5 +1,6 @@
 import {
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -15,6 +16,7 @@ import {
   BOOTSTRAP_STATE_SCHEMA,
   createBootstrapPolicy,
   currentForgewrightCommit,
+  getBootstrapLauncherPath,
   getProjectBootstrapPath,
   installBootstrapLauncher,
   loadProjectBootstrapState,
@@ -112,7 +114,11 @@ describe("bootstrap safety regressions", () => {
     mkdirSync(outside);
     writeFileSync(join(outside, "bootstrap.json"), JSON.stringify(state));
     rmSync(join(project, ".forgewright"), { recursive: true });
-    symlinkSync(outside, join(project, ".forgewright"), "dir");
+    symlinkSync(
+      outside,
+      join(project, ".forgewright"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
     expect(() => loadProjectBootstrapState(project)).toThrow(/unsafe|symlink/i);
   });
   it("does not overwrite a symlinked global launcher", () => {
@@ -120,7 +126,19 @@ describe("bootstrap safety regressions", () => {
     const victim = join(root, "victim");
     writeFileSync(victim, "KEEP");
     mkdirSync(join(home, "bin"));
-    symlinkSync(victim, join(home, "bin", "forge"));
+    const launcherPath = getBootstrapLauncherPath();
+    try {
+      symlinkSync(victim, launcherPath);
+    } catch (error) {
+      if (
+        process.platform === "win32" &&
+        (error as NodeJS.ErrnoException).code === "EPERM"
+      ) {
+        linkSync(victim, launcherPath);
+      } else {
+        throw error;
+      }
+    }
     expect(() => installBootstrapLauncher(policy)).toThrow(/unsafe|symlink/i);
     expect(readFileSync(victim, "utf8")).toBe("KEEP");
   });
@@ -136,7 +154,19 @@ describe("bootstrap safety regressions", () => {
       ...policy,
       forgewright_root: shared,
     });
-    const result = spawnSync(launcher, [], { encoding: "utf8", timeout: 5000 });
+    const result =
+      process.platform === "win32"
+        ? spawnSync(
+            process.env.ComSpec ?? "cmd.exe",
+            ["/d", "/s", "/c", `""${launcher.replaceAll('"', '""')}""`],
+            {
+              encoding: "utf8",
+              shell: false,
+              windowsVerbatimArguments: true,
+              timeout: 5000,
+            },
+          )
+        : spawnSync(launcher, [], { encoding: "utf8", timeout: 5000 });
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout.trim()).toBe("LAUNCHER_OK");
   });

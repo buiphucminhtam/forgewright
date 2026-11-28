@@ -67,3 +67,14 @@ if (/[A-Z\s]/.test(skillDir)) {
 console.log('Success: Skill name check passed.');
 "
 ```
+
+## Agent / Skill Card Contract (6-Field Boundary)
+
+When building a native multi-agent team across **Antigravity** (`skills/*/SKILL.md` + `/swarm`), **Claude Code** (`agents/*.md` + `Agent` tool), or **OpenAI Codex** (`skills/*/SKILL.md` + `spawn_agent` briefs), define each specialist, Checker, and Lead with a strict 6-field boundary so roles stay crisp, testable, and safe:
+
+1. **JOB**: single clear responsibility of this agent.
+2. **INPUT**: exact artifacts/context the agent expects.
+3. **OUTPUT**: exact artifact/schema/handoff produced and who receives it next.
+4. **DONE WELL**: 3–5 concrete, verifiable checks the Checker evaluates before acceptance.
+5. **NEVER**: explicit out-of-scope actions and forbidden shortcuts.
+6. **ASK ME FIRST**: irreversible or external-effect actions requiring explicit user approval (installing packages/plugins, publishing, pushing, sending external messages, deleting data, spending money, or creating scheduled automations).

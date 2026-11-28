@@ -6,7 +6,11 @@ against a malicious same-user writer. No process execution or admission grant.
 
 from contextlib import contextmanager
 from contextvars import ContextVar
-import fcntl
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import hashlib
 import hmac
 import json
@@ -33,6 +37,39 @@ def artifact_lock(workspace):
     key = (os.getpid(), threading.get_ident(), str(workspace))
     if key in _LOCKED.get():
         yield
+        return
+    if os.name == "nt":
+        from windows_security import create_private_directory as private_dir
+        from windows_project_storage import private_lock_file, pinned
+        import msvcrt
+
+        with pinned(workspace):
+            folder = private_dir(workspace / ".forgewright/runtime")
+        descriptor = private_lock_file(folder / ".artifact.lock")
+        reset, acquired = None, False
+        try:
+            deadline = time.monotonic() + 2
+            while True:
+                try:
+                    os.lseek(descriptor, 0, os.SEEK_SET)
+                    msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+                    acquired = True
+                    break
+                except OSError as exc:
+                    if exc.errno not in (13, 36) or time.monotonic() >= deadline:
+                        raise StorageError("artifact-lock-busy") from exc
+                    time.sleep(0.02)
+            reset = _LOCKED.set(_LOCKED.get() | {key})
+            yield
+        finally:
+            if reset is not None:
+                _LOCKED.reset(reset)
+            try:
+                if acquired:
+                    os.lseek(descriptor, 0, os.SEEK_SET)
+                    msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+            finally:
+                os.close(descriptor)
         return
     current = workspace
     for part in (".forgewright", "runtime"):
@@ -88,6 +125,43 @@ def pins(record, *, updated=None):
     """Call while holding artifact_lock; read fresh state before any deletion."""
     _bound_root(record)
     folder = Path(record["workspace"]) / ".forgewright/runtime/artifact-pins"
+    if os.name == "nt":
+        from windows_security import create_private_directory as private_dir
+        from windows_project_storage import private_metadata, atomic_private, pinned
+        from windows_security import is_private_path
+
+        try:
+            with pinned(folder.parent):
+                private_dir(folder)
+            identity = {k: record[k] for k in ("job_id", "nonce", "device", "inode")}
+            path = folder / (record["job_id"] + ".json")
+            try:
+                raw = private_metadata(path, 16384)
+            except FileNotFoundError:
+                value = {
+                    "schema": "forgewright-artifact-pins/v1",
+                    "identity": identity,
+                    "pins": [],
+                }
+            else:
+                with pinned(folder):
+                    if not is_private_path(path, confidential=True):
+                        raise StorageError("unsafe-artifact-pins")
+                value = json.loads(raw)
+                if (
+                    not isinstance(value, dict)
+                    or value.get("identity") != identity
+                    or not isinstance(value.get("pins"), list)
+                ):
+                    raise StorageError("artifact-pin-identity-mismatch")
+            if updated is not None:
+                if len(updated) > 64:
+                    raise StorageError("artifact-pin-limit")
+                value["pins"] = updated
+                atomic_private(path, json.dumps(value).encode())
+            return value["pins"]
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise StorageError("artifact-protection-unavailable") from error
     parent = _open_directory(folder.parent)
     try:
         try:

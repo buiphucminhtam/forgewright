@@ -34,7 +34,7 @@ WINDOWS_NATIVE_HOOKS=false
 case "$(uname -s 2>/dev/null || true)" in
     MINGW*|MSYS*|CYGWIN*) WINDOWS_NATIVE_HOOKS=true ;;
 esac
-STOP_RUNTIME_FILES=(stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py verify_gate.py antigravity-stop-hook.sh)
+STOP_RUNTIME_FILES=(stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py verify_gate.py antigravity-stop-hook.sh antigravity-pre-tool-gate.sh gemini-before-tool-gate.sh policy_gate.py policy-check.sh telemetry.sh)
 
 # Colors
 RED='\033[0;31m'
@@ -255,7 +255,10 @@ stop_runtime_is_current() {
         cmp -s "${SOURCE_ROOT}/scripts/${runtime_file}" "${FRAMEWORK_DIR}/scripts/${runtime_file}" || return 1
     done
     [[ -x "${FRAMEWORK_DIR}/scripts/memory/memory-session.sh" ]] || return 1
-    [[ -x "${FRAMEWORK_DIR}/scripts/lite/stop-gate.sh" ]]
+    [[ -x "${FRAMEWORK_DIR}/scripts/lite/stop-gate.sh" ]] || return 1
+    if [[ -f "${SOURCE_ROOT}/.forgewright/execution-policy.yaml" ]]; then
+        [[ -f "${FRAMEWORK_DIR}/.forgewright/execution-policy.yaml" ]] || return 1
+    fi
 }
 
 repair_stop_runtime() {
@@ -282,7 +285,14 @@ repair_stop_runtime() {
         [[ -f "${SOURCE_ROOT}/scripts/${runtime_file}" ]] || continue
         atomic_copy_file "${SOURCE_ROOT}/scripts/${runtime_file}" "${FRAMEWORK_DIR}/scripts/${runtime_file}" || return 1
     done
-    chmod +x "${target_runtime}/stop-gate.sh" "${target_runtime}/antigravity-stop-hook.sh" "${FRAMEWORK_DIR}/scripts/memory/memory-session.sh" || return 1
+    if [[ -f "${SOURCE_ROOT}/.forgewright/execution-policy.yaml" && ! -e "${FRAMEWORK_DIR}/.forgewright/execution-policy.yaml" ]]; then
+        mkdir -p "${FRAMEWORK_DIR}/.forgewright"
+        atomic_copy_file "${SOURCE_ROOT}/.forgewright/execution-policy.yaml" "${FRAMEWORK_DIR}/.forgewright/execution-policy.yaml" || return 1
+    fi
+    chmod +x "${target_runtime}/stop-gate.sh" "${target_runtime}/antigravity-stop-hook.sh" \
+        "${target_runtime}/antigravity-pre-tool-gate.sh" "${target_runtime}/gemini-before-tool-gate.sh" \
+        "${target_runtime}/policy-check.sh" "${target_runtime}/telemetry.sh" \
+        "${FRAMEWORK_DIR}/scripts/memory/memory-session.sh" || return 1
     stop_runtime_is_current || return 1
     log_pass "Stop runtime dependency closure repaired in framework install"
 }
@@ -530,8 +540,16 @@ function ownedContextCommand(candidate, event) {
   const tail = markerStart >= 0 ? candidate.slice(markerStart + marker.length) : "";
   const pathEnd = tail.indexOf("' '");
   if (pathEnd < 0 || !tail.endsWith(" || true")) return false;
-  const normalized = path.resolve(tail.slice(0, pathEnd).replace(/\\/g, '/'));
-  const framework = path.resolve(process.env.FORGEWRIGHT_DIR);
+  const normWin = (p) => {
+    let posix = path.posix.normalize(String(p || '').replace(/\\/g, '/'));
+    if (process.platform === 'win32') {
+      const m = posix.match(/^\/([A-Za-z])(?:\/(.*))?$/);
+      if (m) posix = m[1].toUpperCase() + ':/' + (m[2] || '');
+    }
+    return path.resolve(posix);
+  };
+  const normalized = normWin(tail.slice(0, pathEnd));
+  const framework = normWin(process.env.FORGEWRIGHT_DIR);
   return normalized === path.join(framework, 'rule-context-hook.py') ||
     normalized === path.join(framework, 'scripts', 'rule-context-hook.py') ||
     normalized === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');

@@ -8,8 +8,8 @@
 # Scope: GLOBAL. State lives in $FORGEWRIGHT_RLG_HOME (default ~/.forgewright/runtime).
 #
 # Design constraints (from plan §G4):
-#   - Pure bash, no python, no lsof/git in this file's hot paths. The P1
-#     PreToolUse gate sources this and must stay under 100ms.
+#   - POSIX hot paths use pure bash, without python or lsof/git. Native
+#     Windows liveness uses a bounded Python probe; sourcing stays lightweight.
 #   - Every helper is read-mostly and side-effect free unless named otherwise.
 #   - NOTHING here ever kills a process. Reaping is P2 (runtime-reap.sh).
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -217,9 +217,26 @@ rlg_port_for() {
 
 # ── Process / port introspection (read-only) ─────────────────────────────────
 
-rlg_pid_alive() { [ -n "${1:-}" ] && kill -0 "$1" 2>/dev/null; }
+rlg_pid_alive() {
+  [ -n "${1:-}" ] || return 1
+  case "${OSTYPE:-}" in
+    msys*|cygwin*|win32*)
+      # Git Bash background jobs use MSYS PIDs, distinct from native Win32 IDs.
+      # A live process in either namespace must never be pronounced dead.
+      kill -0 "$1" 2>/dev/null && return 0
+      local registry native_status=0
+      registry="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/runtime_registry.py"
+      python3 "$registry" pid-alive "$1" >/dev/null 2>&1 || native_status=$?
+      # Only the native probe's explicit dead result authorizes stale cleanup.
+      # Missing interpreter or an unavailable probe conservatively keeps a lease.
+      [ "$native_status" -ne 10 ]
+      ;;
+    *) kill -0 "$1" 2>/dev/null ;;
+  esac
+}
 
 rlg_pgid_of() {
+  case "${OSTYPE:-}" in msys*|cygwin*|win32*) return 1 ;; esac
   local pid="${1:-}"
   [ -n "$pid" ] || return 1
   ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' '

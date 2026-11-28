@@ -17,6 +17,12 @@ the tier to the Claude Code Agent tool and never invents capabilities:
 * `model` is emitted only when the configured alias is advertised by the
   active Agent tool schema. A plugin agent already pins its model in its
   frontmatter, so the alias is a fallback for a generic agent type.
+* `effort` is emitted only when the configured level is advertised by the
+  active Agent tool schema (`efforts`). A plugin agent pins it in its
+  frontmatter too, which applies when no `effort` is passed; a generic agent
+  type then inherits the parent effort. The level is resolved independently of
+  the model, matched exactly, and never raised or lowered to a level the
+  schema did not advertise.
 * Missing or malformed capability data yields `provider-managed` selection
   with no override (the subagent inherits the parent's model).
 """
@@ -151,10 +157,14 @@ def resolve_routing(
     configured_model = (
         entry.get("model") if isinstance(entry.get("model"), str) else None
     )
+    configured_effort = (
+        entry.get("effort") if isinstance(entry.get("effort"), str) else None
+    )
 
     caps = _mapping(capabilities)
     models = _string_set(caps.get("models")) if caps else None
     agents = _string_set(caps.get("agent_types")) if caps else None
+    efforts = _string_set(caps.get("efforts")) if caps else None
 
     args: dict[str, Any] = {}
     reasons: list[str] = []
@@ -187,6 +197,19 @@ def resolve_routing(
     else:
         reasons.append("no configured model for tier")
 
+    effort_status = "provider-managed"
+    if configured_effort and efforts is not None and configured_effort in efforts:
+        args["effort"] = configured_effort
+        effort_status = "verified"
+    elif configured_effort and efforts is not None:
+        reasons.append(
+            f"effort {configured_effort!r} not advertised; passing no effort"
+        )
+    elif configured_effort:
+        reasons.append("efforts capability missing or malformed; passing no effort")
+    else:
+        reasons.append("no configured effort for tier")
+
     if tier in ROLE_TIERS and selection["hard_signals"] and model_status != "verified":
         # The role tier meets the HARD floor only on its verified model. Without
         # it the subagent would inherit the parent model, which may sit below
@@ -203,19 +226,28 @@ def resolve_routing(
             **fallback,
             "requested_tier": selection["requested_tier"],
             "escalated": True,
-            "reasons": [
-                f"{tier} model {configured_model!r} not verified under HARD signals;"
-                " using the expert tier",
-                *reasons,
-                *fallback["reasons"],
-            ],
+            "reasons": list(
+                dict.fromkeys(
+                    [
+                        f"{tier} model {configured_model!r} not verified under HARD signals;"
+                        " using the expert tier",
+                        *reasons,
+                        *fallback["reasons"],
+                    ]
+                )
+            ),
         }
 
     return {
         **selection,
         "agent_args": args,
         "model_selection": model_status,
-        "configured": {"agent": configured_agent, "model": configured_model},
+        "effort_selection": effort_status,
+        "configured": {
+            "agent": configured_agent,
+            "model": configured_model,
+            "effort": configured_effort,
+        },
         "capability_source": capability_source,
         "reasons": reasons,
     }
@@ -249,7 +281,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--capabilities-json",
         default="",
-        help='{"models": [...], "agent_types": [...]} from the active Agent tool schema',
+        help='{"models": [...], "agent_types": [...], "efforts": [...]} from the active Agent tool schema',
     )
     parser.add_argument("--capability-source", default="active Agent tool schema")
     return parser

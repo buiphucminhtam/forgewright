@@ -73,7 +73,7 @@ def _tracked_files(root: Path) -> list[str]:
         check=False,
     )
     if res.returncode == 0:
-        return [line for line in res.stdout.splitlines() if line.strip()]
+        return list(dict.fromkeys(line for line in res.stdout.splitlines() if line.strip()))
     return [
         p.relative_to(root).as_posix()
         for p in root.rglob("*")

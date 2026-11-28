@@ -36,6 +36,15 @@
 
 set -euo pipefail
 
+case "${OSTYPE:-}" in
+    msys*|cygwin*)
+        if command -v cygpath >/dev/null 2>&1 && [[ -n "${HOME:-}" ]]; then
+            HOME="$(cygpath -m -- "$HOME")"
+            export HOME
+        fi
+        ;;
+esac
+
 # ─── Detect Forgewright Location ────────────────────────────────────────────────
 
 declare FORGEWRIGHT_DIR=""
@@ -107,10 +116,17 @@ detect_forgewright() {
         FORGEWRIGHT_DIR="$(dirname "$resolved")"
         FORGEWRIGHT_IS_PROJECT="false"
     fi
+    case "${OSTYPE:-}" in
+        msys*|cygwin*)
+            if command -v cygpath >/dev/null 2>&1 && [[ -n "${FORGEWRIGHT_DIR:-}" ]]; then
+                FORGEWRIGHT_DIR="$(cygpath -m -- "$FORGEWRIGHT_DIR")"
+            fi
+            ;;
+    esac
 }
 
 detect_actual_project_root() {
-    local pwd_root git_root superproject
+    local pwd_root git_root superproject result
     pwd_root="$(pwd -P)"
 
     if git_root="$(git -C "$pwd_root" rev-parse --show-toplevel 2>/dev/null)"; then
@@ -118,11 +134,18 @@ detect_actual_project_root() {
             [[ -n "$superproject" ]]; do
             git_root="$(cd "$superproject" && pwd -P)"
         done
-        printf '%s\n' "$(cd "$git_root" && pwd -P)"
-        return
+        result="$(cd "$git_root" && pwd -P)"
+    else
+        result="$pwd_root"
     fi
-
-    echo "$pwd_root"
+    case "${OSTYPE:-}" in
+        msys*|cygwin*)
+            if command -v cygpath >/dev/null 2>&1; then
+                result="$(cygpath -m -- "$result")"
+            fi
+            ;;
+    esac
+    printf '%s\n' "$result"
 }
 
 # ─── Colors ──────────────────────────────────────────────────────────────────
@@ -337,11 +360,13 @@ setup_mcp_server() {
         log_warn "mcp-generate.sh not found, skipping regeneration (using existing src/index.ts)"
     fi
 
-    # Copy launcher scripts to FORGEWRIGHT_DIR/scripts/
-    mkdir -p "${FORGEWRIGHT_DIR}/scripts"
-    if cp "${script_dir}/forgewright-mcp-launcher.sh" "${FORGEWRIGHT_DIR}/scripts/" 2>/dev/null; then
-        chmod +x "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
-        log_ok "Copied forgewright-mcp-launcher.sh"
+    # Copy launcher scripts to FORGEWRIGHT_DIR/scripts/ only in legacy layouts
+    if [[ ! -f "${FORGEWRIGHT_DIR}/scripts/mcp/forgewright-mcp-launcher.sh" ]]; then
+        mkdir -p "${FORGEWRIGHT_DIR}/scripts"
+        if cp "${script_dir}/forgewright-mcp-launcher.sh" "${FORGEWRIGHT_DIR}/scripts/" 2>/dev/null; then
+            chmod +x "${FORGEWRIGHT_DIR}/scripts/forgewright-mcp-launcher.sh"
+            log_ok "Copied forgewright-mcp-launcher.sh"
+        fi
     fi
 }
 
@@ -372,6 +397,15 @@ import os
 import stat
 import sys
 
+def is_reparse_meta(metadata):
+    return stat.S_ISLNK(metadata.st_mode) or bool(getattr(metadata, "st_file_attributes", 0) & 0x400)
+
+def is_reparse_path(path):
+    try:
+        return is_reparse_meta(os.lstat(path))
+    except OSError:
+        return True
+
 target, kind, home, project, xdg = sys.argv[1:]
 target = os.path.abspath(target)
 roots = []
@@ -384,8 +418,8 @@ for candidate in (home, project, xdg):
             roots.append(candidate)
     except ValueError:
         pass
-anchor = max(roots, key=len) if roots else os.path.sep
-if os.path.islink(anchor) or not os.path.isdir(anchor):
+anchor = max(roots, key=len) if roots else (os.path.splitdrive(target)[0] + os.path.sep if os.name == "nt" else os.path.sep)
+if is_reparse_path(anchor) or not os.path.isdir(anchor):
     raise SystemExit(f"sensitive path anchor is unsafe: {anchor}")
 parent = os.path.dirname(target)
 relative = os.path.relpath(parent, anchor)
@@ -396,13 +430,13 @@ if relative != ".":
         if not os.path.lexists(current):
             break
         metadata = os.lstat(current)
-        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+        if is_reparse_meta(metadata) or not stat.S_ISDIR(metadata.st_mode):
             raise SystemExit(f"sensitive path parent is unsafe: {current}")
 if os.path.lexists(target):
     metadata = os.lstat(target)
-    if kind == "file" and (not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1):
+    if kind == "file" and (is_reparse_meta(metadata) or not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1):
         raise SystemExit(f"sensitive file target is unsafe: {target}")
-    if kind == "directory" and (not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode)):
+    if kind == "directory" and (not stat.S_ISDIR(metadata.st_mode) or is_reparse_meta(metadata)):
         raise SystemExit(f"sensitive directory target is unsafe: {target}")
 PY
 }
@@ -649,7 +683,16 @@ if (operation === 'verify') {
   if (!servers || Array.isArray(servers) || typeof servers !== 'object') process.exit(1);
   const entry = servers[name];
   const disabled = new Set([...(Array.isArray(config.disabledMcpServers) ? config.disabledMcpServers : []), ...(Array.isArray(config.disabled_mcp_servers) ? config.disabled_mcp_servers : [])]);
-  const exact = schema === 'opencode' ? entry?.type === 'local' && JSON.stringify(entry.command) === JSON.stringify([expectedCommand, expectedArg]) : entry?.command === expectedCommand && JSON.stringify(entry?.args) === JSON.stringify([expectedArg]);
+  const normWinPath = (p) => {
+    const s = String(p || '').replace(/\\/g, '/');
+    return process.platform === 'win32' ? s.replace(/^\/([A-Za-z])\//, (_, d) => `${d.toLowerCase()}:/`).replace(/^([A-Z]):\//, (_, d) => `${d.toLowerCase()}:/`) : s;
+  };
+  let exact = schema === 'opencode' ? entry?.type === 'local' && JSON.stringify(entry.command) === JSON.stringify([expectedCommand, expectedArg]) : entry?.command === expectedCommand && JSON.stringify(entry?.args) === JSON.stringify([expectedArg]);
+  if (!exact && process.platform === 'win32' && name === 'forgewright' && schema !== 'opencode' && entry?.command === 'node' && Array.isArray(entry?.args) && entry.args.length === 2) {
+    const serverRoot = normWinPath(expectedArg).replace(/\/src\/index\.ts$/i, '');
+    const expectedTsxCli = `${serverRoot}/node_modules/tsx/dist/cli.mjs`;
+    exact = normWinPath(entry.args[0]) === expectedTsxCli && normWinPath(entry.args[1]) === normWinPath(expectedArg);
+  }
   process.exit(exact && entry.enabled !== false && entry.disabled !== true && !disabled.has(name) ? 0 : 1);
 }
 
@@ -736,10 +779,27 @@ def inject(point):
         raise OSError(f"injected durability failure at {boundary}")
 
 def fsync_file(path):
-    with open(path, "rb") as handle:
+    with open(path, "r+b" if os.name == "nt" else "rb") as handle:
         os.fsync(handle.fileno())
 
 def fsync_dir(path):
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        k32.CreateFileW.restype = wintypes.HANDLE
+        k32.FlushFileBuffers.argtypes = [wintypes.HANDLE]
+        k32.FlushFileBuffers.restype = wintypes.BOOL
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        k32.CloseHandle.restype = wintypes.BOOL
+        handle = k32.CreateFileW(str(path), 0x40000080, 3, None, 3, 0x02200000, None)
+        if handle and handle != wintypes.HANDLE(-1).value:
+            try:
+                k32.FlushFileBuffers(handle)
+            finally:
+                k32.CloseHandle(handle)
+        return
     descriptor = os.open(path, os.O_RDONLY)
     try:
         os.fsync(descriptor)
@@ -766,7 +826,7 @@ def validate_parents(path):
                 roots.append(candidate)
         except ValueError:
             pass
-    anchor = max(roots, key=len) if roots else os.path.sep
+    anchor = max(roots, key=len) if roots else (os.path.splitdrive(path)[0] + os.path.sep if os.name == "nt" else os.path.sep)
     if os.path.islink(anchor) or not os.path.isdir(anchor):
         raise OSError(f"sensitive path anchor is unsafe: {anchor}")
     current = anchor
@@ -866,11 +926,20 @@ if os.environ.get("FORGEWRIGHT_TEST_SIGKILL_DURABILITY_AT") == f"{label}:before-
     os.kill(os.getppid(), signal.SIGKILL)
     os._exit(137)
 os.unlink(target)
-descriptor = os.open(parent, os.O_RDONLY)
-try:
-    os.fsync(descriptor)
-finally:
-    os.close(descriptor)
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    h = k32.CreateFileW(str(parent), 0x40000080, 3, None, 3, 0x02200000, None)
+    if h and h != wintypes.HANDLE(-1).value:
+        k32.FlushFileBuffers(h)
+        k32.CloseHandle(h)
+else:
+    descriptor = os.open(parent, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 PY
 }
 
@@ -894,6 +963,23 @@ def inject(point):
         raise OSError(f"injected durability failure at {boundary}")
 
 def fsync_dir(path):
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        k32.CreateFileW.restype = wintypes.HANDLE
+        k32.FlushFileBuffers.argtypes = [wintypes.HANDLE]
+        k32.FlushFileBuffers.restype = wintypes.BOOL
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        k32.CloseHandle.restype = wintypes.BOOL
+        handle = k32.CreateFileW(str(path), 0x40000080, 3, None, 3, 0x02200000, None)
+        if handle and handle != wintypes.HANDLE(-1).value:
+            try:
+                k32.FlushFileBuffers(handle)
+            finally:
+                k32.CloseHandle(handle)
+        return
     descriptor = os.open(path, os.O_RDONLY)
     try:
         os.fsync(descriptor)
@@ -907,8 +993,12 @@ for current, directories, files in os.walk(root, topdown=False, followlinks=Fals
         path = os.path.join(current, name)
         metadata = os.lstat(path)
         if stat.S_ISREG(metadata.st_mode):
-            with open(path, "rb") as handle:
-                os.fsync(handle.fileno())
+            try:
+                with open(path, "r+b" if os.name == "nt" else "rb") as handle:
+                    os.fsync(handle.fileno())
+            except PermissionError:
+                if os.name != "nt":
+                    raise
         elif not stat.S_ISLNK(metadata.st_mode):
             raise SystemExit(f"unsupported runtime payload type: {path}")
     for name in directories:
@@ -941,11 +1031,20 @@ if os.environ.get("FORGEWRIGHT_TEST_SIGKILL_DURABILITY_AT") == boundary:
 if os.environ.get("FORGEWRIGHT_TEST_DURABILITY_FAIL_AT") == boundary:
     raise OSError(f"injected durability failure at {boundary}")
 for directory in (target, os.path.dirname(target)):
-    descriptor = os.open(directory, os.O_RDONLY)
-    try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        h = k32.CreateFileW(str(directory), 0x40000080, 3, None, 3, 0x02200000, None)
+        if h and h != wintypes.HANDLE(-1).value:
+            k32.FlushFileBuffers(h)
+            k32.CloseHandle(h)
+    else:
+        descriptor = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 boundary = f"{label}:after-parent"
 if os.environ.get("FORGEWRIGHT_TEST_DURABILITY_FAIL_AT") == boundary:
     raise OSError(f"injected durability failure at {boundary}")
@@ -992,16 +1091,93 @@ acquire_owned_lock() {
     validate_sensitive_path "$lock_dir" directory || return 1
     for ((attempt = 0; attempt < 600; attempt += 1)); do
         if python3 - "$lock_dir" "$owner_token" "$$" "$HOME" "${PROJECT_ROOT:-}" <<'PY'
-import fcntl
+from contextlib import contextmanager
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 import json
 import os
 import platform
+import re
 import shutil
+import stat
 import subprocess
 import sys
+import time
 import uuid
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+def is_reparse(path):
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    return stat.S_ISLNK(info.st_mode) or bool(getattr(info, "st_file_attributes", 0) & 0x400)
+
+def sync_dir(path):
+    if os.name == "nt":
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        k32.CreateFileW.restype = wintypes.HANDLE
+        k32.FlushFileBuffers.argtypes = [wintypes.HANDLE]
+        k32.FlushFileBuffers.restype = wintypes.BOOL
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        k32.CloseHandle.restype = wintypes.BOOL
+        handle = k32.CreateFileW(str(path), 0x40000080, 3, None, 3, 0x02200000, None)
+        if handle and handle != wintypes.HANDLE(-1).value:
+            try:
+                k32.FlushFileBuffers(handle)
+            finally:
+                if not k32.CloseHandle(handle):
+                    raise ctypes.WinError(ctypes.get_last_error())
+        return
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+@contextmanager
+def guard_lock(guard_path):
+    if is_reparse(guard_path):
+        raise SystemExit(f"lock guard is unsafe: {guard_path}")
+    with open(guard_path, "a+b") as guard:
+        if is_reparse(guard_path):
+            raise SystemExit(f"lock guard is unsafe: {guard_path}")
+        if fcntl is not None:
+            fcntl.flock(guard.fileno(), fcntl.LOCK_EX)
+            yield
+        else:
+            locked = False
+            try:
+                deadline = time.monotonic() + 0.05
+                while True:
+                    try:
+                        guard.seek(0)
+                        msvcrt.locking(guard.fileno(), msvcrt.LK_NBLCK, 1)
+                        locked = True
+                        break
+                    except OSError:
+                        if time.monotonic() >= deadline:
+                            raise SystemExit(75)
+                        time.sleep(0.01)
+                yield
+            finally:
+                if locked:
+                    try:
+                        guard.seek(0)
+                        msvcrt.locking(guard.fileno(), msvcrt.LK_UNLCK, 1)
+                    except OSError:
+                        pass
 
 lock, token, pid_text, home, project = sys.argv[1:]
+lock = os.path.abspath(lock)
 pid = int(pid_text)
 parent = os.path.dirname(lock)
 os.makedirs(parent, exist_ok=True)
@@ -1016,14 +1192,81 @@ for candidate in (home, project):
             roots.append(candidate)
     except ValueError:
         pass
-anchor = max(roots, key=len) if roots else os.path.sep
+anchor = max(roots, key=len) if roots else (os.path.splitdrive(lock)[0] + os.path.sep if os.name == "nt" else os.path.sep)
+if is_reparse(anchor) or not os.path.isdir(anchor):
+    raise SystemExit(f"lock anchor is unsafe: {anchor}")
 current = anchor
 relative = os.path.relpath(parent, anchor)
 for component in (() if relative == "." else relative.split(os.sep)):
     current = os.path.join(current, component)
-    if os.path.islink(current) or not os.path.isdir(current):
+    if is_reparse(current) or not os.path.isdir(current):
         raise SystemExit(f"lock parent is unsafe: {current}")
 guard_path = f"{lock}.guard"
+
+def windows_process_identity(candidate):
+    winpid = None
+    try:
+        ps_bin = shutil.which("ps")
+        if not ps_bin:
+            for base in (os.environ.get("EXEPATH"), os.environ.get("ProgramFiles", "C:/Program Files") + "/Git"):
+                if not base:
+                    continue
+                for rel in ("usr/bin/ps.exe", "../usr/bin/ps.exe"):
+                    probe = os.path.abspath(os.path.join(base, rel))
+                    if os.path.isfile(probe):
+                        ps_bin = probe
+                        break
+                if ps_bin:
+                    break
+        result = subprocess.run(
+            [ps_bin or "ps", "-p", str(candidate)],
+            check=False, capture_output=True, text=True, timeout=2,
+        )
+        for line in result.stdout.splitlines():
+            nums = re.findall(r"\b\d+\b", line)
+            if len(nums) >= 4 and int(nums[0]) == candidate:
+                winpid = int(nums[3])
+                break
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    if winpid is None:
+        winpid = candidate
+    if winpid <= 0:
+        return None, ""
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    k32.WaitForSingleObject.restype = wintypes.DWORD
+    k32.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
+    k32.GetProcessTimes.restype = wintypes.BOOL
+    k32.QueryFullProcessImageNameW.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)]
+    k32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    k32.CloseHandle.restype = wintypes.BOOL
+    handle = k32.OpenProcess(0x101000, False, winpid)
+    if not handle:
+        return None, ""
+    try:
+        status = k32.WaitForSingleObject(handle, 0)
+        if status == 0:
+            return None, "Z"
+        if status != 258:
+            return None, ""
+        creation, exited, kernel, user = (wintypes.FILETIME() for _ in range(4))
+        if not k32.GetProcessTimes(handle, ctypes.byref(creation), ctypes.byref(exited), ctypes.byref(kernel), ctypes.byref(user)):
+            return None, ""
+        birth_ticks = (creation.dwHighDateTime << 32) | creation.dwLowDateTime
+        if birth_ticks <= 0:
+            return None, ""
+        buf = ctypes.create_unicode_buffer(32768)
+        length = wintypes.DWORD(len(buf))
+        if not k32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(length)) or not length.value:
+            return None, ""
+        return f"{winpid}:{birth_ticks}:{buf.value}", "R"
+    finally:
+        if not k32.CloseHandle(handle):
+            raise ctypes.WinError(ctypes.get_last_error())
 
 def process_identity(candidate):
     overrides = os.environ.get("FORGEWRIGHT_TEST_PROCESS_IDENTITIES")
@@ -1031,6 +1274,8 @@ def process_identity(candidate):
         value = json.loads(overrides).get(str(candidate))
         if value is not None:
             return value.get("birth"), value.get("state", "")
+    if os.name == "nt":
+        return windows_process_identity(candidate)
     if platform.system() == "Linux":
         try:
             raw = open(f"/proc/{candidate}/stat", encoding="utf-8").read()
@@ -1054,9 +1299,10 @@ def process_identity(candidate):
 birth, state = process_identity(pid)
 if not birth or state.startswith("Z"):
     raise SystemExit("could not establish live lock owner identity")
-with open(guard_path, "a+", encoding="utf-8") as guard:
-    fcntl.flock(guard, fcntl.LOCK_EX)
+with guard_lock(guard_path):
     if os.path.lexists(lock):
+        if is_reparse(lock):
+            raise SystemExit(f"lock directory is unsafe: {lock}")
         owner = {}
         try:
             with open(os.path.join(lock, "owner.json"), encoding="utf-8") as handle:
@@ -1083,16 +1329,8 @@ with open(guard_path, "a+", encoding="utf-8") as guard:
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(owner_tmp, os.path.join(lock, "owner.json"))
-    lock_fd = os.open(lock, os.O_RDONLY)
-    try:
-        os.fsync(lock_fd)
-    finally:
-        os.close(lock_fd)
-    parent_fd = os.open(parent, os.O_RDONLY)
-    try:
-        os.fsync(parent_fd)
-    finally:
-        os.close(parent_fd)
+    sync_dir(lock)
+    sync_dir(parent)
 PY
         then
             return 0
@@ -1112,20 +1350,70 @@ release_owned_lock() {
     local lock_dir="$1" owner_token="$2"
     validate_sensitive_path "$lock_dir" directory || return 1
     python3 - "$lock_dir" "$owner_token" <<'PY'
-import fcntl
+from contextlib import contextmanager
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 import json
 import os
 import shutil
+import stat
 import sys
+import time
 import uuid
+if os.name == "nt":
+    import msvcrt
+
+def is_reparse(path):
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    return stat.S_ISLNK(info.st_mode) or bool(getattr(info, "st_file_attributes", 0) & 0x400)
+
+@contextmanager
+def guard_lock(guard_path):
+    if is_reparse(guard_path):
+        raise SystemExit(f"lock guard is unsafe: {guard_path}")
+    with open(guard_path, "a+b") as guard:
+        if is_reparse(guard_path):
+            raise SystemExit(f"lock guard is unsafe: {guard_path}")
+        if fcntl is not None:
+            fcntl.flock(guard.fileno(), fcntl.LOCK_EX)
+            yield
+        else:
+            locked = False
+            try:
+                deadline = time.monotonic() + 10.0
+                while True:
+                    try:
+                        guard.seek(0)
+                        msvcrt.locking(guard.fileno(), msvcrt.LK_NBLCK, 1)
+                        locked = True
+                        break
+                    except OSError:
+                        if time.monotonic() >= deadline:
+                            raise SystemExit("timed out acquiring release guard")
+                        time.sleep(0.02)
+                yield
+            finally:
+                if locked:
+                    try:
+                        guard.seek(0)
+                        msvcrt.locking(guard.fileno(), msvcrt.LK_UNLCK, 1)
+                    except OSError:
+                        pass
 
 lock, token = sys.argv[1:]
+lock = os.path.abspath(lock)
 parent = os.path.dirname(lock)
 os.makedirs(parent, exist_ok=True)
 quarantine = ""
-with open(f"{lock}.guard", "a+", encoding="utf-8") as guard:
-    fcntl.flock(guard, fcntl.LOCK_EX)
-    if os.path.isdir(lock):
+with guard_lock(f"{lock}.guard"):
+    if os.path.isdir(lock) and not is_reparse(lock):
         try:
             with open(os.path.join(lock, "owner.json"), encoding="utf-8") as handle:
                 owner = json.load(handle)
@@ -1158,7 +1446,18 @@ if operation == "add-file":
         path, backup, had_active, mode, original_digest = args
         expected_stat = None
     if had_active == "true" and expected_stat:
-        current_st = os.lstat(path)
+        expected_stat = expected_stat.strip()
+        link_st = os.lstat(path)
+        if os.path.islink(path) or bool(getattr(link_st, "st_file_attributes", 0) & 0x400):
+            raise SystemExit(f"non-cooperative writer replaced target with link before journal ownership: {path}")
+        if os.name == "nt":
+            check_fd = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0))
+            try:
+                current_st = os.fstat(check_fd)
+            finally:
+                os.close(check_fd)
+        else:
+            current_st = link_st
         if f"{current_st.st_dev}:{current_st.st_ino}:{current_st.st_mtime_ns}:{current_st.st_ctime_ns}:{current_st.st_size}" != expected_stat:
             raise SystemExit(f"non-cooperative writer changed target before journal ownership: {path}")
     elif had_active == "false" and expected_stat == "missing" and os.path.lexists(path):
@@ -1217,11 +1516,12 @@ with open(temporary, "w", encoding="utf-8") as handle:
     handle.flush()
     os.fsync(handle.fileno())
 os.replace(temporary, journal)
-directory_fd = os.open(os.path.dirname(journal), os.O_RDONLY)
-try:
-    os.fsync(directory_fd)
-finally:
-    os.close(directory_fd)
+if os.name != "nt":
+    directory_fd = os.open(os.path.dirname(journal), os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 PY
 }
 
@@ -1282,17 +1582,19 @@ with open(temporary, "w", encoding="utf-8") as handle:
     handle.flush()
     os.fsync(handle.fileno())
 os.replace(temporary, journal)
-directory_fd = os.open(os.path.dirname(journal), os.O_RDONLY)
-try:
-    os.fsync(directory_fd)
-finally:
-    os.close(directory_fd)
+if os.name != "nt":
+    directory_fd = os.open(os.path.dirname(journal), os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 os.mkdir(transaction_dir, mode=0o700)
-transactions_fd = os.open(os.path.dirname(transaction_dir), os.O_RDONLY)
-try:
-    os.fsync(transactions_fd)
-finally:
-    os.close(transactions_fd)
+if os.name != "nt":
+    transactions_fd = os.open(os.path.dirname(transaction_dir), os.O_RDONLY)
+    try:
+        os.fsync(transactions_fd)
+    finally:
+        os.close(transactions_fd)
 PY
     TRANSACTION_ACTIVE="true"
     TRANSACTION_LOCK_DIRS=()
@@ -1351,12 +1653,14 @@ import sys
 
 target, backup = sys.argv[1:3]
 try:
-    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    if os.path.islink(target):
+        raise SystemExit(1)
+    fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
 except OSError:
     raise SystemExit(1)
 try:
     st = os.fstat(fd)
-    if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+    if not stat.S_ISREG(st.st_mode) or bool(getattr(st, "st_file_attributes", 0) & 0x400) or st.st_nlink != 1:
         raise SystemExit(1)
     mode = stat.S_IMODE(st.st_mode)
     digest = hashlib.sha256()
@@ -1374,11 +1678,12 @@ try:
         os.utime(backup, ns=(st.st_atime_ns, st.st_mtime_ns))
     except Exception:
         pass
-    dir_fd = os.open(os.path.dirname(backup), os.O_RDONLY)
-    try:
-        os.fsync(dir_fd)
-    finally:
-        os.close(dir_fd)
+    if os.name != "nt":
+        dir_fd = os.open(os.path.dirname(backup), os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
     print(f"{digest.hexdigest()}:{mode:o}:{st.st_dev}:{st.st_ino}:{st.st_mtime_ns}:{st.st_ctime_ns}:{st.st_size}")
 finally:
     os.close(fd)
@@ -1533,16 +1838,32 @@ for item in reversed(data["files"]):
         if not os.path.isfile(backup) or os.path.islink(backup):
             failures.append(f"missing transaction backup: {target}")
             continue
-        os.replace(backup, target)
-        with open(target, "rb") as handle:
+        try:
+            os.replace(backup, target)
+        except OSError as exc:
+            import errno, shutil, tempfile
+            if exc.errno != errno.EXDEV and getattr(exc, "winerror", None) != 17:
+                raise
+            fd_tmp, same_vol_tmp = tempfile.mkstemp(prefix=".rollback.", dir=os.path.dirname(target))
+            os.close(fd_tmp)
+            try:
+                shutil.copy2(backup, same_vol_tmp, follow_symlinks=False)
+                with open(same_vol_tmp, "r+b" if os.name == "nt" else "rb") as h_tmp:
+                    os.fsync(h_tmp.fileno())
+                os.replace(same_vol_tmp, target)
+            finally:
+                if os.path.exists(same_vol_tmp):
+                    os.unlink(same_vol_tmp)
+        with open(target, "r+b" if os.name == "nt" else "rb") as handle:
             os.fsync(handle.fileno())
     else:
         os.unlink(target)
-    directory_fd = os.open(os.path.dirname(target), os.O_RDONLY)
-    try:
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
+    if os.name != "nt":
+        directory_fd = os.open(os.path.dirname(target), os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
 
 for failure in failures:
     print(f"CRITICAL: {failure}", file=sys.stderr)
@@ -1614,19 +1935,21 @@ import sys
 runtime, active, envelope = sys.argv[1:]
 os.rename(runtime, active)
 for directory in (os.path.dirname(active), envelope):
-    descriptor = os.open(directory, os.O_RDONLY)
+    if os.name != "nt":
+        descriptor = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+owner = os.path.join(envelope, "owner.json")
+os.unlink(owner)
+os.rmdir(envelope)
+if os.name != "nt":
+    descriptor = os.open(os.path.dirname(envelope), os.O_RDONLY)
     try:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
-owner = os.path.join(envelope, "owner.json")
-os.unlink(owner)
-os.rmdir(envelope)
-descriptor = os.open(os.path.dirname(envelope), os.O_RDONLY)
-try:
-    os.fsync(descriptor)
-finally:
-    os.close(descriptor)
 PY
 }
 
@@ -1673,11 +1996,12 @@ else:
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(temporary, owner_path)
-    trash_fd = os.open(trash, os.O_RDONLY)
-    try:
-        os.fsync(trash_fd)
-    finally:
-        os.close(trash_fd)
+    if os.name != "nt":
+        trash_fd = os.open(trash, os.O_RDONLY)
+        try:
+            os.fsync(trash_fd)
+        finally:
+            os.close(trash_fd)
 
 runtime = os.path.join(trash, "runtime")
 if os.path.lexists(runtime):
@@ -1733,12 +2057,13 @@ elif marker_mode == "installation":
 elif marker_mode != "journal":
     raise SystemExit("invalid runtime ownership mode")
 os.rename(source, runtime)
-for directory in {os.path.dirname(source), trash}:
-    directory_fd = os.open(directory, os.O_RDONLY)
-    try:
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
+if os.name != "nt":
+    for directory in {os.path.dirname(source), trash}:
+        directory_fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
 PY
 }
 
@@ -1825,12 +2150,13 @@ cleanup_transaction_journal() {
     python3 - "$(dirname "$transaction_dir")" "$(dirname "$TRANSACTION_JOURNAL")" <<'PY'
 import os
 import sys
-for directory in dict.fromkeys(sys.argv[1:]):
-    descriptor = os.open(directory, os.O_RDONLY)
-    try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
+if os.name != "nt":
+    for directory in dict.fromkeys(sys.argv[1:]):
+        descriptor = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 PY
 }
 
@@ -1889,12 +2215,13 @@ restore_transaction_runtime() {
         python3 - "$active" "$(dirname "$active")" <<'PY'
 import os
 import sys
-for directory in sys.argv[1:]:
-    descriptor = os.open(directory, os.O_RDONLY)
-    try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
+if os.name != "nt":
+    for directory in sys.argv[1:]:
+        descriptor = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 PY
         return 0
     fi
@@ -2021,19 +2348,78 @@ import os
 import platform
 import signal
 import sys
+import uuid
 
 left, right, label = sys.argv[1:]
 system = platform.system()
-libc = ctypes.CDLL(None, use_errno=True)
-if system == "Darwin" and hasattr(libc, "renameatx_np"):
-    result = libc.renameatx_np(-2, os.fsencode(left), -2, os.fsencode(right), 0x00000002)
-elif system == "Linux" and hasattr(libc, "renameat2"):
-    result = libc.renameat2(-100, os.fsencode(left), -100, os.fsencode(right), 0x2)
+
+def fsync_dir(path):
+    if os.name == "nt":
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        k32.CreateFileW.restype = wintypes.HANDLE
+        k32.FlushFileBuffers.argtypes = [wintypes.HANDLE]
+        k32.FlushFileBuffers.restype = wintypes.BOOL
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        k32.CloseHandle.restype = wintypes.BOOL
+        handle = k32.CreateFileW(str(path), 0x40000080, 3, None, 3, 0x02200000, None)
+        if handle and handle != wintypes.HANDLE(-1).value:
+            try:
+                k32.FlushFileBuffers(handle)
+            finally:
+                k32.CloseHandle(handle)
+        return
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+if os.name == "nt":
+    from ctypes import wintypes
+    ktm = ctypes.WinDLL("KtmW32", use_last_error=True)
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    ktm.CreateTransaction.argtypes = [wintypes.LPVOID, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.DWORD, wintypes.DWORD, wintypes.LPWSTR]
+    ktm.CreateTransaction.restype = wintypes.HANDLE
+    ktm.CommitTransaction.argtypes = [wintypes.HANDLE]
+    ktm.CommitTransaction.restype = wintypes.BOOL
+    ktm.RollbackTransaction.argtypes = [wintypes.HANDLE]
+    ktm.RollbackTransaction.restype = wintypes.BOOL
+    k32.MoveFileTransactedW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPVOID, wintypes.LPVOID, wintypes.DWORD, wintypes.HANDLE]
+    k32.MoveFileTransactedW.restype = wintypes.BOOL
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    k32.CloseHandle.restype = wintypes.BOOL
+    invalid = wintypes.HANDLE(-1).value
+    txn = ktm.CreateTransaction(None, None, 0, 0, 0, 5000, "Forgewright directory exchange")
+    if not txn or txn == invalid:
+        raise ctypes.WinError(ctypes.get_last_error())
+    committed = False
+    swap = os.path.join(os.path.dirname(os.path.abspath(left)), f".fw-dir-swap-{uuid.uuid4().hex}")
+    try:
+        for src, dst in ((left, swap), (right, left), (swap, right)):
+            if not k32.MoveFileTransactedW(os.path.abspath(src), os.path.abspath(dst), None, None, 0, txn):
+                raise ctypes.WinError(ctypes.get_last_error())
+        if not ktm.CommitTransaction(txn):
+            raise ctypes.WinError(ctypes.get_last_error())
+        committed = True
+    finally:
+        try:
+            if not committed:
+                ktm.RollbackTransaction(txn)
+        finally:
+            k32.CloseHandle(txn)
 else:
-    raise SystemExit(f"atomic directory exchange is unsupported on {system}")
-if result != 0:
-    error = ctypes.get_errno()
-    raise OSError(error, os.strerror(error), right)
+    libc = ctypes.CDLL(None, use_errno=True)
+    if system == "Darwin" and hasattr(libc, "renameatx_np"):
+        result = libc.renameatx_np(-2, os.fsencode(left), -2, os.fsencode(right), 0x00000002)
+    elif system == "Linux" and hasattr(libc, "renameat2"):
+        result = libc.renameat2(-100, os.fsencode(left), -100, os.fsencode(right), 0x2)
+    else:
+        raise SystemExit(f"atomic directory exchange is unsupported on {system}")
+    if result != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), right)
 if label:
     boundary = f"{label}:after-exchange"
     if os.environ.get("FORGEWRIGHT_TEST_SIGKILL_DURABILITY_AT") == boundary:
@@ -2042,11 +2428,7 @@ if label:
     if os.environ.get("FORGEWRIGHT_TEST_DURABILITY_FAIL_AT") == boundary:
         raise OSError(f"injected durability failure at {boundary}")
 for directory in (left, right, os.path.dirname(left)):
-    descriptor = os.open(directory, os.O_RDONLY)
-    try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
+    fsync_dir(directory)
 if label:
     boundary = f"{label}:after-parent"
     if os.environ.get("FORGEWRIGHT_TEST_DURABILITY_FAIL_AT") == boundary:
@@ -2177,8 +2559,13 @@ for key, record in data["records"].items():
         print(f"CRITICAL: Ledger record {key} has non-deterministic key", file=sys.stderr)
         sys.exit(1)
     cpath = record.get("canonical_path", "")
+    def _within(child, root):
+        try:
+            return os.path.commonpath([child, root]) == root and child != root
+        except ValueError:
+            return False
     if (os.path.realpath(cpath) != cpath or ".." in cpath or
-            not any(cpath.startswith(root + "/") for root in allowed_roots if root)):
+            not any(_within(cpath, root) for root in allowed_roots if root)):
         print(f"CRITICAL: Ledger record {key} has unsafe canonical_path", file=sys.stderr)
         sys.exit(1)
     if record.get("schema") not in [
@@ -3133,6 +3520,23 @@ def digest(path):
         return hashlib.file_digest(handle, "sha256").hexdigest()
 
 def fsync_dir(path):
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        k32.CreateFileW.restype = wintypes.HANDLE
+        k32.FlushFileBuffers.argtypes = [wintypes.HANDLE]
+        k32.FlushFileBuffers.restype = wintypes.BOOL
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        k32.CloseHandle.restype = wintypes.BOOL
+        handle = k32.CreateFileW(str(path), 0x40000080, 3, None, 3, 0x02200000, None)
+        if handle and handle != wintypes.HANDLE(-1).value:
+            try:
+                k32.FlushFileBuffers(handle)
+            finally:
+                k32.CloseHandle(handle)
+        return
     descriptor = os.open(path, os.O_RDONLY)
     try:
         os.fsync(descriptor)
@@ -3151,7 +3555,7 @@ for item in data["files"]:
         raise SystemExit(f"transaction payload is missing or unsafe: {path}")
     if os.stat(path, follow_symlinks=False).st_nlink != 1 or digest(path) != expected:
         raise SystemExit(f"transaction payload changed before commit: {path}")
-    with open(path, "rb") as handle:
+    with open(path, "r+b" if os.name == "nt" else "rb") as handle:
         os.fsync(handle.fileno())
     fsync_dir(os.path.dirname(path))
 
@@ -3170,8 +3574,12 @@ for current, directories, files in os.walk(active, topdown=False, followlinks=Fa
         path = os.path.join(current, name)
         metadata = os.lstat(path)
         if stat.S_ISREG(metadata.st_mode):
-            with open(path, "rb") as handle:
-                os.fsync(handle.fileno())
+            try:
+                with open(path, "r+b" if os.name == "nt" else "rb") as handle:
+                    os.fsync(handle.fileno())
+            except PermissionError:
+                if os.name != "nt":
+                    raise
         elif not stat.S_ISLNK(metadata.st_mode):
             raise SystemExit(f"unsupported runtime payload type: {path}")
     for name in directories:
@@ -3215,12 +3623,21 @@ stage_runtime_support() {
     # they are published/rolled back atomically with the rest of the runtime.
     local support_dir="$CANONICAL_STAGE_DIR/runtime-support/scripts/lite" support_file
     mkdir -p "$support_dir"
-    for support_file in evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py run_check.py verify_gate.py continuity_check.py windows_secure_io.py pipeline_transition_gate.py policy-check.sh telemetry.sh; do
+    for support_file in evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py run_check.py verify_gate.py continuity_check.py windows_secure_io.py windows_job_supervisor.py pipeline_transition_gate.py policy-check.sh telemetry.sh; do
         if [[ ! -f "$FORGEWRIGHT_DIR/scripts/lite/$support_file" ]] || [[ -L "$FORGEWRIGHT_DIR/scripts/lite/$support_file" ]]; then
             log_error "Missing or unsafe required runtime support: $support_file"
             return 1
         fi
         cp -p "$FORGEWRIGHT_DIR/scripts/lite/$support_file" "$support_dir/$support_file" || return 1
+    done
+    support_dir="$CANONICAL_STAGE_DIR/runtime-support/scripts/runtime"
+    mkdir -p "$support_dir"
+    for support_file in windows_job_client.py windows_security.py; do
+        if [[ ! -f "$FORGEWRIGHT_DIR/scripts/runtime/$support_file" ]] || [[ -L "$FORGEWRIGHT_DIR/scripts/runtime/$support_file" ]]; then
+            log_error "Missing or unsafe required runtime support: $support_file"
+            return 1
+        fi
+        cp -p "$FORGEWRIGHT_DIR/scripts/runtime/$support_file" "$support_dir/$support_file" || return 1
     done
 }
 
@@ -3253,18 +3670,20 @@ sync_canonical_server() {
 
     log_step "Staging canonical MCP server..."
     local prepared_stage="$TRANSACTION_DIR/stage"
-    mkdir -m 700 "$prepared_stage"
+    mkdir -p "$prepared_stage"
+    chmod 700 "$prepared_stage" 2>/dev/null || true
     printf '%s\n' "$TRANSACTION_TOKEN" > "$prepared_stage/$TRANSACTION_MARKER"
     python3 - "$prepared_stage/$TRANSACTION_MARKER" <<'PY'
 import os
 import sys
-with open(sys.argv[1], "rb") as handle:
+with open(sys.argv[1], "r+b" if os.name == "nt" else "rb") as handle:
     os.fsync(handle.fileno())
-directory_fd = os.open(os.path.dirname(sys.argv[1]), os.O_RDONLY)
-try:
-    os.fsync(directory_fd)
-finally:
-    os.close(directory_fd)
+if os.name != "nt":
+    directory_fd = os.open(os.path.dirname(sys.argv[1]), os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 PY
     durable_publish_directory "$prepared_stage" "$CANONICAL_STAGE_DIR" "runtime-stage" || return 1
 
@@ -3367,11 +3786,12 @@ with open(path, "w", encoding="utf-8") as handle:
     handle.write("\n")
     handle.flush()
     os.fsync(handle.fileno())
-directory = os.open(os.path.dirname(path), os.O_RDONLY)
-try:
-    os.fsync(directory)
-finally:
-    os.close(directory)
+if os.name != "nt":
+    directory = os.open(os.path.dirname(path), os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
 PY
 
     log_ok "Canonical MCP server staged and validated"
@@ -3624,6 +4044,15 @@ setup_antigravity() {
 # Antigravity Forgewright MCP Launcher
 # Uses CANONICAL server at ~/.forgewright/mcp-server/ (never a submodule path)
 set -euo pipefail
+
+case "${OSTYPE:-}" in
+    msys*|cygwin*)
+        if command -v cygpath >/dev/null 2>&1 && [[ -n "${HOME:-}" ]]; then
+            HOME="$(cygpath -m -- "$HOME")"
+            export HOME
+        fi
+        ;;
+esac
 
 # Auto-detect workspace
 if [[ -n "\${FORGEWRIGHT_WORKSPACE:-}" ]]; then
@@ -4306,8 +4735,8 @@ cmd_diagnose() {
     echo ""
 
     log_step "Platform Configs"
-    echo "  Cursor:       $CURSOR_CONFIG ($(ls -la "$CURSOR_CONFIG" 2>/dev/null | awk '{print $5" "$9}')"
-    echo "  Claude Code:  $CLAUDE_CODE_CONFIG ($(ls -la "$CLAUDE_CODE_CONFIG" 2>/dev/null | awk '{print $5" "$9}')"
+    echo "  Cursor:       $CURSOR_CONFIG ($(wc -c < "$CURSOR_CONFIG" 2>/dev/null | tr -d ' ' || echo 0) bytes)"
+    echo "  Claude Code:  $CLAUDE_CODE_CONFIG ($(wc -c < "$CLAUDE_CODE_CONFIG" 2>/dev/null | tr -d ' ' || echo 0) bytes)"
     echo "  Claude Desktop: $(claude_desktop_config_path)"
     echo "  Antigravity:  $ANTIGRAVITY_CONFIG"
     echo "  Antigravity CLI: $HOME/.gemini/config/mcp_config.json"

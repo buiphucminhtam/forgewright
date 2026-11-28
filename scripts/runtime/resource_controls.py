@@ -13,7 +13,15 @@ import stat
 import subprocess
 import time
 
-from host_job_profiles import digest, install_profile, private_read, validate_profile
+from host_job_profiles import (
+    ProfileError,
+    _open_windows_profile,
+    _windows_io,
+    digest,
+    install_profile,
+    private_read,
+    validate_profile,
+)
 from project_storage import _open_directory
 
 
@@ -85,6 +93,30 @@ def _bounded_file(root_fd, parts, limit, *, private=False):
         return raw
 
 
+def _bounded_file_windows(root_path, parts, limit, *, private=False):
+    io, is_private = _windows_io()
+    target = Path(os.path.abspath(root_path.joinpath(*parts)))
+    for component in target.relative_to(Path(target.anchor)).parts:
+        io._safe_basename(component)
+    try:
+        with io.locked_directory_chain(Path(target.anchor), target.parent):
+            fd = _open_windows_profile(target, io)
+            with os.fdopen(fd, "rb") as stream:
+                info = os.fstat(stream.fileno())
+                if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
+                    raise ControlError("inspection-file-budget")
+                if private and not is_private(target, confidential=False):
+                    raise ControlError("unsafe-profile-file")
+                raw = stream.read(limit + 1)
+                if len(raw) > limit:
+                    raise ControlError("inspection-file-budget")
+                return raw
+    except ControlError:
+        raise
+    except (OSError, ValueError, ProfileError) as error:
+        raise ControlError("inspection-unavailable") from error
+
+
 def _integer(value, low, high):
     if type(value) is not int or not low <= value <= high:
         raise ControlError("invalid-inspection-budget")
@@ -104,7 +136,125 @@ def inspect_workspace(project, request):
     if operation not in allowed or set(request) - allowed[operation]:
         raise ControlError("invalid-inspection")
     parts = _parts(request.get("path", "."))
-    root = _open_directory(Path(project).resolve(strict=True))
+    project_root = Path(project).resolve(strict=True)
+    if os.name == "nt":
+        io, _ = _windows_io()
+        result = {"authority": "read-only", "op": operation, "truncated": False}
+        try:
+            if operation == "read":
+                start = _integer(request.get("start", 1), 1, 100000)
+                count = _integer(request.get("lines", 200), 1, 1000)
+                raw = _bounded_file_windows(project_root, parts, 1024**2)
+                lines = raw.decode("utf-8").splitlines(keepends=True)
+                text = "".join(lines[start - 1 : start - 1 + count])
+                encoded = text.encode()
+                result.update(
+                    text=encoded[:10000].decode("utf-8", errors="ignore"),
+                    sha256=digest(raw),
+                    truncated=len(encoded) > 10000 or len(lines) >= start + count,
+                )
+                return result
+            query = request.get("query")
+            if operation == "search" and (
+                not isinstance(query, str) or not 1 <= len(query) <= 256
+            ):
+                raise ControlError("invalid-inspection-query")
+            pending = [parts]
+            entries = []
+            matches = []
+            visited = 0
+            read_bytes = 0
+            emitted = 0
+            deadline = time.monotonic() + 2
+            while pending:
+                if time.monotonic() > deadline or visited >= 10000 or emitted >= 60000:
+                    result["truncated"] = True
+                    break
+                current = pending.pop()
+                current_path = project_root.joinpath(*current)
+                anchor_dir = (
+                    current_path
+                    if current_path == project_root
+                    else current_path.parent
+                )
+                with io.locked_directory_chain(Path(project_root.anchor), anchor_dir):
+                    info = current_path.lstat()
+                    if io._is_reparse(info):
+                        raise ControlError("inspection-unavailable")
+                    if stat.S_ISDIR(info.st_mode):
+                        with os.scandir(current_path) as scan:
+                            for entry in scan:
+                                visited += 1
+                                if visited > 10000 or time.monotonic() > deadline:
+                                    result["truncated"] = True
+                                    pending.clear()
+                                    break
+                                candidate = (*current, entry.name)
+                                try:
+                                    _parts(str(Path(*candidate)))
+                                except ControlError:
+                                    continue
+                                try:
+                                    entry_info = entry.stat(follow_symlinks=False)
+                                except OSError:
+                                    continue
+                                if entry.is_symlink() or io._is_reparse(entry_info):
+                                    continue
+                                if operation == "list":
+                                    emitted += len(json.dumps(entry.name).encode()) + 8
+                                    if len(entries) >= 1000 or emitted > 60000:
+                                        result["truncated"] = True
+                                        break
+                                    entries.append(entry.name)
+                                elif entry.name not in {
+                                    "node_modules",
+                                    ".venv",
+                                    "vendor",
+                                }:
+                                    pending.append(candidate)
+                                    if len(pending) >= 10000:
+                                        result["truncated"] = True
+                                        break
+                    elif stat.S_ISREG(info.st_mode) and operation == "search":
+                        if (
+                            info.st_size > 256 * 1024
+                            or read_bytes + info.st_size > 1024**2
+                        ):
+                            result["truncated"] = True
+                            continue
+                        raw = _bounded_file_windows(project_root, current, 256 * 1024)
+                        read_bytes += len(raw)
+                        if b"\0" in raw:
+                            continue
+                        for number, line in enumerate(
+                            raw.decode("utf-8", errors="replace").splitlines(), 1
+                        ):
+                            if query in line:
+                                item = {
+                                    "path": str(Path(*current)),
+                                    "line": number,
+                                    "text": line[:1000],
+                                }
+                                emitted += len(json.dumps(item).encode())
+                                if len(matches) >= 100 or emitted > 60000:
+                                    result["truncated"] = True
+                                    pending.clear()
+                                    break
+                                matches.append(item)
+                if operation == "list":
+                    break
+            result.update(
+                entries=sorted(entries)
+            ) if operation == "list" else result.update(
+                matches=sorted(matches, key=lambda x: (x["path"], x["line"]))
+            )
+            return result
+        except ControlError:
+            raise
+        except (OSError, UnicodeError, ValueError, ProfileError) as error:
+            raise ControlError("inspection-unavailable") from error
+
+    root = _open_directory(project_root)
     result = {"authority": "read-only", "op": operation, "truncated": False}
     try:
         if operation == "read":
@@ -226,11 +376,14 @@ def register_profile(home, project, filename, expected):
         raise ControlError("project-recipe-required")
     if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
         raise ControlError("invalid-profile-sha256")
-    root = _open_directory(project)
-    try:
-        raw = _bounded_file(root, parts, 16384, private=True)
-    finally:
-        os.close(root)
+    if os.name == "nt":
+        raw = _bounded_file_windows(project, parts, 16384, private=True)
+    else:
+        root = _open_directory(project)
+        try:
+            raw = _bounded_file(root, parts, 16384, private=True)
+        finally:
+            os.close(root)
     if digest(raw) != expected:
         raise ControlError("reviewed-profile-drift")
     value = json.loads(raw)
@@ -261,6 +414,25 @@ def register_profile(home, project, filename, expected):
 
 
 def _strict_process_census():
+    if os.name == "nt":
+        try:
+            from host_job_runner import process_table
+
+            table = process_table()
+        except Exception as error:
+            return {"complete": False, "error": type(error).__name__, "rows": {}}
+        if not table:
+            return {"complete": False, "error": "empty-process-table", "rows": {}}
+        rows = {
+            pid: {
+                "ppid": ppid,
+                "pgid": pgid,
+                "stat": "R",
+                "birth": digest(f"{pid}:{birth}".encode()),
+            }
+            for pid, (ppid, pgid, birth) in table.items()
+        }
+        return {"complete": True, "rows": rows}
     try:
         proc = subprocess.run(
             ["/bin/ps", "-ax", "-o", "pid=,ppid=,pgid=,stat=,lstart="],

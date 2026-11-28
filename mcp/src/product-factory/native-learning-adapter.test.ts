@@ -314,7 +314,7 @@ describe('native-learning-adapter', () => {
       const source = existsSync(local) ? local : join(framework, 'node_modules', name);
       const destination = join(installation, 'node_modules', name);
       mkdirSync(dirname(destination), { recursive: true });
-      symlinkSync(source, destination, 'dir');
+      symlinkSync(source, destination, process.platform === 'win32' ? 'junction' : 'dir');
     }
     execFileSync(
       'bash',
@@ -322,9 +322,9 @@ describe('native-learning-adapter', () => {
         '-c',
         'source "$1"; FORGEWRIGHT_DIR="$2"; CANONICAL_STAGE_DIR="$3"; stage_runtime_support',
         'stage-support',
-        join(framework, 'scripts/mcp/forgewright-mcp-setup.sh'),
-        framework,
-        installation,
+        join(framework, 'scripts/mcp/forgewright-mcp-setup.sh').replaceAll('\\', '/'),
+        framework.replaceAll('\\', '/'),
+        installation.replaceAll('\\', '/'),
       ],
       { cwd: installation },
     );
@@ -560,7 +560,11 @@ describe('native-learning-adapter', () => {
       writeNativeTaskDescriptor(root, { ...desc, contractPath: '../outside.json' }),
     ).toThrow();
     const outside = tempDir();
-    symlinkSync(outside, join(root, '.forgewright'));
+    symlinkSync(
+      outside,
+      join(root, '.forgewright'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     expect(() => writeNativeTaskDescriptor(root, desc)).toThrow();
     expect(existsSync(join(outside, 'runtime/native-task-context.json'))).toBe(false);
   });

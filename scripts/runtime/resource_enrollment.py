@@ -7,7 +7,11 @@ job receipt. Keyless local records cannot authenticate a hostile same-user write
 
 from contextlib import contextmanager
 import argparse
-import fcntl
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import json
 import os
 from pathlib import Path
@@ -19,6 +23,9 @@ import tomllib
 import uuid
 import ctypes
 import stat
+
+if os.name == "nt":
+    import msvcrt
 
 from host_job_profiles import private_dir, private_read, load_profile, digest
 
@@ -37,6 +44,10 @@ def _exchange(parent, first, second):
     Darwin ABI/RENAME_SWAP=2 verified in the installed Xcode SDK sys/stdio.h.
     Linux uses libc renameat2(RENAME_EXCHANGE=2); absence fails closed.
     """
+    if os.name == "nt":
+        from windows_project_storage import exchange_files
+
+        return exchange_files(parent, first, second)
     library = ctypes.CDLL(None, use_errno=True)
     name = "renameatx_np" if sys.platform == "darwin" else "renameat2"
     function = getattr(library, name, None)
@@ -56,6 +67,10 @@ def _exchange(parent, first, second):
 
 
 def _config_at(parent, name):
+    if os.name == "nt":
+        from windows_project_storage import private_metadata
+
+        return private_metadata(Path(parent) / name, 1024**2, identity=True)
     descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
     with os.fdopen(descriptor, "rb") as stream:
         info = os.fstat(stream.fileno())
@@ -73,6 +88,8 @@ def publish_config(config, raw, expected_before, *, prepared=None):
     from project_storage import _open_directory
 
     config = Path(config).absolute()
+    if os.name == "nt":
+        return _publish_config_windows(config, raw, expected_before, prepared=prepared)
     parent = _open_directory(config.parent)
     name = ".fw-resource-preserved-" + uuid.uuid4().hex + ".toml"
     try:
@@ -117,6 +134,43 @@ def publish_config(config, raw, expected_before, *, prepared=None):
         os.close(parent)
 
 
+def _publish_config_windows(config, raw, expected_before, *, prepared):
+    from windows_project_storage import (
+        atomic_private as native_write,
+        publication_parent,
+    )
+    from windows_project_storage import sync_directory
+
+    name = ".fw-resource-preserved-" + uuid.uuid4().hex + ".toml"
+    with publication_parent(config.parent):
+        native_write(config.parent / name, raw)
+        candidate, identity = _config_at(config.parent, name)
+        if candidate != raw:
+            raise EnrollmentError("candidate-config-drift")
+        publication = {
+            "preserved_path": str(config.parent / name),
+            "expected_before_sha256": expected_before,
+            "desired_sha256": digest(raw),
+            "candidate_identity": list(identity),
+        }
+        if prepared is not None:
+            prepared(publication)
+        current, _ = _config_at(config.parent, config.name)
+        if digest(current) != expected_before:
+            raise EnrollmentError("config-drift")
+        _exchange(config.parent, name, config.name)
+        captured, _ = _config_at(config.parent, name)
+        current, current_identity = _config_at(config.parent, config.name)
+        if (
+            digest(captured) != expected_before
+            or current_identity != identity
+            or digest(current) != digest(raw)
+        ):
+            raise EnrollmentError("config-drift-preserved")
+        sync_directory(config.parent)
+        return publication
+
+
 def code_binding():
     names = ["scripts/hooks/resource_admission.py"] + [
         "scripts/runtime/" + name + ".py"
@@ -128,6 +182,10 @@ def code_binding():
             "host_job_profiles",
             "host_job_runner",
             "project_storage",
+            "windows_project_storage",
+            "windows_security",
+            "windows_job_client",
+            "windows_processes",
             "runtime_registry",
             "artifact_pins",
             "native_job_requests",
@@ -136,6 +194,7 @@ def code_binding():
             "host_inventory",
             "host_job_history",
             "host_resources",
+            "windows_memory",
             "host_admission",
             "host_admission_store",
             "host_scheduler",
@@ -160,6 +219,7 @@ def code_binding():
             "verify_gate",
             "pytest_receipts",
             "windows_secure_io",
+            "windows_job_supervisor",
         )
     ]
     return digest(
@@ -172,11 +232,15 @@ def code_binding():
 def atomic_private(path, raw, *, private_parent=True):
     if private_parent:
         private_dir(path.parent)
-    elif (
-        any(p.is_symlink() for p in [path, *path.parents])
-        or path.parent.stat().st_uid != os.getuid()
+    elif any(p.is_symlink() for p in [path, *path.parents]) or (
+        hasattr(os, "getuid") and path.parent.stat().st_uid != os.getuid()
     ):
         raise EnrollmentError("unsafe-config")
+    if os.name == "nt":
+        from windows_project_storage import atomic_private as native_write
+
+        native_write(path, raw)
+        return
     temp = path.parent / (path.name + "." + uuid.uuid4().hex + ".tmp")
     fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:
@@ -199,16 +263,35 @@ def atomic_private(path, raw, *, private_parent=True):
 @contextmanager
 def locked(home):
     private_dir(home)
-    fd = os.open(
-        home / "enrollment.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
-    )
+    if os.name == "nt":
+        from windows_project_storage import private_lock_file
+
+        fd = private_lock_file(home / "enrollment.lock")
+    else:
+        fd = os.open(
+            home / "enrollment.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
+        )
+    locked_win = False
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # Only acquisition errors mean busy; a failed durable write in the
+        # caller must propagate unchanged and cannot be mistaken for contention.
+        try:
+            if fcntl is not None:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            else:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                locked_win = True
+        except OSError as error:
+            raise EnrollmentError("enrollment-busy") from error
         yield
-    except BlockingIOError as error:
-        raise EnrollmentError("enrollment-busy") from error
     finally:
-        os.close(fd)
+        try:
+            if locked_win:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        finally:
+            os.close(fd)
 
 
 def registry(home):
@@ -239,6 +322,16 @@ def publication_verified(config, publication):
         r"\.fw-resource-preserved-[0-9a-f]{32}\.toml", captured.name
     ):
         return False
+    if os.name == "nt":
+        from windows_project_storage import pinned
+
+        with pinned(config.parent):
+            current, _ = _config_at(config.parent, config.name)
+            predecessor, _ = _config_at(config.parent, captured.name)
+            return (
+                digest(current) == publication["desired_sha256"]
+                and digest(predecessor) == publication["expected_before_sha256"]
+            )
     parent = _open_directory(config.parent)
     try:
         current, _ = _config_at(parent, config.name)
@@ -254,24 +347,44 @@ def publication_verified(config, publication):
 def operator_state(home):
     """Read only the private owner control, independently of enrollment health."""
     path = home / "operator-disable.json"
-    if not path.exists():
-        return {"schema": "forgewright-resource-operator-disable/v1", "projects": []}
-    if any(p.is_symlink() for p in (path, *path.parents)):
-        raise ValueError("unsafe-operator-disable")
-    parent = home.stat()
-    if parent.st_uid != os.getuid() or parent.st_mode & 0o077:
-        raise ValueError("unsafe-operator-disable")
-    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    with os.fdopen(descriptor, "rb") as stream:
-        info = os.fstat(stream.fileno())
-        if (
-            not stat.S_ISREG(info.st_mode)
-            or info.st_uid != os.getuid()
-            or info.st_mode & 0o022
-            or info.st_size > 16384
-        ):
+    if os.name == "nt":
+        from windows_project_storage import private_metadata, pinned
+        from windows_security import is_private_path
+
+        with pinned(home):
+            if not is_private_path(home, confidential=True):
+                raise ValueError("unsafe-operator-disable")
+            try:
+                raw = private_metadata(path, 16384)
+            except FileNotFoundError:
+                return {
+                    "schema": "forgewright-resource-operator-disable/v1",
+                    "projects": [],
+                }
+            value = json.loads(raw)
+    else:
+        if not path.exists():
+            return {
+                "schema": "forgewright-resource-operator-disable/v1",
+                "projects": [],
+            }
+        if any(p.is_symlink() for p in (path, *path.parents)):
             raise ValueError("unsafe-operator-disable")
-        value = json.load(stream)
+        parent = home.stat()
+        if parent.st_uid != os.getuid() or parent.st_mode & 0o077:
+            raise ValueError("unsafe-operator-disable")
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(descriptor, "rb") as stream:
+            info = os.fstat(stream.fileno())
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.getuid()
+                or info.st_mode & 0o022
+                or info.st_nlink != 1
+                or info.st_size > 16384
+            ):
+                raise ValueError("unsafe-operator-disable")
+            value = json.load(stream)
     if (
         value.get("schema") != "forgewright-resource-operator-disable/v1"
         or not isinstance(value.get("projects"), list)
@@ -505,11 +618,14 @@ def validate_binding(value, config=None):
     path = Path(config or value["config"])
     if value.get("phase") not in {"canary", "enforce"}:
         raise EnrollmentError("enrollment-publication-incomplete")
-    parent = _open_directory(path.parent)
-    try:
-        raw, _ = _config_at(parent, path.name)
-    finally:
-        os.close(parent)
+    if os.name == "nt":
+        raw, _ = _config_at(path.parent, path.name)
+    else:
+        parent = _open_directory(path.parent)
+        try:
+            raw, _ = _config_at(parent, path.name)
+        finally:
+            os.close(parent)
     if digest(raw) != value["config_sha256"]:
         raise EnrollmentError("config-drift")
     if value.get("restage"):
@@ -731,7 +847,10 @@ def verify_failed_safe_closure(
     intent_path = home / "reconciliations" / f"{job_id}.intent.json"
     heavy_step_path = home / "reconciliations" / f"{job_id}.step-heavy.json"
     worker_step_path = home / "reconciliations" / f"{job_id}.step-worker.json"
-    if not all(p.exists() for p in (closure_path, intent_path, heavy_step_path, worker_step_path)):
+    if not all(
+        p.exists()
+        for p in (closure_path, intent_path, heavy_step_path, worker_step_path)
+    ):
         return False
     try:
         closure = json.loads(private_read(closure_path, 65536))
@@ -749,7 +868,9 @@ def verify_failed_safe_closure(
             )
         storage_meta = receipt.get("storage") or {}
         storage_path_str = closure.get("preserve_storage_path")
-        if not isinstance(storage_path_str, str) or storage_path_str != storage_meta.get("path"):
+        if not isinstance(
+            storage_path_str, str
+        ) or storage_path_str != storage_meta.get("path"):
             return False
         storage_path = Path(storage_path_str)
         storage_info = storage_path.lstat()
@@ -757,7 +878,9 @@ def verify_failed_safe_closure(
         if not isinstance(plan_path_str, str):
             return False
         plan_path = Path(plan_path_str)
-        if not plan_path.is_absolute() or not plan_path.resolve(strict=False).is_relative_to(project):
+        if not plan_path.is_absolute() or not plan_path.resolve(
+            strict=False
+        ).is_relative_to(project):
             return False
         raw_plan = private_read(plan_path, 65536)
         if digest(raw_plan) != closure.get("plan_sha256"):
@@ -798,7 +921,8 @@ def verify_failed_safe_closure(
         or plan_obj.get("owner_pid") != receipt.get("owner_pid")
         or plan_obj.get("owner_identity") != receipt.get("owner_identity")
         or plan_obj.get("child_pid") != (receipt.get("child") or {}).get("pid")
-        or plan_obj.get("child_identity") != (receipt.get("child") or {}).get("identity")
+        or plan_obj.get("child_identity")
+        != (receipt.get("child") or {}).get("identity")
         or plan_obj.get("preserve_storage_path") != storage_path_str
         or closure.get("original_failure_preserved") is not True
         or closure.get("storage_untouched") is not True
@@ -850,11 +974,16 @@ def verify_failed_safe_closure(
         drain_sha = closure.get("drain_evidence_sha256")
         if not isinstance(drain_path_str, str) or not isinstance(drain_sha, str):
             return False
-        if "drain_evidence_sha256" in plan_obj and plan_obj["drain_evidence_sha256"] != drain_sha:
+        if (
+            "drain_evidence_sha256" in plan_obj
+            and plan_obj["drain_evidence_sha256"] != drain_sha
+        ):
             return False
         try:
             drain_path = Path(drain_path_str)
-            if not drain_path.is_absolute() or not drain_path.resolve(strict=False).is_relative_to(project):
+            if not drain_path.is_absolute() or not drain_path.resolve(
+                strict=False
+            ).is_relative_to(project):
                 return False
             raw_drain = private_read(drain_path, 65536)
             if digest(raw_drain) != drain_sha:
@@ -864,17 +993,22 @@ def verify_failed_safe_closure(
             return False
         if (
             not isinstance(drain_obj, dict)
-            or drain_obj.get("schema") != "forgewright-operator-escape-drain-evidence/v1"
+            or drain_obj.get("schema")
+            != "forgewright-operator-escape-drain-evidence/v1"
             or drain_obj.get("job_id") != job_id
             or drain_obj.get("journal_sha256") != journal_sha256
             or drain_obj.get("decision") != "drained_verified_by_operator_and_reviewer"
-            or not re.fullmatch(r"[0-9a-f]{64}", str(drain_obj.get("reviewer_sha256", "")))
+            or not re.fullmatch(
+                r"[0-9a-f]{64}", str(drain_obj.get("reviewer_sha256", ""))
+            )
         ):
             return False
     expected_ids = {lease.get("id") for lease in receipt.get("leases", [])}
-    if len(expected_ids) != 2 or {
-        item.get("id") for item in closure["leases"] if isinstance(item, dict)
-    } != expected_ids:
+    if (
+        len(expected_ids) != 2
+        or {item.get("id") for item in closure["leases"] if isinstance(item, dict)}
+        != expected_ids
+    ):
         return False
     if any(item.get("state") != "released" for item in closure["leases"]):
         return False
@@ -899,7 +1033,9 @@ def verify_failed_safe_closure(
         plan_leases = plan_obj.get("leases")
         if not isinstance(plan_leases, list) or len(plan_leases) != 2:
             return False
-        plan_by_kind = {item.get("kind"): item for item in plan_leases if isinstance(item, dict)}
+        plan_by_kind = {
+            item.get("kind"): item for item in plan_leases if isinstance(item, dict)
+        }
         if set(plan_by_kind) != {"worker", "heavy"}:
             return False
         for k, row_data in (("heavy", heavy), ("worker", worker)):
@@ -918,11 +1054,16 @@ def verify_failed_safe_closure(
                 "reason": "reconciled",
                 "memoryMiB": row_data["memory_bytes"] // (1024 * 1024),
                 "parentLeaseId": row_data["parent_id"],
-                "waitMs": max(0, round((row_data["granted"] - row_data["created"]) * 1000)),
+                "waitMs": max(
+                    0, round((row_data["granted"] - row_data["created"]) * 1000)
+                ),
             }
             step_doc = heavy_step if k == "heavy" else worker_step
             closure_idx = 0 if k == "heavy" else 1
-            if step_doc.get("lease") != expected_payload or closure["leases"][closure_idx] != expected_payload:
+            if (
+                step_doc.get("lease") != expected_payload
+                or closure["leases"][closure_idx] != expected_payload
+            ):
                 return False
         return (
             worker["state"] == "released"
@@ -1383,7 +1524,11 @@ def deactivate_preserving_edits(home, project, config):
         disabled_block = expected_block.replace(
             b'matcher = "Bash"', b'matcher = "^$"', 1
         )
-        if actual_block not in (expected_block, disabled_block):
+        normalized_actual = actual_block.replace(b"\r\n", b"\n")
+        if normalized_actual not in (
+            expected_block.replace(b"\r\n", b"\n"),
+            disabled_block.replace(b"\r\n", b"\n"),
+        ):
             raise EnrollmentError("owned-hook-block-drift")
         parsed = tomllib.loads(current.decode())
         group = tomllib.loads(actual_block.decode())["hooks"]["PreToolUse"][0]

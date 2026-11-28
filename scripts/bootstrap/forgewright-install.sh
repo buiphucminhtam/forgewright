@@ -686,13 +686,13 @@ install_hooks() {
     local context_workspace="${FORGEWRIGHT_DIR}"
     local gate_runtime_file
     for gate_runtime_file in stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py \
-        gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh antigravity-stop-hook.sh verify-gate.sh verify_gate.py \
+        gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh antigravity-stop-hook.sh policy_gate.py verify-gate.sh verify_gate.py \
         run-check.sh run_check.py rule-validator.py rule-ledger.sh policy-check.sh ensure-project-policy.sh telemetry.sh; do
         atomic_copy_file "${source_dir}/scripts/lite/${gate_runtime_file}" "${gate_runtime_dir}/${gate_runtime_file}"
     done
     chmod +x "$gate_runtime_dir/stop-gate.sh" "$gate_runtime_dir/gemini-before-tool-gate.sh" \
         "$gate_runtime_dir/antigravity-pre-tool-gate.sh" "$gate_runtime_dir/antigravity-stop-hook.sh" \
-        "$gate_runtime_dir/verify-gate.sh" "$gate_runtime_dir/rule-validator.py" \
+        "$gate_runtime_dir/policy_gate.py" "$gate_runtime_dir/verify-gate.sh" "$gate_runtime_dir/rule-validator.py" \
         "$gate_runtime_dir/run-check.sh" "$gate_runtime_dir/run_check.py" \
         "$gate_runtime_dir/rule-ledger.sh" "$gate_runtime_dir/policy-check.sh" \
         "$gate_runtime_dir/ensure-project-policy.sh" "$gate_runtime_dir/telemetry.sh"
@@ -817,11 +817,19 @@ cfg.hooks.Stop = Stop;
     if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
     var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:(?:\s+'[^']*'){2})?\s+\|\|\s*true\s*$/);
     if (!match) return false;
-    var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
-    var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
-    return path.resolve(normalized) === path.join(framework, 'rule-context-hook.py') ||
-      path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py') ||
-      path.resolve(normalized) === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
+    var normWin = function(p) {
+      var posix = path.posix.normalize(String(p || '').replace(/\\/g, '/'));
+      if (process.platform === 'win32') {
+        var m = posix.match(/^\/([A-Za-z])(?:\/(.*))?$/);
+        if (m) posix = m[1].toUpperCase() + ':/' + (m[2] || '');
+      }
+      return path.resolve(posix);
+    };
+    var normalized = normWin(match[1]);
+    var framework = normWin(process.env.FORGEWRIGHT_DIR);
+    return normalized === path.join(framework, 'rule-context-hook.py') ||
+      normalized === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+      normalized === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
   }
   groups = groups.map(function(g) {
     if (!Array.isArray(g.hooks)) return g;
@@ -929,11 +937,19 @@ function ownedContext(commandValue) {
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
   var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:(?:\s+'[^']*'){2})?\s+\|\|\s*true\s*$/);
   if (!match) return false;
-  var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
-  var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
-  return path.resolve(normalized) === path.join(framework, 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
+  var normWin = function(p) {
+    var posix = path.posix.normalize(String(p || '').replace(/\\/g, '/'));
+    if (process.platform === 'win32') {
+      var m = posix.match(/^\/([A-Za-z])(?:\/(.*))?$/);
+      if (m) posix = m[1].toUpperCase() + ':/' + (m[2] || '');
+    }
+    return path.resolve(posix);
+  };
+  var normalized = normWin(match[1]);
+  var framework = normWin(process.env.FORGEWRIGHT_DIR);
+  return normalized === path.join(framework, 'rule-context-hook.py') ||
+    normalized === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+    normalized === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
 }
 groups = groups.map(function(g) {
   if (!Array.isArray(g.hooks)) return g;
@@ -985,11 +1001,19 @@ function ownedContext(commandValue) {
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
   var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:(?:\s+'[^']*'){2})?\s+\|\|\s*true\s*$/);
   if (!match) return false;
-  var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
-  var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
-  return path.resolve(normalized) === path.join(framework, 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
+  var normWin = function(p) {
+    var posix = path.posix.normalize(String(p || '').replace(/\\/g, '/'));
+    if (process.platform === 'win32') {
+      var m = posix.match(/^\/([A-Za-z])(?:\/(.*))?$/);
+      if (m) posix = m[1].toUpperCase() + ':/' + (m[2] || '');
+    }
+    return path.resolve(posix);
+  };
+  var normalized = normWin(match[1]);
+  var framework = normWin(process.env.FORGEWRIGHT_DIR);
+  return normalized === path.join(framework, 'rule-context-hook.py') ||
+    normalized === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+    normalized === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
 }
 var policy = cfg['forgewright-policy'];
 if (!policy || Array.isArray(policy) || typeof policy !== 'object') policy = {};
@@ -1094,11 +1118,19 @@ function ownedContext(commandValue) {
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
   var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:(?:\s+'[^']*'){2})?\s+\|\|\s*true\s*$/);
   if (!match) return false;
-  var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
-  var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
-  return path.resolve(normalized) === path.join(framework, 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'rule-context-hook.py') ||
-    path.resolve(normalized) === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
+  var normWin = function(p) {
+    var posix = path.posix.normalize(String(p || '').replace(/\\/g, '/'));
+    if (process.platform === 'win32') {
+      var m = posix.match(/^\/([A-Za-z])(?:\/(.*))?$/);
+      if (m) posix = m[1].toUpperCase() + ':/' + (m[2] || '');
+    }
+    return path.resolve(posix);
+  };
+  var normalized = normWin(match[1]);
+  var framework = normWin(process.env.FORGEWRIGHT_DIR);
+  return normalized === path.join(framework, 'rule-context-hook.py') ||
+    normalized === path.join(framework, 'scripts', 'rule-context-hook.py') ||
+    normalized === path.join(framework, 'scripts', 'lite', 'rule-context-hook.py');
 }
 sessions = sessions.filter(function(h) {
   if (!h || !ownedContext(h.command)) return true;

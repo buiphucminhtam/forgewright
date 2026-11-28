@@ -90,12 +90,24 @@ subagents:
       explorer: { model: "gpt-6.1-terra", reasoning_effort: "low" }
       worker: { model: "gpt-6.2-sol", reasoning_effort: "medium" }
   claude:
-    # Claude Code Agent tool: tier -> plugin agent (model pinned in agents/*.md
-    # frontmatter) plus a model alias that is passed only when the active
-    # Agent tool schema advertises it; otherwise the parent model is inherited.
+    # Claude Code Agent tool: tier -> plugin agent (model and effort pinned in
+    # agents/*.md frontmatter) plus a model alias and an effort level that are
+    # passed only when the active Agent tool schema advertises them; otherwise
+    # the agent's frontmatter applies, or a generic agent inherits the parent.
+    # Efforts match the Codex tiers.
     tiers:
-      scout: { agent: "forgewright-scout", model: "haiku" }
-      builder: { agent: "forgewright-builder", model: "sonnet" }
-      expert: { agent: "forgewright-expert", model: "opus" }
-      planner: { agent: "forgewright-planner", model: "fable" }
-      reviewer: { agent: "forgewright-reviewer", model: "fable" }
+      scout: { agent: "forgewright-scout", model: "haiku", effort: "low" }
+      builder: { agent: "forgewright-builder", model: "sonnet", effort: "medium" }
+      expert: { agent: "forgewright-expert", model: "opus", effort: "high" }
+      planner: { agent: "forgewright-planner", model: "fable", effort: "high" }
+      reviewer: { agent: "forgewright-reviewer", model: "fable", effort: "high" }
+  antigravity:
+    # Antigravity (agy CLI / IDE): preferences applied only when advertised by
+    # the active session or `agy models` probe.
+    orchestrator: "gemini-pro-orchestrator-neon"
+    tiers:
+      scout: { model: "gemini-3.8-flash-low", subagent_model: "flash_lite", browser_model: "flash" }
+      builder: { model: "gemini-4-neon-medium", subagent_model: "inherit" }
+      expert: { model: "gemini-4-neon-high", subagent_model: "pro" }
+      planner: { model: "gemini-4-neon-high", subagent_model: "pro" }
+      reviewer: { model: "gemini-4-neon-high", subagent_model: "pro" }

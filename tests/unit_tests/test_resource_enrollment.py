@@ -317,7 +317,9 @@ def test_native_pre_spawn_failure_keeps_terminal_rollback_proof(
 
         monkeypatch.setattr(native_job_requests, "claim", claim_then_cancel)
     elif failure == "cancel-before-enqueue":
-        monkeypatch.setattr(runner, "reject_nested", lambda *_: cancel.set())
+        monkeypatch.setattr(
+            runner, "reject_nested", lambda *args, **kwargs: cancel.set()
+        )
     else:
 
         def reject(*args, **kwargs):
@@ -595,10 +597,11 @@ def test_trust_reconciliation_accepts_only_owned_hook_bookkeeping(tmp_path):
         + "a" * 64
         + '"\n'
     )
-    config.write_text(trusted)
+    trusted_bytes = trusted.encode("utf-8")
+    config.write_bytes(trusted_bytes)
     reconciled = module.reconcile_trust(home, project, config)
     assert reconciled["enforcement_verified"] is False and reconciled["events"] == []
-    assert reconciled["config_sha256"] == module.digest(trusted.encode())
+    assert reconciled["config_sha256"] == module.digest(trusted_bytes)
     module.validate_binding(reconciled)
     assert reconciled["trust_reconciliation"]["changed_field"] == key
     config.write_text(

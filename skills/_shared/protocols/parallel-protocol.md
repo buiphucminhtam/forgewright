@@ -236,6 +236,28 @@ This protocol is automatically used when:
 
 See `skills/parallel-dispatch/SKILL.md` for full implementation.
 
+## Cross-Platform Native Team Graph & Bounded Loops (Antigravity · Claude Code · OpenAI Codex)
+
+When orchestrating multi-agent teams natively across supported hosts or external workflow graphs:
+
+| Primitive | Antigravity (`agy`) | Claude Code (`Agent`) | OpenAI Codex (`spawn_agent`) |
+|---|---|---|---|
+| **Lead / Planner** | `planner` (`gemini-4-neon-high` / Orchestrator) | `forgewright-planner` (`fable`, `high`, read-only) | `gpt-6.2-astra` (`high`, `PLAN_LOCKED`) |
+| **Parallel fan-out** | `/swarm` (`workspace: "share"` for writers, `inherit` for readers) or `invoke_subagent` | Parallel `Agent` calls (`forgewright-builder` with `isolation: "worktree"`, `forgewright-scout` read-only) | Parallel `spawn_agent` (`codex-subagent-routing.py`, disjoint scope paths or worktrees) |
+| **Checker / Review** | `reviewer` (`gemini-4-neon-high`) | `forgewright-reviewer` (`fable`, `high`, read-only) | `gpt-6.2-astra` (`high`, independent review) |
+| **Weekly review loop** | `/schedule` / `automation` (human-gated) | `/loop` or local scheduler reading `.forgewright/rule-ledger.jsonl` | Local OS scheduler / manual ledger review |
+
+1. **Graph Contract & Human Approval Gate**:
+   - Model the workflow explicitly with nodes (agents, tools, and a mandatory **Human Approval** gate before irreversible/external actions) and labeled handoff edges carrying concrete artifacts.
+   - Run independent branches in parallel (using the host's isolated fan-out primitive from the table above), then join at the Lead/Checker.
+   - Present the topology clearly as a short-node Mermaid `flowchart` (no quotes or brackets inside labels) plus a plain-arrow text summary for fast review.
+2. **Quality Checker Loop (Max 2 Rounds)**:
+   - A dedicated Checker validates every deliverable against the agent's 3–5 `DONE WELL` checks.
+   - On failure, the Checker routes exact, actionable fixes back to the responsible agent. Cap retries at **2 rounds** (aligned with `kernel/SOLVE.md` Stuck Rule); if checks still fail, surface the remaining failures to the user instead of looping.
+3. **Weekly Human-Gated Improvement Loop**:
+   - Optional scheduled automation reads `.forgewright/rule-ledger.jsonl` and run logs against one explicit outcome metric, identifies the single weakest agent or rule, and proposes **ONE** bounded prompt/rule change.
+   - Honor `self-improving-loop.md`: never auto-mutate shared skills, `agents/*.md`, or rules; apply any change only after explicit user approval.
+
 ## History
 
 - v1.0 — Initial protocol (inspired by CCGS parallel task protocol)

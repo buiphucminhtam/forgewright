@@ -18,6 +18,7 @@ import os
 import re
 import stat
 import threading
+from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -829,18 +830,24 @@ def _validate_policy_event(policy: CollaborationPolicy, event: PeerEvent) -> Non
         raise PolicyError("peer may not publish a control-plane event")
 
 
+def _is_redirect(info: os.stat_result) -> bool:
+    return stat.S_ISLNK(info.st_mode) or bool(
+        getattr(info, "st_file_attributes", 0) & 0x400  # FILE_ATTRIBUTE_REPARSE_POINT
+    )
+
+
 def _assert_no_symlink_components(path: Path) -> None:
     absolute = Path(os.path.abspath(path))
     current = Path(absolute.anchor)
     for part in absolute.parts[1:]:
         current /= part
         try:
-            mode = os.lstat(current).st_mode
+            info = os.lstat(current)
         except FileNotFoundError:
             continue
         except OSError as exc:
             raise EventLogError(f"cannot inspect collaboration path: {exc}") from exc
-        if stat.S_ISLNK(mode):
+        if _is_redirect(info):
             raise EventLogError(f"collaboration path contains a symlink: {current}")
 
 
@@ -849,38 +856,151 @@ def _canonicalize_collaboration_root(path: Path) -> Path:
 
     absolute = Path(os.path.abspath(path))
     try:
-        mode = os.lstat(absolute).st_mode
+        info = os.lstat(absolute)
     except FileNotFoundError:
-        mode = None
+        info = None
     except OSError as exc:
         raise EventLogError(f"cannot inspect collaboration root: {exc}") from exc
-    if mode is not None and stat.S_ISLNK(mode):
+    if info is not None and _is_redirect(info):
         raise EventLogError(f"collaboration root is a symlink: {absolute}")
-    return Path(os.path.realpath(absolute))
+    # Resolve only the permitted ancestor aliases. Resolving the leaf would
+    # silently adopt a root junction substituted after the lstat above.
+    return Path(os.path.realpath(absolute.parent)) / absolute.name
 
 
 def _assert_regular_or_missing(path: Path, *, directory: bool = False) -> None:
     try:
-        mode = os.lstat(path).st_mode
+        info = os.lstat(path)
     except FileNotFoundError:
         return
     except OSError as exc:
         raise EventLogError(f"cannot inspect collaboration path: {exc}") from exc
-    if stat.S_ISLNK(mode):
+    if _is_redirect(info):
         raise EventLogError(f"collaboration path is a symlink: {path}")
-    if directory and not stat.S_ISDIR(mode):
+    if directory and not stat.S_ISDIR(info.st_mode):
         raise EventLogError(f"collaboration path must be a directory: {path}")
-    if not directory and not stat.S_ISREG(mode):
-        raise EventLogError(f"event log must be a regular file: {path}")
+    if not directory and (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1):
+        raise EventLogError(f"event log must be a single-link regular file: {path}")
+
+
+def _windows_io():
+    try:
+        from scripts.lite import windows_secure_io
+    except ImportError:
+        from lite import windows_secure_io
+    return windows_secure_io
+
+
+def _prepare_windows_layout(path: Path) -> None:
+    """Create each missing directory while its already-checked parent is pinned."""
+    io = _windows_io()
+    parent = Path(os.path.abspath(path.parent))
+    current = Path(parent.anchor)
+    try:
+        with ExitStack() as pins:
+            pins.enter_context(io.locked_directory_chain(current, current))
+            for component in parent.parts[1:]:
+                io._safe_basename(component)
+                current /= component
+                _assert_regular_or_missing(current, directory=True)
+                try:
+                    current.mkdir()
+                except FileExistsError:
+                    pass
+                pins.enter_context(io.locked_directory_chain(current, current))
+            _assert_regular_or_missing(path)
+    except (OSError, ValueError) as exc:
+        raise EventLogError(
+            f"could not prepare collaboration layout safely: {exc}"
+        ) from exc
+
+
+def _open_windows_nofollow(path: Path, flags: int) -> int:
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    io = _windows_io()
+    path = Path(os.path.abspath(path))
+    if flags not in (os.O_RDONLY, os.O_APPEND | os.O_CREAT | os.O_WRONLY):
+        raise EventLogError("unsupported event log open flags")
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create.restype = wintypes.HANDLE
+    fd = None
+    try:
+        for component in path.parts[1:]:
+            io._safe_basename(component)
+        with io.locked_directory_chain(Path(path.anchor), path.parent):
+            # GENERIC_WRITE is needed for the caller's fsync. CRT O_APPEND
+            # preserves append behavior; no truncate disposition is used.
+            handle = create(
+                str(path),
+                0x40000000 if flags & os.O_WRONLY else 0x80000000,
+                1,
+                None,
+                4 if flags & os.O_CREAT else 3,
+                0x00200000 | 0x02000000,
+                None,
+            )
+            if handle == wintypes.HANDLE(-1).value:
+                raise ctypes.WinError(ctypes.get_last_error())
+            try:
+                fd = msvcrt.open_osfhandle(handle, flags | os.O_BINARY | os.O_NOINHERIT)
+            except BaseException:
+                io._close_windows_handle(handle)
+                raise
+            opened = os.fstat(fd)
+            named = path.lstat()
+            if _is_redirect(opened) or _is_redirect(named):
+                raise EventLogError(f"event log is a symlink or reparse point: {path}")
+            if any(
+                not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                for info in (opened, named)
+            ):
+                raise EventLogError(
+                    f"event log must be a single-link regular file: {path}"
+                )
+            if (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino):
+                raise EventLogError("event log changed while opening")
+        # FILE_SHARE_READ denies concurrent writes/deletion until fd is closed.
+        return fd
+    except BaseException as exc:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError as cleanup_error:
+                exc.add_note(f"event log descriptor cleanup failed: {cleanup_error}")
+        if isinstance(exc, (OSError, ValueError)):
+            raise EventLogError(f"could not open event log safely: {exc}") from exc
+        raise
 
 
 def _open_nofollow(path: Path, flags: int, mode: int = 0o600) -> int:
+    if os.name == "nt":
+        return _open_windows_nofollow(path, flags)
     nofollow = getattr(os, "O_NOFOLLOW", 0)
     try:
+        _assert_no_symlink_components(path)
         fd = os.open(path, flags | nofollow, mode)
-        if not stat.S_ISREG(os.fstat(fd).st_mode):
+        try:
+            opened = os.fstat(fd)
+            if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
+                raise EventLogError(
+                    f"event log must be a single-link regular file: {path}"
+                )
+        except BaseException:
             os.close(fd)
-            raise EventLogError(f"event log must be a regular file: {path}")
+            raise
         return fd
     except OSError as exc:
         raise EventLogError(f"could not open event log safely: {exc}") from exc
@@ -927,6 +1047,9 @@ class JsonlEventLog:
 
     def _prepare_layout(self) -> None:
         with self._lock:
+            if os.name == "nt":
+                _prepare_windows_layout(self.path)
+                return
             _assert_no_symlink_components(self.root)
             _assert_regular_or_missing(self.root, directory=True)
             self.root.mkdir(parents=True, exist_ok=True)

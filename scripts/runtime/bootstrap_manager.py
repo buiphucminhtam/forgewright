@@ -34,6 +34,8 @@ if str(_RUNTIME_DIR) not in sys.path:
     sys.path.insert(0, str(_RUNTIME_DIR))
 from host_admission import AdmissionError, HostAdmission  # noqa: E402
 from host_resources import inspect_process  # noqa: E402
+from runtime_registry import _check_process_alive  # noqa: E402
+from windows_job_client import WindowsJobClient, CompletionError  # noqa: E402
 from shared_runtime_adapter import (  # noqa: E402
     SharedRuntimeError,
     assert_runtime_quiescent,
@@ -64,6 +66,13 @@ MAX_OWNED_DIRECTORY_BYTES = 64 * 1024 * 1024
 BOOTSTRAP_WORKER_MIB = 128
 BOOTSTRAP_HEAVY_MIB = 128
 BOOTSTRAP_ADMISSION_WAIT_SECONDS = 60.0
+_PRIOR_UNBOUND = object()
+# Host admission outcomes that say "not now", never "something went wrong".
+# After a confirmed release and a complete rollback they leave no recovery
+# boundary, matching scripts/ci/verify-auto-bootstrap-runtime.py retryable().
+_RETRYABLE_ADMISSION_CODES = frozenset(
+    {"host_capacity_timeout", "host_admission_unavailable", "host_admission_closed"}
+)
 PROJECT_DIRS = (".gitnexus", ".forgenexus")
 DISABLED_SCHEMA = "forgewright-bootstrap-disabled/v1"
 _TRANSACTION: ContextVar[Any] = ContextVar("bootstrap_transaction", default=None)
@@ -133,6 +142,8 @@ def _safe_path(path: Path, *, directory: bool = False) -> None:
         is_dir = stat.S_ISDIR(info.st_mode)
         if (
             stat.S_ISLNK(info.st_mode)
+            or getattr(info, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
             or (part != path and not is_dir)
             or (part == path and directory and not is_dir)
             or (not is_dir and (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1))
@@ -335,12 +346,28 @@ def atomic_json(path: Path, value: dict[str, Any]) -> None:
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
     try:
-        os.fchmod(fd, 0o600)
         with os.fdopen(fd, "wb", closefd=True) as handle:
+            if os.name == "nt":
+                os.chmod(temp_name, 0o600)
+            else:
+                os.fchmod(handle.fileno(), 0o600)
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temp_name, path)
+        deadline = time.monotonic() + 0.5
+        while True:
+            _safe_existing_file(path)
+            try:
+                os.replace(temp_name, path)
+                break
+            except OSError as error:
+                if (
+                    os.name != "nt"
+                    or getattr(error, "winerror", None) not in {5, 32}
+                    or time.monotonic() >= deadline
+                ):
+                    raise
+                time.sleep(0.025)
         try:
             directory_fd = os.open(path.parent, os.O_RDONLY)
             try:
@@ -525,6 +552,21 @@ def _posix_process_group_gone(pid: int) -> bool:
 
 
 def _terminate_owned_process_tree(process: subprocess.Popen[str]) -> bool:
+    if os.name == "nt":
+        cancel = getattr(process, "_forgewright_job_cancel", None)
+        if cancel is None:
+            return False
+        try:
+            cancel.close()
+            process.wait(timeout=5)
+        except (OSError, subprocess.SubprocessError):
+            try:
+                process.kill()
+                process.wait(timeout=2)
+            except (OSError, subprocess.SubprocessError):
+                pass
+            return False
+        return _drain_owned_process_group(process)
     if os.name != "nt":
         # A reaped leader says nothing about descendants holding its pipes.
         settled = _drain_owned_process_group(process)
@@ -533,59 +575,19 @@ def _terminate_owned_process_tree(process: subprocess.Popen[str]) -> bool:
         except subprocess.TimeoutExpired:
             return False
         return settled or _posix_process_group_gone(process.pid)
-    if process.poll() is None:
-        try:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                    text=True,
-                    capture_output=True,
-                    timeout=5,
-                    check=False,
-                )
-            else:
-                os.killpg(process.pid, signal.SIGTERM)
-        except (ProcessLookupError, OSError, subprocess.SubprocessError):
-            try:
-                process.terminate()
-            except OSError:
-                pass
-    try:
-        process.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        try:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                    text=True,
-                    capture_output=True,
-                    timeout=5,
-                    check=False,
-                )
-            else:
-                os.killpg(process.pid, signal.SIGKILL)
-        except (ProcessLookupError, OSError, subprocess.SubprocessError):
-            try:
-                process.kill()
-            except OSError:
-                pass
-        try:
-            process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            pass
-    if os.name == "nt":
-        return process.poll() is not None
-    deadline = time.monotonic() + 2.0
-    while time.monotonic() < deadline:
-        if _posix_process_group_gone(process.pid):
-            return True
-        time.sleep(0.02)
-    return _posix_process_group_gone(process.pid)
 
 
 def _drain_owned_process_group(process: subprocess.Popen[str]) -> bool:
     if os.name == "nt":
-        return process.poll() is not None
+        code = process.poll()
+        client = getattr(process, "_forgewright_job_client", None)
+        if code is None or client is None:
+            return False
+        try:
+            client.validate(code)
+            return True
+        except CompletionError:
+            return False
     try:
         os.killpg(process.pid, 0)
     except ProcessLookupError:
@@ -645,23 +647,64 @@ def run(
                 "operation_timeout", "bootstrap operation deadline exceeded"
             )
     merged_env = {**os.environ, **(env or {})} if inherit_env else dict(env or {})
+    merged_env.update(PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     creationflags = (
         getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
     )
+    command = argv
+    job_client = None
+    if os.name == "nt":
+        supervisor = _RUNTIME_DIR.parent / "lite/windows_job_supervisor.py"
+        _safe_path(supervisor)
+        if not supervisor.is_file():
+            raise BootstrapError(
+                "adapter_supervisor_unavailable",
+                "trusted Windows supervisor is missing",
+                stage=stage,
+            )
+        if argv and argv[0].lower() in {"npm", "npx"}:
+            shim = shutil.which(argv[0], path=merged_env.get("PATH"))
+            node = shutil.which("node", path=merged_env.get("PATH"))
+            cli = (
+                Path(shim).parent / "node_modules/npm/bin" / f"{argv[0].lower()}-cli.js"
+                if shim
+                else None
+            )
+            if not node or cli is None or not cli.is_file():
+                raise BootstrapError(
+                    "adapter_failed",
+                    "native Node/npm entrypoint unavailable",
+                    stage=stage,
+                )
+            command = [node, str(cli), *argv[1:]]
     _record_process(spawn_pending=True)
     try:
+        if os.name == "nt":
+            job_client = WindowsJobClient(
+                parent=bootstrap_home(), supervisor=supervisor
+            ).prepare()
+            command = job_client.supervisor_argv(command)
         process = subprocess.Popen(
-            argv,
+            command,
             cwd=cwd,
             env=merged_env,
             text=True,
+            encoding="utf-8",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE if os.name == "nt" else None,
             start_new_session=os.name != "nt",
             creationflags=creationflags,
         )
-    except OSError as error:
+        if os.name == "nt":
+            # communicate() must not close the owner channel while work runs.
+            process._forgewright_job_cancel = process.stdin
+            process._forgewright_job_client = job_client
+            process.stdin = None
+    except (OSError, CompletionError) as error:
         _record_process(spawn_pending=False)
+        if job_client is not None:
+            job_client.cleanup()
         if required:
             raise BootstrapError(
                 "adapter_failed",
@@ -681,7 +724,11 @@ def run(
                 stage=stage,
             )
 
-        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        for sig in (
+            signal.SIGTERM,
+            signal.SIGINT,
+            *([signal.SIGHUP] if hasattr(signal, "SIGHUP") else []),
+        ):
             handlers[sig] = signal.signal(sig, interrupted)
     try:
         if tracking is not None:
@@ -732,8 +779,14 @@ def run(
                     f"{stage}: structured output exceeds {MAX_STATE_BYTES} bytes",
                     stage=stage,
                 )
-            return {"status": "degraded", "detail": f"{stage}: structured output exceeds size bound"}
-        return {"status": "ready", "stdout": stdout if structured_output else stdout[-4000:]}
+            return {
+                "status": "degraded",
+                "detail": f"{stage}: structured output exceeds size bound",
+            }
+        return {
+            "status": "ready",
+            "stdout": stdout if structured_output else stdout[-4000:],
+        }
     except BaseException as error:
         for sig in handlers:
             signal.signal(sig, signal.SIG_IGN)
@@ -753,6 +806,15 @@ def run(
         process_record["quiescent"] = True
         raise
     finally:
+        completion_cleanup_error = None
+        try:
+            cancel = getattr(process, "_forgewright_job_cancel", None)
+            if cancel is not None:
+                cancel.close()
+            if job_client is not None and process.poll() is not None:
+                job_client.cleanup()
+        except (OSError, CompletionError) as error:
+            completion_cleanup_error = error
         for sig, handler in handlers.items():
             signal.signal(sig, handler)
         for pipe in (process.stdout, process.stderr):
@@ -769,6 +831,12 @@ def run(
                         stage=stage,
                     ) from error
                 raise
+        if completion_cleanup_error is not None:
+            raise BootstrapError(
+                "adapter_completion_cleanup_failed",
+                "owned completion cleanup failed",
+                stage=stage,
+            ) from completion_cleanup_error
 
 
 def cli_entry() -> list[str]:
@@ -907,11 +975,25 @@ def _fsync_directory(path: Path) -> None:
         pass
 
 
+def _directory_members(path: Path):
+    pending = [path]
+    while pending:
+        current = pending.pop()
+        _safe_path(current, directory=True)
+        with os.scandir(current) as entries:
+            for entry in entries:
+                member = Path(entry.path)
+                _safe_path(member)
+                yield member
+                if entry.is_dir(follow_symlinks=False):
+                    pending.append(member)
+
+
 def _directory_file_manifest(path: Path) -> dict[str, str]:
     """Return the exact owned regular-file set before directory cleanup."""
     _safe_path(path, directory=True)
     manifest: dict[str, str] = {}
-    for child in sorted(path.rglob("*"), key=lambda item: item.as_posix()):
+    for child in sorted(_directory_members(path), key=lambda item: item.as_posix()):
         _safe_path(child)
         if child.is_dir():
             continue
@@ -920,6 +1002,22 @@ def _directory_file_manifest(path: Path) -> dict[str, str]:
         relative = child.relative_to(path).as_posix()
         manifest[relative] = sha256_bytes(child.read_bytes())
     return manifest
+
+
+def _user_owned_store(path: Path) -> bool:
+    if os.name == "nt":
+        from windows_security import is_private_path
+
+        try:
+            return is_private_path(path)
+        except OSError:
+            return False
+    info = path.stat()
+    return (
+        hasattr(os, "getuid")
+        and info.st_uid == os.getuid()
+        and not info.st_mode & 0o022
+    )
 
 
 def _directory_rollback_journal(project: Path) -> Path:
@@ -933,10 +1031,7 @@ def _directory_rollback_journal(project: Path) -> Path:
     _safe_existing_file(path)
     for part in (home, path.parent, path):
         if part.exists():
-            info = part.stat()
-            if hasattr(os, "getuid") and (
-                info.st_uid != os.getuid() or info.st_mode & 0o022
-            ):
+            if not _user_owned_store(part):
                 raise BootstrapError(
                     "unsafe_ownership_store",
                     f"directory rollback store is not user-owned: {part}",
@@ -1149,13 +1244,24 @@ def _wait_admission_active(
     current = row
     while current.get("state") == "queued":
         if time.monotonic() >= min(deadline, _DEADLINE.get() or deadline):
+            # Nothing ran under this lease, so a quiescent release is truthful
+            # even if a grant raced the deadline. Only a confirmed release lets
+            # the caller treat the transaction as never started.
             try:
-                admission.release(job_id, token, owner_pid, quiescent=True)
+                released = admission.release(job_id, token, owner_pid, quiescent=True)
             except AdmissionError:
-                pass
+                released = None
+            if not isinstance(released, dict) or released.get("state") != "released":
+                raise BootstrapError(
+                    "host_quiescence_unconfirmed",
+                    "host capacity wait timed out and the lease release "
+                    "was not confirmed",
+                )
+            reason = str(current.get("reason") or "unknown")
             raise BootstrapError(
                 "host_capacity_timeout",
-                f"host capacity did not become available within {timeout}s",
+                f"host capacity did not become available within {timeout}s "
+                f"(scheduler reason: {reason})",
             )
         time.sleep(0.1)
         current = admission.poll(job_id, token, owner_pid)
@@ -1165,6 +1271,51 @@ def _wait_admission_active(
             f"host admission closed with state={current.get('state')}",
         )
     return current
+
+
+def _restore_prior_journal(
+    project: Path, transaction_id: Any, prior: dict[str, Any] | None
+) -> None:
+    """Replace this attempt's journal with the pre-attempt one (or none).
+
+    Only the exact journal this transaction wrote is replaced; anything else
+    on disk is left as the recovery boundary.
+    """
+    path = _journal_path(project)
+    current = load_json(path)
+    if not isinstance(current, dict) or current.get("transaction_id") != transaction_id:
+        return
+    if prior is None:
+        path.unlink(missing_ok=True)
+    else:
+        atomic_json(path, prior)
+
+
+def _restore_pre_attempt(
+    project: Path,
+    journal: dict[str, Any],
+    *,
+    prior_state_bytes: bytes | None,
+    prior_journal: dict[str, Any] | None,
+    state_dir_existed: bool,
+) -> None:
+    """Publish the exact pre-attempt state after a complete, settled rollback.
+
+    State is restored before the journal: a crash in between leaves this
+    attempt's recovery_required journal, which still fails closed.
+    """
+    path = state_path(project)
+    if prior_state_bytes is None:
+        path.unlink(missing_ok=True)
+        if not state_dir_existed:
+            try:
+                path.parent.rmdir()  # Only succeeds if nothing else is inside.
+            except OSError:
+                pass
+    else:
+        current = sha256_bytes(path.read_bytes()) if path.exists() else None
+        _atomic_bytes(path, prior_state_bytes, expected_before_sha256=current)
+    _restore_prior_journal(project, journal.get("transaction_id"), prior_journal)
 
 
 def _open_host_admission(timeout: float = 5.0) -> HostAdmission:
@@ -1200,19 +1351,74 @@ class HostCapacityLease:
         self.worker_released = False
         self.transaction_project: Path | None = None
         self.transaction_journal: dict[str, Any] | None = None
+        self.transaction_prior_journal: dict[str, Any] | None = None
+        self.transaction_prior_bound = False
+
+    def _discard_unadmitted_transaction(self) -> None:
+        """Undo only the intent journal of a transaction that never started.
+
+        Called after a confirmed release of a worker lease that was never
+        granted: no project, state or shared-runtime write happened, so the
+        prior journal (or its absence) is the exact pre-attempt truth.
+        """
+        if (
+            not self.transaction_prior_bound
+            or self.transaction_project is None
+            or self.worker_state != "intent"
+        ):
+            return
+        if self.transaction_journal is None:
+            return
+        _restore_prior_journal(
+            self.transaction_project,
+            self.transaction_journal.get("transaction_id"),
+            self.transaction_prior_journal,
+        )
+
+    def _worker_never_held(self, error: BaseException, enqueued: bool | None) -> bool:
+        """Prove that no worker reservation can outlive a failed admission.
+
+        ``enqueued`` is False only when the store refused the row inside its
+        own transaction, None when that is unknown. An unknown or queued row
+        is released here; only a confirmed release counts as proof.
+        """
+        if self.worker_state != "intent":
+            return False
+        if (
+            isinstance(error, BootstrapError)
+            and error.code == "host_quiescence_unconfirmed"
+        ):
+            return False  # A release already failed; never retry it here.
+        if self.admission is None or enqueued is False:
+            return True
+        if isinstance(error, BootstrapError) and error.code == "host_capacity_timeout":
+            return True  # _wait_admission_active confirmed the release.
+        try:
+            released = self.admission.release(
+                self.worker_id, self.worker_token, self.owner_pid, quiescent=True
+            )
+        except Exception:
+            return False
+        return isinstance(released, dict) and released.get("state") == "released"
 
     def __enter__(self):
+        enqueued: bool | None = None
         try:
             self.admission = _open_host_admission()
-            row = self.admission.enqueue(
-                job_id=self.worker_id,
-                token=self.worker_token,
-                project_root=str(self.project),
-                run_id=self.run_id,
-                owner_pid=self.owner_pid,
-                kind="worker",
-                memory_mib=BOOTSTRAP_WORKER_MIB,
-            )
+            try:
+                row = self.admission.enqueue(
+                    job_id=self.worker_id,
+                    token=self.worker_token,
+                    project_root=str(self.project),
+                    run_id=self.run_id,
+                    owner_pid=self.owner_pid,
+                    kind="worker",
+                    memory_mib=BOOTSTRAP_WORKER_MIB,
+                )
+            except AdmissionError:
+                enqueued = False  # The store transaction rolled the row back.
+                raise
+            enqueued = True
             _wait_admission_active(
                 self.admission,
                 row,
@@ -1225,8 +1431,11 @@ class HostCapacityLease:
             self._persist_lease(self.worker_record())
             return self
         except BaseException as error:
+            never_held = self._worker_never_held(error, enqueued)
             if self.admission is not None:
                 self.admission.close()
+            if never_held:
+                self._discard_unadmitted_transaction()
             if isinstance(error, AdmissionError):
                 raise BootstrapError(
                     "host_admission_unavailable", str(error)
@@ -1245,17 +1454,23 @@ class HostCapacityLease:
             heavy_id, heavy_token, kind="heavy", parent_id=self.worker_id
         )
         self._persist_lease(record)
+        enqueued: bool | None = None
         try:
-            row = self.admission.enqueue(
-                job_id=heavy_id,
-                token=heavy_token,
-                project_root=str(self.project),
-                run_id=self.run_id,
-                owner_pid=self.owner_pid,
-                kind="heavy",
-                memory_mib=BOOTSTRAP_HEAVY_MIB,
-                parent_lease_id=self.worker_id,
-            )
+            try:
+                row = self.admission.enqueue(
+                    job_id=heavy_id,
+                    token=heavy_token,
+                    project_root=str(self.project),
+                    run_id=self.run_id,
+                    owner_pid=self.owner_pid,
+                    kind="heavy",
+                    memory_mib=BOOTSTRAP_HEAVY_MIB,
+                    parent_lease_id=self.worker_id,
+                )
+            except AdmissionError:
+                enqueued = False  # The store transaction rolled the row back.
+                raise
+            enqueued = True
             _wait_admission_active(
                 self.admission,
                 row,
@@ -1274,17 +1489,22 @@ class HostCapacityLease:
                 self.mark_uncertain()
             raise
         finally:
-            try:
-                released = self.admission.release(
-                    heavy_id,
-                    heavy_token,
-                    self.owner_pid,
-                    quiescent=not self.uncertain,
-                )
-                record["state"] = released["state"]
-            except AdmissionError:
-                self.uncertain = True
-                record["state"] = "uncertain"
+            if enqueued is False:
+                # No row exists to release; releasing would fail owner checks
+                # and falsely mark the whole transaction uncertain.
+                record["state"] = "released"
+            else:
+                try:
+                    released = self.admission.release(
+                        heavy_id,
+                        heavy_token,
+                        self.owner_pid,
+                        quiescent=not self.uncertain,
+                    )
+                    record["state"] = released["state"]
+                except AdmissionError:
+                    self.uncertain = True
+                    record["state"] = "uncertain"
             self._persist_lease(record)
 
     def _lease_record(
@@ -1316,9 +1536,20 @@ class HostCapacityLease:
             self.worker_id, self.worker_token, kind="worker", parent_id=None
         )
 
-    def bind_transaction(self, project: Path, journal: dict[str, Any]) -> None:
+    def bind_transaction(
+        self,
+        project: Path,
+        journal: dict[str, Any],
+        *,
+        prior_journal: dict[str, Any] | None | object = _PRIOR_UNBOUND,
+    ) -> None:
         self.transaction_project = project
         self.transaction_journal = journal
+        # Callers that pass the pre-attempt journal allow a clean capacity
+        # timeout to leave no recovery boundary; others keep the intent journal.
+        if prior_journal is not _PRIOR_UNBOUND:
+            self.transaction_prior_journal = prior_journal  # type: ignore[assignment]
+            self.transaction_prior_bound = True
 
     def _persist_lease(self, record: dict[str, Any]) -> None:
         if self.transaction_project is None or self.transaction_journal is None:
@@ -1391,6 +1622,13 @@ class Lock:
             raise BootstrapError("unsafe_lock", "invalid lock name")
         home = bootstrap_home()
         _safe_path(home / "locks", directory=True)
+        if os.name == "nt":
+            try:
+                home.lstat()
+            except FileNotFoundError:
+                from windows_security import create_private_directory
+
+                create_private_directory(home)
         (home / "locks").mkdir(parents=True, exist_ok=True)
         self.path = home / "locks" / f"{name}.lock"
         self.timeout = timeout
@@ -1417,6 +1655,11 @@ class Lock:
                 os.fsync(self.fd)
                 info = os.fstat(self.fd)
                 self.identity = (info.st_dev, info.st_ino)
+                if os.name == "nt":
+                    # Ownership is the exclusive-create file plus identity/token,
+                    # not a held OS lock. Windows forbids unlinking an open CRT fd.
+                    os.close(self.fd)
+                    self.fd = None
                 return self
             except FileExistsError:
                 stale = False
@@ -1427,7 +1670,7 @@ class Lock:
                     if pid <= 0:
                         raise ValueError("invalid lock pid")
                     try:
-                        os.kill(pid, 0)
+                        _check_process_alive(pid)
                     except ProcessLookupError:
                         stale = True
                     except PermissionError:
@@ -1571,7 +1814,7 @@ def directory_digest(path: Path) -> str:
     hasher = hashlib.sha256()
     files = 0
     total = 0
-    for child in sorted(path.rglob("*"), key=lambda item: item.as_posix()):
+    for child in sorted(_directory_members(path), key=lambda item: item.as_posix()):
         relative = child.relative_to(path).as_posix().encode()
         hasher.update(relative + b"\\0")
         _safe_path(child)
@@ -1879,9 +2122,8 @@ def _client_progress_path() -> Path:
     path = home / "runtime-progress.json"
     _safe_existing_file(path)
     for part in (home, path):
-        if part.exists() and hasattr(os, "getuid"):
-            info = part.stat()
-            if info.st_uid != os.getuid() or info.st_mode & 0o022:
+        if part.exists():
+            if not _user_owned_store(part):
                 raise BootstrapError(
                     "unsafe_ownership_store", "runtime journal must be user-owned"
                 )
@@ -1898,9 +2140,8 @@ def _shared_runtime_progress_path() -> Path:
     path = home / "shared-runtime-assets-progress.json"
     _safe_existing_file(path)
     for part in (home, path):
-        if part.exists() and hasattr(os, "getuid"):
-            info = part.stat()
-            if info.st_uid != os.getuid() or info.st_mode & 0o022:
+        if part.exists():
+            if not _user_owned_store(part):
                 raise BootstrapError(
                     "unsafe_ownership_store",
                     "shared runtime journal must be user-owned",
@@ -2096,8 +2337,11 @@ def _atomic_bytes(
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=".bootstrap-", dir=path.parent)
     try:
-        os.fchmod(fd, 0o600)
         with os.fdopen(fd, "wb") as handle:
+            if os.name == "nt":
+                os.chmod(name, 0o600)
+            else:
+                os.fchmod(handle.fileno(), 0o600)
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
@@ -2363,13 +2607,26 @@ def recover_global_runtime(
 
 
 def _entry_matches(entry: Any, expected: dict[str, Any]) -> bool:
-    return (
+    if not (
         isinstance(entry, dict)
-        and entry.get("command") == expected["command"]
-        and entry.get("args") == expected["args"]
         and entry.get("enabled", True) is True
         and entry.get("disabled", False) is False
-    )
+    ):
+        return False
+    if (
+        entry.get("command") == expected["command"]
+        and entry.get("args") == expected["args"]
+    ):
+        return True
+    if os.name == "nt":
+        server = Path.home() / ".forgewright/mcp-server"
+        cmd = str(entry.get("command", ""))
+        if Path(cmd).name.lower() in {"node", "node.exe"} and entry.get("args") == [
+            str(server / "node_modules/tsx/dist/cli.mjs"),
+            str(server / "src/index.ts"),
+        ]:
+            return True
+    return False
 
 
 def _runtime_issues(value: dict[str, Any], receipt: dict[str, Any] | None) -> list[str]:
@@ -2767,10 +3024,7 @@ def _journal_path(project: Path) -> Path:
     _safe_existing_file(path)
     for part in (home, path.parent, path):
         if part.exists():
-            info = part.stat()
-            if hasattr(os, "getuid") and (
-                info.st_uid != os.getuid() or info.st_mode & 0o022
-            ):
+            if not _user_owned_store(part):
                 raise BootstrapError(
                     "unsafe_ownership_store",
                     f"ownership store is not user-owned: {part}",
@@ -2966,7 +3220,7 @@ def _recovery_quiescence(project: Path, journal: dict[str, Any]) -> bool:
         )
     if not journal.get("settled"):
         try:
-            os.kill(owner["pid"], 0)
+            _check_process_alive(owner["pid"])
         except ProcessLookupError:
             pass
         except OSError as error:
@@ -2993,7 +3247,7 @@ def _recovery_quiescence(project: Path, journal: dict[str, Any]) -> bool:
         # A live child need not still lead its original process group. The
         # absence of PGID == pid alone does not establish process quiescence.
         try:
-            os.kill(pid, 0)
+            _check_process_alive(pid)
         except ProcessLookupError:
             pass
         except OSError as error:
@@ -3470,6 +3724,14 @@ def ensure(
             state["external_config_receipts"] = list(
                 old_state["external_config_receipts"]
             )
+        prior_journal = journal
+        # Exact pre-attempt state bytes, so a settled admission failure can
+        # publish "nothing happened" instead of a recovery-only blocked state.
+        prior_state_path = state_path(project)
+        state_dir_existed = prior_state_path.parent.is_dir()
+        prior_state_bytes = (
+            prior_state_path.read_bytes() if prior_state_path.is_file() else None
+        )
         journal = {
             "schema": "forgewright-bootstrap-transaction/v1",
             "project_root_digest": root_digest(project),
@@ -3491,7 +3753,7 @@ def ensure(
             "started_at": now(),
         }
         atomic_json(_journal_path(project), journal)
-        capacity.bind_transaction(project, journal)
+        capacity.bind_transaction(project, journal, prior_journal=prior_journal)
         with capacity:
             state["status"] = "bootstrapping"
             write_state(project, state)
@@ -3723,6 +3985,29 @@ def ensure(
                             "detail": str(cleanup_error)[:500],
                         }
                     )
+                if (
+                    completed
+                    and not uncertain
+                    and not capacity.uncertain
+                    and isinstance(error, BootstrapError)
+                    and error.code in _RETRYABLE_ADMISSION_CODES
+                ):
+                    # Host admission said "not now" after earlier stages ran.
+                    # Every owned write was reversed; once the worker lease is
+                    # confirmed released, the attempt left nothing to recover.
+                    try:
+                        capacity.release_worker()
+                    except BootstrapError:
+                        uncertain = True
+                    else:
+                        _restore_pre_attempt(
+                            project,
+                            journal,
+                            prior_state_bytes=prior_state_bytes,
+                            prior_journal=prior_journal,
+                            state_dir_existed=state_dir_existed,
+                        )
+                        raise
                 state = json.loads(json.dumps(old_state)) if old_state else state
                 state["status"] = "blocked"
                 state["last_error"] = str(error)[:2000]

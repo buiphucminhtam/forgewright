@@ -12,8 +12,8 @@
 
 import { createHash } from 'crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, lstatSync, statSync, realpathSync, renameSync } from 'fs';
-import { resolve, dirname, relative, isAbsolute } from 'path';
-import { execSync } from 'child_process';
+import { resolve, dirname, relative, isAbsolute, basename, sep } from 'path';
+import { execFileSync } from 'child_process';
 import { getInstinctStore, resetStoreManager, type ProjectContext, type InstinctPattern } from './instinct-store.js';
 import { scorePattern, calculateInitialConfidence, analyzeToolSequence, type ToolSequenceAnalysis } from './scorer.js';
 import { getInstinctsConfig, type InstinctsConfig } from './instincts-config.js';
@@ -166,7 +166,8 @@ export function isMetadataSymlinkSafe(projectRoot: string): boolean {
     if (stat1) {
       if (stat1.isSymbolicLink()) return false;
       const real1 = realpathSync(fgDir);
-      if (!real1.startsWith(canonicalRoot + '/') && real1 !== canonicalRoot) return false;
+      const relative1 = relative(canonicalRoot, real1);
+      if (relative1 === '..' || relative1.startsWith(`..${sep}`) || isAbsolute(relative1)) return false;
 
       const instinctsDir = resolve(fgDir, 'instincts');
       let stat2;
@@ -178,7 +179,8 @@ export function isMetadataSymlinkSafe(projectRoot: string): boolean {
       if (stat2) {
         if (stat2.isSymbolicLink()) return false;
         const real2 = realpathSync(instinctsDir);
-        if (!real2.startsWith(canonicalRoot + '/')) return false;
+        const relative2 = relative(canonicalRoot, real2);
+        if (!relative2 || relative2 === '..' || relative2.startsWith(`..${sep}`) || isAbsolute(relative2)) return false;
 
         const healthFile = resolve(instinctsDir, 'health.json');
         let stat3;
@@ -362,31 +364,22 @@ export function detectProjectContext(projectRoot: string): ProjectContext {
   };
 
   try {
-    const exts = execSync(
-      'git ls-files 2>/dev/null | grep -E "\\.(ts|tsx|js|jsx|py|go|rs|java|cpp|c|h)$" | head -100 | sed \'s/.*\\.//\' | sort | uniq -c | sort -rn | head -5',
-      { cwd: canonicalRoot, encoding: 'utf-8', timeout: 5000 }
-    ).trim();
-
-    if (exts) {
-      const lines = exts.split('\n').filter(Boolean);
-      const extCounts: Record<string, number> = {};
-
-      for (const line of lines) {
-        const match = line.trim().match(/^\s*(\d+)\s+(.+)$/);
-        if (match) {
-          extCounts[match[2]] = parseInt(match[1]);
-        }
-      }
-
-      const topExt = Object.entries(extCounts).sort((a, b) => b[1] - a[1])[0];
-      if (topExt) {
-        const ext = topExt[0];
-        context.language = extToLanguage(ext);
-      }
-
-      context.fileTypes = Object.keys(extCounts);
+    const files = execFileSync('git', ['ls-files', '-z'], {
+      cwd: canonicalRoot, encoding: 'utf-8', timeout: 5000,
+      maxBuffer: 1024 * 1024, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'],
+    }).split('\0').filter(name => /\.(ts|tsx|js|jsx|py|go|rs|java|cpp|c|h)$/.test(name)).slice(0, 100);
+    const counts: Record<string, number> = {};
+    for (const name of files) {
+      const extension = name.slice(name.lastIndexOf('.') + 1);
+      counts[extension] = (counts[extension] || 0) + 1;
     }
-
+    const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0])).slice(0, 5);
+    if (ranked.length) context.language = extToLanguage(ranked[0][0]);
+    context.fileTypes = ranked.map(([extension]) => extension);
+  } catch {
+    // A missing Git repository does not prevent manifest context discovery.
+  }
+  try {
     const pkgPath = resolve(canonicalRoot, 'package.json');
     if (existsSync(pkgPath)) {
       const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
@@ -467,9 +460,10 @@ export function getProjectId(projectRoot: string): string {
   let remoteTag: string | null = null;
   if (existsSync(resolve(canonicalPath, '.git'))) {
     try {
-      const rawRemote = execSync(
-        'git remote get-url origin 2>/dev/null',
-        { cwd: canonicalPath, encoding: 'utf-8', timeout: 3000 }
+      const rawRemote = execFileSync(
+        'git', ['remote', 'get-url', 'origin'],
+        { cwd: canonicalPath, encoding: 'utf-8', timeout: 3000,
+          maxBuffer: 64 * 1024, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }
       ).trim();
       if (rawRemote) {
         const sanitized = rawRemote.replace(/https?:\/\/[^@]+@/, '').replace(/\.git$/, '');
@@ -485,7 +479,7 @@ export function getProjectId(projectRoot: string): string {
     }
   }
 
-  const baseName = (canonicalPath.split('/').filter(Boolean).pop() || 'project').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const baseName = (basename(canonicalPath) || 'project').replace(/[^a-zA-Z0-9_-]/g, '_');
   if (remoteTag) {
     return `${remoteTag}--${pathHash}`;
   }
