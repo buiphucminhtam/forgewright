@@ -1269,7 +1269,7 @@ def test_antigravity_pre_tool_fails_closed_when_workspace_and_framework_lack_pol
     isolated_root = tmp_path / "isolated-fw"
     isolated_lite = isolated_root / "scripts" / "lite"
     isolated_lite.mkdir(parents=True)
-    for name in ("antigravity-pre-tool-gate.sh", "policy-check.sh", "telemetry.sh"):
+    for name in ("antigravity-pre-tool-gate.sh", "policy_gate.py", "policy-check.sh", "telemetry.sh"):
         shutil.copy2(ROOT / "scripts" / "lite" / name, isolated_lite / name)
 
     project = tmp_path / "no-policy-project"
@@ -1332,6 +1332,7 @@ def _create_isolated_framework(tmp_path: Path, *, include_policy: bool = True) -
     for name in (
         "antigravity-pre-tool-gate.sh",
         "gemini-before-tool-gate.sh",
+        "policy_gate.py",
         "policy-check.sh",
         "telemetry.sh",
     ):

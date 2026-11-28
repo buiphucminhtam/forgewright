@@ -34,7 +34,7 @@ WINDOWS_NATIVE_HOOKS=false
 case "$(uname -s 2>/dev/null || true)" in
     MINGW*|MSYS*|CYGWIN*) WINDOWS_NATIVE_HOOKS=true ;;
 esac
-STOP_RUNTIME_FILES=(stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py verify_gate.py antigravity-stop-hook.sh antigravity-pre-tool-gate.sh gemini-before-tool-gate.sh policy-check.sh telemetry.sh)
+STOP_RUNTIME_FILES=(stop-gate.sh stop_gate.py turn_scope.py continuity_check.py evidence_common.py pytest_receipts.py forgewright_pytest_receipt.py windows_secure_io.py verify_gate.py antigravity-stop-hook.sh antigravity-pre-tool-gate.sh gemini-before-tool-gate.sh policy_gate.py policy-check.sh telemetry.sh)
 
 # Colors
 RED='\033[0;31m'

@@ -683,7 +683,16 @@ if (operation === 'verify') {
   if (!servers || Array.isArray(servers) || typeof servers !== 'object') process.exit(1);
   const entry = servers[name];
   const disabled = new Set([...(Array.isArray(config.disabledMcpServers) ? config.disabledMcpServers : []), ...(Array.isArray(config.disabled_mcp_servers) ? config.disabled_mcp_servers : [])]);
-  const exact = schema === 'opencode' ? entry?.type === 'local' && JSON.stringify(entry.command) === JSON.stringify([expectedCommand, expectedArg]) : entry?.command === expectedCommand && JSON.stringify(entry?.args) === JSON.stringify([expectedArg]);
+  const normWinPath = (p) => {
+    const s = String(p || '').replace(/\\/g, '/');
+    return process.platform === 'win32' ? s.replace(/^\/([A-Za-z])\//, (_, d) => `${d.toLowerCase()}:/`).replace(/^([A-Z]):\//, (_, d) => `${d.toLowerCase()}:/`) : s;
+  };
+  let exact = schema === 'opencode' ? entry?.type === 'local' && JSON.stringify(entry.command) === JSON.stringify([expectedCommand, expectedArg]) : entry?.command === expectedCommand && JSON.stringify(entry?.args) === JSON.stringify([expectedArg]);
+  if (!exact && process.platform === 'win32' && name === 'forgewright' && schema !== 'opencode' && entry?.command === 'node' && Array.isArray(entry?.args) && entry.args.length === 2) {
+    const serverRoot = normWinPath(expectedArg).replace(/\/src\/index\.ts$/i, '');
+    const expectedTsxCli = `${serverRoot}/node_modules/tsx/dist/cli.mjs`;
+    exact = normWinPath(entry.args[0]) === expectedTsxCli && normWinPath(entry.args[1]) === normWinPath(expectedArg);
+  }
   process.exit(exact && entry.enabled !== false && entry.disabled !== true && !disabled.has(name) ? 0 : 1);
 }
 
@@ -4726,8 +4735,8 @@ cmd_diagnose() {
     echo ""
 
     log_step "Platform Configs"
-    echo "  Cursor:       $CURSOR_CONFIG ($(ls -la "$CURSOR_CONFIG" 2>/dev/null | awk '{print $5" "$9}')"
-    echo "  Claude Code:  $CLAUDE_CODE_CONFIG ($(ls -la "$CLAUDE_CODE_CONFIG" 2>/dev/null | awk '{print $5" "$9}')"
+    echo "  Cursor:       $CURSOR_CONFIG ($(wc -c < "$CURSOR_CONFIG" 2>/dev/null | tr -d ' ' || echo 0) bytes)"
+    echo "  Claude Code:  $CLAUDE_CODE_CONFIG ($(wc -c < "$CLAUDE_CODE_CONFIG" 2>/dev/null | tr -d ' ' || echo 0) bytes)"
     echo "  Claude Desktop: $(claude_desktop_config_path)"
     echo "  Antigravity:  $ANTIGRAVITY_CONFIG"
     echo "  Antigravity CLI: $HOME/.gemini/config/mcp_config.json"
