@@ -33,7 +33,8 @@ def test_slop_check_rejects_corrupted_index_and_missing_skills(tmp_path: Path) -
 
 def test_slop_check_rejects_duplicate_code_and_personal_paths(tmp_path: Path) -> None:
     sc = _load_slop_check()
-    body = "# padding\n" * 80 + 'HOME_DIR = "/Users/realperson/SecretRepo"\n'
+    sample_user_dir = "/Users/" + "realperson/SecretRepo"
+    body = "# padding\n" * 80 + f'HOME_DIR = "{sample_user_dir}"\n'
     (tmp_path / "a.py").write_text(body)
     (tmp_path / "b.py").write_text(body)
     tracked = ["a.py", "b.py"]
