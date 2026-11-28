@@ -36,7 +36,7 @@ Format: `n. ACTION | TARGET | CHECK`
 6. BALANCE | Tunables/curves | Externalize parameters, derive expected relationships/ranges and identify telemetry/playtest evidence needed before claiming balance.
 7. ONBOARD | Learn → practice → prove → combine | Sequence mechanic introduction and mastery without unnecessary text/forced interruption.
 8. GAME FEEL | One affected action in its real loop | Diagnose intent/result mismatch before treatment; specify preview/commit, accepted/rejected/buffered input, contact, recovery and return-to-control. Fit timing/weight/contrast to the promise; derive signature from agency/mastery and coherent expression. Use the [action card and conditional checklist](references/game-feel.md) for material feel work; preserve protected mechanics and essential cues.
-9. PLAYTEST | Design hypotheses | Define task/cohort/scenario, observable behavior, success/failure signal and exact design decision the test can change.
+9. PLAYTEST | Design hypotheses & recurring 8-angle audit | Define task/cohort/scenario, observable behavior, success/failure signal, and run the stage-gated [game-evaluation-rubric.md](../_shared/protocols/game-evaluation-rubric.md) (`miniPXI`, blind FTUE, readability, feel, XAG, 1% lows) with observed evidence only.
 
 ## Domain Failure Modes
 - **Feature pile instead of loop:** many systems exist but no repeated player decision/reward loop binds them.

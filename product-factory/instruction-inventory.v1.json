@@ -98,6 +98,10 @@
       "authority": "shared_protocol"
     },
     {
+      "path": "skills/_shared/protocols/game-evaluation-rubric.md",
+      "authority": "shared_protocol"
+    },
+    {
       "path": "skills/_shared/protocols/game-studio-pipeline.md",
       "authority": "shared_protocol"
     },

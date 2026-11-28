@@ -114,6 +114,10 @@
       "type": "operations"
     },
     {
+      "path": "skills/_shared/protocols/game-evaluation-rubric.md",
+      "type": "operations"
+    },
+    {
       "path": "skills/_shared/protocols/visual-grounding.md",
       "type": "operations"
     },
@@ -235,6 +239,7 @@
       "tests/game/fixtures/threejs-lifecycle/README.md",
       "skills/game-designer/SKILL.md",
       "skills/_shared/protocols/game-studio-pipeline.md",
+      "skills/_shared/protocols/game-evaluation-rubric.md",
       "skills/_shared/protocols/visual-grounding.md",
       "docs/skill-catalog.md",
       "skills/ui-designer/references/game-ui-kit.md",

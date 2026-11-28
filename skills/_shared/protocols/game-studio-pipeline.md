@@ -7,7 +7,7 @@ version: 1.0.0
 owners: [core]
 triggers: [game build, cross-discipline game work]
 used_by: [game-designer, game-engineer, production-grade]
-related: [game-test-protocol, model-tier, peer-collaboration, quality-gate, task-validator]
+related: [game-test-protocol, game-evaluation-rubric, model-tier, peer-collaboration, quality-gate, task-validator]
 supersedes: []
 superseded_by: null
 ---
@@ -512,6 +512,10 @@ Use the existing Forgewright controls rather than duplicating them:
 3. `skills/_shared/protocols/task-validator.md` — delivery versus task contract.
 4. `skills/_shared/protocols/game-studio-pipeline.md` — phase readiness,
    cross-domain handoffs, playtest evidence, and accepted risk.
+5. `skills/_shared/protocols/game-evaluation-rubric.md` — recurring weekly,
+   bi-weekly (`miniPXI`/blind playtest), and milestone 8-angle evaluation
+   (MDA/Tetrad, PENS/PXI, Game Feel, Hodent UX/PLAY, Korhonen Mobility,
+   Readability/Unslop, XAG Accessibility, Technical/Economy/Ethics).
 
 Build success does not prove playability, fun, legibility, accessibility, or
 performance. A visual review does not prove mechanics or state correctness.
